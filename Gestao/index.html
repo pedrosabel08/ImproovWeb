@@ -1,0 +1,1778 @@
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão de Projetos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+      integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+    />
+    <link rel="stylesheet" href="../css/modalSessao.css?v=9.14.2" />
+    <link rel="stylesheet" href="style.css?v=9.14.2" />
+    <link rel="stylesheet" href="../css/styleSidebar.css?v=9.14.2" />
+  </head>
+
+  <body class="gestao-body">
+    <script>
+      // Session policy provided by PHP
+      window.IMPROOV_SESSION_IDLE_MS = 1800000;
+      window.IMPROOV_SESSION_IDLE_WARN_MS = 0;
+      window.IMPROOV_SESSION_ABSOLUTE_MS = 14400000;
+      window.IMPROOV_SESSION_ABSOLUTE_WARN_MS = 14100000;
+      window.IMPROOV_LOGIN_TS = null; // seconds since epoch
+      window.IMPROOV_APP_BASE = "\/ImproovWeb";
+    </script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+      integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+
+    <title>Sidebar</title>
+    <!-- Sidebar badge styles moved to css/styleSidebar.css -->
+
+    <div class="sidebar mini">
+      <!-- <button id="menuButton">
+            <i class="fa-solid fa-bars"></i>
+        </button> -->
+      <img
+        id="gif"
+        src="https://improov.com.br/flow/ImproovWeb/gif/assinatura_preto.gif"
+        alt=""
+      />
+      <ul>
+        <ul class="division">
+          <label for="">Insights</label>
+          <li>
+            <a
+              title="Página Principal"
+              href="https://improov.com.br/flow/ImproovWeb/inicio.php"
+              ><i class="fas fa-home"></i><span> Página Principal</span></a
+            >
+          </li>
+          <li>
+            <a
+              title="Flow Review"
+              href="https://improov.com.br/flow/ImproovWeb/FlowReview"
+              ><i class="fas fa-check"></i><span> Flow Review</span
+              ><span
+                class="sidebar-badge"
+                data-module="flow_review"
+                aria-hidden="true"
+              ></span
+            ></a>
+          </li>
+          <li>
+            <a
+              title="Flow Render"
+              href="https://improov.com.br/flow/ImproovWeb/Render"
+              ><i class="fas fa-cube"></i><span> Flow Render</span
+              ><span
+                class="sidebar-badge"
+                data-module="render"
+                aria-hidden="true"
+              ></span
+            ></a>
+          </li>
+          <li>
+            <a
+              title="Lista Pós-Produção"
+              href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"
+              ><i class="fas fa-film"></i><span> Lista Pós-Produção</span
+              ><span
+                class="sidebar-badge"
+                data-module="pos_producao"
+                aria-hidden="true"
+              ></span
+            ></a>
+          </li>
+
+          <li>
+            <a
+              title="TV - Produção por Função"
+              href="https://improov.com.br/flow/ImproovWeb/TvDashboard"
+              target="_blank"
+              ><i class="fa-solid fa-tv"></i><span> TV Dashboard</span></a
+            >
+          </li>
+        </ul>
+
+        <ul class="division" id="favoritos" style="display: none">
+          <label for="">Favoritos</label>
+        </ul>
+
+        <ul class="division">
+          <label for="">Ferramentas</label>
+          <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
+        </ul>
+        <ul id="obras-list" class="division">
+          <label for="">Obras</label>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="85"
+              title="ABF_ALM"
+            ></i>
+            <a
+              title="ABF_ALM"
+              href="#"
+              class="obra-item"
+              data-id="85"
+              data-name="ABF_ALM"
+            >
+              <span>ABF_ALM</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="85"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="96"
+              title="ABF_MAT"
+            ></i>
+            <a
+              title="ABF_MAT"
+              href="#"
+              class="obra-item"
+              data-id="96"
+              data-name="ABF_MAT"
+            >
+              <span>ABF_MAT</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="96"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="90"
+              title="AFC_AUR"
+            ></i>
+            <a
+              title="AFC_AUR"
+              href="#"
+              class="obra-item"
+              data-id="90"
+              data-name="AFC_AUR"
+            >
+              <span>AFC_AUR</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="90"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="91"
+              title="ART_CAM"
+            ></i>
+            <a
+              title="ART_CAM"
+              href="#"
+              class="obra-item"
+              data-id="91"
+              data-name="ART_CAM"
+            >
+              <span>ART_CAM</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="91"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="75"
+              title="CEG_TIJ"
+            ></i>
+            <a
+              title="CEG_TIJ"
+              href="#"
+              class="obra-item"
+              data-id="75"
+              data-name="CEG_TIJ"
+            >
+              <span>CEG_TIJ</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="75"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="102"
+              title="CIB_HYP"
+            ></i>
+            <a
+              title="CIB_HYP"
+              href="#"
+              class="obra-item"
+              data-id="102"
+              data-name="CIB_HYP"
+            >
+              <span>CIB_HYP</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="102"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="92"
+              title="CIB_OCE"
+            ></i>
+            <a
+              title="CIB_OCE"
+              href="#"
+              class="obra-item"
+              data-id="92"
+              data-name="CIB_OCE"
+            >
+              <span>CIB_OCE</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="92"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="68"
+              title="CIB_RIV"
+            ></i>
+            <a
+              title="CIB_RIV"
+              href="#"
+              class="obra-item"
+              data-id="68"
+              data-name="CIB_RIV"
+            >
+              <span>CIB_RIV</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="68"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="100"
+              title="COR_MAX"
+            ></i>
+            <a
+              title="COR_MAX"
+              href="#"
+              class="obra-item"
+              data-id="100"
+              data-name="COR_MAX"
+            >
+              <span>COR_MAX</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="100"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="51"
+              title="GES_CHA"
+            ></i>
+            <a
+              title="GES_CHA"
+              href="#"
+              class="obra-item"
+              data-id="51"
+              data-name="GES_CHA"
+            >
+              <span>GES_CHA</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="51"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i class="fa fa-star favorite-icon" data-id="89" title="GT_LAC"></i>
+            <a
+              title="GT_LAC"
+              href="#"
+              class="obra-item"
+              data-id="89"
+              data-name="GT_LAC"
+            >
+              <span>GT_LAC</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="89"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="54"
+              title="HAA_SPR"
+            ></i>
+            <a
+              title="HAA_SPR"
+              href="#"
+              class="obra-item"
+              data-id="54"
+              data-name="HAA_SPR"
+            >
+              <span>HAA_SPR</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="54"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="95"
+              title="HAA_WTC"
+            ></i>
+            <a
+              title="HAA_WTC"
+              href="#"
+              class="obra-item"
+              data-id="95"
+              data-name="HAA_WTC"
+            >
+              <span>HAA_WTC</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="95"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="94"
+              title="KMK_COS"
+            ></i>
+            <a
+              title="KMK_COS"
+              href="#"
+              class="obra-item"
+              data-id="94"
+              data-name="KMK_COS"
+            >
+              <span>KMK_COS</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="94"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="87"
+              title="KOS_CIT"
+            ></i>
+            <a
+              title="KOS_CIT"
+              href="#"
+              class="obra-item"
+              data-id="87"
+              data-name="KOS_CIT"
+            >
+              <span>KOS_CIT</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="87"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="56"
+              title="LD1_RES"
+            ></i>
+            <a
+              title="LD1_RES"
+              href="#"
+              class="obra-item"
+              data-id="56"
+              data-name="LD1_RES"
+            >
+              <span>LD1_RES</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="56"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="82"
+              title="MEN_991"
+            ></i>
+            <a
+              title="MEN_991"
+              href="#"
+              class="obra-item"
+              data-id="82"
+              data-name="MEN_991"
+            >
+              <span>MEN_991</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="82"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="84"
+              title="NOW_BRI"
+            ></i>
+            <a
+              title="NOW_BRI"
+              href="#"
+              class="obra-item"
+              data-id="84"
+              data-name="NOW_BRI"
+            >
+              <span>NOW_BRI</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="84"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="93"
+              title="STA_ESS"
+            ></i>
+            <a
+              title="STA_ESS"
+              href="#"
+              class="obra-item"
+              data-id="93"
+              data-name="STA_ESS"
+            >
+              <span>STA_ESS</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="93"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="69"
+              title="TER_PRA"
+            ></i>
+            <a
+              title="TER_PRA"
+              href="#"
+              class="obra-item"
+              data-id="69"
+              data-name="TER_PRA"
+            >
+              <span>TER_PRA</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="69"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="74"
+              title="TES_TES"
+            ></i>
+            <a
+              title="TES_TES"
+              href="#"
+              class="obra-item"
+              data-id="74"
+              data-name="TES_TES"
+            >
+              <span>TES_TES</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="74"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li class="obra">
+            <i
+              class="fa fa-star favorite-icon"
+              data-id="81"
+              title="WER_RIO"
+            ></i>
+            <a
+              title="WER_RIO"
+              href="#"
+              class="obra-item"
+              data-id="81"
+              data-name="WER_RIO"
+            >
+              <span>WER_RIO</span>
+              <span
+                class="sidebar-badge"
+                data-obra-id="81"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+        </ul>
+
+        <ul id="obras-list" class="division">
+          <label for="">Usuário</label>
+          <li>
+            <a
+              title="Informações do Usuário"
+              href="https://improov.com.br/flow/ImproovWeb/infos.php"
+              ><i class="fa-solid fa-id-card"></i><span>Informações</span></a
+            >
+          </li>
+        </ul>
+      </ul>
+    </div>
+
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="gestao-shell">
+      <header class="topbar" id="visao-geral">
+        <div class="topbar-copy">
+          <button
+            class="mobile-sidebar-trigger"
+            id="sidebarToggle"
+            type="button"
+            aria-label="Abrir navegação"
+          >
+            <i class="fa-solid fa-bars"></i>
+          </button>
+
+          <div>
+            <p class="eyebrow">Operação</p>
+            <h1>Gestão de Projetos</h1>
+            <p class="subheadline">Visão geral da operação</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <label class="period-pill" for="periodFilter">
+            <i class="fa-solid fa-calendar-days"></i>
+            <select id="periodFilter" aria-label="Filtro de período">
+              <option value="7" selected="">Últimos 7 dias</option>
+              <option value="14">Últimos 14 dias</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+            </select>
+          </label>
+
+          <button
+            class="ghost-button"
+            id="filtersButton"
+            type="button"
+            aria-expanded="false"
+            aria-controls="filtros-operacionais"
+          >
+            <i class="fa-solid fa-sliders"></i>
+            <span>Filtros</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="filters-drawer" id="filtros-operacionais" hidden="">
+        <div class="filters-header">
+          <div>
+            <p class="eyebrow">Refinar visualização</p>
+            <h2>Filtros operacionais</h2>
+          </div>
+
+          <button class="primary-button" id="openEntregaModal" type="button">
+            <i class="fa-solid fa-plus"></i>
+            <span>Nova entrega</span>
+          </button>
+        </div>
+
+        <div class="filters-grid">
+          <label class="toggle-card" for="criticalOnly">
+            <input type="checkbox" id="criticalOnly" />
+            <span>Somente críticos</span>
+            <small>Foco em risco, atraso e revisão.</small>
+          </label>
+
+          <label class="toggle-card" for="includeHold">
+            <input type="checkbox" id="includeHold" checked="" />
+            <span>Exibir HOLD</span>
+            <small>Mantém entregas pausadas no radar.</small>
+          </label>
+
+          <label class="toggle-card" for="onlyOverloaded">
+            <input type="checkbox" id="onlyOverloaded" />
+            <span>Equipe sobrecarregada</span>
+            <small>Destaca somente capacidade crítica.</small>
+          </label>
+
+          <label class="search-card" for="projectSearch">
+            <span>Busca rápida</span>
+            <input
+              type="search"
+              id="projectSearch"
+              placeholder="Filtrar por projeto, equipe ou tema"
+            />
+          </label>
+        </div>
+      </section>
+
+      <div class="summary-strip">
+        <span class="summary-pill summary-pill--live">
+          <i class="fa-solid fa-bolt"></i>
+          <span id="lastUpdated">Atualizado às 14:45</span>
+        </span>
+        <span class="summary-pill">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>Dashboard operacional consolidada</span>
+        </span>
+        <span class="summary-pill">
+          <i class="fa-solid fa-user"></i>
+          <span>Operação</span>
+        </span>
+      </div>
+
+      <div class="content-scroll">
+        <section
+          class="kpi-grid"
+          id="kpiGrid"
+          aria-label="Indicadores principais"
+        >
+          <article class="kpi-card" data-tone="info">
+            <div class="kpi-head">
+              <p class="kpi-label">Projetos ativos</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-folder-open"></i
+              ></span>
+            </div>
+            <div class="kpi-value">22</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>+5 com movimentação
+                hoje</span
+              >
+              <span class="kpi-micro">Carteira ativa</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="success">
+            <div class="kpi-head">
+              <p class="kpi-label">Imagens em produção</p>
+              <span class="kpi-icon"><i class="fa-regular fa-image"></i></span>
+            </div>
+            <div class="kpi-value">126</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>+4 iniciadas hoje</span
+              >
+              <span class="kpi-micro">Produção em andamento</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="warning">
+            <div class="kpi-head">
+              <p class="kpi-label">Imagens em HOLD</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-circle-pause"></i
+              ></span>
+            </div>
+            <div class="kpi-value">58</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>11 projetos
+                impactados</span
+              >
+              <span class="kpi-micro">Itens fora de fluxo</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="info">
+            <div class="kpi-head">
+              <p class="kpi-label">Entregas próximas</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-calendar"></i
+              ></span>
+            </div>
+            <div class="kpi-value">0</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>0 críticas na janela</span
+              >
+              <span class="kpi-micro">Janela de 7 dias</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="critical">
+            <div class="kpi-head">
+              <p class="kpi-label">Entregas atrasadas</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-calendar-xmark"></i
+              ></span>
+            </div>
+            <div class="kpi-value">9</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>2 parcialmente
+                prontas</span
+              >
+              <span class="kpi-micro">Demandam recuperação</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="critical">
+            <div class="kpi-head">
+              <p class="kpi-label">Alertas críticos</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-triangle-exclamation"></i
+              ></span>
+            </div>
+            <div class="kpi-value">9</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>5 projetos em alto
+                risco</span
+              >
+              <span class="kpi-micro">Prioridade executiva</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="critical">
+            <div class="kpi-head">
+              <p class="kpi-label">Tarefas atrasadas</p>
+              <span class="kpi-icon"
+                ><i class="fa-solid fa-list-check"></i
+              ></span>
+            </div>
+            <div class="kpi-value">172</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>9 com revisão recente</span
+              >
+              <span class="kpi-micro">Backlog vencido</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="warning">
+            <div class="kpi-head">
+              <p class="kpi-label">Sem iniciar há muito tempo</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-hourglass-half"></i
+              ></span>
+            </div>
+            <div class="kpi-value">10</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>10 acima de 7 dias</span
+              >
+              <span class="kpi-micro">Acúmulo sem avanço</span>
+            </div>
+          </article>
+
+          <article class="kpi-card" data-tone="accent">
+            <div class="kpi-head">
+              <p class="kpi-label">Imagens para aprovação</p>
+              <span class="kpi-icon"
+                ><i class="fa-regular fa-circle-check"></i
+              ></span>
+            </div>
+            <div class="kpi-value">37</div>
+            <div class="kpi-meta">
+              <span class="kpi-trend"
+                ><i class="fa-solid fa-arrow-up"></i>+9 novos envios hoje</span
+              >
+              <span class="kpi-micro">Fila do cliente</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-row dashboard-row--three">
+          <article class="panel panel--risk" id="radar-risco">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Radar executivo</p>
+                <h2>RADAR DE RISCO - PROJETOS</h2>
+              </div>
+              <button class="panel-link" type="button">Ver prioridades</button>
+            </div>
+            <div class="panel-body" id="riskRadarPanel">
+              <div class="risk-table">
+                <div class="table-head">
+                  <span>Entrega/Projeto</span>
+                  <span>Risco</span>
+                  <span>Motivo</span>
+                </div>
+
+                <article class="table-row table-row--risk">
+                  <div class="cell cell--project" data-label="Entrega/Projeto">
+                    <strong>WER_RIO</strong>
+                    <span>P00</span>
+                    <small>Prazo: 13/04</small>
+                  </div>
+                  <div class="cell" data-label="Risco">
+                    <span class="badge badge--critical">Alto</span>
+                  </div>
+                  <div class="cell" data-label="Motivo">
+                    <span
+                      >HOLD: Projeto pausado aguardando arquivos
+                      atualizados</span
+                    >
+                  </div>
+                </article>
+
+                <article class="table-row table-row--risk">
+                  <div class="cell cell--project" data-label="Entrega/Projeto">
+                    <strong>WER_RIO</strong>
+                    <span>R00</span>
+                    <small>Prazo: 18/02</small>
+                  </div>
+                  <div class="cell" data-label="Risco">
+                    <span class="badge badge--critical">Alto</span>
+                  </div>
+                  <div class="cell" data-label="Motivo">
+                    <span
+                      >HOLD: Projeto parado aguardando arquivos
+                      atualizados</span
+                    >
+                  </div>
+                </article>
+
+                <article class="table-row table-row--risk">
+                  <div class="cell cell--project" data-label="Entrega/Projeto">
+                    <strong>LD1_RES</strong>
+                    <span>R00</span>
+                    <small>Prazo: 08/05</small>
+                  </div>
+                  <div class="cell" data-label="Risco">
+                    <span class="badge badge--critical">Alto</span>
+                  </div>
+                  <div class="cell" data-label="Motivo">
+                    <span>Entrega atrasada com 4 itens pendentes</span>
+                  </div>
+                </article>
+
+                <article class="table-row table-row--risk">
+                  <div class="cell cell--project" data-label="Entrega/Projeto">
+                    <strong>CIB_OCE</strong>
+                    <span>R00</span>
+                    <small>Prazo: 17/03</small>
+                  </div>
+                  <div class="cell" data-label="Risco">
+                    <span class="badge badge--critical">Alto</span>
+                  </div>
+                  <div class="cell" data-label="Motivo">
+                    <span>Entrega atrasada com 4 itens pendentes</span>
+                  </div>
+                </article>
+
+                <article class="table-row table-row--risk">
+                  <div class="cell cell--project" data-label="Entrega/Projeto">
+                    <strong>CIB_RIV</strong>
+                    <span>R00</span>
+                    <small>Prazo: 14/04</small>
+                  </div>
+                  <div class="cell" data-label="Risco">
+                    <span class="badge badge--critical">Alto</span>
+                  </div>
+                  <div class="cell" data-label="Motivo">
+                    <span>Entrega atrasada com 11 itens pendentes</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel panel--bottlenecks" id="gargalos-funcao">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Fluxo operacional</p>
+                <h2>GARGALOS POR FUNÇÃO</h2>
+              </div>
+              <button class="panel-link" type="button">Ver gargalos</button>
+            </div>
+            <div class="panel-body" id="bottlenecksPanel">
+              <div class="bottleneck-table">
+                <div class="table-head">
+                  <span>Função</span>
+                  <span>A iniciar</span>
+                  <span>Andamento</span>
+                  <span>Aprovação</span>
+                  <span>Atrasadas</span>
+                  <span>Tempo médio</span>
+                </div>
+
+                <article
+                  class="table-row"
+                  data-severity="warning"
+                  style="--tone-color: var(--warning)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Caderno</strong>
+                      <div class="row-meter">
+                        <span style="width: 33%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">2</div>
+                  <div class="cell cell--metric" data-label="Andamento">1</div>
+                  <div class="cell cell--metric" data-label="Aprovação">0</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">0</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>2,1 dias</strong>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  data-severity="critical"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Filtro de assets</strong>
+                      <div class="row-meter">
+                        <span style="width: 64%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">4</div>
+                  <div class="cell cell--metric" data-label="Andamento">7</div>
+                  <div class="cell cell--metric" data-label="Aprovação">0</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">4</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>8,5 dias</strong>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  data-severity="critical"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Modelagem</strong>
+                      <div class="row-meter">
+                        <span style="width: 77%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">7</div>
+                  <div class="cell cell--metric" data-label="Andamento">21</div>
+                  <div class="cell cell--metric" data-label="Aprovação">3</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">15</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>44,2 dias</strong>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  data-severity="critical"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Composição</strong>
+                      <div class="row-meter">
+                        <span style="width: 76%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">17</div>
+                  <div class="cell cell--metric" data-label="Andamento">53</div>
+                  <div class="cell cell--metric" data-label="Aprovação">2</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">54</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>66,4 dias</strong>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  data-severity="critical"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Finalização</strong>
+                      <div class="row-meter">
+                        <span style="width: 68%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">45</div>
+                  <div class="cell cell--metric" data-label="Andamento">69</div>
+                  <div class="cell cell--metric" data-label="Aprovação">28</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">88</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>51,0 dias</strong>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  data-severity="critical"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Pós-produção</strong>
+                      <div class="row-meter">
+                        <span style="width: 3%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">
+                    138
+                  </div>
+                  <div class="cell cell--metric" data-label="Andamento">3</div>
+                  <div class="cell cell--metric" data-label="Aprovação">2</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">6</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>44,6 dias</strong>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  data-severity="critical"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Função">
+                    <div class="metric-stack">
+                      <strong>Alteração</strong>
+                      <div class="row-meter">
+                        <span style="width: 10%"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell cell--metric" data-label="A iniciar">46</div>
+                  <div class="cell cell--metric" data-label="Andamento">3</div>
+                  <div class="cell cell--metric" data-label="Aprovação">2</div>
+                  <div class="cell cell--metric" data-label="Atrasadas">5</div>
+                  <div class="cell cell--numeric" data-label="Tempo médio">
+                    <strong>59,0 dias</strong>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel panel--capacity" id="capacidade-equipe">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Balanceamento</p>
+                <h2>CAPACIDADE EQUIPE</h2>
+              </div>
+              <button class="panel-link" type="button">
+                Ver toda a equipe
+              </button>
+            </div>
+            <div class="panel-body" id="capacityPanel">
+              <div class="capacity-table">
+                <div class="table-head">
+                  <span>Colaborador</span>
+                  <span>Função</span>
+                  <span>Capacidade</span>
+                  <span>Status</span>
+                </div>
+
+                <article
+                  class="table-row"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Colaborador">
+                    <div class="capacity-person">
+                      <div class="capacity-avatar">
+                        <span>A</span>
+                      </div>
+                      <div>
+                        <strong>Adriana</strong>
+                        <small>139 itens ativos · média 6m 62,2</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Função">
+                    <strong>Pós-produção</strong>
+                  </div>
+                  <div class="cell" data-label="Capacidade">
+                    <strong>160%</strong>
+                    <div class="capacity-bar">
+                      <span style="width: 100%"></span>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Status">
+                    <span class="capacity-status">Sobrecarregado</span>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Colaborador">
+                    <div class="capacity-person">
+                      <div class="capacity-avatar">
+                        <span>A</span>
+                      </div>
+                      <div>
+                        <strong>Anderson</strong>
+                        <small>24 itens ativos · média 6m 6,2</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Função">
+                    <strong>Alteração</strong>
+                  </div>
+                  <div class="cell" data-label="Capacidade">
+                    <strong>160%</strong>
+                    <div class="capacity-bar">
+                      <span style="width: 100%"></span>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Status">
+                    <span class="capacity-status">Sobrecarregado</span>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Colaborador">
+                    <div class="capacity-person">
+                      <div class="capacity-avatar">
+                        <span>B</span>
+                      </div>
+                      <div>
+                        <strong>Bruna</strong>
+                        <small>29 itens ativos · média 6m 5,7</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Função">
+                    <strong>Finalização</strong>
+                  </div>
+                  <div class="cell" data-label="Capacidade">
+                    <strong>160%</strong>
+                    <div class="capacity-bar">
+                      <span style="width: 100%"></span>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Status">
+                    <span class="capacity-status">Sobrecarregado</span>
+                  </div>
+                </article>
+
+                <article
+                  class="table-row"
+                  style="--tone-color: var(--critical)"
+                >
+                  <div class="cell" data-label="Colaborador">
+                    <div class="capacity-person">
+                      <div class="capacity-avatar">
+                        <span>H</span>
+                      </div>
+                      <div>
+                        <strong>Heverton</strong>
+                        <small>10 itens ativos · média 6m 2,7</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Função">
+                    <strong>Finalização</strong>
+                  </div>
+                  <div class="cell" data-label="Capacidade">
+                    <strong>160%</strong>
+                    <div class="capacity-bar">
+                      <span style="width: 100%"></span>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Status">
+                    <span class="capacity-status">Sobrecarregado</span>
+                  </div>
+                </article>
+
+                <article class="table-row" style="--tone-color: var(--success)">
+                  <div class="cell" data-label="Colaborador">
+                    <div class="capacity-person">
+                      <div class="capacity-avatar">
+                        <span>L</span>
+                      </div>
+                      <div>
+                        <strong>Luana</strong>
+                        <small>14 itens ativos · média 6m 19,5</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Função">
+                    <strong>Filtro de assets</strong>
+                  </div>
+                  <div class="cell" data-label="Capacidade">
+                    <strong>58%</strong>
+                    <div class="capacity-bar">
+                      <span style="width: 58%"></span>
+                    </div>
+                  </div>
+                  <div class="cell" data-label="Status">
+                    <span class="capacity-status">Ocioso</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-row dashboard-row--two">
+          <article class="panel panel--schedule" id="entregas-semana">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Planejamento</p>
+                <h2>ENTREGAS - 7 DIAS</h2>
+              </div>
+              <button class="panel-link" type="button">Próxima semana</button>
+            </div>
+            <div class="panel-body" id="schedulePanel">
+              <div class="day-grid">
+                <article class="day-card" data-tone="critical">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Hoje</strong>
+                      <span>13/05</span>
+                    </div>
+                    <span class="badge badge--critical">Crítico</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 100%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 56%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>9</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>5</strong></li>
+                  </ul>
+                </article>
+
+                <article class="day-card" data-tone="success">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Amanhã</strong>
+                      <span>14/05</span>
+                    </div>
+                    <span class="badge badge--success">Leve</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 22%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>2</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>0</strong></li>
+                  </ul>
+                </article>
+
+                <article class="day-card" data-tone="info">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Sexta</strong>
+                      <span>15/05</span>
+                    </div>
+                    <span class="badge badge--info">Médio</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 56%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>5</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>0</strong></li>
+                  </ul>
+                </article>
+
+                <article class="day-card" data-tone="success">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Sábado</strong>
+                      <span>16/05</span>
+                    </div>
+                    <span class="badge badge--success">Leve</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>0</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>0</strong></li>
+                  </ul>
+                </article>
+
+                <article class="day-card" data-tone="success">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Domingo</strong>
+                      <span>17/05</span>
+                    </div>
+                    <span class="badge badge--success">Leve</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>0</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>0</strong></li>
+                  </ul>
+                </article>
+
+                <article class="day-card" data-tone="success">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Segunda</strong>
+                      <span>18/05</span>
+                    </div>
+                    <span class="badge badge--success">Leve</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>0</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>0</strong></li>
+                  </ul>
+                </article>
+
+                <article class="day-card" data-tone="success">
+                  <div class="day-card-header">
+                    <div>
+                      <strong>Terça</strong>
+                      <span>19/05</span>
+                    </div>
+                    <span class="badge badge--success">Leve</span>
+                  </div>
+                  <div class="day-total">0</div>
+                  <div class="day-total-label">Entregas</div>
+                  <div class="day-bars">
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                    <span style="width: 0%"></span>
+                  </div>
+                  <ul class="day-stats">
+                    <li><span>Renders</span><strong>0</strong></li>
+                    <li><span>Entregas</span><strong>0</strong></li>
+                    <li><span>Aprovações</span><strong>0</strong></li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel panel--activity" id="atividades-recentes">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Movimentação</p>
+                <h2>ATIVIDADES RECENTES</h2>
+              </div>
+              <button class="panel-link" type="button">Timeline</button>
+            </div>
+            <div class="panel-body" id="activitiesPanel">
+              <div class="activity-list">
+                <article class="activity-item" data-tone="success">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-circle-check"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>CIB_RIV</strong>
+                    <p>Tarefa concluída</p>
+                    <small>Etapa finalizada na operação</small>
+                  </div>
+                  <span class="activity-time">Há 5 horas</span>
+                </article>
+
+                <article class="activity-item" data-tone="warning">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-square-plus"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>ART_CAM</strong>
+                    <p>Tarefa criada</p>
+                    <small>Nova atividade planejada para render</small>
+                  </div>
+                  <span class="activity-time">Há 5 horas</span>
+                </article>
+
+                <article class="activity-item" data-tone="warning">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-message"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>CIB_RIV</strong>
+                    <p>Feedback do cliente</p>
+                    <small>Solicitação de revisão recebida</small>
+                  </div>
+                  <span class="activity-time">Há 5 horas</span>
+                </article>
+
+                <article class="activity-item" data-tone="accent">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-paper-plane"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>GT_LAC</strong>
+                    <p>Imagem enviada</p>
+                    <small>Arquivo enviado para aprovação do cliente</small>
+                  </div>
+                  <span class="activity-time">Há 6 horas</span>
+                </article>
+
+                <article class="activity-item" data-tone="warning">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-message"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>GT_LAC</strong>
+                    <p>Feedback do cliente</p>
+                    <small>Solicitação de revisão recebida</small>
+                  </div>
+                  <span class="activity-time">Há 6 horas</span>
+                </article>
+
+                <article class="activity-item" data-tone="warning">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-message"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>GT_LAC</strong>
+                    <p>Feedback do cliente</p>
+                    <small>Solicitação de revisão recebida</small>
+                  </div>
+                  <span class="activity-time">Há 6 horas</span>
+                </article>
+
+                <article class="activity-item" data-tone="warning">
+                  <span class="activity-icon"
+                    ><i class="fa-regular fa-message"></i
+                  ></span>
+                  <div class="activity-copy">
+                    <strong>GT_LAC</strong>
+                    <p>Feedback do cliente</p>
+                    <small>Solicitação de revisão recebida</small>
+                  </div>
+                  <span class="activity-time">Há 6 horas</span>
+                </article>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section
+          class="status-strip"
+          id="status-operacional"
+          aria-label="Atalhos operacionais"
+        >
+          <article class="status-card" data-tone="accent">
+            <div class="status-top">
+              <span class="status-icon"
+                ><i class="fa-regular fa-circle-play"></i
+              ></span>
+              <strong>Render iniciado</strong>
+            </div>
+            <div class="status-count">0</div>
+            <p>Sem eventos nas últimas 24h</p>
+          </article>
+
+          <article class="status-card" data-tone="success">
+            <div class="status-top">
+              <span class="status-icon"
+                ><i class="fa-regular fa-circle-check"></i
+              ></span>
+              <strong>Render aprovado</strong>
+            </div>
+            <div class="status-count">0</div>
+            <p>Sem eventos nas últimas 24h</p>
+          </article>
+
+          <article class="status-card" data-tone="accent">
+            <div class="status-top">
+              <span class="status-icon"
+                ><i class="fa-regular fa-paper-plane"></i
+              ></span>
+              <strong>Imagem enviada</strong>
+            </div>
+            <div class="status-count">1</div>
+            <p>1 nas últimas 24h</p>
+          </article>
+
+          <article class="status-card" data-tone="warning">
+            <div class="status-top">
+              <span class="status-icon"><i class="fa-solid fa-box"></i></span>
+              <strong>Entrega realizada</strong>
+            </div>
+            <div class="status-count">0</div>
+            <p>Sem eventos nas últimas 24h</p>
+          </article>
+
+          <article class="status-card" data-tone="success">
+            <div class="status-top">
+              <span class="status-icon"
+                ><i class="fa-regular fa-message"></i
+              ></span>
+              <strong>Feedback do cliente</strong>
+            </div>
+            <div class="status-count">4</div>
+            <p>4 nas últimas 24h</p>
+          </article>
+
+          <article class="status-card" data-tone="warning">
+            <div class="status-top">
+              <span class="status-icon"
+                ><i class="fa-regular fa-square-plus"></i
+              ></span>
+              <strong>Tarefa criada</strong>
+            </div>
+            <div class="status-count">1</div>
+            <p>1 nas últimas 24h</p>
+          </article>
+
+          <article class="status-card" data-tone="info">
+            <div class="status-top">
+              <span class="status-icon"
+                ><i class="fa-regular fa-square-check"></i
+              ></span>
+              <strong>Tarefa concluída</strong>
+            </div>
+            <div class="status-count">1</div>
+            <p>1 nas últimas 24h</p>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <div class="entrega-modal" id="entregaModal" aria-hidden="true">
+      <div class="entrega-modal-backdrop" data-close-entrega=""></div>
+      <div class="entrega-modal-panel">
+        <div class="entrega-modal-header">
+          <div>
+            <p class="panel-kicker">Ação rápida</p>
+            <h2>Adicionar entrega</h2>
+            <p class="modal-copy">
+              Crie uma nova entrega sem sair da visão executiva.
+            </p>
+          </div>
+
+          <button
+            class="icon-button"
+            id="closeEntregaModal"
+            type="button"
+            aria-label="Fechar modal"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="formAdicionarEntrega" class="entrega-form">
+          <div class="form-grid">
+            <label class="form-field">
+              <span>Obra</span>
+              <select name="obra_id" id="obra_id" required="">
+                <option value="">Selecione a obra</option>
+                <option value="85">ABF_ALM</option>
+                <option value="96">ABF_MAT</option>
+                <option value="90">AFC_AUR</option>
+                <option value="91">ART_CAM</option>
+                <option value="75">CEG_TIJ</option>
+                <option value="102">CIB_HYP</option>
+                <option value="92">CIB_OCE</option>
+                <option value="68">CIB_RIV</option>
+                <option value="100">COR_MAX</option>
+                <option value="51">GES_CHA</option>
+                <option value="89">GT_LAC</option>
+                <option value="54">HAA_SPR</option>
+                <option value="95">HAA_WTC</option>
+                <option value="94">KMK_COS</option>
+                <option value="87">KOS_CIT</option>
+                <option value="56">LD1_RES</option>
+                <option value="82">MEN_991</option>
+                <option value="84">NOW_BRI</option>
+                <option value="93">STA_ESS</option>
+                <option value="69">TER_PRA</option>
+                <option value="74">TES_TES</option>
+                <option value="81">WER_RIO</option>
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Status</span>
+              <select name="status_id" id="status_id" required="">
+                <option value="">Selecione o status</option>
+                <option value="1">P00</option>
+                <option value="2">R00</option>
+                <option value="3">R01</option>
+                <option value="4">R02</option>
+                <option value="5">R03</option>
+                <option value="6">EF</option>
+                <option value="7">Sem status</option>
+                <option value="9">HOLD</option>
+                <option value="10">TEA</option>
+                <option value="11">PPR</option>
+                <option value="12">APR</option>
+                <option value="13">REN</option>
+                <option value="14">R04</option>
+                <option value="15">R05</option>
+                <option value="16">STOP</option>
+                <option value="17">RVW</option>
+                <option value="18">OK</option>
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Prazo</span>
+              <input type="date" name="prazo" id="prazo" />
+            </label>
+
+            <label class="form-field">
+              <span>Observações</span>
+              <textarea
+                name="observacoes"
+                id="observacoes"
+                rows="3"
+                placeholder="Detalhes da entrega, riscos ou contexto adicional"
+              ></textarea>
+            </label>
+          </div>
+
+          <div class="form-field form-field--wide">
+            <div class="field-header">
+              <span>Imagens vinculadas</span>
+              <small>Selecione uma obra e status para carregar os itens.</small>
+            </div>
+
+            <div id="imagens_container" class="imagens-container">
+              <p>Selecione uma obra e um status para listar as imagens.</p>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="ghost-button" type="button" data-close-entrega="">
+              <span>Cancelar</span>
+            </button>
+            <button class="primary-button" type="submit">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Salvar entrega</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      window.GESTAO_CONFIG = {
+        dashboardUrl: "getDashboardData.php?v=9.14.2",
+        getImagensUrl: "..\/Entregas\/get_imagens.php",
+        saveEntregaUrl: "..\/Entregas\/save_entrega.php",
+        currentUser: "Opera\u00e7\u00e3o",
+      };
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  </body>
+</html>

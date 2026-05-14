@@ -1,3 +1,4 @@
+
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
@@ -9,288 +10,301 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
-// $nome_usuario = $_SESSION['nome_usuario'];
+// Verificar se o usuário está logado
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    header("Location: ../index.html");
+    exit();
+}
+
+$idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// $ultima_atividade = date('Y-m-d H:i:s');
+
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
 include '../conexaoMain.php';
-include '../conexao.php';
-
-// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-//     // Se não estiver logado, redirecionar para a página de login
-//     header("Location: ../index.html");
-//     exit();
-// }
-
-// Buscar a quantidade de funções do colaborador com status "Em andamento"
-// $colaboradorId = $_SESSION['idcolaborador'];
-// $funcoesCountSql = "SELECT COUNT(*) AS total_funcoes_em_andamento
-//                     FROM funcao_imagem
-//                     WHERE colaborador_id = ? AND status = 'Em andamento'";
-// $funcoesCountStmt = $conn->prepare($funcoesCountSql);
-// $funcoesCountStmt->bind_param("i", $colaboradorId);
-// $funcoesCountStmt->execute();
-// $funcoesCountResult = $funcoesCountStmt->get_result();
-
-// Armazenar a quantidade na sessão
-// $funcoesCount = $funcoesCountResult->fetch_assoc();
-
-// $funcoesCountStmt->close();
-
 $conn = conectarBanco();
+
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
 
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 $colaboradores = obterColaboradores($conn);
+
 $status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
-$imagens = obterImagens($conn);
-$status_etapa = obterStatus($conn);
-
 $conn->close();
+
+$nomeUsuario = trim((string) ($_SESSION['nome_usuario'] ?? 'Operação'));
+$primeiroNome = $nomeUsuario !== '' ? explode(' ', $nomeUsuario)[0] : 'Operação';
+$iniciais = strtoupper(substr($primeiroNome, 0, 1));
+$sessaoAtiva = isset($_SESSION['logado']) && $_SESSION['logado'] === true;
 ?>
-
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.css">
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <title>Gestão de Projetos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <title>Tela Gestao</title>
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
 </head>
 
-<body>
-
+<body class="gestao-body">
     <?php
 
     include '../sidebar.php';
 
     ?>
-    <main>
-        <div class="header">
-            <p>Olá, Pedro</p>
-        </div>
-        <div class="main-content">
-            <div class="section-metrics">
-                <div class="card-metric">
-                    <p class="card-title">Projetos ativos</p>
-                    <div class="card-count"><span><strong></strong> projetos</span></div>
-                </div>
-                <div class="card-metric">
-                    <p class="card-title">Total de imagens</p>
-                    <div class="card-count"><span><strong></strong> imagens</span></div>
-                </div>
-                <!-- CARD AGRUPADOR DE TAREFAS -->
-                <div class="card-metric card-tarefas">
-                    <!-- <p class="card-title">Tarefas</p> -->
-                    <div class="tarefas-grid">
-                        <div class="subcard">
-                            <p class="sub-count"><strong></strong></p>
-                            <p class="sub-title">TO-DO</p>
-                        </div>
-                        <div class="subcard">
-                            <p class="sub-count"><strong></strong></p>
-                            <p class="sub-title">TEA</p>
-                        </div>
-                        <div class="subcard">
-                            <p class="sub-count"><strong></strong></p>
-                            <p class="sub-title">Concluídas</p>
-                        </div>
-                        <div class="subcard">
-                            <p class="sub-count"><strong></strong></p>
-                            <p class="sub-title">HOLD</p>
-                        </div>
-                        <div class="subcard">
-                            <p class="sub-count"><strong></strong></p>
-                            <p class="sub-title">Em aprovação</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="second-row">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-                <div class="section-entregas">
-                    <div class="kanban">
-                        <div class="kanban-columns">
-                            <div class="kanban-title">
-                                <p class="kanban-title">Próximas</p>
-                                <i class="fa-solid fa-ellipsis-vertical" id="menuBtn"></i>
-                            </div>
-                            <div class="content">
-                            </div>
-                        </div>
-                        <div class="kanban-columns">
-                            <p class="kanban-title">Atrasadas</p>
-                            <div class="content">
-                            </div>
-                        </div>
-                        <div class="kanban-columns">
-                            <p class="kanban-title">Entregues</p>
-                            <div class="content">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="section-calendar">
-                    <div id="calendar">
-                    </div>
-                </div>
-            </div>
-            <div class="section-tasks">
-                <div class="card-group" data-funcao="Caderno,Filtro de assets">
-                    <div class="title">
-                        <div class="funcao-info">
-                            <span>Caderno/Filtro</span>
-                        </div>
-                    </div>
-                    <div class="colabs"></div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:72%"></div>
-                        <small class="progress-count">0/0 tarefas</small>
-                    </div>
-                </div>
-                <div class="card-group" data-funcao="Modelagem">
-                    <div class="title">
-                        <div class="funcao-info">
-                            <span>Modelagem</span>
-                        </div>
-                    </div>
-                    <div class="colabs"></div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:45%"></div>
-                        <small class="progress-count">0/0 tarefas</small>
-                    </div>
-                </div>
-
-                <div class="card-group" data-funcao="Composição">
-                    <div class="title">
-                        <div class="funcao-info">
-                            <span>Composição</span>
-                        </div>
-                    </div>
-                    <div class="colabs"></div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:80%"></div>
-                        <small class="progress-count">0/0 tarefas</small>
-                    </div>
-                </div>
-
-                <div class="card-group" data-funcao="Finalização">
-                    <div class="title">
-                        <div class="funcao-info">
-                            <span>Finalização</span>
-                        </div>
-                    </div>
-                    <div class="colabs"></div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:92%"></div>
-                        <small class="progress-count">0/0 tarefas</small>
-                    </div>
-                </div>
-
-                <div class="card-group" data-funcao="Pós-produção">
-                    <div class="title">
-                        <div class="funcao-info">
-                            <span>Pós-produção</span>
-                        </div>
-                    </div>
-                    <div class="colabs"></div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:60%"></div>
-                        <small class="progress-count">0/0 tarefas</small>
-                    </div>
-                </div>
-
-                <div class="card-group" data-funcao="Alteração">
-                    <div class="title">
-                        <div class="funcao-info">
-                            <span>Alteração</span>
-                        </div>
-                    </div>
-                    <div class="colabs"></div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:20%"></div>
-                        <small class="progress-count">0/0 tarefas</small>
-                    </div>
+    <main class="gestao-shell">
+        <header class="topbar" id="visao-geral">
+            <div class="topbar-copy">
+                <div>
+                    <p class="eyebrow">Operação</p>
+                    <h1>Gestão de Projetos</h1>
+                    <p class="subheadline">Visão geral da operação</p>
                 </div>
             </div>
 
-            <section class="section-gantt">
-                <h2>Planejamento (Gantt) — imagens por dia</h2>
-                <div id="gantt" class="gantt-grid" role="table" aria-label="Gantt"></div>
+            <div class="topbar-actions">
+                <label class="period-pill" for="periodFilter">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <select id="periodFilter" aria-label="Filtro de período">
+                        <option value="7" selected>Últimos 7 dias</option>
+                        <option value="14">Últimos 14 dias</option>
+                        <option value="30">Últimos 30 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                    </select>
+                </label>
+
+                <button class="ghost-button" id="filtersButton" type="button" aria-expanded="false" aria-controls="filtros-operacionais">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Filtros</span>
+                </button>
+            </div>
+        </header>
+
+        <section class="filters-drawer" id="filtros-operacionais" hidden>
+            <div class="filters-header">
+                <div>
+                    <p class="eyebrow">Refinar visualização</p>
+                    <h2>Filtros operacionais</h2>
+                </div>
+
+                <button class="primary-button" id="openEntregaModal" type="button">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Nova entrega</span>
+                </button>
+            </div>
+
+            <div class="filters-grid">
+                <label class="toggle-card" for="criticalOnly">
+                    <input type="checkbox" id="criticalOnly">
+                    <span>Somente críticos</span>
+                    <small>Foco em risco, atraso e revisão.</small>
+                </label>
+
+                <label class="toggle-card" for="includeHold">
+                    <input type="checkbox" id="includeHold" checked>
+                    <span>Exibir HOLD</span>
+                    <small>Mantém entregas pausadas no radar.</small>
+                </label>
+
+                <label class="toggle-card" for="onlyOverloaded">
+                    <input type="checkbox" id="onlyOverloaded">
+                    <span>Equipe sobrecarregada</span>
+                    <small>Destaca somente capacidade crítica.</small>
+                </label>
+
+                <label class="search-card" for="projectSearch">
+                    <span>Busca rápida</span>
+                    <input type="search" id="projectSearch" placeholder="Filtrar por projeto, equipe ou tema">
+                </label>
+            </div>
+        </section>
+
+
+        <div class="content-scroll">
+            <section class="kpi-grid" id="kpiGrid" aria-label="Indicadores principais"></section>
+
+            <section class="dashboard-row dashboard-row--three">
+                <article class="panel panel--risk" id="radar-risco">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Radar executivo</p>
+                            <h2>RADAR DE RISCO - PROJETOS</h2>
+                        </div>
+                        <button class="panel-link" type="button">Ver prioridades</button>
+                    </div>
+                    <div class="panel-body" id="riskRadarPanel"></div>
+                </article>
+
+                <article class="panel panel--bottlenecks" id="gargalos-funcao">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Fluxo operacional</p>
+                            <h2>GARGALOS POR FUNÇÃO</h2>
+                        </div>
+                        <button class="panel-link" type="button">Ver gargalos</button>
+                    </div>
+                    <div class="panel-body" id="bottlenecksPanel"></div>
+                </article>
+
+                <article class="panel panel--capacity" id="capacidade-equipe">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Balanceamento</p>
+                            <h2>CAPACIDADE EQUIPE</h2>
+                        </div>
+                        <button class="panel-link" type="button">Ver toda a equipe</button>
+                    </div>
+                    <div class="panel-body" id="capacityPanel"></div>
+                </article>
             </section>
 
-            <!-- <iframe src="../Projetos/index.php" frameborder="0" style="
-    width: 100vw;
-    height: 100vh;
-"></iframe> -->
-            <div class="menu-popup" id="menuPopup">
-                <button id="addEntrega"><i class="fa-solid fa-plus"></i> Adicionar Entrega</button>
-            </div>
-
-            <!-- Modal Adicionar Entrega -->
-            <div id="modalAdicionarEntrega" class="modal">
-                <div class="modal-content">
-                    <h2>Adicionar Entrega</h2>
-                    <form id="formAdicionarEntrega">
+            <section class="dashboard-row dashboard-row--two">
+                <article class="panel panel--schedule" id="entregas-semana">
+                    <div class="panel-header">
                         <div>
-                            <label>Obra:</label>
-                            <select name="obra_id" id="obra_id" required>
-                                <option value="">Selecione a obra</option>
-                                <?php foreach ($obras as $obra): ?>
-                                    <option value="<?= $obra['idobra']; ?>">
-                                        <?= htmlspecialchars($obra['nomenclatura']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <p class="panel-kicker">Planejamento</p>
+                            <h2>ENTREGAS - 7 DIAS</h2>
                         </div>
+                        <button class="panel-link" type="button">Próxima semana</button>
+                    </div>
+                    <div class="panel-body" id="schedulePanel"></div>
+                </article>
 
+                <article class="panel panel--activity" id="atividades-recentes">
+                    <div class="panel-header">
                         <div>
-                            <label>Status:</label>
-                            <select name="status_id" id="status_id" required>
-                                <option value="">Selecione o status</option>
-                                <?php foreach ($status_imagens as $status): ?>
-                                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                        <?= htmlspecialchars($status['nome_status']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <p class="panel-kicker">Movimentação</p>
+                            <h2>ATIVIDADES RECENTES</h2>
                         </div>
+                        <button class="panel-link" type="button">Timeline</button>
+                    </div>
+                    <div class="panel-body" id="activitiesPanel"></div>
+                </article>
+            </section>
 
-                        <div id="imagens_container" class="imagens-container">
-                            <p>Selecione uma obra e status para listar as imagens.</p>
-                        </div>
-
-                        <div>
-                            <label>Prazo:</label>
-                            <input type="date" name="prazo" id="prazo">
-                        </div>
-                        <div>
-                            <label>Observações</label>
-                            <textarea name="observacoes" id="observacoes"></textarea>
-                        </div>
-
-                        <button type="submit" class="btn-salvar">Salvar Entrega</button>
-                    </form>
-                </div>
-            </div>
+            <section class="status-strip" id="status-operacional" aria-label="Atalhos operacionais"></section>
+        </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
-    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
-    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <div class="entrega-modal" id="entregaModal" aria-hidden="true">
+        <div class="entrega-modal-backdrop" data-close-entrega></div>
+        <div class="entrega-modal-panel">
+            <div class="entrega-modal-header">
+                <div>
+                    <p class="panel-kicker">Ação rápida</p>
+                    <h2>Adicionar entrega</h2>
+                    <p class="modal-copy">Crie uma nova entrega sem sair da visão executiva.</p>
+                </div>
 
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+                <button class="icon-button" id="closeEntregaModal" type="button" aria-label="Fechar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="formAdicionarEntrega" class="entrega-form">
+                <div class="form-grid">
+                    <label class="form-field">
+                        <span>Obra</span>
+                        <select name="obra_id" id="obra_id" required>
+                            <option value="">Selecione a obra</option>
+                            <?php foreach ($obras as $obra): ?>
+                                <option value="<?= (int) $obra['idobra']; ?>">
+                                    <?= htmlspecialchars($obra['nomenclatura']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label class="form-field">
+                        <span>Status</span>
+                        <select name="status_id" id="status_id" required>
+                            <option value="">Selecione o status</option>
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= (int) $status['idstatus']; ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label class="form-field">
+                        <span>Prazo</span>
+                        <input type="date" name="prazo" id="prazo">
+                    </label>
+
+                    <label class="form-field">
+                        <span>Observações</span>
+                        <textarea name="observacoes" id="observacoes" rows="3" placeholder="Detalhes da entrega, riscos ou contexto adicional"></textarea>
+                    </label>
+                </div>
+
+                <div class="form-field form-field--wide">
+                    <div class="field-header">
+                        <span>Imagens vinculadas</span>
+                        <small>Selecione uma obra e status para carregar os itens.</small>
+                    </div>
+
+                    <div id="imagens_container" class="imagens-container">
+                        <p>Selecione uma obra e um status para listar as imagens.</p>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="ghost-button" type="button" data-close-entrega>
+                        <span>Cancelar</span>
+                    </button>
+                    <button class="primary-button" type="submit">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Salvar entrega</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        window.GESTAO_CONFIG = {
+            dashboardUrl: <?php echo json_encode(asset_url('getDashboardData.php')); ?>,
+            getImagensUrl: <?php echo json_encode('../Entregas/get_imagens.php'); ?>,
+            saveEntregaUrl: <?php echo json_encode('../Entregas/save_entrega.php'); ?>,
+            currentUser: <?php echo json_encode($nomeUsuario); ?>
+        };
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+    <?php if ($sessaoAtiva): ?>
+        <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <?php endif; ?>
 </body>
 
 </html>

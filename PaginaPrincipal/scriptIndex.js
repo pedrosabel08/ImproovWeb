@@ -1135,6 +1135,38 @@ document.getElementById("resumo-close").addEventListener("click", () => {
   document.getElementById("resumoModal").style.display = "none";
 });
 
+function parsePrimeiroAcessoPrazo(prazo) {
+  if (!prazo) return null;
+  const iso = String(prazo).split(" ")[0].trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  return new Date(ano, mes - 1, dia);
+}
+
+function isPrazoAtrasadoOuAusente(prazo) {
+  const prazoDate = parsePrimeiroAcessoPrazo(prazo);
+  if (!prazoDate) return true;
+
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  prazoDate.setHours(0, 0, 0, 0);
+  return prazoDate < hoje;
+}
+
+function getHojeIsoDate() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function formatarPrazoPrimeiroAcesso(prazo) {
+  if (!prazo) return "Sem prazo";
+  const iso = String(prazo).split(" ")[0].trim();
+  return formatarData(iso);
+}
+
 function checkFuncoesEmAndamento(idColaborador) {
   return new Promise((resolve, reject) => {
     fetch("getFuncoesEmAndamento.php", {
@@ -1149,6 +1181,7 @@ function checkFuncoesEmAndamento(idColaborador) {
           return;
         }
 
+        const hojeIso = getHojeIsoDate();
         const itensHtml = funcoes
           .map(
             (f) => `
@@ -1161,6 +1194,16 @@ function checkFuncoesEmAndamento(idColaborador) {
             <div style="font-size:12px; color:#718096; margin-bottom:10px;">
               ${f.nome_funcao} &bull; ${f.nomenclatura}
             </div>
+            <div style="font-size:12px; color:#4a5568; margin-bottom:10px;">
+              Prazo atual: ${formatarPrazoPrimeiroAcesso(f.prazo)}
+            </div>
+            ${
+              isPrazoAtrasadoOuAusente(f.prazo)
+                ? `<div style="font-size:12px; color:#b45309; margin-bottom:10px;">
+                    Ao continuar, será necessário informar um novo prazo estimado.
+                  </div>`
+                : ""
+            }
             <div style="display:flex; gap:8px; margin-bottom:0;">
               <label style="flex:1; cursor:pointer;">
                 <input type="radio" name="fi_status_${f.idfuncao_imagem}" value="continuar" checked
@@ -1193,6 +1236,8 @@ function checkFuncoesEmAndamento(idColaborador) {
             </div>`,
           confirmButtonText: "Confirmar",
           showCancelButton: false,
+          allowOutsideClick: false,
+          allowEscapeKey: false,
           focusConfirm: false,
           preConfirm: () => {
             const resultado = funcoes.map((f) => {
@@ -1204,7 +1249,17 @@ function checkFuncoesEmAndamento(idColaborador) {
                 `#fi_obs_${f.idfuncao_imagem} input`,
               );
               const obs = obsInput ? obsInput.value.trim() : "";
-              return { idfuncao_imagem: f.idfuncao_imagem, status, obs };
+              return {
+                idfuncao_imagem: f.idfuncao_imagem,
+                status,
+                obs,
+                prazo: f.prazo || "",
+                imagem_nome: f.imagem_nome,
+                nome_funcao: f.nome_funcao,
+                nomenclatura: f.nomenclatura,
+                precisaNovoPrazo:
+                  status === "continuar" && isPrazoAtrasadoOuAusente(f.prazo),
+              };
             });
 
             const semObs = resultado.find((i) => i.status === "hold" && !i.obs);
@@ -1223,26 +1278,144 @@ function checkFuncoesEmAndamento(idColaborador) {
             return;
           }
 
-          const paraHold = result.value.filter((i) => i.status === "hold");
+          const persistirAtualizacoes = (items) => {
+            const itensParaPersistir = items.filter(
+              (item) => item.status === "hold" || !!item.prazo_novo,
+            );
 
-          if (paraHold.length === 0) {
-            resolve();
+            if (itensParaPersistir.length === 0) {
+              resolve();
+              return;
+            }
+
+            fetch("atualizarFuncoesEmAndamento.php", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ items: itensParaPersistir }),
+            })
+              .then(async (response) => ({
+                ok: response.ok,
+                data: await response.json(),
+              }))
+              .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                  throw new Error(
+                    data.message || "Não foi possível atualizar as tarefas.",
+                  );
+                }
+
+                carregarDados(idColaborador);
+                resolve();
+              })
+              .catch((error) => {
+                console.error("Erro ao atualizar funções em andamento:", error);
+                Swal.fire({
+                  icon: "error",
+                  title: "Erro ao atualizar tarefas",
+                  text:
+                    error.message ||
+                    "Não foi possível salvar as alterações das tarefas em andamento.",
+                }).then(() => reject(error));
+              });
+          };
+
+          const paraReplanejar = result.value.filter(
+            (item) => item.status === "continuar" && item.precisaNovoPrazo,
+          );
+
+          if (paraReplanejar.length === 0) {
+            persistirAtualizacoes(result.value);
             return;
           }
 
-          Promise.all(
-            paraHold.map((item) =>
-              fetch("atualizarFuncao.php", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: `idfuncao_imagem=${item.idfuncao_imagem}&observacao=${encodeURIComponent(item.obs)}`,
-              }),
-            ),
-          ).finally(() => {
-            carregarDados(idColaborador);
-            resolve();
+          const htmlReplanejamento = paraReplanejar
+            .map(
+              (item) => `
+                <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-bottom:10px; text-align:left; background:#fff;">
+                  <div style="font-weight:600; font-size:14px; color:#1a202c; margin-bottom:2px;">
+                    ${item.imagem_nome}
+                  </div>
+                  <div style="font-size:12px; color:#718096; margin-bottom:6px;">
+                    ${item.nome_funcao} &bull; ${item.nomenclatura}
+                  </div>
+                  <div style="font-size:12px; color:#4a5568; margin-bottom:8px;">
+                    Prazo atual: ${formatarPrazoPrimeiroAcesso(item.prazo)}
+                  </div>
+                  <input
+                    id="fi_prazo_${item.idfuncao_imagem}"
+                    type="date"
+                    min="${hojeIso}"
+                    value="${hojeIso}"
+                    style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; outline:none; margin-bottom:8px;"
+                  >
+                  <input
+                    id="fi_motivo_${item.idfuncao_imagem}"
+                    type="text"
+                    placeholder="Motivo da reestimativa (opcional)"
+                    style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; outline:none;"
+                  >
+                </div>`,
+            )
+            .join("");
+
+          Swal.fire({
+            title: "Atualize o novo prazo estimado",
+            html: `
+              <p style="font-size:13px; color:#718096; margin-bottom:14px;">
+                Informe o novo prazo das tarefas que seguirão em andamento.
+              </p>
+              <div style="max-height:360px; overflow-y:auto; padding-right:4px;">
+                ${htmlReplanejamento}
+              </div>`,
+            confirmButtonText: "Salvar e continuar",
+            showCancelButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            focusConfirm: false,
+            preConfirm: () => {
+              const atualizados = [];
+
+              for (const item of result.value) {
+                if (!item.precisaNovoPrazo) {
+                  atualizados.push(item);
+                  continue;
+                }
+
+                const prazoInput = document.getElementById(
+                  `fi_prazo_${item.idfuncao_imagem}`,
+                );
+                const motivoInput = document.getElementById(
+                  `fi_motivo_${item.idfuncao_imagem}`,
+                );
+
+                const prazoNovo = prazoInput ? prazoInput.value : "";
+                const motivo = motivoInput ? motivoInput.value.trim() : "";
+
+                if (!prazoNovo) {
+                  Swal.showValidationMessage(
+                    `Informe o novo prazo para ${item.imagem_nome}.`,
+                  );
+                  return false;
+                }
+
+                atualizados.push({
+                  ...item,
+                  prazo_novo: prazoNovo,
+                  motivo,
+                });
+              }
+
+              return atualizados;
+            },
+          }).then((prazoResult) => {
+            if (!prazoResult.isConfirmed) {
+              resolve();
+              return;
+            }
+
+            persistirAtualizacoes(prazoResult.value);
           });
         });
       })
@@ -1253,11 +1426,11 @@ function checkFuncoesEmAndamento(idColaborador) {
   });
 }
 
-// const MODO_TESTE = true;
+const MODO_TESTE = true;
 
-// if (MODO_TESTE) {
-//     checkFuncoesEmAndamento(idColaborador);
-// } else {
+if (MODO_TESTE) {
+    checkFuncoesEmAndamento(idColaborador);
+} else {
 checkDailyAccess()
   .then(() => checkRenderItems(idColaborador))
   .then(() => checkFuncoesSomentePrimeiroAcesso()) // ✅ só na 1ª vez do dia
@@ -1273,7 +1446,7 @@ checkDailyAccess()
   })
   .catch(() => console.log("Fluxo interrompido"));
 
-// }
+}
 
 carregarDados(colaborador_id);
 

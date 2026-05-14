@@ -4,6 +4,12 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+require_once __DIR__ . '/config/session_bootstrap.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 include 'conexao.php';
 
 // Simple file logger for debugging
@@ -34,6 +40,24 @@ function intToNull($value)
     return (int)$value;
 }
 
+function sameDateValue($left, $right)
+{
+    $normalize = static function ($value) {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $text = trim((string) $value);
+        if ($text === '') {
+            return null;
+        }
+
+        return explode(' ', $text)[0];
+    };
+
+    return $normalize($left) === $normalize($right);
+}
+
 $data = $_POST;
 
 $imagem_id = isset($data['imagem_id']) ? intToNull($data['imagem_id']) : null;
@@ -59,6 +83,11 @@ $observacao = isset($data['observacao'])
     : (isset($data['obs_alteracao']) ? emptyToNull($data['obs_alteracao']) : null);
 
 $status_id = isset($data['status_id']) ? intToNull($data['status_id']) : null;
+$origemPrazo = isset($data['source'])
+    ? emptyToNull($data['source'])
+    : (isset($data['origem']) ? emptyToNull($data['origem']) : 'insereFuncao');
+$actorColaboradorId = intToNull($_SESSION['idcolaborador'] ?? null);
+$actorUsuarioId = intToNull($_SESSION['idusuario'] ?? null);
 
 if ($funcao_id === null && (isset($data['status_alteracao']) || isset($data['prazo_alteracao']) || isset($data['obs_alteracao']) || isset($data['alteracao_id']))) {
     $funcao_id = 6;
@@ -72,6 +101,28 @@ if (!$imagem_id) {
 $conn->begin_transaction();
 
 try {
+    $existingFuncaoImagemId = null;
+    $existingPrazo  = null;
+    $existingStatus = null;
+    if ($funcao_id !== null) {
+        $stmtCurrentPrazo = $conn->prepare(
+            "SELECT idfuncao_imagem, prazo, status
+             FROM funcao_imagem
+             WHERE imagem_id = ? AND funcao_id = ?
+             LIMIT 1"
+        );
+        $stmtCurrentPrazo->bind_param('ii', $imagem_id, $funcao_id);
+        $stmtCurrentPrazo->execute();
+        $currentRow = $stmtCurrentPrazo->get_result()->fetch_assoc();
+        $stmtCurrentPrazo->close();
+
+        if ($currentRow) {
+            $existingFuncaoImagemId = (int)($currentRow['idfuncao_imagem'] ?? 0);
+            $existingPrazo          = $currentRow['prazo']   ?? null;
+            $existingStatus         = $currentRow['status']  ?? null;
+        }
+    }
+
     // Atualiza o status da imagem se enviado
     if ($status_id !== null) {
         $stmtStatus = $conn->prepare(
@@ -212,6 +263,38 @@ try {
 
     $stmt->close();
 
+    if (
+        $prazo !== null &&
+        $existingFuncaoImagemId !== null &&
+        !sameDateValue($existingPrazo, $prazo)
+    ) {
+        $stmtPrazoHistory = $conn->prepare(
+            "INSERT INTO funcao_imagem_prazo_historico (
+                funcao_imagem_id,
+                prazo_anterior,
+                prazo_novo,
+                alterado_por_colaborador_id,
+                alterado_por_usuario_id,
+                origem,
+                motivo,
+                status_anterior,
+                status_novo
+            ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL)"
+        );
+        $stmtPrazoHistory->bind_param(
+            'issiiss',
+            $existingFuncaoImagemId,
+            $existingPrazo,
+            $prazo,
+            $actorColaboradorId,
+            $actorUsuarioId,
+            $origemPrazo,
+            $existingStatus
+        );
+        $stmtPrazoHistory->execute();
+        $stmtPrazoHistory->close();
+    }
+
     // ─── Inserir em alteracoes se funcao_id = 6 ───────────────────────────
     if ($funcao_id == 6) {
         // Buscar o idfuncao_imagem que acabou de ser inserido/atualizado
@@ -256,15 +339,17 @@ try {
         if (class_exists('\Predis\Client')) {
             (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'insereFuncao']));
         }
-    } catch (Exception $e) { /* ignore Redis failures */ }
+    } catch (Exception $e) { /* ignore Redis failures */
+    }
     echo json_encode(['success' => 'Dados inseridos/atualizados com sucesso!']);
 } catch (Exception $e) {
     // Log exception details for debugging
-    write_log_insere_funcao("EXCEPTION: " . $e->getMessage() .
-        " | SQL=" . ($sql ?? 'N/A') .
-        " | tipos=" . ($tipos ?? 'N/A') .
-        " | valores=" . (isset($valores) ? json_encode($valores) : 'N/A') .
-        " | conn_error=" . $conn->error
+    write_log_insere_funcao(
+        "EXCEPTION: " . $e->getMessage() .
+            " | SQL=" . ($sql ?? 'N/A') .
+            " | tipos=" . ($tipos ?? 'N/A') .
+            " | valores=" . (isset($valores) ? json_encode($valores) : 'N/A') .
+            " | conn_error=" . $conn->error
     );
 
     $conn->rollback();

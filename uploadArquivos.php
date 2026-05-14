@@ -123,6 +123,9 @@ register_shutdown_function(function () {
 
 require 'conexao.php';
 require_once __DIR__ . '/config/secure_env.php';
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
 
 $vendorAutoload = __DIR__ . '/vendor/autoload.php';
 if (!is_file($vendorAutoload)) {
@@ -318,12 +321,13 @@ $status_nome_sanitizado = sanitizeFilename((string)($status_nome ?? ''));
 $stmt2->close();
 
 // ---------- Status nome ----------
-$stmt2 = $conn->prepare("SELECT fi.status AS funcao_status FROM funcao_imagem fi
+$stmt2 = $conn->prepare("SELECT fi.status AS funcao_status, fi.prazo AS funcao_prazo FROM funcao_imagem fi
                          WHERE fi.idfuncao_imagem = ?");
 $stmt2->bind_param("i", $idFuncaoImagem);
 $stmt2->execute();
 $result2 = $stmt2->get_result()->fetch_assoc();
 $funcao_status = $result2 ? $result2['funcao_status'] : null; // evita erro se não encontrar
+$funcao_prazo  = $result2 ? $result2['funcao_prazo']  : null; // prazo planejado no momento (SLA)
 $funcao_status_sanitizado = sanitizeFilename((string)($funcao_status ?? ''));
 $stmt2->close();
 
@@ -449,6 +453,31 @@ if ($isNasDirectBypass) {
         json_error('Erro ao atualizar status para Aprovado: ' . $stmt->error, 500);
     }
     $stmt->close();
+
+    // ---------- Registra evento de entrega no histórico SLA ----------
+    {
+        $_slaColabId   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
+        $_slaUsuarioId = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
+        $_slaOrigem    = 'upload_previa';
+        $_slaStatusAnt = $funcao_status;
+        $_slaStatusNov = 'Aprovado';
+        $stmtSlaHist = $conn->prepare(
+            "INSERT INTO funcao_imagem_prazo_historico
+                (funcao_imagem_id, prazo_anterior, prazo_novo,
+                 alterado_por_colaborador_id, alterado_por_usuario_id,
+                 origem, motivo, status_anterior, status_novo)
+             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
+        );
+        if ($stmtSlaHist) {
+            $_slaHoje = date('Y-m-d');
+            $stmtSlaHist->bind_param('issiisss',
+                $idFuncaoImagem, $funcao_prazo, $_slaHoje,
+                $_slaColabId, $_slaUsuarioId, $_slaOrigem,
+                $_slaStatusAnt, $_slaStatusNov);
+            $stmtSlaHist->execute();
+            $stmtSlaHist->close();
+        }
+    }
 
     // Busca nomenclatura original para montar o caminho no NAS
     $nomenclaturaRaw = $nomenclatura;
@@ -706,16 +735,40 @@ if ($funcao_status_norm_pre === 'ajuste') {
 }
 // ---------- Fim bloqueio comentários pendentes ------------------------------
 
-// ---------- Atualiza status para Em aprovação (sempre, inclusive ao adicionar ângulos) ----------
-$hoje = date('Y-m-d');
+// ---------- Atualiza status para Em aprovação sem alterar o prazo corrente ----------
 $stmt = $conn->prepare("UPDATE funcao_imagem 
-                        SET status = 'Em aprovação', prazo = ?, requires_file_upload = 1, file_uploaded_at = NULL 
+                        SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL 
                         WHERE idfuncao_imagem = ?");
-$stmt->bind_param("si", $hoje, $idFuncaoImagem);
+$stmt->bind_param("i", $idFuncaoImagem);
 if (!$stmt->execute()) {
-    json_error('Erro ao atualizar status/prazo: ' . $stmt->error, 500);
+    json_error('Erro ao atualizar status da função: ' . $stmt->error, 500);
 }
 $stmt->close();
+
+// ---------- Registra evento de entrega no histórico SLA ----------
+{
+    $_slaColabId   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
+    $_slaUsuarioId = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
+    $_slaOrigem    = 'upload_previa';
+    $_slaStatusAnt = $funcao_status;
+    $_slaStatusNov = 'Em aprovação';
+    $stmtSlaHist = $conn->prepare(
+        "INSERT INTO funcao_imagem_prazo_historico
+            (funcao_imagem_id, prazo_anterior, prazo_novo,
+             alterado_por_colaborador_id, alterado_por_usuario_id,
+             origem, motivo, status_anterior, status_novo)
+         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
+    );
+    if ($stmtSlaHist) {
+        $_slaHoje = date('Y-m-d');
+        $stmtSlaHist->bind_param('issiisss',
+            $idFuncaoImagem, $funcao_prazo, $_slaHoje,
+            $_slaColabId, $_slaUsuarioId, $_slaOrigem,
+            $_slaStatusAnt, $_slaStatusNov);
+        $stmtSlaHist->execute();
+        $stmtSlaHist->close();
+    }
+}
 
 // ---------- Notificação Slack: função refeita ----------
 // Disparada quando o colaborador re-envia arquivos após um Ajuste

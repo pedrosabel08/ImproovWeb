@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../conexao.php';
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
 // header('Content-Type: application/json');
 
 // Lidar com as ações de AJAX
@@ -327,11 +330,50 @@ if (isset($_POST['action'])) {
                                     $logs[] = 'finalizacao.funcao_imagem_id=' . ($funcaoImagemId ? $funcaoImagemId : 'null');
 
                                     if ($funcaoImagemId) {
+                                        // Lê prazo/status atuais antes de atualizar (SLA)
+                                        $fiPrazoP00  = null;
+                                        $fiStatusP00 = null;
+                                        if ($stFiCurP00 = $conn->prepare("SELECT prazo, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1")) {
+                                            $stFiCurP00->bind_param('i', $funcaoImagemId);
+                                            $stFiCurP00->execute();
+                                            $rowFiCurP00 = $stFiCurP00->get_result()->fetch_assoc();
+                                            $stFiCurP00->close();
+                                            $fiPrazoP00  = $rowFiCurP00['prazo']  ?? null;
+                                            $fiStatusP00 = $rowFiCurP00['status'] ?? null;
+                                        }
                                         // garantir que apareça na revisão
                                         if ($stUpFi = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
                                             $stUpFi->bind_param('i', $funcaoImagemId);
                                             $stUpFi->execute();
                                             $stUpFi->close();
+                                            // Registra evento de entrega no histórico SLA
+                                            $stmtSlaP00 = $conn->prepare(
+                                                "INSERT INTO funcao_imagem_prazo_historico
+                                                    (funcao_imagem_id, prazo_anterior, prazo_novo,
+                                                     alterado_por_colaborador_id, alterado_por_usuario_id,
+                                                     origem, motivo, status_anterior, status_novo)
+                                                 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
+                                            );
+                                            if ($stmtSlaP00) {
+                                                $_ajaxColabIdP00   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
+                                                $_ajaxUsuarioIdP00 = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
+                                                $_ajaxOrigemP00    = 'render_p00_aprovado';
+                                                $_ajaxTodayP00     = date('Y-m-d');
+                                                $_ajaxStNovP00     = 'Em aprovação';
+                                                $stmtSlaP00->bind_param(
+                                                    'issiisss',
+                                                    $funcaoImagemId,
+                                                    $fiPrazoP00,
+                                                    $_ajaxTodayP00,
+                                                    $_ajaxColabIdP00,
+                                                    $_ajaxUsuarioIdP00,
+                                                    $_ajaxOrigemP00,
+                                                    $fiStatusP00,
+                                                    $_ajaxStNovP00
+                                                );
+                                                $stmtSlaP00->execute();
+                                                $stmtSlaP00->close();
+                                            }
                                         }
 
                                         // índice de envio (um lote por aprovação)
@@ -435,11 +477,50 @@ if (isset($_POST['action'])) {
                                     }
 
                                     if ($funcaoImagemId) {
-                                        if ($stUpd = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado', prazo = NOW(), requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
+                                        // Lê prazo/status atuais antes de atualizar (SLA)
+                                        $fiPrazoFin  = null;
+                                        $fiStatusFin = null;
+                                        if ($stFiCurFin = $conn->prepare("SELECT prazo, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1")) {
+                                            $stFiCurFin->bind_param('i', $funcaoImagemId);
+                                            $stFiCurFin->execute();
+                                            $rowFiCurFin = $stFiCurFin->get_result()->fetch_assoc();
+                                            $stFiCurFin->close();
+                                            $fiPrazoFin  = $rowFiCurFin['prazo']  ?? null;
+                                            $fiStatusFin = $rowFiCurFin['status'] ?? null;
+                                        }
+                                        if ($stUpd = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
                                             $stUpd->bind_param('i', $funcaoImagemId);
                                             $stUpd->execute();
                                             $stUpd->close();
                                             $logs[] = 'finalizacao.marked_finalizado.idfuncao_imagem=' . $funcaoImagemId . '.funcao_id=' . $chosenFuncaoId;
+                                            // Registra evento de finalização no histórico SLA
+                                            $stmtSlaFin = $conn->prepare(
+                                                "INSERT INTO funcao_imagem_prazo_historico
+                                                    (funcao_imagem_id, prazo_anterior, prazo_novo,
+                                                     alterado_por_colaborador_id, alterado_por_usuario_id,
+                                                     origem, motivo, status_anterior, status_novo)
+                                                 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
+                                            );
+                                            if ($stmtSlaFin) {
+                                                $_ajaxColabIdFin   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
+                                                $_ajaxUsuarioIdFin = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
+                                                $_ajaxOrigemFin    = 'render_finalizado';
+                                                $_ajaxTodayFin     = date('Y-m-d');
+                                                $_ajaxStNovFin     = 'Finalizado';
+                                                $stmtSlaFin->bind_param(
+                                                    'issiisss',
+                                                    $funcaoImagemId,
+                                                    $fiPrazoFin,
+                                                    $_ajaxTodayFin,
+                                                    $_ajaxColabIdFin,
+                                                    $_ajaxUsuarioIdFin,
+                                                    $_ajaxOrigemFin,
+                                                    $fiStatusFin,
+                                                    $_ajaxStNovFin
+                                                );
+                                                $stmtSlaFin->execute();
+                                                $stmtSlaFin->close();
+                                            }
                                         } else {
                                             $logs[] = 'finalizacao.update_prepare_error: ' . $conn->error;
                                         }

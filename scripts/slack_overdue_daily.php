@@ -105,41 +105,56 @@ function quebrarMensagensSlack(array $rows)
     return $mensagens;
 }
 
-function enviarMensagemSlack($canal, $mensagem)
+function enviarMensagemSlack($canal, $mensagem, int $tentativas = 3)
 {
     $payload = [
         'channel' => $canal,
         'text' => $mensagem,
         'mrkdwn' => true
     ];
+    $body = json_encode($payload);
+    $ultimoErro = null;
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, SLACK_API_URL);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . SLACK_TOKEN,
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    for ($t = 1; $t <= $tentativas; $t++) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, SLACK_API_URL);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . SLACK_TOKEN,
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        // Força IPv4: evita falhas silenciosas de resolução IPv6 em ambientes de cron
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
-    $resposta = curl_exec($ch);
-    $err = curl_error($ch);
-    curl_close($ch);
+        $resposta = curl_exec($ch);
+        $err      = curl_error($ch);
+        $errno    = curl_errno($ch);
+        curl_close($ch);
 
-    if ($err) {
-        throw new Exception('cURL error: ' . $err);
+        if ($err) {
+            $ultimoErro = "cURL error ($errno): $err [tentativa $t/$tentativas]";
+            error_log('[slack_overdue_daily] ' . $ultimoErro);
+            if ($t < $tentativas) {
+                sleep($t * 2); // backoff: 2s, 4s
+                continue;
+            }
+            throw new Exception($ultimoErro);
+        }
+
+        $resultado = json_decode($resposta, true);
+        if (!$resultado || empty($resultado['ok'])) {
+            $errMsg = $resultado['error'] ?? 'unknown_error';
+            throw new Exception('Slack API error: ' . $errMsg . ' - response: ' . $resposta);
+        }
+
+        return true;
     }
 
-    $resultado = json_decode($resposta, true);
-    if (!$resultado || empty($resultado['ok'])) {
-        $errMsg = $resultado['error'] ?? 'unknown_error';
-        throw new Exception('Slack API error: ' . $errMsg . ' - response: ' . $resposta);
-    }
-
-    return true;
+    throw new Exception($ultimoErro ?? 'Falha após ' . $tentativas . ' tentativas.');
 }
 
 try {

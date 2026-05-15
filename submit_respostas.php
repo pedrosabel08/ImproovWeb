@@ -68,8 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($mensagem));
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
             $response = curl_exec($ch);
+            if (curl_errno($ch)) {
+                error_log('[submit_respostas.php] Slack error: ' . curl_error($ch));
+            }
             curl_close($ch);
 
             echo json_encode(['success' => true, 'message' => 'Respostas enviadas com sucesso.']);

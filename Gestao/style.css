@@ -1827,10 +1827,6 @@ textarea:focus {
 }
 
 @media (max-width: 980px) {
-  body {
-    grid-template-columns: 1fr;
-  }
-
   .gestao-sidebar {
     position: fixed;
     inset: 0 auto 0 0;

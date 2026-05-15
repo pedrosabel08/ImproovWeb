@@ -1426,11 +1426,11 @@ function checkFuncoesEmAndamento(idColaborador) {
   });
 }
 
-const MODO_TESTE = true;
+// const MODO_TESTE = true;
 
-if (MODO_TESTE) {
-    checkFuncoesEmAndamento(idColaborador);
-} else {
+// if (MODO_TESTE) {
+//     checkFuncoesEmAndamento(idColaborador);
+// } else {
 checkDailyAccess()
   .then(() => checkRenderItems(idColaborador))
   .then(() => checkFuncoesSomentePrimeiroAcesso()) // ✅ só na 1ª vez do dia
@@ -1446,7 +1446,7 @@ checkDailyAccess()
   })
   .catch(() => console.log("Fluxo interrompido"));
 
-}
+// }
 
 carregarDados(colaborador_id);
 

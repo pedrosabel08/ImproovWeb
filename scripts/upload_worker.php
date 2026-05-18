@@ -63,82 +63,47 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
             return [false, "Diretório remoto não existe: $diretorio"];
         }
 
-        // If phpseclib provides fopen/fwrite on the SFTP object we can stream and report progress.
-        // Some distributions/versions may not expose these methods; provide a safe fallback to put().
-        if (method_exists($sftp, 'fopen') && method_exists($sftp, 'fwrite') && method_exists($sftp, 'fclose')) {
-            $localHandle = @fopen($arquivoLocal, 'rb');
-            if (!$localHandle) return [false, 'Erro ao abrir arquivo local para leitura.'];
+        // Use SOURCE_CALLBACK so we read the file in our own loop and can report real progress.
+        // phpseclib3 does not expose fopen/fwrite/fclose on the SFTP object, so streaming that
+        // way never works. SOURCE_CALLBACK is the reliable way to get per-chunk callbacks.
+        $totalSize = (int) filesize($arquivoLocal);
+        $localHandle = @fopen($arquivoLocal, 'rb');
+        if (!$localHandle) return [false, 'Erro ao abrir arquivo local para leitura.'];
 
-            $remoteHandle = $sftp->fopen($arquivoRemoto, 'wb');
-            if ($remoteHandle === false) {
-                fclose($localHandle);
-                return [false, 'Erro ao abrir arquivo remoto para escrita.'];
-            }
-
-            $totalSize = filesize($arquivoLocal);
-            $sent = 0;
-            $chunkSize = 8192;
-            while (!feof($localHandle)) {
-                $buffer = fread($localHandle, $chunkSize);
-                if ($buffer === false) break;
-                $written = $sftp->fwrite($remoteHandle, $buffer);
-                if ($written === false) {
-                    fclose($localHandle);
-                    $sftp->fclose($remoteHandle);
-                    return [false, 'Erro ao escrever no remoto durante upload.'];
-                }
-                $sent += strlen($buffer);
-                if ($onProgress && $totalSize > 0) {
-                    try {
-                        $onProgress($sent, $totalSize);
-                    } catch (Exception $e) {
-                    }
-                }
-            }
-
-            fclose($localHandle);
-            $sftp->fclose($remoteHandle);
-
-            // Verify remote file size to catch silent partial transfers
-            if ($totalSize > 0 && $sent >= $totalSize) {
-                $remoteStat = @$sftp->stat($arquivoRemoto);
-                $remoteSize = is_array($remoteStat) ? (int)($remoteStat['size'] ?? -1) : -1;
-                if ($remoteSize !== (int) $totalSize) {
-                    return [false, "Upload incompleto: local={$totalSize} bytes, remoto={$remoteSize} bytes"];
-                }
-                return [true, 'OK'];
-            }
-
-            return [false, 'Upload incompleto via SFTP.'];
-        } else {
-            // Fallback: use put() with local file source. This does not provide per-chunk callbacks
-            // on all phpseclib builds but will reliably transfer the file. We still call the
-            // onProgress callback before/after to indicate start and end.
-            if ($onProgress) {
-                try {
-                    $onProgress(0, filesize($arquivoLocal));
-                } catch (Exception $e) {
-                }
-            }
-            if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
-                // Verify remote file size to catch silent partial transfers (phpseclib
-                // can return true from put() even when the connection dropped mid-stream).
-                $localSize = filesize($arquivoLocal);
-                $remoteStat = @$sftp->stat($arquivoRemoto);
-                $remoteSize = is_array($remoteStat) ? (int)($remoteStat['size'] ?? -1) : -1;
-                if ($localSize > 0 && $remoteSize !== (int) $localSize) {
-                    return [false, "Upload incompleto: local={$localSize} bytes, remoto={$remoteSize} bytes"];
-                }
-                if ($onProgress) {
-                    try {
-                        $onProgress($localSize, $localSize);
-                    } catch (Exception $e) {
-                    }
-                }
-                return [true, 'OK'];
-            }
-            return [false, 'Erro ao enviar o arquivo via SFTP (put fallback).'];
+        $sent = 0;
+        if ($onProgress && $totalSize > 0) {
+            try { $onProgress(0, $totalSize); } catch (Exception $e) {}
         }
+
+        $result = $sftp->put(
+            $arquivoRemoto,
+            function ($chunkLen) use ($localHandle, $totalSize, $onProgress, &$sent) {
+                $data = fread($localHandle, max(1, $chunkLen));
+                if ($data === false || strlen($data) === 0) return null; // EOF
+                $sent += strlen($data);
+                if ($onProgress && $totalSize > 0) {
+                    try { $onProgress($sent, $totalSize); } catch (Exception $e) {}
+                }
+                return $data;
+            },
+            SFTP::SOURCE_CALLBACK
+        );
+
+        fclose($localHandle);
+
+        if ($result) {
+            // Verify remote file size to catch silent partial transfers
+            $remoteStat = @$sftp->stat($arquivoRemoto);
+            $remoteSize = is_array($remoteStat) ? (int)($remoteStat['size'] ?? -1) : -1;
+            if ($totalSize > 0 && $remoteSize !== $totalSize) {
+                return [false, "Upload incompleto: local={$totalSize} bytes, remoto={$remoteSize} bytes"];
+            }
+            if ($onProgress) {
+                try { $onProgress($totalSize, $totalSize); } catch (Exception $e) {}
+            }
+            return [true, 'OK'];
+        }
+        return [false, 'Erro ao enviar o arquivo via SFTP.'];
     } catch (UnableToConnectException $e) {
         return [false, 'Erro ao conectar SFTP: ' . $e->getMessage()];
     } catch (Exception $e) {
@@ -1301,11 +1266,10 @@ do {
             // attempt upload with progress callback
             list($ok, $msg) = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $staged, $remote_path, $ftp_port, function ($sent, $total) use ($redis, $jobId) {
                 $pct = (int) round(($sent / max(1, $total)) * 100);
-                // don't spam too frequently: publish at increments of 1% or when reaching 100%
-                static $lastPct = null;
-                if ($lastPct === null || $pct >= $lastPct + 1 || $pct === 100) {
-                    publishProgress($redis, $jobId, $pct, 'uploading', "Transferindo ({$sent}/{$total})");
-                    // optional: we skip frequent DB progress updates to reduce writes
+                // publish at 25% increments to avoid Redis spam; always publish 0% and 100%
+                static $lastPct = -1;
+                if ($lastPct < 0 || $pct >= $lastPct + 25 || $pct >= 100) {
+                    publishProgress($redis, $jobId, $pct, 'uploading', "Fase 2: Transferindo... {$pct}%");
                     $lastPct = $pct;
                 }
             });

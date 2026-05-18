@@ -22,6 +22,23 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
     window.IMPROOV_SESSION_ABSOLUTE_WARN_MS = <?php echo json_encode($__absWarnSeconds * 1000); ?>;
     window.IMPROOV_LOGIN_TS = <?php echo json_encode($__loginTs); ?>; // seconds since epoch
     window.IMPROOV_APP_BASE = <?php echo json_encode(rtrim($__basePath, '/')); ?>;
+    window.IMPROOV_WS_URL = <?php
+        // Produção → WSS via reverse-proxy
+        // Local HTTP → WS direto na porta 8082
+        // Local HTTPS → WSS de produção (evita SecurityError do browser)
+        $__wsHost = $_SERVER['HTTP_HOST'] ?? 'improov.com.br';
+        $__isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                     || (int)($_SERVER['SERVER_PORT'] ?? 80) === 443;
+        $__isProd  = strpos($__wsHost, 'improov.com.br') !== false;
+        if ($__isProd) {
+            echo json_encode('wss://improov.com.br/ws/');
+        } elseif ($__isHttps) {
+            // Ambiente local em HTTPS: aponta para o servidor WS de produção
+            echo json_encode('wss://improov.com.br/ws/');
+        } else {
+            echo json_encode('ws://' . $__wsHost . ':8082');
+        }
+    ?>;
 </script>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -33,6 +50,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/upload-badge.css'); ?>" />
 
     <title>Sidebar</title>
     <!-- Sidebar badge styles moved to css/styleSidebar.css -->
@@ -145,7 +163,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i
                                 class="fas fa-paperclip"></i><span> Flow Referências</span></a></li>
                     <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span> SIRE</span></a></li>
-                    
+
                 <?php endif; ?>
 
             </ul>
@@ -196,11 +214,27 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
             </ul>
         </ul>
     </div>
+
+    <!-- Upload Badge — barra inferior fixa de progresso de upload -->
+    <div id="upload-badge-bar" class="upload-badge-bar">
+        <div class="upload-badge-header">
+            <span class="upload-badge-header-title">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span id="upload-badge-count">0</span>&nbsp;arquivo(s) em envio
+            </span>
+            <button class="upload-badge-toggle" title="Minimizar / Expandir" aria-label="Minimizar">
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="upload-badge-list"></div>
+    </div>
+
 </body>
 
 </html>
 
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/upload-badge.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/sidebar-counts.js'); ?>"></script>
 
 <script>

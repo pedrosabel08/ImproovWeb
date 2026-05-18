@@ -1,0 +1,257 @@
+/* ============================================================
+   Upload Badge — Barra inferior fixa (Chrome/Edge download style)
+   Incluído via sidebar.php em todas as páginas
+   ============================================================ */
+
+#upload-badge-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  background: #12121e;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+  font-family: "Nunito", "Inter", sans-serif;
+  color: #c2c8e7;
+  font-size: 13px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 320px;
+}
+
+#upload-badge-bar.visible {
+  transform: translateY(0);
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.upload-badge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  user-select: none;
+  min-height: 36px;
+}
+
+.upload-badge-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #e0e4f6;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.upload-badge-header-title i {
+  color: #6377ef;
+  font-size: 14px;
+}
+
+.upload-badge-toggle {
+  background: none;
+  border: none;
+  color: #5a6080;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 4px;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.upload-badge-toggle:hover {
+  color: #c2c8e7;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.upload-badge-toggle i {
+  transition: transform 0.25s ease;
+}
+
+#upload-badge-bar.collapsed .upload-badge-toggle i {
+  transform: rotate(180deg);
+}
+
+/* ── List ───────────────────────────────────────────────────── */
+.upload-badge-list {
+  overflow-y: auto;
+  max-height: 280px;
+  transition: max-height 0.3s ease;
+}
+
+#upload-badge-bar.collapsed .upload-badge-list {
+  max-height: 0;
+  overflow: hidden;
+}
+
+.upload-badge-list::-webkit-scrollbar {
+  width: 3px;
+}
+
+.upload-badge-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+
+/* ── Item ───────────────────────────────────────────────────── */
+.upload-badge-item {
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition:
+    background 0.2s,
+    opacity 0.25s ease,
+    max-height 0.35s ease,
+    padding 0.35s ease;
+  overflow: hidden;
+}
+
+.upload-badge-item:last-child {
+  border-bottom: none;
+}
+
+.upload-badge-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-badge-item.removing {
+  opacity: 0;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* ── Item info row ──────────────────────────────────────────── */
+.upload-badge-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.upload-badge-item-icon {
+  color: #6377ef;
+  font-size: 15px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  transition: color 0.3s;
+}
+
+.upload-badge-item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-badge-item-name {
+  display: block;
+  font-weight: 600;
+  color: #e0e4f6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.upload-badge-item-phase {
+  display: block;
+  font-size: 11px;
+  color: #5a6080;
+  margin-top: 2px;
+  transition: color 0.3s;
+}
+
+.upload-badge-item-size {
+  font-size: 11px;
+  color: #9495dd;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.upload-badge-item-dismiss {
+  background: none;
+  border: none;
+  color: #5a6080;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.upload-badge-item-dismiss:hover {
+  color: #ef4444;
+}
+
+/* ── Progress bar ───────────────────────────────────────────── */
+.upload-badge-item-bar-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.upload-badge-item-bar {
+  height: 100%;
+  width: 0%;
+  background: #6377ef;
+  border-radius: 2px;
+  transition:
+    width 0.4s ease,
+    background 0.4s ease;
+}
+
+/* Indeterminate pulse while queued/waiting */
+.upload-badge-item-bar.indeterminate {
+  width: 40% !important;
+  animation: upload-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes upload-badge-pulse {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* ── State variants ─────────────────────────────────────────── */
+.upload-badge-item.is-done .upload-badge-item-bar {
+  background: #10b981;
+  width: 100% !important;
+}
+
+.upload-badge-item.is-done .upload-badge-item-phase {
+  color: #10b981;
+}
+
+.upload-badge-item.is-done .upload-badge-item-icon {
+  color: #10b981;
+}
+
+.upload-badge-item.is-error .upload-badge-item-bar {
+  background: #ef4444;
+}
+
+.upload-badge-item.is-error .upload-badge-item-phase {
+  color: #ef4444;
+}
+
+.upload-badge-item.is-error .upload-badge-item-icon {
+  color: #ef4444;
+}
+
+/* Phase 2 waiting state */
+.upload-badge-item.is-queued .upload-badge-item-phase {
+  color: #f59e0b;
+}

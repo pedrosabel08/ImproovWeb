@@ -4584,132 +4584,84 @@ function enviarImagens() {
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : "";
     formData.append("primeiraPalavra", primeiraPalavra);
 
-    // Container de progresso
-    const progressContainer = document.createElement("div");
-    progressContainer.style.fontSize = "16px";
-    progressContainer.innerHTML = `
-        <progress id="uploadProgress" value="0" max="100" style="width:100%;height:20px;"></progress>
-        <div id="uploadStatus">Enviando... 0%</div>
-        <div id="uploadTempo">Tempo: 0s</div>
-        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
-        <div id="uploadEstimativa">Tempo restante: ...</div>
-        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
-    `;
+    const badgeId = "prev_" + Date.now();
+    const _totalBytes = imagensSelecionadas.reduce((acc, f) => acc + f.size, 0);
+    const _displayName =
+      imagensSelecionadas.length === 1
+        ? imagensSelecionadas[0].name
+        : imagensSelecionadas.length + " imagens";
 
-    Swal.fire({
-      title: "Enviando prévia...",
-      html: progressContainer,
-      showConfirmButton: false,
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      allowEnterKey: false,
-      didOpen: () => {
-        // Avoid backdrop clicks bubbling to global handlers (which might close other modals/kanban UI)
+    const xhr = new XMLHttpRequest();
+    let uploadCancelado = false;
+
+    if (window.UploadBadge)
+      window.UploadBadge.add(badgeId, _displayName, _totalBytes, xhr);
+
+    xhr.open("POST", "uploadArquivos.php");
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && window.UploadBadge) {
+        const percent = (e.loaded / e.total) * 100;
+        window.UploadBadge.phase1Progress(badgeId, percent, e.loaded, e.total);
+      }
+    });
+
+    xhr.onabort = () => {
+      uploadCancelado = true;
+    };
+
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 4 && !uploadCancelado) {
         try {
-          const container = Swal.getContainer();
-          if (container) {
-            ["click", "mousedown", "touchstart", "pointerdown"].forEach(
-              (evt) => {
-                container.addEventListener(
-                  evt,
-                  (e) => e.stopPropagation(),
-                  true,
-                );
-              },
-            );
-          }
-        } catch (e) {}
+          const res = JSON.parse(xhr.responseText);
 
-        const xhr = new XMLHttpRequest();
-        const startTime = Date.now();
-        let uploadCancelado = false;
-
-        xhr.open("POST", "uploadArquivos.php");
-
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) {
-            const now = Date.now();
-            const elapsed = (now - startTime) / 1000;
-            const uploadedMB = e.loaded / (1024 * 1024);
-            const totalMB = e.total / (1024 * 1024);
-            const percent = (e.loaded / e.total) * 100;
-            const speed = uploadedMB / elapsed;
-            const remainingMB = totalMB - uploadedMB;
-            const estimatedTime = remainingMB / (speed || 1);
-
-            document.getElementById("uploadProgress").value = percent;
-            document.getElementById("uploadStatus").innerText =
-              `Enviando... ${percent.toFixed(2)}%`;
-            document.getElementById("uploadTempo").innerText =
-              `Tempo: ${elapsed.toFixed(1)}s`;
-            document.getElementById("uploadVelocidade").innerText =
-              `Velocidade: ${speed.toFixed(2)} MB/s`;
-            document.getElementById("uploadEstimativa").innerText =
-              `Tempo restante: ${estimatedTime.toFixed(1)}s`;
-          }
-        });
-
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4 && !uploadCancelado) {
-            try {
-              const res = JSON.parse(xhr.responseText);
-
-              if (res.error) {
-                Toastify({
-                  text: "Erro: " + res.error,
-                  duration: 3000,
-                  gravity: "top",
-                  backgroundColor: "#f44336",
-                }).showToast();
-              } else {
-                Swal.fire({
-                  position: "center",
-                  icon: "success",
-                  title: "Prévia enviada com sucesso!",
-                  showConfirmButton: false,
-                  timer: 2000,
-                });
-                carregarDados(colaborador_id);
-              }
-            } catch (err) {
-              Toastify({
-                text: "Erro ao processar resposta do servidor",
-                duration: 3000,
-                gravity: "top",
-                backgroundColor: "#f44336",
-              }).showToast();
-              console.error(err);
-            }
-          }
-        };
-
-        xhr.onerror = () => {
-          if (!uploadCancelado) {
+          if (res.error) {
+            if (window.UploadBadge)
+              window.UploadBadge.error(badgeId, "Erro: " + res.error);
             Toastify({
-              text: "Erro ao enviar prévia",
+              text: "Erro: " + res.error,
               duration: 3000,
               gravity: "top",
               backgroundColor: "#f44336",
             }).showToast();
+          } else {
+            if (window.UploadBadge) window.UploadBadge.complete(badgeId);
+            Toastify({
+              text: "Prévia enviada com sucesso!",
+              duration: 3000,
+              gravity: "top",
+              backgroundColor: "#10b981",
+            }).showToast();
+            carregarDados(colaborador_id);
           }
-        };
+        } catch (err) {
+          if (window.UploadBadge)
+            window.UploadBadge.error(badgeId, "Erro ao processar resposta");
+          Toastify({
+            text: "Erro ao processar resposta do servidor",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336",
+          }).showToast();
+          console.error(err);
+        }
+      }
+    };
 
-        document
-          .getElementById("cancelarUpload")
-          .addEventListener("click", () => {
-            uploadCancelado = true;
-            xhr.abort();
-            Swal.fire({
-              icon: "warning",
-              title: "Upload cancelado",
-              showConfirmButton: false,
-              timer: 1500,
-            });
-          });
+    xhr.onerror = () => {
+      if (!uploadCancelado) {
+        if (window.UploadBadge)
+          window.UploadBadge.error(badgeId, "Erro ao enviar prévia");
+        Toastify({
+          text: "Erro ao enviar prévia",
+          duration: 3000,
+          gravity: "top",
+          backgroundColor: "#f44336",
+        }).showToast();
+      }
+    };
 
-        xhr.send(formData);
-      },
-    });
+    xhr.send(formData);
   }; // fim _doEnviar
 
   // Se a tarefa está em "Ajuste", verifica comentários pendentes no Flow Review
@@ -4809,144 +4761,87 @@ function enviarArquivo() {
   formData.append("primeiraPalavra", primeiraPalavra);
   formData.append("idcolaborador", colaborador_id);
 
-  // Progresso visual da fase 1 (HTTP enqueue)
-  const progressContainer = document.createElement("div");
-  progressContainer.style.fontSize = "16px";
-  progressContainer.innerHTML = `
-        <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
-        <div id="uploadStatus">Enviando... 0%</div>
-        <div id="uploadTempo">Tempo: 0s</div>
-        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
-        <div id="uploadEstimativa">Tempo restante: ...</div>
-        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
-    `;
+  // Gerar e persistir client_id para rastreio via WebSocket (Fase 2)
+  const clientId =
+    "upl_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+  try {
+    localStorage.setItem("improov_client_id", clientId);
+  } catch (e) {}
+  if (window.improovUploadWS) window.improovUploadWS.subscribe(clientId);
+  formData.append("client_id", clientId);
 
-  Swal.fire({
-    title: "Enviando arquivo...",
-    html: progressContainer,
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    allowEnterKey: false,
-    didOpen: () => {
-      // Avoid backdrop clicks bubbling to global handlers (which might close other modals/kanban UI)
-      try {
-        const container = Swal.getContainer();
-        if (container) {
-          ["click", "mousedown", "touchstart", "pointerdown"].forEach((evt) => {
-            container.addEventListener(evt, (e) => e.stopPropagation(), true);
-          });
-        }
-      } catch (e) {}
+  const xhr = new XMLHttpRequest();
+  let uploadCancelado = false;
 
-      const xhr = new XMLHttpRequest();
-      const startTime = Date.now();
-      let uploadCancelado = false;
+  if (window.UploadBadge)
+    window.UploadBadge.add(clientId, file.name, file.size, xhr);
 
-      xhr.open(
-        "POST",
-        "https://improov.com.br/flow/ImproovWeb/upload_enqueue.php",
-      );
+  const _enqueueUrl = window.IMPROOV_APP_BASE
+    ? window.location.origin + window.IMPROOV_APP_BASE + "/upload_enqueue.php"
+    : "upload_enqueue.php";
+  xhr.open("POST", _enqueueUrl);
 
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          const now = Date.now();
-          const elapsed = (now - startTime) / 1000;
-          const uploadedMB = e.loaded / (1024 * 1024);
-          const totalMB = e.total / (1024 * 1024);
-          const percent = (e.loaded / e.total) * 100;
-          const speed = uploadedMB / elapsed;
-          const remainingMB = totalMB - uploadedMB;
-          const estimatedTime = remainingMB / (speed || 1);
-
-          document.getElementById("uploadProgress").value = percent;
-          document.getElementById("uploadStatus").innerText =
-            `Enviando... ${percent.toFixed(2)}%`;
-          document.getElementById("uploadTempo").innerText =
-            `Tempo: ${elapsed.toFixed(1)}s`;
-          document.getElementById("uploadVelocidade").innerText =
-            `Velocidade: ${speed.toFixed(2)} MB/s`;
-          document.getElementById("uploadEstimativa").innerText =
-            `Tempo restante: ${estimatedTime.toFixed(1)}s`;
-        }
-      });
-
-      xhr.onload = () => {
-        if (uploadCancelado) return;
-        let res = null;
-        try {
-          res = JSON.parse(xhr.responseText || "null");
-        } catch (err) {
-          console.error("Resposta não-JSON do servidor:", xhr.responseText);
-        }
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          Swal.fire({
-            position: "center",
-            icon: "success",
-            text: "Arquivo enfileirado. O envio continuará em segundo plano.",
-            showConfirmButton: false,
-            timer: 2000,
-          });
-          cardModal.classList.remove("active");
-          cardSelecionado = null;
-          carregarDados(colaborador_id);
-
-          // Assinar progresso em tempo real (opcional)
-          try {
-            if (window.subscribeUploadProgress) {
-              const id = Array.isArray(res) && res[0]?.id ? res[0].id : null;
-              if (id) {
-                window.subscribeUploadProgress(id, function (payload) {
-                  // atualizar algum indicador se desejar
-                });
-              }
-            }
-          } catch (e) {
-            console.warn("Progresso em tempo real indisponível:", e);
-          }
-        } else {
-          const serverMsg = xhr.responseText
-            ? xhr.responseText
-            : `Status ${xhr.status}`;
-          Swal.close();
-          Toastify({
-            text: "Erro no servidor: " + serverMsg,
-            duration: 6000,
-            gravity: "top",
-            backgroundColor: "#f44336",
-          }).showToast();
-        }
-      };
-
-      xhr.onerror = () => {
-        if (!uploadCancelado) {
-          Swal.close();
-          Toastify({
-            text: "Erro ao enfileirar arquivo",
-            duration: 3000,
-            gravity: "top",
-            backgroundColor: "#f44336",
-          }).showToast();
-        }
-      };
-
-      document
-        .getElementById("cancelarUpload")
-        .addEventListener("click", () => {
-          uploadCancelado = true;
-          xhr.abort();
-          Swal.fire({
-            icon: "warning",
-            title: "Upload cancelado",
-            showConfirmButton: false,
-            timer: 1500,
-          });
-        });
-
-      xhr.send(formData);
-    },
+  xhr.upload.addEventListener("progress", (e) => {
+    if (e.lengthComputable && window.UploadBadge) {
+      const percent = (e.loaded / e.total) * 100;
+      window.UploadBadge.phase1Progress(clientId, percent, e.loaded, e.total);
+    }
   });
+
+  xhr.onabort = () => {
+    uploadCancelado = true;
+  };
+
+  xhr.onload = () => {
+    if (uploadCancelado) return;
+    let res = null;
+    try {
+      res = JSON.parse(xhr.responseText || "null");
+    } catch (err) {
+      console.error("Resposta não-JSON do servidor:", xhr.responseText);
+    }
+
+    if (xhr.status >= 200 && xhr.status < 300) {
+      // Fase 1 concluída — badge entra em modo "Na fila"
+      // Fase 2 (transferência remota) é atualizada automaticamente via WebSocket (upload-ws.js → upload-badge.js)
+      if (window.UploadBadge)
+        window.UploadBadge.phase2Progress(
+          clientId,
+          0,
+          "Na fila — aguardando transferência...",
+        );
+      cardModal.classList.remove("active");
+      cardSelecionado = null;
+      carregarDados(colaborador_id);
+    } else {
+      const serverMsg = xhr.responseText
+        ? xhr.responseText
+        : `Status ${xhr.status}`;
+      if (window.UploadBadge)
+        window.UploadBadge.error(clientId, "Erro no servidor");
+      Toastify({
+        text: "Erro no servidor: " + serverMsg,
+        duration: 6000,
+        gravity: "top",
+        backgroundColor: "#f44336",
+      }).showToast();
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!uploadCancelado) {
+      if (window.UploadBadge)
+        window.UploadBadge.error(clientId, "Erro ao enfileirar arquivo");
+      Toastify({
+        text: "Erro ao enfileirar arquivo",
+        duration: 3000,
+        gravity: "top",
+        backgroundColor: "#f44336",
+      }).showToast();
+    }
+  };
+
+  xhr.send(formData);
 }
 
 const btnFilter = document.getElementById("filter");

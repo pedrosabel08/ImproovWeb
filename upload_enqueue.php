@@ -475,7 +475,74 @@ for ($i = 0; $i < $total; $i++) {
         // ignore Redis failures here - enqueue still works
     }
 
-    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile];
+    // ── Transferência direta para o staging do VPS ──────────────────────────
+    // Em dev local (Windows/XAMPP): faz SFTP do arquivo e do .json para o
+    // uploads/staging do VPS. O worker systemd do VPS recolhe e envia ao NAS.
+    // Em produção (Linux): o arquivo já está no VPS, este bloco é no-op.
+    $finalMetaPath = $metaFile;
+    if (DIRECTORY_SEPARATOR === '\\') {
+        try {
+            if (!class_exists('\phpseclib3\Net\SFTP') && file_exists(__DIR__ . '/vendor/autoload.php')) {
+                require_once __DIR__ . '/vendor/autoload.php';
+            }
+            $vpsCfg   = improov_sftp_config('IMPROOV_VPS_SFTP');
+            $vpsBase  = rtrim((string)(getenv('IMPROOV_VPS_SFTP_REMOTE_PATH') ?: ''), '/');
+            if ($vpsBase === '') {
+                throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido no .env');
+            }
+            $vpsStaging = $vpsBase . '/uploads/staging';
+
+            $vsftp = new \phpseclib3\Net\SFTP($vpsCfg['host'], $vpsCfg['port']);
+            if (!$vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
+                throw new RuntimeException('SFTP VPS: falha no login');
+            }
+
+            // Garante que o diretório staging existe no VPS
+            if (!$vsftp->is_dir($vpsStaging)) {
+                $vsftp->mkdir($vpsStaging, -1, true);
+            }
+
+            // 1. Envia o arquivo staged para o VPS
+            $remoteFile = $vpsStaging . '/' . basename($destFile);
+            if (!$vsftp->put($remoteFile, $destFile, \phpseclib3\Net\SFTP::SOURCE_LOCAL_FILE)) {
+                throw new RuntimeException('SFTP VPS: falha ao enviar arquivo: ' . basename($destFile));
+            }
+
+            // 2. Atualiza staged_path para o caminho local no VPS (worker usará este path)
+            $meta['staged_path'] = $remoteFile;
+            _write_meta_safely($metaFile, $meta);
+
+            // 3. Envia o .json de metadados com staged_path já atualizado
+            $remoteMeta = $vpsStaging . '/' . basename($metaFile);
+            $vsftp->put($remoteMeta, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            $finalMetaPath = $remoteMeta;
+
+            // 4. Remove cópias locais após transferência bem-sucedida
+            @unlink($destFile);
+            @unlink($metaFile);
+        } catch (Exception $e) {
+            error_log('[upload_enqueue] Falha na transferência VPS staging: ' . $e->getMessage());
+            // Mantém arquivos locais — worker local (start /B) ainda pode processar como fallback
+        }
+    }
+
+    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $finalMetaPath];
+}
+
+// Inicia o worker em background para transferir o(s) arquivo(s) enfileirados ao VPS via SFTP.
+// Na produção (Linux) o serviço systemd já cuida disso; aqui disparamos apenas em ambiente
+// Windows (XAMPP / dev local) caso nenhum worker esteja ativo no momento.
+$_workerScript = __DIR__ . '/scripts/upload_worker.php';
+if (is_file($_workerScript) && DIRECTORY_SEPARATOR === '\\') {
+    // Verifica se já há algum job sendo processado (arquivo .json.processing.* existente)
+    // — se sim, o worker anterior ainda está rodando, não precisa lançar outro.
+    $_activeJobs = glob($stagingDir . '/*.json.processing*') ?: [];
+    if (empty($_activeJobs)) {
+        $phpBin = PHP_BINARY ?: 'php';
+        // popen + start /B retorna imediatamente sem bloquear a resposta HTTP
+        $cmd = 'start /B "" ' . escapeshellarg($phpBin) . ' ' . escapeshellarg($_workerScript);
+        pclose(popen($cmd, 'r'));
+    }
 }
 
 echo json_encode($results);

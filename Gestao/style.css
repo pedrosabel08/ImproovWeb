@@ -607,7 +607,8 @@ textarea:focus {
 .kpi-card::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
   width: 40px;
   height: 40px;
   border-radius: 999px;

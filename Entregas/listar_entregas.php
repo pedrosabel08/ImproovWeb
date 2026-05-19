@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/review_cobranca_lib.php';
 
 $obra_id = isset($_GET['obra_id']) && is_numeric($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
 
@@ -42,6 +43,7 @@ ORDER BY ready_count DESC, e.data_conclusao DESC";
 
 $res = $conn->query($sql);
 $out = [];
+$entregaIds = [];
 
 $hoje = date('Y-m-d'); // data atual no formato YYYY-MM-DD
 
@@ -85,8 +87,30 @@ while ($row = $res->fetch_assoc()) {
         'entregues' => $entregues,
         'pct_entregue' => round(floatval($row['pct_entregue']), 1),
         'ready_count' => intval($row['ready_count'] ?? 0),
-        'kanban_status' => $statusCol
+        'kanban_status' => $statusCol,
+        'review_batches_total' => 0,
+        'review_batches_overdue' => 0,
+        'review_batches_pending' => 0,
+        'review_batches_snoozed' => 0,
+        'review_batches_max_overdue_days' => 0,
+        'review_badge_severity' => 'none',
     ];
+
+    $entregaIds[] = intval($row['id']);
+}
+
+if (!empty($out) && entregas_review_schema_ready($conn)) {
+    $summaryByEntrega = entregas_review_fetch_entrega_summary($conn, $entregaIds);
+
+    foreach ($out as &$entrega) {
+        $summary = $summaryByEntrega[$entrega['id']] ?? null;
+        if (!$summary) {
+            continue;
+        }
+
+        $entrega = array_merge($entrega, $summary);
+    }
+    unset($entrega);
 }
 
 echo json_encode($out);

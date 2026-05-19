@@ -2,7 +2,7 @@
 // Entregas/update_substatus_imagem.php
 // Atualiza o substatus_id de uma ou mais imagens em imagens_cliente_obra
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once '../config/session_bootstrap.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {

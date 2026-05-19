@@ -1,5 +1,5 @@
 <?php
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $obra_id = $_GET['obra_id'] ?? null;
 $status_id = $_GET['status_id'] ?? null;

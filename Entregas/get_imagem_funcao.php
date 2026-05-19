@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($_GET['imagem_id']) || !is_numeric($_GET['imagem_id'])) {
     http_response_code(400);

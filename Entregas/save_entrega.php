@@ -1,5 +1,5 @@
 <?php
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $obra_id = $_POST['obra_id'] ?? null;
 $status_id = $_POST['status_id'] ?? null;

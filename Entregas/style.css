@@ -1432,3 +1432,259 @@ option.colab-busy {
 .btn-rvw-done:hover {
   background: var(--accent-hover);
 }
+
+/* ===== REVIEW COBRANCA: Lotes no modal da entrega ===== */
+.review-batches-panel {
+  margin: 16px 0 18px;
+}
+
+.review-batches-panel-inner {
+  padding: 14px 16px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+}
+
+.review-batches-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.review-batches-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.review-batches-title {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.review-batches-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.review-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  background: var(--bg-count);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.review-summary-pill.is-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.review-summary-pill.is-accent {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.review-summary-pill.is-muted {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-tertiary);
+}
+
+.review-batches-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-batch-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.review-batch-card.severity-warning {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.review-batch-card.severity-critical {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.review-batch-main {
+  flex: 1;
+  min-width: 260px;
+}
+
+.review-batch-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.review-batch-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.review-batch-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.review-batch-status.status-pending {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.review-batch-status.status-overdue,
+.review-batch-status.status-notified {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--status-reprovado);
+}
+
+.review-batch-status.status-snoozed {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.review-batch-status.status-resolved {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.review-batch-status.status-ignored {
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-tertiary);
+}
+
+.review-batch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.review-batch-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-batch-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.review-batch-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-review-action {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.btn-review-action.is-notify {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+}
+
+.btn-review-action.is-notify:hover {
+  background: var(--accent-hover);
+}
+
+.btn-review-action.is-snooze {
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.btn-review-action.is-snooze:hover {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.btn-review-action.is-resolve {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.btn-review-action.is-resolve:hover {
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.btn-review-action.is-ignore {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.btn-review-action.is-ignore:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.review-batch-empty,
+.review-batch-empty-inline {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.review-batch-empty {
+  padding: 14px;
+  border: 1px dashed var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+
+@media (max-width: 720px) {
+  .review-batches-header {
+    flex-direction: column;
+  }
+
+  .review-batch-card {
+    flex-direction: column;
+  }
+
+  .review-batch-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

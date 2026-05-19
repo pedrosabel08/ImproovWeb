@@ -233,6 +233,7 @@ $conn->close();
                         <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
                     </div>
                 </div>
+                <div id="modalReviewBatches" class="review-batches-panel" style="display:none;"></div>
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                         <span

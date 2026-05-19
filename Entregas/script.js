@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalEtapa = document.getElementById("modalEtapa");
   const modalPrazo = document.getElementById("modalPrazo");
   const modalProgresso = document.getElementById("modalProgresso");
+  const modalReviewBatches = document.getElementById("modalReviewBatches");
   const modalImagens = document.getElementById("modalImagens");
 
   // global store of fetched entregas so we can filter client-side
@@ -66,15 +67,38 @@ document.addEventListener("DOMContentLoaded", () => {
     if (entrega.em_hold) card.classList.add("card-hold");
 
     const readyCount = parseInt(entrega.ready_count || 0, 10);
+    const reviewOverdueCount = parseInt(entrega.review_batches_overdue || 0, 10);
+    const reviewBadgeSeverity = String(
+      entrega.review_badge_severity || "none",
+    ).toLowerCase();
     const isConcluida = (entrega.kanban_status || "") === "concluida";
     const isHold = !!entrega.em_hold;
+    const cardBadges = [];
+
+    if (readyCount > 0 && !isHold) {
+      cardBadges.push(
+        `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>`,
+      );
+    }
+
+    if (reviewOverdueCount > 0 && !isHold) {
+      const reviewTitle = `${reviewOverdueCount} lote${reviewOverdueCount > 1 ? "s" : ""} de review vencido${reviewOverdueCount > 1 ? "s" : ""}`;
+      cardBadges.push(`
+        <div class="review-batch-badge severity-${reviewBadgeSeverity}" title="${reviewTitle}">
+          <i class="fa-solid fa-bell"></i>
+          <span>${reviewOverdueCount}</span>
+        </div>
+      `);
+    }
 
     card.innerHTML = `
                 <div class="card-checkbox"></div>
                 <div class="card-header">
                     <h4>${entrega.nomenclatura || ""} - ${entrega.nome_etapa || ""}</h4>
-                    ${isHold ? `<div class="hold-badge" title="${entrega.motivo_hold ? "Motivo: " + entrega.motivo_hold : "Em HOLD"}"><i class="fa-solid fa-pause"></i> HOLD</div>` : ""}
-                    ${readyCount > 0 && !isHold ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ""}
+                    <div class="card-header-right">
+                      ${isHold ? `<div class="hold-badge" title="${entrega.motivo_hold ? "Motivo: " + entrega.motivo_hold : "Em HOLD"}"><i class="fa-solid fa-pause"></i> HOLD</div>` : ""}
+                      ${cardBadges.length ? `<div class="card-badges">${cardBadges.join("")}</div>` : ""}
+                    </div>
                 </div>
                 <p><strong>Status:</strong> ${entrega.nome_etapa || entrega.status || entrega.kanban_status || ""}</p>
                 <p><strong>Prazo:</strong> ${entrega.data_prevista ? formatarData(entrega.data_prevista) : "-"}</p>
@@ -247,11 +271,405 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let entregaAtualId = null;
   let entregaDados = null; // guarda dados retornados por get_entrega_item.php para uso posterior
+  let reviewActionBusy = false;
 
   function formatarData(data) {
     const partes = data.split("-");
     const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
     return dataFormatada;
+  }
+
+  function formatarDataHora(dataHora) {
+    if (!dataHora) return "-";
+
+    const raw = String(dataHora).trim();
+    const [datePart, timePart = ""] = raw.split(" ");
+    if (!datePart || !datePart.includes("-")) return raw;
+
+    const [year, month, day] = datePart.split("-");
+    const timeLabel = timePart ? ` ${timePart.slice(0, 5)}` : "";
+    return `${day}/${month}/${year}${timeLabel}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => {
+      switch (char) {
+        case "&":
+          return "&amp;";
+        case "<":
+          return "&lt;";
+        case ">":
+          return "&gt;";
+        case '"':
+          return "&quot;";
+        case "'":
+          return "&#039;";
+        default:
+          return char;
+      }
+    });
+  }
+
+  function summarizeReviewBatches(batches) {
+    const summary = {
+      total: Array.isArray(batches) ? batches.length : 0,
+      overdue: 0,
+      pending: 0,
+      snoozed: 0,
+    };
+
+    (batches || []).forEach((batch) => {
+      const status = String(batch.billing_status || batch.batch_status || "")
+        .trim()
+        .toUpperCase();
+
+      if (status === "PENDING") summary.pending += 1;
+      if (status === "SNOOZED") summary.snoozed += 1;
+      if (status === "OVERDUE" || status === "NOTIFIED") summary.overdue += 1;
+    });
+
+    return summary;
+  }
+
+  function getReviewBatchSeverity(batch) {
+    const status = String(batch.billing_status || batch.batch_status || "")
+      .trim()
+      .toUpperCase();
+    const overdueDays = parseInt(batch.overdue_days || 0, 10);
+
+    if (status === "OVERDUE" || status === "NOTIFIED") {
+      return overdueDays >= 7 ? "critical" : "warning";
+    }
+
+    if (status === "PENDING" || status === "SNOOZED") {
+      return "pending";
+    }
+
+    return "none";
+  }
+
+  function getReviewBatchStatusLabel(status) {
+    const normalized = String(status || "").trim().toUpperCase();
+    const labels = {
+      PENDING: "Dentro do SLA",
+      OVERDUE: "Vencido",
+      NOTIFIED: "Cobrado",
+      SNOOZED: "Pausado",
+      RESOLVED: "Resolvido",
+      IGNORED: "Ignorado",
+      OPEN: "Aberto",
+    };
+
+    return labels[normalized] || normalized || "—";
+  }
+
+  function getReviewBatchActionMeta(action) {
+    const meta = {
+      notify: {
+        label: "Cobrar",
+        icon: "fa-bell",
+        className: "is-notify",
+      },
+      snooze: {
+        label: "Snooze",
+        icon: "fa-clock",
+        className: "is-snooze",
+      },
+      resolve: {
+        label: "Resolver",
+        icon: "fa-check",
+        className: "is-resolve",
+      },
+      ignore: {
+        label: "Ignorar",
+        icon: "fa-ban",
+        className: "is-ignore",
+      },
+    };
+
+    return meta[action] || null;
+  }
+
+  function renderReviewBatchPanel(data) {
+    if (!modalReviewBatches) return;
+
+    if (!data || data.review_batches_enabled === false) {
+      modalReviewBatches.innerHTML = "";
+      modalReviewBatches.style.display = "none";
+      return;
+    }
+
+    const batches = Array.isArray(data.review_batches) ? data.review_batches : [];
+    const summary = data.review_batches_summary || summarizeReviewBatches(batches);
+
+    modalReviewBatches.style.display = "block";
+
+    const summaryHtml = `
+      <div class="review-batches-summary">
+        <span class="review-summary-pill">${summary.total || 0} lote${summary.total === 1 ? "" : "s"}</span>
+        <span class="review-summary-pill is-warning">${summary.overdue || 0} vencido${summary.overdue === 1 ? "" : "s"}</span>
+        <span class="review-summary-pill is-accent">${summary.pending || 0} no SLA</span>
+        <span class="review-summary-pill is-muted">${summary.snoozed || 0} pausado${summary.snoozed === 1 ? "" : "s"}</span>
+      </div>
+    `;
+
+    const listHtml = batches.length
+      ? batches
+          .map((batch) => {
+            const severity = getReviewBatchSeverity(batch);
+            const status = String(
+              batch.billing_status || batch.batch_status || "PENDING",
+            )
+              .trim()
+              .toUpperCase();
+            const statusLabel = getReviewBatchStatusLabel(status);
+            const allowedActions = Array.isArray(batch.allowed_actions)
+              ? batch.allowed_actions
+              : [];
+            const actionButtons = allowedActions
+              .map((action) => {
+                const meta = getReviewBatchActionMeta(action);
+                if (!meta) return "";
+                return `
+                  <button class="btn-action btn-review-action ${meta.className}" data-action="${action}" data-review-batch-id="${batch.id}">
+                    <i class="fa-solid ${meta.icon}"></i> ${meta.label}
+                  </button>
+                `;
+              })
+              .join("");
+
+            const noteText = batch.last_action_note
+              ? `<div class="review-batch-note">${escapeHtml(batch.last_action_note)}</div>`
+              : "";
+            const resolvedText = batch.resolved_reason
+              ? `<div class="review-batch-note">Motivo: ${escapeHtml(batch.resolved_reason)}</div>`
+              : "";
+            const overdueText =
+              parseInt(batch.overdue_days || 0, 10) > 0
+                ? `${batch.overdue_days} dia(s) sem resposta`
+                : `SLA até ${formatarDataHora(batch.due_at)}`;
+
+            return `
+              <div class="review-batch-card severity-${severity}" data-review-batch-id="${batch.id}">
+                <div class="review-batch-main">
+                  <div class="review-batch-title-row">
+                    <div class="review-batch-title">Lote ${formatarData(batch.data_entrega_lote)} · R${String(batch.review_round || 1).padStart(2, "0")}</div>
+                    <span class="review-batch-status status-${status.toLowerCase()}">${statusLabel}</span>
+                  </div>
+                  <div class="review-batch-meta">
+                    <span><i class="fa-solid fa-images"></i> ${batch.active_items || 0}/${batch.total_items || 0} imagens ativas</span>
+                    <span><i class="fa-solid fa-hourglass-half"></i> ${overdueText}</span>
+                    <span><i class="fa-solid fa-bell"></i> ${batch.notification_count || 0} cobrança(s)</span>
+                    <span><i class="fa-solid fa-calendar-day"></i> Entregue em ${formatarData(batch.data_entrega_lote)}</span>
+                  </div>
+                  ${batch.snooze_until ? `<div class="review-batch-note">Snooze até ${formatarDataHora(batch.snooze_until)}</div>` : ""}
+                  ${batch.last_notification_at ? `<div class="review-batch-note">Última cobrança em ${formatarDataHora(batch.last_notification_at)}</div>` : ""}
+                  ${noteText}
+                  ${resolvedText}
+                </div>
+                <div class="review-batch-actions">
+                  ${actionButtons || `<span class="review-batch-empty-inline">Sem ações disponíveis</span>`}
+                </div>
+              </div>
+            `;
+          })
+          .join("")
+      : '<div class="review-batch-empty">Nenhum lote de review associado a esta entrega.</div>';
+
+    modalReviewBatches.innerHTML = `
+      <div class="review-batches-panel-inner">
+        <div class="review-batches-header">
+          <div>
+            <span class="review-batches-eyebrow"><i class="fa-solid fa-bell"></i> Cobrança de review</span>
+            <h3 class="review-batches-title">Lotes aguardando retorno do cliente</h3>
+          </div>
+          ${summaryHtml}
+        </div>
+        <div class="review-batches-list">${listHtml}</div>
+      </div>
+    `;
+  }
+
+  function getDefaultSnoozeDateTimeLocal() {
+    const base = new Date();
+    base.setDate(base.getDate() + 2);
+    base.setHours(9, 0, 0, 0);
+    const tzOffset = base.getTimezoneOffset() * 60000;
+    return new Date(base.getTime() - tzOffset).toISOString().slice(0, 16);
+  }
+
+  async function promptReviewBatchActionPayload(action) {
+    if (action === "notify") {
+      const result = await Swal.fire({
+        title: "Registrar cobrança?",
+        input: "text",
+        inputLabel: "Observação opcional",
+        inputPlaceholder: "Ex.: cliente acionado por WhatsApp",
+        showCancelButton: true,
+        confirmButtonText: "Cobrar",
+        cancelButtonText: "Cancelar",
+      });
+
+      if (!result.isConfirmed) return null;
+      return {
+        action,
+        note: (result.value || "").trim(),
+      };
+    }
+
+    if (action === "snooze") {
+      const result = await Swal.fire({
+        title: "Pausar cobrança",
+        html: `
+          <input id="swal-review-snooze-until" class="swal2-input" type="datetime-local" value="${getDefaultSnoozeDateTimeLocal()}">
+          <textarea id="swal-review-snooze-note" class="swal2-textarea" placeholder="Observação opcional"></textarea>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Salvar snooze",
+        cancelButtonText: "Cancelar",
+        focusConfirm: false,
+        preConfirm: () => {
+          const snoozeUntil = document.getElementById(
+            "swal-review-snooze-until",
+          )?.value;
+          const note = document.getElementById("swal-review-snooze-note")?.value || "";
+
+          if (!snoozeUntil) {
+            Swal.showValidationMessage("Defina até quando a cobrança ficará pausada.");
+            return false;
+          }
+
+          return {
+            action,
+            snooze_until: snoozeUntil,
+            note: note.trim(),
+          };
+        },
+      });
+
+      return result.isConfirmed ? result.value : null;
+    }
+
+    if (action === "resolve") {
+      const result = await Swal.fire({
+        title: "Resolver batch",
+        html: `
+          <input id="swal-review-resolve-reason" class="swal2-input" type="text" placeholder="Motivo da resolução">
+          <textarea id="swal-review-resolve-note" class="swal2-textarea" placeholder="Observação opcional"></textarea>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Resolver",
+        cancelButtonText: "Cancelar",
+        focusConfirm: false,
+        preConfirm: () => {
+          const reason = document.getElementById("swal-review-resolve-reason")?.value || "";
+          const note = document.getElementById("swal-review-resolve-note")?.value || "";
+
+          if (!reason.trim()) {
+            Swal.showValidationMessage("Informe o motivo da resolução.");
+            return false;
+          }
+
+          return {
+            action,
+            reason: reason.trim(),
+            note: note.trim(),
+          };
+        },
+      });
+
+      return result.isConfirmed ? result.value : null;
+    }
+
+    if (action === "ignore") {
+      const result = await Swal.fire({
+        title: "Ignorar batch",
+        input: "text",
+        inputLabel: "Motivo",
+        inputPlaceholder: "Ex.: fora de escopo / aguardando outra frente",
+        showCancelButton: true,
+        confirmButtonText: "Ignorar",
+        cancelButtonText: "Cancelar",
+        preConfirm: (value) => {
+          if (!String(value || "").trim()) {
+            Swal.showValidationMessage("Informe o motivo para ignorar o batch.");
+            return false;
+          }
+
+          return {
+            action,
+            reason: String(value).trim(),
+          };
+        },
+      });
+
+      return result.isConfirmed ? result.value : null;
+    }
+
+    return null;
+  }
+
+  async function submitReviewBatchAction(reviewBatchId, action) {
+    const payload = await promptReviewBatchActionPayload(action);
+    if (!payload) return;
+
+    reviewActionBusy = true;
+
+    try {
+      const res = await fetch(BASE + "review_batch_action.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          review_batch_id: reviewBatchId,
+          ...payload,
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error || "Não foi possível atualizar o batch.");
+      }
+
+      if (!entregaDados) {
+        entregaDados = {};
+      }
+
+      const existingBatches = Array.isArray(entregaDados.review_batches)
+        ? entregaDados.review_batches.slice()
+        : [];
+      const idx = existingBatches.findIndex(
+        (batch) => Number(batch.id) === Number(reviewBatchId),
+      );
+
+      if (idx >= 0) {
+        existingBatches[idx] = json.data;
+      } else {
+        existingBatches.unshift(json.data);
+      }
+
+      entregaDados.review_batches_enabled = true;
+      entregaDados.review_batches = existingBatches;
+      entregaDados.review_batches_summary = summarizeReviewBatches(existingBatches);
+      renderReviewBatchPanel(entregaDados);
+      await carregarKanban();
+
+      Toastify({
+        text: "Batch atualizado com sucesso.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#059669" },
+      }).showToast();
+    } catch (err) {
+      console.error("Erro ao atualizar batch de review:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Falha ao atualizar batch",
+        text: err.message || "Ocorreu um erro inesperado.",
+      });
+    } finally {
+      reviewActionBusy = false;
+    }
   }
 
   // fechar modal: single handler for all buttons with class .fecharModal
@@ -288,12 +706,32 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       entregaAtualId = null;
+      if (modalReviewBatches) {
+        modalReviewBatches.innerHTML = "";
+        modalReviewBatches.style.display = "none";
+      }
       carregarKanban();
       // remover painel lateral se existir
       const mini = document.getElementById("miniImagePanel");
       if (mini) mini.remove();
     });
   });
+
+  if (modalReviewBatches) {
+    modalReviewBatches.addEventListener("click", async (e) => {
+      const actionBtn = e.target.closest(".btn-review-action");
+      if (!actionBtn || reviewActionBusy) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const reviewBatchId = parseInt(actionBtn.dataset.reviewBatchId || "0", 10);
+      const action = String(actionBtn.dataset.action || "").trim();
+      if (!reviewBatchId || !action) return;
+
+      await submitReviewBatchAction(reviewBatchId, action);
+    });
+  }
 
   // Create and manage mini image info panel
   function showMiniImagePanel(data, imagemId, anchorEl) {
@@ -488,6 +926,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return isEntregue;
       }).length;
       modalProgresso.textContent = `${finalizedCount} / ${data.itens.length} finalizadas`;
+      renderReviewBatchPanel(data);
 
       modalImagens.innerHTML = "";
 

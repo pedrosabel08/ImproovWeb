@@ -1,7 +1,8 @@
 <?php
 // get_entrega_item.php
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/review_cobranca_lib.php';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     http_response_code(400);
@@ -72,6 +73,21 @@ try {
     }
 
     $entrega['itens'] = $itens;
+    $reviewBatches = entregas_review_fetch_batches_for_entrega($conn, $entrega_id);
+    $entrega['review_batches_enabled'] = entregas_review_schema_ready($conn);
+    $entrega['review_batches'] = $reviewBatches;
+    $entrega['review_batches_summary'] = [
+        'total' => count($reviewBatches),
+        'overdue' => count(array_filter($reviewBatches, static function ($batch) {
+            return in_array(strtoupper((string) ($batch['billing_status'] ?? '')), ['OVERDUE', 'NOTIFIED'], true);
+        })),
+        'pending' => count(array_filter($reviewBatches, static function ($batch) {
+            return strtoupper((string) ($batch['billing_status'] ?? '')) === 'PENDING';
+        })),
+        'snoozed' => count(array_filter($reviewBatches, static function ($batch) {
+            return strtoupper((string) ($batch['billing_status'] ?? '')) === 'SNOOZED';
+        })),
+    ];
 
     echo json_encode($entrega);
 } catch (Exception $e) {

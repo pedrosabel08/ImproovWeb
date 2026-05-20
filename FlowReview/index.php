@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../config/kpi_access.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -19,6 +20,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 $idusuario = $_SESSION['idusuario'];
+$frKpiPermissions = improov_kpi_permissions_for_user((int) $idusuario);
 $tela_atual = basename($_SERVER['PHP_SELF']);
 // Use DB server time for ultima_atividade to avoid clock/timezone mismatches
 // $ultima_atividade = date('Y-m-d H:i:s');
@@ -200,17 +202,17 @@ $conn->close();
                     <select id="filtroFuncao" style="display: none;">
                         <option value="">Todas as funções</option>
                     </select>
-                    <div id="metrics-panel" style="margin-bottom:8px; display:none;">
-                    </div>
+                    <div id="metrics-panel" style="margin-bottom:8px; display:none;"></div>
+                    <div id="fr-kpi-bar" class="fr-kpi-bar hidden"></div>
                     <div class="containerObra">
                     </div>
                     <div class="tarefasObra hidden">
                         <div class="header">
-                            <nav class="breadcrumb-nav">
+                            <!-- <nav class="breadcrumb-nav">
                                 <a href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php">Flow Review</a>
                                 <a id="obra_id_nav" class="obra_nav"
                                     href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_id=''">Obra</a>
-                            </nav>
+                            </nav> -->
                         </div>
                         <div class="tarefasImagensObra"></div>
                     </div>
@@ -221,50 +223,67 @@ $conn->close();
     </div>
 
     <div class="container-aprovacao hidden">
-        <header>
-            <nav class="breadcrumb-nav">
-                <a href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php">Flow Review</a>
-                <a id="obra_id_nav" class="obra_nav"
-                    href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_id=''">Obra</a>
-            </nav>
-            <div class="task-info" id="task-info">
-                <h3 id="funcao_nome"></h3>
-                <h3 id="colaborador_nome"></h3>
-                <p id="imagem_nome"></p>
-                <div id="buttons-task">
-
-                </div>
-
+        <header class="fr-header">
+            <!-- Breadcrumb: home → obra -->
+            <div class="fr-header-start">
+                <a href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php"
+                    class="fr-header-home" title="Flow Review">
+                    <i class="fa-solid fa-house"></i>
+                </a>
+                <i class="fa-solid fa-chevron-right fr-header-crumb-arrow" aria-hidden="true"></i>
+                <a id="obra_id_nav" class="fr-header-obra obra_nav"
+                    href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php">Obra</a>
             </div>
-            <div class="header-side-stack">
-                <div id="header_data_envio" class="header-data-envio"></div>
-                <div class="process-history" id="process-history">
-                    <button
-                        type="button"
-                        class="history-trigger"
-                        id="history-trigger"
-                        aria-haspopup="true"
-                        aria-expanded="false"
-                        aria-controls="history-dropdown"
-                    >
-                        <span class="history-trigger-icon" aria-hidden="true">
-                            <i class="fa-solid fa-clock-rotate-left"></i>
-                        </span>
-                        <span class="history-trigger-label">Histórico de processos</span>
-                        <span class="history-trigger-chevron" aria-hidden="true">
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </span>
-                    </button>
 
-                    <div class="history-dropdown" id="history-dropdown" aria-hidden="true">
-                        <div class="history-dropdown-header">Histórico de processos</div>
-                        <div class="history-dropdown-body" id="history-dropdown-body"></div>
-                    </div>
+            <!-- Secondary info: inline on desktop, second row on mobile portrait -->
+            <div class="fr-header-secondary">
+                <span class="fr-header-sep" aria-hidden="true"></span>
+
+                <!-- Colaborador — Função -->
+                <span id="funcao_nome" class="fr-header-funcao"></span>
+
+                <span class="fr-header-sep" aria-hidden="true"></span>
+
+                <!-- Nome da imagem -->
+                <span id="imagem_nome" class="fr-header-imagem"></span>
+            </div>
+
+            <!-- Empurra data + histórico para a direita -->
+            <div class="fr-header-spacer"></div>
+
+            <!-- Data de envio -->
+            <div class="fr-header-date-wrap">
+                <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+                <span id="header_data_envio" class="fr-header-data"></span>
+            </div>
+
+            <!-- Histórico de processos -->
+            <div class="process-history" id="process-history">
+                <button
+                    type="button"
+                    class="history-trigger"
+                    id="history-trigger"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="history-dropdown">
+                    <span class="history-trigger-icon" aria-hidden="true">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </span>
+                    <span class="history-trigger-chevron" aria-hidden="true">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </span>
+                </button>
+                <div class="history-dropdown" id="history-dropdown" aria-hidden="true">
+                    <div class="history-dropdown-header">Histórico de processos</div>
+                    <div class="history-dropdown-body" id="history-dropdown-body"></div>
                 </div>
             </div>
-            <!-- <div>
-                <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
-            </div> -->
+
+            <!-- IDs legados preservados fora do fluxo visual -->
+            <span id="colaborador_nome" style="display:none"></span>
+            <div id="task-info" style="display:none">
+                <div id="buttons-task"></div>
+            </div>
         </header>
 
 
@@ -343,7 +362,7 @@ $conn->close();
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
     <ul id="menuContextoImagem">
-        <li onclick="marcarPrioridadeAprovacao()">Aprovação com prioridade <span>🔥</span></li>
+        <!-- <li onclick="marcarPrioridadeAprovacao()">Aprovação com prioridade <span>🔥</span></li> -->
     </ul>
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -385,6 +404,13 @@ $conn->close();
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
     <script src="<?php echo asset_url('../assets/pdfjs/pdf.min.js'); ?>"></script>
+
+    <script>
+        window.FR_KPI_CONFIG = <?php echo json_encode([
+                                    'endpointScope' => 'management',
+                                    'permissions' => $frKpiPermissions,
+                                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    </script>
 
 
     <script src="<?php echo asset_url('script.js'); ?>"></script>

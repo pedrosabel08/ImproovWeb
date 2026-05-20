@@ -1,3 +1,27 @@
+const frKpiConfig = window.FR_KPI_CONFIG || {};
+const frKpiPermissions = { ...(frKpiConfig.permissions || {}) };
+const FR_KPI_ENDPOINT_SCOPE = frKpiConfig.endpointScope || "management";
+
+function syncFrKpiPermissions(permissions) {
+  if (
+    !permissions ||
+    typeof permissions !== "object" ||
+    Array.isArray(permissions)
+  ) {
+    return;
+  }
+
+  Object.assign(frKpiPermissions, permissions);
+}
+
+function canViewFrKpiScope(scope) {
+  if (!scope || scope === "public") {
+    return true;
+  }
+
+  return Boolean(frKpiPermissions[scope]);
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const params = new URLSearchParams(window.location.search);
   const obraNome = params.get("obra_nome");
@@ -74,8 +98,8 @@ document.addEventListener("DOMContentLoaded", function () {
   } else {
     fetchObrasETarefas();
   }
-  // carrega painel de métricas (acima do select de funções)
-  if (typeof loadMetrics === "function") loadMetrics();
+  // carrega painel de KPIs (acima dos cards de obra)
+  loadKpis(null);
   initProcessHistory();
 });
 
@@ -469,6 +493,7 @@ async function fetchObrasETarefas() {
     todasAsFuncoes = new Set(dadosTarefas.map((t) => t.nome_funcao)); // ou o nome do campo correspondente
 
     exibirCardsDeObra(dadosTarefas); // Mostra os cards
+    loadKpis(null); // Atualiza KPI bar (visão geral)
 
     // ── Sidebar: mostrar seção de obras, ocultar tarefas ──
     const secObrasEl = document.getElementById("fr-section-obras");
@@ -565,70 +590,210 @@ function applyHomeFilters() {
   exibirCardsDeObra(filtradas);
 }
 
-// Carrega métricas agregadas por função e renderiza no painel
-async function loadMetrics() {
+// ── KPI Bar module ────────────────────────────────────────────────────────────
+// Module-level state
+let _frKpiPopover = null;
+let _frKpiOpenKey = null;
+
+function frFormatHoras(h) {
+  if (!h || h < 1) return "<1h";
+  if (h < 24) return Math.round(h) + "h";
+  const d = Math.floor(h / 24);
+  const rem = Math.round(h - d * 24);
+  return d + "d" + (rem > 0 ? " " + rem + "h" : "");
+}
+
+async function loadKpis(obraId = null) {
+  const bar = document.getElementById("fr-kpi-bar");
+  if (!bar) return;
+
+  if (!canViewFrKpiScope(FR_KPI_ENDPOINT_SCOPE)) {
+    closeFrKpiPopover();
+    bar.innerHTML = "";
+    bar.classList.add("hidden");
+    return;
+  }
+
+  // Show skeleton while loading
+  bar.innerHTML =
+    '<div class="fr-kpi-skeleton"></div><div class="fr-kpi-skeleton"></div><div class="fr-kpi-skeleton"></div>';
+  bar.classList.remove("hidden");
+
   try {
-    const res = await fetch("getMetrics.php");
-    if (!res.ok) throw new Error("Erro ao buscar métricas");
+    const url = obraId
+      ? `getKpis.php?obra_id=${encodeURIComponent(obraId)}`
+      : "getKpis.php";
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Erro ao buscar KPIs");
     const data = await res.json();
-
-    const panel = document.getElementById("metrics-panel");
-    if (!panel) return;
-    panel.innerHTML = "";
-
-    const grid = document.createElement("div");
-    grid.style.display = "flex";
-    grid.style.gap = "8px";
-    grid.style.flexWrap = "wrap";
-
-    data.forEach((row) => {
-      const card = document.createElement("div");
-      card.className = "metrics-card";
-      card.style.padding = "8px 10px";
-      card.style.background = "#f5f7fa";
-      card.style.border = "1px solid #e0e6ef";
-      card.style.borderRadius = "6px";
-      card.style.minWidth = "160px";
-      card.style.boxSizing = "border-box";
-
-      const title = document.createElement("div");
-      title.textContent = row.nome_funcao || "-";
-      title.style.fontWeight = "600";
-      title.style.marginBottom = "6px";
-
-      const avg = document.createElement("div");
-      avg.textContent = `Média (h): ${row.media_horas_em_aprovacao !== null ? row.media_horas_em_aprovacao : "-"} `;
-      avg.style.color = "#333";
-
-      const total = document.createElement("div");
-      total.textContent = `Total: ${row.total_tarefas}`;
-      total.style.color = "#666";
-
-      card.appendChild(title);
-      card.appendChild(avg);
-      card.appendChild(total);
-
-      // SLA breach count indicator
-      if (row.sla_limite_horas) {
-        const slaInfo = document.createElement("div");
-        slaInfo.style.marginTop = "4px";
-        slaInfo.style.fontSize = "11px";
-        if (row.em_breach > 0) {
-          slaInfo.innerHTML = `<span style="color:#ef4444;font-weight:700;">⚠ ${row.em_breach} acima do SLA (${row.sla_limite_horas}h)</span>`;
-        } else {
-          slaInfo.innerHTML = `<span style="color:#10b981;">✓ SLA OK (${row.sla_limite_horas}h)</span>`;
-        }
-        card.appendChild(slaInfo);
-      }
-
-      grid.appendChild(card);
-    });
-
-    panel.appendChild(grid);
+    syncFrKpiPermissions(data.permissions);
+    renderFrKpiBar(data.kpis || []);
   } catch (err) {
-    console.error("Erro ao carregar métricas:", err);
+    console.error("Erro ao carregar KPIs:", err);
+    bar.innerHTML = "";
+    bar.classList.add("hidden");
   }
 }
+
+function renderFrKpiBar(kpis) {
+  const bar = document.getElementById("fr-kpi-bar");
+  if (!bar) return;
+  if (!kpis.length) {
+    closeFrKpiPopover();
+    bar.innerHTML = "";
+    bar.classList.add("hidden");
+    return;
+  }
+
+  bar.classList.remove("hidden");
+
+  bar.innerHTML = kpis
+    .map((kpi) => {
+      const hasDetail = (kpi.detail || []).length > 0;
+      const trendIcon =
+        kpi.trend_dir === "down"
+          ? "fa-arrow-down"
+          : kpi.trend_dir === "up"
+            ? "fa-arrow-up"
+            : "fa-minus";
+      return `<article class="fr-kpi-card${hasDetail ? " fr-kpi-card--clickable" : ""}"
+          data-tone="${escapeHtml(kpi.tone || "info")}"
+          data-kpi-key="${escapeHtml(kpi.key || "")}">
+        <div class="kpi-head">
+          <p class="kpi-label">${escapeHtml(kpi.label)}</p>
+          <span class="kpi-icon"><i class="${escapeHtml(kpi.icon || "fa-solid fa-chart-bar")}"></i></span>
+        </div>
+        <div class="kpi-value">${escapeHtml(kpi.value_fmt || String(kpi.value))}</div>
+        <div class="kpi-meta">
+          <span class="kpi-trend kpi-trend--${kpi.trend_dir || "neutral"}">
+            <i class="fa-solid ${trendIcon}"></i>${escapeHtml(kpi.trend || "")}
+          </span>
+        </div>
+        ${hasDetail ? `<span class="fr-kpi-expand-hint"><i class="fa-solid fa-chevron-down"></i></span>` : ""}
+      </article>`;
+    })
+    .join("");
+
+  // Wire click handlers for clickable cards
+  bar.querySelectorAll(".fr-kpi-card--clickable").forEach((card) => {
+    const key = card.dataset.kpiKey;
+    const kpiData = kpis.find((k) => k.key === key);
+    card.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (_frKpiOpenKey === key && _frKpiPopover && !_frKpiPopover.hidden) {
+        closeFrKpiPopover();
+      } else {
+        openFrKpiPopover(kpiData, card);
+      }
+    });
+  });
+}
+
+function openFrKpiPopover(kpi, cardEl) {
+  if (!_frKpiPopover) {
+    _frKpiPopover = document.createElement("div");
+    _frKpiPopover.id = "fr-kpi-popover";
+    _frKpiPopover.className = "fr-kpi-popover";
+    _frKpiPopover.hidden = true;
+    document.body.appendChild(_frKpiPopover);
+  }
+
+  _frKpiOpenKey = kpi.key;
+  const detail = kpi.detail || [];
+
+  let bodyHtml = "";
+  if (!detail.length) {
+    bodyHtml = '<p class="wpop-empty">Sem dados no período</p>';
+  } else if (kpi.key === "em_aprovacao") {
+    bodyHtml = detail
+      .map(
+        (fn) => `<div class="wpop-fn-group">
+        <div class="wpop-fn-header">
+          <span>${escapeHtml(fn.function)}</span>
+          <span class="wpop-fn-count">${fn.value}</span>
+        </div>
+      </div>`,
+      )
+      .join("");
+  } else if (kpi.key === "pct_ajustes") {
+    bodyHtml = detail
+      .map(
+        (fn) => `<div class="wpop-fn-group">
+        <div class="wpop-fn-header">
+          <span>${escapeHtml(fn.function)}</span>
+          <span class="wpop-fn-count">${fn.value}%</span>
+        </div>
+        ${fn.raw_label ? `<div class="wpop-item">${escapeHtml(fn.raw_label)} item(s) com ajuste</div>` : ""}
+      </div>`,
+      )
+      .join("");
+  } else if (kpi.key === "mediana_aprovacao") {
+    bodyHtml = detail
+      .map(
+        (fn) => `<div class="wpop-fn-group">
+        <div class="wpop-fn-header">
+          <span>${escapeHtml(fn.function)}</span>
+          <span class="wpop-fn-count">${frFormatHoras(fn.value)}</span>
+        </div>
+      </div>`,
+      )
+      .join("");
+  }
+
+  _frKpiPopover.innerHTML = `
+    <div class="wpop-header">
+      <span class="wpop-title">${escapeHtml(kpi.label)}</span>
+      <button class="wpop-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="wpop-body">
+      <h4 class="wpop-section-title">
+        <i class="${escapeHtml(kpi.icon || "")}"></i> Por função
+        <span class="wpop-count">${escapeHtml(kpi.value_fmt || String(kpi.value))}</span>
+      </h4>
+      ${bodyHtml}
+    </div>`;
+
+  _frKpiPopover
+    .querySelector(".wpop-close")
+    ?.addEventListener("click", closeFrKpiPopover);
+
+  positionFrKpiPopover(cardEl);
+  _frKpiPopover.hidden = false;
+}
+
+function positionFrKpiPopover(cardEl) {
+  const rect = cardEl.getBoundingClientRect();
+  const vpW = window.innerWidth;
+  const vpH = window.innerHeight;
+  const pw = 300;
+  const pmh = Math.min(460, vpH - 24);
+  let top = rect.bottom + 8;
+  let left = rect.left;
+  if (left + pw > vpW - 8) left = rect.right - pw;
+  if (left < 8) left = 8;
+  if (top + pmh > vpH - 8) top = rect.top - pmh - 8;
+  if (top < 8) top = 8;
+  _frKpiPopover.style.top = `${top}px`;
+  _frKpiPopover.style.left = `${left}px`;
+  _frKpiPopover.style.width = `${pw}px`;
+  _frKpiPopover.style.maxHeight = `${pmh}px`;
+}
+
+function closeFrKpiPopover() {
+  if (_frKpiPopover) _frKpiPopover.hidden = true;
+  _frKpiOpenKey = null;
+}
+
+// Close popover when clicking outside
+document.addEventListener("click", (e) => {
+  if (!_frKpiPopover || _frKpiPopover.hidden) return;
+  if (
+    !_frKpiPopover.contains(e.target) &&
+    !e.target.closest(".fr-kpi-card--clickable")
+  ) {
+    closeFrKpiPopover();
+  }
+});
 
 async function buscarMencoesDoUsuario() {
   const response = await fetch("buscar_mencoes.php");
@@ -756,9 +921,20 @@ async function exibirCardsDeObra(tarefas) {
     const prioridadeNaObra = tarefasDaObra.filter(
       (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
     ).length;
+    const obraTone =
+      prioridadeNaObra > 0
+        ? "priority"
+        : pendenteDirecaoNaObra > 0
+          ? "direction"
+          : mencoesNaObra > 0
+            ? "mention"
+            : null;
 
     const card = document.createElement("div");
     card.classList.add("obra-card");
+    if (obraTone) {
+      card.dataset.tone = obraTone;
+    }
 
     card.innerHTML = `
         ${mencoesNaObra > 0 ? `<div class="mencao-badge">💬 ${mencoesNaObra}</div>` : ""}
@@ -851,6 +1027,9 @@ function filtrarTarefasPorObra(obraSelecionada) {
       link.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(nomenclatura)}`;
       link.textContent = nomenclatura;
     });
+
+    // Atualiza KPI bar com filtro por obra
+    loadKpis(obraId);
   }
 
   // Aplica os filtros adicionais (colaborador, função e status)
@@ -1012,32 +1191,183 @@ if (filtroStatusElement) {
   });
 }
 
+function formatTaskElapsedTime(startValue) {
+  const raw = String(startValue || "").trim();
+  if (!raw) return "";
+
+  const parsed = new Date(raw.replace(" ", "T") + "-03:00");
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const totalMinutes = Math.max(
+    0,
+    Math.floor((Date.now() + _serverTimeOffset - parsed.getTime()) / 60000),
+  );
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) {
+    return `${minutes}min`;
+  }
+
+  return `${hours}h ${String(minutes).padStart(2, "0")}min`;
+}
+
+function getTaskStatusMeta(tarefa) {
+  if (tarefa.pendente_direcao) {
+    return { key: "direction", label: "Aguardando direção" };
+  }
+
+  if (tarefa.angulo_aprovado) {
+    return { key: "approved-angle", label: "Ângulo aprovado" };
+  }
+
+  switch (tarefa.status_novo) {
+    case "Em aprovação":
+      return { key: "approval", label: "Em aprovação" };
+    case "Ajuste":
+      return { key: "critical", label: "Ajuste" };
+    case "Aprovado com ajustes":
+      return { key: "approved-adjust", label: "Aprovado com ajustes" };
+    case "Finalizado":
+      return { key: "completed", label: "Concluída" };
+    default:
+      return {
+        key: "default",
+        label: tarefa.status_novo || tarefa.status || "Sem status",
+      };
+  }
+}
+
+function getTaskTone(tarefa, mentionCount) {
+  if (tarefa.prioridade_aprovacao == 1 && tarefa.status_novo === "Em aprovação") {
+    return "priority";
+  }
+
+  if (tarefa.pendente_direcao && tarefa.diretor_pode_aprovar) {
+    return "direction";
+  }
+
+  if (mentionCount > 0) {
+    return "mention";
+  }
+
+  return "";
+}
+
+function getTaskTimeMeta(tarefa, statusMeta) {
+  if (
+    statusMeta.key === "approval" &&
+    tarefa.sla_inicio &&
+    tarefa.sla_limite_horas
+  ) {
+    const { expirado, texto } = calcSlaTimer(
+      tarefa.sla_inicio,
+      tarefa.sla_limite_horas,
+    );
+
+    return {
+      key: expirado ? "critical" : statusMeta.key,
+      text: texto.replace(/^[⚠⏱]\s*/, ""),
+      title: expirado
+        ? `SLA excedido! Limite: ${tarefa.sla_limite_horas}h`
+        : `Em aprovação há ${texto.replace(/^[⚠⏱]\s*/, "")} (limite: ${tarefa.sla_limite_horas}h)`,
+      dataset: {
+        timeMode: "sla",
+        timeStart: tarefa.sla_inicio,
+        slaLimite: tarefa.sla_limite_horas,
+      },
+    };
+  }
+
+  const startValue = tarefa.data_aprovacao || tarefa.sla_inicio;
+  const elapsed = formatTaskElapsedTime(startValue);
+  if (!elapsed) {
+    return null;
+  }
+
+  return {
+    key: statusMeta.key,
+    text: elapsed,
+    title: `Última movimentação há ${elapsed}`,
+    dataset: {
+      timeMode: "elapsed",
+      timeStart: startValue,
+      timeLabel: "Última movimentação",
+    },
+  };
+}
+
+function renderTaskAvatar(tarefa) {
+  const nomeColaborador = tarefa.nome_colaborador || "Colaborador";
+  const initials = getProcessHistoryInitials(nomeColaborador);
+  const hue = getProcessHistoryHue(nomeColaborador);
+  const photoUrl = resolveProcessHistoryPhotoUrl(tarefa.foto_colaborador);
+
+  return `
+    <span class="task-author-avatar${photoUrl ? "" : " task-author-avatar--fallback"}" style="--task-avatar-hue:${hue};">
+      <span class="task-author-avatar-initials">${escapeHtml(initials)}</span>
+      ${
+        photoUrl
+          ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(nomeColaborador)}" class="task-author-avatar-img" onerror="this.remove()">`
+          : ""
+      }
+    </span>
+  `;
+}
+
+function updateTaskTimeBadge(el) {
+  const mode = el.dataset.timeMode || "elapsed";
+  const start = el.dataset.timeStart;
+
+  if (!start) return;
+
+  if (mode === "sla") {
+    const limite = parseFloat(el.dataset.slaLimite);
+    if (!limite) return;
+
+    const { expirado, texto } = calcSlaTimer(start, limite);
+    el.textContent = texto.replace(/^[⚠⏱]\s*/, "");
+    el.title = expirado
+      ? `SLA excedido! Limite: ${limite}h`
+      : `Em aprovação há ${texto.replace(/^[⚠⏱]\s*/, "")} (limite: ${limite}h)`;
+    el.classList.toggle("task-time-badge--critical", expirado);
+    return;
+  }
+
+  const elapsed = formatTaskElapsedTime(start);
+  if (!elapsed) return;
+
+  el.textContent = elapsed;
+  el.title = `${el.dataset.timeLabel || "Última movimentação"} há ${elapsed}`;
+}
+
+function refreshTaskTimeBadges() {
+  document.querySelectorAll(".task-time-badge[data-time-start]").forEach((el) => {
+    updateTaskTimeBadge(el);
+  });
+}
+
 // Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas, tarefasCompletas) {
   const container = document.querySelector(".containerObra");
-  container.style.display = "none"; // Esconde o container de obras
-
-  const containerMain = document.querySelector(".container-main");
-  // containerMain.classList.add('expanded');
+  container.style.display = "none";
 
   const tarefasObra = document.querySelector(".tarefasObra");
   tarefasObra.classList.remove("hidden");
 
   const tarefasImagensObra = document.querySelector(".tarefasImagensObra");
-
-  tarefasImagensObra.innerHTML = ""; // Limpa as tarefas anteriores
+  tarefasImagensObra.innerHTML = "";
 
   exibirSidebarTabulator(tarefasCompletas);
 
   if (tarefas.length > 0) {
     const tarefasOrdenadas = [...tarefas].sort((a, b) => {
-      // Prioridade de aprovação primeiro
       const pA =
         a.prioridade_aprovacao == 1 && a.status_novo === "Em aprovação" ? 1 : 0;
       const pB =
         b.prioridade_aprovacao == 1 && b.status_novo === "Em aprovação" ? 1 : 0;
       if (pB !== pA) return pB - pA;
-      // Depois menções
+
       const mA =
         (_mencoesDados.mencoes_por_funcao_imagem || {})[
           String(a.idfuncao_imagem)
@@ -1048,59 +1378,76 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         ] || 0;
       return mB - mA;
     });
+
     tarefasOrdenadas.forEach((tarefa) => {
       const taskItem = document.createElement("div");
       taskItem.classList.add("task-item");
-      taskItem.setAttribute(
-        "onclick",
-        `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`,
-      );
+      taskItem.addEventListener("click", () => {
+        historyAJAX(
+          tarefa.idfuncao_imagem,
+          tarefa.nome_funcao,
+          tarefa.imagem_nome,
+          tarefa.nome_colaborador,
+        );
+      });
 
-      // use thumbnail for task list previews; full image used only in mostrarImagemCompleta
       const imagemPreview = tarefa.imagem
         ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefa.imagem)}&w=450&q=85`
         : "../assets/logo.jpg";
-
-      // Define a cor de fundo com base no status
-      const color = tarefa.pendente_direcao
-        ? "#4a3200"
-        : tarefa.angulo_aprovado
-          ? "#003322"
-          : tarefa.status_novo === "Em aprovação"
-            ? "#000a59"
-            : tarefa.status_novo === "Ajuste"
-              ? "#590000"
-              : tarefa.status_novo === "Aprovado com ajustes"
-                ? "#2e0059ff"
-                : "transparent";
-      const bgColor = tarefa.pendente_direcao
-        ? "#ffd966"
-        : tarefa.angulo_aprovado
-          ? "#66ffcc"
-          : tarefa.status_novo === "Em aprovação"
-            ? "#90c2ff"
-            : tarefa.status_novo === "Ajuste"
-              ? "#ff5050"
-              : tarefa.status_novo === "Aprovado com ajustes"
-                ? "#ae90ffff"
-                : "transparent";
-      taskItem.innerHTML = `
-                <div class="task-info">
-                  <div class="image-wrapper">
-                     <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
-                </div>
-                    <h3 class="nome_funcao">${tarefa.nome_funcao}${tarefa.par_primario_nome ? `<span class="par-primario-badge" title="${tarefa.par_primario_nome}: ${tarefa.par_primario_status}"> + ${tarefa.par_primario_nome}</span>` : ""}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
-                    <p class="imagem_nome" data-obra="${tarefa.nomenclatura}">${tarefa.imagem_nome}</p>
-                    <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.pendente_direcao ? "Aguardando Direção" : tarefa.angulo_aprovado ? "Ângulo aprovado" : tarefa.status_novo}</p>
-                </div>
-            `;
-
-      // Badge de menções não vistas nesta tarefa
       const qtdMencoesTask =
         (_mencoesDados.mencoes_por_funcao_imagem || {})[
           String(tarefa.idfuncao_imagem)
         ] || 0;
+      const taskTone = getTaskTone(tarefa, qtdMencoesTask);
+      const statusMeta = getTaskStatusMeta(tarefa);
+      const timeMeta = getTaskTimeMeta(tarefa, statusMeta);
+
+      if (taskTone) {
+        taskItem.dataset.tone = taskTone;
+      }
+
+      const timeAttributes = Object.entries(timeMeta?.dataset || {})
+        .map(
+          ([key, value]) =>
+            `data-${key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)}="${escapeHtml(String(value))}"`,
+        )
+        .join(" ");
+      const pairBadge = tarefa.par_primario_nome
+        ? `<span class="task-card-pair-badge" title="${escapeHtml(`${tarefa.par_primario_nome}: ${tarefa.par_primario_status}`)}">+ ${escapeHtml(tarefa.par_primario_nome)}</span>`
+        : "";
+      const taskTitle = tarefa.nome_obra || tarefa.imagem_nome || tarefa.nome_funcao;
+      const taskSubtitle = tarefa.imagem_nome || tarefa.nomenclatura || "";
+
+      taskItem.innerHTML = `
+        <div class="task-card-media">
+          <div class="task-card-topbar">
+            <span class="task-status-badge task-status-badge--${escapeHtml(statusMeta.key)}">${escapeHtml(statusMeta.label)}</span>
+            ${
+              timeMeta
+                ? `<span class="task-time-badge task-time-badge--${escapeHtml(timeMeta.key)}" ${timeAttributes}>${escapeHtml(timeMeta.text)}</span>`
+                : ""
+            }
+          </div>
+          <div class="image-wrapper">
+            <img src="${imagemPreview}" alt="Imagem da obra ${escapeHtml(taskTitle)}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
+          </div>
+        </div>
+        <div class="task-card-body">
+          <div class="task-card-kicker-row">
+            <span class="task-card-kicker"><i class="fa-regular fa-folder-open"></i>${escapeHtml(tarefa.nome_funcao || "Função")}</span>
+            ${pairBadge}
+          </div>
+          <p class="task-card-subtitle" data-obra="${escapeHtml(tarefa.nomenclatura || "")}">${escapeHtml(taskSubtitle)}</p>
+          <div class="task-card-footer">
+            <div class="task-card-author">
+              ${renderTaskAvatar(tarefa)}
+              <span class="task-card-author-name">${escapeHtml(tarefa.nome_colaborador || "Colaborador")}</span>
+            </div>
+            <span class="task-card-date">${escapeHtml(formatarDataHora(tarefa.data_aprovacao))}</span>
+          </div>
+        </div>
+      `;
+
       if (qtdMencoesTask > 0) {
         const badge = document.createElement("div");
         badge.classList.add("mencao-badge");
@@ -1109,7 +1456,6 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         taskItem.appendChild(badge);
       }
 
-      // Badge de pendência de direção (⏳) — canto superior esquerdo
       if (tarefa.pendente_direcao && tarefa.diretor_pode_aprovar) {
         const dirBadge = document.createElement("div");
         dirBadge.classList.add("pendente-direcao-badge");
@@ -1119,7 +1465,6 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         taskItem.appendChild(dirBadge);
       }
 
-      // Badge de prioridade de aprovação (🔥) — canto inferior direito
       if (
         tarefa.prioridade_aprovacao == 1 &&
         tarefa.status_novo === "Em aprovação"
@@ -1132,30 +1477,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         taskItem.appendChild(prioBadge);
       }
 
-      // SLA timer badge — only for tasks in "Em aprovação" with SLA data
-      if (
-        tarefa.status_novo === "Em aprovação" &&
-        tarefa.sla_inicio &&
-        tarefa.sla_limite_horas
-      ) {
-        const slaBadge = document.createElement("div");
-        slaBadge.classList.add("sla-timer");
-        slaBadge.dataset.slaInicio = tarefa.sla_inicio;
-        slaBadge.dataset.slaLimite = tarefa.sla_limite_horas;
-        const { expirado, texto } = calcSlaTimer(
-          tarefa.sla_inicio,
-          tarefa.sla_limite_horas,
-        );
-        slaBadge.textContent = texto;
-        if (expirado) slaBadge.classList.add("sla-breach");
-        slaBadge.title = expirado
-          ? `SLA excedido! Limite: ${tarefa.sla_limite_horas}h`
-          : `Em aprovação há ${texto.replace("⏱ ", "")} (limite: ${tarefa.sla_limite_horas}h)`;
-        taskItem.appendChild(slaBadge);
-      }
-
       tarefasImagensObra.appendChild(taskItem);
     });
+
+    refreshTaskTimeBadges();
   } else {
     container.innerHTML =
       '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
@@ -1190,6 +1515,8 @@ function calcSlaTimer(inicio, limiteHoras) {
 
 // Live-update all visible SLA timer badges every 60 seconds
 setInterval(() => {
+  refreshTaskTimeBadges();
+
   document.querySelectorAll(".sla-timer[data-sla-inicio]").forEach((el) => {
     const inicio = el.dataset.slaInicio;
     const limite = parseFloat(el.dataset.slaLimite);
@@ -1893,6 +2220,11 @@ function historyAJAX(idfuncao_imagem) {
       );
       container_aprovacao.classList.remove("hidden");
 
+      // Oculta KPI bar durante a revisão de tarefa
+      const frKpiBar = document.getElementById("fr-kpi-bar");
+      if (frKpiBar) frKpiBar.classList.add("hidden");
+      closeFrKpiPopover();
+
       const sidebarDiv = document.getElementById("sidebarTabulator");
 
       // Clona e substitui botões para evitar múltiplos event listeners
@@ -2111,7 +2443,7 @@ function historyAJAX(idfuncao_imagem) {
           dataEnvioHeader.textContent = "";
           return;
         }
-        dataEnvioHeader.textContent = `Enviado em: ${formatarDataHora(dataValor)}`;
+        dataEnvioHeader.textContent = `${formatarDataHora(dataValor)}`;
       };
 
       atualizarDataHeader(item?.data_aprovacao || null);
@@ -2255,11 +2587,11 @@ function historyAJAX(idfuncao_imagem) {
               mostrarImagemCompleta(fullImageUrl, img.id);
             });
 
-            imgElement.addEventListener("contextmenu", (event) => {
-              event.preventDefault();
-              ap_imagem_id = img.id;
-              abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
-            });
+            // imgElement.addEventListener("contextmenu", (event) => {
+            //   event.preventDefault();
+            //   ap_imagem_id = img.id;
+            //   abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
+            // });
 
             if (img.has_comments == "1" || img.has_comments === 1) {
               const notificationDot = document.createElement("div");
@@ -2401,30 +2733,18 @@ function exibirSidebarTabulator(tarefas) {
     }
 
     filtered.forEach((t) => {
-      const color =
+      const statusClass =
         t.status_novo === "Em aprovação"
-          ? "#000a59"
+          ? "tarefa-status--approval"
           : t.status_novo === "Ajuste"
-            ? "#590000"
+            ? "tarefa-status--adjust"
             : t.status_novo === "Aprovado com ajustes"
-              ? "#2e0059ff"
+              ? "tarefa-status--approved-adjust"
               : t.status_novo === "Aprovado"
-                ? "#155900"
+                ? "tarefa-status--approved"
                 : t.pendente_direcao
-                  ? "#4a3200"
-                  : "transparent";
-      const bgColor =
-        t.status_novo === "Em aprovação"
-          ? "#90c2ff"
-          : t.status_novo === "Ajuste"
-            ? "#ff5050"
-            : t.status_novo === "Aprovado com ajustes"
-              ? "#ae90ffff"
-              : t.status_novo === "Aprovado"
-                ? "#6ed64e"
-                : t.pendente_direcao
-                  ? "#ffd966"
-                  : "transparent";
+                  ? "tarefa-status--direction"
+                  : "tarefa-status--default";
 
       const item = document.createElement("div");
       item.className = "tarefa-item";
@@ -2434,8 +2754,10 @@ function exibirSidebarTabulator(tarefas) {
         : "../assets/logo.jpg";
       item.innerHTML = `
         <img src="${imgSrc}" class="tab-img" alt="${escapeHtml(t.imagem_nome || "")}">
-        <span class="tarefa-status" style="background-color:${bgColor};color:${color}">${escapeHtml(t.status_novo || "")}</span>
-        <span class="tarefa-label">${escapeHtml(t.nome_colaborador || "")} — ${escapeHtml(t.imagem_nome || "")}</span>
+        <div class="tarefa-item-body">
+          <span class="tarefa-status ${statusClass}">${escapeHtml(t.status_novo || "")}</span>
+          <span class="tarefa-label">${escapeHtml(t.nome_colaborador || "")} — ${escapeHtml(t.imagem_nome || "")}</span>
+        </div>
       `;
       item.addEventListener("click", () => {
         itemsDiv
@@ -2656,54 +2978,54 @@ function abrirMenuContextoImagem(x, y) {
   menu.style.display = "block";
 }
 
-async function marcarPrioridadeAprovacao() {
-  const menu = document.getElementById("menuContextoImagem");
-  if (menu) menu.style.display = "none";
-
-  const fimId = funcaoImagemId || currentFuncaoContext?.funcao_imagem_id;
-  if (!fimId) {
-    Swal.fire({
-      title: "Erro",
-      text: "Nenhuma tarefa selecionada.",
-      icon: "error",
-    });
-    return;
-  }
-
-  try {
-    const res = await fetch("marcar_prioridade_aprovacao.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ funcao_imagem_id: fimId }),
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || "Erro desconhecido");
-
-    const isPrioridade = data.prioridade === 1;
-    Swal.fire({
-      title: isPrioridade
-        ? "🔥 Marcada como prioridade!"
-        : "Prioridade removida",
-      text: isPrioridade
-        ? "Esta tarefa será exibida em destaque na fila de aprovação."
-        : "A prioridade desta tarefa foi removida.",
-      icon: "success",
-      timer: 2500,
-      showConfirmButton: false,
-    });
-
-    // Atualiza dado local para refletir imediatamente nos cards
-    const task = dadosTarefas.find((t) => t.idfuncao_imagem == fimId);
-    if (task) task.prioridade_aprovacao = isPrioridade ? 1 : 0;
-
-    const obraSelecionada = document.getElementById("filtro_obra").value;
-    if (obraSelecionada) {
-      filtrarTarefasPorObra(obraSelecionada);
-    }
-  } catch (err) {
-    Swal.fire({ title: "Erro", text: err.message, icon: "error" });
-  }
-}
+// async function marcarPrioridadeAprovacao() {
+//   const menu = document.getElementById("menuContextoImagem");
+//   if (menu) menu.style.display = "none";
+//
+//   const fimId = funcaoImagemId || currentFuncaoContext?.funcao_imagem_id;
+//   if (!fimId) {
+//     Swal.fire({
+//       title: "Erro",
+//       text: "Nenhuma tarefa selecionada.",
+//       icon: "error",
+//     });
+//     return;
+//   }
+//
+//   try {
+//     const res = await fetch("marcar_prioridade_aprovacao.php", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ funcao_imagem_id: fimId }),
+//     });
+//     const data = await res.json();
+//     if (!data.success) throw new Error(data.message || "Erro desconhecido");
+//
+//     const isPrioridade = data.prioridade === 1;
+//     Swal.fire({
+//       title: isPrioridade
+//         ? "🔥 Marcada como prioridade!"
+//         : "Prioridade removida",
+//       text: isPrioridade
+//         ? "Esta tarefa será exibida em destaque na fila de aprovação."
+//         : "A prioridade desta tarefa foi removida.",
+//       icon: "success",
+//       timer: 2500,
+//       showConfirmButton: false,
+//     });
+//
+//     // Atualiza dado local para refletir imediatamente nos cards
+//     const task = dadosTarefas.find((t) => t.idfuncao_imagem == fimId);
+//     if (task) task.prioridade_aprovacao = isPrioridade ? 1 : 0;
+//
+//     const obraSelecionada = document.getElementById("filtro_obra").value;
+//     if (obraSelecionada) {
+//       filtrarTarefasPorObra(obraSelecionada);
+//     }
+//   } catch (err) {
+//     Swal.fire({ title: "Erro", text: err.message, icon: "error" });
+//   }
+// }
 
 let tribute; // variável global
 let mencionadosIds = []; // armazenar os IDs dos mencionados
@@ -2831,6 +3153,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Reaplica filtros da sidebar home (limpos)
       applyHomeFilters();
+
+      // Recarrega KPIs no contexto geral (sem filtro de obra)
+      const frKpiBarBack = document.getElementById("fr-kpi-bar");
+      if (frKpiBarBack) frKpiBarBack.classList.remove("hidden");
+      loadKpis(null);
     });
   }
 
@@ -3433,11 +3760,11 @@ function mostrarImagemCompleta(src, id) {
   renderComments(id);
   ajustarNavSelectAoTamanhoDaImagem();
 
-  imgElement.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-    document.getElementById("menuContexto").style.display = "none";
-    abrirMenuContextoImagem(event.pageX, event.pageY);
-  });
+  // imgElement.addEventListener("contextmenu", (event) => {
+  //   event.preventDefault();
+  //   document.getElementById("menuContexto").style.display = "none";
+  //   abrirMenuContextoImagem(event.pageX, event.pageY);
+  // });
 
   imgElement.addEventListener("click", function (event) {
     if (dragMoved) return;

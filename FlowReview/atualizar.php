@@ -1,7 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
-include '../conexao.php'; // Conexão com o banco de dados
+include_once __DIR__ . '/../conexao.php'; // Conexão com o banco de dados
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -26,6 +26,7 @@ try {
             c.nome_colaborador,
             c.telefone,
             u.nome_slack,
+            COALESCE(iu.thumb, c.imagem) AS foto_colaborador,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
@@ -48,6 +49,7 @@ try {
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN status_imagem s ON i.status_id = s.idstatus
         LEFT JOIN obra o ON i.obra_id = o.idobra
@@ -72,6 +74,7 @@ try {
             c.nome_colaborador,
             c.telefone,
             u.nome_slack,
+            COALESCE(iu.thumb, c.imagem) AS foto_colaborador,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
@@ -93,6 +96,7 @@ try {
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id = 5
@@ -115,6 +119,7 @@ try {
             c.nome_colaborador,
             c.telefone,
             u.nome_slack,
+            COALESCE(iu.thumb, c.imagem) AS foto_colaborador,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
@@ -136,6 +141,7 @@ try {
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -161,6 +167,7 @@ try {
             c.nome_colaborador,
             c.telefone,
             u.nome_slack,
+            COALESCE(iu.thumb, c.imagem) AS foto_colaborador,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
@@ -182,6 +189,7 @@ try {
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -210,6 +218,7 @@ try {
             c.nome_colaborador,
             c.telefone,
             u.nome_slack,
+            COALESCE(iu.thumb, c.imagem) AS foto_colaborador,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
@@ -231,6 +240,7 @@ try {
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)

@@ -29,6 +29,10 @@ a {
   cursor: pointer;
 }
 
+option {
+  color: #333;
+}
+
 .hidden {
   display: none !important;
 }
@@ -3541,7 +3545,7 @@ nav.breadcrumb-nav a {
     padding-inline: 14px;
     min-height: 52px;
   }
-/* 
+  /* 
   .fr-header-imagem {
     display: none;
   }
@@ -5188,7 +5192,6 @@ nav.breadcrumb-nav a {
     at equal specificity without needing !important)
    ══════════════════════════════════════════════════════════════ */
 @media (prefers-color-scheme: light) {
-
   /* ── Sidebar: override scoped dark vars back to light ──────── */
   .fr-sidebar,
   .wrapper-sidebar {

@@ -342,7 +342,7 @@ if (isset($_POST['action'])) {
                                             $fiStatusP00 = $rowFiCurP00['status'] ?? null;
                                         }
                                         // garantir que apareça na revisão
-                                        if ($stUpFi = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
+                                        if ($stUpFi = $conn->prepare("UPDATE funcao_imagem SET prazo = NOW(), status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
                                             $stUpFi->bind_param('i', $funcaoImagemId);
                                             $stUpFi->execute();
                                             $stUpFi->close();
@@ -488,7 +488,7 @@ if (isset($_POST['action'])) {
                                             $fiPrazoFin  = $rowFiCurFin['prazo']  ?? null;
                                             $fiStatusFin = $rowFiCurFin['status'] ?? null;
                                         }
-                                        if ($stUpd = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
+                                        if ($stUpd = $conn->prepare("UPDATE funcao_imagem SET prazo = NOW(), status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
                                             $stUpd->bind_param('i', $funcaoImagemId);
                                             $stUpd->execute();
                                             $stUpd->close();

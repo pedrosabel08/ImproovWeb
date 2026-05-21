@@ -12,7 +12,7 @@ header('Content-Type: application/json; charset=utf-8');
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-include '../conexao.php';
+include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use phpseclib3\Net\SFTP;
@@ -304,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // - Para P00 + Finalização: vincular TODOS os ângulos (historico_aprovacoes_imagens) ao item de entrega via angulos_imagens.entrega_item_id
             // - Para demais (R00..EF): atualizar entregas_itens.historico_id com o id correspondente (último)
             if (
-                in_array($status, ['Aprovado', 'Aprovado com ajustes']) &&
+                in_array($status, ['Aprovado']) &&
                 (
                     $nomeFuncaoLower === 'pós-produção' ||
                     ($nomeFuncaoLower === 'finalização' && stripos((string)$tipo_imagem_nome, 'humanizada') !== false)
@@ -620,8 +620,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
                             preg_match_all('/_[A-Z0-9]{2,3}/i', $nome_arquivo, $matches);
-                            $revisao = isset($matches[0]) && count($matches[0]) > 0
-                                ? strtoupper(str_replace('_', '', end($matches[0])))
+                            $matchList = is_array($matches[0] ?? null) ? $matches[0] : [];
+                            $revisao = !empty($matchList)
+                                ? strtoupper(str_replace('_', '', end($matchList)))
                                 : 'P00'; // padrão se nada for encontrado
 
                             $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";

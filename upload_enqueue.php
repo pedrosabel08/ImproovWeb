@@ -3,6 +3,31 @@
 // Pequeno endpoint para enfileirar uploads para processamento em background.
 // Ele salva o arquivo enviado em `uploads/staging` e grava um arquivo .json com metadados.
 
+// Captura qualquer output/warning solto antes de enviar o JSON
+ob_start();
+ini_set('display_errors', '0');
+$_enqueue_errors = [];
+$results = []; // inicializa cedo para o shutdown handler
+set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    global $_enqueue_errors;
+    $_enqueue_errors[] = "[$errno] $errstr em " . basename($errfile) . ":$errline";
+    return true;
+});
+// Captura erros fatais (E_ERROR, etc.) que matam o script antes do json_encode
+register_shutdown_function(function () {
+    global $_enqueue_errors;
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        $stray = ob_get_clean();
+        header('Content-Type: application/json');
+        echo json_encode([['status' => 'erro_fatal', '_debug' => [
+            'fatal'       => $error['message'] . ' em ' . basename($error['file']) . ':' . $error['line'],
+            'stray_output' => $stray,
+            'php_errors'  => $_enqueue_errors,
+        ]]]);
+    }
+});
+
 header('Content-Type: application/json');
 require_once __DIR__ . '/config/secure_env.php';
 
@@ -266,6 +291,7 @@ if (!function_exists('resolveRevisaoFromDbUploadEnqueue')) {
 $arquivos = $_FILES['arquivo_final'];
 $total = is_array($arquivos['name']) ? count($arquivos['name']) : 1;
 $results = [];
+$_sftpTasks = []; // coletados aqui, executados após enviar a resposta HTTP
 
 for ($i = 0; $i < $total; $i++) {
     $originalName = is_array($arquivos['name']) ? $arquivos['name'][$i] : $arquivos['name'];
@@ -380,7 +406,8 @@ for ($i = 0; $i < $total; $i++) {
             $meta['log_ids'] = $logIds;
             _write_meta_safely($metaFile, $meta);
         }
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
+        $_enqueue_errors[] = 'DB-log: ' . $e->getMessage();
         // ignore DB failures at enqueue to avoid blocking; worker will try again
     }
 
@@ -454,7 +481,8 @@ for ($i = 0; $i < $total; $i++) {
                 }
             }
         }
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
+        $_enqueue_errors[] = 'DB-rules: ' . $e->getMessage();
         // não bloquear enqueue por erro de DB aqui
     }
 
@@ -471,78 +499,103 @@ for ($i = 0; $i < $total; $i++) {
             // also set a key so WS can read latest state
             $redis->setex("upload_status:{$id}", 3600, $payload);
         }
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
+        $_enqueue_errors[] = 'Redis: ' . $e->getMessage();
         // ignore Redis failures here - enqueue still works
     }
 
-    // ── Transferência direta para o staging do VPS ──────────────────────────
-    // Em dev local (Windows/XAMPP): faz SFTP do arquivo e do .json para o
-    // uploads/staging do VPS. O worker systemd do VPS recolhe e envia ao NAS.
-    // Em produção (Linux): o arquivo já está no VPS, este bloco é no-op.
-    $finalMetaPath = $metaFile;
+    // ── SFTP ao VPS: coletado agora, executado em background após resposta HTTP ──
+    // (bloco de transferência movido para fora do loop para não bloquear a resposta)
     if (DIRECTORY_SEPARATOR === '\\') {
-        try {
-            if (!class_exists('\phpseclib3\Net\SFTP') && file_exists(__DIR__ . '/vendor/autoload.php')) {
-                require_once __DIR__ . '/vendor/autoload.php';
-            }
-            $vpsCfg   = improov_sftp_config('IMPROOV_VPS_SFTP');
-            $vpsBase  = rtrim((string)(getenv('IMPROOV_VPS_SFTP_REMOTE_PATH') ?: ''), '/');
-            if ($vpsBase === '') {
-                throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido no .env');
-            }
-            $vpsStaging = $vpsBase . '/uploads/staging';
-
-            $vsftp = new \phpseclib3\Net\SFTP($vpsCfg['host'], $vpsCfg['port']);
-            if (!$vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
-                throw new RuntimeException('SFTP VPS: falha no login');
-            }
-
-            // Garante que o diretório staging existe no VPS
-            if (!$vsftp->is_dir($vpsStaging)) {
-                $vsftp->mkdir($vpsStaging, -1, true);
-            }
-
-            // 1. Envia o arquivo staged para o VPS
-            $remoteFile = $vpsStaging . '/' . basename($destFile);
-            if (!$vsftp->put($remoteFile, $destFile, \phpseclib3\Net\SFTP::SOURCE_LOCAL_FILE)) {
-                throw new RuntimeException('SFTP VPS: falha ao enviar arquivo: ' . basename($destFile));
-            }
-
-            // 2. Atualiza staged_path para o caminho local no VPS (worker usará este path)
-            $meta['staged_path'] = $remoteFile;
-            _write_meta_safely($metaFile, $meta);
-
-            // 3. Envia o .json de metadados com staged_path já atualizado
-            $remoteMeta = $vpsStaging . '/' . basename($metaFile);
-            $vsftp->put($remoteMeta, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-            $finalMetaPath = $remoteMeta;
-
-            // 4. Remove cópias locais após transferência bem-sucedida
-            @unlink($destFile);
-            @unlink($metaFile);
-        } catch (Exception $e) {
-            error_log('[upload_enqueue] Falha na transferência VPS staging: ' . $e->getMessage());
-            // Mantém arquivos locais — worker local (start /B) ainda pode processar como fallback
-        }
+        $_sftpTasks[] = [
+            'destFile' => $destFile,
+            'metaFile' => $metaFile,
+            'meta'     => $meta,
+            'id'       => $id,
+        ];
     }
 
-    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $finalMetaPath];
+    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile];
 }
 
-// Inicia o worker em background para transferir o(s) arquivo(s) enfileirados ao VPS via SFTP.
-// Na produção (Linux) o serviço systemd já cuida disso; aqui disparamos apenas em ambiente
-// Windows (XAMPP / dev local) caso nenhum worker esteja ativo no momento.
+// ── Envia a resposta HTTP imediatamente (browser não espera o SFTP) ─────────────
+$_stray = trim(ob_get_clean());
+restore_error_handler();
+
+if (!empty($_enqueue_errors) || !empty($_stray)) {
+    $debugInfo = [];
+    if (!empty($_enqueue_errors)) $debugInfo['php_errors'] = $_enqueue_errors;
+    if (!empty($_stray))         $debugInfo['stray_output'] = $_stray;
+    foreach ($results as &$_r) {
+        $_r['_debug'] = $debugInfo;
+    }
+    unset($_r);
+    if (empty($results)) {
+        $results[] = ['status' => 'erro_interno', '_debug' => $debugInfo];
+    }
+}
+
+$_responseJson = json_encode($results);
+header('Content-Length: ' . strlen($_responseJson));
+header('Connection: close');
+echo $_responseJson;
+@ob_end_flush();
+@flush();
+
+// ── Background: SFTP ao VPS + spawn do worker (browser já recebeu a resposta) ───
+@ignore_user_abort(true);
+@set_time_limit(300);
+
+if (!empty($_sftpTasks)) {
+    try {
+        if (!class_exists('\phpseclib3\Net\SFTP') && file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+        }
+        $vpsCfg  = improov_sftp_config('IMPROOV_VPS_SFTP');
+        $vpsBase = rtrim((string)(getenv('IMPROOV_VPS_SFTP_REMOTE_PATH') ?: ''), '/');
+        if ($vpsBase === '') throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido');
+        $vpsStaging = $vpsBase . '/uploads/staging';
+
+        $vsftp = new \phpseclib3\Net\SFTP($vpsCfg['host'], $vpsCfg['port']);
+        if (!$vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
+            throw new RuntimeException('SFTP VPS: falha no login');
+        }
+        if (!$vsftp->is_dir($vpsStaging)) {
+            $vsftp->mkdir($vpsStaging, -1, true);
+        }
+
+        foreach ($_sftpTasks as $_task) {
+            try {
+                $remoteFile = $vpsStaging . '/' . basename($_task['destFile']);
+                if (!$vsftp->put($remoteFile, $_task['destFile'], \phpseclib3\Net\SFTP::SOURCE_LOCAL_FILE)) {
+                    throw new RuntimeException('Falha ao enviar: ' . basename($_task['destFile']));
+                }
+                $_task['meta']['staged_path'] = $remoteFile;
+                _write_meta_safely($_task['metaFile'], $_task['meta']);
+
+                $remoteMeta = $vpsStaging . '/' . basename($_task['metaFile']);
+                $vsftp->put($remoteMeta, json_encode($_task['meta'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+
+                @unlink($_task['destFile']);
+                @unlink($_task['metaFile']);
+            } catch (\Throwable $e) {
+                error_log('[upload_enqueue] SFTP task falhou: ' . $e->getMessage());
+                // arquivos locais preservados como fallback para o worker local
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log('[upload_enqueue] SFTP VPS init falhou: ' . $e->getMessage());
+    }
+}
+
+// Inicia o worker local em background (Windows/XAMPP).
+// O worker processa qualquer .json que sobrou localmente (fallback ou sem VPS).
 $_workerScript = __DIR__ . '/scripts/upload_worker.php';
 if (is_file($_workerScript) && DIRECTORY_SEPARATOR === '\\') {
-    // Verifica se já há algum job sendo processado (arquivo .json.processing.* existente)
-    // — se sim, o worker anterior ainda está rodando, não precisa lançar outro.
     $_activeJobs = glob($stagingDir . '/*.json.processing*') ?: [];
     if (empty($_activeJobs)) {
         $phpBin = PHP_BINARY ?: 'php';
-        // popen + start /B retorna imediatamente sem bloquear a resposta HTTP
         $cmd = 'start /B "" ' . escapeshellarg($phpBin) . ' ' . escapeshellarg($_workerScript);
         pclose(popen($cmd, 'r'));
     }
 }
-
-echo json_encode($results);

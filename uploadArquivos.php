@@ -121,7 +121,7 @@ register_shutdown_function(function () {
     ], $eid);
 });
 
-require 'conexao.php';
+require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/config/secure_env.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
@@ -445,7 +445,7 @@ if ($isNasDirectBypass) {
     // ---------- Bypass: status → Aprovado + envia direto ao NAS ----------
     $stmt = $conn->prepare(
         "UPDATE funcao_imagem
-         SET status = 'Aprovado', requires_file_upload = 0, file_uploaded_at = NOW()
+         SET prazo = NOW(), status = 'Aprovado', requires_file_upload = 0, file_uploaded_at = NOW()
          WHERE idfuncao_imagem = ?"
     );
     $stmt->bind_param("i", $idFuncaoImagem);
@@ -737,7 +737,7 @@ if ($funcao_status_norm_pre === 'ajuste') {
 
 // ---------- Atualiza status para Em aprovação sem alterar o prazo corrente ----------
 $stmt = $conn->prepare("UPDATE funcao_imagem 
-                        SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL 
+                        SET prazo = NOW(), status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL 
                         WHERE idfuncao_imagem = ?");
 $stmt->bind_param("i", $idFuncaoImagem);
 if (!$stmt->execute()) {

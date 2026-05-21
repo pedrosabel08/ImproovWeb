@@ -44,9 +44,14 @@ if ($desc) {
     $tipo = isset($_POST['tipo']) ? trim($_POST['tipo']) : 'manual';
 
     if ($id) {
-        // UPDATE (allow updating assunto, data and tipo)
-        $stmt = $conn->prepare("UPDATE acompanhamento_email SET assunto = ?, data = ?, tipo = ? WHERE idacompanhamento_email = ? AND obra_id = ?");
-        $stmt->bind_param("sssis", $assunto, $data, $tipo, $id, $obra_id);
+        // UPDATE: only update 'data' if it was explicitly provided in the request
+        if ($data) {
+            $stmt = $conn->prepare("UPDATE acompanhamento_email SET assunto = ?, data = ?, tipo = ? WHERE idacompanhamento_email = ? AND obra_id = ?");
+            $stmt->bind_param("sssis", $assunto, $data, $tipo, $id, $obra_id);
+        } else {
+            $stmt = $conn->prepare("UPDATE acompanhamento_email SET assunto = ?, tipo = ? WHERE idacompanhamento_email = ? AND obra_id = ?");
+            $stmt->bind_param("ssii", $assunto, $tipo, $id, $obra_id);
+        }
     } else {
         // INSERT: compute next 'ordem' for this obra
         if (!$data) {

@@ -61,7 +61,7 @@ $conn->close();
 
         <label for="opcao">Obra:</label>
         <select id="selectImagem">
-            <?php foreach ($obras as $obra): ?>
+            <?php foreach ($obras_inativas as $obra): ?>
                 <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
                 </option>
             <?php endforeach; ?>

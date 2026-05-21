@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Verify DB connection (match pattern used in saveImages.php)
 if (!isset($conn) || !$conn) {

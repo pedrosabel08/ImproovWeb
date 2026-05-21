@@ -14,7 +14,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $success = [];
 $errors = [];

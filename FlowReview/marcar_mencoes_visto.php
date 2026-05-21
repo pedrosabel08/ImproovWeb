@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 $funcaoImagemId = isset($data['funcao_imagem_id']) ? intval($data['funcao_imagem_id']) : 0;

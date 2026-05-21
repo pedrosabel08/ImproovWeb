@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php'; // Conexão com o banco de dados
+require_once __DIR__ . '/../conexao.php'; // Conexão com o banco de dados
 require_once __DIR__ . '/auth_cookie.php';
 
 // Ler token antecipadamente (GET ou POST)

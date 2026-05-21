@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Content-Type: application/json');
 // session_start();
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 $colaborador = isset($_SESSION['idcolaborador']) ? intval($_SESSION['idcolaborador']) : 0;

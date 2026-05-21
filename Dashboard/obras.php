@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php'; // conexão com o banco
+require_once __DIR__ . '/../conexao.php'; // conexão com o banco
 
 // Prepare response arrays for categories
 $response = [

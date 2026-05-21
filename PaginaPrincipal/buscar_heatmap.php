@@ -2,7 +2,7 @@
 require_once dirname(__DIR__) . '/config/session_bootstrap.php';
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     http_response_code(401);

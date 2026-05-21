@@ -1,7 +1,7 @@
 <?php
 // delete_status_hold.php
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $imagem_id = $_POST['imagem_id'] ?? null;
 $status = $_POST['status'] ?? null;

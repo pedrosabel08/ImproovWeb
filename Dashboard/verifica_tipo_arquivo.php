@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $obra_id = 74;
 $nome_arquivo = $_POST['nome_arquivo'];

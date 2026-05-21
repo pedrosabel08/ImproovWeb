@@ -7,7 +7,7 @@
  */
 header('Content-Type: application/json; charset=utf-8');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $mes          = isset($_GET['mes']) ? (int)$_GET['mes']  : (int)date('m');
 $anoSelecionado = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');

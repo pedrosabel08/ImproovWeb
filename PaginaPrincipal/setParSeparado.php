@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $imagem_id = intval($_POST['imagem_id'] ?? 0);
 $par_tipo  = $_POST['par_tipo'] ?? '';

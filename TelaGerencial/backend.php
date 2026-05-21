@@ -1,7 +1,7 @@
 <?php
 // backend.php
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 header('Content-Type: application/json');
 $colaborador = $_GET['colaborador'] ?? '';

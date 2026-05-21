@@ -1,6 +1,6 @@
 <?php
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Query SQL com filtro pelos substatus desejados
 $sql = 'SELECT 

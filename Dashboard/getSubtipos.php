@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // POST: criar novo subtipo
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

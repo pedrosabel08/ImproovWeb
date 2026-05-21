@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Suporta tanto multipart/form-data (com imagem) quanto application/json (sem imagem)
 $isJson = isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false;

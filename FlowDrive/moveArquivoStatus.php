@@ -12,7 +12,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['idarquivo']) || !isset($input['action'])) {

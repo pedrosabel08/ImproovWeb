@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {

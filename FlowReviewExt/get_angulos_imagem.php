@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Parâmetros: imagem_id (prioritário) ou entrega_item_id
 $imagem_id = isset($_GET['imagem_id']) ? intval($_GET['imagem_id']) : 0;

@@ -2,7 +2,7 @@
 // Configuração de cabeçalhos para o retorno JSON
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Obtém o ID do colaborador passado via query string
 $idcolaborador = isset($_GET['idcolaborador']) ? intval($_GET['idcolaborador']) : 0;

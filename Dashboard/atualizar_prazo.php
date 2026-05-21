@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php'; // Inclui o arquivo de conexão
+require_once __DIR__ . '/../conexao.php'; // Inclui o arquivo de conexão
 
 // Receber os dados do AJAX
 $data = json_decode(file_get_contents('php://input'), true);

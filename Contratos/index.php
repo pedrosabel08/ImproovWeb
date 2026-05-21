@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 include '../conexaoMain.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {

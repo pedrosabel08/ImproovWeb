@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 header('Content-Type: application/json');
 
 $axis_id = isset($_GET['axis_id']) ? intval($_GET['axis_id']) : null;

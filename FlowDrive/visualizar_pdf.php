@@ -17,7 +17,7 @@ if (session_status() === PHP_SESSION_NONE) {
 //     exit;
 // }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $idarquivo = isset($_GET['idarquivo']) ? intval($_GET['idarquivo']) : 0;
 if ($idarquivo <= 0) {

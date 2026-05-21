@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Recebe mês e ano (padroniza para inteiros)
 $mes = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');

@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $funcao_id = null;
 if (isset($_GET['funcao_id']) && is_numeric($_GET['funcao_id'])) {

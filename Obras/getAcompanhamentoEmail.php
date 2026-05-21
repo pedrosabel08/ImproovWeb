@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $idObra = isset($_GET['idobra']) ? intval($_GET['idobra']) : 0;
 

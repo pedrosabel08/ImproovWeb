@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 
 // Recebe e valida os dados

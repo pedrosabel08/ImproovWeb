@@ -20,7 +20,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $sql_obras = "SELECT idobra, nome_obra FROM obra";
 $result_obra = $conn->query($sql_obras);

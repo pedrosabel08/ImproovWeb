@@ -2,7 +2,7 @@
 /* ----------------------------------------------------------
    atribuir_colaborador.php
    ---------------------------------------------------------- */
-include '../conexao.php';   // arquivo de conexão ($conn)
+require_once __DIR__ . '/../conexao.php';   // arquivo de conexão ($conn)
 
 /* ==========================================================
    1) Dados recebidos

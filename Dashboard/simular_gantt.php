@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Exemplo de parâmetros para teste
 $obra_id = 55; // Altere para o ID da obra que deseja simular

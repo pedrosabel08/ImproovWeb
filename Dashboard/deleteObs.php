@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Verifica se o ID foi passado via POST
 if (isset($_POST['id'])) {

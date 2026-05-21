@@ -15,7 +15,7 @@ if (empty($data['itens']) || !is_array($data['itens'])) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $conn->begin_transaction();
 try {

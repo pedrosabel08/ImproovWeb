@@ -31,7 +31,7 @@ function vpl_log($msg)
     );
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $idlog = isset($_GET['idlog']) ? intval($_GET['idlog']) : 0;
 if ($idlog <= 0) {

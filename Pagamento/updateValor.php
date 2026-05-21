@@ -3,7 +3,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
 
     if (!empty($data['ids']) && isset($data['valor'])) {
-        include '../conexao.php';
+        require_once __DIR__ . '/../conexao.php';
 
         $valor = floatval($data['valor']);
 

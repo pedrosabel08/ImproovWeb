@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 session_start();
 // Verificar se o usuário está logado

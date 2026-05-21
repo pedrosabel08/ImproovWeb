@@ -5,7 +5,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-include '../conexao.php'; // Conexão com o banco
+require_once __DIR__ . '/../conexao.php'; // Conexão com o banco
 
 // Remove modos que rejeitam datas zero (0000-00-00) armazenadas legalmente na tabela
 $conn->query("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode, 'NO_ZERO_DATE', ''), 'NO_ZERO_IN_DATE', '')");

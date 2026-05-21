@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (isset($_GET['obra_id'])) {
     $obra_id = (int) $_GET['obra_id'];

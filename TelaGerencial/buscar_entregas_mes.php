@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Mês vindo da requisição (01–12 ou 1–12)
 $mes = isset($_GET['mes']) ? intval($_GET['mes']) : date('n');

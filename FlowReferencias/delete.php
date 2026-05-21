@@ -14,7 +14,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 if ($id <= 0) {

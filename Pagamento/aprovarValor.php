@@ -15,7 +15,7 @@ if ($id <= 0) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $stmt = $conn->prepare('UPDATE funcao_imagem SET valor_aprovado = 1 WHERE idfuncao_imagem = ?');
 if (!$stmt) {

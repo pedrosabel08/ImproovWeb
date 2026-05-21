@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
 $mesNumero = isset($_GET['mes_id']) ? intval($_GET['mes_id']) : null;

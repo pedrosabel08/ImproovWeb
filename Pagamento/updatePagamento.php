@@ -3,7 +3,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
 
     if (!empty($data['ids'])) {
-        include '../conexao.php';
+        require_once __DIR__ . '/../conexao.php';
 
         // If caller provided collaborator/month, we'll group the selected ids into a pagamentos record
         $colaborador_id = isset($data['colaborador_id']) ? intval($data['colaborador_id']) : null;
@@ -317,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Support batch payment by collaborator/month when not sending explicit ids
         // Expected payload: { colaborador_id: int, ano: int, mes: int, usuario_id: int }
         if (!empty($data['colaborador_id']) && !empty($data['ano']) && !empty($data['mes'])) {
-            include '../conexao.php';
+            require_once __DIR__ . '/../conexao.php';
             $colaborador_id = intval($data['colaborador_id']);
             $ano = intval($data['ano']);
             $mes = intval($data['mes']);

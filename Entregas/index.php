@@ -13,7 +13,7 @@ unset($__root, $__p);
 // $nome_usuario = $_SESSION['nome_usuario'];
 
 include '../conexaoMain.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     // Se não estiver logado, redirecionar para a página de login

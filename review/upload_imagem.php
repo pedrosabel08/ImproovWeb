@@ -1,6 +1,6 @@
 <?php
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem']) && isset($_POST['imagem_id'])) {
     $imagem_id = intval($_POST['imagem_id']);

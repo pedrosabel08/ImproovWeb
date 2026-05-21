@@ -1,7 +1,7 @@
 <?php
 // Conexão com o banco de dados
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 function tableHasColumn(mysqli $conn, string $table, string $column): bool
 {

@@ -5,7 +5,7 @@ require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 // Start session to capture colaborador_id for auditing
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

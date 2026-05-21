@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $obraId = isset($_GET['obra_id']) && $_GET['obra_id'] !== '' ? (int)$_GET['obra_id'] : null;
 $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';

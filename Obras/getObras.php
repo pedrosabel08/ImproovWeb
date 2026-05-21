@@ -1,6 +1,6 @@
 <?php
 // Configurações do banco de dados
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Consulta para obter os dados da tabela obra
 $sql = "SELECT idobra, nomenclatura as nome_obra, status_obra FROM obra ORDER BY idobra DESC";

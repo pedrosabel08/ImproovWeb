@@ -1,6 +1,6 @@
 <?php
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (isset($_POST["campo"], $_POST["valor"], $_POST["obraId"])) {
     $campo = $_POST["campo"];

@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $obra_id = 70; // Altere para o ID da obra que deseja simular
 

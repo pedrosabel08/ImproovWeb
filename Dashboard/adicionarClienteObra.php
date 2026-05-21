@@ -18,7 +18,7 @@ if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Composer autoload (para phpseclib)
 $vendorAutoload = __DIR__ . '/../vendor/autoload.php';

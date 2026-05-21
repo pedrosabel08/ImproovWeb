@@ -19,7 +19,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 include '../conexaoMain.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $conn->set_charset('utf8mb4');
 

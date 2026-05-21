@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 // Conectar ao banco de dados
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
 date_default_timezone_set('America/Sao_Paulo');

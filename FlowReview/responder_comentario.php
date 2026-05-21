@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/upload_comentario_vps.php';
 
 // Suporta tanto JSON quanto multipart (quando há imagem)

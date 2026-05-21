@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $idColaborador = $_SESSION['idcolaborador'];
 

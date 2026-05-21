@@ -1,6 +1,6 @@
 <?php
 // Inclua a conexão ao banco de dados aqui
-include '../conexao.php'; // Arquivo de conexão
+require_once __DIR__ . '/../conexao.php'; // Arquivo de conexão
 
 if (isset($_POST['obraId'])) {
     $obraId = $_POST['obraId'];

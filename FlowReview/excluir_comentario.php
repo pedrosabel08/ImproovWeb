@@ -2,7 +2,7 @@
 $data = json_decode(file_get_contents("php://input"));
 $id = $data->id;
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Exclui menções em respostas deste comentário
 $stmtMencoesResp = $conn->prepare("DELETE m FROM mencoes m INNER JOIN respostas_comentario rc ON rc.id = m.resposta_id WHERE rc.comentario_id = ?");

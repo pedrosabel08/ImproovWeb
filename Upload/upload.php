@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/secure_env.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 use phpseclib3\Net\SFTP;
 use phpseclib3\Exception\UnableToConnectException;

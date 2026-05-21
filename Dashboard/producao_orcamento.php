@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Primeiro SELECT: funcao_imagem
 $query1 = "SELECT MONTH(prazo) AS mes, SUM(valor) AS total_funcao_imagem FROM funcao_imagem GROUP BY MONTH(prazo)";

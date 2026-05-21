@@ -17,7 +17,7 @@ if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($conn) || !$conn) {
     http_response_code(500);

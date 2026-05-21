@@ -48,7 +48,7 @@ try {
     }
 
     // ── 3. Conexão ───────────────────────────────────────────────────────────
-    include '../conexao.php';
+    require_once __DIR__ . '/../conexao.php';
 
     if (!$conn || $conn->connect_error) {
         throw new Exception('Falha na conexão: ' . ($conn->connect_error ?? 'conexão nula'));

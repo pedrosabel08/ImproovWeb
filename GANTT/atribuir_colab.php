@@ -1,7 +1,7 @@
 <?php
 // Conexão com o banco de dados
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if ($conn->connect_error) {
     http_response_code(500);

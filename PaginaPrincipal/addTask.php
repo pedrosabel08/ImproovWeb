@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Content-Type: application/json');
 session_start();
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Verifica se usuário está logado (ajuste conforme sua autenticação)
 if (!isset($_SESSION['idcolaborador'])) {

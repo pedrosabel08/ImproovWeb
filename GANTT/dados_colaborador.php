@@ -1,7 +1,7 @@
 <?php
 // Configurações da conexão
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Array de ordem das funções
 $ordemFuncoes = [

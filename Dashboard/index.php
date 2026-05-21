@@ -11,7 +11,7 @@ unset($__root, $__p);
 
 // session_start();
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 include '../conexaoMain.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {

@@ -17,7 +17,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 include '../conexaoMain.php';
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     header("Location: ../index.html");

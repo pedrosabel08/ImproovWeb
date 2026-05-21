@@ -1,6 +1,6 @@
 <?php
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Recebendo os dados enviados via POST (JSON)
 $data = json_decode(file_get_contents("php://input"));

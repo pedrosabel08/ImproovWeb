@@ -1,6 +1,6 @@
 <?php
 // Inclui o arquivo de conexão
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Função para buscar o id pelo nome
 function buscarImagemId($conn, $imagemNome)

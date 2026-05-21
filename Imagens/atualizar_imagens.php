@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Captura os valores do POST
 $id = $_POST['idimagens_cliente_obra'];

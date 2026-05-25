@@ -1,0 +1,374 @@
+body.onboarding-locked {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 32%),
+    linear-gradient(180deg, #08111c 0%, #0b1421 100%);
+}
+
+body.onboarding-locked #quickAccess,
+body.onboarding-locked #quickHamburger,
+body.onboarding-locked #quickMobileMenu {
+  display: none !important;
+}
+
+body.onboarding-locked .container > :not(header):not(#onboardingObraPanel) {
+  display: none !important;
+}
+
+body.onboarding-locked .container {
+  padding-bottom: 28px;
+}
+
+body.onboarding-locked #nomenclatura {
+  color: #e7eef9;
+}
+
+.onboarding-obra-panel {
+  width: min(1380px, 95%);
+  margin: 18px auto 0;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 26%),
+    linear-gradient(180deg, rgba(10, 17, 29, 0.98) 0%, rgba(14, 21, 34, 0.97) 100%);
+  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.34);
+  color: #dbe6f6;
+}
+
+.onboarding-obra-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.onboarding-obra-kicker,
+.onboarding-obra-eyebrow,
+.onboarding-obra-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboarding-obra-kicker,
+.onboarding-obra-eyebrow {
+  background: rgba(59, 130, 246, 0.12);
+  color: #8db8ff;
+}
+
+.onboarding-obra-counter {
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f9c55f;
+}
+
+.onboarding-obra-head h2 {
+  margin: 10px 0 4px;
+  color: #f5f8fe;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.onboarding-obra-head p,
+.onboarding-obra-item-main span,
+.onboarding-obra-status-stack p,
+.onboarding-obra-pending-item span,
+.onboarding-obra-note-inline strong,
+.onboarding-obra-empty,
+.onboarding-obra-success p {
+  margin: 0;
+  color: #8ea4c0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.onboarding-obra-progress,
+.onboarding-obra-panel-card,
+.onboarding-obra-item,
+.onboarding-obra-success {
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(11, 19, 31, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.onboarding-obra-progress {
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+
+.onboarding-obra-progress strong,
+.onboarding-obra-card-head h3,
+.onboarding-obra-item-main strong,
+.onboarding-obra-package-pill strong,
+.onboarding-obra-success strong,
+.onboarding-obra-summary-item strong {
+  color: #f4f7fd;
+}
+
+.onboarding-obra-progress strong {
+  font-size: 13px;
+}
+
+.onboarding-obra-progressbar {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.onboarding-obra-progressbar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  transition: width 0.22s ease;
+}
+
+.onboarding-obra-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(250px, 0.7fr);
+  gap: 14px;
+}
+
+.onboarding-obra-primary,
+.onboarding-obra-aside,
+.onboarding-obra-list,
+.onboarding-obra-pending-list,
+.onboarding-obra-package-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-obra-panel-card {
+  padding: 14px;
+}
+
+.onboarding-obra-panel-card-main {
+  min-height: 100%;
+}
+
+.onboarding-obra-card-head,
+.onboarding-obra-block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.onboarding-obra-card-head h3,
+.onboarding-obra-block-head h3 {
+  margin: 7px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.onboarding-obra-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+}
+
+.onboarding-obra-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.onboarding-obra-item-main strong {
+  font-size: 13px;
+}
+
+.onboarding-obra-status,
+.onboarding-obra-action,
+.onboarding-obra-status-badge {
+  min-width: 132px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboarding-obra-status.is-done {
+  background: rgba(34, 197, 94, 0.12);
+  color: #8ef0ae;
+}
+
+.onboarding-obra-status.is-pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f5c05a;
+}
+
+.onboarding-obra-action {
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+}
+
+.onboarding-obra-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.onboarding-obra-action[disabled] {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.onboarding-obra-status-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-obra-status-badge.is-locked {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+.onboarding-obra-status-badge.is-ready {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  color: #8ef0ae;
+}
+
+.onboarding-obra-mini-metrics,
+.onboarding-obra-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.onboarding-obra-mini-metrics div,
+.onboarding-obra-summary-item,
+.onboarding-obra-package-pill,
+.onboarding-obra-pending-item,
+.onboarding-obra-note-inline {
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(6, 12, 22, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.onboarding-obra-mini-metrics span,
+.onboarding-obra-summary-item span,
+.onboarding-obra-note-inline span {
+  display: block;
+  margin-bottom: 4px;
+  color: #7e96b5;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboarding-obra-mini-metrics strong,
+.onboarding-obra-summary-item strong {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.onboarding-obra-package-pill strong,
+.onboarding-obra-pending-item strong,
+.onboarding-obra-note-inline strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.onboarding-obra-package-pill span,
+.onboarding-obra-pending-item span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.onboarding-obra-note-inline.is-accent {
+  background: rgba(30, 64, 175, 0.14);
+  border-color: rgba(59, 130, 246, 0.14);
+}
+
+.onboarding-obra-success {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(17, 145, 17, 0.14), rgba(17, 145, 17, 0.06));
+  border-color: rgba(34, 197, 94, 0.18);
+}
+
+.onboarding-obra-success strong {
+  margin-bottom: 4px;
+  color: #9df5ba;
+}
+
+.onboarding-obra-empty {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(6, 12, 22, 0.58);
+  border: 1px dashed rgba(148, 163, 184, 0.12);
+}
+
+@media (max-width: 1100px) {
+  .onboarding-obra-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-obra-head,
+  .onboarding-obra-item,
+  .onboarding-obra-success {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .onboarding-obra-progress,
+  .onboarding-obra-status,
+  .onboarding-obra-action,
+  .onboarding-obra-status-badge {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .onboarding-obra-panel {
+    width: calc(100% - 24px);
+    padding: 14px;
+  }
+
+  .onboarding-obra-mini-metrics,
+  .onboarding-obra-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

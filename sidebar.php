@@ -13,6 +13,14 @@ $__reqUri = $_SERVER['REQUEST_URI'] ?? '';
 $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~^/flow/ImproovWeb(?:/|$)~', $__reqUri))
     ? '/flow/ImproovWeb/'
     : '/ImproovWeb/';
+
+if (!isset($obras) || !is_array($obras)) {
+    $obras = [];
+}
+
+if (!isset($obras_inativas) || !is_array($obras_inativas)) {
+    $obras_inativas = [];
+}
 ?>
 <script>
     // Session policy provided by PHP
@@ -23,22 +31,22 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
     window.IMPROOV_LOGIN_TS = <?php echo json_encode($__loginTs); ?>; // seconds since epoch
     window.IMPROOV_APP_BASE = <?php echo json_encode(rtrim($__basePath, '/')); ?>;
     window.IMPROOV_WS_URL = <?php
-        // Produção → WSS via reverse-proxy
-        // Local HTTP → WS direto na porta 8082
-        // Local HTTPS → WSS de produção (evita SecurityError do browser)
-        $__wsHost = $_SERVER['HTTP_HOST'] ?? 'improov.com.br';
-        $__isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-                     || (int)($_SERVER['SERVER_PORT'] ?? 80) === 443;
-        $__isProd  = strpos($__wsHost, 'improov.com.br') !== false;
-        if ($__isProd) {
-            echo json_encode('wss://improov.com.br/ws/');
-        } elseif ($__isHttps) {
-            // Ambiente local em HTTPS: aponta para o servidor WS de produção
-            echo json_encode('wss://improov.com.br/ws/');
-        } else {
-            echo json_encode('ws://' . $__wsHost . ':8082');
-        }
-    ?>;
+                            // Produção → WSS via reverse-proxy
+                            // Local HTTP → WS direto na porta 8082
+                            // Local HTTPS → WSS de produção (evita SecurityError do browser)
+                            $__wsHost = $_SERVER['HTTP_HOST'] ?? 'improov.com.br';
+                            $__isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                                || (int)($_SERVER['SERVER_PORT'] ?? 80) === 443;
+                            $__isProd  = strpos($__wsHost, 'improov.com.br') !== false;
+                            if ($__isProd) {
+                                echo json_encode('wss://improov.com.br/ws/');
+                            } elseif ($__isHttps) {
+                                // Ambiente local em HTTPS: aponta para o servidor WS de produção
+                                echo json_encode('wss://improov.com.br/ws/');
+                            } else {
+                                echo json_encode('ws://' . $__wsHost . ':8082');
+                            }
+                            ?>;
 </script>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -118,9 +126,12 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i
                                 class="fa-solid fa-route"></i><span> Flow Track</span></a></li>
                     <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/Colaborador"><i
-                                class="fa-solid fa-users"></i><span> Colaboradores</span></a></li>
-                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
+                                class="fa-solid fa-users"></i><span> Colaboradores</span></a></li>                    <li><a title="Atividade do Sistema" href="https://improov.com.br/flow/ImproovWeb/Atividade"><i
+                                class="fa-solid fa-chart-simple"></i><span> Atividade</span></a></li>                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
                                 class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
+                    <!-- <li><a title="Onboarding Pendente" href="https://improov.com.br/flow/ImproovWeb/Dashboard#onboarding-box"><i
+                                class="fa-solid fa-clipboard-check"></i><span> Onboarding</span><span class="sidebar-badge"
+                                data-module="onboarding" aria-hidden="true"></span></a></li> -->
                     <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i
                                 class="fa-solid fa-sitemap"></i><span> Projetos</span></a></li>
                     <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i
@@ -132,6 +143,8 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
                 <ul class="division">
                     <label for="">Financeiro</label>
+                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
+                                class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <!-- <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li> -->
                     <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i
                                 class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>

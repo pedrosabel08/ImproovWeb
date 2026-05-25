@@ -1,0 +1,1 @@
+ALTER TABLE acompanhamento_email ADD COLUMN metadata JSON NULL;

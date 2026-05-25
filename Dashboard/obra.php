@@ -139,6 +139,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes da Obra</title>
     <link rel="stylesheet" href="<?php echo asset_url('styleObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('onboardingObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('popoverAcomp.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
@@ -149,8 +150,7 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalNotificacoes.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('../Entregas/styleCard.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('../Entregas/styleEntrega.css'); ?>">
+    <!-- <link rel="stylesheet" href="<?php echo asset_url('../Entregas/styleCard.css'); ?>"> -->
     <link rel="stylesheet" href="<?php echo asset_url('../css/briefing_arquivos.css'); ?>">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -294,6 +294,43 @@ $conn->close();
                 </div>
             </div>
         </header>
+
+        <section id="onboardingObraPanel" class="onboarding-obra-panel" hidden>
+            <div class="onboarding-obra-head">
+                <div>
+                    <span class="onboarding-obra-kicker">Onboarding operacional</span>
+                    <h2>Projeto em ativação</h2>
+                    <p>Conclua os itens manuais abaixo para tirar a obra do onboarding e ativar o fluxo normal.</p>
+                </div>
+                <div class="onboarding-obra-progress">
+                    <strong id="onboardingObraProgressLabel">0/5 concluídos</strong>
+                    <div class="onboarding-obra-progressbar">
+                        <span id="onboardingObraProgressFill"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="onboarding-obra-grid">
+                <div class="onboarding-obra-primary">
+                    <div class="onboarding-obra-panel-card onboarding-obra-panel-card-main">
+                        <div class="onboarding-obra-block-head">
+                            <div>
+                                <span class="onboarding-obra-eyebrow">Checklist onboarding</span>
+                                <h3>Pendências obrigatórias antes da produção</h3>
+                            </div>
+                            <span class="onboarding-obra-counter" id="onboardingObraPendingCount">0 pendências</span>
+                        </div>
+                        <div class="onboarding-obra-list" id="onboardingObraChecklist"></div>
+                    </div>
+                </div>
+                <aside class="onboarding-obra-aside">
+                    <div class="onboarding-obra-panel-card" id="onboardingObraStatus"></div>
+                    <div class="onboarding-obra-panel-card" id="onboardingObraSummary"></div>
+                    <div class="onboarding-obra-panel-card" id="onboardingObraPending"></div>
+                </aside>
+            </div>
+        </section>
+
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
             <div class="filtro">
@@ -458,6 +495,7 @@ $conn->close();
                                     <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
                                 </div>
                             </div>
+                            <div id="modalReviewBatches" class="review-batches-panel" style="display:none;"></div>
                             <div>
                                 <div
                                     style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -481,15 +519,23 @@ $conn->close();
 
                 <!-- Modal Selecionar Imagens para Entrega -->
                 <div id="modalSelecionarImagens" class="modal">
-                    <div class="modal-content" style="max-width: 75vh;">
-                        <h2>Selecionar imagens para adicionar à entrega</h2>
-                        <div id="selecionar_imagens_container" class="imagens-container">
-                            <p>Selecione uma entrega para carregar imagens.</p>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title">
+                                <i class="fa-solid fa-images" style="color:var(--accent);margin-right:8px;"></i>Selecionar Imagens
+                            </h2>
+                            <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
                         </div>
-                        <div class="buttons">
-                            <button type="button" class="fecharModal">Fechar</button>
-                            <button type="button" id="btnAdicionarSelecionadas" class="btn-salvar">Adicionar
-                                Selecionadas</button>
+                        <div class="modal-body">
+                            <div id="selecionar_imagens_container" class="imagens-container">
+                                <p style="margin:0;color:var(--text-muted);">Selecione uma entrega para carregar imagens.</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
+                            <button type="button" class="btn-action btn-primary" id="btnAdicionarSelecionadas">
+                                <i class="fa-solid fa-check"></i> Adicionar Selecionadas
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -803,6 +849,10 @@ $conn->close();
                             aria-controls="tab-instrucoes">
                             <i class="fa-solid fa-note-sticky"></i> Instruções
                         </button>
+                        <button class="info-tab" data-tab="contatos" role="tab" aria-selected="false"
+                            aria-controls="tab-contatos">
+                            <i class="fa-solid fa-address-book"></i> Contatos
+                        </button>
                     </nav>
                 </div>
 
@@ -1012,6 +1062,81 @@ $conn->close();
                     </button>
                     <div id="obsCardList" class="obs-card-list">
                         <!-- populado pelo JS -->
+                    </div>
+                </div>
+
+                <!-- TAB: Contatos -->
+                <div id="tab-contatos" class="info-tab-content" role="tabpanel" style="display:none;">
+                    <div id="obraContactsPanel" class="obra-contacts-shell">
+                        <div class="obra-contacts-grid">
+                            <section class="obra-contacts-card">
+                                <div class="obra-contacts-head">
+                                    <div>
+                                        <span class="obra-contacts-eyebrow">Seleção operacional</span>
+                                        <h3>Todos os contatos do cliente</h3>
+                                        <p>Os contatos já vinculados à obra ficam selecionados ao carregar.</p>
+                                    </div>
+                                    <span id="obraContactsCounter" class="obra-contacts-counter">0 selecionado(s)</span>
+                                </div>
+
+                                <div id="obraContactsState" class="obra-contacts-state">Carregando base de contatos da obra...</div>
+                                <div id="obraContactsList" class="obra-contacts-list"></div>
+
+                                <div class="obra-contacts-actions">
+                                    <button type="button" id="obraContactsSaveSelection" class="obra-contacts-btn is-primary">Salvar vínculos</button>
+                                </div>
+                            </section>
+
+                            <section class="obra-contacts-card">
+                                <div class="obra-contacts-head">
+                                    <div>
+                                        <span class="obra-contacts-eyebrow">Cadastro inline</span>
+                                        <h3>Novo contato do cliente</h3>
+                                        <p>Cadastre um contato permanente e já vincule à obra.</p>
+                                    </div>
+                                </div>
+
+                                <div class="obra-contacts-form-grid">
+                                    <div class="obra-contacts-field">
+                                        <label for="obraContactName">Nome</label>
+                                        <input type="text" id="obraContactName" placeholder="Nome completo do contato">
+                                    </div>
+                                    <div class="obra-contacts-field">
+                                        <label for="obraContactRole">Cargo</label>
+                                        <input type="text" id="obraContactRole" placeholder="Cargo ou função">
+                                    </div>
+                                    <div class="obra-contacts-field">
+                                        <label for="obraContactType">Tipo</label>
+                                        <select id="obraContactType">
+                                            <option value="OUTRO">Outro</option>
+                                            <option value="COMERCIAL">Comercial</option>
+                                            <option value="APROVACAO">Aprovação</option>
+                                            <option value="FINANCEIRO">Financeiro</option>
+                                            <option value="MARKETING">Marketing</option>
+                                            <option value="ARQUITETO">Arquiteto</option>
+                                        </select>
+                                    </div>
+                                    <div class="obra-contacts-field">
+                                        <label for="obraContactEmail">E-mail</label>
+                                        <input type="email" id="obraContactEmail" placeholder="email@cliente.com.br">
+                                    </div>
+                                    <div class="obra-contacts-field">
+                                        <label for="obraContactPhone">Telefone</label>
+                                        <input type="text" id="obraContactPhone" placeholder="(11) 99999-9999">
+                                    </div>
+                                    <div class="obra-contacts-field obra-contacts-field-span-3">
+                                        <label for="obraContactNotes">Observações</label>
+                                        <textarea id="obraContactNotes" rows="3" placeholder="Observações operacionais do contato"></textarea>
+                                    </div>
+                                </div>
+
+                                <p id="obraContactsNewState" class="obra-contacts-state is-inline">O cadastro é reutilizável e entra ativo na obra.</p>
+
+                                <div class="obra-contacts-actions">
+                                    <button type="button" id="obraContactsAdd" class="obra-contacts-btn is-secondary">Cadastrar contato</button>
+                                </div>
+                            </section>
+                        </div>
                     </div>
                 </div>
 
@@ -2502,6 +2627,8 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script src="<?php echo asset_url('../assets/js/upload-ws.js'); ?>"></script>
     <script src="<?php echo asset_url('scriptObra.js'); ?>"></script>
+    <script src="<?php echo asset_url('onboardingObra.js'); ?>"></script>
+    <script src="<?php echo asset_url('obraContacts.js'); ?>"></script>
     <script src="<?php echo asset_url('../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>

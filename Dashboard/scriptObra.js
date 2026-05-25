@@ -3404,7 +3404,7 @@ function infosObra(obraId) {
         imagens++;
 
         if (Boolean(parseInt(item.antecipada))) {
-          cellNomeImagem.style.backgroundColor = "#ff9d00";
+          cellNomeImagem.classList.add("cell-antecipada");
           antecipada++;
         }
 
@@ -3594,8 +3594,7 @@ function infosObra(obraId) {
           ) {
             applyStatusStyle(cellColaborador, status, colaborador);
           } else {
-            cellColaborador.style.backgroundColor = "";
-            cellColaborador.style.color = "";
+            cellColaborador.classList.remove(..._FC_ALL_CLASSES);
           }
 
           ci++;
@@ -5122,69 +5121,64 @@ document.addEventListener("DOMContentLoaded", function () {
   if (clearBtn) clearBtn.addEventListener("click", clearFilters);
 });
 
+const _FC_ALL_CLASSES = [
+  "fc-status-finalizado",
+  "fc-status-andamento",
+  "fc-status-aprovacao",
+  "fc-status-aprovado",
+  "fc-status-ajuste",
+  "fc-status-ajuste-apts",
+  "fc-status-nao-iniciado",
+  "fc-status-hold",
+  "fc-status-nao-aplica",
+];
+
 function applyStatusStyle(cell, status, colaborador) {
   if (colaborador === "Não se aplica") {
     return;
   }
-
+  cell.classList.remove(..._FC_ALL_CLASSES);
   switch (status) {
     case "Finalizado":
-      cell.style.backgroundColor = "green";
-      cell.style.color = "white";
+      cell.classList.add("fc-status-finalizado");
       break;
     case "Em andamento":
-      cell.style.backgroundColor = "#f7eb07";
-      cell.style.color = "black";
+      cell.classList.add("fc-status-andamento");
       break;
     case "Em aprovação":
-      cell.style.backgroundColor = "#0c45f2";
-      cell.style.color = "white";
+      cell.classList.add("fc-status-aprovacao");
       break;
     case "Aprovado":
-      cell.style.backgroundColor = "lightseagreen";
-      cell.style.color = "black";
+      cell.classList.add("fc-status-aprovado");
       break;
     case "Ajuste":
-      cell.style.backgroundColor = "orangered";
-      cell.style.color = "black";
+      cell.classList.add("fc-status-ajuste");
       break;
     case "Aprovado com ajustes":
-      cell.style.backgroundColor = "mediumslateblue";
-      cell.style.color = "black";
+      cell.classList.add("fc-status-ajuste-apts");
       break;
     case "Não iniciado":
-      cell.style.backgroundColor = "#eeeeeeff";
-      cell.style.color = "black";
+      cell.classList.add("fc-status-nao-iniciado");
       break;
     case "HOLD":
-      cell.style.backgroundColor = "#ff0000ff";
-      cell.style.color = "black";
+      cell.classList.add("fc-status-hold");
       break;
-    default:
-      cell.style.backgroundColor = "";
-      cell.style.color = "";
   }
 }
 
 function applyStyleNone(cell, cell2, nome) {
   if (nome === "Não se aplica") {
     if (cell) {
-      cell.style.backgroundColor = "#b4b4b4";
-      cell.style.color = "black";
+      cell.classList.remove(..._FC_ALL_CLASSES);
+      cell.classList.add("fc-status-nao-aplica");
     }
     if (cell2) {
-      cell2.style.backgroundColor = "#b4b4b4";
-      cell2.style.color = "black";
+      cell2.classList.remove(..._FC_ALL_CLASSES);
+      cell2.classList.add("fc-status-nao-aplica");
     }
   } else {
-    if (cell) {
-      cell.style.backgroundColor = "";
-      cell.style.color = "";
-    }
-    if (cell2) {
-      cell2.style.backgroundColor = "";
-      cell2.style.color = "";
-    }
+    if (cell) cell.classList.remove("fc-status-nao-aplica");
+    if (cell2) cell2.classList.remove("fc-status-nao-aplica");
   }
 }
 

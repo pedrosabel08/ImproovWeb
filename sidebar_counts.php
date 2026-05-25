@@ -4,6 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE)
     session_start();
 
 require_once __DIR__ . '/conexao.php';
+require_once __DIR__ . '/Dashboard/onboarding_helpers.php';
 
 // Basic auth check: require logged collaborator
 $userId = isset($_SESSION['idcolaborador']) ? intval($_SESSION['idcolaborador']) : null;
@@ -34,6 +35,12 @@ if ($res) {
         $counts_by_obra[$obra] = $count;
         $total_ready += $count;
     }
+}
+
+$onboarding_progress = dashboard_get_onboarding_progress($conn);
+$onboarding_pending_total = 0;
+foreach ($onboarding_progress as $obra_progress) {
+    $onboarding_pending_total += max(0, (int) ($obra_progress['pending_items'] ?? 0));
 }
 
 // ── Pós-Produção: status_pos = 1 = "Não começou" ──────────────────────────────
@@ -100,7 +107,7 @@ if ($stmt_fr) {
 
 $pre_alt_analise_count = 0;
 // ── Pré-Alteração: imagens aguardando análise (substatus 10) ──────────────────
-if ($userId = 1) {
+if ($userId == 1) {
     $res_pa = $conn->query(
         "SELECT COUNT(DISTINCT obra_id) AS cnt FROM imagens_cliente_obra WHERE substatus_id = 10"
     );
@@ -108,7 +115,7 @@ if ($userId = 1) {
 }
 
 // ── Pré-Alteração: imagens aguardando planejamento (substatus 12) ──────────────────
-if ($userId = 21) {
+if ($userId == 21) {
     $res_pa = $conn->query(
         "SELECT COUNT(DISTINCT obra_id) AS cnt FROM imagens_cliente_obra WHERE substatus_id = 12"
     );
@@ -117,6 +124,7 @@ if ($userId = 21) {
 
 $modules = [
     'entregas' => $total_ready,
+    'onboarding' => $onboarding_pending_total,
     'pos_producao' => $pos_count,
     'render' => $render_count,
     'flow_review' => $flow_review_count,

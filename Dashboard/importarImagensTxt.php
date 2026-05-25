@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Content-Type: application/json; charset=utf-8');
 
-session_start();
+// session_start();
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     http_response_code(401);

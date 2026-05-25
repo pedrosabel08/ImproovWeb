@@ -4,6 +4,8 @@ header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 
+require_once __DIR__ . '/../contact_architecture.php';
+
 // Conectar ao banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
@@ -15,60 +17,42 @@ $conn->set_charset('utf8mb4');
 
 // Verificar se os dados foram enviados via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Obter os dados do POST
-    $idcontato = isset($_POST['idcontato']) ? $_POST['idcontato'] : null; // ID do contato para verificar se já existe
-    $idcliente = isset($_POST['idcliente']) ? $_POST['idcliente'] : null; // ID do cliente associado
-    $email = $_POST['email'];
-    $nome_contato = $_POST['nome_contato'];
-    $cargo = $_POST['cargo'];
+    $idcontato = isset($_POST['idcontato']) ? (int) $_POST['idcontato'] : 0;
+    $idcliente = isset($_POST['idcliente']) ? (int) $_POST['idcliente'] : 0;
 
-    // Se o idcontato for enviado, faz o UPDATE
-    if ($idcontato) {
-        $sql = "UPDATE contato_cliente 
-                SET email = ?, nome_contato = ?, cargo = ? 
-                WHERE idcontato = ?";
+    $contact = [
+        'name' => $_POST['nome_contato'] ?? '',
+        'email' => $_POST['email'] ?? '',
+        'role' => $_POST['cargo'] ?? '',
+        'type' => $_POST['tipo'] ?? 'OUTRO',
+        'notes' => $_POST['observacoes'] ?? '',
+        'phone' => $_POST['telefone'] ?? '',
+    ];
 
-        // Preparar a consulta
-        $stmt = $conn->prepare($sql);
+    try {
+        if ($idcontato > 0) {
+            $existing = contact_arch_fetch_contact_row($conn, $idcontato);
+            if (!$existing) {
+                throw new RuntimeException('Contato nao encontrado para atualizacao.');
+            }
 
-        // Verificar se a preparação falhou
-        if (!$stmt) {
-            die("Erro na preparação da consulta: " . $conn->error);
-        }
+            if ($idcliente <= 0) {
+                $idcliente = (int) ($existing['cliente_id'] ?? 0);
+            }
 
-        // Bind dos parâmetros (adicionando o idcontato no final)
-        $stmt->bind_param("sssi", $email, $nome_contato, $cargo, $idcontato);
-
-        // Executar o UPDATE
-        if ($stmt->execute()) {
+            contact_arch_update_client_contact_by_id($conn, $idcontato, $contact);
             echo "Dados atualizados com sucesso!";
         } else {
-            echo "Erro ao atualizar dados: " . $stmt->error;
-        }
-    } else {
-        // Se não houver idcontato, faz o INSERT
-        $sql = "INSERT INTO contato_cliente (email, nome_contato, cargo, cliente_id) 
-                VALUES (?, ?, ?, ?)";
+            if ($idcliente <= 0) {
+                throw new RuntimeException('Cliente invalido para inserir contato.');
+            }
 
-        // Preparar a consulta
-        $stmt = $conn->prepare($sql);
-
-        // Verificar se a preparação falhou
-        if (!$stmt) {
-            die("Erro na preparação da consulta: " . $conn->error);
-        }
-
-        // Bind dos parâmetros
-        $stmt->bind_param("sssi", $email, $nome_contato, $cargo, $idcliente);
-
-        // Executar o INSERT
-        if ($stmt->execute()) {
+            contact_arch_save_client_contact($conn, $idcliente, $contact);
             echo "Dados inseridos com sucesso!";
-        } else {
-            echo "Erro ao inserir dados: " . $stmt->error;
         }
+    } catch (Throwable $throwable) {
+        echo "Erro ao salvar dados: " . $throwable->getMessage();
     }
 
-    $stmt->close();
     $conn->close();
 }

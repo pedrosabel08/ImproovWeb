@@ -11,6 +11,9 @@
     saveSelection: document.getElementById("obraContactsSaveSelection"),
     newState: document.getElementById("obraContactsNewState"),
     add: document.getElementById("obraContactsAdd"),
+    cancel: document.getElementById("obraContactsCancel"),
+    formEyebrow: document.getElementById("obraContactsFormEyebrow"),
+    formTitle: document.getElementById("obraContactsFormTitle"),
     name: document.getElementById("obraContactName"),
     role: document.getElementById("obraContactRole"),
     type: document.getElementById("obraContactType"),
@@ -49,6 +52,8 @@
     available: [],
     selectedIds: [],
     form: defaultContact(),
+    formMode: "add",
+    editingContactId: null,
   };
 
   function defaultContact() {
@@ -215,10 +220,25 @@
               </div>
           <div class="obra-contact-option-side">
             <span class="obra-contact-pill">${escapeHtml(contactTypeLabel(contact.type || "OUTRO"))}</span>
+            ${state.canManageRegistration ? `<button type="button" class="obra-contact-edit-btn" data-contact-edit="${contactId}" title="Editar contato"><i class="fa-solid fa-pencil" aria-hidden="true"></i></button>` : ""}
           </div>
           </label>`;
       })
       .join("");
+
+    if (state.canManageRegistration) {
+      elements.list.querySelectorAll("[data-contact-edit]").forEach((btn) => {
+        btn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          const cId = Number(btn.dataset.contactEdit || 0);
+          const found = state.available.find((c) => Number(c.contact_id) === cId);
+          if (found) {
+            enterEditMode(found);
+          }
+        });
+      });
+    }
 
     syncFormFields();
   }
@@ -359,6 +379,108 @@
     }
   }
 
+  function updateFormCardHead() {
+    const isEditing = state.formMode === "edit";
+    if (elements.formEyebrow) {
+      elements.formEyebrow.textContent = isEditing ? "Editando contato" : "Cadastro inline";
+      elements.formEyebrow.classList.toggle("is-edit", isEditing);
+    }
+    if (elements.formTitle) {
+      if (isEditing) {
+        const editing = state.available.find(
+          (c) => Number(c.contact_id) === state.editingContactId
+        );
+        elements.formTitle.textContent = editing ? editing.name : "Editar contato";
+      } else {
+        elements.formTitle.textContent = "Novo contato do cliente";
+      }
+    }
+    if (elements.add) {
+      elements.add.textContent = isEditing ? "Salvar alterações" : "Cadastrar contato";
+      elements.add.classList.toggle("is-primary", isEditing);
+      elements.add.classList.toggle("is-secondary", !isEditing);
+    }
+    if (elements.cancel) {
+      elements.cancel.hidden = !isEditing;
+    }
+    if (registrationCard) {
+      registrationCard.classList.toggle("obra-contacts-card--edit-mode", isEditing);
+    }
+  }
+
+  function enterEditMode(contact) {
+    state.formMode = "edit";
+    state.editingContactId = Number(contact.contact_id || 0);
+    state.form = {
+      name: String(contact.name || ""),
+      role: String(contact.role || ""),
+      type: String(contact.type || "OUTRO"),
+      email: String(contact.email || ""),
+      phone: String(contact.phone || ""),
+      notes: String(contact.notes || ""),
+    };
+    syncFormFields();
+    updateFormCardHead();
+    if (registrationCard) {
+      registrationCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  function exitEditMode() {
+    state.formMode = "add";
+    state.editingContactId = null;
+    state.form = defaultContact();
+    syncFormFields();
+    updateFormCardHead();
+  }
+
+  async function updateContact() {
+    if (!state.editingContactId || !state.architectureReady) {
+      return;
+    }
+    if (!state.canManageRegistration) {
+      notify("Sem permissao para editar contatos.", "error");
+      return;
+    }
+    const payload = contactPayload(state.form);
+    if (!payload.name) {
+      notify("Informe o nome do contato.", "error");
+      return;
+    }
+    elements.add.disabled = true;
+    if (elements.cancel) {
+      elements.cancel.disabled = true;
+    }
+    try {
+      const response = await fetch("updateClienteContact.php", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact_id: state.editingContactId,
+          contact: payload,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.success) {
+        throw new Error(
+          data && data.message ? data.message : "Erro ao atualizar contato."
+        );
+      }
+      notify("Contato atualizado com sucesso.");
+      exitEditMode();
+      await fetchContacts();
+    } catch (error) {
+      console.error(error);
+      notify(error.message || "Erro ao atualizar contato.", "error");
+    } finally {
+      elements.add.disabled = false;
+      if (elements.cancel) {
+        elements.cancel.disabled = false;
+      }
+    }
+  }
+
   state.obraId = resolveObraId();
   state.canManageRegistration = canManageRegistration();
 
@@ -402,7 +524,16 @@
   });
 
   elements.saveSelection.addEventListener("click", saveSelection);
-  elements.add.addEventListener("click", saveNewContact);
+  elements.add.addEventListener("click", () => {
+    if (state.formMode === "edit") {
+      updateContact();
+    } else {
+      saveNewContact();
+    }
+  });
+  if (elements.cancel) {
+    elements.cancel.addEventListener("click", exitEditMode);
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", fetchContacts);

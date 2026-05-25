@@ -1090,8 +1090,8 @@ $conn->close();
                             <section class="obra-contacts-card">
                                 <div class="obra-contacts-head">
                                     <div>
-                                        <span class="obra-contacts-eyebrow">Cadastro inline</span>
-                                        <h3>Novo contato do cliente</h3>
+                                        <span class="obra-contacts-eyebrow" id="obraContactsFormEyebrow">Cadastro inline</span>
+                                        <h3 id="obraContactsFormTitle">Novo contato do cliente</h3>
                                         <p>Cadastre um contato permanente e já vincule à obra.</p>
                                     </div>
                                 </div>
@@ -1133,6 +1133,7 @@ $conn->close();
                                 <p id="obraContactsNewState" class="obra-contacts-state is-inline">O cadastro é reutilizável e entra ativo na obra.</p>
 
                                 <div class="obra-contacts-actions">
+                                    <button type="button" id="obraContactsCancel" class="obra-contacts-btn is-ghost" hidden>Cancelar</button>
                                     <button type="button" id="obraContactsAdd" class="obra-contacts-btn is-secondary">Cadastrar contato</button>
                                 </div>
                             </section>

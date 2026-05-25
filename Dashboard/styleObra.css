@@ -584,88 +584,88 @@ input:checked + .slider:before {
 
 /* Paleta de cores por subtipo_id */
 .subtipo-badge--1 {
-  background-color: rgba(37, 99, 235, 0.18);
+  background-color: rgba(37, 99, 235, 0.80);
   color: #93c5fd;
 }
 .subtipo-badge--2 {
-  background-color: rgba(109, 40, 217, 0.18);
+  background-color: rgba(109, 40, 217, 0.80);
   color: #c4b5fd;
 }
 .subtipo-badge--3 {
-  background-color: rgba(21, 128, 61, 0.18);
+  background-color: rgba(21, 128, 61, 0.80);
   color: #86efac;
 }
 .subtipo-badge--4 {
-  background-color: rgba(194, 65, 12, 0.18);
+  background-color: rgba(194, 65, 12, 0.80);
   color: #fdba74;
 }
 .subtipo-badge--5 {
-  background-color: rgba(190, 24, 93, 0.18);
+  background-color: rgba(190, 24, 93, 0.80);
   color: #f9a8d4;
 }
 .subtipo-badge--6 {
-  background-color: rgba(15, 118, 110, 0.18);
+  background-color: rgba(15, 118, 110, 0.80);
   color: #5eead4;
 }
 .subtipo-badge--7 {
-  background-color: rgba(161, 98, 7, 0.18);
+  background-color: rgba(161, 98, 7, 0.80);
   color: #fde047;
 }
 .subtipo-badge--8 {
-  background-color: rgba(67, 56, 202, 0.18);
+  background-color: rgba(67, 56, 202, 0.80);
   color: #a5b4fc;
 }
 .subtipo-badge--9 {
-  background-color: rgba(22, 101, 52, 0.18);
+  background-color: rgba(22, 101, 52, 0.80);
   color: #86efac;
 }
 /* Paleta de cores por subtipo_id */
 .subtipo-badge--10 {
-  background-color: rgba(37, 99, 235, 0.18);
+  background-color: rgba(37, 99, 235, 0.80);
   color: #93c5fd;
 }
 .subtipo-badge--11 {
-  background-color: rgba(109, 40, 217, 0.18);
+  background-color: rgba(109, 40, 217, 0.80);
   color: #c4b5fd;
 }
 .subtipo-badge--12 {
-  background-color: rgba(21, 128, 61, 0.18);
+  background-color: rgba(21, 128, 61, 0.80);
   color: #86efac;
 }
 .subtipo-badge--13 {
-  background-color: rgba(194, 65, 12, 0.18);
+  background-color: rgba(194, 65, 12, 0.80);
   color: #fdba74;
 }
 .subtipo-badge--14 {
-  background-color: rgba(190, 24, 93, 0.18);
+  background-color: rgba(190, 24, 93, 0.80);
   color: #f9a8d4;
 }
 .subtipo-badge--15 {
-  background-color: rgba(15, 118, 110, 0.18);
+  background-color: rgba(15, 118, 110, 0.80);
   color: #5eead4;
 }
 .subtipo-badge--16 {
-  background-color: rgba(161, 98, 7, 0.18);
+  background-color: rgba(161, 98, 7, 0.80);
   color: #fde047;
 }
 .subtipo-badge--17 {
-  background-color: rgba(67, 56, 202, 0.18);
+  background-color: rgba(67, 56, 202, 0.80);
   color: #a5b4fc;
 }
 .subtipo-badge--18 {
-  background-color: rgba(22, 101, 52, 0.18);
+  background-color: rgba(22, 101, 52, 0.80);
   color: #86efac;
 }
 .subtipo-badge--19 {
-  background-color: rgba(37, 99, 235, 0.18);
+  background-color: rgba(37, 99, 235, 0.80);
   color: #93c5fd;
 }
 .subtipo-badge--20 {
-  background-color: rgba(109, 40, 217, 0.18);
+  background-color: rgba(109, 40, 217, 0.80);
   color: #c4b5fd;
 }
 .subtipo-badge--21 {
-  background-color: rgba(21, 128, 61, 0.18);
+  background-color: rgba(21, 128, 61, 0.80);
   color: #86efac;
 }
 
@@ -3854,10 +3854,68 @@ span#obras_finalizadas {
   color: #cbd5e1;
 }
 
+.obra-contacts-btn.is-ghost {
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.2);
+  color: rgba(148, 163, 184, 0.8);
+}
+
+.obra-contacts-btn.is-ghost:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.36);
+  color: #cbd5e1;
+  filter: none;
+  transform: translateY(-1px);
+}
+
 .obra-contacts-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   filter: brightness(1.04);
   border-color: rgba(109, 155, 255, 0.34);
+}
+
+.obra-contacts-card--edit-mode {
+  border-color: rgba(245, 158, 11, 0.32);
+  box-shadow:
+    inset 3px 0 0 rgba(245, 158, 11, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.obra-contacts-eyebrow.is-edit {
+  background: rgba(245, 158, 11, 0.1);
+  color: rgba(251, 191, 36, 0.92);
+}
+
+.obra-contact-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 7px;
+  background: rgba(245, 158, 11, 0.06);
+  color: rgba(251, 191, 36, 0.7);
+  font-size: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.obra-contact-option:hover .obra-contact-edit-btn {
+  opacity: 1;
+}
+
+.obra-contact-edit-btn:hover {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.42);
+  color: #fbbf24;
 }
 
 .obra-contacts-btn:disabled {

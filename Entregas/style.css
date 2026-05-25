@@ -1688,3 +1688,60 @@ option.colab-busy {
     justify-content: flex-start;
   }
 }
+
+/* ===== Copy path row (#entregaModal) ===== */
+#entregaModal .modal-caminho-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+}
+#entregaModal .caminho-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#entregaModal .caminho-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+#entregaModal .caminho-text {
+  font-size: 11px;
+  font-family: "Menlo", "Consolas", monospace;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  background: none;
+}
+#entregaModal .btn-copiar-caminho {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+#entregaModal .btn-copiar-caminho:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}

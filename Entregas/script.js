@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalPrazo = document.getElementById("modalPrazo");
   const modalProgresso = document.getElementById("modalProgresso");
   const modalReviewBatches = document.getElementById("modalReviewBatches");
+  const modalCaminhoTexto = document.getElementById("modalCaminhoTexto");
   const modalImagens = document.getElementById("modalImagens");
 
   // global store of fetched entregas so we can filter client-side
@@ -926,6 +927,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return isEntregue;
       }).length;
       modalProgresso.textContent = `${finalizedCount} / ${data.itens.length} finalizadas`;
+      if (modalCaminhoTexto) {
+        const caminho = `Z:\\2025\\${data.nomenclatura || ""}\\04.Finalizacao\\${data.nome_etapa || ""}`;
+        modalCaminhoTexto.textContent = caminho;
+      }
       renderReviewBatchPanel(data);
 
       modalImagens.innerHTML = "";
@@ -1432,6 +1437,32 @@ document.addEventListener("DOMContentLoaded", () => {
       e.dataTransfer.setData("text/plain", e.target.dataset.id);
     }
   });
+  // --- COPIAR CAMINHO ---
+  const btnCopiarCaminho = document.getElementById("btnCopiarCaminho");
+  if (btnCopiarCaminho) {
+    btnCopiarCaminho.addEventListener("click", () => {
+      const txt = modalCaminhoTexto ? modalCaminhoTexto.textContent : "";
+      if (!txt || txt === "—") return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => {
+          const icon = btnCopiarCaminho.querySelector("i");
+          if (icon) {
+            icon.className = "fa-solid fa-check";
+            setTimeout(() => { icon.className = "fa-regular fa-copy"; }, 1500);
+          }
+        });
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.style.cssText = "position:fixed;opacity:0;pointer-events:none;";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+    });
+  }
+
   // --- ADICIONAR IMAGEM: abrir modal de seleção pré-filtrada ---
   const btnAdicionarImagem = document.getElementById("btnAdicionarImagem");
   const modalSelecionar = document.getElementById("modalSelecionarImagens");

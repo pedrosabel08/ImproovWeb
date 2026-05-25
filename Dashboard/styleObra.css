@@ -584,88 +584,88 @@ input:checked + .slider:before {
 
 /* Paleta de cores por subtipo_id */
 .subtipo-badge--1 {
-  background-color: rgba(37, 99, 235, 0.80);
+  background-color: rgba(37, 99, 235, 0.8);
   color: #93c5fd;
 }
 .subtipo-badge--2 {
-  background-color: rgba(109, 40, 217, 0.80);
+  background-color: rgba(109, 40, 217, 0.8);
   color: #c4b5fd;
 }
 .subtipo-badge--3 {
-  background-color: rgba(21, 128, 61, 0.80);
+  background-color: rgba(21, 128, 61, 0.8);
   color: #86efac;
 }
 .subtipo-badge--4 {
-  background-color: rgba(194, 65, 12, 0.80);
+  background-color: rgba(194, 65, 12, 0.8);
   color: #fdba74;
 }
 .subtipo-badge--5 {
-  background-color: rgba(190, 24, 93, 0.80);
+  background-color: rgba(190, 24, 93, 0.8);
   color: #f9a8d4;
 }
 .subtipo-badge--6 {
-  background-color: rgba(15, 118, 110, 0.80);
+  background-color: rgba(15, 118, 110, 0.8);
   color: #5eead4;
 }
 .subtipo-badge--7 {
-  background-color: rgba(161, 98, 7, 0.80);
+  background-color: rgba(161, 98, 7, 0.8);
   color: #fde047;
 }
 .subtipo-badge--8 {
-  background-color: rgba(67, 56, 202, 0.80);
+  background-color: rgba(67, 56, 202, 0.8);
   color: #a5b4fc;
 }
 .subtipo-badge--9 {
-  background-color: rgba(22, 101, 52, 0.80);
+  background-color: rgba(22, 101, 52, 0.8);
   color: #86efac;
 }
 /* Paleta de cores por subtipo_id */
 .subtipo-badge--10 {
-  background-color: rgba(37, 99, 235, 0.80);
+  background-color: rgba(37, 99, 235, 0.8);
   color: #93c5fd;
 }
 .subtipo-badge--11 {
-  background-color: rgba(109, 40, 217, 0.80);
+  background-color: rgba(109, 40, 217, 0.8);
   color: #c4b5fd;
 }
 .subtipo-badge--12 {
-  background-color: rgba(21, 128, 61, 0.80);
+  background-color: rgba(21, 128, 61, 0.8);
   color: #86efac;
 }
 .subtipo-badge--13 {
-  background-color: rgba(194, 65, 12, 0.80);
+  background-color: rgba(194, 65, 12, 0.8);
   color: #fdba74;
 }
 .subtipo-badge--14 {
-  background-color: rgba(190, 24, 93, 0.80);
+  background-color: rgba(190, 24, 93, 0.8);
   color: #f9a8d4;
 }
 .subtipo-badge--15 {
-  background-color: rgba(15, 118, 110, 0.80);
+  background-color: rgba(15, 118, 110, 0.8);
   color: #5eead4;
 }
 .subtipo-badge--16 {
-  background-color: rgba(161, 98, 7, 0.80);
+  background-color: rgba(161, 98, 7, 0.8);
   color: #fde047;
 }
 .subtipo-badge--17 {
-  background-color: rgba(67, 56, 202, 0.80);
+  background-color: rgba(67, 56, 202, 0.8);
   color: #a5b4fc;
 }
 .subtipo-badge--18 {
-  background-color: rgba(22, 101, 52, 0.80);
+  background-color: rgba(22, 101, 52, 0.8);
   color: #86efac;
 }
 .subtipo-badge--19 {
-  background-color: rgba(37, 99, 235, 0.80);
+  background-color: rgba(37, 99, 235, 0.8);
   color: #93c5fd;
 }
 .subtipo-badge--20 {
-  background-color: rgba(109, 40, 217, 0.80);
+  background-color: rgba(109, 40, 217, 0.8);
   color: #c4b5fd;
 }
 .subtipo-badge--21 {
-  background-color: rgba(21, 128, 61, 0.80);
+  background-color: rgba(21, 128, 61, 0.8);
   color: #86efac;
 }
 
@@ -2525,6 +2525,66 @@ option.colab-busy {
   flex-direction: column;
   overflow: hidden;
   animation: entregaModalIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ===== Copy path row (#entregaModal) ===== */
+#entregaModal .modal-caminho-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+}
+#entregaModal .caminho-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#entregaModal .caminho-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+#entregaModal .caminho-text {
+  font-size: 11px;
+  font-family: "Menlo", "Consolas", monospace;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  background: none;
+}
+#entregaModal .btn-copiar-caminho {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+#entregaModal .btn-copiar-caminho:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 /* Responsive tweak: stack KPIs vertically on small screens */

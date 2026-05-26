@@ -5226,7 +5226,7 @@ async function carregarOverview() {
     if (tbody) {
       tbody.innerHTML = dadosProd
         .map((row) => {
-          const qtd = parseInt(row.quantidade) || 0;
+          const qtd = parseInt(row.nao_pagas) || 0;
           const recorde = parseInt(row.recorde_producao) || 0;
           const bateRecorde = !!row.bate_recorde && recorde > 0;
           if (bateRecorde) {

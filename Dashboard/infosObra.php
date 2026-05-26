@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/planned_function_helpers.php';
 
 header('Content-Type: application/json');
 
@@ -294,6 +295,43 @@ try {
 }
 
 $response['imagens'] = $imagens;
+
+$queueDataset = dashboard_fetch_planned_queue_dataset($conn, $obraId);
+$queueByImage = [];
+foreach (($queueDataset['groups'] ?? []) as $queueGroup) {
+    foreach (($queueGroup['images'] ?? []) as $queueImage) {
+        $queueByImage[(int) ($queueImage['imagem_id'] ?? 0)] = $queueImage;
+    }
+}
+
+foreach ($response['imagens'] as &$imageRow) {
+    $queueRow = $queueByImage[(int) ($imageRow['imagem_id'] ?? 0)] ?? null;
+    $imageRow['fila_planejada_todo'] = (int) ($queueRow['fila_planejada'] ?? 0);
+    $imageRow['fila_execucao_pendente'] = (int) ($queueRow['fila_execucao'] ?? 0);
+    $imageRow['fila_total_operacional'] = $imageRow['fila_planejada_todo'] + $imageRow['fila_execucao_pendente'];
+
+    // Funcao_ids planejadas mas sem funcao_imagem criada (para badge de alerta na tabela)
+    $unlinked = [];
+    foreach (($queueRow['planned'] ?? []) as $plannedRow) {
+        if (empty($plannedRow['funcao_imagem_id'])) {
+            $fid = (int) ($plannedRow['funcao_id'] ?? 0);
+            if ($fid > 0) {
+                $unlinked[$fid] = true;
+            }
+        }
+    }
+    $imageRow['planned_unlinked_funcoes'] = array_keys($unlinked);
+}
+unset($imageRow);
+
+$response['fila_operacional'] = $queueDataset['summary'] ?? [
+    'planning_ready' => false,
+    'planned_todo' => 0,
+    'execution_pending' => 0,
+    'total_backlog' => 0,
+    'images_without_planning' => 0,
+    'images_without_template' => 0,
+];
 
 $stmtImagens->close();
 

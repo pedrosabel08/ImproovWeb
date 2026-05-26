@@ -7,6 +7,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/planned_function_helpers.php';
 
 // Verifica conexão
 if (!isset($conn) || !$conn) {
@@ -97,11 +98,24 @@ foreach ($data as $idx => $image) {
         continue;
     }
 
+    $conn->begin_transaction();
+
     if (!$stmt->execute()) {
+        $conn->rollback();
         $errors[] = "execute falhou no item $idx (id $idimagem): " . $stmt->error;
         $success = false;
         continue;
     }
+
+    $planning = dashboard_insert_planned_functions_for_image($conn, $idimagem, (string) $tipo_imagem);
+    if (!$planning['success']) {
+        $conn->rollback();
+        $errors[] = "planejamento falhou no item $idx (id $idimagem): " . (string) ($planning['message'] ?? $planning['reason'] ?? 'erro desconhecido');
+        $success = false;
+        continue;
+    }
+
+    $conn->commit();
 }
 
 // Fecha a consulta e a conexão

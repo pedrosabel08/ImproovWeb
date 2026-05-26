@@ -18,6 +18,7 @@ if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
 }
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/planned_function_helpers.php';
 
 if (!isset($conn) || !$conn) {
     http_response_code(500);
@@ -332,12 +333,27 @@ for ($i = $offset; $i < count($lines); $i++) {
     $tipoImagem = detect_tipo_imagem($imagemNome);
     if ($tipoImagem === '') $tipoImagem = 'Desconhecido';
 
+    $conn->begin_transaction();
     $stmt->bind_param('iiss', $clienteId, $obraId, $imagemNome, $tipoImagem);
     if (!$stmt->execute()) {
+        $conn->rollback();
         $erros[] = ['linha' => $i + 1, 'erro' => $stmt->error];
         continue;
     }
 
+    $imageId = (int) $conn->insert_id;
+    $planning = dashboard_insert_planned_functions_for_image($conn, $imageId, $tipoImagem);
+    if (!$planning['success']) {
+        $conn->rollback();
+        $erros[] = [
+            'linha' => $i + 1,
+            'erro' => 'Falha ao gerar planejamento: ' . (string) ($planning['message'] ?? $planning['reason'] ?? 'erro desconhecido'),
+            'imagem' => $imagemNome,
+        ];
+        continue;
+    }
+
+    $conn->commit();
     $inseridas++;
 }
 

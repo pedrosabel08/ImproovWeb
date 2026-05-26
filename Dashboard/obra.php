@@ -559,6 +559,7 @@ $conn->close();
                     </button>
                     <div id="actionsMenu" class="actions-menu-dropdown" aria-hidden="true">
                         <button id="editImagesBtn" class="action-item">Editar Imagens</button>
+                        <button id="plannedQueueBtn" class="action-item">Fila Operacional</button>
                         <button id="addImagem" class="action-item">Adicionar Imagem</button>
                         <?php if ($nivel_acesso === 1): ?>
                             <button id="importTxtBtn" class="action-item">Importar Imagens (TXT)</button>
@@ -691,6 +692,97 @@ $conn->close();
                         </div>
                     </div>
                     <div id="imageList"></div>
+                </div>
+            </div>
+
+            <div id="plannedQueueModal" class="modal">
+                <div class="planned-queue-shell modal-content modal-wide">
+                    <div class="modal-header planned-queue-header">
+                        <div>
+                            <h2 class="modal-title">Fila Operacional</h2>
+                            <p class="planned-queue-subtitle">Gerencie funções planejadas por tipo e por imagem.</p>
+                        </div>
+                        <button type="button" class="modal-close" id="plannedQueueCloseBtn" aria-label="Fechar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="modal-body planned-queue-body">
+                        <div class="planned-queue-summary" id="plannedQueueSummaryCards">
+                            <div class="planned-summary-card">
+                                <span class="planned-summary-label">Fila Planejada</span>
+                                <strong id="plannedSummaryTodo">0</strong>
+                            </div>
+                            <div class="planned-summary-card">
+                                <span class="planned-summary-label">Execução Pendente</span>
+                                <strong id="plannedSummaryExecution">0</strong>
+                            </div>
+                            <div class="planned-summary-card">
+                                <span class="planned-summary-label">Fila Total</span>
+                                <strong id="plannedSummaryTotal">0</strong>
+                            </div>
+                            <div class="planned-summary-card planned-summary-card--warn">
+                                <span class="planned-summary-label">Sem Planejamento</span>
+                                <strong id="plannedSummaryNoPlanning">0</strong>
+                            </div>
+                        </div>
+
+                        <div id="plannedQueueNotice" class="planned-queue-notice" style="display:none;"></div>
+
+                        <div class="planned-view-filter">
+                            <label class="planned-checkbox-inline">
+                                <input type="checkbox" id="plannedPendingFilter" checked>
+                                <span>Exibir apenas imagens que precisam de planejamento</span>
+                            </label>
+                        </div>
+
+                        <div class="planned-queue-toolbar">
+                            <label class="planned-field">
+                                <span>Tipo Exibido</span>
+                                <select id="plannedTypeFilter"></select>
+                            </label>
+
+                            <label class="planned-field">
+                                <span>Função</span>
+                                <select id="plannedBatchFunction"></select>
+                            </label>
+
+                            <label class="planned-field planned-field--small">
+                                <span>Ordem</span>
+                                <input type="number" id="plannedBatchOrder" min="1" step="1" value="10">
+                            </label>
+
+                            <label class="planned-field">
+                                <span>Responsável Sugerido</span>
+                                <select id="plannedBatchResponsible">
+                                    <option value="">Sem sugestão</option>
+                                </select>
+                            </label>
+
+                            <label class="planned-checkbox-inline">
+                                <input type="checkbox" id="plannedBatchOptional">
+                                <span>Marcar como opcional</span>
+                            </label>
+
+                            <div class="planned-batch-actions">
+                                <button type="button" class="btn-action btn-secondary" id="plannedApplyTypeBtn">
+                                    <i class="fa-solid fa-layer-group"></i> Aplicar no tipo
+                                </button>
+                                <button type="button" class="btn-action btn-secondary" id="plannedRemoveTypeBtn">
+                                    <i class="fa-solid fa-trash"></i> Remover do tipo
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="plannedQueueGroups" class="planned-queue-groups"></div>
+                    </div>
+
+                    <div class="modal-footer planned-queue-footer">
+                        <button type="button" class="btn-action btn-secondary" id="plannedQueueCancelBtn">Fechar</button>
+                        <button type="button" class="btn-action btn-primary" id="plannedQueueSaveBtn" disabled>
+                            Salvar planejamento
+                        </button>
+                    </div>
                 </div>
             </div>
 

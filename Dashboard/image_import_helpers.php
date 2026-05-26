@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/planned_function_helpers.php';
+
 function dashboard_remove_accents(string $value): string
 {
     if ($value === '') {
@@ -225,6 +227,7 @@ function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraI
     }
 
     $inserted = 0;
+    $plannedInserted = 0;
     $errors = [];
     foreach ($entries as $index => $entry) {
         $imageName = (string) ($entry['imagem_nome'] ?? '');
@@ -234,10 +237,23 @@ function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraI
             $errors[] = ['linha' => $index + 1, 'erro' => $stmt->error, 'nome' => $imageName];
             continue;
         }
+
+        $imageId = (int) $conn->insert_id;
+        $planning = dashboard_insert_planned_functions_for_image($conn, $imageId, $imageType);
+        if (!$planning['success']) {
+            $errors[] = [
+                'linha' => $index + 1,
+                'erro' => 'Falha ao gerar planejamento: ' . (string) ($planning['message'] ?? $planning['reason'] ?? 'erro desconhecido'),
+                'nome' => $imageName,
+            ];
+        } else {
+            $plannedInserted += (int) ($planning['inserted'] ?? 0);
+        }
+
         $inserted++;
     }
 
     $stmt->close();
 
-    return ['inserted' => $inserted, 'errors' => $errors];
+    return ['inserted' => $inserted, 'planned_inserted' => $plannedInserted, 'errors' => $errors];
 }

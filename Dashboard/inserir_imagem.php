@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/planned_function_helpers.php';
 
 // Verify DB connection (match pattern used in saveImages.php)
 if (!isset($conn) || !$conn) {
@@ -58,6 +59,8 @@ unset($val);
 // Ensure clima is not null (table may require NOT NULL)
 if ($clima === null) $clima = '';
 
+$conn->begin_transaction();
+
 // Prepare safe INSERT using binded parameters (types mirror saveImages.php)
 $sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem, antecipada, animacao, clima, dias_trabalhados)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -77,6 +80,7 @@ if (!$stmt->bind_param('iisssssiisi', $clienteId, $obraId, $imagem, $recebimento
 }
 
 if (!$stmt->execute()) {
+    $conn->rollback();
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro ao inserir imagem: ' . $stmt->error]);
     $stmt->close();
@@ -84,8 +88,29 @@ if (!$stmt->execute()) {
     exit;
 }
 
-$lastId = $stmt->insert_id ?? null;
+$lastId = (int) ($stmt->insert_id ?? $conn->insert_id ?? 0);
+$planning = dashboard_insert_planned_functions_for_image($conn, $lastId, (string) $tipo_imagem);
+$plannedInserted = (int) ($planning['inserted'] ?? 0);
+
+if (!$planning['success']) {
+    $conn->rollback();
+    $stmt->close();
+    $conn->close();
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Imagem criada, mas o planejamento falhou: ' . (string) ($planning['message'] ?? $planning['reason'] ?? 'erro desconhecido'),
+    ]);
+    exit;
+}
+
+$conn->commit();
 $stmt->close();
 $conn->close();
 
-echo json_encode(['success' => true, 'message' => 'Imagem cadastrada com sucesso!', 'insert_id' => $lastId]);
+echo json_encode([
+    'success' => true,
+    'message' => 'Imagem cadastrada com sucesso!',
+    'insert_id' => $lastId,
+    'planned_functions_created' => $plannedInserted,
+]);

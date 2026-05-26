@@ -3469,18 +3469,24 @@ function infosObra(obraId) {
         row.appendChild(cellPrazo);
 
         var colunas = [
-          { col: "caderno", label: "Caderno" },
-          { col: "filtro", label: "Filtro" },
-          { col: "modelagem", label: "Modelagem" },
-          { col: "composicao", label: "Composição" },
-          // { col: 'pre', label: 'Pré-Finalização' },
-          { col: "finalizacao", label: "Finalização" },
-          { col: "pos_producao", label: "Pós Produção" },
-          { col: "alteracao", label: "Alteração" },
-          // { col: 'planta', label: 'Planta' }
+          { col: "caderno", label: "Caderno", funcaoId: 1 },
+          { col: "filtro", label: "Filtro", funcaoId: 8 },
+          { col: "modelagem", label: "Modelagem", funcaoId: 2 },
+          { col: "composicao", label: "Composição", funcaoId: 3 },
+          // { col: 'pre', label: 'Pré-Finalização', funcaoId: 9 },
+          { col: "finalizacao", label: "Finalização", funcaoId: 4 },
+          { col: "pos_producao", label: "Pós Produção", funcaoId: 5 },
+          { col: "alteracao", label: "Alteração", funcaoId: 6 },
+          // { col: 'planta', label: 'Planta', funcaoId: 7 }
         ];
 
         const cfUnificado = item.caderno_filtro_unificado == 1;
+        const unlinkedFuncoes = new Set(
+          Array.isArray(item.planned_unlinked_funcoes)
+            ? item.planned_unlinked_funcoes.map(Number)
+            : [],
+        );
+        const isTodo = item.imagem_sub_status === "TO-DO";
 
         let ci = 0;
         while (ci < colunas.length) {
@@ -3517,6 +3523,17 @@ function infosObra(obraId) {
               tooltip.style.top = event.clientY - 30 + "px";
             });
             row.appendChild(cellUnif);
+            if (
+              isTodo &&
+              (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))
+            ) {
+              cellUnif.classList.add("func-cell--unallocated");
+              const badge = document.createElement("span");
+              badge.className = "func-unallocated-badge";
+              badge.title = "Função não alocada";
+              badge.textContent = "!";
+              cellUnif.appendChild(badge);
+            }
             if (colabC !== "-" && colabC !== "Não se aplica") {
               totaisPorFuncao["caderno"].total++;
               totaisPorFuncao["filtro"].total++;
@@ -3570,6 +3587,15 @@ function infosObra(obraId) {
           });
 
           row.appendChild(cellColaborador);
+
+          if (isTodo && coluna.funcaoId && unlinkedFuncoes.has(coluna.funcaoId)) {
+            cellColaborador.classList.add("func-cell--unallocated");
+            const badge = document.createElement("span");
+            badge.className = "func-unallocated-badge";
+            badge.title = "Função planejada, aguardando alocação";
+            badge.textContent = "!";
+            cellColaborador.appendChild(badge);
+          }
 
           applyStyleNone(cellColaborador, null, colaborador);
 
@@ -7639,6 +7665,765 @@ document.getElementById("saveChangesBtn").addEventListener("click", () => {
       alert("Erro ao salvar alterações. Por favor, tente novamente.");
     });
 });
+
+const PLANNED_QUEUE = (() => {
+  const state = {
+    data: null,
+    dirtyImageIds: new Set(),
+    filterType: "__all__",
+    filterPending: true,
+    rowCounter: 0,
+  };
+
+  const ids = {
+    modal: "plannedQueueModal",
+    openBtn: "plannedQueueBtn",
+    closeBtn: "plannedQueueCloseBtn",
+    cancelBtn: "plannedQueueCancelBtn",
+    saveBtn: "plannedQueueSaveBtn",
+    typeFilter: "plannedTypeFilter",
+    batchFunction: "plannedBatchFunction",
+    batchOrder: "plannedBatchOrder",
+    batchResponsible: "plannedBatchResponsible",
+    batchOptional: "plannedBatchOptional",
+    applyTypeBtn: "plannedApplyTypeBtn",
+    removeTypeBtn: "plannedRemoveTypeBtn",
+    summaryTodo: "plannedSummaryTodo",
+    summaryExecution: "plannedSummaryExecution",
+    summaryTotal: "plannedSummaryTotal",
+    summaryNoPlanning: "plannedSummaryNoPlanning",
+    groups: "plannedQueueGroups",
+    notice: "plannedQueueNotice",
+    pendingFilter: "plannedPendingFilter",
+  };
+
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function deepClone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function getCurrentObraId() {
+    return String(localStorage.getItem("obraId") || "").trim();
+  }
+
+  function buildFunctionMap() {
+    return new Map(
+      (state.data?.functions || []).map((item) => [
+        Number(item.idfuncao),
+        item.nome_funcao,
+      ]),
+    );
+  }
+
+  function ensureRowKeys() {
+    (state.data?.groups || []).forEach((group) => {
+      (group.images || []).forEach((image) => {
+        (image.planned || []).forEach((row) => {
+          if (!row._rowKey) {
+            row._rowKey = row.idimagem_funcao_planejada
+              ? `existing-${row.idimagem_funcao_planejada}`
+              : `temp-${++state.rowCounter}`;
+          }
+        });
+      });
+    });
+  }
+
+  function getAllImages() {
+    return (state.data?.groups || []).flatMap((group) => group.images || []);
+  }
+
+  function findImage(imageId) {
+    return getAllImages().find((image) => Number(image.imagem_id) === Number(imageId));
+  }
+
+  function findRow(imageId, rowKey) {
+    const image = findImage(imageId);
+    if (!image) return null;
+    return (image.planned || []).find((row) => row._rowKey === rowKey) || null;
+  }
+
+  function getFilteredGroups() {
+    let groups = state.data?.groups || [];
+
+    if (state.filterType && state.filterType !== "__all__") {
+      groups = groups.filter((group) => group.tipo_imagem === state.filterType);
+    }
+
+    if (!state.filterPending) return groups;
+
+    return groups
+      .map((group) => ({
+        ...group,
+        images: (group.images || []).filter(
+          (image) =>
+            Number(image.fila_planejada || 0) > 0 ||
+            Number(image.total_execucao || 0) === 0,
+        ),
+      }))
+      .filter((group) => group.images.length > 0);
+  }
+
+  function getDirtyLabel() {
+    const total = state.dirtyImageIds.size;
+    if (total === 0) {
+      return "Nenhuma alteração pendente";
+    }
+
+    return `${total} imagem(ns) com alterações pendentes`;
+  }
+
+  function updateFooterLabel() {
+    const modalFooter = document.querySelector(".planned-queue-footer");
+    if (modalFooter) {
+      modalFooter.setAttribute("data-dirty-label", getDirtyLabel());
+    }
+  }
+
+  function markDirty(imageId) {
+    state.dirtyImageIds.add(String(imageId));
+    const saveBtn = el(ids.saveBtn);
+    if (saveBtn) {
+      saveBtn.disabled = false;
+    }
+    updateFooterLabel();
+  }
+
+  function resetDirty() {
+    state.dirtyImageIds.clear();
+    const saveBtn = el(ids.saveBtn);
+    if (saveBtn) {
+      saveBtn.disabled = true;
+    }
+    updateFooterLabel();
+  }
+
+  function getPlanningSummaryFromState() {
+    const summary = {
+      planned_todo: 0,
+      execution_pending: 0,
+      total_backlog: 0,
+      images_without_planning: 0,
+      images_without_template: state.data?.summary?.images_without_template || 0,
+    };
+
+    getAllImages().forEach((image) => {
+      const activeRows = (image.planned || []).filter((row) => Number(row.funcao_id) > 0);
+      const plannedTodo = activeRows.filter((row) => !row.funcao_imagem_id).length;
+      summary.planned_todo += plannedTodo;
+      summary.execution_pending += Number(image.fila_execucao || 0);
+      if (activeRows.length === 0) {
+        summary.images_without_planning += 1;
+      }
+    });
+
+    summary.total_backlog = summary.planned_todo + summary.execution_pending;
+    return summary;
+  }
+
+  function renderSummary() {
+    const summary = getPlanningSummaryFromState();
+    el(ids.summaryTodo).textContent = summary.planned_todo;
+    el(ids.summaryExecution).textContent = summary.execution_pending;
+    el(ids.summaryTotal).textContent = summary.total_backlog;
+    el(ids.summaryNoPlanning).textContent = summary.images_without_planning;
+
+    const notice = el(ids.notice);
+    if (!notice) return;
+
+    if (!state.data?.planning_ready) {
+      notice.style.display = "block";
+      notice.textContent =
+        "As tabelas de planejamento ainda não estão disponíveis no banco. Aplique a migration antes de salvar alterações.";
+      el(ids.saveBtn).disabled = true;
+      return;
+    }
+
+    if (summary.images_without_template > 0) {
+      notice.style.display = "block";
+      notice.textContent = `${summary.images_without_template} imagem(ns) estão sem template ativo para o tipo atual. O planejamento manual continua disponível.`;
+    } else {
+      notice.style.display = "none";
+      notice.textContent = "";
+    }
+  }
+
+  function renderTypeFilter() {
+    const select = el(ids.typeFilter);
+    if (!select || !state.data) return;
+
+    const options = [
+      '<option value="__all__">Todos os tipos</option>',
+      ...(state.data.groups || []).map(
+        (group) =>
+          `<option value="${escapeHtml(group.tipo_imagem)}">${escapeHtml(group.tipo_imagem)} (${Number(group.total_imagens || (group.images || []).length)})</option>`,
+      ),
+    ];
+    select.innerHTML = options.join("");
+    select.value = state.filterType;
+  }
+
+  function buildFunctionOptions(selectedId) {
+    const selected = Number(selectedId || 0);
+    return [`<option value="">Selecionar função</option>`]
+      .concat(
+        (state.data?.functions || []).map((fn) => {
+          const id = Number(fn.idfuncao || 0);
+          return `<option value="${id}" ${selected === id ? "selected" : ""}>${escapeHtml(fn.nome_funcao)}</option>`;
+        }),
+      )
+      .join("");
+  }
+
+  function renderBatchFunctionOptions() {
+    const select = el(ids.batchFunction);
+    if (!select) return;
+    select.innerHTML = buildFunctionOptions(select.value || "");
+    updateBatchResponsibleOptions();
+  }
+
+  function buildResponsibleOptions(functionId, selectedId) {
+    const selected = selectedId === null || selectedId === undefined || selectedId === ""
+      ? ""
+      : Number(selectedId);
+    const collaborators =
+      state.data?.collaborators_by_function?.[functionId] || [];
+    const baseOption = ['<option value="">Sem sugestão</option>'];
+    const mapped = collaborators.map((person) => {
+      const id = Number(person.idcolaborador || 0);
+      return `<option value="${id}" ${selected === id ? "selected" : ""}>${escapeHtml(person.nome_colaborador)}</option>`;
+    });
+    return baseOption.concat(mapped).join("");
+  }
+
+  function updateBatchResponsibleOptions() {
+    const select = el(ids.batchResponsible);
+    const functionId = Number(el(ids.batchFunction)?.value || 0);
+    if (!select) return;
+    select.innerHTML = buildResponsibleOptions(functionId, select.value || "");
+  }
+
+  function nextRowOrder(image) {
+    const rows = image?.planned || [];
+    const maxOrder = rows.reduce(
+      (carry, row) => Math.max(carry, Number(row.ordem || 0)),
+      0,
+    );
+    return maxOrder > 0 ? maxOrder + 10 : 10;
+  }
+
+  function addFunctionRowToImage(imageId, seed = {}, shouldRender = true) {
+    const image = findImage(imageId);
+    if (!image) return;
+
+    const functionId = Number(seed.funcao_id || 0);
+    if (
+      functionId > 0 &&
+      (image.planned || []).some(
+        (row) => Number(row.funcao_id) === functionId,
+      )
+    ) {
+      const existing = image.planned.find(
+        (row) => Number(row.funcao_id) === functionId,
+      );
+      if (existing) {
+        existing.ordem = Number(seed.ordem || existing.ordem || 10);
+        existing.obrigatoria = seed.obrigatoria === undefined ? existing.obrigatoria : Number(seed.obrigatoria);
+        existing.responsavel_sugerido_id =
+          seed.responsavel_sugerido_id === undefined
+            ? existing.responsavel_sugerido_id || null
+            : seed.responsavel_sugerido_id;
+        markDirty(imageId);
+        if (shouldRender) {
+          renderGroups();
+        }
+      }
+      return;
+    }
+
+    const functionMap = buildFunctionMap();
+    image.planned = image.planned || [];
+    image.planned.push({
+      idimagem_funcao_planejada: 0,
+      funcao_id: functionId || 0,
+      nome_funcao: functionMap.get(functionId) || "",
+      template_id: null,
+      template_item_id: null,
+      template_versao: null,
+      funcao_imagem_id: null,
+      ordem: Number(seed.ordem || nextRowOrder(image)),
+      obrigatoria: seed.obrigatoria === undefined ? 1 : Number(seed.obrigatoria),
+      status: "TODO",
+      origem: seed.origem || "MANUAL",
+      responsavel_sugerido_id: seed.responsavel_sugerido_id || null,
+      execucao_status: "",
+      _rowKey: `temp-${++state.rowCounter}`,
+    });
+    markDirty(imageId);
+    if (shouldRender) {
+      renderGroups();
+    }
+  }
+
+  function removeFunctionRow(imageId, rowKey) {
+    const image = findImage(imageId);
+    const row = findRow(imageId, rowKey);
+    if (!image || !row) return;
+
+    if (row.funcao_imagem_id) {
+      Swal.fire({
+        icon: "warning",
+        title: "Execução vinculada",
+        text: "Essa função já possui execução real e não pode ser removida pelo planejamento.",
+      });
+      return;
+    }
+
+    image.planned = (image.planned || []).filter(
+      (item) => item._rowKey !== rowKey,
+    );
+    markDirty(imageId);
+    renderGroups();
+  }
+
+  function updateRowField(imageId, rowKey, field, value) {
+    const row = findRow(imageId, rowKey);
+    const image = findImage(imageId);
+    if (!row || !image) return;
+
+    if (field === "funcao_id") {
+      const functionId = Number(value || 0);
+      if (functionId > 0) {
+        const duplicated = (image.planned || []).some(
+          (item) =>
+            item._rowKey !== rowKey && Number(item.funcao_id) === functionId,
+        );
+        if (duplicated) {
+          Swal.fire({
+            icon: "warning",
+            title: "Função duplicada",
+            text: "Essa imagem já possui essa função no planejamento.",
+          });
+          renderGroups();
+          return;
+        }
+      }
+
+      row.funcao_id = functionId;
+      row.nome_funcao = buildFunctionMap().get(functionId) || "";
+      row.responsavel_sugerido_id = null;
+      markDirty(imageId);
+      renderGroups();
+      return;
+    }
+
+    if (field === "ordem") {
+      row.ordem = Math.max(1, Number(value || 1));
+    } else if (field === "obrigatoria") {
+      row.obrigatoria = value ? 1 : 0;
+    } else if (field === "responsavel_sugerido_id") {
+      row.responsavel_sugerido_id = value === "" ? null : Number(value);
+    }
+
+    markDirty(imageId);
+    renderSummary();
+  }
+
+  function renderFunctionRow(image, row) {
+    const functionId = Number(row.funcao_id || 0);
+    const name = row.nome_funcao || buildFunctionMap().get(functionId) || "";
+    const executionLinked = !!row.funcao_imagem_id;
+
+    const functionControl = functionId > 0
+      ? `<div class="planned-function-title">${escapeHtml(name)}</div>`
+      : `<select class="planned-row-function-select" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}">${buildFunctionOptions(functionId)}</select>`;
+
+    const originChip = `<span class="planned-origin-chip">${escapeHtml(row.origem || "MANUAL")}</span>`;
+    const executionChip = executionLinked
+      ? `<span class="planned-origin-chip is-execution">Execução: ${escapeHtml(row.execucao_status || "vinculada")}</span>`
+      : "";
+
+    return `
+      <div class="planned-function-row" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}">
+        <div class="planned-func-header">
+          ${functionControl}
+          ${originChip}
+          <button type="button" class="btn-icon planned-row-remove" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}" ${executionLinked ? "disabled" : ""}>
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+        <div class="planned-func-fields">
+          <label class="planned-row-field">
+            <span>Ordem</span>
+            <input type="number" min="1" step="1" class="planned-row-order" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}" value="${Number(row.ordem || 1)}">
+          </label>
+          <label class="planned-row-field">
+            <span>Responsável</span>
+            <select class="planned-row-responsible" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}">${buildResponsibleOptions(functionId, row.responsavel_sugerido_id)}</select>
+          </label>
+        </div>
+        <div class="planned-func-footer">
+          <label class="planned-checkbox-inline">
+            <input type="checkbox" class="planned-row-optional" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}" ${Number(row.obrigatoria) === 1 ? "" : "checked"}>
+            <span>Opcional</span>
+          </label>
+          ${executionChip}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderGroups() {
+    const container = el(ids.groups);
+    if (!container || !state.data) return;
+
+    const groups = getFilteredGroups();
+    if (groups.length === 0) {
+      container.innerHTML = '<div class="planned-empty-state">Nenhuma imagem encontrada para o filtro atual.</div>';
+      renderSummary();
+      return;
+    }
+
+    container.innerHTML = groups
+      .map((group) => {
+        const imageCards = (group.images || [])
+          .map((image) => {
+            const rows = [...(image.planned || [])].sort(
+              (left, right) => Number(left.ordem || 0) - Number(right.ordem || 0),
+            );
+            const content = rows.length
+              ? rows.map((row) => renderFunctionRow(image, row)).join("")
+              : '<div class="planned-empty-state">Nenhuma função planejada para esta imagem.</div>';
+
+            return `
+              <article class="planned-image-card" data-image-id="${image.imagem_id}">
+                <div class="planned-image-head">
+                  <div>
+                    <h4>${escapeHtml(typeof displayImageName === "function" ? displayImageName(image.imagem_nome) : image.imagem_nome)}</h4>
+                    <div class="planned-image-meta">
+                      <span class="planned-badge">Planejada: ${Number(image.fila_planejada || 0)}</span>
+                      <span class="planned-badge">Execução: ${Number(image.fila_execucao || 0)}</span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-action btn-secondary planned-add-image-function" data-image-id="${image.imagem_id}">
+                    <i class="fa-solid fa-plus"></i> Adicionar função
+                  </button>
+                </div>
+                <div class="planned-image-functions">${content}</div>
+              </article>
+            `;
+          })
+          .join("");
+
+        return `
+          <section class="planned-group">
+            <div class="planned-group-header">
+              <div class="planned-group-title">
+                <h3>${escapeHtml(group.tipo_imagem)}</h3>
+                <div class="planned-group-meta">
+                  <span class="planned-badge">${Number(group.total_imagens || 0)} imagem(ns)</span>
+                  <span class="planned-badge">Fila planejada: ${Number(group.planned_todo || 0)}</span>
+                  <span class="planned-badge">Execução pendente: ${Number(group.execution_pending || 0)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="planned-images-grid">${imageCards}</div>
+          </section>
+        `;
+      })
+      .join("");
+
+    renderSummary();
+  }
+
+  async function loadQueue() {
+    const obraId = getCurrentObraId();
+    if (!obraId) {
+      Swal.fire({
+        icon: "error",
+        title: "Obra não encontrada",
+        text: "Não foi possível identificar a obra atual.",
+      });
+      return;
+    }
+
+    const groupsEl = el(ids.groups);
+    if (groupsEl) {
+      groupsEl.innerHTML = '<div class="planned-empty-state">Carregando planejamento operacional...</div>';
+    }
+
+    const response = await fetch(`getPlannedFunctions.php?obra_id=${encodeURIComponent(obraId)}`);
+    const json = await response.json();
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || "Não foi possível carregar o planejamento operacional.");
+    }
+
+    state.data = deepClone(json);
+    ensureRowKeys();
+    renderTypeFilter();
+    renderBatchFunctionOptions();
+    resetDirty();
+    renderGroups();
+  }
+
+  function openModal() {
+    const modal = el(ids.modal);
+    if (!modal) return;
+    modal.classList.add("is-open");
+    loadQueue().catch((error) => {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Erro ao carregar",
+        text: error.message || "Não foi possível carregar a fila operacional.",
+      });
+    });
+  }
+
+  function closeModal() {
+    const modal = el(ids.modal);
+    if (!modal) return;
+    modal.classList.remove("is-open");
+  }
+
+  function applyBatchToType(removeOnly) {
+    const type = state.filterType;
+    if (!type || type === "__all__") {
+      Swal.fire({
+        icon: "warning",
+        title: "Selecione um tipo",
+        text: "Escolha um tipo específico no filtro para aplicar ações em lote.",
+      });
+      return;
+    }
+
+    const group = (state.data?.groups || []).find(
+      (item) => item.tipo_imagem === type,
+    );
+    if (!group) return;
+
+    const functionId = Number(el(ids.batchFunction)?.value || 0);
+    if (functionId <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Selecione uma função",
+        text: "Escolha a função que será aplicada no lote.",
+      });
+      return;
+    }
+
+    if (removeOnly) {
+      group.images.forEach((image) => {
+        const row = (image.planned || []).find(
+          (item) => Number(item.funcao_id) === functionId && !item.funcao_imagem_id,
+        );
+        if (!row) return;
+        image.planned = image.planned.filter((item) => item._rowKey !== row._rowKey);
+        markDirty(image.imagem_id);
+      });
+      renderGroups();
+      return;
+    }
+
+    const order = Number(el(ids.batchOrder)?.value || 10);
+    const optional = !!el(ids.batchOptional)?.checked;
+    const responsibleId = el(ids.batchResponsible)?.value || "";
+
+      group.images.forEach((image) => {
+        addFunctionRowToImage(image.imagem_id, {
+        funcao_id: functionId,
+        ordem: order,
+        obrigatoria: optional ? 0 : 1,
+        responsavel_sugerido_id: responsibleId === "" ? null : Number(responsibleId),
+        }, false);
+    });
+      renderGroups();
+  }
+
+  function collectChanges() {
+    return getAllImages()
+      .filter((image) => state.dirtyImageIds.has(String(image.imagem_id)))
+      .map((image) => ({
+        imagem_id: Number(image.imagem_id),
+        planned_functions: (image.planned || [])
+          .filter((row) => Number(row.funcao_id) > 0)
+          .map((row) => ({
+            funcao_id: Number(row.funcao_id),
+            ordem: Math.max(1, Number(row.ordem || 1)),
+            obrigatoria: Number(row.obrigatoria) === 1 ? 1 : 0,
+            responsavel_sugerido_id:
+              row.responsavel_sugerido_id === null || row.responsavel_sugerido_id === undefined
+                ? null
+                : Number(row.responsavel_sugerido_id),
+          })),
+      }));
+  }
+
+  async function saveChanges() {
+    if (!state.data?.planning_ready) {
+      Swal.fire({
+        icon: "warning",
+        title: "Migration pendente",
+        text: "A migration do planejamento precisa ser aplicada no banco antes de salvar.",
+      });
+      return;
+    }
+
+    const changes = collectChanges();
+    if (changes.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "Sem alterações",
+        text: "Nenhuma alteração pendente para salvar.",
+      });
+      return;
+    }
+
+    const obraId = getCurrentObraId();
+    const response = await fetch("savePlannedFunctions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ obra_id: Number(obraId), changes }),
+    });
+    const json = await response.json();
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || "Falha ao salvar o planejamento operacional.");
+    }
+
+    let message = json.message || "Planejamento salvo com sucesso.";
+    if (Array.isArray(json.warnings) && json.warnings.length > 0) {
+      message += ` ${json.warnings.length} aviso(s) exigem revisão.`;
+    }
+
+    Swal.fire({
+      icon: json.warnings?.length ? "warning" : "success",
+      title: json.warnings?.length ? "Salvo com avisos" : "Planejamento salvo",
+      text: message,
+    });
+
+    await loadQueue();
+    const obraIdNumber = Number(obraId || 0);
+    if (obraIdNumber > 0) {
+      infosObra(obraIdNumber);
+    }
+  }
+
+  function bindEvents() {
+    const openBtn = el(ids.openBtn);
+    const closeBtn = el(ids.closeBtn);
+    const cancelBtn = el(ids.cancelBtn);
+    const saveBtn = el(ids.saveBtn);
+    const modal = el(ids.modal);
+    const typeFilter = el(ids.typeFilter);
+    const batchFunction = el(ids.batchFunction);
+    const applyTypeBtn = el(ids.applyTypeBtn);
+    const removeTypeBtn = el(ids.removeTypeBtn);
+    const groups = el(ids.groups);
+
+    if (openBtn) {
+      openBtn.addEventListener("click", openModal);
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeModal);
+    }
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", closeModal);
+    }
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        saveChanges().catch((error) => {
+          console.error(error);
+          Swal.fire({
+            icon: "error",
+            title: "Erro ao salvar",
+            text: error.message || "Não foi possível salvar o planejamento.",
+          });
+        });
+      });
+    }
+    if (modal) {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+    }
+    if (typeFilter) {
+      typeFilter.addEventListener("change", (event) => {
+        state.filterType = event.target.value || "__all__";
+        renderGroups();
+      });
+    }
+    const pendingFilter = el(ids.pendingFilter);
+    if (pendingFilter) {
+      pendingFilter.addEventListener("change", (event) => {
+        state.filterPending = event.target.checked;
+        renderGroups();
+      });
+    }
+    if (batchFunction) {
+      batchFunction.addEventListener("change", updateBatchResponsibleOptions);
+    }
+    if (applyTypeBtn) {
+      applyTypeBtn.addEventListener("click", () => applyBatchToType(false));
+    }
+    if (removeTypeBtn) {
+      removeTypeBtn.addEventListener("click", () => applyBatchToType(true));
+    }
+    if (groups) {
+      groups.addEventListener("click", (event) => {
+        const addBtn = event.target.closest(".planned-add-image-function");
+        if (addBtn) {
+          addFunctionRowToImage(addBtn.dataset.imageId);
+          return;
+        }
+
+        const removeBtn = event.target.closest(".planned-row-remove");
+        if (removeBtn) {
+          removeFunctionRow(removeBtn.dataset.imageId, removeBtn.dataset.rowKey);
+        }
+      });
+
+      groups.addEventListener("change", (event) => {
+        const target = event.target;
+        if (target.classList.contains("planned-row-function-select")) {
+          updateRowField(target.dataset.imageId, target.dataset.rowKey, "funcao_id", target.value);
+          return;
+        }
+        if (target.classList.contains("planned-row-responsible")) {
+          updateRowField(target.dataset.imageId, target.dataset.rowKey, "responsavel_sugerido_id", target.value);
+          return;
+        }
+        if (target.classList.contains("planned-row-optional")) {
+          updateRowField(target.dataset.imageId, target.dataset.rowKey, "obrigatoria", !target.checked);
+        }
+      });
+
+      groups.addEventListener("input", (event) => {
+        const target = event.target;
+        if (target.classList.contains("planned-row-order")) {
+          updateRowField(target.dataset.imageId, target.dataset.rowKey, "ordem", target.value);
+        }
+      });
+    }
+  }
+
+  return { bindEvents };
+})();
+
+PLANNED_QUEUE.bindEvents();
 
 function submitFormImagem(event) {
   event.preventDefault();

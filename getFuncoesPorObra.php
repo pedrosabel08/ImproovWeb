@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json');
+require_once __DIR__ . '/Dashboard/planned_function_helpers.php';
 
 // Conectar ao banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
@@ -206,11 +207,35 @@ foreach ($funcoes as &$fn) {
 
 unset($fn);
 
+$queueDataset = dashboard_fetch_planned_queue_dataset($conn, $obraId);
+$queueByImage = [];
+foreach (($queueDataset['groups'] ?? []) as $queueGroup) {
+    foreach (($queueGroup['images'] ?? []) as $queueImage) {
+        $queueByImage[(int) ($queueImage['imagem_id'] ?? 0)] = $queueImage;
+    }
+}
+
+foreach ($funcoes as &$fn) {
+    $queueRow = $queueByImage[(int) ($fn['imagem_id'] ?? 0)] ?? null;
+    $fn['fila_planejada_todo'] = (int) ($queueRow['fila_planejada'] ?? 0);
+    $fn['fila_execucao_pendente'] = (int) ($queueRow['fila_execucao'] ?? 0);
+    $fn['fila_total_operacional'] = $fn['fila_planejada_todo'] + $fn['fila_execucao_pendente'];
+}
+unset($fn);
+
 // Enviando resposta JSON com todos os resultados
 echo json_encode([
     'funcoes' => $funcoes,
     'totais' => $totais,
-    'acompanhamento_emails' => $acompanhamentoEmails
+    'acompanhamento_emails' => $acompanhamentoEmails,
+    'fila_operacional' => $queueDataset['summary'] ?? [
+        'planning_ready' => false,
+        'planned_todo' => 0,
+        'execution_pending' => 0,
+        'total_backlog' => 0,
+        'images_without_planning' => 0,
+        'images_without_template' => 0,
+    ]
 ]);
 
 $conn->close();

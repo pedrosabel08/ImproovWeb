@@ -582,6 +582,30 @@ input:checked + .slider:before {
   line-height: 1.5;
 }
 
+/* Célula de função sem colaborador alocado (imagem em TO-DO) */
+.func-cell--unallocated {
+  position: relative;
+}
+
+.func-unallocated-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* Paleta de cores por subtipo_id */
 .subtipo-badge--1 {
   background-color: rgba(37, 99, 235, 0.8);
@@ -5750,6 +5774,489 @@ button#deleteButton {
   max-width: 400px;
   margin: 20px;
   cursor: pointer;
+}
+
+/* Planejamento da fila operacional */
+#plannedQueueModal {
+  z-index: 1500;
+}
+
+.planned-queue-shell {
+  width: min(1240px, 96vw) !important;
+  max-height: 92vh !important;
+  margin: 3vh auto !important;
+  padding: 0 !important;
+  background: var(--bg-modal, var(--card-bg));
+  border: 1px solid var(--border-modal, var(--border));
+  border-radius: 18px !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.planned-queue-header {
+  gap: 18px;
+}
+
+.planned-queue-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-secondary, var(--text));
+  font-size: 12px;
+}
+
+.planned-queue-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.planned-queue-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.planned-summary-card {
+  background: var(--bg-surface-alt, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planned-summary-card strong {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-primary, var(--text));
+}
+
+.planned-summary-card--warn {
+  border-color: rgba(255, 170, 0, 0.35);
+  background: rgba(255, 170, 0, 0.08);
+}
+
+.planned-summary-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, var(--text));
+}
+
+.planned-queue-notice {
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  background: rgba(255, 170, 0, 0.08);
+  color: var(--text-primary, var(--text));
+  font-size: 12.5px;
+}
+
+.planned-queue-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(180px, 1fr) 110px minmax(
+      180px,
+      1fr
+    ) auto auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.planned-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planned-field span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted, var(--text));
+}
+
+.planned-field select,
+.planned-field input,
+.planned-function-row input,
+.planned-function-row select {
+  width: 100%;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border-input, var(--border));
+  background: var(--bg-input, #fff);
+  color: var(--text-primary, var(--text));
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.planned-field--small input {
+  text-align: center;
+}
+
+.planned-checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-card, var(--border));
+  background: var(--bg-surface-alt, rgba(255, 255, 255, 0.03));
+  font-size: 12px;
+  color: var(--text-primary, var(--text));
+  white-space: nowrap;
+}
+
+.planned-view-filter {
+  padding: 0 0 8px;
+}
+
+.planned-batch-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.planned-queue-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.planned-group {
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: 16px;
+  background: var(--bg-surface-alt, rgba(255, 255, 255, 0.02));
+  /* overflow: hidden; */
+}
+
+.planned-group-header {
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: rgba(79, 128, 225, 0.08);
+  border-bottom: 1px solid rgba(79, 128, 225, 0.12);
+}
+
+.planned-group-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planned-group-title h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.planned-group-meta,
+.planned-image-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.planned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-count, rgba(0, 0, 0, 0.08));
+  color: var(--text-secondary, var(--text));
+}
+
+.planned-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.planned-image-card {
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: 14px;
+  background: var(--bg-card, #fff);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planned-image-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.planned-image-head h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.planned-image-head .btn-action {
+  flex-shrink: 0;
+}
+
+.planned-image-functions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planned-empty-state {
+  border: 1px dashed var(--border-card, var(--border));
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 12px;
+  color: var(--text-secondary, var(--text));
+  text-align: center;
+}
+
+.planned-function-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--bg-surface-alt, rgba(255, 255, 255, 0.02));
+}
+
+/* Row 1: function title + origin chip + delete button */
+.planned-func-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planned-function-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, var(--text));
+  flex-shrink: 0;
+}
+
+.planned-func-header .btn-icon {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Row 2: ordem + responsável fields */
+.planned-func-fields {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+}
+
+/* Row 3: optional checkbox + execution chip */
+.planned-func-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.planned-origin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(79, 128, 225, 0.1);
+  color: var(--text-secondary, var(--text));
+}
+
+.planned-origin-chip.is-execution {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.planned-row-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planned-row-field span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted, var(--text));
+}
+
+.planned-function-row .btn-icon {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(239, 68, 68, 0.12);
+  color: #d93025;
+  text-align: center;
+}
+
+.planned-function-row .btn-icon[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.planned-queue-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border-modal, var(--border));
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.planned-queue-footer::before {
+  content: attr(data-dirty-label);
+  color: var(--text-muted, var(--text));
+  font-size: 12px;
+  flex: 1;
+}
+
+/* ── Scoped component styles for #plannedQueueModal ── */
+#plannedQueueModal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-modal, var(--border));
+  flex-shrink: 0;
+}
+
+#plannedQueueModal .modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, var(--text));
+}
+
+#plannedQueueModal .modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, var(--text));
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+#plannedQueueModal .modal-close:hover {
+  color: var(--text-primary, var(--text));
+  background: var(--bg-count, rgba(0, 0, 0, 0.08));
+}
+
+#plannedQueueModal .modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+#plannedQueueModal .btn-action {
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+
+#plannedQueueModal .btn-action:hover {
+  transform: translateY(-1px);
+}
+
+#plannedQueueModal .btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#plannedQueueModal .btn-primary {
+  background: var(--accent, #4f80e1);
+  color: var(--text-on-accent, #fff);
+}
+
+#plannedQueueModal .btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover, #3a6fd0);
+  box-shadow: 0 4px 12px var(--accent-glow, rgba(79, 128, 225, 0.35));
+}
+
+#plannedQueueModal .btn-secondary {
+  background: var(--bg-count, rgba(0, 0, 0, 0.08));
+  color: var(--text-secondary, var(--text));
+}
+
+#plannedQueueModal .btn-secondary:hover:not(:disabled) {
+  background: var(--border-card, rgba(0, 0, 0, 0.12));
+}
+
+@media (max-width: 1100px) {
+  .planned-queue-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .planned-summary-card {
+    min-height: 90px;
+  }
+
+  .planned-function-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .planned-queue-shell {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .planned-queue-summary,
+  .planned-images-grid,
+  .planned-queue-toolbar,
+  .planned-function-row {
+    grid-template-columns: 1fr;
+  }
+
+  .planned-image-head,
+  .planned-group-header,
+  .planned-batch-actions,
+  .planned-queue-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 #calendarModal {

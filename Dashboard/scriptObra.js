@@ -198,24 +198,29 @@
 })();
 // Obtém o 'obra_id' do localStorage
 var obraId = localStorage.getItem("obraId");
-var usuarioId = localStorage.getItem("idusuario");
+var usuarioId = Number(localStorage.getItem("idusuario"));
 
-usuarioId = Number(usuarioId);
-
-// Controle de visibilidade do widget de Entregas: somente usuários 1 e 2 podem ver
 try {
   const entregasWidget = document.querySelector(".entregas-container");
+  const actionsMenuBtn = document.querySelector(".actions-menu");
+
+  const usuariosEntregas = [1, 2];
+  const usuariosPermitidos = [1, 2, 9];
+
   if (entregasWidget) {
-    if (usuarioId === 1 || usuarioId === 2) {
-      entregasWidget.style.display = "";
-    } else {
-      entregasWidget.style.display = "none";
-    }
+    entregasWidget.style.display = usuariosEntregas.includes(usuarioId)
+      ? ""
+      : "none";
+  }
+
+  if (actionsMenuBtn) {
+    actionsMenuBtn.style.display = usuariosPermitidos.includes(usuarioId)
+      ? ""
+      : "none";
   }
 } catch (e) {
-  console.warn("Erro ao aplicar regra de visibilidade de entregas:", e);
+  console.warn("Erro ao aplicar regra de visibilidade:", e);
 }
-
 if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
   document.getElementById("acomp").classList.add("hidden");
   document.getElementById("obsAdd").classList.add("hidden");
@@ -3523,10 +3528,7 @@ function infosObra(obraId) {
               tooltip.style.top = event.clientY - 30 + "px";
             });
             row.appendChild(cellUnif);
-            if (
-              isTodo &&
-              (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))
-            ) {
+            if (isTodo && (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))) {
               cellUnif.classList.add("func-cell--unallocated");
               const badge = document.createElement("span");
               badge.className = "func-unallocated-badge";
@@ -3588,7 +3590,11 @@ function infosObra(obraId) {
 
           row.appendChild(cellColaborador);
 
-          if (isTodo && coluna.funcaoId && unlinkedFuncoes.has(coluna.funcaoId)) {
+          if (
+            isTodo &&
+            coluna.funcaoId &&
+            unlinkedFuncoes.has(coluna.funcaoId)
+          ) {
             cellColaborador.classList.add("func-cell--unallocated");
             const badge = document.createElement("span");
             badge.className = "func-unallocated-badge";
@@ -7746,7 +7752,9 @@ const PLANNED_QUEUE = (() => {
   }
 
   function findImage(imageId) {
-    return getAllImages().find((image) => Number(image.imagem_id) === Number(imageId));
+    return getAllImages().find(
+      (image) => Number(image.imagem_id) === Number(imageId),
+    );
   }
 
   function findRow(imageId, rowKey) {
@@ -7816,12 +7824,17 @@ const PLANNED_QUEUE = (() => {
       execution_pending: 0,
       total_backlog: 0,
       images_without_planning: 0,
-      images_without_template: state.data?.summary?.images_without_template || 0,
+      images_without_template:
+        state.data?.summary?.images_without_template || 0,
     };
 
     getAllImages().forEach((image) => {
-      const activeRows = (image.planned || []).filter((row) => Number(row.funcao_id) > 0);
-      const plannedTodo = activeRows.filter((row) => !row.funcao_imagem_id).length;
+      const activeRows = (image.planned || []).filter(
+        (row) => Number(row.funcao_id) > 0,
+      );
+      const plannedTodo = activeRows.filter(
+        (row) => !row.funcao_imagem_id,
+      ).length;
       summary.planned_todo += plannedTodo;
       summary.execution_pending += Number(image.fila_execucao || 0);
       if (activeRows.length === 0) {
@@ -7895,9 +7908,10 @@ const PLANNED_QUEUE = (() => {
   }
 
   function buildResponsibleOptions(functionId, selectedId) {
-    const selected = selectedId === null || selectedId === undefined || selectedId === ""
-      ? ""
-      : Number(selectedId);
+    const selected =
+      selectedId === null || selectedId === undefined || selectedId === ""
+        ? ""
+        : Number(selectedId);
     const collaborators =
       state.data?.collaborators_by_function?.[functionId] || [];
     const baseOption = ['<option value="">Sem sugestão</option>'];
@@ -7931,16 +7945,17 @@ const PLANNED_QUEUE = (() => {
     const functionId = Number(seed.funcao_id || 0);
     if (
       functionId > 0 &&
-      (image.planned || []).some(
-        (row) => Number(row.funcao_id) === functionId,
-      )
+      (image.planned || []).some((row) => Number(row.funcao_id) === functionId)
     ) {
       const existing = image.planned.find(
         (row) => Number(row.funcao_id) === functionId,
       );
       if (existing) {
         existing.ordem = Number(seed.ordem || existing.ordem || 10);
-        existing.obrigatoria = seed.obrigatoria === undefined ? existing.obrigatoria : Number(seed.obrigatoria);
+        existing.obrigatoria =
+          seed.obrigatoria === undefined
+            ? existing.obrigatoria
+            : Number(seed.obrigatoria);
         existing.responsavel_sugerido_id =
           seed.responsavel_sugerido_id === undefined
             ? existing.responsavel_sugerido_id || null
@@ -7964,7 +7979,8 @@ const PLANNED_QUEUE = (() => {
       template_versao: null,
       funcao_imagem_id: null,
       ordem: Number(seed.ordem || nextRowOrder(image)),
-      obrigatoria: seed.obrigatoria === undefined ? 1 : Number(seed.obrigatoria),
+      obrigatoria:
+        seed.obrigatoria === undefined ? 1 : Number(seed.obrigatoria),
       status: "TODO",
       origem: seed.origem || "MANUAL",
       responsavel_sugerido_id: seed.responsavel_sugerido_id || null,
@@ -8046,9 +8062,10 @@ const PLANNED_QUEUE = (() => {
     const name = row.nome_funcao || buildFunctionMap().get(functionId) || "";
     const executionLinked = !!row.funcao_imagem_id;
 
-    const functionControl = functionId > 0
-      ? `<div class="planned-function-title">${escapeHtml(name)}</div>`
-      : `<select class="planned-row-function-select" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}">${buildFunctionOptions(functionId)}</select>`;
+    const functionControl =
+      functionId > 0
+        ? `<div class="planned-function-title">${escapeHtml(name)}</div>`
+        : `<select class="planned-row-function-select" data-image-id="${image.imagem_id}" data-row-key="${escapeHtml(row._rowKey)}">${buildFunctionOptions(functionId)}</select>`;
 
     const originChip = `<span class="planned-origin-chip">${escapeHtml(row.origem || "MANUAL")}</span>`;
     const executionChip = executionLinked
@@ -8091,7 +8108,8 @@ const PLANNED_QUEUE = (() => {
 
     const groups = getFilteredGroups();
     if (groups.length === 0) {
-      container.innerHTML = '<div class="planned-empty-state">Nenhuma imagem encontrada para o filtro atual.</div>';
+      container.innerHTML =
+        '<div class="planned-empty-state">Nenhuma imagem encontrada para o filtro atual.</div>';
       renderSummary();
       return;
     }
@@ -8101,7 +8119,8 @@ const PLANNED_QUEUE = (() => {
         const imageCards = (group.images || [])
           .map((image) => {
             const rows = [...(image.planned || [])].sort(
-              (left, right) => Number(left.ordem || 0) - Number(right.ordem || 0),
+              (left, right) =>
+                Number(left.ordem || 0) - Number(right.ordem || 0),
             );
             const content = rows.length
               ? rows.map((row) => renderFunctionRow(image, row)).join("")
@@ -8161,13 +8180,18 @@ const PLANNED_QUEUE = (() => {
 
     const groupsEl = el(ids.groups);
     if (groupsEl) {
-      groupsEl.innerHTML = '<div class="planned-empty-state">Carregando planejamento operacional...</div>';
+      groupsEl.innerHTML =
+        '<div class="planned-empty-state">Carregando planejamento operacional...</div>';
     }
 
-    const response = await fetch(`getPlannedFunctions.php?obra_id=${encodeURIComponent(obraId)}`);
+    const response = await fetch(
+      `getPlannedFunctions.php?obra_id=${encodeURIComponent(obraId)}`,
+    );
     const json = await response.json();
     if (!response.ok || !json.success) {
-      throw new Error(json.message || "Não foi possível carregar o planejamento operacional.");
+      throw new Error(
+        json.message || "Não foi possível carregar o planejamento operacional.",
+      );
     }
 
     state.data = deepClone(json);
@@ -8227,10 +8251,13 @@ const PLANNED_QUEUE = (() => {
     if (removeOnly) {
       group.images.forEach((image) => {
         const row = (image.planned || []).find(
-          (item) => Number(item.funcao_id) === functionId && !item.funcao_imagem_id,
+          (item) =>
+            Number(item.funcao_id) === functionId && !item.funcao_imagem_id,
         );
         if (!row) return;
-        image.planned = image.planned.filter((item) => item._rowKey !== row._rowKey);
+        image.planned = image.planned.filter(
+          (item) => item._rowKey !== row._rowKey,
+        );
         markDirty(image.imagem_id);
       });
       renderGroups();
@@ -8241,15 +8268,20 @@ const PLANNED_QUEUE = (() => {
     const optional = !!el(ids.batchOptional)?.checked;
     const responsibleId = el(ids.batchResponsible)?.value || "";
 
-      group.images.forEach((image) => {
-        addFunctionRowToImage(image.imagem_id, {
-        funcao_id: functionId,
-        ordem: order,
-        obrigatoria: optional ? 0 : 1,
-        responsavel_sugerido_id: responsibleId === "" ? null : Number(responsibleId),
-        }, false);
+    group.images.forEach((image) => {
+      addFunctionRowToImage(
+        image.imagem_id,
+        {
+          funcao_id: functionId,
+          ordem: order,
+          obrigatoria: optional ? 0 : 1,
+          responsavel_sugerido_id:
+            responsibleId === "" ? null : Number(responsibleId),
+        },
+        false,
+      );
     });
-      renderGroups();
+    renderGroups();
   }
 
   function collectChanges() {
@@ -8264,7 +8296,8 @@ const PLANNED_QUEUE = (() => {
             ordem: Math.max(1, Number(row.ordem || 1)),
             obrigatoria: Number(row.obrigatoria) === 1 ? 1 : 0,
             responsavel_sugerido_id:
-              row.responsavel_sugerido_id === null || row.responsavel_sugerido_id === undefined
+              row.responsavel_sugerido_id === null ||
+              row.responsavel_sugerido_id === undefined
                 ? null
                 : Number(row.responsavel_sugerido_id),
           })),
@@ -8299,7 +8332,9 @@ const PLANNED_QUEUE = (() => {
     });
     const json = await response.json();
     if (!response.ok || !json.success) {
-      throw new Error(json.message || "Falha ao salvar o planejamento operacional.");
+      throw new Error(
+        json.message || "Falha ao salvar o planejamento operacional.",
+      );
     }
 
     let message = json.message || "Planejamento salvo com sucesso.";
@@ -8392,29 +8427,52 @@ const PLANNED_QUEUE = (() => {
 
         const removeBtn = event.target.closest(".planned-row-remove");
         if (removeBtn) {
-          removeFunctionRow(removeBtn.dataset.imageId, removeBtn.dataset.rowKey);
+          removeFunctionRow(
+            removeBtn.dataset.imageId,
+            removeBtn.dataset.rowKey,
+          );
         }
       });
 
       groups.addEventListener("change", (event) => {
         const target = event.target;
         if (target.classList.contains("planned-row-function-select")) {
-          updateRowField(target.dataset.imageId, target.dataset.rowKey, "funcao_id", target.value);
+          updateRowField(
+            target.dataset.imageId,
+            target.dataset.rowKey,
+            "funcao_id",
+            target.value,
+          );
           return;
         }
         if (target.classList.contains("planned-row-responsible")) {
-          updateRowField(target.dataset.imageId, target.dataset.rowKey, "responsavel_sugerido_id", target.value);
+          updateRowField(
+            target.dataset.imageId,
+            target.dataset.rowKey,
+            "responsavel_sugerido_id",
+            target.value,
+          );
           return;
         }
         if (target.classList.contains("planned-row-optional")) {
-          updateRowField(target.dataset.imageId, target.dataset.rowKey, "obrigatoria", !target.checked);
+          updateRowField(
+            target.dataset.imageId,
+            target.dataset.rowKey,
+            "obrigatoria",
+            !target.checked,
+          );
         }
       });
 
       groups.addEventListener("input", (event) => {
         const target = event.target;
         if (target.classList.contains("planned-row-order")) {
-          updateRowField(target.dataset.imageId, target.dataset.rowKey, "ordem", target.value);
+          updateRowField(
+            target.dataset.imageId,
+            target.dataset.rowKey,
+            "ordem",
+            target.value,
+          );
         }
       });
     }

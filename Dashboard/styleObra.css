@@ -5856,10 +5856,9 @@ button#deleteButton {
 
 .planned-queue-toolbar {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) minmax(180px, 1fr) 110px minmax(
-      180px,
-      1fr
-    ) auto auto;
+  grid-template-columns:
+    minmax(180px, 1.1fr) minmax(180px, 1fr) 110px minmax(180px, 1fr)
+    auto auto;
   gap: 12px;
   align-items: end;
 }

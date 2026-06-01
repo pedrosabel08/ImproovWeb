@@ -90,6 +90,7 @@ class ContratoLocalService
             'dia_atual' => $this->dateService->formatDataPtBr(new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'))),
             'colaborador_contratado' => $this->escapeHtml((string)($colab['nome_empresarial'] ?: $colab['nome_colaborador'] ?: '')),
             'cnpj_contratado' => $this->escapeHtml((string)($colab['cnpj'] ?? '')),
+            'cpf_contratado' => $this->escapeHtml((string)($colab['cpf'] ?? '')),
             'lista_imagens' => $listaImagens,
         ];
 

@@ -4,6 +4,8 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once '../config/session_bootstrap.php';
+require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/review_cobranca_lib.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -51,6 +53,14 @@ $params = array_merge([$substatus_id], $imagem_ids);
 $stmt->bind_param($types, ...$params);
 
 if ($stmt->execute()) {
+    if ($substatus_id === 2) {
+        foreach ($imagem_ids as $imagem_id) {
+            improov_p00_register_handoff_for_image($conn, $imagem_id);
+        }
+    }
+    foreach ($imagem_ids as $imagem_id) {
+        entregas_review_sync_p00_batch_state($conn, (int) $imagem_id, null, $substatus_id);
+    }
     echo json_encode(['success' => true, 'affected' => $stmt->affected_rows]);
 } else {
     http_response_code(500);

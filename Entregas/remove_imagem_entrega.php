@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/p00_delivery_helpers.php';
+
+improov_p00_ensure_schema($conn);
 
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
@@ -14,8 +17,23 @@ if ($entregaId <= 0) {
     exit;
 }
 
+$tipoEntrega = 'PADRAO';
+$stmtEntrega = $conn->prepare("SELECT COALESCE(tipo_entrega, 'PADRAO') AS tipo_entrega FROM entregas WHERE id = ? LIMIT 1");
+if ($stmtEntrega) {
+    $stmtEntrega->bind_param('i', $entregaId);
+    $stmtEntrega->execute();
+    $resEntrega = $stmtEntrega->get_result()->fetch_assoc();
+    if ($resEntrega && isset($resEntrega['tipo_entrega'])) {
+        $tipoEntrega = (string) $resEntrega['tipo_entrega'];
+    }
+    $stmtEntrega->close();
+}
+
 // Preferir remoção pelo item_id (chave primária), senão usar entrega_id+imagem_id
-if ($itemId > 0) {
+if ($tipoEntrega === 'P00' && $itemId > 0) {
+    $stmt = $conn->prepare('DELETE FROM entregas_p00_versoes WHERE id = ? AND entrega_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $itemId, $entregaId);
+} elseif ($itemId > 0) {
     $stmt = $conn->prepare('DELETE FROM entregas_itens WHERE id = ? AND entrega_id = ? LIMIT 1');
     $stmt->bind_param('ii', $itemId, $entregaId);
 } elseif ($imagemId > 0) {
@@ -33,5 +51,5 @@ $stmt->close();
 echo json_encode([
     'success' => $affected > 0,
     'removed' => $affected,
-    'mode' => $itemId > 0 ? 'by_item_id' : 'by_imagem_id'
+    'mode' => $tipoEntrega === 'P00' ? 'by_version_id' : ($itemId > 0 ? 'by_item_id' : 'by_imagem_id')
 ]);

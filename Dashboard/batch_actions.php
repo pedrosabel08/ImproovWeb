@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json');
-require '../conexao.php'; // sua conexão mysqli ($conn)
+require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
+require_once __DIR__ . '/../Entregas/review_cobranca_lib.php';
 
 // Recebe os dados enviados via AJAX
 $data = json_decode(file_get_contents('php://input'), true);
@@ -67,6 +69,19 @@ try {
             }
         }
         $stmtHold->close();
+    }
+
+    if (isset($campos['substatus_id']) && (int) $campos['substatus_id'] === 2) {
+        foreach ($ids as $imagemId) {
+            improov_p00_register_handoff_for_image($conn, (int) $imagemId);
+        }
+    }
+
+    if (isset($campos['substatus_id'])) {
+        $novoSubstatusId = (int) $campos['substatus_id'];
+        foreach ($ids as $imagemId) {
+            entregas_review_sync_p00_batch_state($conn, (int) $imagemId, null, $novoSubstatusId);
+        }
     }
 
     mysqli_commit($conn);

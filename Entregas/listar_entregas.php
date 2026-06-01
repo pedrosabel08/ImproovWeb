@@ -2,6 +2,9 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
+require_once __DIR__ . '/p00_delivery_helpers.php';
+
+improov_p00_ensure_schema($conn);
 
 $obra_id = isset($_GET['obra_id']) && is_numeric($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
 
@@ -9,7 +12,10 @@ $conditions = ["(e.arquivada IS NULL OR e.arquivada = 0)", "o.status_obra = 0"];
 if ($obra_id !== null) {
     $conditions[] = "e.obra_id = " . $obra_id;
 }
-$where = "WHERE " . implode(" AND ", $conditions);
+
+$conditions_standard = $conditions;
+$conditions_standard[] = "(e.tipo_entrega IS NULL OR e.tipo_entrega <> 'P00')";
+$where_standard = "WHERE " . implode(" AND ", $conditions_standard);
 
 $sql = "SELECT
     e.id,
@@ -21,6 +27,7 @@ $sql = "SELECT
     e.observacoes,
     e.em_hold,
     e.motivo_hold,
+    COALESCE(e.tipo_entrega, 'PADRAO') AS tipo_entrega,
     s.nome_status as nome_etapa,
     o.nomenclatura,
     COUNT(ei.id) AS total_itens,
@@ -37,7 +44,7 @@ LEFT JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
 LEFT JOIN substatus_imagem ss ON ss.id = i.substatus_id
 JOIN obra o ON e.obra_id = o.idobra
 JOIN status_imagem s ON e.status_id = s.idstatus
-" . PHP_EOL . $where . PHP_EOL . "GROUP BY e.id
+" . PHP_EOL . $where_standard . PHP_EOL . "GROUP BY e.id
 HAVING total_itens > 0
 ORDER BY ready_count DESC, e.data_conclusao DESC";
 
@@ -76,8 +83,10 @@ while ($row = $res->fetch_assoc()) {
         'id' => intval($row['id']),
         'obra_id' => $row['obra_id'],
         'data_prevista' => $row['data_prevista'],
+        'data_conclusao' => $row['data_conclusao'],
         'status' => $row['status'],
         'status_id' => intval($row['status_id'] ?? 0),
+        'tipo_entrega' => $row['tipo_entrega'] ?? 'PADRAO',
         'observacoes' => $row['observacoes'],
         'em_hold' => (bool) intval($row['em_hold']),
         'motivo_hold' => $row['motivo_hold'],
@@ -98,6 +107,95 @@ while ($row = $res->fetch_assoc()) {
 
     $entregaIds[] = intval($row['id']);
 }
+
+$conditions_p00 = $conditions;
+$conditions_p00[] = "e.tipo_entrega = 'P00'";
+$where_p00 = "WHERE " . implode(" AND ", $conditions_p00);
+
+$sqlP00 = "SELECT
+    e.id,
+    e.obra_id,
+    e.status_id,
+    e.data_prevista,
+    e.data_conclusao,
+    e.status,
+    e.observacoes,
+    e.em_hold,
+    e.motivo_hold,
+    e.tipo_entrega,
+    s.nome_status AS nome_etapa,
+    o.nomenclatura,
+    COUNT(v.id) AS total_itens,
+    SUM(CASE WHEN v.status NOT IN ('Pendente', 'Entrega pendente') THEN 1 ELSE 0 END) AS entregues_count,
+    (SUM(CASE WHEN v.status NOT IN ('Pendente', 'Entrega pendente') THEN 1 ELSE 0 END) / GREATEST(COUNT(v.id), 1)) * 100 AS pct_entregue,
+    SUM(CASE WHEN v.status = 'Entrega pendente' THEN 1 ELSE 0 END) AS ready_count
+FROM entregas e
+LEFT JOIN entregas_p00_versoes v ON v.entrega_id = e.id
+JOIN obra o ON e.obra_id = o.idobra
+JOIN status_imagem s ON e.status_id = s.idstatus
+" . PHP_EOL . $where_p00 . PHP_EOL . "GROUP BY e.id
+HAVING total_itens > 0";
+
+$resP00 = $conn->query($sqlP00);
+if ($resP00) {
+    while ($row = $resP00->fetch_assoc()) {
+        $statusCol = 'pendente';
+        $total = intval($row['total_itens']);
+        $entregues = intval($row['entregues_count']);
+        $dataPrevista = $row['data_prevista'];
+
+        if ($total === 0 || $entregues === 0) {
+            $statusCol = 'pendente';
+        } elseif ($entregues < $total) {
+            $statusCol = 'parcial';
+        } else {
+            $statusCol = 'concluida';
+        }
+
+        if (intval($row['em_hold'])) {
+            $statusCol = 'hold';
+        } elseif ($dataPrevista < $hoje && ($statusCol === 'pendente' || $statusCol === 'parcial')) {
+            $statusCol = 'atrasada';
+        }
+
+        $out[] = [
+            'id' => intval($row['id']),
+            'obra_id' => $row['obra_id'],
+            'data_prevista' => $row['data_prevista'],
+            'data_conclusao' => $row['data_conclusao'],
+            'status' => $row['status'],
+            'status_id' => intval($row['status_id'] ?? 0),
+            'tipo_entrega' => $row['tipo_entrega'] ?? 'P00',
+            'observacoes' => $row['observacoes'],
+            'em_hold' => (bool) intval($row['em_hold']),
+            'motivo_hold' => $row['motivo_hold'],
+            'nome_etapa' => $row['nome_etapa'],
+            'nomenclatura' => $row['nomenclatura'],
+            'total_itens' => $total,
+            'entregues' => $entregues,
+            'pct_entregue' => round(floatval($row['pct_entregue']), 1),
+            'ready_count' => intval($row['ready_count'] ?? 0),
+            'kanban_status' => $statusCol,
+            'review_batches_total' => 0,
+            'review_batches_overdue' => 0,
+            'review_batches_pending' => 0,
+            'review_batches_snoozed' => 0,
+            'review_batches_max_overdue_days' => 0,
+            'review_badge_severity' => 'none',
+        ];
+
+        $entregaIds[] = intval($row['id']);
+    }
+}
+
+usort($out, static function (array $left, array $right): int {
+    $readyDiff = intval($right['ready_count'] ?? 0) <=> intval($left['ready_count'] ?? 0);
+    if ($readyDiff !== 0) {
+        return $readyDiff;
+    }
+
+    return strcmp((string) ($right['data_conclusao'] ?? ''), (string) ($left['data_conclusao'] ?? ''));
+});
 
 if (!empty($out) && entregas_review_schema_ready($conn)) {
     $summaryByEntrega = entregas_review_fetch_entrega_summary($conn, $entregaIds);

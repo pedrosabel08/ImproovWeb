@@ -59,6 +59,9 @@ try {
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
+            ))
           )
           AND o.status_obra = 0
         ORDER BY data_aprovacao DESC";
@@ -105,6 +108,9 @@ try {
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
+            ))
           )
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
@@ -149,6 +155,9 @@ try {
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
+            ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
             ))
           )
         ORDER BY data_aprovacao DESC";
@@ -197,6 +206,9 @@ try {
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
+            ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
             ))
           )
           AND o.idobra IN (
@@ -248,6 +260,9 @@ try {
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
+            ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
             ))
           )
           AND o.idobra IN (

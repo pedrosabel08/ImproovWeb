@@ -13,6 +13,7 @@ ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use phpseclib3\Net\SFTP;
@@ -86,6 +87,175 @@ function normalize_name($s)
     // normaliza espaços
     $s = preg_replace('/\s+/', ' ', trim($s));
     return $s;
+}
+
+function improov_review_normalize_delivery_file_name(string $filePath): string
+{
+    $originalName = basename($filePath);
+    $normalizedName = preg_replace('/(_\d+)+(\.([^.]+))$/', '$2', $originalName);
+    if ($normalizedName === $originalName) {
+        return $originalName;
+    }
+
+    return $normalizedName;
+}
+
+function improov_review_resolve_p00_modelagem_dir(SFTP $sftp, string $base, string $nomenclaturaObra, array &$logs): ?string
+{
+    $modelsRoot = rtrim("{$base}/{$nomenclaturaObra}/03.Models", '/');
+    if (!$sftp->is_dir($modelsRoot)) {
+        $logs[] = "Diretório {$modelsRoot} não existe.";
+        return null;
+    }
+
+    $modelagemDir = $modelsRoot . '/Modelagem_Fachada';
+    if ($sftp->is_dir($modelagemDir)) {
+        return $modelagemDir;
+    }
+
+    if ($sftp->mkdir($modelagemDir, -1, true) || $sftp->is_dir($modelagemDir)) {
+        $logs[] = "Diretório {$modelagemDir} criado com sucesso.";
+        return $modelagemDir;
+    }
+
+    $logs[] = "Falha ao criar diretório {$modelagemDir}.";
+    return null;
+}
+
+function improov_review_fetch_batch_histories(mysqli $conn, int $funcaoImagemId, ?int $historicoId = null): array
+{
+    $batchIndex = 0;
+
+    if ($historicoId) {
+        $stmtBatch = $conn->prepare('SELECT COALESCE(indice_envio, 0) AS indice_envio FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1');
+        if ($stmtBatch) {
+            $stmtBatch->bind_param('ii', $historicoId, $funcaoImagemId);
+            $stmtBatch->execute();
+            $stmtBatch->bind_result($batchIndexFound);
+            if ($stmtBatch->fetch()) {
+                $batchIndex = (int) $batchIndexFound;
+            }
+            $stmtBatch->close();
+        }
+    } else {
+        $stmtBatch = $conn->prepare('SELECT COALESCE(MAX(indice_envio), 0) AS indice_envio FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?');
+        if ($stmtBatch) {
+            $stmtBatch->bind_param('i', $funcaoImagemId);
+            $stmtBatch->execute();
+            $stmtBatch->bind_result($batchIndexFound);
+            if ($stmtBatch->fetch()) {
+                $batchIndex = (int) $batchIndexFound;
+            }
+            $stmtBatch->close();
+        }
+    }
+
+    if ($batchIndex > 0) {
+        $stmtHist = $conn->prepare('SELECT id, COALESCE(nome_arquivo, \'\') AS nome_arquivo, imagem, indice_envio FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? AND indice_envio = ? ORDER BY id ASC');
+        if (!$stmtHist) {
+            return [];
+        }
+
+        $stmtHist->bind_param('ii', $funcaoImagemId, $batchIndex);
+        $stmtHist->execute();
+        $result = $stmtHist->get_result();
+        $rows = [];
+        while ($result && ($row = $result->fetch_assoc())) {
+            $rows[] = $row;
+        }
+        $stmtHist->close();
+
+        return $rows;
+    }
+
+    if ($historicoId) {
+        $stmtHist = $conn->prepare('SELECT id, COALESCE(nome_arquivo, \'\') AS nome_arquivo, imagem, COALESCE(indice_envio, 0) AS indice_envio FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1');
+        if (!$stmtHist) {
+            return [];
+        }
+
+        $stmtHist->bind_param('ii', $historicoId, $funcaoImagemId);
+    } else {
+        $stmtHist = $conn->prepare('SELECT id, COALESCE(nome_arquivo, \'\') AS nome_arquivo, imagem, COALESCE(indice_envio, 0) AS indice_envio FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1');
+        if (!$stmtHist) {
+            return [];
+        }
+
+        $stmtHist->bind_param('i', $funcaoImagemId);
+    }
+
+    $stmtHist->execute();
+    $result = $stmtHist->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmtHist->close();
+
+    return $row ? [$row] : [];
+}
+
+function improov_review_locate_history_file(array $historyRow, string $uploadDir, array &$logs): ?array
+{
+    $imageDbPath = trim((string) ($historyRow['imagem'] ?? ''));
+    $nameBase = trim((string) ($historyRow['nome_arquivo'] ?? ''));
+
+    if ($imageDbPath !== '') {
+        $directPath = dirname(__DIR__) . '/' . ltrim(str_replace('\\', '/', $imageDbPath), '/');
+        if (is_file($directPath)) {
+            return ['path' => $directPath, 'cleanup' => null];
+        }
+
+        $imageBaseName = basename(str_replace('\\', '/', $imageDbPath));
+        if ($imageBaseName !== '') {
+            $uploadCandidate = $uploadDir . $imageBaseName;
+            if (is_file($uploadCandidate)) {
+                return ['path' => $uploadCandidate, 'cleanup' => null];
+            }
+
+            if ($nameBase === '') {
+                $nameBase = pathinfo($imageBaseName, PATHINFO_FILENAME);
+            }
+        }
+    }
+
+    if ($nameBase !== '') {
+        $globCandidates = glob($uploadDir . $nameBase . '.*') ?: [];
+        if (!empty($globCandidates)) {
+            return ['path' => $globCandidates[0], 'cleanup' => null];
+        }
+    }
+
+    try {
+        $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
+        $vpsBase = rtrim((string) improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
+        $vpsDir = $vpsBase . '/uploads/';
+        $vsftp = new SFTP($vpsCfg['host'], (int) $vpsCfg['port']);
+        if (!$vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
+            $logs[] = 'Falha ao conectar no VPS SFTP para buscar lote de modelagem.';
+            return null;
+        }
+
+        $remoteList = $vsftp->nlist($vpsDir);
+        if (!is_array($remoteList)) {
+            return null;
+        }
+
+        foreach ($remoteList as $remoteFile) {
+            $remoteBaseName = basename($remoteFile);
+            $remoteBaseNoExt = pathinfo($remoteBaseName, PATHINFO_FILENAME);
+            if ($nameBase !== '' && $remoteBaseNoExt !== $nameBase) {
+                continue;
+            }
+
+            $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteBaseName;
+            if ($vsftp->get($vpsDir . $remoteBaseName, $tempPath)) {
+                $logs[] = "Arquivo do lote baixado do VPS: {$remoteBaseName}";
+                return ['path' => $tempPath, 'cleanup' => $tempPath];
+            }
+        }
+    } catch (RuntimeException $e) {
+        $logs[] = 'VPS SFTP config ausente para lote de modelagem: ' . $e->getMessage();
+    }
+
+    return null;
 }
 
 $resultadoFinal = ['logs' => []];
@@ -290,16 +460,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $resultadoFinal['message'] = 'Tarefa atualizada com sucesso.';
 
             $tipo_imagem_nome = null;
+            $status_nome_imagem = null;
+            $img_status_id_context = null;
+            $img_obra_id_context = null;
+            $nomenclatura_obra = null;
             if ($imagem_id) {
-                $stmtTipo = $conn->prepare("SELECT tipo_imagem FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+                $stmtTipo = $conn->prepare("SELECT i.tipo_imagem, i.status_id, i.obra_id, s.nome_status, o.nomenclatura
+                    FROM imagens_cliente_obra i
+                    JOIN status_imagem s ON s.idstatus = i.status_id
+                    JOIN obra o ON o.idobra = i.obra_id
+                    WHERE i.idimagens_cliente_obra = ?");
                 $stmtTipo->bind_param("i", $imagem_id);
                 $stmtTipo->execute();
-                $stmtTipo->bind_result($tipo_imagem_nome);
+                $stmtTipo->bind_result($tipo_imagem_nome, $img_status_id_context, $img_obra_id_context, $status_nome_imagem, $nomenclatura_obra);
                 $stmtTipo->fetch();
                 $stmtTipo->close();
             }
 
             $nomeFuncaoLower = mb_strtolower((string)$nome_funcao, 'UTF-8');
+            $isP00ModelagemReview = (
+                in_array($status, ['Aprovado'], true)
+                && $nomeFuncaoLower === 'modelagem'
+                && $status_nome_imagem === 'P00'
+            );
+
+            // Mensagem Slack específica para modelagem de fachada P00
+            if ($nomeFuncaoLower === 'modelagem' && $status_nome_imagem === 'P00') {
+                $projectLabel = (string) ($nomenclatura_obra ?? $imagem_resumida);
+                if ($tipoRevisao === 'aprovado') {
+                    $mensagemSlack = "A modelagem de fachada do projeto {$projectLabel} foi aprovada.";
+                } elseif ($tipoRevisao === 'ajuste') {
+                    $mensagemSlack = "A modelagem de fachada do projeto {$projectLabel} teve ajustes.";
+                } else {
+                    $mensagemSlack = "A modelagem de fachada do projeto {$projectLabel} foi aprovada com ajustes.";
+                }
+            }
+
+            $p00EntregaAtual = null;
+            $p00VersaoAtual = null;
+
+            if ($isP00ModelagemReview) {
+                $p00EntregaAtual = improov_p00_fetch_latest_delivery($conn, (int) $img_obra_id_context, (int) $img_status_id_context);
+                if (!$p00EntregaAtual) {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Entrega P00 não encontrada para a obra. Crie a entrega antes de aprovar a modelagem.']);
+                    exit;
+                }
+
+                $p00VersaoAtual = improov_p00_fetch_latest_version($conn, (int) $p00EntregaAtual['id']);
+                if (!$p00VersaoAtual) {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Versão P00 não encontrada para a entrega.']);
+                    exit;
+                }
+            }
+
             // Ao aprovar uma função, atualizar vínculos de entrega
             // - Para P00 + Finalização: vincular TODOS os ângulos (historico_aprovacoes_imagens) ao item de entrega via angulos_imagens.entrega_item_id
             // - Para demais (R00..EF): atualizar entregas_itens.historico_id com o id correspondente (último)
@@ -435,6 +650,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // SFTP envio final
         if (
+            $isP00ModelagemReview
+            ||
             (
                 in_array(mb_strtolower($nome_funcao, 'UTF-8'), ['pós-produção', 'alteração']) &&
                 in_array($status, ['Aprovado'])
@@ -447,261 +664,409 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 in_array($status, ['Aprovado'])
             )
         ) {
-            // Busca o arquivo exato: usa historico_id quando disponível (imagem sendo visualizada),
-            // caso contrário cai no registro mais recente da função.
-            if ($historico_id) {
-                $stmtArquivo = $conn->prepare("SELECT nome_arquivo, imagem FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1");
-                $stmtArquivo->bind_param("ii", $historico_id, $idfuncao_imagem);
-            } else {
-                $stmtArquivo = $conn->prepare("SELECT nome_arquivo, imagem FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
-                $stmtArquivo->bind_param("i", $idfuncao_imagem);
-            }
-            $stmtArquivo->execute();
-            $stmtArquivo->bind_result($nome_arquivo_base, $imagem_db_path);
-            $stmtArquivo->fetch();
-            $stmtArquivo->close();
-
-            $stmtNomen = $conn->prepare("SELECT o.nomenclatura FROM funcao_imagem fi JOIN imagens_cliente_obra ic ON fi.imagem_id = ic.idimagens_cliente_obra JOIN obra o ON ic.obra_id = o.idobra WHERE fi.idfuncao_imagem = ?");
-            $stmtNomen->bind_param("i", $idfuncao_imagem);
-            $stmtNomen->execute();
-            $stmtNomen->bind_result($nomenclatura);
-            $stmtNomen->fetch();
-            $stmtNomen->close();
-
-            $uploadDir = dirname(__DIR__) . "/uploads/";
-            $arquivosPossiveis = [];
-
-            // 1ª tentativa: usa o caminho exato registrado na coluna `imagem` do histórico
-            if (!empty($imagem_db_path)) {
-                $caminho_direto = dirname(__DIR__) . '/' . ltrim($imagem_db_path, '/');
-                if (is_file($caminho_direto)) {
-                    $arquivosPossiveis = [$caminho_direto];
-                    $resultadoFinal['logs'][] = "Arquivo localizado via caminho direto do BD: {$caminho_direto}";
-                }
-            }
-
-            // 2ª tentativa: glob pelo nome-base
-            if (empty($arquivosPossiveis)) {
-                $arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*') ?: []; // tenta encontrar qualquer extensão
-            }
-
-            // Fallback: arquivo não encontrado localmente → busca no VPS via SFTP
-            $arquivoTempVps = null;
-            if (empty($arquivosPossiveis)) {
-                try {
-                    $vpsCfg    = improov_sftp_config('IMPROOV_VPS_SFTP');
-                    $vpsBase   = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
-                    $vpsDir    = $vpsBase . '/uploads/';
-                    $vsftp     = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
-                    if ($vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
-                        $listaRemota = $vsftp->nlist($vpsDir);
-                        if (is_array($listaRemota)) {
-                            foreach ($listaRemota as $remoteFile) {
-                                // nlist pode retornar path completo ou só basename — normaliza
-                                $remoteBasename = basename($remoteFile);
-                                if (pathinfo($remoteBasename, PATHINFO_FILENAME) === $nome_arquivo_base) {
-                                    $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteBasename;
-                                    if ($vsftp->get($vpsDir . $remoteBasename, $tempPath)) {
-                                        $arquivosPossiveis = [$tempPath];
-                                        $arquivoTempVps    = $tempPath;
-                                        $resultadoFinal['logs'][] = "Arquivo baixado do VPS: {$remoteBasename}";
-                                    } else {
-                                        $resultadoFinal['logs'][] = "Falha ao baixar '{$remoteBasename}' do VPS.";
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    } else {
-                        $resultadoFinal['logs'][] = "Falha ao conectar no VPS SFTP para buscar uploads.";
-                    }
-                } catch (RuntimeException $e) {
-                    $resultadoFinal['logs'][] = "VPS SFTP config ausente: " . $e->getMessage();
-                }
-            }
-
-            if (!empty($arquivosPossiveis)) {
-                $caminho_local = $arquivosPossiveis[0];
-                $nome_arquivo_original = basename($caminho_local); // nome original com possível índice
-                // Remove índices numéricos finais antes da extensão: ex. _EF_5_1.jpg → _EF.jpg
-                $nome_arquivo = preg_replace('/(_\d+)+(\.([^.]+))$/', '$2', $nome_arquivo_original);
-                if ($nome_arquivo === $nome_arquivo_original) {
-                    // Não havia índice – mantém o original
-                    $nome_arquivo = $nome_arquivo_original;
-                }
-
-                $reviewDir = $uploadDir . "review/";
+            if ($isP00ModelagemReview) {
+                $uploadDir = dirname(__DIR__) . "/uploads/";
+                $reviewDir = $uploadDir . 'review/';
                 if (!is_dir($reviewDir)) {
                     mkdir($reviewDir, 0777, true);
                 }
-                $destinoReview = $reviewDir . $nome_arquivo;
-                if (!copy($caminho_local, $destinoReview)) {
-                    $resultadoFinal['logs'][] = "Falha ao copiar arquivo para pasta review.";
-                } else {
-                    $resultadoFinal['logs'][] = "Arquivo copiado para pasta review: $destinoReview";
+
+                $batchHistories = improov_review_fetch_batch_histories($conn, (int) $idfuncao_imagem, $historico_id ?: null);
+                if (empty($batchHistories)) {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Nenhum arquivo encontrado no lote atual da modelagem.']);
+                    exit;
                 }
 
-                // Busca a maior versão já existente para o imagem_id
-                $versao = 1;
-                $stmtVer = $conn->prepare("SELECT MAX(versao) as max_versao FROM review_uploads WHERE imagem_id = ?");
-                $stmtVer->bind_param("i", $imagem_id);
-                $stmtVer->execute();
-                $stmtVer->bind_result($max_versao);
-                if ($stmtVer->fetch() && $max_versao !== null) {
-                    $versao = $max_versao + 1;
-                }
-                $stmtVer->close();
+                $resolvedFiles = [];
+                $tempFiles = [];
+                foreach ($batchHistories as $historyRow) {
+                    $locatedFile = improov_review_locate_history_file($historyRow, $uploadDir, $resultadoFinal['logs']);
+                    if (!$locatedFile || empty($locatedFile['path']) || !is_file($locatedFile['path'])) {
+                        foreach ($tempFiles as $tempFile) {
+                            if ($tempFile && is_file($tempFile)) {
+                                @unlink($tempFile);
+                            }
+                        }
+                        $conn->rollback();
+                        echo json_encode(['success' => false, 'message' => 'Nem todos os arquivos do lote atual da modelagem foram localizados para envio.']);
+                        exit;
+                    }
 
-                $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, nome_arquivo, versao) VALUES (?, ?, ?)");
-                $stmt->bind_param("isi", $imagem_id, $nome_arquivo, $versao);
+                    $normalizedFileName = improov_review_normalize_delivery_file_name($locatedFile['path']);
+                    $reviewTarget = $reviewDir . $normalizedFileName;
+                    if (!copy($locatedFile['path'], $reviewTarget)) {
+                        $resultadoFinal['logs'][] = "Falha ao copiar {$normalizedFileName} para a pasta review.";
+                    } else {
+                        $resultadoFinal['logs'][] = "Arquivo do lote copiado para review: {$reviewTarget}";
+                    }
 
-                if ($stmt->execute()) {
-                    $resultadoFinal['logs'][] = "Arquivo inserido no banco de dados: $nome_arquivo";
-                } else {
-                    $resultadoFinal['logs'][] = "Falha ao inserir a imagem no banco.";
+                    $resolvedFiles[] = [
+                        'historico_id' => (int) ($historyRow['id'] ?? 0),
+                        'local_path' => $locatedFile['path'],
+                        'file_name' => $normalizedFileName,
+                    ];
+                    if (!empty($locatedFile['cleanup'])) {
+                        $tempFiles[] = $locatedFile['cleanup'];
+                    }
                 }
 
                 try {
                     $sftpCfg = improov_sftp_config();
                 } catch (RuntimeException $e) {
-                    $resultadoFinal['logs'][] = 'config_sftp_ausente: ' . $e->getMessage();
-                    $sftpCfg = null;
-                }
-                if ($sftpCfg === null) {
-                    $resultadoFinal['sftp_enviado'] = false;
-                } else {
-                    $ftp_host = $sftpCfg['host'];
-                    $ftp_user = $sftpCfg['user'];
-                    $ftp_pass = $sftpCfg['pass'];
-                    $ftp_port = $sftpCfg['port'];
-                    $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
-                    $enviado = false;
-
-                    // Ensure local file exists before attempting SFTP
-                    if (!is_file($caminho_local)) {
-                        $resultadoFinal['logs'][] = "Arquivo local não encontrado: $caminho_local";
-                        $resultadoFinal['sftp_enviado'] = false;
-                    } elseif (in_array($sftp_action, ['replace', 'add'], true) && !empty($sftp_remote_path)) {
-                        // ── Resolução de conflito: usa o caminho exato devolvido na 1ª chamada ──
-                        $resolved_path = $sftp_remote_path;
-                        if ($sftp_action === 'add' && !empty($sftp_suffix)) {
-                            $ext_r  = pathinfo($resolved_path, PATHINFO_EXTENSION);
-                            $base_r = pathinfo($resolved_path, PATHINFO_FILENAME);
-                            $resolved_path = dirname($resolved_path) . '/' . $base_r . '_' . $sftp_suffix . '.' . $ext_r;
+                    foreach ($tempFiles as $tempFile) {
+                        if ($tempFile && is_file($tempFile)) {
+                            @unlink($tempFile);
                         }
-                        try {
-                            $sftp = new SFTP($ftp_host, $ftp_port, 60);
-                            if (!$sftp->login($ftp_user, $ftp_pass)) {
-                                $resultadoFinal['logs'][] = "Falha ao autenticar no SFTP para resolução de conflito.";
-                            } else {
-                                if ($sftp->put($resolved_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
-                                    $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $resolved_path.";
-                                    $enviado = true;
-                                } else {
-                                    $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $resolved_path.";
+                    }
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Configuração SFTP não disponível para envio da modelagem.']);
+                    exit;
+                }
+
+                $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
+                $modelagemNasPath = '03.Models/Modelagem_Fachada';
+                $versionLabel = (string) ($p00VersaoAtual['versao_label'] ?? 'V1');
+                $primaryHistoryId = $historico_id ?: (int) ($batchHistories[0]['id'] ?? 0);
+                $primaryFileName = null;
+                $uploadedTargets = [];
+                $allUploaded = false;
+
+                foreach ($bases as $base) {
+                    try {
+                        $sftp = new SFTP($sftpCfg['host'], (int) $sftpCfg['port'], 60);
+                        if (!$sftp->login($sftpCfg['user'], $sftpCfg['pass'])) {
+                            $resultadoFinal['logs'][] = "Falha ao autenticar no SFTP para a base {$base}.";
+                            continue;
+                        }
+                    } catch (Throwable $e) {
+                        $resultadoFinal['logs'][] = "Erro ao conectar no SFTP para {$base}: " . $e->getMessage();
+                        continue;
+                    }
+
+                    $modelagemDir = improov_review_resolve_p00_modelagem_dir($sftp, $base, (string) $nomenclatura_obra, $resultadoFinal['logs']);
+                    if (!$modelagemDir) {
+                        continue;
+                    }
+
+                    $toonsDir = $modelagemDir . '/Toons';
+                    if (!$sftp->is_dir($toonsDir) && !$sftp->mkdir($toonsDir, -1, true)) {
+                        $resultadoFinal['logs'][] = "Falha ao criar diretório {$toonsDir}.";
+                        continue;
+                    }
+
+                    $versionDir = $toonsDir . '/' . $versionLabel;
+                    if (!$sftp->is_dir($versionDir) && !$sftp->mkdir($versionDir, -1, true)) {
+                        $resultadoFinal['logs'][] = "Falha ao criar diretório {$versionDir}.";
+                        continue;
+                    }
+
+                    $uploadedTargets = [];
+                    $baseUploadOk = true;
+                    foreach ($resolvedFiles as $fileData) {
+                        $remoteToonsPath = $versionDir . '/' . $fileData['file_name'];
+                        if (!$sftp->put($remoteToonsPath, $fileData['local_path'], SFTP::SOURCE_LOCAL_FILE)) {
+                            $resultadoFinal['logs'][] = "Falha ao enviar {$fileData['file_name']} para {$remoteToonsPath}.";
+                            $baseUploadOk = false;
+                            break;
+                        }
+
+                        $uploadedTargets[] = [
+                            'historico_id' => (int) $fileData['historico_id'],
+                            'file_name' => $fileData['file_name'],
+                            'remote_path' => $remoteToonsPath,
+                        ];
+                        if ((int) $fileData['historico_id'] === (int) $primaryHistoryId) {
+                            $primaryFileName = $fileData['file_name'];
+                        }
+                    }
+
+                    if ($baseUploadOk) {
+                        $allUploaded = true;
+                        $resultadoFinal['logs'][] = 'Lote de modelagem P00 enviado para Toons com sucesso.';
+                        break;
+                    }
+                }
+
+                foreach ($tempFiles as $tempFile) {
+                    if ($tempFile && is_file($tempFile)) {
+                        @unlink($tempFile);
+                    }
+                }
+
+                if (!$allUploaded) {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Erro ao enviar o lote completo da modelagem para o NAS.']);
+                    exit;
+                }
+
+                improov_p00_mark_version_ready($conn, (int) $p00VersaoAtual['id'], [
+                    'status' => 'Entrega pendente',
+                    'funcao_imagem_id' => (int) $idfuncao_imagem,
+                    'historico_id' => (int) $primaryHistoryId,
+                    'arquivo_principal' => $primaryFileName,
+                    'arquivos_json' => json_encode($uploadedTargets, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'nas_path' => $modelagemNasPath . '/Toons/' . $versionLabel,
+                ]);
+
+                $resultadoFinal['sftp_enviado'] = true;
+            } else {
+                // Busca o arquivo exato: usa historico_id quando disponível (imagem sendo visualizada),
+                // caso contrário cai no registro mais recente da função.
+                if ($historico_id) {
+                    $stmtArquivo = $conn->prepare("SELECT nome_arquivo, imagem FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1");
+                    $stmtArquivo->bind_param("ii", $historico_id, $idfuncao_imagem);
+                } else {
+                    $stmtArquivo = $conn->prepare("SELECT nome_arquivo, imagem FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                    $stmtArquivo->bind_param("i", $idfuncao_imagem);
+                }
+                $stmtArquivo->execute();
+                $stmtArquivo->bind_result($nome_arquivo_base, $imagem_db_path);
+                $stmtArquivo->fetch();
+                $stmtArquivo->close();
+
+                $stmtNomen = $conn->prepare("SELECT o.nomenclatura FROM funcao_imagem fi JOIN imagens_cliente_obra ic ON fi.imagem_id = ic.idimagens_cliente_obra JOIN obra o ON ic.obra_id = o.idobra WHERE fi.idfuncao_imagem = ?");
+                $stmtNomen->bind_param("i", $idfuncao_imagem);
+                $stmtNomen->execute();
+                $stmtNomen->bind_result($nomenclatura);
+                $stmtNomen->fetch();
+                $stmtNomen->close();
+
+                $uploadDir = dirname(__DIR__) . "/uploads/";
+                $arquivosPossiveis = [];
+
+                // 1ª tentativa: usa o caminho exato registrado na coluna `imagem` do histórico
+                if (!empty($imagem_db_path)) {
+                    $caminho_direto = dirname(__DIR__) . '/' . ltrim($imagem_db_path, '/');
+                    if (is_file($caminho_direto)) {
+                        $arquivosPossiveis = [$caminho_direto];
+                        $resultadoFinal['logs'][] = "Arquivo localizado via caminho direto do BD: {$caminho_direto}";
+                    }
+                }
+
+                // 2ª tentativa: glob pelo nome-base
+                if (empty($arquivosPossiveis)) {
+                    $arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*') ?: []; // tenta encontrar qualquer extensão
+                }
+
+                // Fallback: arquivo não encontrado localmente → busca no VPS via SFTP
+                $arquivoTempVps = null;
+                if (empty($arquivosPossiveis)) {
+                    try {
+                        $vpsCfg    = improov_sftp_config('IMPROOV_VPS_SFTP');
+                        $vpsBase   = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
+                        $vpsDir    = $vpsBase . '/uploads/';
+                        $vsftp     = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
+                        if ($vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
+                            $listaRemota = $vsftp->nlist($vpsDir);
+                            if (is_array($listaRemota)) {
+                                foreach ($listaRemota as $remoteFile) {
+                                    // nlist pode retornar path completo ou só basename — normaliza
+                                    $remoteBasename = basename($remoteFile);
+                                    if (pathinfo($remoteBasename, PATHINFO_FILENAME) === $nome_arquivo_base) {
+                                        $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteBasename;
+                                        if ($vsftp->get($vpsDir . $remoteBasename, $tempPath)) {
+                                            $arquivosPossiveis = [$tempPath];
+                                            $arquivoTempVps    = $tempPath;
+                                            $resultadoFinal['logs'][] = "Arquivo baixado do VPS: {$remoteBasename}";
+                                        } else {
+                                            $resultadoFinal['logs'][] = "Falha ao baixar '{$remoteBasename}' do VPS.";
+                                        }
+                                        break;
+                                    }
                                 }
                             }
-                        } catch (Throwable $e) {
-                            $resultadoFinal['logs'][] = "SFTP put error (resolução conflito): " . $e->getMessage();
+                        } else {
+                            $resultadoFinal['logs'][] = "Falha ao conectar no VPS SFTP para buscar uploads.";
                         }
+                    } catch (RuntimeException $e) {
+                        $resultadoFinal['logs'][] = "VPS SFTP config ausente: " . $e->getMessage();
+                    }
+                }
+
+                if (!empty($arquivosPossiveis)) {
+                    $caminho_local = $arquivosPossiveis[0];
+                    $nome_arquivo_original = basename($caminho_local); // nome original com possível índice
+                    // Remove índices numéricos finais antes da extensão: ex. _EF_5_1.jpg → _EF.jpg
+                    $nome_arquivo = preg_replace('/(_\d+)+(\.([^.]+))$/', '$2', $nome_arquivo_original);
+                    if ($nome_arquivo === $nome_arquivo_original) {
+                        // Não havia índice – mantém o original
+                        $nome_arquivo = $nome_arquivo_original;
+                    }
+
+                    $reviewDir = $uploadDir . "review/";
+                    if (!is_dir($reviewDir)) {
+                        mkdir($reviewDir, 0777, true);
+                    }
+                    $destinoReview = $reviewDir . $nome_arquivo;
+                    if (!copy($caminho_local, $destinoReview)) {
+                        $resultadoFinal['logs'][] = "Falha ao copiar arquivo para pasta review.";
                     } else {
-                        foreach ($bases as $base) {
+                        $resultadoFinal['logs'][] = "Arquivo copiado para pasta review: $destinoReview";
+                    }
+
+                    // Busca a maior versão já existente para o imagem_id
+                    $versao = 1;
+                    $stmtVer = $conn->prepare("SELECT MAX(versao) as max_versao FROM review_uploads WHERE imagem_id = ?");
+                    $stmtVer->bind_param("i", $imagem_id);
+                    $stmtVer->execute();
+                    $stmtVer->bind_result($max_versao);
+                    if ($stmtVer->fetch() && $max_versao !== null) {
+                        $versao = $max_versao + 1;
+                    }
+                    $stmtVer->close();
+
+                    $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, nome_arquivo, versao) VALUES (?, ?, ?)");
+                    $stmt->bind_param("isi", $imagem_id, $nome_arquivo, $versao);
+
+                    if ($stmt->execute()) {
+                        $resultadoFinal['logs'][] = "Arquivo inserido no banco de dados: $nome_arquivo";
+                    } else {
+                        $resultadoFinal['logs'][] = "Falha ao inserir a imagem no banco.";
+                    }
+
+                    try {
+                        $sftpCfg = improov_sftp_config();
+                    } catch (RuntimeException $e) {
+                        $resultadoFinal['logs'][] = 'config_sftp_ausente: ' . $e->getMessage();
+                        $sftpCfg = null;
+                    }
+                    if ($sftpCfg === null) {
+                        $resultadoFinal['sftp_enviado'] = false;
+                    } else {
+                        $ftp_host = $sftpCfg['host'];
+                        $ftp_user = $sftpCfg['user'];
+                        $ftp_pass = $sftpCfg['pass'];
+                        $ftp_port = $sftpCfg['port'];
+                        $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
+                        $enviado = false;
+
+                        // Ensure local file exists before attempting SFTP
+                        if (!is_file($caminho_local)) {
+                            $resultadoFinal['logs'][] = "Arquivo local não encontrado: $caminho_local";
+                            $resultadoFinal['sftp_enviado'] = false;
+                        } elseif (in_array($sftp_action, ['replace', 'add'], true) && !empty($sftp_remote_path)) {
+                            // ── Resolução de conflito: usa o caminho exato devolvido na 1ª chamada ──
+                            $resolved_path = $sftp_remote_path;
+                            if ($sftp_action === 'add' && !empty($sftp_suffix)) {
+                                $ext_r  = pathinfo($resolved_path, PATHINFO_EXTENSION);
+                                $base_r = pathinfo($resolved_path, PATHINFO_FILENAME);
+                                $resolved_path = dirname($resolved_path) . '/' . $base_r . '_' . $sftp_suffix . '.' . $ext_r;
+                            }
                             try {
                                 $sftp = new SFTP($ftp_host, $ftp_port, 60);
                                 if (!$sftp->login($ftp_user, $ftp_pass)) {
-                                    $resultadoFinal['logs'][] = "Falha ao conectar no host $ftp_host:$ftp_port para base $base.";
-                                    continue;
-                                }
-                                $resultadoFinal['logs'][] = "Conectado ao host $ftp_host para base $base.";
-                            } catch (Throwable $e) {
-                                $resultadoFinal['logs'][] = "SFTP connection error for base $base: " . $e->getMessage();
-                                continue;
-                            }
-
-                            // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
-                            preg_match_all('/_[A-Z0-9]{2,3}/i', $nome_arquivo, $matches);
-                            $matchList = is_array($matches[0] ?? null) ? $matches[0] : [];
-                            $revisao = !empty($matchList)
-                                ? strtoupper(str_replace('_', '', end($matchList)))
-                                : 'P00'; // padrão se nada for encontrado
-
-                            $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
-
-                            if (!$sftp->is_dir($finalizacaoDir)) {
-                                $resultadoFinal['logs'][] = "Diretório $finalizacaoDir não existe.";
-                                continue;
-                            }
-
-                            $revisaoDir = "$finalizacaoDir/$revisao";
-                            if (!$sftp->is_dir($revisaoDir)) {
-                                if ($sftp->mkdir($revisaoDir, -1, true)) {
-                                    $resultadoFinal['logs'][] = "Diretório $revisaoDir criado com sucesso.";
+                                    $resultadoFinal['logs'][] = "Falha ao autenticar no SFTP para resolução de conflito.";
                                 } else {
-                                    $resultadoFinal['logs'][] = "Falha ao criar diretório $revisaoDir.";
+                                    if ($sftp->put($resolved_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
+                                        $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $resolved_path.";
+                                        $enviado = true;
+                                    } else {
+                                        $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $resolved_path.";
+                                    }
+                                }
+                            } catch (Throwable $e) {
+                                $resultadoFinal['logs'][] = "SFTP put error (resolução conflito): " . $e->getMessage();
+                            }
+                        } else {
+                            foreach ($bases as $base) {
+                                try {
+                                    $sftp = new SFTP($ftp_host, $ftp_port, 60);
+                                    if (!$sftp->login($ftp_user, $ftp_pass)) {
+                                        $resultadoFinal['logs'][] = "Falha ao conectar no host $ftp_host:$ftp_port para base $base.";
+                                        continue;
+                                    }
+                                    $resultadoFinal['logs'][] = "Conectado ao host $ftp_host para base $base.";
+                                } catch (Throwable $e) {
+                                    $resultadoFinal['logs'][] = "SFTP connection error for base $base: " . $e->getMessage();
                                     continue;
                                 }
-                            }
 
-                            $remote_path = "$revisaoDir/$nome_arquivo";
+                                // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
+                                preg_match('/(_[A-Z0-9]{2,3})(?!.*_[A-Z0-9]{2,3})/i', $nome_arquivo, $lastMatchParts);
+                                $lastMatch = $lastMatchParts[1] ?? null;
+                                $revisao = $lastMatch !== null
+                                    ? strtoupper(str_replace('_', '', (string) $lastMatch))
+                                    : 'P00'; // padrão se nada for encontrado
 
-                            // Verifica se já existe um arquivo com o mesmo nome no servidor
-                            if ($sftp->stat($remote_path) !== false) {
-                                $resultadoFinal['sftp_conflict']      = true;
-                                $resultadoFinal['sftp_nome_arquivo']  = $nome_arquivo;
-                                $resultadoFinal['sftp_remote_path']   = $remote_path;
-                                $resultadoFinal['sftp_caminho_local'] = $caminho_local;
-                                $resultadoFinal['logs'][] = "Conflito SFTP: arquivo $remote_path já existe.";
-                                $enviado = false; // não sinaliza como enviado; frontend resolverá
-                                break;
-                            }
+                                $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
 
-                            try {
-                                if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
-                                    $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $remote_path.";
-                                    $enviado = true;
+                                if (!$sftp->is_dir($finalizacaoDir)) {
+                                    $resultadoFinal['logs'][] = "Diretório $finalizacaoDir não existe.";
+                                    continue;
+                                }
+
+                                $revisaoDir = "$finalizacaoDir/$revisao";
+                                if (!$sftp->is_dir($revisaoDir)) {
+                                    if ($sftp->mkdir($revisaoDir, -1, true)) {
+                                        $resultadoFinal['logs'][] = "Diretório $revisaoDir criado com sucesso.";
+                                    } else {
+                                        $resultadoFinal['logs'][] = "Falha ao criar diretório $revisaoDir.";
+                                        continue;
+                                    }
+                                }
+
+                                $remote_path = "$revisaoDir/$nome_arquivo";
+
+                                // Verifica se já existe um arquivo com o mesmo nome no servidor
+                                if ($sftp->stat($remote_path) !== false) {
+                                    $resultadoFinal['sftp_conflict']      = true;
+                                    $resultadoFinal['sftp_nome_arquivo']  = $nome_arquivo;
+                                    $resultadoFinal['sftp_remote_path']   = $remote_path;
+                                    $resultadoFinal['sftp_caminho_local'] = $caminho_local;
+                                    $resultadoFinal['logs'][] = "Conflito SFTP: arquivo $remote_path já existe.";
+                                    $enviado = false; // não sinaliza como enviado; frontend resolverá
                                     break;
-                                } else {
-                                    $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $remote_path.";
                                 }
-                            } catch (Throwable $e) {
-                                $resultadoFinal['logs'][] = "SFTP put error for $remote_path: " . $e->getMessage();
+
+                                try {
+                                    if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
+                                        $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $remote_path.";
+                                        $enviado = true;
+                                        break;
+                                    } else {
+                                        $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $remote_path.";
+                                    }
+                                } catch (Throwable $e) {
+                                    $resultadoFinal['logs'][] = "SFTP put error for $remote_path: " . $e->getMessage();
+                                }
                             }
                         }
+                        $resultadoFinal['sftp_enviado'] = $enviado;
                     }
-                    $resultadoFinal['sftp_enviado'] = $enviado;
+                } else {
+                    $resultadoFinal['logs'][] = "Arquivo com base '$nome_arquivo_base' não encontrado em $uploadDir nem no VPS.";
                 }
-            } else {
-                $resultadoFinal['logs'][] = "Arquivo com base '$nome_arquivo_base' não encontrado em $uploadDir nem no VPS.";
-            }
 
-            // Remove arquivo temporário baixado do VPS (se existir)
-            if ($arquivoTempVps && is_file($arquivoTempVps)) {
-                @unlink($arquivoTempVps);
-            }
+                // Remove arquivo temporário baixado do VPS (se existir)
+                if ($arquivoTempVps && is_file($arquivoTempVps)) {
+                    @unlink($arquivoTempVps);
+                }
 
-            // ── SFTP falhou sem conflito: reverte status e notifica ───────────────
-            if (!isset($resultadoFinal['sftp_conflict']) && empty($resultadoFinal['sftp_enviado'])) {
-                $conn->rollback();
-                $resultadoFinal['success'] = false;
-                $resultadoFinal['message'] = 'Erro no envio SFTP. Status da tarefa não foi alterado. Tente novamente.';
-                $stmtSlackErr = $conn->prepare(
-                    "SELECT u.nome_slack FROM usuario u
+                // ── SFTP falhou sem conflito: reverte status e notifica ───────────────
+                if (!isset($resultadoFinal['sftp_conflict']) && empty($resultadoFinal['sftp_enviado'])) {
+                    $conn->rollback();
+                    $resultadoFinal['success'] = false;
+                    $resultadoFinal['message'] = 'Erro no envio SFTP. Status da tarefa não foi alterado. Tente novamente.';
+                    $stmtSlackErr = $conn->prepare(
+                        "SELECT u.nome_slack FROM usuario u
                      JOIN colaborador c ON u.idcolaborador = c.idcolaborador
                      WHERE c.nome_colaborador IN ('Pedro Sabel', 'Andre L. de Souza')
                        AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
-                );
-                $stmtSlackErr->execute();
-                $resSlackErr = $stmtSlackErr->get_result();
-                $msgErroSftp = "\u26a0\ufe0f Falha no envio SFTP: *{$imagem_resumida}* ({$nome_funcao}). Status da tarefa *n\u00e3o foi alterado*. Verifique a conex\u00e3o com o servidor.";
-                while ($rowErr = $resSlackErr->fetch_assoc()) {
-                    enviarNotificacaoSlack($rowErr['nome_slack'], $msgErroSftp, $resultadoFinal['logs']);
+                    );
+                    $stmtSlackErr->execute();
+                    $resSlackErr = $stmtSlackErr->get_result();
+                    $msgErroSftp = "\u26a0\ufe0f Falha no envio SFTP: *{$imagem_resumida}* ({$nome_funcao}). Status da tarefa *n\u00e3o foi alterado*. Verifique a conex\u00e3o com o servidor.";
+                    while ($rowErr = $resSlackErr->fetch_assoc()) {
+                        enviarNotificacaoSlack($rowErr['nome_slack'], $msgErroSftp, $resultadoFinal['logs']);
+                    }
+                    $stmtSlackErr->close();
+                    echo json_encode($resultadoFinal);
+                    $conn->close();
+                    exit;
                 }
-                $stmtSlackErr->close();
-                echo json_encode($resultadoFinal);
-                $conn->close();
-                exit;
+                // ─────────────────────────────────────────────────────────────────────
             }
-            // ─────────────────────────────────────────────────────────────────────
         }
 
         // Commit: BD confirmado (SFTP enviado, conflito pendente ou SFTP não necessário)

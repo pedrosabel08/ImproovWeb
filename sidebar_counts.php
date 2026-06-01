@@ -5,6 +5,7 @@ if (session_status() !== PHP_SESSION_ACTIVE)
 
 require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/Dashboard/onboarding_helpers.php';
+require_once __DIR__ . '/Entregas/p00_delivery_helpers.php';
 
 // Basic auth check: require logged collaborator
 $userId = isset($_SESSION['idcolaborador']) ? intval($_SESSION['idcolaborador']) : null;
@@ -35,6 +36,12 @@ if ($res) {
         $counts_by_obra[$obra] = $count;
         $total_ready += $count;
     }
+}
+
+$p00HandoffCounts = improov_p00_fetch_pending_handoff_counts($conn);
+foreach ($p00HandoffCounts as $obraId => $handoffCount) {
+    $counts_by_obra[$obraId] = intval($counts_by_obra[$obraId] ?? 0) + intval($handoffCount);
+    $total_ready += intval($handoffCount);
 }
 
 $onboarding_progress = dashboard_get_onboarding_progress($conn);

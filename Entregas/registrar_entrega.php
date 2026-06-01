@@ -1,6 +1,11 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/review_cobranca_lib.php';
+
+improov_p00_ensure_schema($conn);
+entregas_review_schema_ready($conn);
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input || !isset($input['entrega_id'], $input['imagens_entregues'])) {
@@ -10,16 +15,61 @@ if (!$input || !isset($input['entrega_id'], $input['imagens_entregues'])) {
 }
 
 $entrega_id = intval($input['entrega_id']);
-$imagens_entregues = $input['imagens_entregues'];
+$imagens_entregues = is_array($input['imagens_entregues']) ? array_values(array_unique(array_filter(array_map(static function ($itemId) {
+    return is_numeric($itemId) ? intval($itemId) : 0;
+}, $input['imagens_entregues']), static function ($itemId) {
+    return $itemId > 0;
+}))) : [];
+
+if ($entrega_id <= 0 || empty($imagens_entregues)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Nenhum item válido foi selecionado para entrega.']);
+    exit;
+}
 
 try {
+    $stmtEntrega = $conn->prepare('SELECT obra_id, data_prevista, status_id, COALESCE(tipo_entrega, \'PADRAO\') AS tipo_entrega FROM entregas WHERE id = ? LIMIT 1');
+    $stmtEntrega->bind_param('i', $entrega_id);
+    $stmtEntrega->execute();
+    $entregaInfo = $stmtEntrega->get_result()->fetch_assoc();
+    $stmtEntrega->close();
+
+    if (!$entregaInfo) {
+        throw new RuntimeException('Entrega não encontrada.');
+    }
+
+    $isP00Entrega = (($entregaInfo['tipo_entrega'] ?? 'PADRAO') === 'P00');
     $conn->begin_transaction();
 
     $hoje = date('Y-m-d');
 
     // Atualiza o status de cada item individualmente e coleta imagem_id processadas
     $processed_image_ids = array();
-    if (!empty($imagens_entregues)) {
+    if ($isP00Entrega && !empty($imagens_entregues)) {
+        $stmtSelect = $conn->prepare("SELECT id, imagem_id FROM entregas_p00_versoes WHERE id = ? AND entrega_id = ?");
+        $stmtUpdate = $conn->prepare("UPDATE entregas_p00_versoes SET status = ?, data_entregue = NOW(), updated_at = NOW() WHERE id = ?");
+
+        foreach ($imagens_entregues as $item_id) {
+            $item_id = intval($item_id);
+            $stmtSelect->bind_param('ii', $item_id, $entrega_id);
+            $stmtSelect->execute();
+            $res = $stmtSelect->get_result()->fetch_assoc();
+            if (!$res) {
+                continue;
+            }
+
+            $status_item = ($hoje <= $entregaInfo['data_prevista']) ? 'Entregue no prazo' : 'Entregue com atraso';
+            $stmtUpdate->bind_param('si', $status_item, $item_id);
+            $stmtUpdate->execute();
+
+            if (isset($res['imagem_id']) && !empty($res['imagem_id'])) {
+                $processed_image_ids[] = intval($res['imagem_id']);
+            }
+        }
+
+        $stmtSelect->close();
+        $stmtUpdate->close();
+    } elseif (!empty($imagens_entregues)) {
         $stmtSelect = $conn->prepare("SELECT ei.id, ei.imagem_id, e.data_prevista 
                                       FROM entregas_itens ei 
                                       JOIN entregas e ON ei.entrega_id = e.id 
@@ -51,13 +101,23 @@ try {
     // Verificar total de imagens, quantas já estão entregues e obter obra_id/data_prevista
     // Use agregação para evitar ONLY_FULL_GROUP_BY: data_prevista/obra_id são constantes por entrega, então
     // MAX() retorna o valor correto sem precisar de GROUP BY.
-    $stmt = $conn->prepare("SELECT COUNT(*) AS total, 
-                    SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues,
-                    MAX(e.data_prevista) AS data_prevista,
-                    MAX(e.obra_id) AS obra_id
-                FROM entregas_itens ei
-                JOIN entregas e ON ei.entrega_id = e.id
-                WHERE ei.entrega_id=?");
+    if ($isP00Entrega) {
+        $stmt = $conn->prepare("SELECT COUNT(*) AS total,
+                        SUM(CASE WHEN v.status LIKE 'Entregue%' OR v.status = 'Entrega antecipada' THEN 1 ELSE 0 END) AS entregues,
+                        MAX(e.data_prevista) AS data_prevista,
+                        MAX(e.obra_id) AS obra_id
+                    FROM entregas_p00_versoes v
+                    JOIN entregas e ON v.entrega_id = e.id
+                    WHERE v.entrega_id = ?");
+    } else {
+        $stmt = $conn->prepare("SELECT COUNT(*) AS total, 
+                        SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues,
+                        MAX(e.data_prevista) AS data_prevista,
+                        MAX(e.obra_id) AS obra_id
+                    FROM entregas_itens ei
+                    JOIN entregas e ON ei.entrega_id = e.id
+                    WHERE ei.entrega_id=?");
+    }
     $stmt->bind_param('i', $entrega_id);
     $stmt->execute();
     $res = $stmt->get_result()->fetch_assoc();
@@ -139,10 +199,17 @@ try {
     $total_obra = 0;
     $entregues_obra = 0;
     if ($obra_id) {
-        $stmtObraCounts = $conn->prepare("SELECT COUNT(*) AS total_obra, SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues_obra
-            FROM entregas_itens ei
-            JOIN entregas e ON ei.entrega_id = e.id
-            WHERE e.obra_id = ?");
+        if ($isP00Entrega) {
+            $stmtObraCounts = $conn->prepare("SELECT COUNT(*) AS total_obra, SUM(CASE WHEN v.status LIKE 'Entregue%' OR v.status = 'Entrega antecipada' THEN 1 ELSE 0 END) AS entregues_obra
+                FROM entregas_p00_versoes v
+                JOIN entregas e ON v.entrega_id = e.id
+                WHERE e.obra_id = ? AND e.tipo_entrega = 'P00'");
+        } else {
+            $stmtObraCounts = $conn->prepare("SELECT COUNT(*) AS total_obra, SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues_obra
+                FROM entregas_itens ei
+                JOIN entregas e ON ei.entrega_id = e.id
+                WHERE e.obra_id = ?");
+        }
         $stmtObraCounts->bind_param('i', $obra_id);
         $stmtObraCounts->execute();
         $rCounts = $stmtObraCounts->get_result()->fetch_assoc();
@@ -203,6 +270,10 @@ try {
                 $substatus_to_set = ($img_status_id === 6 || $img_status_id === 1) ? 9 : 6;
                 $stmtUpdateImg->bind_param('ii', $substatus_to_set, $img_id);
                 $stmtUpdateImg->execute();
+
+                if ($img_status_id === 1) {
+                    entregas_review_sync_p00_batch_state($conn, $img_id, $img_status_id, $substatus_to_set);
+                }
             }
             $stmtUpdateImg->close();
             try {

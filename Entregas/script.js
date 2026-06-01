@@ -499,7 +499,31 @@ document.addEventListener("DOMContentLoaded", () => {
     return new Date(base.getTime() - tzOffset).toISOString().slice(0, 16);
   }
 
-  async function promptReviewBatchActionPayload(action) {
+  function findReviewBatchById(reviewBatchId) {
+    const batches = Array.isArray(entregaDados?.review_batches)
+      ? entregaDados.review_batches
+      : [];
+
+    return (
+      batches.find((batch) => Number(batch?.id) === Number(reviewBatchId)) || null
+    );
+  }
+
+  function isP00ReviewBatch(batch) {
+    if (String(batch?.batch_kind || "").toUpperCase() === "P00") {
+      return true;
+    }
+
+    if (Number(batch?.p00_item_count || 0) > 0) {
+      return true;
+    }
+
+    return Array.isArray(batch?.items)
+      ? batch.items.some((item) => Number(item?.p00_versao_id || 0) > 0)
+      : false;
+  }
+
+  async function promptReviewBatchActionPayload(action, batch = null) {
     if (action === "notify") {
       const result = await Swal.fire({
         title: "Registrar cobrança?",
@@ -552,6 +576,104 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (action === "resolve") {
+      if (isP00ReviewBatch(batch)) {
+        const result = await Swal.fire({
+          title: "Resolver retorno P00",
+          html: `
+            <select id="swal-review-p00-response" class="swal2-input">
+              <option value="">Selecione a resposta do cliente</option>
+              <option value="approved">Aprovada</option>
+              <option value="change_requested">Alteração</option>
+            </select>
+            <select id="swal-review-p00-origin" class="swal2-input" style="display:none;">
+              <option value="">Selecione a origem da alteração</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Drive">Drive</option>
+              <option value="Arquivo">Arquivo</option>
+              <option value="Reunião">Reunião</option>
+              <option value="Outro">Outro</option>
+            </select>
+            <input id="swal-review-p00-origin-detail" class="swal2-input" type="text" placeholder="Detalhe da origem" style="display:none;">
+            <textarea id="swal-review-p00-note" class="swal2-textarea" placeholder="Observação opcional"></textarea>
+          `,
+          showCancelButton: true,
+          confirmButtonText: "Resolver",
+          cancelButtonText: "Cancelar",
+          focusConfirm: false,
+          didOpen: () => {
+            const responseEl = document.getElementById("swal-review-p00-response");
+            const originEl = document.getElementById("swal-review-p00-origin");
+            const originDetailEl = document.getElementById(
+              "swal-review-p00-origin-detail",
+            );
+
+            const syncP00ResolveFields = () => {
+              const needsOrigin = responseEl?.value === "change_requested";
+              const needsOriginDetail = needsOrigin && originEl?.value === "Outro";
+
+              if (originEl) {
+                originEl.style.display = needsOrigin ? "block" : "none";
+                if (!needsOrigin) {
+                  originEl.value = "";
+                }
+              }
+
+              if (originDetailEl) {
+                originDetailEl.style.display = needsOriginDetail ? "block" : "none";
+                if (!needsOriginDetail) {
+                  originDetailEl.value = "";
+                }
+              }
+            };
+
+            responseEl?.addEventListener("change", syncP00ResolveFields);
+            originEl?.addEventListener("change", syncP00ResolveFields);
+            syncP00ResolveFields();
+          },
+          preConfirm: () => {
+            const customerResponse =
+              document.getElementById("swal-review-p00-response")?.value || "";
+            const changeOrigin =
+              document.getElementById("swal-review-p00-origin")?.value || "";
+            const changeOriginDetail =
+              document.getElementById("swal-review-p00-origin-detail")?.value || "";
+            const note = document.getElementById("swal-review-p00-note")?.value || "";
+
+            if (!customerResponse) {
+              Swal.showValidationMessage("Selecione a resposta do cliente.");
+              return false;
+            }
+
+            if (customerResponse === "change_requested" && !changeOrigin) {
+              Swal.showValidationMessage("Selecione a origem da alteração.");
+              return false;
+            }
+
+            if (
+              customerResponse === "change_requested" &&
+              changeOrigin === "Outro" &&
+              !changeOriginDetail.trim()
+            ) {
+              Swal.showValidationMessage("Detalhe a origem quando selecionar Outro.");
+              return false;
+            }
+
+            return {
+              action,
+              customer_response: customerResponse,
+              change_origin: customerResponse === "change_requested" ? changeOrigin : "",
+              change_origin_detail:
+                customerResponse === "change_requested"
+                  ? changeOriginDetail.trim()
+                  : "",
+              note: note.trim(),
+            };
+          },
+        });
+
+        return result.isConfirmed ? result.value : null;
+      }
+
       const result = await Swal.fire({
         title: "Resolver batch",
         html: `
@@ -611,7 +733,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function submitReviewBatchAction(reviewBatchId, action) {
-    const payload = await promptReviewBatchActionPayload(action);
+    const batch = findReviewBatchById(reviewBatchId);
+    const payload = await promptReviewBatchActionPayload(action, batch);
     if (!payload) return;
 
     reviewActionBusy = true;
@@ -928,7 +1051,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }).length;
       modalProgresso.textContent = `${finalizedCount} / ${data.itens.length} finalizadas`;
       if (modalCaminhoTexto) {
-        const caminho = `Z:\\2025\\${data.nomenclatura || ""}\\04.Finalizacao\\${data.nome_etapa || ""}`;
+        const caminho =
+          data.caminho_entrega ||
+          `Z:\\2025\\${data.nomenclatura || ""}\\04.Finalizacao\\${data.nome_etapa || ""}`;
         modalCaminhoTexto.textContent = caminho;
       }
       renderReviewBatchPanel(data);
@@ -990,7 +1115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         div.dataset.substatusNome = nsub;
 
         div.innerHTML = `
-                <input type="checkbox" id="img-item-${img.id}" value="${img.id}" ${checked} ${disabled} data-imagem-id="${img.imagem_id}">
+            <input type="checkbox" class="entrega-item-checkbox" id="img-item-${img.id}" value="${img.id}" ${checked} ${disabled} data-imagem-id="${img.imagem_id}">
                 <label class="imagem_nome" data-imagem-id="${img.imagem_id}">${img.nome}</label>
                 ${statusLabel}
             `;
@@ -1371,7 +1496,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!entregaAtualId) return;
 
     const checkboxes = modalImagens.querySelectorAll(
-      'input[type="checkbox"]:checked:not([disabled])',
+      'input.entrega-item-checkbox:checked:not([disabled])',
     );
     if (checkboxes.length === 0) {
       alert("Nenhuma imagem selecionada para entrega.");

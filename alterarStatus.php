@@ -2,6 +2,8 @@
 // alterarStatus.php
 
 include 'conexao.php';
+require_once __DIR__ . '/Entregas/p00_delivery_helpers.php';
+require_once __DIR__ . '/Entregas/review_cobranca_lib.php';
 
 header('Content-Type: application/json');
 
@@ -61,6 +63,12 @@ if (isset($_POST['imagem_id']) && isset($_POST['status_id'])) {
         }
         $stmtHold->close();
     }
+
+    if ($status_id === 2) {
+        improov_p00_register_handoff_for_image($conn, $imagem_id);
+    }
+
+    entregas_review_sync_p00_batch_state($conn, $imagem_id, null, $status_id);
 
     $conn->commit();
     echo json_encode(['success' => true]);

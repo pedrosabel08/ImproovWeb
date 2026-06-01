@@ -126,8 +126,10 @@ if (!isset($obras_inativas) || !is_array($obras_inativas)) {
                     <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i
                                 class="fa-solid fa-route"></i><span> Flow Track</span></a></li>
                     <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/Colaborador"><i
-                                class="fa-solid fa-users"></i><span> Colaboradores</span></a></li>                    <li><a title="Atividade do Sistema" href="https://improov.com.br/flow/ImproovWeb/Atividade"><i
-                                class="fa-solid fa-chart-simple"></i><span> Atividade</span></a></li>                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
+                                class="fa-solid fa-users"></i><span> Colaboradores</span></a></li>
+                    <li><a title="Atividade do Sistema" href="https://improov.com.br/flow/ImproovWeb/Atividade"><i
+                                class="fa-solid fa-chart-simple"></i><span> Atividade</span></a></li>
+                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
                                 class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <!-- <li><a title="Onboarding Pendente" href="https://improov.com.br/flow/ImproovWeb/Dashboard#onboarding-box"><i
                                 class="fa-solid fa-clipboard-check"></i><span> Onboarding</span><span class="sidebar-badge"
@@ -167,6 +169,8 @@ if (!isset($obras_inativas) || !is_array($obras_inativas)) {
                     <li><a title="Mapa de Compatibilização"
                             href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i
                                 class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
+                    <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span> SIRE</span></a></li>
+
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <!-- <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/flow/ImproovWeb/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li> -->
@@ -175,7 +179,6 @@ if (!isset($obras_inativas) || !is_array($obras_inativas)) {
                                 class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
                     <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i
                                 class="fas fa-paperclip"></i><span> Flow Referências</span></a></li>
-                    <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span> SIRE</span></a></li>
 
                 <?php endif; ?>
 

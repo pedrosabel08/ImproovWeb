@@ -33,15 +33,6 @@ FROM (
     f.idfuncao AS funcao_id,
     CASE
       WHEN fi.funcao_id = 4 AND LOWER(i.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
-      WHEN fi.funcao_id = 4 AND (
-        hi_snap.status_id = 1
-        OR (
-          hi_snap.status_id IS NULL AND (
-            EXISTS (SELECT 1 FROM funcao_imagem fi_sub JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao WHERE fi_sub.imagem_id = fi.imagem_id AND LOWER(f_sub.nome_funcao) LIKE '%pre%')
-            OR i.status_id = 1
-          )
-        )
-      ) THEN 'Finalização Parcial'
       WHEN fi.funcao_id = 4 THEN 'Finalização Completa'
       ELSE f.nome_funcao
     END AS nome_funcao,
@@ -526,6 +517,29 @@ foreach ($recordes as $linha) {
     'qtd'     => (int)$linha['recorde'],
     'mes_ano' => $linha['recorde_mes_ano'] ?? null,
   ];
+}
+
+// Planta Humanizada (funcao_id=7) e Finalização de Planta Humanizada (funcao_id=4)
+// compartilham o mesmo recorde por colaborador — usa o maior valor entre os dois.
+$colaboradoresMerge = [];
+foreach (array_keys($recordeIndexado) as $chave) {
+  if (str_ends_with($chave, '_Planta Humanizada')) {
+    $colaboradoresMerge[substr($chave, 0, -strlen('_Planta Humanizada'))] = true;
+  } elseif (str_ends_with($chave, '_Finalização de Planta Humanizada')) {
+    $colaboradoresMerge[substr($chave, 0, -strlen('_Finalização de Planta Humanizada'))] = true;
+  }
+}
+foreach (array_keys($colaboradoresMerge) as $colab) {
+  $keyPH  = $colab . '_Planta Humanizada';
+  $keyFPH = $colab . '_Finalização de Planta Humanizada';
+  $recPH  = $recordeIndexado[$keyPH]['qtd']  ?? 0;
+  $recFPH = $recordeIndexado[$keyFPH]['qtd'] ?? 0;
+  $mergedQtd    = max($recPH, $recFPH);
+  $mergedMesAno = ($recPH >= $recFPH)
+    ? ($recordeIndexado[$keyPH]['mes_ano']  ?? null)
+    : ($recordeIndexado[$keyFPH]['mes_ano'] ?? null);
+  $recordeIndexado[$keyPH]  = ['qtd' => $mergedQtd, 'mes_ano' => $mergedMesAno];
+  $recordeIndexado[$keyFPH] = ['qtd' => $mergedQtd, 'mes_ano' => $mergedMesAno];
 }
 
 // 4. Junta tudo

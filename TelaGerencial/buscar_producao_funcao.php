@@ -682,6 +682,14 @@ if ($mes) {
     $recordeIndexado[$linha['nome_funcao']] = (int)$linha['recorde'];
   }
 
+  // Planta Humanizada (funcao_id=7) e Finalização de Planta Humanizada (funcao_id=4)
+  // compartilham o mesmo recorde — usa o maior valor entre os dois.
+  $recPH  = $recordeIndexado['Planta Humanizada'] ?? 0;
+  $recFPH = $recordeIndexado['Finalização de Planta Humanizada'] ?? 0;
+  $mergedRec = max($recPH, $recFPH);
+  $recordeIndexado['Planta Humanizada']                = $mergedRec;
+  $recordeIndexado['Finalização de Planta Humanizada'] = $mergedRec;
+
   // Index nao_pagas (quantidade atual = itens não pagos)
   $naoPagasIndexado = [];
   foreach ($dados as $linha) {

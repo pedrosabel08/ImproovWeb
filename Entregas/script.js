@@ -21,6 +21,24 @@ const BASE = (function () {
   }
 })();
 
+  function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+  }
+
+  function formatarDataHora(dataHora) {
+    if (!dataHora) return "-";
+
+    const raw = String(dataHora).trim();
+    const [datePart, timePart = ""] = raw.split(" ");
+    if (!datePart || !datePart.includes("-")) return raw;
+
+    const [year, month, day] = datePart.split("-");
+    const timeLabel = timePart ? ` ${timePart.slice(0, 5)}` : "";
+    return `${day}/${month}/${year}${timeLabel}`;
+  }
+
 document.addEventListener("DOMContentLoaded", () => {
   const columns = document.querySelectorAll(".column");
   const modalEntrega = document.getElementById("entregaModal");
@@ -273,24 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let entregaAtualId = null;
   let entregaDados = null; // guarda dados retornados por get_entrega_item.php para uso posterior
   let reviewActionBusy = false;
-
-  function formatarData(data) {
-    const partes = data.split("-");
-    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-    return dataFormatada;
-  }
-
-  function formatarDataHora(dataHora) {
-    if (!dataHora) return "-";
-
-    const raw = String(dataHora).trim();
-    const [datePart, timePart = ""] = raw.split(" ");
-    if (!datePart || !datePart.includes("-")) return raw;
-
-    const [year, month, day] = datePart.split("-");
-    const timeLabel = timePart ? ` ${timePart.slice(0, 5)}` : "";
-    return `${day}/${month}/${year}${timeLabel}`;
-  }
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => {
@@ -3419,9 +3419,7 @@ if (btnAdicionarImagem) {
           <tr>
             <th>Versão</th>
             <th>Imagem</th>
-            <th>Função</th>
             <th>Recebimento</th>
-            <th>Prazo contratual</th>
             <th>Prazo ajustado</th>
             <th>Data entrega</th>
             <th>Dias atraso</th>
@@ -3433,9 +3431,7 @@ if (btnAdicionarImagem) {
             <tr>
               <td><strong>${v.versao_label || "V1"}</strong></td>
               <td class="col-imagem">${v.imagem_nome || "—"}</td>
-              <td>${v.funcao || "—"}</td>
-              <td>${fmtDate(v.recebimento)}</td>
-              <td>${fmtDate(v.prazo_contratual)}</td>
+              <td>${formatarDataHora(v.recebimento)}</td>
               <td>${fmtDate(v.prazo_ajustado)}</td>
               <td>${fmtDate(v.data_entregue)}</td>
               <td class="col-num" style="color:${(parseInt(v.dias_atraso,10)||0) > 0 ? '#ef4444' : 'inherit'};">
@@ -3528,9 +3524,7 @@ if (btnAdicionarImagem) {
         <thead>
           <tr>
             <th>Imagem</th>
-            <th>Função</th>
             <th>Recebimento</th>
-            <th>Prazo contratual</th>
             <th>Prazo ajustado</th>
             <th>Data entrega</th>
             <th>Dias atraso</th>
@@ -3541,9 +3535,7 @@ if (btnAdicionarImagem) {
           ${itens.map((item) => `
             <tr>
               <td class="col-imagem">${item.imagem_nome || "—"}</td>
-              <td>${item.funcao || "—"}</td>
-              <td>${fmtDate(item.recebimento)}</td>
-              <td>${fmtDate(item.prazo_contratual)}</td>
+              <td>${formatarDataHora(item.recebimento)}</td>
               <td>${fmtDate(item.prazo_ajustado)}</td>
               <td>${fmtDate(item.data_entregue)}</td>
               <td class="col-num" style="color:${(parseInt(item.dias_atraso,10)||0) > 0 ? '#ef4444' : 'inherit'};">

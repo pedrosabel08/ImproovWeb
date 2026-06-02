@@ -200,7 +200,7 @@ foreach ($etapa_seq as $codigo) {
                 ei.data_prevista    AS prazo_ajustado,
                 ei.data_entregue,
                 ico.imagem_nome,
-                ico.recebimento_arquivos,
+                ei.created_at          AS recebimento_arquivos,
                 ico.prazo           AS prazo_contratual,
                 ico.tipo_imagem     AS funcao,
                 CASE

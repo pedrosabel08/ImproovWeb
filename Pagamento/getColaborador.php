@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/custo_tarefa.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
 $mesNumero = isset($_GET['mes_id']) ? intval($_GET['mes_id']) : null;
@@ -571,21 +572,7 @@ $colabIdsNaLista = array_values(array_unique(array_filter(
     array_map(fn($f) => isset($f['colaborador_id']) ? (int)$f['colaborador_id'] : 0, $funcoes)
 )));
 
-$fcMap = []; // "colabId_funcaoId" => valor (de funcao_colaborador)
-if (!empty($colabIdsNaLista)) {
-    $inPlaceholders = implode(',', array_fill(0, count($colabIdsNaLista), '?'));
-    $stmtFc = $conn->prepare(
-        "SELECT colaborador_id, funcao_id, valor FROM funcao_colaborador WHERE colaborador_id IN ($inPlaceholders)"
-    );
-    $stmtFc->bind_param(str_repeat('i', count($colabIdsNaLista)), ...$colabIdsNaLista);
-    $stmtFc->execute();
-    $resFc = $stmtFc->get_result();
-    while ($rowFc = $resFc->fetch_assoc()) {
-        $fcKey = ((int)$rowFc['colaborador_id']) . '_' . ((int)$rowFc['funcao_id']);
-        $fcMap[$fcKey] = $rowFc['valor'] !== null ? (float)$rowFc['valor'] : null;
-    }
-    $stmtFc->close();
-}
+custo_tarefa_carregar_contexto($conn, $colabIdsNaLista);
 
 // ─── Carregar flags valor_aprovado ────────────────────────────────────────────
 $overrideIds = [];
@@ -620,24 +607,7 @@ foreach ($funcoes as &$f) {
     }
 
     $valorBruto = $f['valor'] !== null ? (float)$f['valor'] : null;
-    $tarifado   = $fcMap[$colabId . '_' . $funcId] ?? null;  // valor cheio em funcao_colaborador
-
-    // Colaboradores 24 e 12 fazem Finalização em Planta Humanizada:
-    // preço calculado pelo nome da imagem (mesma lógica de insereFuncao.php)
-    if (in_array($colabId, [24, 12]) && $funcId === 4) {
-        $imgNomeLower = mb_strtolower($f['imagem_nome'] ?? '', 'UTF-8');
-        if (str_contains($imgNomeLower, 'lazer') || str_contains($imgNomeLower, 'implanta')) {
-            $tarifado = 200.00;
-        } elseif (str_contains($imgNomeLower, 'pavimento') && (str_contains($imgNomeLower, 'repeti') || str_contains($imgNomeLower, 'varia'))) {
-            $tarifado = 80.00;
-        } elseif (str_contains($imgNomeLower, 'pavimento') || str_contains($imgNomeLower, 'garagem')) {
-            $tarifado = 150.00;
-        } elseif (str_contains($imgNomeLower, 'varia')) {
-            $tarifado = 80.00;
-        } else {
-            $tarifado = 130.00;
-        }
-    }
+    $tarifado   = calcularCustoTarefa($colabId, $funcId, $f['imagem_nome'] ?? null);
 
     // Comissão do gestor (colaborador 8) sobre finalizações completas de 23/40
     if ($colaboradorId === 8 && in_array($colabId, [23, 40]) && $funcId === 4) {
@@ -652,6 +622,7 @@ foreach ($funcoes as &$f) {
         $f['valor_tarifado']  = $comissao;
         $f['valor_esperado']  = $comissao;
         $f['valor_exibido']   = $comissao;
+        $f['custo']           = $comissao;
         $f['tem_divergencia'] = false;
         continue; // pula o cálculo geral abaixo
     }
@@ -685,6 +656,7 @@ foreach ($funcoes as &$f) {
     $f['valor_tarifado']  = $tarifado;       // valor cheio de funcao_colaborador
     $f['valor_esperado']  = $valorEsperado;  // o que deve estar salvo em fi.valor (sempre cheio)
     $f['valor_exibido']   = $valorExibido;   // o que a tabela mostra (50% quando parcial)
+    $f['custo']           = $valorEsperado;
     $f['valor_aprovado']  = $estaAprovado ? 1 : 0;
     $f['tem_divergencia'] = (
         !$estaAprovado
@@ -701,10 +673,16 @@ $funcoes = array_values(array_filter($funcoes, function ($f) {
     return stripos($f['nome_funcao'] ?? '', 'parcial') === false;
 }));
 
+$custoTotal = 0.0;
+foreach ($funcoes as $f) {
+    $custoTotal += (float) ($f['custo'] ?? 0);
+}
+
 $response = [
     "dadosColaborador" => $dadosColaborador,
     "funcoes" => $funcoes,
-    "debug_counts_by_origem" => $countsByOrigem
+    "debug_counts_by_origem" => $countsByOrigem,
+    "custo_total" => round($custoTotal, 2),
 ];
 
 echo json_encode($response);

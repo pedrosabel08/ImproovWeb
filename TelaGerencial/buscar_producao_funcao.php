@@ -1,11 +1,15 @@
 <?php
 include __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/custo_tarefa.php';
+
+$conn->query("SET SESSION group_concat_max_len = 1048576");
 
 // Verifica os parâmetros recebidos
 $mes = $_GET['mes'] ?? null;
 $data = $_GET['data'] ?? null;
 $inicio = $_GET['inicio'] ?? null;
 $fim = $_GET['fim'] ?? null;
+$dataLimitePagamento = null;
 
 $anoSelecionado = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
 
@@ -18,13 +22,15 @@ if ($mes) {
   $fimMesDia = cal_days_in_month(CAL_GREGORIAN, $mesInt, $anoSelecionado);
   $fimMesData = sprintf('%04d-%02d-%02d', $anoSelecionado, $mesInt, $fimMesDia);
   $fimMesDataTime = $fimMesData . ' 23:59:59';
+  $dataLimitePagamento = $fimMesData;
 
   // Conta apenas itens NÃO pagos, sem "Finalização Parcial", usando COUNT(DISTINCT).
   // Alinhado com carregar_dados.php: $WHERE_NAO_PAGO + $WHERE_STATUS + $IS_PARCIAL_AT_PERIOD.
-  $sql = "SELECT t.quantidade, t.nome_funcao, t.funcao_order
+  $sql = "SELECT t.quantidade, t.nome_funcao, t.funcao_order, t.tarefas_concat
   FROM (
     SELECT
       COUNT(DISTINCT fi.idfuncao_imagem) AS quantidade,
+      GROUP_CONCAT(DISTINCT CONCAT(fi.colaborador_id, ':::', fi.imagem_id, ':::', IFNULL(ico.imagem_nome, '')) SEPARATOR '|||') AS tarefas_concat,
       CASE
         WHEN fi.funcao_id = 4 AND LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
         WHEN fi.funcao_id = 4 THEN 'Finalização Completa'
@@ -57,6 +63,26 @@ if ($mes) {
     )
     AND fi.colaborador_id NOT IN (21, 15)
     AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+    AND (
+      fi.funcao_id <> 4
+      OR LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada'
+      OR EXISTS (
+        SELECT 1
+        FROM funcao_colaborador fc4
+        JOIN colaborador c4 ON c4.idcolaborador = fc4.colaborador_id
+        WHERE fc4.colaborador_id = fi.colaborador_id
+          AND fc4.funcao_id = 4
+          AND fc4.colaborador_id IS NOT NULL
+          AND c4.ativo = 1
+          AND fc4.colaborador_id NOT IN (21, 15, 30, 7, 34)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM funcao_colaborador fc7
+            WHERE fc7.colaborador_id = fc4.colaborador_id
+              AND fc7.funcao_id = 7
+          )
+      )
+    )
     AND NOT (
       fi.funcao_id = 4
       AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
@@ -169,10 +195,12 @@ if ($mes) {
     $fimMesData
   );
 } elseif ($data) {
+  $dataLimitePagamento = $data;
   // Filtro por dia específico - calcular nome_funcao por linha e agregar externamente
-  $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order
+  $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order,
+      GROUP_CONCAT(DISTINCT CONCAT(t.colaborador_id, ':::', t.imagem_id, ':::', IFNULL(t.imagem_nome, '')) SEPARATOR '|||') AS tarefas_concat
     FROM (
-      SELECT fi.funcao_id, fi.imagem_id, fi.pagamento, f.nome_funcao,
+      SELECT fi.colaborador_id, fi.funcao_id, fi.imagem_id, ico.imagem_nome, fi.pagamento, f.nome_funcao,
         CASE
           WHEN fi.funcao_id = 4 AND LOWER(ico.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
           WHEN fi.funcao_id = 4 AND (
@@ -203,10 +231,12 @@ if ($mes) {
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("ss", $data, $data);
 } elseif ($inicio && $fim) {
+  $dataLimitePagamento = $fim;
   // Filtro por intervalo de semana - calcular nome_funcao por linha e agregar externamente
-  $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order
+  $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order,
+      GROUP_CONCAT(DISTINCT CONCAT(t.colaborador_id, ':::', t.imagem_id, ':::', IFNULL(t.imagem_nome, '')) SEPARATOR '|||') AS tarefas_concat
     FROM (
-      SELECT fi.funcao_id, fi.imagem_id, fi.pagamento, f.nome_funcao,
+      SELECT fi.colaborador_id, fi.funcao_id, fi.imagem_id, ico.imagem_nome, fi.pagamento, f.nome_funcao,
         CASE
           WHEN fi.funcao_id = 4 AND LOWER(ico.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
           WHEN fi.funcao_id = 4 AND (
@@ -245,6 +275,93 @@ if ($mes) {
 $stmt->execute();
 $result = $stmt->get_result();
 $dados = $result->fetch_all(MYSQLI_ASSOC);
+
+$tarefasFinalizacao = [];
+foreach ($dados as $linha) {
+  if ((int) ($linha['funcao_order'] ?? 0) !== 4 || empty($linha['tarefas_concat'])) {
+    continue;
+  }
+
+  foreach (explode('|||', $linha['tarefas_concat']) as $item) {
+    if ($item === '') {
+      continue;
+    }
+
+    $partes = explode(':::', $item, 3);
+    if (isset($partes[0], $partes[1]) && is_numeric($partes[0]) && is_numeric($partes[1])) {
+      $tarefasFinalizacao[] = [
+        'colaborador_id' => (int) $partes[0],
+        'imagem_id' => (int) $partes[1],
+      ];
+    }
+  }
+}
+$statusFinalizacaoMap = $dataLimitePagamento !== null
+  ? custo_tarefa_carregar_status_finalizacao($conn, $tarefasFinalizacao, $dataLimitePagamento)
+  : [];
+
+$colaboradoresParaCusto = [];
+foreach ($dados as $linha) {
+  if (!empty($linha['tarefas_concat'])) {
+    foreach (explode('|||', $linha['tarefas_concat']) as $item) {
+      if ($item === '') {
+        continue;
+      }
+      $partes = explode(':::', $item, 3);
+      if (isset($partes[0]) && is_numeric($partes[0])) {
+        $colaboradoresParaCusto[] = (int) $partes[0];
+      }
+    }
+  }
+}
+
+custo_tarefa_carregar_contexto($conn, $colaboradoresParaCusto);
+
+foreach ($dados as &$linha) {
+  if ((int) ($linha['funcao_order'] ?? 0) === 6) {
+    $linha['custo_total'] = 0.0;
+    $linha['custo_medio'] = 0.0;
+    unset($linha['tarefas_concat']);
+    continue;
+  }
+
+  $custoTotalLinha = 0.0;
+  $quantidadeLinha = (int) ($linha['quantidade'] ?? 0);
+
+  if (!empty($linha['tarefas_concat'])) {
+    foreach (explode('|||', $linha['tarefas_concat']) as $item) {
+      if ($item === '') {
+        continue;
+      }
+      $partes = explode(':::', $item, 3);
+      $colaboradorId = isset($partes[0]) ? (int) $partes[0] : 0;
+      $imagemId = isset($partes[1]) ? (int) $partes[1] : 0;
+      $imagemNome = $partes[2] ?? '';
+      $funcaoIdLinha = (int) ($linha['funcao_order'] ?? 0);
+      $fatorCusto = 1.0;
+      if ($funcaoIdLinha === 4 && $imagemId > 0) {
+        $statusPagamento = $statusFinalizacaoMap[custo_tarefa_chave_finalizacao($colaboradorId, $imagemId)] ?? null;
+        if (!empty($statusPagamento['parcial_pendente'])) {
+          $fatorCusto = 0.5;
+        }
+      }
+      $custoTotalLinha += calcularCustoTarefa($colaboradorId, $funcaoIdLinha, $imagemNome) * $fatorCusto;
+    }
+  }
+
+  $linha['custo_total'] = round($custoTotalLinha, 2);
+  $linha['custo_medio'] = $quantidadeLinha > 0 ? round($custoTotalLinha / $quantidadeLinha, 2) : 0.0;
+  unset($linha['tarefas_concat']);
+}
+unset($linha);
+
+$custoIndexado = [];
+foreach ($dados as $linha) {
+  $custoIndexado[$linha['nome_funcao']] = [
+    'custo_total' => (float) ($linha['custo_total'] ?? 0),
+    'custo_medio' => (float) ($linha['custo_medio'] ?? 0),
+  ];
+}
 
 // Acrescenta mês anterior e recorde (mesma lógica de produção do mês)
 if ($mes) {
@@ -291,6 +408,26 @@ if ($mes) {
       )
       AND fi.colaborador_id NOT IN (21, 15)
       AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+      AND (
+        fi.funcao_id <> 4
+        OR LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada'
+        OR EXISTS (
+          SELECT 1
+          FROM funcao_colaborador fc4
+          JOIN colaborador c4 ON c4.idcolaborador = fc4.colaborador_id
+          WHERE fc4.colaborador_id = fi.colaborador_id
+            AND fc4.funcao_id = 4
+            AND fc4.colaborador_id IS NOT NULL
+            AND c4.ativo = 1
+            AND fc4.colaborador_id NOT IN (21, 15, 30, 7, 34)
+            AND NOT EXISTS (
+              SELECT 1
+              FROM funcao_colaborador fc7
+              WHERE fc7.colaborador_id = fc4.colaborador_id
+                AND fc7.funcao_id = 7
+            )
+        )
+      )
       AND NOT (
         fi.funcao_id = 4
         AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
@@ -428,6 +565,26 @@ if ($mes) {
       )
       AND fi.colaborador_id NOT IN (21, 15)
       AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+      AND (
+        fi.funcao_id <> 4
+        OR LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada'
+        OR EXISTS (
+          SELECT 1
+          FROM funcao_colaborador fc4
+          JOIN colaborador c4 ON c4.idcolaborador = fc4.colaborador_id
+          WHERE fc4.colaborador_id = fi.colaborador_id
+            AND fc4.funcao_id = 4
+            AND fc4.colaborador_id IS NOT NULL
+            AND c4.ativo = 1
+            AND fc4.colaborador_id NOT IN (21, 15, 30, 7, 34)
+            AND NOT EXISTS (
+              SELECT 1
+              FROM funcao_colaborador fc7
+              WHERE fc7.colaborador_id = fc4.colaborador_id
+                AND fc7.funcao_id = 7
+            )
+        )
+      )
       AND NOT (
         fi.funcao_id = 4
         AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
@@ -570,6 +727,26 @@ if ($mes) {
         )
         AND fi.colaborador_id NOT IN (21, 15)
         AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+        AND (
+          fi.funcao_id <> 4
+          OR LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada'
+          OR EXISTS (
+            SELECT 1
+            FROM funcao_colaborador fc4
+            JOIN colaborador c4 ON c4.idcolaborador = fc4.colaborador_id
+            WHERE fc4.colaborador_id = fi.colaborador_id
+              AND fc4.funcao_id = 4
+              AND fc4.colaborador_id IS NOT NULL
+              AND c4.ativo = 1
+              AND fc4.colaborador_id NOT IN (21, 15, 30, 7, 34)
+              AND NOT EXISTS (
+                SELECT 1
+                FROM funcao_colaborador fc7
+                WHERE fc7.colaborador_id = fc4.colaborador_id
+                  AND fc7.funcao_id = 7
+              )
+          )
+        )
         AND NOT (
           fi.funcao_id = 4
           AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
@@ -706,6 +883,8 @@ if ($mes) {
     $mesAnteriorVal = $anteriorIndexado[$nomeFuncao] ?? 0;
     $recordeVal = $recordeIndexado[$nomeFuncao] ?? 0;
     $recordeProducao = $recordeVal;
+    $custoTotal = $custoIndexado[$nomeFuncao]['custo_total'] ?? 0.0;
+    $custoMedio = $custoIndexado[$nomeFuncao]['custo_medio'] ?? 0.0;
     $dados[] = [
       'nome_funcao'     => $nomeFuncao,
       'quantidade'      => $quantidade,
@@ -713,6 +892,8 @@ if ($mes) {
       'nao_pagas'       => $naoPagas,
       'mes_anterior'    => $mesAnteriorVal,
       'recorde_producao'=> $recordeProducao,
+      'custo_total'     => round($custoTotal, 2),
+      'custo_medio'     => round($custoMedio, 2),
       'bate_recorde'    => $naoPagas > $recordeProducao,
     ];
   }
@@ -724,6 +905,12 @@ if ($mes) {
     }
     if (!isset($linha['recorde_producao'])) {
       $linha['recorde_producao'] = isset($linha['quantidade']) ? (int)$linha['quantidade'] : 0;
+    }
+    if (!isset($linha['custo_total'])) {
+      $linha['custo_total'] = 0.0;
+    }
+    if (!isset($linha['custo_medio'])) {
+      $linha['custo_medio'] = 0.0;
     }
   }
   unset($linha);

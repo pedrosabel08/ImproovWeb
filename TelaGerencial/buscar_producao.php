@@ -1,8 +1,10 @@
 <?php
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/custo_tarefa.php';
 // Ajusta sql_mode para evitar erros com ONLY_FULL_GROUP_BY em consultas complexas
 // (remove temporariamente ONLY_FULL_GROUP_BY para esta sessão)
 $conn->query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
+$conn->query("SET SESSION group_concat_max_len = 1048576");
 
 // Pega o mês atual selecionado
 $mes = $_GET['mes'] ?? date('m');
@@ -20,6 +22,7 @@ $fimMesDataTime = $fimMesData . ' 23:59:59';
 
 // 1. Busca os dados do mês selecionado
 $sql = "SELECT
+  t.colaborador_id,
   t.nome_colaborador,
   t.funcao_id,
   t.nome_funcao,
@@ -29,6 +32,7 @@ $sql = "SELECT
   SUM(CASE WHEN t.pagamento <> 1 OR t.pagamento IS NULL THEN 1 ELSE 0 END) AS nao_pagas
 FROM (
   SELECT
+    fi.colaborador_id,
     c.nome_colaborador,
     f.idfuncao AS funcao_id,
     CASE
@@ -228,8 +232,28 @@ FROM (
   )
   AND fi.colaborador_id NOT IN (21, 15)
   AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+  AND NOT (
+    fi.funcao_id = 4
+    AND LOWER(TRIM(i.tipo_imagem)) != 'planta humanizada'
+    AND (
+      hi_snap.status_id = 1
+      OR (
+        hi_snap.status_id IS NULL
+        AND (
+          i.status_id = 1
+          OR EXISTS (
+            SELECT 1
+            FROM funcao_imagem fi_sub
+            JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+            WHERE fi_sub.imagem_id = fi.imagem_id
+              AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+          )
+        )
+      )
+    )
+  )
 ) AS t
-GROUP BY t.funcao_id, t.nome_funcao, t.nome_colaborador
+GROUP BY t.colaborador_id, t.funcao_id, t.nome_funcao, t.nome_colaborador
 ORDER BY
   FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
   t.nome_colaborador;";
@@ -254,6 +278,95 @@ $stmt->bind_param(
 $stmt->execute();
 $result = $stmt->get_result();
 $dadosMesAtual = $result->fetch_all(MYSQLI_ASSOC);
+
+$tarefasFinalizacao = [];
+foreach ($dadosMesAtual as $linha) {
+  if ((int) ($linha['funcao_id'] ?? 0) !== 4 || empty($linha['imagens_concat'])) {
+    continue;
+  }
+
+  foreach (explode('|||', $linha['imagens_concat']) as $item) {
+    if ($item === '') {
+      continue;
+    }
+
+    $partes = explode(':::', $item, 3);
+    if (isset($partes[0]) && is_numeric($partes[0])) {
+      $tarefasFinalizacao[] = [
+        'colaborador_id' => (int) ($linha['colaborador_id'] ?? 0),
+        'imagem_id' => (int) $partes[0],
+      ];
+    }
+  }
+}
+$statusFinalizacaoMap = custo_tarefa_carregar_status_finalizacao($conn, $tarefasFinalizacao, $fimMesData);
+
+$colaboradoresParaCusto = [];
+foreach ($dadosMesAtual as $linha) {
+  if (isset($linha['colaborador_id'])) {
+    $colaboradoresParaCusto[] = (int) $linha['colaborador_id'];
+  }
+}
+
+custo_tarefa_carregar_contexto($conn, $colaboradoresParaCusto);
+
+foreach ($dadosMesAtual as &$linha) {
+  if ((int) ($linha['funcao_id'] ?? 0) === 6) {
+    $linha['custo'] = 0.0;
+    $linha['custo_medio'] = 0.0;
+    continue;
+  }
+
+  $custoTotalLinha = 0.0;
+  $pagasRecalculadas = 0;
+  $naoPagasRecalculadas = 0;
+  $concat = $linha['imagens_concat'] ?? '';
+  $colaboradorIdLinha = (int) ($linha['colaborador_id'] ?? 0);
+  $funcaoIdLinha = (int) ($linha['funcao_id'] ?? 0);
+
+  if ($concat !== null && $concat !== '') {
+    $itens = explode('|||', $concat);
+    foreach ($itens as $item) {
+      if ($item === '') {
+        continue;
+      }
+      $partes = explode(':::', $item, 3);
+      $imagemIdRaw = $partes[0] ?? '';
+      $imagemNome = $partes[1] ?? '';
+      $pagamentoItem = isset($partes[2]) ? (int) $partes[2] : 0;
+
+      $parcialPendente = false;
+      if ($funcaoIdLinha === 4 && is_numeric($imagemIdRaw)) {
+        $statusPagamento = $statusFinalizacaoMap[custo_tarefa_chave_finalizacao($colaboradorIdLinha, (int) $imagemIdRaw)] ?? null;
+        if (!empty($statusPagamento['completo_pago'])) {
+          $pagamentoItem = 1;
+        } elseif (!empty($statusPagamento['parcial_pendente'])) {
+          $pagamentoItem = 0;
+          $parcialPendente = true;
+        }
+      }
+
+      if ($pagamentoItem === 1) {
+        $pagasRecalculadas++;
+      } else {
+        $naoPagasRecalculadas++;
+        $fatorCusto = $parcialPendente ? 0.5 : 1.0;
+        $custoTotalLinha += calcularCustoTarefa($colaboradorIdLinha, $funcaoIdLinha, $imagemNome) * $fatorCusto;
+      }
+    }
+  }
+
+  if ($concat !== null && $concat !== '') {
+    $linha['pagas'] = $pagasRecalculadas;
+    $linha['nao_pagas'] = $naoPagasRecalculadas;
+  }
+  $linha['custo'] = round($custoTotalLinha, 2);
+  $naoPagasLinha = (int) ($linha['nao_pagas'] ?? 0);
+  $linha['custo_medio'] = $naoPagasLinha > 0
+    ? round($custoTotalLinha / $naoPagasLinha, 2)
+    : 0.0;
+}
+unset($linha);
 
 // 2. Busca as quantidades do mês anterior — sem pagos, sem Parcial, COUNT(DISTINCT), alinhado com carregar_dados.php
 $fimMesAnteriorDia = cal_days_in_month(CAL_GREGORIAN, $mesAnterior, $anoMesAnterior);
@@ -564,10 +677,19 @@ foreach ($dadosMesAtual as $linha) {
       if ($imagemNome === '' && $imagemIdRaw === '') {
         continue;
       }
+      $imagemPago = (int)$imagemPagoRaw;
+      if ((int) ($linha['funcao_id'] ?? 0) === 4 && is_numeric($imagemIdRaw)) {
+        $statusPagamento = $statusFinalizacaoMap[custo_tarefa_chave_finalizacao((int) ($linha['colaborador_id'] ?? 0), (int) $imagemIdRaw)] ?? null;
+        if (!empty($statusPagamento['completo_pago'])) {
+          $imagemPago = 1;
+        } elseif (!empty($statusPagamento['parcial_pendente'])) {
+          $imagemPago = 0;
+        }
+      }
       $imagens[] = [
         'imagem_id' => is_numeric($imagemIdRaw) ? (int)$imagemIdRaw : $imagemIdRaw,
         'imagem_nome' => $imagemNome,
-        'pago' => (int)$imagemPagoRaw,
+        'pago' => $imagemPago,
       ];
     }
   }

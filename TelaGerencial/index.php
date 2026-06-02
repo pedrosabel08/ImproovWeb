@@ -87,7 +87,10 @@ $conn->close();
         <div class="page-header">
             <div class="page-header-left">
                 <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" style="height:36px; opacity:0.85" />
-                <h1 class="page-title">Tela Gerencial</h1>
+                <div class="page-heading">
+                    <h1 class="page-title">Tela Gerencial</h1>
+                    <p class="page-subtitle">Visão geral da produção e custos</p>
+                </div>
             </div>
             <div class="filtros-linha">
                 <label for="mes">Mês:</label>
@@ -114,51 +117,18 @@ $conn->close();
                     }
                     ?>
                 </select>
-                <button id="gerar-relatorio">Gerar relatório</button>
+                <button id="gerar-relatorio"><i class="fa-solid fa-download" aria-hidden="true"></i> Gerar relatório</button>
             </div>
         </div>
-
-        <!-- Cards de resumo -->
-        <div class="dashboard-cards">
-            <div class="card">
-                <div class="card-title">Total produção</div>
-                <div id="totalProducao" class="card-value">—</div>
-            </div>
-            <div class="card card-green">
-                <div class="card-title">Pagas</div>
-                <div id="totalPagas" class="card-value">—</div>
-            </div>
-            <div class="card card-orange">
-                <div class="card-title">Não pagas</div>
-                <div id="totalNaoPagas" class="card-value">—</div>
-            </div>
-            <div class="card card-blue">
-                <div class="card-title">Período</div>
-                <div id="cardPeriodo" class="card-value card-value--sm">—</div>
-            </div>
-        </div>
-
-        <!-- Gráficos -->
-        <!-- <div class="dashboard-charts">
-            <div class="chart-card">
-                <h4>Produção por colaborador</h4>
-                <canvas id="chartColaborador" role="img" aria-label="Produção por colaborador"></canvas>
-            </div>
-            <div class="chart-card">
-                <h4>Produção por função</h4>
-                <canvas id="chartFuncao" role="img" aria-label="Produção por função"></canvas>
-            </div>
-            <div class="chart-card">
-                <h4>Entregas por status</h4>
-                <canvas id="chartEntregas" role="img" aria-label="Entregas por status"></canvas>
-            </div>
-        </div> -->
 
         <!-- Grid principal: 2 colunas, 2 linhas -->
         <div class="tables-main-grid">
             <!-- Linha 1: tabela de colaboradores — span 2 colunas -->
             <div class="table-block full-span">
-                <h2 class="section-title">Produção por colaborador</h2>
+                <div class="table-block-header">
+                    <h2 class="section-title"><i class="fa-solid fa-user-group" aria-hidden="true"></i> Produção por colaborador</h2>
+                    <span class="section-action-icon"><i class="fa-solid fa-table" aria-hidden="true"></i></span>
+                </div>
                 <div class="table-scroll">
                     <table id="tabelaProducao">
                         <thead>
@@ -170,6 +140,7 @@ $conn->close();
                                 <th>Não pagas</th>
                                 <th>Mês anterior</th>
                                 <th>Recorde</th>
+                                <th>Custo</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -177,26 +148,41 @@ $conn->close();
                 </div>
             </div>
 
-            <!-- Linha 2, col 1: imagens entregues -->
+            <!-- Linha 2, col 1: metas de finalizacao completa -->
             <div class="table-block">
-                <h3 class="section-title">Imagens entregues <span id="mes_atual"></span></h3>
+                <div class="table-block-header">
+                    <h3 class="section-title"><i class="fa-solid fa-bullseye" aria-hidden="true"></i> Total Produzido - Finalização</h3>
+                    <span class="section-action-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span>
+                </div>
                 <div class="table-scroll">
-                    <table id="tabelaEntregas">
+                    <table id="tabelaMetas">
                         <thead>
                             <tr>
-                                <th>Status</th>
-                                <th>Imagens entregues</th>
-                                <th>Plantas entregues</th>
+                                <th>Colaborador</th>
+                                <th>Quantidade Feita</th>
+                                <th>Meta Individual</th>
+                                <th>Saldo</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total Produzido</td>
+                                <td id="metaTotalProduzido">0</td>
+                                <td id="metaFuncaoMensal">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
 
             <!-- Linha 2, col 2: produção por função -->
             <div class="table-block">
-                <h3 class="section-title">Produção por função</h3>
+                <div class="table-block-header">
+                    <h3 class="section-title"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Produção por função</h3>
+                    <span class="section-action-icon"><i class="fa-solid fa-table" aria-hidden="true"></i></span>
+                </div>
                 <div class="table-scroll">
                     <table id="tabelaFuncao">
                         <thead>
@@ -207,9 +193,20 @@ $conn->close();
                                 <th>Não pagas</th>
                                 <th>Mês anterior</th>
                                 <th>Recorde</th>
+                                <th>Custo Total</th>
+                                <th>Custo Médio</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total geral</td>
+                                <td id="funcaoTotalQuantidade">0</td>
+                                <td colspan="4"></td>
+                                <td id="funcaoTotalCusto">R$ 0,00</td>
+                                <td id="funcaoTotalCustoMedio">R$ 0,00</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>

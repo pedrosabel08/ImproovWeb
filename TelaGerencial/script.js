@@ -1,9 +1,10 @@
 // ---- Barra visual de recorde ----
 function _buildRecordBar(qtd, recorde) {
   const pct = recorde > 0 ? Math.round((recorde / qtd) * 100) : 0;
-  const lineHtml = recorde > 0
-    ? `<div class="record-bar-line" style="left:${pct}%"></div>`
-    : '';
+  const lineHtml =
+    recorde > 0
+      ? `<div class="record-bar-line" style="left:${pct}%"></div>`
+      : "";
   return `<div class="record-bar-wrap"><div class="record-bar-fill" style="width:100%"><span class="record-bar-qty">${qtd}</span></div>${lineHtml}</div>`;
 }
 
@@ -172,8 +173,8 @@ function refreshAll() {
     periodoEl.textContent = mesLabel + " " + anoEl.value;
   }
   buscarDados();
-  buscarEntregasMes();
   buscarDadosFuncao();
+  buscarMetasColaboradores();
 }
 
 window.addEventListener("DOMContentLoaded", function () {
@@ -192,6 +193,13 @@ function formatarData(data) {
   const partes = data.split("-");
   const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
   return dataFormatada;
+}
+
+function formatarMoeda(valor) {
+  return `R$ ${Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function buscarDados() {
@@ -219,50 +227,57 @@ function buscarDados() {
       tabela.innerHTML = ""; // limpa
 
       dados.forEach((linha) => {
-        // if (linha.nao_pagas > 0) {
-        const tr = document.createElement("tr");
+        if (linha.nao_pagas > 0) {
+          const tr = document.createElement("tr");
 
-        const tdColab = document.createElement("td");
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "colab-link";
-        btn.textContent = linha.nome_colaborador;
-        btn.addEventListener("click", () => abrirModalImagens(linha));
-        tdColab.appendChild(btn);
+          const tdColab = document.createElement("td");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "colab-link";
+          btn.textContent = linha.nome_colaborador;
+          btn.addEventListener("click", () => abrirModalImagens(linha));
+          tdColab.appendChild(btn);
 
-        const tdFuncao = document.createElement("td");
-        tdFuncao.textContent = linha.nome_funcao;
+          const tdFuncao = document.createElement("td");
+          tdFuncao.textContent = linha.nome_funcao;
 
-        const tdQtd = document.createElement("td");
-        if (linha.bate_recorde) {
-          tr.classList.add("bate-recorde");
-          tdQtd.className = "td-record-cell";
-          tdQtd.innerHTML = _buildRecordBar(linha.quantidade, linha.recorde_producao);
-        } else {
-          tdQtd.textContent = linha.quantidade;
+          const tdQtd = document.createElement("td");
+          if (linha.bate_recorde) {
+            tr.classList.add("bate-recorde");
+            tdQtd.className = "td-record-cell";
+            tdQtd.innerHTML = _buildRecordBar(
+              linha.quantidade,
+              linha.recorde_producao,
+            );
+          } else {
+            tdQtd.textContent = linha.quantidade;
+          }
+
+          const tdPagas = document.createElement("td");
+          tdPagas.textContent = linha.pagas;
+
+          const tdNaoPagas = document.createElement("td");
+          tdNaoPagas.textContent = linha.nao_pagas;
+
+          const tdAnterior = document.createElement("td");
+          tdAnterior.textContent = linha.mes_anterior;
+
+          const tdRecorde = document.createElement("td");
+          tdRecorde.textContent = linha.recorde_producao;
+
+          const tdCusto = document.createElement("td");
+          tdCusto.textContent = formatarMoeda(linha.custo);
+
+          tr.appendChild(tdColab);
+          tr.appendChild(tdFuncao);
+          tr.appendChild(tdQtd);
+          tr.appendChild(tdPagas);
+          tr.appendChild(tdNaoPagas);
+          tr.appendChild(tdAnterior);
+          tr.appendChild(tdRecorde);
+          tr.appendChild(tdCusto);
+          tabela.appendChild(tr);
         }
-
-        const tdPagas = document.createElement("td");
-        tdPagas.textContent = linha.pagas;
-
-        const tdNaoPagas = document.createElement("td");
-        tdNaoPagas.textContent = linha.nao_pagas;
-
-        const tdAnterior = document.createElement("td");
-        tdAnterior.textContent = linha.mes_anterior;
-
-        const tdRecorde = document.createElement("td");
-        tdRecorde.textContent = linha.recorde_producao;
-
-        tr.appendChild(tdColab);
-        tr.appendChild(tdFuncao);
-        tr.appendChild(tdQtd);
-        tr.appendChild(tdPagas);
-        tr.appendChild(tdNaoPagas);
-        tr.appendChild(tdAnterior);
-        tr.appendChild(tdRecorde);
-        tabela.appendChild(tr);
-        // }
       });
 
       // Atualiza cards de resumo
@@ -273,6 +288,10 @@ function buscarDados() {
       const pagas = dados.reduce((s, d) => s + parseInt(d.pagas || 0, 10), 0);
       const naoPagas = dados.reduce(
         (s, d) => s + parseInt(d.nao_pagas || 0, 10),
+        0,
+      );
+      const custoTotal = dados.reduce(
+        (s, d) => s + Number(d.custo || 0),
         0,
       );
       if (window.DashboardUtils) {
@@ -289,6 +308,8 @@ function buscarDados() {
           naoPagas,
         );
       }
+      const totalCustoEl = document.getElementById("totalCusto");
+      if (totalCustoEl) totalCustoEl.textContent = formatarMoeda(custoTotal);
 
       // Reinicia filtro e (re)inicializa o menu de filtro por colaborador
       _prodFiltroColab = "";
@@ -400,12 +421,15 @@ function buscarDadosPorDiaAnterior() {
       const tabela = document.querySelector("#tabelaFuncao tbody");
       tabela.innerHTML = ""; // Limpa a tabela
 
-      let estimativaTotal = 0;
+      let quantidadeTotal = 0;
+      let custoTotal = 0;
 
       data.forEach((linha) => {
-        const valorUnitario =
-          valoresPorFuncao[linha.nome_funcao.toLowerCase()] || 0;
-        const estimativa = linha.quantidade * valorUnitario;
+        const quantidade = Number(linha.quantidade || 0);
+        const custoLinha = Number(linha.custo_total || 0);
+        const custoMedioLinha = Number(
+          linha.custo_medio || (quantidade > 0 ? custoLinha / quantidade : 0),
+        );
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -413,15 +437,27 @@ function buscarDadosPorDiaAnterior() {
                     <td>${linha.quantidade}</td>
                     <td>${linha.pagas}</td>
                     <td>${linha.nao_pagas}</td>
-                    <td>R$ ${estimativa.toFixed(2).replace(".", ",")}</td>
+                    <td>${linha.mes_anterior ?? 0}</td>
+                    <td>${linha.recorde_producao ?? 0}</td>
+                    <td>${formatarMoeda(custoLinha)}</td>
+                    <td>${formatarMoeda(custoMedioLinha)}</td>
                 `;
         tabela.appendChild(tr);
 
-        estimativaTotal += estimativa;
+        quantidadeTotal += quantidade;
+        custoTotal += custoLinha;
       });
 
-      document.getElementById("valorTotal").innerHTML =
-        `<strong>R$ ${estimativaTotal.toFixed(2).replace(".", ",")}</strong>`;
+      const totalQtdEl = document.getElementById("funcaoTotalQuantidade");
+      const totalCustoEl = document.getElementById("funcaoTotalCusto");
+      const totalMediaEl = document.getElementById("funcaoTotalCustoMedio");
+      if (totalQtdEl) totalQtdEl.textContent = quantidadeTotal.toString();
+      if (totalCustoEl) totalCustoEl.textContent = formatarMoeda(custoTotal);
+      if (totalMediaEl) {
+        totalMediaEl.textContent = formatarMoeda(
+          quantidadeTotal > 0 ? custoTotal / quantidadeTotal : 0,
+        );
+      }
     })
     .catch((error) => {
       console.error("Erro ao buscar dados do dia anterior:", error);
@@ -449,12 +485,15 @@ function buscarDadosPorSemana() {
       const tabela = document.querySelector("#tabelaFuncao tbody");
       tabela.innerHTML = ""; // Limpa a tabela
 
-      let estimativaTotal = 0;
+      let quantidadeTotal = 0;
+      let custoTotal = 0;
 
       data.forEach((linha) => {
-        const valorUnitario =
-          valoresPorFuncao[linha.nome_funcao.toLowerCase()] || 0;
-        const estimativa = linha.quantidade * valorUnitario;
+        const quantidade = Number(linha.quantidade || 0);
+        const custoLinha = Number(linha.custo_total || 0);
+        const custoMedioLinha = Number(
+          linha.custo_medio || (quantidade > 0 ? custoLinha / quantidade : 0),
+        );
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -462,15 +501,27 @@ function buscarDadosPorSemana() {
                     <td>${linha.quantidade}</td>
                     <td>${linha.pagas}</td>
                     <td>${linha.nao_pagas}</td>
-                    <td>R$ ${estimativa.toFixed(2).replace(".", ",")}</td>
+                    <td>${linha.mes_anterior ?? 0}</td>
+                    <td>${linha.recorde_producao ?? 0}</td>
+                    <td>${formatarMoeda(custoLinha)}</td>
+                    <td>${formatarMoeda(custoMedioLinha)}</td>
                 `;
         tabela.appendChild(tr);
 
-        estimativaTotal += estimativa;
+        quantidadeTotal += quantidade;
+        custoTotal += custoLinha;
       });
 
-      document.getElementById("valorTotal").innerHTML =
-        `<strong>R$ ${estimativaTotal.toFixed(2).replace(".", ",")}</strong>`;
+      const totalQtdEl = document.getElementById("funcaoTotalQuantidade");
+      const totalCustoEl = document.getElementById("funcaoTotalCusto");
+      const totalMediaEl = document.getElementById("funcaoTotalCustoMedio");
+      if (totalQtdEl) totalQtdEl.textContent = quantidadeTotal.toString();
+      if (totalCustoEl) totalCustoEl.textContent = formatarMoeda(custoTotal);
+      if (totalMediaEl) {
+        totalMediaEl.textContent = formatarMoeda(
+          quantidadeTotal > 0 ? custoTotal / quantidadeTotal : 0,
+        );
+      }
     })
     .catch((error) => {
       console.error("Erro ao buscar dados da semana:", error);
@@ -491,13 +542,15 @@ function buscarDadosFuncao() {
       const tabela = document.querySelector("#tabelaFuncao tbody");
       tabela.innerHTML = ""; // limpa
 
-      let totalGeral = 0;
-      let estimativaTotal = 0;
+      let quantidadeTotal = 0;
+      let custoTotal = 0;
 
       data.forEach((linha) => {
-        const valorUnitario =
-          valoresPorFuncao[linha.nome_funcao.toLowerCase()] || 0; // Valor por função
-        const estimativa = linha.quantidade * valorUnitario; // Estimativa de valor
+        const quantidade = Number(linha.quantidade || 0);
+        const custoLinha = Number(linha.custo_total || 0);
+        const custoMedioLinha = Number(
+          linha.custo_medio || (quantidade > 0 ? custoLinha / quantidade : 0),
+        );
 
         const tr = document.createElement("tr");
         if (linha.bate_recorde) tr.classList.add("bate-recorde");
@@ -511,13 +564,25 @@ function buscarDadosFuncao() {
                     <td>${linha.nao_pagas}</td>
                     <td>${linha.mes_anterior ?? 0}</td>
                     <td>${linha.recorde_producao ?? 0}</td>
+                    <td>${formatarMoeda(custoLinha)}</td>
+                    <td>${formatarMoeda(custoMedioLinha)}</td>
           `;
         tabela.appendChild(tr);
 
-        estimativaTotal += estimativa;
+        quantidadeTotal += quantidade;
+        custoTotal += custoLinha;
       });
 
-      // document.getElementById("valorTotal").innerHTML = `<strong>R$ ${estimativaTotal.toFixed(2).replace('.', ',')}</strong>`;
+      const totalQtdEl = document.getElementById("funcaoTotalQuantidade");
+      const totalCustoEl = document.getElementById("funcaoTotalCusto");
+      const totalMediaEl = document.getElementById("funcaoTotalCustoMedio");
+      if (totalQtdEl) totalQtdEl.textContent = quantidadeTotal.toString();
+      if (totalCustoEl) totalCustoEl.textContent = formatarMoeda(custoTotal);
+      if (totalMediaEl) {
+        totalMediaEl.textContent = formatarMoeda(
+          quantidadeTotal > 0 ? custoTotal / quantidadeTotal : 0,
+        );
+      }
     })
     .catch((error) => {
       console.error("Erro ao buscar dados:", error);
@@ -540,8 +605,22 @@ function coletarTabelaHtml(tableSelector, options = {}) {
   const headersAll = Array.from(table.querySelectorAll("thead th")).map((th) =>
     th.textContent.trim(),
   );
-  const rowsAll = Array.from(table.querySelectorAll("tbody tr")).map((tr) =>
-    Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim()),
+  const extrairCelulas = (tr) => {
+    const cells = [];
+    Array.from(tr.children).forEach((cell) => {
+      const colspan = Number.parseInt(cell.getAttribute("colspan") || "1", 10);
+      const span = Number.isFinite(colspan) && colspan > 0 ? colspan : 1;
+
+      cells.push(cell.textContent.trim());
+      for (let i = 1; i < span; i++) {
+        cells.push("");
+      }
+    });
+    return cells;
+  };
+  const rowsAll = Array.from(table.querySelectorAll("tbody tr")).map(extrairCelulas);
+  const footerRowsAll = Array.from(table.querySelectorAll("tfoot tr")).map(
+    extrairCelulas,
   );
 
   let includeIndexes = null;
@@ -574,6 +653,9 @@ function coletarTabelaHtml(tableSelector, options = {}) {
 
   const headers = exportIndexes.map((i) => headersAll[i]);
   const rows = rowsAll.map((r) => exportIndexes.map((i) => r[i] ?? ""));
+  const footerRows = footerRowsAll.map((r) =>
+    exportIndexes.map((i) => r[i] ?? ""),
+  );
 
   // Special case: when exporting the column "Não pagas" (which we later rename
   // to "Quantidade"), for rows whose função is "Alteração" we want to show
@@ -624,8 +706,19 @@ function coletarTabelaHtml(tableSelector, options = {}) {
     "<tbody>" +
     rows
       .map((r) => "<tr>" + r.map((c) => `<td>${c}</td>`).join("") + "</tr>")
-      .join("") +
-    "</tbody>";
+      .join("");
+  if (footerRows.length) {
+    html +=
+      footerRows
+        .map(
+          (r) =>
+            '<tr class="report-total-row">' +
+            r.map((c) => `<td>${c}</td>`).join("") +
+            "</tr>",
+        )
+        .join("");
+  }
+  html += "</tbody>";
   html += "</table>";
   return html;
 }
@@ -640,19 +733,22 @@ function gerarRelatorio() {
 
   // No relatório, manter apenas colunas de identificação + "Quantidade" (antes 'Não pagas'),
   // além de mês anterior e recorde ao lado da quantidade.
-  const headerRegex = /(?:N[aã]o|Não)\s*pagas|m[eê]s\s*anterior|recorde/i;
+  const headerRegexProducao =
+    /(?:N[aã]o|Não)\s*pagas|m[eê]s\s*anterior|recorde|\bcusto\b/i;
+  const headerRegexFuncao =
+    /(?:N[aã]o|Não)\s*pagas|m[eê]s\s*anterior|recorde|custo\s*total/i;
   let tabelaProducaoHtml = coletarTabelaHtml("#tabelaProducao", {
     includeIndexes: [0, 1],
-    includeHeaderRegex: headerRegex,
+    includeHeaderRegex: headerRegexProducao,
   });
   // Include the função name (index 0) plus matching headers so the
   // "Não pagas" -> "Quantidade" substitution for 'Alteração' is applied
   // while preserving the função column in the export.
   let tabelaFuncaoHtml = coletarTabelaHtml("#tabelaFuncao", {
     includeIndexes: [0],
-    includeHeaderRegex: headerRegex,
+    includeHeaderRegex: headerRegexFuncao,
   });
-  let tabelaEntregasHtml = coletarTabelaHtml("#tabelaEntregas");
+  let tabelaMetasHtml = coletarTabelaHtml("#tabelaMetas");
 
   // Renomeia o cabeçalho "Não pagas" para "Quantidade" apenas no HTML de exportação
   try {
@@ -707,6 +803,7 @@ function gerarRelatorio() {
                     table{margin-bottom:18px;border-collapse:collapse;width:100%}
                     th{background:#eee;text-align:left;padding:6px}
                     td{padding:6px}
+                    .report-total-row td{font-weight:700;background:#f6f6f6}
                 </style>
             </head>
             <body>
@@ -717,8 +814,8 @@ function gerarRelatorio() {
                     <br>
                     <h3>Produção por Função</h3>
                     ${tabelaFuncaoHtml || "<p>Sem dados</p>"}
-                    <h3>Imagens entregues por mês</h3>
-                    ${tabelaEntregasHtml || "<p>Sem dados</p>"}
+                    <h3>Metas - Finalizacao Completa</h3>
+                    ${tabelaMetasHtml || "<p>Sem dados</p>"}
                 </div>
 
                 <!-- libs via CDN -->
@@ -761,11 +858,7 @@ function gerarRelatorio() {
   win.document.close();
 }
 
-/**
- * Busca entregas agrupadas por status para o mês selecionado.
- * Se nenhum mês for selecionado, usa o mês atual.
- */
-function buscarEntregasMes() {
+function buscarMetasColaboradores() {
   const selectMes = document.getElementById("mes");
   const mes = selectMes
     ? parseInt(selectMes.value, 10)
@@ -775,33 +868,58 @@ function buscarEntregasMes() {
     ? parseInt(selectAno.value, 10)
     : new Date().getFullYear();
 
-  fetch(`buscar_entregas_mes.php?mes=${mes}&ano=${ano}`)
+  fetch(`buscar_metas.php?mes=${mes}&ano=${ano}`)
     .then((res) => res.json())
     .then((data) => {
-      const tabela = document.querySelector("#tabelaEntregas tbody");
+      const tabela = document.querySelector("#tabelaMetas tbody");
+      const totalProduzidoEl = document.getElementById("metaTotalProduzido");
+      const metaFuncaoEl = document.getElementById("metaFuncaoMensal");
+
+      if (!tabela) return;
       tabela.innerHTML = "";
 
-      // Atualiza cabeçalho da tabela para refletir o breakdown por status
-      const thead = document.querySelector("#tabelaEntregas thead tr");
-      if (thead) {
-        thead.innerHTML = `
-                    <th>Status</th>
-                    <th>Quantidade de imagens entregues</th>
-                    <th>Quantidade de plantas entregues</th>
-                `;
-      }
+      const colaboradores = Array.isArray(data?.colaboradores)
+        ? data.colaboradores
+        : [];
 
-      if (!Array.isArray(data)) return;
+      colaboradores.forEach((row) => {
+        const quantidadeFeita = parseInt(row?.quantidade_feita ?? 0, 10) || 0;
+        const metaIndividual = parseInt(row?.meta_individual ?? 0, 10) || 0;
+        const saldo = Number.isFinite(Number(row?.saldo))
+          ? Number(row.saldo)
+          : quantidadeFeita - metaIndividual;
+        const saldoLabel = saldo > 0 ? `+${saldo}` : `${saldo}`;
+        const saldoClass =
+          saldo > 0
+            ? "saldo-positivo"
+            : saldo < 0
+              ? "saldo-negativo"
+              : "saldo-neutro";
 
-      data.forEach((row) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-                    <td>${row.nome_status}</td>
-                    <td>${row.quantidade}</td>
-                    <td>${row.quantidade_ph}</td>
+                    <td>${row?.nome_colaborador ?? "-"}</td>
+                    <td>${quantidadeFeita}</td>
+                    <td>${metaIndividual}</td>
+                    <td><span class="meta-saldo ${saldoClass}">${saldoLabel}</span></td>
                 `;
         tabela.appendChild(tr);
       });
+
+      if (totalProduzidoEl) {
+        totalProduzidoEl.textContent = `${parseInt(data?.total_produzido ?? 0, 10) || 0}`;
+      }
+      if (metaFuncaoEl) {
+        metaFuncaoEl.textContent = `${parseInt(data?.meta_funcao ?? 0, 10) || 0}`;
+      }
     })
-    .catch((err) => console.error("Erro ao buscar entregas por mês:", err));
+    .catch((err) => {
+      console.error("Erro ao buscar metas dos colaboradores:", err);
+      const tabela = document.querySelector("#tabelaMetas tbody");
+      const totalProduzidoEl = document.getElementById("metaTotalProduzido");
+      const metaFuncaoEl = document.getElementById("metaFuncaoMensal");
+      if (tabela) tabela.innerHTML = "";
+      if (totalProduzidoEl) totalProduzidoEl.textContent = "0";
+      if (metaFuncaoEl) metaFuncaoEl.textContent = "0";
+    });
 }

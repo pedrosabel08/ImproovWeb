@@ -188,15 +188,6 @@ if ($resP00) {
     }
 }
 
-usort($out, static function (array $left, array $right): int {
-    $readyDiff = intval($right['ready_count'] ?? 0) <=> intval($left['ready_count'] ?? 0);
-    if ($readyDiff !== 0) {
-        return $readyDiff;
-    }
-
-    return strcmp((string) ($right['data_conclusao'] ?? ''), (string) ($left['data_conclusao'] ?? ''));
-});
-
 if (!empty($out) && entregas_review_schema_ready($conn)) {
     $summaryByEntrega = entregas_review_fetch_entrega_summary($conn, $entregaIds);
 
@@ -210,5 +201,19 @@ if (!empty($out) && entregas_review_schema_ready($conn)) {
     }
     unset($entrega);
 }
+
+usort($out, static function (array $left, array $right): int {
+    $readyDiff = intval($right['ready_count'] ?? 0) <=> intval($left['ready_count'] ?? 0);
+    if ($readyDiff !== 0) {
+        return $readyDiff;
+    }
+
+    $overdueDiff = intval($right['review_batches_overdue'] ?? 0) <=> intval($left['review_batches_overdue'] ?? 0);
+    if ($overdueDiff !== 0) {
+        return $overdueDiff;
+    }
+
+    return strcmp((string) ($right['data_conclusao'] ?? ''), (string) ($left['data_conclusao'] ?? ''));
+});
 
 echo json_encode($out);

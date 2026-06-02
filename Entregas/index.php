@@ -70,6 +70,9 @@ $conn->close();
                 <h1 class="page-title">Quadro de Entregas</h1>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
+                <button class="btn-relatorio" id="btnRelatorioProducao" title="Relatório de Produção">
+                    <i class="fa-solid fa-chart-bar"></i> Relatório
+                </button>
                 <button class="btn-add" id="adicionar_entrega">
                     <i class="fa-solid fa-plus"></i> Nova Entrega
                 </button>
@@ -339,6 +342,72 @@ $conn->close();
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== Modal: Relatório de Produção ====== -->
+    <div id="modalRelatorioProducao" class="modal">
+        <div class="modal-content modal-relatorio">
+            <div class="modal-header">
+                <div class="relatorio-header-left">
+                    <i class="fa-solid fa-chart-bar" style="color:var(--accent);font-size:18px;"></i>
+                    <div>
+                        <h2 class="modal-title" style="margin:0;">Relatório de Produção</h2>
+                        <p class="relatorio-subtitle">Acompanhe o histórico de prazos e entregas do projeto</p>
+                    </div>
+                </div>
+                <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Obra selector -->
+            <div class="relatorio-obra-bar">
+                <div class="filter-group" style="flex:1;">
+                    <label class="filter-label">Obra</label>
+                    <select id="relatorioObraSelect" class="filter-select">
+                        <option value="">Selecione uma obra...</option>
+                        <?php foreach ($obras as $o): ?>
+                            <option value="<?= intval($o['idobra']); ?>"><?= htmlspecialchars($o['nomenclatura']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button class="btn-apply" id="btnCarregarRelatorio">
+                    <i class="fa-solid fa-magnifying-glass"></i> Carregar
+                </button>
+            </div>
+
+            <div class="modal-body relatorio-body" id="relatorioBody">
+                <div class="relatorio-empty" id="relatorioEmpty">
+                    <i class="fa-solid fa-chart-bar" style="font-size:40px;color:var(--text-muted);margin-bottom:12px;"></i>
+                    <p>Selecione uma obra para visualizar o relatório.</p>
+                </div>
+
+                <!-- Loaded content rendered by JS -->
+                <div id="relatorioContent" style="display:none;">
+
+                    <!-- Info geral -->
+                    <div class="relatorio-info-bar" id="relatorioInfoBar"></div>
+
+                    <!-- Summary cards -->
+                    <div class="relatorio-summary" id="relatorioSummary"></div>
+
+                    <!-- Etapas accordion -->
+                    <div class="relatorio-etapas" id="relatorioEtapas"></div>
+
+                </div>
+
+                <!-- Loading -->
+                <div class="relatorio-loading" id="relatorioLoading" style="display:none;">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="font-size:32px;color:var(--accent);"></i>
+                    <p>Carregando dados…</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
+                <button type="button" class="btn-action btn-primary" id="btnExportarRelatorio" style="display:none;">
+                    <i class="fa-solid fa-download"></i> Exportar relatório
+                </button>
             </div>
         </div>
     </div>

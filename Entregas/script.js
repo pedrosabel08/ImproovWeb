@@ -3144,3 +3144,432 @@ if (btnAdicionarImagem) {
     }
   });
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  RELATÓRIO DE PRODUÇÃO
+ *  Accordion hierarchy: Obra → Etapa → Entrega → Images table
+ * ══════════════════════════════════════════════════════════════════════════ */
+(function initRelatorioProducao() {
+  const btnOpen    = document.getElementById("btnRelatorioProducao");
+  const modal      = document.getElementById("modalRelatorioProducao");
+  const btnLoad    = document.getElementById("btnCarregarRelatorio");
+  const obraSelect = document.getElementById("relatorioObraSelect");
+  const body       = document.getElementById("relatorioBody");
+  const empty      = document.getElementById("relatorioEmpty");
+  const content    = document.getElementById("relatorioContent");
+  const loading    = document.getElementById("relatorioLoading");
+  const infoBar    = document.getElementById("relatorioInfoBar");
+  const summary    = document.getElementById("relatorioSummary");
+  const etapasEl   = document.getElementById("relatorioEtapas");
+  const btnExport  = document.getElementById("btnExportarRelatorio");
+
+  if (!btnOpen || !modal) return;
+
+  /* ── open / close ─────────────────────────────────────────────────────── */
+  btnOpen.addEventListener("click", () => {
+    modal.classList.add("is-open");
+
+    // 1. Try active kanban filter (Entregas page)
+    const filterObra = document.getElementById("filterObra");
+    if (filterObra && filterObra.value) {
+      obraSelect.value = filterObra.value;
+    }
+    // 2. Fall back to localStorage (obra.php context)
+    if (!obraSelect.value) {
+      const storedId = localStorage.getItem("obraId");
+      if (storedId) obraSelect.value = storedId;
+    }
+    // 3. If we now have an obra and content is empty, auto-load
+    if (obraSelect.value && !content.style.display.includes("block")) {
+      loadRelatorio(obraSelect.value);
+    }
+  });
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  modal.querySelectorAll(".fecharModal").forEach((btn) =>
+    btn.addEventListener("click", closeModal)
+  );
+
+  function closeModal() {
+    modal.classList.remove("is-open");
+  }
+
+  /* ── load data ─────────────────────────────────────────────────────────── */
+  btnLoad.addEventListener("click", () => {
+    const obraId = obraSelect.value;
+    if (!obraId) {
+      obraSelect.focus();
+      return;
+    }
+    loadRelatorio(obraId);
+  });
+
+  // Also auto-load on Enter key
+  obraSelect.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") btnLoad.click();
+  });
+
+  async function loadRelatorio(obraId) {
+    // show loading
+    empty.style.display     = "none";
+    content.style.display   = "none";
+    loading.style.display   = "flex";
+    btnExport.style.display = "none";
+
+    try {
+      const res  = await fetch(BASE + "relatorio_producao.php?obra_id=" + encodeURIComponent(obraId));
+      const data = await res.json();
+
+      loading.style.display = "none";
+
+      if (data.error) {
+        empty.style.display = "flex";
+        empty.querySelector("p").textContent = data.error;
+        return;
+      }
+
+      renderRelatorio(data);
+      content.style.display   = "block";
+      btnExport.style.display = "inline-flex";
+    } catch (err) {
+      loading.style.display = "none";
+      empty.style.display   = "flex";
+      empty.querySelector("p").textContent = "Erro ao carregar dados. Tente novamente.";
+      console.error("relatorio_producao error:", err);
+    }
+  }
+
+  /* ── render ────────────────────────────────────────────────────────────── */
+  function fmtDate(d) {
+    if (!d) return "—";
+    const parts = String(d).split("T")[0].split("-");
+    if (parts.length < 3) return d;
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+
+  function fmtDias(n) {
+    const v = parseInt(n, 10);
+    if (!v || v === 0) return "—";
+    return (v > 0 ? "+" : "") + v + "d";
+  }
+
+  function statusBadge(status) {
+    const s = String(status || "").toLowerCase();
+    if (s.includes("antecipada") || s === "aprovada") {
+      return `<span class="rel-status-badge antecipada">Antecipada</span>`;
+    }
+    if (s.includes("no prazo")) {
+      return `<span class="rel-status-badge no-prazo">No prazo</span>`;
+    }
+    if (s.includes("atraso")) {
+      return `<span class="rel-status-badge com-atraso">Com atraso</span>`;
+    }
+    if (s === "pendente" || s.includes("pendente")) {
+      return `<span class="rel-status-badge pendente">Pendente</span>`;
+    }
+    return `<span class="rel-status-badge nao-iniciada">${status || "—"}</span>`;
+  }
+
+  function renderRelatorio(data) {
+    const obra = data.obra || {};
+    const sum  = data.summary || {};
+
+    /* info bar */
+    infoBar.innerHTML = `
+      <div class="relatorio-info-item">
+        <span class="relatorio-info-label"><i class="fa-solid fa-building" style="margin-right:4px;"></i>Projeto</span>
+        <span class="relatorio-info-value">${obra.nomenclatura || "—"}</span>
+      </div>
+      <div class="relatorio-info-item">
+        <span class="relatorio-info-label"><i class="fa-regular fa-calendar" style="margin-right:4px;"></i>Recebimento de arquivos</span>
+        <span class="relatorio-info-value">${fmtDate(obra.recebimento_arquivos)}</span>
+      </div>
+      <div class="relatorio-info-item">
+        <span class="relatorio-info-label"><i class="fa-solid fa-calendar-check" style="margin-right:4px;"></i>Prazo contratual</span>
+        <span class="relatorio-info-value">${fmtDate(obra.data_final)}</span>
+      </div>
+      <div class="relatorio-info-item">
+        <span class="relatorio-info-label"><i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>Status atual do projeto</span>
+        <span class="relatorio-info-value">Em andamento</span>
+      </div>
+    `;
+
+    /* summary cards */
+    summary.innerHTML = `
+      <div class="relatorio-card">
+        <div class="relatorio-card-label">Total de etapas</div>
+        <div class="relatorio-card-value is-blue">${sum.total_etapas ?? 0}</div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-card-label">Total de imagens</div>
+        <div class="relatorio-card-value">${sum.total_imagens ?? 0}</div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-card-label">Concluídas</div>
+        <div class="relatorio-card-value is-green">${sum.entregues ?? 0}</div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-card-label">Pendentes</div>
+        <div class="relatorio-card-value is-yellow">${sum.pendentes ?? 0}</div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-card-label">% Concluído</div>
+        <div class="relatorio-card-value ${(sum.pct ?? 0) >= 100 ? 'is-green' : ''}">${sum.pct ?? 0}%</div>
+      </div>
+    `;
+
+    /* etapas */
+    etapasEl.innerHTML = "";
+    (data.etapas || []).forEach((etapa) => {
+      etapasEl.appendChild(buildEtapaEl(etapa));
+    });
+  }
+
+  /* ── etapa accordion ───────────────────────────────────────────────────── */
+  function buildEtapaEl(etapa) {
+    const el = document.createElement("div");
+    el.className = "rel-etapa";
+
+    const isP00    = etapa.tipo === "p00";
+    const count    = isP00 ? (etapa.versoes_count || 0) : (etapa.entregas_count || 0);
+    const countLbl = isP00
+      ? `${count} versão(ões)`
+      : `${count} entrega${count !== 1 ? "s" : ""}`;
+
+    const pct = etapa.pct ?? 0;
+
+    el.innerHTML = `
+      <div class="rel-etapa-header">
+        <i class="fa-solid fa-chevron-right rel-etapa-arrow"></i>
+        <span class="rel-etapa-code">${etapa.codigo}</span>
+        <span class="rel-etapa-meta">${etapa.label || etapa.codigo} &mdash; ${countLbl}</span>
+        <div class="rel-progress-bar-wrap" style="max-width:100px;">
+          <div class="rel-progress-bar-fill" style="width:${pct}%;"></div>
+        </div>
+        <span class="rel-etapa-pct">${pct}%</span>
+      </div>
+      <div class="rel-etapa-body"></div>
+    `;
+
+    const header = el.querySelector(".rel-etapa-header");
+    const body2  = el.querySelector(".rel-etapa-body");
+
+    // Build children lazily on first open
+    let built = false;
+    header.addEventListener("click", () => {
+      el.classList.toggle("is-open");
+      if (el.classList.contains("is-open") && !built) {
+        built = true;
+        if (isP00) {
+          buildP00Body(body2, etapa);
+        } else {
+          (etapa.entregas || []).forEach((entrega, idx) => {
+            body2.appendChild(buildEntregaEl(entrega, etapa.codigo, idx));
+          });
+        }
+      }
+    });
+
+    return el;
+  }
+
+  /* ── P00 block (versoes as "entregas") ─────────────────────────────────── */
+  function buildP00Body(container, etapa) {
+    // For P00, versoes are shown inline as image rows in a single table
+    const stats  = etapa.stats || {};
+    const versoes = etapa.versoes || [];
+
+    const statsHtml = `
+      <div class="rel-entrega-stats" style="margin:12px 16px 4px;">
+        ${statItem(versoes.length, "Versões", "")}
+        ${statItem(stats.entregues ?? 0, "Aprovadas", "is-green")}
+        ${statItem(stats.pendentes ?? 0, "Pendentes", "is-yellow")}
+        ${statItem(stats.atrasadas ?? 0, "Atrasadas", "is-red")}
+        <div class="rel-stat-item" style="flex:1;">
+          <div class="rel-stat-label">Progresso</div>
+          <div class="rel-progress-bar-wrap" style="margin-top:4px;max-width:140px;">
+            <div class="rel-progress-bar-fill" style="width:${etapa.pct ?? 0}%;"></div>
+          </div>
+          <div class="rel-stat-label" style="margin-top:2px;">${etapa.pct ?? 0}%</div>
+        </div>
+      </div>`;
+
+    const statsEl = document.createElement("div");
+    statsEl.innerHTML = statsHtml;
+    container.appendChild(statsEl);
+
+    if (versoes.length === 0) {
+      const empty2 = document.createElement("div");
+      empty2.style.cssText = "padding:14px 16px;color:var(--text-muted);font-size:12px;";
+      empty2.textContent = "Nenhuma versão encontrada.";
+      container.appendChild(empty2);
+      return;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "rel-images-table-wrap";
+    wrap.style.margin = "0 16px 14px";
+
+    wrap.innerHTML = `
+      <table class="rel-images-table">
+        <thead>
+          <tr>
+            <th>Versão</th>
+            <th>Imagem</th>
+            <th>Função</th>
+            <th>Recebimento</th>
+            <th>Prazo contratual</th>
+            <th>Prazo ajustado</th>
+            <th>Data entrega</th>
+            <th>Dias atraso</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${versoes.map((v) => `
+            <tr>
+              <td><strong>${v.versao_label || "V1"}</strong></td>
+              <td class="col-imagem">${v.imagem_nome || "—"}</td>
+              <td>${v.funcao || "—"}</td>
+              <td>${fmtDate(v.recebimento)}</td>
+              <td>${fmtDate(v.prazo_contratual)}</td>
+              <td>${fmtDate(v.prazo_ajustado)}</td>
+              <td>${fmtDate(v.data_entregue)}</td>
+              <td class="col-num" style="color:${(parseInt(v.dias_atraso,10)||0) > 0 ? '#ef4444' : 'inherit'};">
+                ${fmtDias(v.dias_atraso)}
+              </td>
+              <td>${statusBadge(v.status)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+
+    container.appendChild(wrap);
+  }
+
+  /* ── entrega accordion ─────────────────────────────────────────────────── */
+  function buildEntregaEl(entrega, etapaCodigo, idx) {
+    const el = document.createElement("div");
+    el.className = "rel-entrega";
+
+    const stats = entrega.stats || {};
+    const pct   = entrega.pct ?? 0;
+    const label = entrega.label || (`${etapaCodigo} #${idx + 1}`);
+
+    const metaParts = [];
+    if (entrega.prazo)     metaParts.push(`Prazo: ${fmtDate(entrega.prazo)}`);
+    if (entrega.conclusao) metaParts.push(`Concluído: ${fmtDate(entrega.conclusao)}`);
+    if (entrega.em_hold)   metaParts.push("⏸ HOLD");
+    const meta = metaParts.join(" · ") || "";
+
+    el.innerHTML = `
+      <div class="rel-entrega-header">
+        <i class="fa-solid fa-chevron-right rel-entrega-arrow"></i>
+        <span class="rel-entrega-label">${label}</span>
+        <span class="rel-entrega-meta">${meta}</span>
+        <div class="rel-progress-bar-wrap" style="max-width:80px;">
+          <div class="rel-progress-bar-fill" style="width:${pct}%;"></div>
+        </div>
+        <span style="font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap;margin-left:8px;">${pct}%</span>
+      </div>
+      <div class="rel-entrega-body"></div>
+    `;
+
+    const header = el.querySelector(".rel-entrega-header");
+    const body2  = el.querySelector(".rel-entrega-body");
+
+    let built = false;
+    header.addEventListener("click", () => {
+      el.classList.toggle("is-open");
+      if (el.classList.contains("is-open") && !built) {
+        built = true;
+        buildEntregaBody(body2, entrega, stats, pct);
+      }
+    });
+
+    return el;
+  }
+
+  function buildEntregaBody(container, entrega, stats, pct) {
+    // Stats row
+    const statsEl = document.createElement("div");
+    statsEl.className = "rel-entrega-stats";
+    statsEl.innerHTML = `
+      ${statItem(stats.total ?? 0, "Imagens", "")}
+      ${statItem(stats.entregues ?? 0, "Entregues", "is-green")}
+      ${statItem(stats.pendentes ?? 0, "Pendentes", "is-yellow")}
+      ${statItem(stats.atrasadas ?? 0, "Atrasadas", "is-red")}
+      <div class="rel-stat-item" style="flex:1;">
+        <div class="rel-stat-label">Concluído</div>
+        <div class="rel-progress-bar-wrap" style="margin-top:4px;max-width:140px;">
+          <div class="rel-progress-bar-fill" style="width:${pct}%;"></div>
+        </div>
+        <div class="rel-stat-label" style="margin-top:2px;">${pct}%</div>
+      </div>
+    `;
+    container.appendChild(statsEl);
+
+    const itens = entrega.itens || [];
+    if (itens.length === 0) {
+      const empty2 = document.createElement("div");
+      empty2.style.cssText = "font-size:12px;color:var(--text-muted);margin-top:8px;";
+      empty2.textContent = "Nenhuma imagem nesta entrega.";
+      container.appendChild(empty2);
+      return;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "rel-images-table-wrap";
+
+    wrap.innerHTML = `
+      <table class="rel-images-table">
+        <thead>
+          <tr>
+            <th>Imagem</th>
+            <th>Função</th>
+            <th>Recebimento</th>
+            <th>Prazo contratual</th>
+            <th>Prazo ajustado</th>
+            <th>Data entrega</th>
+            <th>Dias atraso</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itens.map((item) => `
+            <tr>
+              <td class="col-imagem">${item.imagem_nome || "—"}</td>
+              <td>${item.funcao || "—"}</td>
+              <td>${fmtDate(item.recebimento)}</td>
+              <td>${fmtDate(item.prazo_contratual)}</td>
+              <td>${fmtDate(item.prazo_ajustado)}</td>
+              <td>${fmtDate(item.data_entregue)}</td>
+              <td class="col-num" style="color:${(parseInt(item.dias_atraso,10)||0) > 0 ? '#ef4444' : 'inherit'};">
+                ${fmtDias(item.dias_atraso)}
+              </td>
+              <td>${statusBadge(item.status)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+
+    container.appendChild(wrap);
+  }
+
+  function statItem(value, label, cls) {
+    return `
+      <div class="rel-stat-item">
+        <div class="rel-stat-label">${label}</div>
+        <div class="rel-stat-value ${cls}">${value}</div>
+      </div>`;
+  }
+
+  /* ── Export (simple CSV) ────────────────────────────────────────────────── */
+  btnExport.addEventListener("click", () => {
+    const obraId = obraSelect.value;
+    if (!obraId) return;
+    window.open(BASE + "relatorio_producao.php?obra_id=" + encodeURIComponent(obraId) + "&export=csv", "_blank");
+  });
+})();
+

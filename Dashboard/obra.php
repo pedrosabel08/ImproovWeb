@@ -24,6 +24,20 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
+$obraSolicitadaUrl = 0;
+foreach (['obra_id', 'idobra', 'id'] as $paramObraUrl) {
+    if (isset($_GET[$paramObraUrl]) && is_numeric($_GET[$paramObraUrl])) {
+        $obraSolicitadaUrl = (int) $_GET[$paramObraUrl];
+        break;
+    }
+}
+
+if ($obraSolicitadaUrl > 0 && !improov_usuario_pode_acessar_obra($conn, $obraSolicitadaUrl)) {
+    $conn->close();
+    header("Location: ../acesso_negado.php");
+    exit();
+}
+
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);

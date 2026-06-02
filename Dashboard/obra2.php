@@ -22,6 +22,20 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 // Buscar a quantidade de funções do colaborador com status "Em andamento"
+$obraSolicitadaUrl = 0;
+foreach (['obra_id', 'idobra', 'id'] as $paramObraUrl) {
+    if (isset($_GET[$paramObraUrl]) && is_numeric($_GET[$paramObraUrl])) {
+        $obraSolicitadaUrl = (int) $_GET[$paramObraUrl];
+        break;
+    }
+}
+
+if ($obraSolicitadaUrl > 0 && !improov_usuario_pode_acessar_obra($conn, $obraSolicitadaUrl)) {
+    $conn->close();
+    header("Location: ../acesso_negado.php");
+    exit();
+}
+
 $colaboradorId = $_SESSION['idcolaborador'];
 $funcoesCountSql = "SELECT COUNT(*) AS total_funcoes_em_andamento
                     FROM funcao_imagem

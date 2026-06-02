@@ -90,8 +90,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   normalizeSidebarLinks();
 
+  if (Array.isArray(window.IMPROOV_ALLOWED_OBRA_IDS)) {
+    const allowedObraIds = window.IMPROOV_ALLOWED_OBRA_IDS.map(String);
+    const selectedObraId = localStorage.getItem("obraId");
+    if (selectedObraId && !allowedObraIds.includes(String(selectedObraId))) {
+      localStorage.removeItem("obraId");
+      localStorage.removeItem("obraNome");
+    }
+  }
+
   const favoritosList = document.getElementById("favoritos");
   const obrasList = document.getElementById("obras-list");
+
+  const rememberOriginalPosition = (obraItem) => {
+    if (!obraItem || obraItem.__sidebarOriginalParent) return;
+    obraItem.__sidebarOriginalParent = obraItem.parentElement;
+    obraItem.__sidebarOriginalNext = obraItem.nextElementSibling;
+  };
+
+  const restoreOriginalPosition = (obraItem) => {
+    if (!obraItem) return;
+    const parent = obraItem.__sidebarOriginalParent || obrasList;
+    const next = obraItem.__sidebarOriginalNext;
+
+    if (parent && next && next.parentElement === parent) {
+      parent.insertBefore(obraItem, next);
+    } else if (parent) {
+      parent.appendChild(obraItem);
+    } else if (obrasList) {
+      obrasList.appendChild(obraItem);
+    }
+  };
 
   const checkFavoritesVisibility = () => {
     if (favoritosList.children.length === 1) {
@@ -113,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
         obra.classList.add("favorited");
         // Move a obra para a lista de favoritos
         const obraItem = obra.parentElement;
+        rememberOriginalPosition(obraItem);
         favoritosList.appendChild(obraItem);
       }
     });
@@ -146,11 +176,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Remover dos favoritos
         icon.classList.remove("favorited");
         removeFavorite(obraId);
-        obrasList.appendChild(obraItem); // Move de volta para a lista de obras
+        restoreOriginalPosition(obraItem); // Move de volta para a lista original
       } else {
         // Adicionar aos favoritos
         icon.classList.add("favorited");
         saveFavorite(obraId);
+        rememberOriginalPosition(obraItem);
         favoritosList.appendChild(obraItem); // Move para a lista de favoritos
       }
       checkFavoritesVisibility();

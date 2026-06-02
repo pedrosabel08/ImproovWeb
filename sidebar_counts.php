@@ -4,6 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE)
     session_start();
 
 require_once __DIR__ . '/conexao.php';
+require_once __DIR__ . '/conexaoMain.php';
 require_once __DIR__ . '/Dashboard/onboarding_helpers.php';
 require_once __DIR__ . '/Entregas/p00_delivery_helpers.php';
 
@@ -43,6 +44,13 @@ foreach ($p00HandoffCounts as $obraId => $handoffCount) {
     $counts_by_obra[$obraId] = intval($counts_by_obra[$obraId] ?? 0) + intval($handoffCount);
     $total_ready += intval($handoffCount);
 }
+
+foreach (array_keys($counts_by_obra) as $obraId) {
+    if (!improov_usuario_pode_acessar_obra($conn, (int) $obraId)) {
+        unset($counts_by_obra[$obraId]);
+    }
+}
+$total_ready = array_sum(array_map('intval', $counts_by_obra));
 
 $onboarding_progress = dashboard_get_onboarding_progress($conn);
 $onboarding_pending_total = 0;

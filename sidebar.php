@@ -21,6 +21,75 @@ if (!isset($obras) || !is_array($obras)) {
 if (!isset($obras_inativas) || !is_array($obras_inativas)) {
     $obras_inativas = [];
 }
+
+$__sidebarProjectLabel = $GLOBALS['improov_sidebar_project_label'] ?? 'Obras';
+$__sidebarInactiveLabel = $GLOBALS['improov_sidebar_inactive_label'] ?? 'Obras inativas';
+$__sidebarProjectMode = $GLOBALS['improov_sidebar_project_mode'] ?? 'producao';
+$__sidebarShowInactive = isset($GLOBALS['improov_sidebar_show_inactive'])
+    ? (bool) $GLOBALS['improov_sidebar_show_inactive']
+    : (isset($_SESSION['nivel_acesso']) && (int) $_SESSION['nivel_acesso'] === 1);
+$__sidebarAllowedObraIds = [];
+foreach ($obras as $__obraPermitida) {
+    if (isset($__obraPermitida['idobra'])) {
+        $__sidebarAllowedObraIds[] = (int) $__obraPermitida['idobra'];
+    }
+}
+if ($__sidebarShowInactive) {
+    foreach ($obras_inativas as $__obraPermitida) {
+        if (isset($__obraPermitida['idobra'])) {
+            $__sidebarAllowedObraIds[] = (int) $__obraPermitida['idobra'];
+        }
+    }
+}
+$__sidebarAllowedObraIds = array_values(array_unique($__sidebarAllowedObraIds));
+
+if (!function_exists('improov_sidebar_render_obra_item')) {
+    function improov_sidebar_render_obra_item(array $obra, string $extraClass = ''): void
+    {
+        $id = (int) ($obra['idobra'] ?? 0);
+        $nome = htmlspecialchars((string) ($obra['nomenclatura'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $classe = trim('obra ' . $extraClass);
+
+        echo '<li class="' . htmlspecialchars($classe, ENT_QUOTES, 'UTF-8') . '">';
+        echo '<i class="fa fa-star favorite-icon" data-id="' . $id . '" title="' . $nome . '"></i>';
+        echo '<a title="' . $nome . '" href="#" class="obra-item" data-id="' . $id . '" data-name="' . $nome . '">';
+        echo '<span>' . $nome . '</span>';
+        echo '<span class="sidebar-badge" data-obra-id="' . $id . '" aria-hidden="true"></span>';
+        echo '</a>';
+        echo '</li>';
+    }
+}
+
+if (!function_exists('improov_sidebar_obras_por_pacote')) {
+    function improov_sidebar_obras_por_pacote(array $obras): array
+    {
+        $grupos = [
+            'STILL' => ['label' => 'Pacote Imagens', 'obras' => []],
+            'ANIMACAO' => ['label' => 'Pacote Animação', 'obras' => []],
+            'FILME' => ['label' => 'Pacote Filme', 'obras' => []],
+            'SEM_PACOTE' => ['label' => 'Sem pacote ativo', 'obras' => []],
+        ];
+
+        foreach ($obras as $obra) {
+            $pacotesAtivos = $obra['pacotes_ativos'] ?? '';
+            $pacotes = array_filter(array_map('trim', explode(',', strtoupper((string) $pacotesAtivos))));
+            $pacotesConhecidos = array_values(array_intersect($pacotes, ['STILL', 'ANIMACAO', 'FILME']));
+
+            if (empty($pacotesConhecidos)) {
+                $grupos['SEM_PACOTE']['obras'][] = $obra;
+                continue;
+            }
+
+            foreach ($pacotesConhecidos as $pacote) {
+                $grupos[$pacote]['obras'][] = $obra;
+            }
+        }
+
+        return array_filter($grupos, function ($grupo) {
+            return !empty($grupo['obras']);
+        });
+    }
+}
 ?>
 <script>
     // Session policy provided by PHP
@@ -30,6 +99,7 @@ if (!isset($obras_inativas) || !is_array($obras_inativas)) {
     window.IMPROOV_SESSION_ABSOLUTE_WARN_MS = <?php echo json_encode($__absWarnSeconds * 1000); ?>;
     window.IMPROOV_LOGIN_TS = <?php echo json_encode($__loginTs); ?>; // seconds since epoch
     window.IMPROOV_APP_BASE = <?php echo json_encode(rtrim($__basePath, '/')); ?>;
+    window.IMPROOV_ALLOWED_OBRA_IDS = <?php echo json_encode($__sidebarAllowedObraIds); ?>;
     window.IMPROOV_WS_URL = <?php
                             // Produção → WSS via reverse-proxy
                             // Local HTTP → WS direto na porta 8082
@@ -184,41 +254,42 @@ if (!isset($obras_inativas) || !is_array($obras_inativas)) {
 
             </ul>
             <ul id="obras-list" class="division">
-                <label for="">Obras</label>
-                <?php foreach ($obras as $obra): ?>
-                    <li class="obra">
-                        <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>"
-                            title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
-                        <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item"
-                            data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
-                            <span><?= htmlspecialchars($obra['nomenclatura']); ?></span>
-                            <span class="sidebar-badge" data-obra-id="<?= $obra['idobra']; ?>" aria-hidden="true"></span>
-                        </a>
-                    </li>
-                <?php endforeach; ?>
+                <label for=""><?= htmlspecialchars($__sidebarProjectLabel); ?></label>
+                <?php if ($__sidebarProjectMode === 'gestao'): ?>
+                    <?php foreach (improov_sidebar_obras_por_pacote($obras) as $grupoPacote): ?>
+                        <li class="sidebar-package-label"><span><?= htmlspecialchars($grupoPacote['label']); ?></span></li>
+                        <?php foreach ($grupoPacote['obras'] as $obra): ?>
+                            <?php improov_sidebar_render_obra_item($obra); ?>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <?php foreach ($obras as $obra): ?>
+                        <?php improov_sidebar_render_obra_item($obra); ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </ul>
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+            <?php if ($__sidebarShowInactive): ?>
 
                 <?php if (!empty($obras_inativas)): ?>
                     <ul id="obras-inativas" class="division">
                         <button class="drawer-toggle" id="obras-inativas-toggle" aria-expanded="false">
-                            <span class="drawer-label">Obras inativas</span>
+                            <span class="drawer-label"><?= htmlspecialchars($__sidebarInactiveLabel); ?></span>
                             <i class="fa-solid fa-chevron-right drawer-chevron"></i>
                         </button>
                         <div class="drawer-body" id="obras-inativas-body">
-                            <?php foreach ($obras_inativas as $obra): ?>
-                                <li class="obra inativa">
-                                    <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>"
-                                        title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
-                                    <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item"
-                                        data-id="<?= $obra['idobra']; ?>"
-                                        data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
-                                        <span><?= htmlspecialchars($obra['nomenclatura']); ?></span>
-                                        <span class="sidebar-badge" data-obra-id="<?= $obra['idobra']; ?>" aria-hidden="true"></span>
-                                    </a>
-                                </li>
-                            <?php endforeach; ?>
+                            <?php if ($__sidebarProjectMode === 'gestao'): ?>
+                                <?php foreach (improov_sidebar_obras_por_pacote($obras_inativas) as $grupoPacote): ?>
+                                    <li class="sidebar-package-label"><span><?= htmlspecialchars($grupoPacote['label']); ?></span></li>
+                                    <?php foreach ($grupoPacote['obras'] as $obra): ?>
+                                        <?php improov_sidebar_render_obra_item($obra, 'inativa'); ?>
+                                    <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php foreach ($obras_inativas as $obra): ?>
+                                    <?php improov_sidebar_render_obra_item($obra, 'inativa'); ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </ul>
                 <?php endif; ?>

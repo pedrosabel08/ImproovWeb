@@ -1,4 +1,27 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
+require_once __DIR__ . '/conexaoMain.php';
+
+header('Content-Type: application/json');
+
+// Capturar os parÃ¢metros
+$obraId = intval($_GET['obra_id'] ?? 0);
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    http_response_code(401);
+    echo json_encode(["error" => "Usuário não autenticado"]);
+    exit;
+}
+
+$authConn = conectarBanco();
+if (!improov_usuario_pode_acessar_obra($authConn, $obraId)) {
+    $authConn->close();
+    http_response_code(403);
+    echo json_encode(["error" => "Acesso não permitido para esta obra"]);
+    exit;
+}
+$authConn->close();
+
 // Conectar ao banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
@@ -10,7 +33,6 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 // Capturar os parâmetros
-$obraId = intval($_GET['obra_id']);
 $statusImagem = intval($_GET['status_imagem']);
 $tipoImagem = $_GET['tipo_imagem'];
 $antecipada = $_GET['antecipada'] === "Antecipada" ? 1 : null; // Verifica se "Antecipada" foi selecionada

@@ -204,6 +204,16 @@ button#menuButton:active {
   color: gold;
 }
 
+.sidebar-package-label {
+  padding: 8px 15px 2px !important;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sb-label);
+  opacity: 0.85;
+}
+
 .favorite-icon.favorited {
   color: gold;
 }

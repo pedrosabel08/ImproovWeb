@@ -82,8 +82,12 @@ class AdendoLocalService
         $dataPagamento = $this->getQuintoDiaUtilProximoMes($mes, $ano);
         $dataPagamentoExtenso = $this->dateService->formatDataPtBr($dataPagamento);
 
-        $contratadoNome = (string)($colab['nome_empresarial'] ?: $colab['nome_colaborador'] ?: '');
+        $dataAtual = $this->dateService->formatDataPtBr(new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')));
+
+        $contratadoNome = (string)($colab['nome_colaborador']);
         $contratadoCnpj = $this->escapeHtml((string)($colab['cnpj'] ?? ''));
+        $contratadoCpf = $this->escapeHtml((string)($colab['cpf'] ?? ''));
+        $contratadoNomeEmpresarial = $this->escapeHtml((string)($colab['nome_empresarial'] ?? ''));
 
         $placeholders = [
             'titulo_adendo' => 'ADENDO CONTRATUAL - ' . $competenciaInfo['mes_nome'] . ' ' . $competenciaInfo['ano'],
@@ -96,8 +100,11 @@ class AdendoLocalService
             'valor_total' => $totalFormatado,
             'valor_total_extenso' => $this->escapeHtml($valorExtenso),
             'data_pagamento' => $this->escapeHtml($dataPagamentoExtenso),
+            'data_atual' => $this->escapeHtml($dataAtual),
             'contratado_nome' => $this->escapeHtml($contratadoNome),
             'contratado_cnpj' => $contratadoCnpj,
+            'contratado_cpf' => $contratadoCpf,
+            'contratado_nome_empresarial' => $contratadoNomeEmpresarial,
         ];
 
         $pdf = $this->pdfService->gerarPdf($nomeArquivo, $placeholders);
@@ -460,8 +467,8 @@ class AdendoLocalService
 
         // Feriados móveis baseados na Páscoa
         $pascoa = $this->calcularPascoa($ano);
-        $feriados[$pascoa->modify('-2 days')->format('Y-m-d')] = true; // Sexta-feira Santa
-        $feriados[$pascoa->modify('+60 days')->format('Y-m-d')] = true; // Corpus Christi
+        // $feriados[$pascoa->modify('-2 days')->format('Y-m-d')] = true; // Sexta-feira Santa
+        // $feriados[$pascoa->modify('+60 days')->format('Y-m-d')] = true; // Corpus Christi
 
         return $feriados;
     }

@@ -587,7 +587,7 @@ $conn->close();
                         <button id="editArquivos" class="action-item">Editar Arquivos</button>
                         <button id="addFollowup" class="action-item" onclick="gerarFollowUpPDF()">Follow Up</button>
                         <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
-                        <button id="markInactiveBtn" class="action-item">Marcar Inativa</button>
+                        <button id="markInactiveBtn" class="action-item">Concluir Pacote</button>
                         <button id="fotograficoBtn" class="action-item">Fotográfico</button>
                         <button id="btnLiberarModelagem" class="tooltip action-item"
                             data-tooltip="Liberar modelagem antes do filtro de assets">

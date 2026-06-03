@@ -390,6 +390,21 @@ function limparCampos() {
   document.getElementById("numeroBG").value = ""; // Limpar campo de texto
   document.getElementById("referenciasCaminho").value = ""; // Limpar campo de texto
   document.getElementById("observacao").value = ""; // Limpar campo de texto
+
+  [
+    "caderno",
+    "modelagem",
+    "comp",
+    "final",
+    "pos",
+    "alteracao",
+    "planta",
+    "filtro",
+    "pre",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.removeAttribute("data-id-funcao");
+  });
 }
 
 // Helper: display image name (show '/' instead of '_')
@@ -1016,6 +1031,922 @@ function solicitarJustificativaHoldIfNeeded(statusId) {
   return Promise.resolve(texto);
 }
 
+const MODERN_FUNCOES_CONFIG = [
+  {
+    key: "caderno",
+    label: "Caderno",
+    titleId: "caderno",
+    selectId: "opcao_caderno",
+    statusId: "status_caderno",
+    prazoId: "prazo_caderno",
+    obsId: "obs_caderno",
+    reviewId: "revisao_imagem_caderno",
+    aliases: ["caderno"],
+  },
+  {
+    key: "filtro",
+    label: "Filtro de assets",
+    titleId: "filtro",
+    selectId: "opcao_filtro",
+    statusId: "status_filtro",
+    prazoId: "prazo_filtro",
+    obsId: "obs_filtro",
+    reviewId: "revisao_imagem_filtro",
+    aliases: ["filtro de assets", "filtro"],
+  },
+  {
+    key: "modelagem",
+    label: "Modelagem",
+    titleId: "modelagem",
+    selectId: "opcao_model",
+    statusId: "status_modelagem",
+    prazoId: "prazo_modelagem",
+    obsId: "obs_modelagem",
+    reviewId: "revisao_imagem_model",
+    aliases: ["modelagem"],
+  },
+  {
+    key: "comp",
+    label: "Composi\u00e7\u00e3o",
+    titleId: "comp",
+    selectId: "opcao_comp",
+    statusId: "status_comp",
+    prazoId: "prazo_comp",
+    obsId: "obs_comp",
+    reviewId: "revisao_imagem_comp",
+    aliases: ["composicao"],
+  },
+  {
+    key: "pre",
+    label: "Pr\u00e9-Finaliza\u00e7\u00e3o",
+    titleId: "pre",
+    selectId: "opcao_pre",
+    statusId: "status_pre",
+    prazoId: "prazo_pre",
+    obsId: "obs_pre",
+    reviewId: "revisao_imagem_pre",
+    aliases: ["pre-finalizacao", "pre finalizacao"],
+    discarded: true,
+  },
+  {
+    key: "finalizacao",
+    label: "Finaliza\u00e7\u00e3o",
+    titleId: "final",
+    selectId: "opcao_final",
+    statusId: "status_finalizacao",
+    prazoId: "prazo_finalizacao",
+    obsId: "obs_finalizacao",
+    reviewId: "revisao_imagem_final",
+    aliases: ["finalizacao", "final"],
+  },
+  {
+    key: "pos",
+    label: "P\u00f3s-Produ\u00e7\u00e3o",
+    titleId: "pos",
+    selectId: "opcao_pos",
+    statusId: "status_pos",
+    prazoId: "prazo_pos",
+    obsId: "obs_pos",
+    reviewId: "revisao_imagem_pos",
+    aliases: ["pos-producao", "pos producao"],
+  },
+  {
+    key: "alteracao",
+    label: "Altera\u00e7\u00e3o",
+    titleId: "alteracao",
+    selectId: "opcao_alteracao",
+    statusId: "status_alteracao",
+    prazoId: "prazo_alteracao",
+    obsId: "obs_alteracao",
+    reviewId: "revisao_imagem_alt",
+    aliases: ["alteracao"],
+  },
+  {
+    key: "planta",
+    label: "Planta Humanizada",
+    titleId: "planta",
+    selectId: "opcao_planta",
+    statusId: "status_planta",
+    prazoId: "prazo_planta",
+    obsId: "obs_planta",
+    reviewId: "revisao_imagem_ph",
+    aliases: ["planta humanizada", "planta"],
+    discarded: true,
+  },
+];
+
+const modernFuncoesState = {
+  initialized: false,
+  activeKeys: new Set(),
+  info: null,
+};
+
+const MODERN_FC_STATUS_CLASSES = [
+  "fc-status-finalizado",
+  "fc-status-andamento",
+  "fc-status-aprovacao",
+  "fc-status-aprovado",
+  "fc-status-ajuste",
+  "fc-status-ajuste-apts",
+  "fc-status-nao-iniciado",
+  "fc-status-hold",
+  "fc-status-nao-aplica",
+];
+
+const MODERN_SI_STATUS_CLASSES = [
+  "si-p00",
+  "si-r00",
+  "si-r01",
+  "si-r02",
+  "si-r03",
+  "si-r04",
+  "si-r05",
+  "si-ef",
+  "si-hold",
+  "si-tea",
+  "si-ren",
+  "si-apr",
+  "si-app",
+  "si-rvw",
+  "si-ok",
+  "si-to-do",
+  "si-fin",
+  "si-drv",
+  "si-rvw-done",
+  "si-pre-alt",
+  "si-ready-for-planning",
+];
+
+function normalizeModernText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function modernConfigFromFunctionName(name) {
+  const normalized = normalizeModernText(name).replace(/\s+/g, " ");
+  return MODERN_FUNCOES_CONFIG.find((cfg) =>
+    cfg.aliases.some((alias) => normalized === alias),
+  );
+}
+
+function modernVisibleFuncoesConfig() {
+  return MODERN_FUNCOES_CONFIG.filter((cfg) => !cfg.discarded);
+}
+
+function modernCanEditFuncoes() {
+  return usuarioId === 1 || usuarioId === 2 || usuarioId === 9;
+}
+
+function closeModernFuncoesModal() {
+  const modal = document.getElementById("form-edicao");
+  if (modal) modal.style.display = "none";
+  try {
+    const id = localStorage.getItem("obraId");
+    if (id) infosObra(id);
+  } catch (e) {
+    console.warn("Erro ao atualizar obra ao fechar modal:", e);
+  }
+}
+
+function fileNameFromPath(path) {
+  const clean = String(path || "").split(/[?#]/)[0];
+  const parts = clean.split(/[\\/]/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : clean;
+}
+
+function getInfoNomenclatura(info) {
+  const funcoes = Array.isArray(info?.funcoes) ? info.funcoes : [];
+  const fromFuncao = funcoes.find((funcao) => funcao?.nomenclatura)?.nomenclatura;
+  return String(info?.nomenclatura || fromFuncao || "").trim();
+}
+
+function nomenclaturaFromPath(path) {
+  const clean = String(path || "").replace(/\\/g, "/");
+  const patterns = [
+    /\/mnt\/clientes\/(?:\d{4}\/)?([A-Z0-9]+_[A-Z0-9]+)\//i,
+    /\/uploads\/angulo_definido\/([^/]+)\/Angulo_definido\//i,
+    /\/uploads\/([^/]+)\/Angulo_definido\//i,
+    /(?:^|\/)\d*([A-Z0-9]+_[A-Z0-9]+)[_-]/i,
+  ];
+  for (const pattern of patterns) {
+    const match = clean.match(pattern);
+    if (match && match[1]) return decodeURIComponent(match[1]);
+  }
+  return "";
+}
+
+function publicUrlFromArquivo(item, context = {}) {
+  const raw = String(item?.caminho || item?.url || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const p = raw.replace(/\\/g, "/");
+  if (Number(item?.categoria_id) === 7) {
+    const anguloMatch = p.match(/\/Angulo_definido\/(.*)/i);
+    const alreadyNormalized = p.match(
+      /\/uploads\/angulo_definido\/([^/]+)\/Angulo_definido\/(.*)/i,
+    );
+    const pathAfterAngulo =
+      alreadyNormalized?.[2] || (anguloMatch && anguloMatch[1]) || "";
+    const nomenclatura =
+      String(
+        context?.nomenclatura ||
+          item?.nomenclatura ||
+          alreadyNormalized?.[1] ||
+          nomenclaturaFromPath(p) ||
+          nomenclaturaFromPath(pathAfterAngulo) ||
+          "",
+      ).trim();
+
+    if (nomenclatura && pathAfterAngulo) {
+      return (
+        "https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/" +
+        nomenclatura +
+        "/Angulo_definido/" +
+        pathAfterAngulo
+      );
+    }
+  }
+
+  const uploadIndex = p.indexOf("/uploads/");
+  if (uploadIndex >= 0) {
+    return "https://improov.com.br/flow/ImproovWeb" + p.substring(uploadIndex);
+  }
+
+  const exchangeIndex = p.indexOf("/05.Exchange/01.Input/");
+  if (exchangeIndex >= 0) {
+    return (
+      "https://improov.com.br/flow/ImproovWeb/uploads/" +
+      p.substring(exchangeIndex + "/05.Exchange/01.Input/".length)
+    );
+  }
+
+  const anguloMatch = p.match(/\/Angulo_definido\/(.*)/i);
+  if (anguloMatch && anguloMatch[1]) {
+    return (
+      "https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/Angulo_definido/" +
+      anguloMatch[1]
+    );
+  }
+
+  return "";
+}
+
+function isImageArquivo(item) {
+  const name = `${item?.nome_interno || item?.nome_arquivo || ""} ${item?.caminho || ""}`;
+  return /\.(png|jpe?g|webp|gif)$/i.test(name) || Number(item?.categoria_id) === 7;
+}
+
+function firstThumbnailFromInfo(info) {
+  const arquivosImagem = Array.isArray(info?.arquivos_imagem)
+    ? info.arquivos_imagem
+    : [];
+  const found = arquivosImagem.find((item) => Number(item?.categoria_id) === 7);
+  return found
+    ? publicUrlFromArquivo(found, { nomenclatura: getInfoNomenclatura(info) })
+    : "";
+}
+
+function updateModernStatusClass(select) {
+  if (!select) return;
+  const row = select.closest(".alloc-task-row");
+  const value = normalizeModernText(select.value);
+  select.classList.remove(
+    ...MODERN_FC_STATUS_CLASSES,
+  );
+
+  if (value.includes("hold") || value.includes("atrasado")) {
+    select.classList.add("fc-status-hold");
+  } else if (value.includes("nao se aplica")) {
+    select.classList.add("fc-status-nao-aplica");
+  } else if (value.includes("nao iniciado") || !value) {
+    select.classList.add("fc-status-nao-iniciado");
+  } else if (value.includes("aprovado com ajustes")) {
+    select.classList.add("fc-status-ajuste-apts");
+  } else if (value.includes("em aprovacao")) {
+    select.classList.add("fc-status-aprovacao");
+  } else if (value.includes("aprovado")) {
+    select.classList.add("fc-status-aprovado");
+  } else if (value.includes("ajuste")) {
+    select.classList.add("fc-status-ajuste");
+  } else if (value.includes("finalizado") || value.includes("concluido")) {
+    select.classList.add("fc-status-finalizado");
+  } else if (value.includes("andamento")) {
+    select.classList.add("fc-status-andamento");
+  } else {
+    select.classList.add("fc-status-andamento");
+  }
+
+  if (row) row.dataset.status = select.className;
+}
+
+function getModernImagemStatusClass(status) {
+  const normalized = String(status || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_");
+  const classMap = {
+    P00: "si-p00",
+    R00: "si-r00",
+    R01: "si-r01",
+    R02: "si-r02",
+    R03: "si-r03",
+    R04: "si-r04",
+    R05: "si-r05",
+    EF: "si-ef",
+    HOLD: "si-hold",
+    TEA: "si-tea",
+    REN: "si-ren",
+    APR: "si-apr",
+    APP: "si-app",
+    RVW: "si-rvw",
+    OK: "si-ok",
+    TO_DO: "si-to-do",
+    FIN: "si-fin",
+    DRV: "si-drv",
+    RVW_DONE: "si-rvw-done",
+    PRE_ALT: "si-pre-alt",
+    READY_FOR_PLANNING: "si-ready-for-planning",
+  };
+  return classMap[normalized] || "";
+}
+
+function updateModernObservationState(row, source, textarea) {
+  const button = row?.querySelector(".alloc-action-note");
+  const hasText = !!String(source?.value || textarea?.value || "").trim();
+  if (button) {
+    button.classList.toggle("has-note", hasText);
+    button.title = hasText ? "Observa\u00e7\u00e3o preenchida" : "Adicionar observa\u00e7\u00e3o";
+  }
+}
+
+function setModernTaskActive(key, active) {
+  if (active) modernFuncoesState.activeKeys.add(key);
+  else modernFuncoesState.activeKeys.delete(key);
+  syncModernTaskRows();
+}
+
+function clearModernTaskFields(cfg) {
+  const select = document.getElementById(cfg.selectId);
+  const status = document.getElementById(cfg.statusId);
+  const prazo = document.getElementById(cfg.prazoId);
+  const obs = document.getElementById(cfg.obsId);
+  const title = document.getElementById(cfg.titleId);
+  if (select) select.value = "";
+  if (status) {
+    const todoOption = Array.from(status.options || []).find(
+      (option) => normalizeModernText(option.value) === "nao iniciado",
+    );
+    status.value = todoOption?.value || status.options?.[0]?.value || "";
+  }
+  if (prazo) prazo.value = "";
+  if (obs) obs.value = "";
+  if (title) title.removeAttribute("data-id-funcao");
+}
+
+function syncModernTaskRows() {
+  const section = document.getElementById("allocationTasksSection");
+  if (!section) return;
+
+  let count = 0;
+  modernVisibleFuncoesConfig().forEach((cfg) => {
+    const row = section.querySelector(`[data-task-key="${cfg.key}"]`);
+    const noteRow = section.querySelector(`[data-note-key="${cfg.key}"]`);
+    const active = modernFuncoesState.activeKeys.has(cfg.key);
+    if (row) row.hidden = !active;
+    if (noteRow && !active) noteRow.hidden = true;
+    if (active) count++;
+  });
+
+  const countEl = document.getElementById("allocationTaskCount");
+  if (countEl) countEl.textContent = count;
+
+  const empty = document.getElementById("allocationTasksEmpty");
+  if (empty) empty.hidden = count > 0;
+
+  const addMenu = document.getElementById("allocationAddMenu");
+  if (addMenu) {
+    addMenu.innerHTML = "";
+    modernVisibleFuncoesConfig().filter((cfg) => !modernFuncoesState.activeKeys.has(cfg.key)).forEach(
+      (cfg) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "alloc-add-option";
+        btn.textContent = cfg.label;
+        btn.addEventListener("click", () => {
+          modernFuncoesState.activeKeys.add(cfg.key);
+          addMenu.hidden = true;
+          syncModernTaskRows();
+          document.getElementById(cfg.selectId)?.focus();
+        });
+        addMenu.appendChild(btn);
+      },
+    );
+    if (!addMenu.children.length) {
+      const emptyOption = document.createElement("span");
+      emptyOption.className = "alloc-add-empty";
+      emptyOption.textContent = "Todas as fun\u00e7\u00f5es j\u00e1 est\u00e3o vis\u00edveis.";
+      addMenu.appendChild(emptyOption);
+    }
+  }
+}
+
+function setupModernFuncoesModal() {
+  if (modernFuncoesState.initialized) return;
+
+  const overlay = document.getElementById("form-edicao");
+  const form = document.getElementById("form-add");
+  const header = form?.querySelector(".titulo-funcoes");
+  const body = form?.querySelector(".modal-funcoes");
+  const right = form?.querySelector(".modal-funcoes-right");
+  const nameSpan = document.getElementById("campoNomeImagem");
+  if (!overlay || !form || !header || !body || !nameSpan) return;
+
+  modernFuncoesState.initialized = true;
+  overlay.classList.add("allocation-overlay");
+  form.classList.add("allocation-modal");
+  header.classList.add("allocation-header");
+  body.classList.add("allocation-tasks-shell");
+  if (right) right.classList.add("allocation-related-shell");
+
+  const refs = modernVisibleFuncoesConfig().map((cfg) => ({
+    cfg,
+    title: document.getElementById(cfg.titleId),
+    select: document.getElementById(cfg.selectId),
+    status: document.getElementById(cfg.statusId),
+    prazo: document.getElementById(cfg.prazoId),
+    obs: document.getElementById(cfg.obsId),
+    review: document.getElementById(cfg.reviewId)?.closest(".revisao_imagem"),
+  }));
+  const statusSelect = document.getElementById("opcao_status");
+  const statusHold = document.getElementById("status_hold");
+  const saveBtn = document.getElementById("salvar_funcoes");
+  const loadingBar = document.getElementById("loadingBar");
+  const prevBtn = document.getElementById("btnAnterior");
+  const nextBtn = document.getElementById("btnProximo");
+
+  header.innerHTML = "";
+  const thumb = document.createElement("div");
+  thumb.id = "allocationImageThumb";
+  thumb.className = "allocation-thumb";
+  thumb.innerHTML = '<i class="fa-solid fa-image"></i>';
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "allocation-title-wrap";
+  const title = document.createElement("h2");
+  title.appendChild(nameSpan);
+  const meta = document.createElement("div");
+  meta.className = "allocation-meta";
+  meta.innerHTML =
+    '<span id="allocationTipoBadge" class="allocation-pill">Tipo</span><span id="allocationEtapaBadge" class="allocation-status-pill">Etapa</span>';
+  const subtitle = document.createElement("div");
+  subtitle.className = "allocation-subtitle";
+  subtitle.textContent =
+    "Gerencie respons\u00e1veis, prazos e status das fun\u00e7\u00f5es desta imagem.";
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(meta);
+  titleWrap.appendChild(subtitle);
+
+  const headerActions = document.createElement("div");
+  headerActions.className = "allocation-header-actions";
+  const flowBtn = document.createElement("a");
+  flowBtn.id = "allocationFlowReview";
+  flowBtn.className = "allocation-flow-btn";
+  flowBtn.target = "_blank";
+  flowBtn.rel = "noopener noreferrer";
+  flowBtn.innerHTML = '<i class="fa-solid fa-eye"></i><span>Flow Review</span>';
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "allocation-close";
+  closeBtn.title = "Fechar";
+  closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+  closeBtn.addEventListener("click", closeModernFuncoesModal);
+  headerActions.appendChild(flowBtn);
+  headerActions.appendChild(closeBtn);
+
+  header.appendChild(thumb);
+  header.appendChild(titleWrap);
+  header.appendChild(headerActions);
+
+  const taskSection = document.createElement("section");
+  taskSection.id = "allocationTasksSection";
+  taskSection.className = "allocation-section allocation-tasks";
+  const taskTop = document.createElement("div");
+  taskTop.className = "allocation-section-head";
+  taskTop.innerHTML =
+    '<div><h3>Tarefas e respons\u00e1veis (<span id="allocationTaskCount">0</span>)</h3></div>';
+  const addWrap = document.createElement("div");
+  addWrap.className = "allocation-add-wrap";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.id = "allocationAddFunctionBtn";
+  addBtn.className = "allocation-add-btn";
+  addBtn.innerHTML = '<i class="fa-solid fa-plus"></i><span>Adicionar fun\u00e7\u00e3o</span>';
+  const addMenu = document.createElement("div");
+  addMenu.id = "allocationAddMenu";
+  addMenu.className = "allocation-add-menu";
+  addMenu.hidden = true;
+  addBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    addMenu.hidden = !addMenu.hidden;
+  });
+  document.addEventListener("click", (event) => {
+    if (!addWrap.contains(event.target)) addMenu.hidden = true;
+  });
+  addWrap.appendChild(addBtn);
+  addWrap.appendChild(addMenu);
+  taskTop.appendChild(addWrap);
+
+  const table = document.createElement("div");
+  table.className = "allocation-task-table";
+  table.innerHTML =
+    '<div class="alloc-task-head"><span>Fun\u00e7\u00e3o</span><span>Respons\u00e1vel</span><span>Status</span><span>Prazo</span><span>A\u00e7\u00f5es</span></div>';
+
+  refs.forEach(({ cfg, title, select, status, prazo, obs, review }) => {
+    if (!title || !select || !status || !prazo || !obs) return;
+
+    title.classList.add("alloc-task-name");
+    select.classList.add("alloc-field", "alloc-select");
+    status.classList.add("alloc-status-field", "alloc-status-select");
+    prazo.classList.add("alloc-field", "alloc-date");
+    obs.classList.add("alloc-observation-source");
+
+    const row = document.createElement("div");
+    row.className = "alloc-task-row";
+    row.dataset.taskKey = cfg.key;
+
+    const nameCell = document.createElement("div");
+    nameCell.className = "alloc-task-cell alloc-task-cell-name";
+    nameCell.appendChild(title);
+
+    const responsibleCell = document.createElement("div");
+    responsibleCell.className = "alloc-task-cell";
+    responsibleCell.appendChild(select);
+
+    const statusCell = document.createElement("div");
+    statusCell.className = "alloc-task-cell";
+    statusCell.appendChild(status);
+
+    const prazoCell = document.createElement("div");
+    prazoCell.className = "alloc-task-cell alloc-date-cell";
+    const prazoWrap = document.createElement("div");
+    prazoWrap.className = "alloc-date-wrap";
+    prazoWrap.innerHTML = '<i class="fa-regular fa-calendar"></i>';
+    prazoWrap.appendChild(prazo);
+    prazoCell.appendChild(prazoWrap);
+
+    const actionsCell = document.createElement("div");
+    actionsCell.className = "alloc-task-cell alloc-actions-cell";
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "alloc-icon-btn";
+    editBtn.title = "Editar";
+    editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+    editBtn.addEventListener("click", () => select.focus());
+
+    const noteBtn = document.createElement("button");
+    noteBtn.type = "button";
+    noteBtn.className = "alloc-icon-btn alloc-action-note";
+    noteBtn.title = "Observa\u00e7\u00e3o";
+    noteBtn.innerHTML = '<i class="fa-regular fa-comment-dots"></i>';
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "alloc-icon-btn alloc-icon-danger";
+    deleteBtn.title = "Excluir fun\u00e7\u00e3o";
+    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+    deleteBtn.addEventListener("click", () => {
+      const funcaoId = title.getAttribute("data-id-funcao");
+      if (funcaoId) excluirFuncao(funcaoId, select);
+      clearModernTaskFields(cfg);
+      setModernTaskActive(cfg.key, false);
+    });
+
+    actionsCell.appendChild(editBtn);
+    actionsCell.appendChild(noteBtn);
+    actionsCell.appendChild(deleteBtn);
+    if (review) actionsCell.appendChild(review);
+
+    row.appendChild(nameCell);
+    row.appendChild(responsibleCell);
+    row.appendChild(statusCell);
+    row.appendChild(prazoCell);
+    row.appendChild(actionsCell);
+
+    const noteRow = document.createElement("div");
+    noteRow.className = "alloc-note-row";
+    noteRow.dataset.noteKey = cfg.key;
+    noteRow.hidden = true;
+    const noteInner = document.createElement("div");
+    noteInner.className = "alloc-note-inner";
+    const noteLabel = document.createElement("span");
+    noteLabel.textContent = "Observa\u00e7\u00e3o";
+    const textarea = document.createElement("textarea");
+    textarea.className = "alloc-note-textarea";
+    textarea.rows = 3;
+    textarea.placeholder =
+      "Aguardar compatibiliza\u00e7\u00e3o, revisar arquivo ou registrar contexto da tarefa.";
+    textarea.disabled = !modernCanEditFuncoes();
+    textarea.addEventListener("input", () => {
+      obs.value = textarea.value;
+      updateModernObservationState(row, obs, textarea);
+    });
+    noteInner.appendChild(noteLabel);
+    noteInner.appendChild(textarea);
+    noteInner.appendChild(obs);
+    noteRow.appendChild(noteInner);
+
+    noteBtn.addEventListener("click", () => {
+      noteRow.hidden = !noteRow.hidden;
+      if (!noteRow.hidden) textarea.focus();
+    });
+    status.addEventListener("change", () => updateModernStatusClass(status));
+
+    row.__syncModern = () => {
+      textarea.value = obs.value || "";
+      updateModernObservationState(row, obs, textarea);
+      updateModernStatusClass(status);
+      const disabled = !modernCanEditFuncoes();
+      [select, status, prazo, editBtn, noteBtn, deleteBtn].forEach((el) => {
+        if (el) el.disabled = disabled;
+      });
+    };
+
+    table.appendChild(row);
+    table.appendChild(noteRow);
+  });
+
+  const empty = document.createElement("div");
+  empty.id = "allocationTasksEmpty";
+  empty.className = "allocation-empty";
+  empty.textContent = "Nenhuma fun\u00e7\u00e3o vinculada a esta imagem.";
+
+  const legend = document.createElement("div");
+  legend.className = "allocation-status-legend";
+  legend.innerHTML =
+    '<span><i class="legend-dot fc-status-nao-iniciado"></i>N\u00e3o iniciado</span><span><i class="legend-dot fc-status-andamento"></i>Em andamento</span><span><i class="legend-dot fc-status-finalizado"></i>Conclu\u00eddo</span><span><i class="legend-dot fc-status-hold"></i>Atrasado/HOLD</span>';
+
+  taskSection.appendChild(taskTop);
+  taskSection.appendChild(table);
+  taskSection.appendChild(empty);
+  taskSection.appendChild(legend);
+
+  const hiddenHolder = document.createElement("div");
+  hiddenHolder.className = "allocation-hidden-controls";
+  if (statusSelect) hiddenHolder.appendChild(statusSelect);
+  if (statusHold) hiddenHolder.appendChild(statusHold);
+  MODERN_FUNCOES_CONFIG.filter((cfg) => cfg.discarded).forEach((cfg) => {
+    [
+      document.getElementById(cfg.titleId),
+      document.getElementById(cfg.selectId),
+      document.getElementById(cfg.statusId),
+      document.getElementById(cfg.prazoId),
+      document.getElementById(cfg.obsId),
+      document.getElementById(cfg.reviewId)?.closest(".revisao_imagem"),
+    ].forEach((el) => {
+      if (el) hiddenHolder.appendChild(el);
+    });
+  });
+
+  const footer = document.createElement("div");
+  footer.className = "allocation-footer";
+  const nav = document.createElement("div");
+  nav.className = "allocation-nav";
+  if (prevBtn) {
+    prevBtn.classList.add("allocation-nav-btn");
+    nav.appendChild(prevBtn);
+  }
+  if (nextBtn) {
+    nextBtn.classList.add("allocation-nav-btn");
+    nav.appendChild(nextBtn);
+  }
+  const footerActions = document.createElement("div");
+  footerActions.className = "allocation-footer-actions";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "allocation-cancel-btn";
+  cancelBtn.textContent = "Cancelar";
+  cancelBtn.addEventListener("click", closeModernFuncoesModal);
+  footerActions.appendChild(cancelBtn);
+  if (saveBtn) footerActions.appendChild(saveBtn);
+  if (loadingBar) footerActions.appendChild(loadingBar);
+  footer.appendChild(nav);
+  footer.appendChild(footerActions);
+
+  body.innerHTML = "";
+  body.appendChild(taskSection);
+  body.appendChild(hiddenHolder);
+  if (right) form.appendChild(right);
+  form.appendChild(footer);
+}
+
+function renderModernAllocationModal(response, idImagem) {
+  setupModernFuncoesModal();
+
+  const selectedRow =
+    document.querySelector(`.linha-tabela[data-id="${idImagem}"]`) ||
+    document.querySelector(".linha-tabela.selecionada");
+  const tipo =
+    selectedRow?.getAttribute("tipo-imagem") ||
+    selectedRow?.getAttribute("data-tipo-imagem") ||
+    "Tipo n\u00e3o informado";
+  const etapa =
+    selectedRow?.querySelector('[data-field="status_etapa"]')?.textContent?.trim() ||
+    document.getElementById("opcao_status")?.selectedOptions?.[0]?.textContent ||
+    "Etapa n\u00e3o informada";
+
+  const tipoBadge = document.getElementById("allocationTipoBadge");
+  const etapaBadge = document.getElementById("allocationEtapaBadge");
+  if (tipoBadge) tipoBadge.textContent = tipo;
+  if (etapaBadge) {
+    etapaBadge.textContent = `Etapa: ${etapa}`;
+    etapaBadge.classList.remove(...MODERN_SI_STATUS_CLASSES);
+    const etapaClass = getModernImagemStatusClass(etapa);
+    if (etapaClass) etapaBadge.classList.add(etapaClass);
+  }
+
+  const quickFlow = document.getElementById("quick_flow_review");
+  const flow = document.getElementById("allocationFlowReview");
+  if (flow) {
+    const href = quickFlow && quickFlow.style.display !== "none" ? quickFlow.href : "";
+    if (href) {
+      flow.href = href;
+      flow.classList.remove("is-disabled");
+      flow.removeAttribute("aria-disabled");
+    } else {
+      flow.removeAttribute("href");
+      flow.classList.add("is-disabled");
+      flow.setAttribute("aria-disabled", "true");
+    }
+  }
+
+  modernFuncoesState.activeKeys = new Set();
+  (response?.funcoes || []).forEach((funcao) => {
+    const cfg = modernConfigFromFunctionName(funcao.nome_funcao);
+    if (cfg && !cfg.discarded) modernFuncoesState.activeKeys.add(cfg.key);
+  });
+
+  modernVisibleFuncoesConfig().forEach((cfg) => {
+    const row = document.querySelector(`[data-task-key="${cfg.key}"]`);
+    if (row && typeof row.__syncModern === "function") row.__syncModern();
+  });
+  syncModernTaskRows();
+}
+
+function renderModernFileCard(item, context = {}) {
+  const card = document.createElement("div");
+  card.className = "allocation-file-card";
+  const name =
+    item?.nome_interno ||
+    item?.nome_arquivo ||
+    fileNameFromPath(item?.caminho) ||
+    "Arquivo sem nome";
+  const metaParts = [];
+  const date = item?.recebido_em || item?.criado_em || item?.data || "";
+  if (date) metaParts.push(formatDateTime(date));
+  if (item?.nome_funcao) metaParts.push(item.nome_funcao);
+  if (item?.tipo) metaParts.push(String(item.tipo).toUpperCase());
+  if (item?.sufixo) metaParts.push(item.sufixo);
+  if (item?.descricao) metaParts.push(item.descricao);
+
+  const icon = document.createElement("div");
+  icon.className = "allocation-file-icon";
+  icon.innerHTML = isImageArquivo(item)
+    ? '<i class="fa-regular fa-image"></i>'
+    : '<i class="fa-regular fa-file-lines"></i>';
+
+  const content = document.createElement("div");
+  content.className = "allocation-file-content";
+  const title = document.createElement("strong");
+  title.textContent = name;
+  title.title = item?.caminho || name;
+  const meta = document.createElement("span");
+  meta.textContent = metaParts.length ? metaParts.join(" | ") : "Sem metadados";
+  content.appendChild(title);
+  content.appendChild(meta);
+
+  const actions = document.createElement("div");
+  actions.className = "allocation-file-actions";
+  const url = publicUrlFromArquivo(item, context);
+  if (url) {
+    const open = document.createElement("a");
+    open.href = url;
+    open.target = "_blank";
+    open.rel = "noopener noreferrer";
+    open.className = "allocation-file-btn";
+    open.title = "Abrir";
+    open.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i>';
+    const download = document.createElement("a");
+    download.href = url;
+    download.download = name;
+    download.className = "allocation-file-btn";
+    download.title = "Download";
+    download.innerHTML = '<i class="fa-solid fa-download"></i>';
+    actions.appendChild(open);
+    actions.appendChild(download);
+  }
+
+  card.appendChild(icon);
+  card.appendChild(content);
+  card.appendChild(actions);
+  return card;
+}
+
+function renderModernAllocationInfo(info, response, idImagem) {
+  setupModernFuncoesModal();
+  modernFuncoesState.info = info || {};
+  const fileUrlContext = { nomenclatura: getInfoNomenclatura(info || {}) };
+
+  const thumbUrl = firstThumbnailFromInfo(info || {});
+  const thumb = document.getElementById("allocationImageThumb");
+  if (thumb) {
+    if (thumbUrl) {
+      thumb.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = encodeURI(thumbUrl);
+      img.alt = document.getElementById("campoNomeImagem")?.textContent || "Imagem";
+      thumb.appendChild(img);
+      thumb.classList.add("has-image");
+    } else {
+      thumb.classList.remove("has-image");
+      thumb.innerHTML = '<i class="fa-solid fa-image"></i>';
+    }
+  }
+
+  const container = document.getElementById("modalFuncoesInfo");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const arquivosImagem = Array.isArray(info?.arquivos_imagem)
+    ? info.arquivos_imagem
+    : [];
+  const referencias = Array.isArray(info?.arquivos_anteriores)
+    ? info.arquivos_anteriores
+    : [];
+  const arquivosTipo = Array.isArray(info?.arquivos_tipo) ? info.arquivos_tipo : [];
+  const tabs = [
+    { key: "imagem", label: "Arquivos da imagem", items: arquivosImagem },
+    { key: "referencias", label: "Refer\u00eancias", items: referencias },
+    { key: "tipo", label: "Arquivos do tipo de imagem", items: arquivosTipo },
+  ];
+
+  const section = document.createElement("section");
+  section.className = "allocation-section allocation-related";
+  const head = document.createElement("div");
+  head.className = "allocation-section-head";
+  head.innerHTML = "<div><h3>Informa\u00e7\u00f5es relacionadas</h3></div>";
+  const tabBar = document.createElement("div");
+  tabBar.className = "allocation-tabs";
+  const panels = document.createElement("div");
+  panels.className = "allocation-tab-panels";
+
+  tabs.forEach((tab, index) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "allocation-tab";
+    btn.dataset.tab = tab.key;
+    btn.textContent = `${tab.label} (${tab.items.length})`;
+    if (index === 0) btn.classList.add("is-active");
+
+    const panel = document.createElement("div");
+    panel.className = "allocation-tab-panel";
+    panel.dataset.panel = tab.key;
+    panel.hidden = index !== 0;
+    if (tab.items.length) {
+      tab.items.forEach((item) =>
+        panel.appendChild(renderModernFileCard(item, fileUrlContext)),
+      );
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "allocation-empty allocation-empty-files";
+      empty.textContent = "Nenhum arquivo encontrado.";
+      panel.appendChild(empty);
+    }
+
+    btn.addEventListener("click", () => {
+      tabBar.querySelectorAll(".allocation-tab").forEach((el) => {
+        el.classList.toggle("is-active", el === btn);
+      });
+      panels.querySelectorAll(".allocation-tab-panel").forEach((el) => {
+        el.hidden = el.dataset.panel !== tab.key;
+      });
+    });
+
+    tabBar.appendChild(btn);
+    panels.appendChild(panel);
+  });
+
+  section.appendChild(head);
+  section.appendChild(tabBar);
+  section.appendChild(panels);
+  container.appendChild(section);
+  renderModernAllocationModal(response, idImagem);
+}
+
 function atualizarModal(idImagem) {
   let nomePdf = "";
   // Limpar campos do formulário de edição
@@ -1249,7 +2180,10 @@ function atualizarModal(idImagem) {
             selectElement.value = funcao.colaborador_id;
 
             // Verifica se o botão de limpar já existe
-            if (!selectElement.parentElement.querySelector(".clear-button")) {
+            if (
+              !modernFuncoesState.initialized &&
+              !selectElement.parentElement.querySelector(".clear-button")
+            ) {
               // Adiciona o botão de limpar se o selectElement tiver um valor
               if (selectElement.value) {
                 const clearButton = document.createElement("button");
@@ -1286,6 +2220,7 @@ function atualizarModal(idImagem) {
       if (statusMs && response.status_id !== null) {
         statusMs.value = response.status_id;
       }
+      renderModernAllocationModal(response, idImagem);
 
       // Carrega informações adicionais da imagem na coluna direita
       try {
@@ -1296,6 +2231,8 @@ function atualizarModal(idImagem) {
           .then((info) => {
             const container = document.getElementById("modalFuncoesInfo");
             if (!container) return;
+            renderModernAllocationInfo(info, response, idImagem);
+            return;
 
             // Monta HTML simples com os dados mais relevantes
             let html = "";
@@ -11639,6 +12576,213 @@ addOpenButton("link_review");
 
 var markInactiveBtn = document.getElementById("markInactiveBtn");
 if (markInactiveBtn) {
+  markInactiveBtn.dataset.packageStatusHandler = "1";
+  markInactiveBtn.textContent = "Concluir Pacote";
+
+  function getObraPacoteUrl() {
+    const basePath = window.location.pathname.includes("/flow/ImproovWeb/")
+      ? "/flow/ImproovWeb/"
+      : "/ImproovWeb/";
+    return new URL(
+      basePath + "atualizarObraPacoteStatus.php",
+      window.location.origin,
+    ).toString();
+  }
+
+  function getCurrentObraId() {
+    return typeof obraId !== "undefined" && obraId
+      ? obraId
+      : localStorage.getItem("obraId") ||
+          localStorage.getItem("idObra") ||
+          null;
+  }
+
+  function getPackage(packages, tipo) {
+    return (packages || []).find(function (pkg) {
+      return String(pkg.tipo || "").toUpperCase() === tipo;
+    });
+  }
+
+  function getPackageLabel(tipo) {
+    const labels = {
+      STILL: "Imagens",
+      ANIMACAO: "Animações",
+      FILME: "Filme",
+    };
+    return labels[String(tipo || "").toUpperCase()] || tipo || "Pacote";
+  }
+
+  function getActivePackage(packages) {
+    const priority = ["STILL", "ANIMACAO", "FILME"];
+    return priority
+      .map(function (tipo) {
+        return getPackage(packages, tipo);
+      })
+      .find(function (pkg) {
+        return String(pkg && pkg.status ? pkg.status : "").toUpperCase() === "ATIVO";
+      });
+  }
+
+  function showPackageAlert(options) {
+    if (typeof Swal !== "undefined" && Swal.fire) {
+      return Swal.fire(options);
+    }
+
+    const fallbackText = String(options.text || options.html || "").replace(
+      /<[^>]*>/g,
+      "",
+    );
+    if (options.showCancelButton) {
+      return Promise.resolve({
+        isConfirmed: confirm(
+          [options.title, fallbackText].filter(Boolean).join("\n\n"),
+        ),
+      });
+    }
+
+    alert([options.title, fallbackText].filter(Boolean).join("\n\n"));
+    return Promise.resolve({ isConfirmed: true });
+  }
+
+  markInactiveBtn.addEventListener("click", function () {
+    var _obraId = getCurrentObraId();
+    if (!_obraId) {
+      showPackageAlert({
+        icon: "warning",
+        title: "ID da obra não encontrado",
+        text: "Não foi possível identificar a obra desta página.",
+      });
+      return;
+    }
+
+    const pacoteUrl = getObraPacoteUrl();
+
+    fetch(pacoteUrl + "?obra_id=" + encodeURIComponent(_obraId))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (json) {
+        if (!json || !json.success) {
+          throw new Error(
+            json && json.message ? json.message : "Resposta invalida",
+          );
+        }
+
+        var activePackage = getActivePackage(json.packages);
+        if (!activePackage) {
+          showPackageAlert({
+            icon: "info",
+            title: "Nenhum pacote ativo",
+            text: "Esta obra não possui pacote ativo para concluir.",
+          });
+          return;
+        }
+
+        var activePackageType = String(activePackage.tipo || "").toUpperCase();
+        var activePackageLabel = getPackageLabel(activePackageType);
+
+        return showPackageAlert({
+          icon: "question",
+          title: "Concluir pacote?",
+          html:
+            "Pacote ativo atual: <strong>" +
+            activePackageLabel +
+            " (" +
+            activePackageType +
+            ")</strong>.<br>Deseja marcar este pacote como concluído?",
+          showCancelButton: true,
+          confirmButtonText: "Sim, concluir",
+          cancelButtonText: "Cancelar",
+          reverseButtons: true,
+        }).then(function (confirmResult) {
+          if (!confirmResult.isConfirmed) return null;
+
+          var animationPackage = getPackage(json.packages, "ANIMACAO");
+          if (
+            activePackageType === "STILL" &&
+            animationPackage &&
+            String(animationPackage.status || "").toUpperCase() !== "ATIVO"
+          ) {
+            return showPackageAlert({
+              icon: "question",
+              title: "Ativar Animações?",
+              text: "Esta obra possui pacote de Animações. Pode colocar Animações como Ativo?",
+              showCancelButton: true,
+              confirmButtonText: "Sim, ativar",
+              cancelButtonText: "Não",
+              reverseButtons: true,
+            }).then(function (animationResult) {
+              return {
+                packageType: activePackageType,
+                activateAnimation: animationResult.isConfirmed,
+              };
+            });
+          }
+
+          return {
+            packageType: activePackageType,
+            activateAnimation: false,
+          };
+        });
+      })
+      .then(function (action) {
+        if (!action) return;
+
+        fetch(pacoteUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            obra_id: parseInt(_obraId),
+            concluir_pacote: true,
+            pacote_tipo: action.packageType,
+            ativar_animacao: action.activateAnimation,
+          }),
+        })
+          .then(function (resp) {
+            return resp.json();
+          })
+          .then(function (result) {
+            if (result && result.success) {
+              showPackageAlert({
+                icon: "success",
+                title: "Pacote atualizado",
+                text:
+                  (result.message || "Pacotes atualizados com sucesso.") +
+                  " A página será recarregada.",
+                confirmButtonText: "OK",
+              }).then(function () {
+                window.location.reload();
+              });
+            } else {
+              showPackageAlert({
+                icon: "error",
+                title: "Erro",
+                text:
+                  result && result.message
+                    ? result.message
+                    : "Resposta inválida.",
+              });
+            }
+          })
+          .catch(function (err) {
+            showPackageAlert({
+              icon: "error",
+              title: "Erro na requisição",
+              text: err.message,
+            });
+          });
+      })
+      .catch(function (err) {
+        showPackageAlert({
+          icon: "error",
+          title: "Erro ao carregar pacotes da obra",
+          text: err.message,
+        });
+      });
+  });
+}
+
+if (markInactiveBtn && !markInactiveBtn.dataset.packageStatusHandler) {
   // Helper: ajusta o texto do botão conforme status atual (0 = ativo, 1 = inativo)
   function setMarkBtnLabelByStatus(status) {
     try {

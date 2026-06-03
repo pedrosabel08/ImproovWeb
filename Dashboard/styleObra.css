@@ -3203,6 +3203,7 @@ option.colab-busy {
 }
 
 .filtro-tabela {
+  position: relative;
   display: flex;
   justify-content: center;
   flex-direction: column;
@@ -3214,10 +3215,9 @@ option.colab-busy {
   border-radius: 8px;
   padding: 20px;
   height: auto;
-  overflow-y: auto;
   animation: slideDown 0.3s ease-out;
   gap: 15px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .filtro select {
@@ -4515,6 +4515,742 @@ form#form-add .funcao {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+.allocation-overlay {
+  background: rgba(3, 7, 18, 0.78);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+}
+
+form#form-add.allocation-modal {
+  width: min(1320px, calc(100vw - 48px));
+  max-height: min(90vh, 920px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(680px, 1.6fr) minmax(320px, 0.8fr);
+  gap: 14px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(109, 155, 255, 0.22);
+  background:
+    linear-gradient(180deg, rgba(21, 28, 43, 0.98), rgba(11, 16, 26, 0.98)),
+    var(--card-bg);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.72);
+}
+
+.allocation-header {
+  grid-column: 1 / -1;
+  position: static;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 18px 20px;
+  background: rgba(10, 15, 25, 0.96);
+  border-bottom: 1px solid rgba(109, 155, 255, 0.16);
+  box-shadow: none;
+  z-index: 1;
+}
+
+.allocation-thumb {
+  width: 76px;
+  height: 58px;
+  border-radius: 10px;
+  border: 1px solid rgba(109, 155, 255, 0.22);
+  background: rgba(28, 33, 43, 0.82);
+  color: #6d9bff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.allocation-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.allocation-title-wrap {
+  min-width: 0;
+}
+
+.allocation-title-wrap h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  color: #f8fafc;
+  font-weight: 750;
+}
+
+.allocation-title-wrap #campoNomeImagem {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+}
+
+.allocation-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.allocation-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.allocation-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.allocation-pill-stage {
+  border-color: rgba(16, 185, 129, 0.26);
+  background: rgba(16, 185, 129, 0.13);
+  color: #a7f3d0;
+}
+
+.allocation-subtitle {
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.allocation-header-actions,
+.allocation-footer-actions,
+.allocation-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.allocation-flow-btn,
+.allocation-add-btn,
+.allocation-cancel-btn,
+.allocation-close,
+.alloc-icon-btn,
+.allocation-file-btn,
+.allocation-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.allocation-flow-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(96, 165, 250, 0.26);
+  background: rgba(37, 99, 235, 0.16);
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.allocation-flow-btn:not(.is-disabled):hover,
+.allocation-add-btn:hover,
+.allocation-cancel-btn:hover,
+.allocation-file-btn:hover,
+.allocation-nav-btn:hover {
+  transform: translateY(-1px);
+}
+
+.allocation-flow-btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.allocation-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.84);
+  color: #cbd5e1;
+}
+
+.allocation-close:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.32);
+}
+
+.allocation-tasks-shell,
+.allocation-related-shell {
+  margin: 0;
+}
+
+.allocation-tasks-shell {
+  grid-column: 1;
+  grid-row: 2;
+  overflow: auto;
+  min-height: 0;
+  background: transparent;
+  border: 0;
+  padding: 0 0 0 20px;
+  box-shadow: none;
+}
+
+.allocation-related-shell {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-right: 20px;
+}
+
+.allocation-related-shell #modalFuncoesInfo {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.allocation-section {
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.allocation-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(100, 116, 139, 0.18);
+}
+
+.allocation-section-head h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #e5e7eb;
+  font-weight: 750;
+}
+
+.allocation-add-wrap {
+  position: relative;
+}
+
+.allocation-add-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  background: rgba(79, 128, 225, 0.18);
+  border: 1px solid rgba(109, 155, 255, 0.28);
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.allocation-add-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 4;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid rgba(109, 155, 255, 0.22);
+  border-radius: 10px;
+  background: #0f172a;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.alloc-add-option,
+.alloc-add-empty {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #dbeafe;
+  font-size: 13px;
+  text-align: left;
+}
+
+.alloc-add-option:hover {
+  background: rgba(79, 128, 225, 0.16);
+}
+
+.alloc-add-empty {
+  color: #94a3b8;
+}
+
+.allocation-task-table {
+  padding: 8px;
+}
+
+.alloc-task-head,
+.alloc-task-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(150px, 0.9fr) minmax(140px, 0.8fr) 128px;
+  gap: 10px;
+  align-items: center;
+}
+
+.alloc-task-head {
+  padding: 8px 10px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.alloc-task-row {
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.16);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.48);
+  margin-bottom: 8px;
+}
+
+.alloc-task-name {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.alloc-field,
+.alloc-note-textarea {
+  width: 100%;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.54);
+  color: #e5e7eb;
+  font-size: 13px;
+  outline: none;
+}
+
+.alloc-field {
+  min-height: 36px;
+  padding: 0 10px;
+  box-shadow: none;
+}
+
+.alloc-status-field {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  box-shadow: none;
+}
+
+.alloc-field:focus,
+.alloc-status-field:focus,
+.alloc-note-textarea:focus {
+  border-color: rgba(96, 165, 250, 0.7);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.alloc-status-select {
+  font-weight: 750;
+}
+
+.alloc-date-wrap {
+  position: relative;
+}
+
+.alloc-date-wrap i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.alloc-date {
+  padding-left: 32px;
+}
+
+.alloc-actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.alloc-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: rgba(15, 23, 42, 0.78);
+  color: #cbd5e1;
+}
+
+.alloc-icon-btn:hover,
+.alloc-action-note.has-note {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.36);
+  color: #bfdbfe;
+}
+
+.alloc-icon-danger {
+  color: #fca5a5;
+}
+
+.alloc-icon-danger:hover {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.36);
+  color: #fecaca;
+}
+
+.alloc-note-row {
+  margin: -4px 0 8px;
+  padding: 0 10px 10px;
+}
+
+.alloc-note-inner {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.alloc-note-inner span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.alloc-note-textarea {
+  min-height: 80px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.alloc-observation-source,
+.allocation-hidden-controls {
+  display: none !important;
+}
+
+.allocation-empty {
+  margin: 8px;
+  padding: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  color: #94a3b8;
+  text-align: center;
+  font-size: 13px;
+}
+
+.allocation-status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 16px 14px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.allocation-status-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.allocation-related {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.allocation-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.allocation-tab {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: rgba(15, 23, 42, 0.72);
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.allocation-tab.is-active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.42);
+  color: #dbeafe;
+}
+
+.allocation-tab-panels {
+  padding: 12px 16px 16px;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  flex: 1;
+}
+
+.allocation-file-card {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.42);
+}
+
+.allocation-file-card + .allocation-file-card {
+  margin-top: 8px;
+}
+
+.allocation-file-icon,
+.allocation-file-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.allocation-file-icon {
+  background: rgba(79, 128, 225, 0.16);
+  color: #bfdbfe;
+}
+
+.allocation-file-content {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.allocation-file-content strong,
+.allocation-file-content span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allocation-file-content strong {
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+.allocation-file-content span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.allocation-file-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.allocation-file-btn {
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+}
+
+.allocation-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 20px 18px;
+  padding-top: 2px;
+}
+
+.allocation-cancel-btn {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.78);
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.allocation-modal #salvar_funcoes {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 0 18px;
+  background: #119111;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.allocation-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.78) !important;
+  color: #e5e7eb !important;
+}
+
+.allocation-modal .revisao_imagem {
+  display: none !important;
+}
+
+@media (max-width: 900px), (max-width: 1024px) and (max-height: 800px) {
+  .allocation-overlay {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  form#form-add.allocation-modal {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .allocation-header {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .allocation-header-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .allocation-tasks-shell,
+  .allocation-related-shell {
+    flex: 0 0 auto;
+    padding-left: 0;
+    padding-right: 0;
+    margin: 0 12px;
+    overflow: visible;
+  }
+
+  .allocation-tasks-shell {
+    min-height: auto;
+  }
+
+  .allocation-related-shell {
+    width: auto !important;
+    max-width: none;
+    box-sizing: border-box;
+    align-self: stretch;
+    flex-basis: auto !important;
+    min-height: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .modal-funcoes-right.allocation-related-shell {
+    width: auto !important;
+    max-width: none;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-self: stretch;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .allocation-related {
+    height: auto;
+    max-height: none;
+  }
+
+  .allocation-related-shell #modalFuncoesInfo {
+    height: auto;
+    display: block;
+  }
+
+  .allocation-tab-panels {
+    overflow: visible;
+    padding-right: 12px;
+  }
+
+  .allocation-thumb {
+    width: 62px;
+    height: 52px;
+  }
+
+  .alloc-task-head {
+    display: none;
+  }
+
+  .alloc-task-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .alloc-task-cell-name {
+    padding-bottom: 2px;
+  }
+
+  .alloc-actions-cell {
+    justify-content: flex-start;
+  }
+
+  .allocation-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: stretch;
+    margin: 0;
+    padding: 12px;
+    border-top: 1px solid rgba(100, 116, 139, 0.18);
+    background: rgba(10, 15, 25, 0.96);
+  }
+
+  .allocation-footer-actions {
+    justify-content: flex-end;
+  }
+}
+
 .titulo,
 .titulo_imagem {
   display: flex;
@@ -5364,7 +6100,7 @@ a#mobile_flow_review {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 9999;
+  z-index: 999;
   display: flex;
   align-items: center;
   cursor: pointer;

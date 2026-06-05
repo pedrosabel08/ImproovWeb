@@ -93,7 +93,6 @@ $conn->close();
                             <td class="status">não gerado</td>
                             <td class="acoes">
                                 <button class="btn-primario gerar">Gerar contrato</button>
-                                <button class="btn-secundario reenviar">Reenviar</button>
                                 <button class="btn-quaternario baixar" disabled>Baixar</button>
                                 <button class="btn-terciario status">Visualizar status</button>
                             </td>

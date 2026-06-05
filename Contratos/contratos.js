@@ -26,10 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function atualizarLinha(row, data) {
         const competenciaCell = row.querySelector('.competencia');
         const statusCell = row.querySelector('.status');
+        const btnGerar = row.querySelector('.gerar');
         const btnBaixar = row.querySelector('.baixar');
 
         competenciaCell.textContent = data.competencia || '-';
         statusCell.innerHTML = `<span class="status-badge status-${data.status}">${data.status}</span>`;
+
+        if (btnGerar) {
+            btnGerar.textContent = data.status && data.status !== 'nao_gerado'
+                ? 'Gerar novamente'
+                : 'Gerar contrato';
+        }
 
         if (btnBaixar) {
             if (data.download_url) {
@@ -71,37 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 alert('Erro de rede ao gerar contrato.');
-            } finally {
-                btn.disabled = false;
-            }
-        });
-    });
-
-    document.querySelectorAll('.reenviar').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const row = btn.closest('tr');
-            const colabId = row.dataset.colaboradorId;
-            btn.disabled = true;
-            try {
-                const resp = await fetch('./reenviar_contrato.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ colaborador_id: colabId })
-                });
-                const data = await resp.json();
-                if (!resp.ok || !data.success) {
-                    alert(data.message || 'Erro ao reenviar contrato.');
-                } else {
-                    alert('Contrato gerado novamente.');
-                    const statusResp = await fetch(`./status.php?colaborador_id=${colabId}`);
-                    const statusData = await statusResp.json();
-                    atualizarLinha(row, statusData);
-                    if (data.download_url) {
-                        window.open(data.download_url, '_blank');
-                    }
-                }
-            } catch (e) {
-                alert('Erro de rede ao reenviar contrato.');
             } finally {
                 btn.disabled = false;
             }

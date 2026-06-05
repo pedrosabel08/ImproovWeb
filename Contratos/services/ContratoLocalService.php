@@ -98,6 +98,7 @@ class ContratoLocalService
             $nomeArquivo,
             $placeholders
         );
+        $nomeArquivoGerado = $pdf['file_name'] ?? basename((string)($pdf['file_path'] ?? $nomeArquivo));
 
         $payload = [
             'CONTRATADA_QUALIFICACAO_COMPLETA' => $qualificacao,
@@ -107,7 +108,7 @@ class ContratoLocalService
             'CLAUSULA_17_COMPLETA' => $clausula['texto'],
             'DATA_GERACAO_CONTRATO' => $this->dateService->formatDataPtBr(new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'))),
             'NOME_CONTRATADO' => $colab['nome_colaborador'] ?? '',
-            'ARQUIVO_NOME' => $nomeArquivo,
+            'ARQUIVO_NOME' => $nomeArquivoGerado,
         ];
 
         $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
@@ -122,14 +123,14 @@ class ContratoLocalService
             $datas['inicio']->format('Y-m-d'),
             $datas['fim']->format('Y-m-d'),
             $payloadJson,
-            $nomeArquivo,
+            $nomeArquivoGerado,
             $pdf['file_path']
         );
 
         return [
             'success' => true,
             'competencia' => $competencia,
-            'arquivo_nome' => $nomeArquivo,
+            'arquivo_nome' => $nomeArquivoGerado,
             'arquivo_path' => $pdf['file_path'],
         ];
     }

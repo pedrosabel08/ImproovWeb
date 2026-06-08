@@ -653,6 +653,91 @@ window.addEventListener("improov:posProducaoUpdated", () => {
 })();
 
 // Filter bar — Enter no campo de busca
+const posFilterBar = document.getElementById("filters");
+const posFilterToggle = document.getElementById("filter-toggle-btn");
+const posFilterClose = document.getElementById("filter-close-btn");
+
+function isPosFilterModalViewport() {
+  return window.matchMedia(
+    "(max-width: 1024px), (orientation: landscape) and (max-width: 1366px) and (max-height: 1024px)",
+  ).matches;
+}
+
+function syncPosFilterModalState() {
+  if (!posFilterBar || !posFilterToggle) return;
+
+  var modalViewport = isPosFilterModalViewport();
+  var isOpen = posFilterBar.classList.contains("open");
+  posFilterBar.setAttribute("aria-modal", String(modalViewport && isOpen));
+  posFilterBar.setAttribute("aria-hidden", String(modalViewport && !isOpen));
+  posFilterToggle.setAttribute("aria-expanded", String(isOpen));
+  document.body.classList.toggle(
+    "pos-filters-open",
+    Boolean(modalViewport && isOpen),
+  );
+
+  if ("inert" in posFilterBar) {
+    posFilterBar.inert = Boolean(modalViewport && !isOpen);
+  }
+}
+
+function openPosFilters() {
+  if (!posFilterBar) return;
+  posFilterBar.classList.add("open");
+  syncPosFilterModalState();
+}
+
+function closePosFilters() {
+  if (!posFilterBar) return;
+  posFilterBar.classList.remove("open");
+  syncPosFilterModalState();
+}
+
+function togglePosFilters() {
+  if (!posFilterBar) return;
+  if (posFilterBar.classList.contains("open")) closePosFilters();
+  else openPosFilters();
+}
+
+posFilterToggle?.addEventListener("click", function (event) {
+  event.preventDefault();
+  togglePosFilters();
+});
+
+posFilterClose?.addEventListener("click", closePosFilters);
+
+document.addEventListener("click", function (event) {
+  if (event.target.closest?.("#filter-close-btn")) {
+    closePosFilters();
+    return;
+  }
+
+  if (!posFilterBar?.classList.contains("open") || !isPosFilterModalViewport()) {
+    return;
+  }
+  if (
+    posFilterBar.contains(event.target) ||
+    posFilterToggle?.contains(event.target)
+  ) {
+    return;
+  }
+  closePosFilters();
+});
+
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") closePosFilters();
+});
+
+window.addEventListener("resize", function () {
+  if (!isPosFilterModalViewport()) {
+    closePosFilters();
+    return;
+  }
+  syncPosFilterModalState();
+});
+
+syncPosFilterModalState();
+
 document.getElementById("fb-busca").addEventListener("keydown", function (e) {
   if (e.key === "Enter") document.getElementById("fb-aplicar").click();
 });
@@ -671,7 +756,7 @@ document.getElementById("fb-busca").addEventListener("input", function () {
 });
 
 // Filter bar — Aplicar
-document.getElementById("fb-aplicar").addEventListener("click", function () {
+document.getElementById("fb-aplicar").addEventListener("click", function (event) {
   if (!tabelaGlobal) return;
   document.querySelectorAll(".metric-card").forEach(function (c) {
     c.classList.remove("metric-card--active");
@@ -706,15 +791,17 @@ document.getElementById("fb-aplicar").addEventListener("click", function () {
       value: finalizadorVal,
     });
   if (filtersArr.length > 0) tabelaGlobal.setFilter(filtersArr);
+  if (event.isTrusted) closePosFilters();
 });
 
 // Filter bar — Limpar
-document.getElementById("fb-limpar").addEventListener("click", function () {
+document.getElementById("fb-limpar").addEventListener("click", function (event) {
   resetarFiltrosBar();
   document.querySelectorAll(".metric-card").forEach(function (c) {
     c.classList.remove("metric-card--active");
   });
   if (tabelaGlobal) tabelaGlobal.clearFilter();
+  if (event.isTrusted) closePosFilters();
 });
 
 // Metric cards — click para filtrar tabela

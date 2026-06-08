@@ -195,7 +195,16 @@ $conn->close();
         </section>
 
         <!-- Filter Bar -->
-        <section class="filter-bar">
+        <section class="filter-bar" id="filters" aria-modal="false">
+            <div class="filter-bar__modal-head">
+                <div>
+                    <span>Refinar lista</span>
+                    <strong>Filtros</strong>
+                </div>
+                <button id="filter-close-btn" class="filter-close-btn" type="button" aria-label="Fechar filtros">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
             <div class="filter-bar__search">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="fb-busca" placeholder="Buscar imagem...">
@@ -225,6 +234,10 @@ $conn->close();
                 <button id="fb-limpar"><i class="fa-solid fa-xmark"></i> Limpar</button>
             </div>
         </section>
+
+        <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filters" class="fab-filter" type="button" title="Filtros">
+            <i class="fa-solid fa-filter"></i>
+        </button>
 
         <div class="tabela-container">
             <nav>

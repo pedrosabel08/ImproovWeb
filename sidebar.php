@@ -201,6 +201,8 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                                 class="fa-solid fa-chart-simple"></i><span> Atividade</span></a></li>
                     <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
                                 class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
+                    <li><a title="Dashboard Operacional" href="https://improov.com.br/flow/ImproovWeb/Dashboard/Operacional"><i
+                                class="fa-solid fa-chart-area"></i><span> Dashboard Operacional</span></a></li>
                     <!-- <li><a title="Onboarding Pendente" href="https://improov.com.br/flow/ImproovWeb/Dashboard#onboarding-box"><i
                                 class="fa-solid fa-clipboard-check"></i><span> Onboarding</span><span class="sidebar-badge"
                                 data-module="onboarding" aria-hidden="true"></span></a></li> -->

@@ -1,21 +1,39 @@
 <?php
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/prazo_entrega_helper.php';
 
 $obra_id = $_POST['obra_id'] ?? null;
 $status_id = $_POST['status_id'] ?? null;
 $imagem_ids = $_POST['imagem_ids'] ?? [];
-$prazo = $_POST['prazo'] ?? null;
+$data_recebimento = isset($_POST['data_recebimento']) ? trim((string) $_POST['data_recebimento']) : '';
+$prazo = isset($_POST['prazo']) ? trim((string) $_POST['prazo']) : '';
 $observacoes = $_POST['observacoes'] ?? null;
 
-if (!$obra_id || !$status_id || !$prazo) {
-    echo json_encode(['success' => false, 'msg' => 'Preencha todos os campos e selecione pelo menos uma imagem.']);
+if (!$obra_id || !$status_id || !$data_recebimento) {
+    echo json_encode(['success' => false, 'msg' => 'Preencha obra, etapa e data de recebimento.']);
+    exit;
+}
+
+if (!entregas_valid_date($data_recebimento)) {
+    echo json_encode(['success' => false, 'msg' => 'Data de recebimento invalida.']);
     exit;
 }
 
 $obra_id = (int) $obra_id;
 $status_id = (int) $status_id;
 $imagem_ids = is_array($imagem_ids) ? array_values(array_filter(array_map('intval', $imagem_ids))) : [];
+
+entregas_ensure_data_recebimento_schema($conn);
+$calculoPrazo = entregas_calcular_prazo_previsto($conn, $obra_id, $status_id, $data_recebimento);
+if ($prazo === '' && $calculoPrazo && !empty($calculoPrazo['data_prevista'])) {
+    $prazo = $calculoPrazo['data_prevista'];
+}
+
+if ($prazo === '' || !entregas_valid_date($prazo)) {
+    echo json_encode(['success' => false, 'msg' => 'Informe um prazo previsto valido.']);
+    exit;
+}
 
 $status_code = improov_p00_fetch_status_name($conn, $status_id) ?? '';
 $is_p00_delivery = mb_strtoupper(trim($status_code), 'UTF-8') === 'P00';
@@ -32,8 +50,8 @@ try {
 
     // Inserir entrega
     $tipo_entrega = $is_p00_delivery ? 'P00' : 'PADRAO';
-    $stmt = $conn->prepare("INSERT INTO entregas (obra_id, status_id, tipo_entrega, data_prevista, observacoes) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iisss", $obra_id, $status_id, $tipo_entrega, $prazo, $observacoes);
+    $stmt = $conn->prepare("INSERT INTO entregas (obra_id, status_id, tipo_entrega, data_recebimento, data_prevista, observacoes) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iissss", $obra_id, $status_id, $tipo_entrega, $data_recebimento, $prazo, $observacoes);
     $stmt->execute();
     $entrega_id = $stmt->insert_id;
     $stmt->close();

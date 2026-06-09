@@ -3,11 +3,446 @@ require_once __DIR__ . '/../conexao.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
-// header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+
+function render_kpi_valid_date($value)
+{
+    if (!is_string($value) || $value === '') {
+        return false;
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d', $value);
+    return $dt && $dt->format('Y-m-d') === $value;
+}
+
+function render_kpi_period()
+{
+    $today = new DateTimeImmutable('today');
+    $from = isset($_GET['from']) ? trim((string) $_GET['from']) : '';
+    $to = isset($_GET['to']) ? trim((string) $_GET['to']) : '';
+
+    if (render_kpi_valid_date($from) && render_kpi_valid_date($to)) {
+        $start = new DateTimeImmutable($from);
+        $end = new DateTimeImmutable($to);
+        if ($start > $end) {
+            $tmp = $start;
+            $start = $end;
+            $end = $tmp;
+        }
+    } else {
+        $days = isset($_GET['days']) ? (int) $_GET['days'] : 7;
+        if (!in_array($days, [7, 15, 30], true)) {
+            $days = 7;
+        }
+        $end = $today;
+        $start = $today->modify('-' . ($days - 1) . ' days');
+    }
+
+    $daysCount = $start->diff($end)->days + 1;
+    $previousEnd = $start->modify('-1 day');
+    $previousStart = $previousEnd->modify('-' . ($daysCount - 1) . ' days');
+
+    return [
+        'current' => [
+            'from' => $start->format('Y-m-d'),
+            'to' => $end->format('Y-m-d'),
+            'start_at' => $start->format('Y-m-d') . ' 00:00:00',
+            'end_at' => $end->format('Y-m-d') . ' 23:59:59',
+        ],
+        'previous' => [
+            'from' => $previousStart->format('Y-m-d'),
+            'to' => $previousEnd->format('Y-m-d'),
+            'start_at' => $previousStart->format('Y-m-d') . ' 00:00:00',
+            'end_at' => $previousEnd->format('Y-m-d') . ' 23:59:59',
+        ],
+        'days' => $daysCount,
+    ];
+}
+
+function render_kpi_scalar($conn, $sql, $types = '', ...$params)
+{
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return 0;
+    }
+
+    if ($types !== '') {
+        $bind = [$types];
+        foreach ($params as $key => $value) {
+            $bind[] = &$params[$key];
+        }
+        call_user_func_array([$stmt, 'bind_param'], $bind);
+    }
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return isset($row['total']) ? (int) $row['total'] : 0;
+}
+
+function render_kpi_fetch_daily($conn, $sql, $types, ...$params)
+{
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Erro ao preparar consulta de KPIs.');
+    }
+
+    $bind = [$types];
+    foreach ($params as $key => $value) {
+        $bind[] = &$params[$key];
+    }
+    call_user_func_array([$stmt, 'bind_param'], $bind);
+
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $daily = [];
+    while ($row = $res->fetch_assoc()) {
+        $daily[(string) $row['dia']] = (int) ($row['total'] ?? 0);
+    }
+    $stmt->close();
+
+    return $daily;
+}
+
+function render_kpi_date_series($from, $days, $daily)
+{
+    $series = [];
+    $start = new DateTimeImmutable($from);
+    for ($i = 0; $i < $days; $i++) {
+        $date = $start->modify('+' . $i . ' days')->format('Y-m-d');
+        $series[] = (float) ($daily[$date] ?? 0);
+    }
+    return $series;
+}
+
+function render_kpi_sum($daily)
+{
+    return array_sum(array_map('intval', $daily));
+}
+
+function render_kpi_percent_change($current, $previous)
+{
+    if ((float) $previous === 0.0) {
+        return (float) $current === 0.0 ? 0.0 : 100.0;
+    }
+    return round((($current - $previous) / abs($previous)) * 100, 1);
+}
+
+function render_kpi_metric($current, $previous, $series, $inverse = false, $unit = 'count')
+{
+    $diff = round($current - $previous, 1);
+    $change = $unit === 'percent'
+        ? round($diff, 1)
+        : render_kpi_percent_change($current, $previous);
+
+    if ($diff == 0) {
+        $trend = 'flat';
+        $sentiment = 'neutral';
+    } else {
+        $trend = $diff > 0 ? 'up' : 'down';
+        $isBetter = $inverse ? $diff < 0 : $diff > 0;
+        $sentiment = $isBetter ? 'positive' : 'negative';
+    }
+
+    return [
+        'current' => $current,
+        'previous' => $previous,
+        'diff' => $diff,
+        'change' => $change,
+        'unit' => $unit,
+        'trend' => $trend,
+        'sentiment' => $sentiment,
+        'series' => $series,
+    ];
+}
+
+function render_kpi_rate_series($from, $days, $approvedDaily, $sentDaily)
+{
+    $series = [];
+    $start = new DateTimeImmutable($from);
+    $approved = 0;
+    $sent = 0;
+
+    for ($i = 0; $i < $days; $i++) {
+        $date = $start->modify('+' . $i . ' days')->format('Y-m-d');
+        $approved += (int) ($approvedDaily[$date] ?? 0);
+        $sent += (int) ($sentDaily[$date] ?? 0);
+        $series[] = $sent > 0 ? round(($approved / $sent) * 100, 1) : 0;
+    }
+
+    return $series;
+}
+
+function render_kpi_approval_rate($approved, $sent)
+{
+    return $sent > 0 ? round(($approved / $sent) * 100, 1) : 0.0;
+}
+
+function render_kpi_approved_daily($conn, $startAt, $endAt)
+{
+    $sql = "
+        SELECT DATE(event_date) AS dia, COUNT(*) AS total
+        FROM (
+            SELECT lr.render_id, lr.data AS event_date
+            FROM log_render lr
+            WHERE LOWER(TRIM(lr.status_novo)) = 'aprovado'
+              AND lr.data BETWEEN ? AND ?
+            UNION
+            SELECT r.idrender_alta AS render_id, r.data AS event_date
+            FROM render_alta r
+            WHERE r.status = 'Aprovado'
+              AND r.data BETWEEN ? AND ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM log_render lr2
+                  WHERE lr2.render_id = r.idrender_alta
+                    AND LOWER(TRIM(lr2.status_novo)) = 'aprovado'
+              )
+        ) k
+        GROUP BY DATE(event_date)
+        ORDER BY dia ASC
+    ";
+    return render_kpi_fetch_daily($conn, $sql, 'ssss', $startAt, $endAt, $startAt, $endAt);
+}
+
+function render_kpi_status_daily($conn, $startAt, $endAt, $statuses)
+{
+    $lowerStatuses = array_map(static function ($status) {
+        return strtolower($status);
+    }, $statuses);
+    $placeholders = implode(',', array_fill(0, count($lowerStatuses), '?'));
+    $types = str_repeat('s', count($lowerStatuses)) . 'ss';
+    $params = array_merge($lowerStatuses, [$startAt, $endAt]);
+
+    $sql = "
+        SELECT DATE(lr.data) AS dia, COUNT(DISTINCT lr.render_id) AS total
+        FROM log_render lr
+        WHERE LOWER(TRIM(lr.status_novo)) IN ($placeholders)
+          AND lr.data BETWEEN ? AND ?
+        GROUP BY DATE(lr.data)
+        ORDER BY dia ASC
+    ";
+    return render_kpi_fetch_daily($conn, $sql, $types, ...$params);
+}
+
+function render_kpi_error_daily($conn, $startAt, $endAt)
+{
+    $sql = "
+        SELECT DATE(event_date) AS dia, COUNT(*) AS total
+        FROM (
+            SELECT lr.render_id, lr.data AS event_date
+            FROM log_render lr
+            WHERE LOWER(TRIM(lr.status_novo)) = 'erro'
+              AND lr.data BETWEEN ? AND ?
+            UNION
+            SELECT r.idrender_alta AS render_id, r.data AS event_date
+            FROM render_alta r
+            WHERE r.status = 'Erro'
+              AND r.data BETWEEN ? AND ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM log_render lr2
+                  WHERE lr2.render_id = r.idrender_alta
+                    AND LOWER(TRIM(lr2.status_novo)) = 'erro'
+              )
+        ) k
+        GROUP BY DATE(event_date)
+        ORDER BY dia ASC
+    ";
+    return render_kpi_fetch_daily($conn, $sql, 'ssss', $startAt, $endAt, $startAt, $endAt);
+}
+
+function render_kpi_sent_daily($conn, $startAt, $endAt)
+{
+    $sql = "
+        SELECT DATE(r.submitted) AS dia, COUNT(*) AS total
+        FROM render_alta r
+        WHERE r.submitted BETWEEN ? AND ?
+          AND r.status != 'Arquivado'
+        GROUP BY DATE(r.submitted)
+        ORDER BY dia ASC
+    ";
+    return render_kpi_fetch_daily($conn, $sql, 'ss', $startAt, $endAt);
+}
+
+function render_kpi_sent_approved_daily($conn, $startAt, $endAt)
+{
+    $sql = "
+        SELECT DATE(r.submitted) AS dia, COUNT(*) AS total
+        FROM render_alta r
+        WHERE r.submitted BETWEEN ? AND ?
+          AND r.status = 'Aprovado'
+        GROUP BY DATE(r.submitted)
+        ORDER BY dia ASC
+    ";
+    return render_kpi_fetch_daily($conn, $sql, 'ss', $startAt, $endAt);
+}
+
+function render_kpi_top_responsavel($conn, $startAt, $endAt, $previousStartAt, $previousEndAt)
+{
+    $sql = "
+        SELECT
+            r.responsavel_id,
+            COALESCE(c.nome_colaborador, 'Sem responsavel') AS nome_colaborador,
+            COUNT(*) AS total
+        FROM (
+            SELECT lr.render_id, lr.data AS event_date
+            FROM log_render lr
+            WHERE LOWER(TRIM(lr.status_novo)) = 'aprovado'
+              AND lr.data BETWEEN ? AND ?
+            UNION
+            SELECT ra.idrender_alta AS render_id, ra.data AS event_date
+            FROM render_alta ra
+            WHERE ra.status = 'Aprovado'
+              AND ra.data BETWEEN ? AND ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM log_render lr2
+                  WHERE lr2.render_id = ra.idrender_alta
+                    AND LOWER(TRIM(lr2.status_novo)) = 'aprovado'
+              )
+        ) k
+        INNER JOIN render_alta r ON r.idrender_alta = k.render_id
+        LEFT JOIN colaborador c ON r.responsavel_id = c.idcolaborador
+        GROUP BY r.responsavel_id, c.nome_colaborador
+        ORDER BY total DESC, nome_colaborador ASC
+        LIMIT 1
+    ";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return ['nome_colaborador' => 'Sem dados', 'total' => 0, 'previous' => 0, 'change' => 0, 'sentiment' => 'neutral'];
+    }
+    $stmt->bind_param('ssss', $startAt, $endAt, $startAt, $endAt);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        return ['nome_colaborador' => 'Sem dados', 'total' => 0, 'previous' => 0, 'change' => 0, 'sentiment' => 'neutral'];
+    }
+
+    $responsavelId = $row['responsavel_id'];
+    $previousSql = "
+        SELECT COUNT(*) AS total
+        FROM (
+            SELECT lr.render_id, lr.data AS event_date
+            FROM log_render lr
+            WHERE LOWER(TRIM(lr.status_novo)) = 'aprovado'
+              AND lr.data BETWEEN ? AND ?
+            UNION
+            SELECT ra.idrender_alta AS render_id, ra.data AS event_date
+            FROM render_alta ra
+            WHERE ra.status = 'Aprovado'
+              AND ra.data BETWEEN ? AND ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM log_render lr2
+                  WHERE lr2.render_id = ra.idrender_alta
+                    AND LOWER(TRIM(lr2.status_novo)) = 'aprovado'
+              )
+        ) k
+        INNER JOIN render_alta r ON r.idrender_alta = k.render_id
+        WHERE " . ($responsavelId === null ? 'r.responsavel_id IS NULL' : 'r.responsavel_id = ?') . "
+    ";
+
+    if ($responsavelId === null) {
+        $previous = render_kpi_scalar($conn, $previousSql, 'ssss', $previousStartAt, $previousEndAt, $previousStartAt, $previousEndAt);
+    } else {
+        $previous = render_kpi_scalar($conn, $previousSql, 'ssssi', $previousStartAt, $previousEndAt, $previousStartAt, $previousEndAt, (int) $responsavelId);
+    }
+
+    $total = (int) ($row['total'] ?? 0);
+    $change = render_kpi_percent_change($total, $previous);
+    $sentiment = $total === $previous ? 'neutral' : ($total > $previous ? 'positive' : 'negative');
+
+    return [
+        'nome_colaborador' => $row['nome_colaborador'],
+        'total' => $total,
+        'previous' => $previous,
+        'change' => $change,
+        'diff' => $total - $previous,
+        'sentiment' => $sentiment,
+    ];
+}
 
 // Lidar com as ações de AJAX
 if (isset($_GET['action'])) {
     switch ($_GET['action']) {
+        case 'getKpis':
+            $period = render_kpi_period();
+            $current = $period['current'];
+            $previous = $period['previous'];
+            $days = (int) $period['days'];
+
+            $approvedDaily = render_kpi_approved_daily($conn, $current['start_at'], $current['end_at']);
+            $approvedPreviousDaily = render_kpi_approved_daily($conn, $previous['start_at'], $previous['end_at']);
+            $reworkDaily = render_kpi_status_daily($conn, $current['start_at'], $current['end_at'], ['Reprovado', 'Refazendo']);
+            $reworkPreviousDaily = render_kpi_status_daily($conn, $previous['start_at'], $previous['end_at'], ['Reprovado', 'Refazendo']);
+            $errorDaily = render_kpi_error_daily($conn, $current['start_at'], $current['end_at']);
+            $errorPreviousDaily = render_kpi_error_daily($conn, $previous['start_at'], $previous['end_at']);
+            $sentDaily = render_kpi_sent_daily($conn, $current['start_at'], $current['end_at']);
+            $sentPreviousDaily = render_kpi_sent_daily($conn, $previous['start_at'], $previous['end_at']);
+            $sentApprovedDaily = render_kpi_sent_approved_daily($conn, $current['start_at'], $current['end_at']);
+            $sentApprovedPreviousDaily = render_kpi_sent_approved_daily($conn, $previous['start_at'], $previous['end_at']);
+
+            $approved = render_kpi_sum($approvedDaily);
+            $approvedPrevious = render_kpi_sum($approvedPreviousDaily);
+            $sent = render_kpi_sum($sentDaily);
+            $sentPrevious = render_kpi_sum($sentPreviousDaily);
+            $sentApproved = render_kpi_sum($sentApprovedDaily);
+            $sentApprovedPrevious = render_kpi_sum($sentApprovedPreviousDaily);
+
+            echo json_encode([
+                'status' => 'sucesso',
+                'period' => [
+                    'current' => [
+                        'from' => $current['from'],
+                        'to' => $current['to'],
+                    ],
+                    'previous' => [
+                        'from' => $previous['from'],
+                        'to' => $previous['to'],
+                    ],
+                ],
+                'metrics' => [
+                    'aprovados' => render_kpi_metric(
+                        $approved,
+                        $approvedPrevious,
+                        render_kpi_date_series($current['from'], $days, $approvedDaily)
+                    ),
+                    'retrabalho' => render_kpi_metric(
+                        render_kpi_sum($reworkDaily),
+                        render_kpi_sum($reworkPreviousDaily),
+                        render_kpi_date_series($current['from'], $days, $reworkDaily),
+                        true
+                    ),
+                    'erros' => render_kpi_metric(
+                        render_kpi_sum($errorDaily),
+                        render_kpi_sum($errorPreviousDaily),
+                        render_kpi_date_series($current['from'], $days, $errorDaily),
+                        true
+                    ),
+                    'taxa_aprovacao' => render_kpi_metric(
+                        render_kpi_approval_rate($sentApproved, $sent),
+                        render_kpi_approval_rate($sentApprovedPrevious, $sentPrevious),
+                        render_kpi_rate_series($current['from'], $days, $sentApprovedDaily, $sentDaily),
+                        false,
+                        'percent'
+                    ),
+                ],
+                'highlight' => [
+                    'top_responsavel' => render_kpi_top_responsavel(
+                        $conn,
+                        $current['start_at'],
+                        $current['end_at'],
+                        $previous['start_at'],
+                        $previous['end_at']
+                    ),
+                ],
+            ]);
+            break;
+
         case 'getRenders':
             // Buscar renders com paginação
             $page  = max(1, (int)($_GET['page']  ?? 1));

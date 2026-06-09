@@ -10076,6 +10076,7 @@ document
                 obraId,
                 response.novo_status,
                 response.novo_prazo,
+                dadosModal.data_recebimento,
                 [imagemId],
               );
             }
@@ -11697,6 +11698,7 @@ document
                 currentObraId,
                 Number(statusId),
                 res.novo_prazo,
+                dadosModal.data_recebimento,
                 imgIds,
               );
             }
@@ -11775,6 +11777,7 @@ document
               currentObraId,
               6,
               res.novo_prazo,
+              dadosModal.data_recebimento,
               idsSelecionados,
             );
           }
@@ -11813,12 +11816,14 @@ document
  * @param {string|number} obraId
  * @param {number} novoStatusId - The new status_id assigned to the image(s)
  * @param {string} novoPrazo - The computed deadline (YYYY-MM-DD)
+ * @param {string} dataRecebimento - The received date used to preview the deadline
  * @param {number[]} imagemIds - Array of imagem IDs to add
  */
 async function inserirImagemNaEntrega(
   obraId,
   novoStatusId,
   novoPrazo,
+  dataRecebimento,
   imagemIds,
 ) {
   if (!obraId || !novoStatusId || !imagemIds || imagemIds.length === 0) return;
@@ -11882,12 +11887,24 @@ async function inserirImagemNaEntrega(
         }
       } else if (result.isDenied) {
         // Create new entrega
-        await criarNovaEntrega(obraId, novoStatusId, novoPrazo, imagemIds);
+        await criarNovaEntrega(
+          obraId,
+          novoStatusId,
+          novoPrazo,
+          dataRecebimento,
+          imagemIds,
+        );
       }
       // If cancelled, do nothing
     } else {
       // No matching entrega — create automatically
-      await criarNovaEntrega(obraId, novoStatusId, novoPrazo, imagemIds);
+      await criarNovaEntrega(
+        obraId,
+        novoStatusId,
+        novoPrazo,
+        dataRecebimento,
+        imagemIds,
+      );
       Swal.fire({
         icon: "info",
         title: "Entrega criada",
@@ -11909,11 +11926,18 @@ async function inserirImagemNaEntrega(
   }
 }
 
-async function criarNovaEntrega(obraId, statusId, prazo, imagemIds) {
+async function criarNovaEntrega(
+  obraId,
+  statusId,
+  prazo,
+  dataRecebimento,
+  imagemIds,
+) {
   const formData = new FormData();
   formData.append("obra_id", obraId);
   formData.append("status_id", statusId);
   formData.append("prazo", prazo);
+  formData.append("data_recebimento", dataRecebimento || "");
   formData.append("observacoes", "Criada automaticamente via revisão");
   imagemIds.forEach((id) => formData.append("imagem_ids[]", id));
 
@@ -12218,6 +12242,7 @@ document
             currentObraId,
             response.novo_status,
             response.novo_prazo,
+            dadosModal.data_recebimento,
             [imagemId],
           );
         }
@@ -12294,9 +12319,13 @@ document
         });
 
         if (response.novo_prazo) {
-          await inserirImagemNaEntrega(currentObraId, 6, response.novo_prazo, [
-            imagemId,
-          ]);
+          await inserirImagemNaEntrega(
+            currentObraId,
+            6,
+            response.novo_prazo,
+            dadosModal.data_recebimento,
+            [imagemId],
+          );
         }
 
         document.getElementById("opcao_status_ms").value = "6";
@@ -13815,16 +13844,215 @@ window.addEventListener("improov:funcaoAtualizada", () => {
 // =============================================================
 
 // Fechar modal de animação
-(function () {
+const ANIMACAO_TIPOS_ENDPOINT = "../Animacao/tiposAnimacao.php";
+let _animacaoTiposLoadPromise = null;
+
+function upsertAnimacaoTipoOption(select, nome, selected = false) {
+  const valor = String(nome || "").trim();
+  if (!select || !valor) return "";
+
+  const existente = Array.from(select.options).find(
+    (opt) => String(opt.value).trim().toLowerCase() === valor.toLowerCase(),
+  );
+
+  if (existente) {
+    if (selected) existente.selected = true;
+    return existente.value;
+  }
+
+  const option = new Option(valor, valor, selected, selected);
+  select.appendChild(option);
+  return option.value;
+}
+
+async function carregarTiposAnimacaoSelect() {
+  const select = document.getElementById("anim_tipo");
+  if (!select) return;
+  if (_animacaoTiposLoadPromise) return _animacaoTiposLoadPromise;
+
+  const valorAtual = select.value;
+  _animacaoTiposLoadPromise = fetch(ANIMACAO_TIPOS_ENDPOINT)
+    .then((r) => r.json())
+    .then((tipos) => {
+      if (!Array.isArray(tipos)) return;
+      tipos.forEach((tipo) => upsertAnimacaoTipoOption(select, tipo.nome));
+
+      if (valorAtual) {
+        const valor = upsertAnimacaoTipoOption(select, valorAtual, true);
+        select.value = valor;
+      }
+
+      if (window.jQuery && jQuery().select2) {
+        $("#anim_tipo").trigger("change.select2");
+      }
+    })
+    .catch((err) => {
+      console.error("Erro ao carregar tipos de animacao:", err);
+    })
+    .finally(() => {
+      _animacaoTiposLoadPromise = null;
+    });
+
+  return _animacaoTiposLoadPromise;
+}
+
+async function salvarTipoAnimacao(nome) {
+  const resp = await fetch(ANIMACAO_TIPOS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nome }),
+  });
+  const json = await resp.json();
+  if (!resp.ok || json.success === false || json.error) {
+    throw new Error(json.error || "Erro ao salvar tipo de animacao");
+  }
+  return json.nome || nome;
+}
+
+function initAnimacaoTipoSelect2() {
+  const select = document.getElementById("anim_tipo");
+  if (!select) return;
+
+  if (!window.jQuery || !$.fn || !$.fn.select2) {
+    carregarTiposAnimacaoSelect();
+    return;
+  }
+
+  const $sel = $("#anim_tipo");
+  if ($sel.data("animacaoTipoSelect2") === "1") {
+    carregarTiposAnimacaoSelect();
+    return;
+  }
+
+  $sel.data("animacaoTipoSelect2", "1");
+  $sel.select2({
+    tags: true,
+    placeholder: "-- Selecione --",
+    allowClear: true,
+    width: "100%",
+    dropdownParent: $("#modalAdicionarAnimacao"),
+    language: { noResults: () => "Nenhum resultado. Digite para criar." },
+    createTag(params) {
+      const term = params.term.trim();
+      if (!term) return null;
+      return { id: term, text: term, newTag: true };
+    },
+    templateResult(item) {
+      if (!item.newTag) return item.text || item.id;
+
+      const wrapper = document.createElement("span");
+      const icon = document.createElement("i");
+      const label = document.createElement("small");
+      const strong = document.createElement("strong");
+
+      icon.className = "fa-solid fa-plus";
+      label.textContent = " Criar: ";
+      strong.textContent = item.text;
+
+      wrapper.appendChild(icon);
+      wrapper.appendChild(label);
+      wrapper.appendChild(strong);
+      return wrapper;
+    },
+  });
+
+  $sel.on("select2:select.animacaoTipo", async function (e) {
+    const data = e.params.data;
+    if (!data.newTag) return;
+
+    const nome = String(data.text || "").trim();
+    if (!nome) return;
+
+    try {
+      const nomeSalvo = await salvarTipoAnimacao(nome);
+      const valor = upsertAnimacaoTipoOption(this, nomeSalvo, true);
+      const valorTemporario = String(data.id || nome);
+
+      Array.from(this.options).forEach((opt) => {
+        if (
+          opt.value === valorTemporario &&
+          opt.value.toLowerCase() !== valor.toLowerCase()
+        ) {
+          opt.remove();
+        }
+      });
+
+      $sel.val(valor).trigger("change");
+    } catch (err) {
+      console.error("Erro ao criar tipo de animacao:", err);
+      if (typeof Toastify !== "undefined") {
+        Toastify({
+          text: "Erro ao salvar tipo de animacao.",
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#e74c3c",
+        }).showToast();
+      }
+    }
+  });
+
+  carregarTiposAnimacaoSelect();
+}
+
+function fecharModalAdicionarAnimacao() {
+  const modal = document.getElementById("modalAdicionarAnimacao");
+  const form = document.getElementById("formAdicionarAnimacao");
+  if (!modal) return;
+
+  modal.style.display = "none";
+  modal.classList.remove("is-open");
+  if (form) form.reset();
+
+  const tipo = document.getElementById("anim_tipo");
+  if (tipo) {
+    tipo.value = "";
+    if (window.jQuery && jQuery().select2) {
+      $("#anim_tipo").val("").trigger("change");
+    }
+  }
+}
+
+function initModalAdicionarAnimacao() {
+  const modal = document.getElementById("modalAdicionarAnimacao");
+  if (!modal || modal.dataset.modalAnimacaoBound === "1") return;
+
+  modal.dataset.modalAnimacaoBound = "1";
+
   const closeBtn = document.getElementById("closeModalAnimacao");
   const cancelBtn = document.getElementById("cancelarModalAnimacao");
-  function fechar() {
-    document.getElementById("modalAdicionarAnimacao").style.display = "none";
-    document.getElementById("formAdicionarAnimacao").reset();
-  }
-  if (closeBtn) closeBtn.addEventListener("click", fechar);
-  if (cancelBtn) cancelBtn.addEventListener("click", fechar);
-})();
+
+  closeBtn?.addEventListener("click", fecharModalAdicionarAnimacao);
+  cancelBtn?.addEventListener("click", fecharModalAdicionarAnimacao);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) fecharModalAdicionarAnimacao();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.style.display !== "none") {
+      fecharModalAdicionarAnimacao();
+    }
+  });
+}
+
+function abrirModalAdicionarAnimacao() {
+  const modal = document.getElementById("modalAdicionarAnimacao");
+  if (!modal) return;
+
+  modal.style.display = "block";
+  modal.classList.add("is-open");
+
+  initModalAdicionarAnimacao();
+  initAnimacaoTipoSelect2();
+  carregarTiposAnimacaoSelect();
+}
+
+initModalAdicionarAnimacao();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initModalAdicionarAnimacao, {
+    once: true,
+  });
+}
 
 // Submit do formulário de animação
 (function () {
@@ -13862,9 +14090,7 @@ window.addEventListener("improov:funcaoAtualizada", () => {
               backgroundColor: "#4caf50",
             }).showToast();
           }
-          document.getElementById("modalAdicionarAnimacao").style.display =
-            "none";
-          document.getElementById("formAdicionarAnimacao").reset();
+          fecharModalAdicionarAnimacao();
           const obraIdAtual = obraId || localStorage.getItem("obraId");
           if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
         } else {
@@ -14050,5 +14276,5 @@ document
     document.getElementById("anim_cliente_id").value =
       window.__obraClienteId || "";
 
-    document.getElementById("modalAdicionarAnimacao").style.display = "block";
+    abrirModalAdicionarAnimacao();
   });

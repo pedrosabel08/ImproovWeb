@@ -108,6 +108,73 @@ $conn->close();
             </button>
         </div>
 
+        <section class="kpi-panel" aria-label="KPIs de entregas">
+            <div class="kpi-panel-header">
+                <div class="kpi-title-row">
+                    <span>Periodo atual: <strong id="entregasKpiPeriodo">Ultimos 7 dias</strong></span>
+                    <span>Comparacao: <strong id="entregasKpiComparacao">-</strong></span>
+                </div>
+                <div class="kpi-period-controls" data-kpi-controls="entregas">
+                    <button type="button" class="kpi-period-btn active" data-days="7">7D</button>
+                    <button type="button" class="kpi-period-btn" data-days="15">15D</button>
+                    <button type="button" class="kpi-period-btn" data-days="30">30D</button>
+                    <button type="button" class="kpi-period-btn" data-custom="1">Personalizado</button>
+                    <div class="kpi-custom-range" id="entregasKpiCustomRange">
+                        <input type="date" id="entregasKpiDateFrom" title="Data inicial dos KPIs">
+                        <span>ate</span>
+                        <input type="date" id="entregasKpiDateTo" title="Data final dos KPIs">
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-grid" id="entregasKpiGrid">
+                <div class="kpi-card kpi-blue" data-kpi-card="total">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-clipboard-check"></i></span>
+                        <span class="kpi-label">Entregas feitas</span>
+                    </div>
+                    <strong class="kpi-value" id="entregasKpiTotal">0</strong>
+                    <div class="kpi-delta" id="entregasKpiTotalDelta">-</div>
+                    <svg class="kpi-sparkline" id="entregasKpiTotalSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-green" data-kpi-card="no_prazo">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-circle-check"></i></span>
+                        <span class="kpi-label">No prazo</span>
+                    </div>
+                    <strong class="kpi-value" id="entregasKpiNoPrazo">0</strong>
+                    <div class="kpi-delta" id="entregasKpiNoPrazoDelta">-</div>
+                    <svg class="kpi-sparkline" id="entregasKpiNoPrazoSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-red" data-kpi-card="com_atraso">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                        <span class="kpi-label">Com atraso</span>
+                    </div>
+                    <strong class="kpi-value" id="entregasKpiAtraso">0</strong>
+                    <div class="kpi-delta" id="entregasKpiAtrasoDelta">-</div>
+                    <svg class="kpi-sparkline" id="entregasKpiAtrasoSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-blue" data-kpi-card="antecipadas">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-regular fa-paper-plane"></i></span>
+                        <span class="kpi-label">Antecipadas</span>
+                    </div>
+                    <strong class="kpi-value" id="entregasKpiAntecipadas">0</strong>
+                    <div class="kpi-delta" id="entregasKpiAntecipadasDelta">-</div>
+                    <svg class="kpi-sparkline" id="entregasKpiAntecipadasSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-purple" data-kpi-card="pontualidade">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-bullseye"></i></span>
+                        <span class="kpi-label">Pontualidade (SLA)</span>
+                    </div>
+                    <strong class="kpi-value" id="entregasKpiPontualidade">0%</strong>
+                    <div class="kpi-delta" id="entregasKpiPontualidadeDelta">-</div>
+                    <svg class="kpi-sparkline" id="entregasKpiPontualidadeSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+            </div>
+        </section>
+
         <!-- Kanban Board -->
         <div class="kanban-scroll-area">
             <div class="kanban-board" id="kanban">
@@ -179,9 +246,9 @@ $conn->close();
                         </select>
                     </div>
                     <div>
-                        <label>Status</label>
+                        <label>Etapa</label>
                         <select name="status_id" id="status_id" required>
-                            <option value="">Selecione o status</option>
+                            <option value="">Selecione a etapa</option>
                             <?php foreach ($status_imagens as $status): ?>
                                 <option value="<?= htmlspecialchars($status['idstatus']); ?>">
                                     <?= htmlspecialchars($status['nome_status']); ?>
@@ -192,13 +259,17 @@ $conn->close();
                     <div>
                         <label>Imagens</label>
                         <div id="imagens_container" class="imagens-container">
-                            <p style="margin:0;color:var(--text-muted);">Selecione uma obra e status para listar as
+                            <p style="margin:0;color:var(--text-muted);">Selecione uma obra e etapa para listar as
                                 imagens.</p>
                         </div>
                     </div>
                     <div>
+                        <label>Recebimento</label>
+                        <input type="date" name="data_recebimento" id="data_recebimento" required>
+                    </div>
+                    <div>
                         <label>Prazo previsto</label>
-                        <input type="date" name="prazo" id="prazo">
+                        <input type="date" name="prazo" id="prazo" required>
                     </div>
                     <div>
                         <label>Observações</label>

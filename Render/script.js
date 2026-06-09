@@ -2,6 +2,245 @@ let allRenders = [];
 let currentPage = 1;
 let totalRenders = 0;
 const PAGE_LIMIT = 100;
+const renderKpiState = { mode: "quick", days: 7, from: "", to: "" };
+
+function toInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getQuickRange(days) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - (days - 1));
+  return {
+    from: toInputDate(start),
+    to: toInputDate(end),
+  };
+}
+
+function formatKpiDate(dateValue) {
+  if (!dateValue || !dateValue.includes("-")) return "";
+  const [year, month, day] = dateValue.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function updateRenderKpiPeriodLabel(period) {
+  if (!period || !period.current) return;
+  setText(
+    "renderKpiPeriodo",
+    `${formatKpiDate(period.current.from)} a ${formatKpiDate(period.current.to)}`,
+  );
+  if (period.previous) {
+    setText(
+      "renderKpiComparacao",
+      `${formatKpiDate(period.previous.from)} a ${formatKpiDate(period.previous.to)}`,
+    );
+  }
+}
+
+function setRenderKpiLoading(isLoading) {
+  const panel = document.querySelector(".kpi-panel");
+  if (panel) panel.classList.toggle("is-loading", !!isLoading);
+}
+
+function buildRenderKpiParams() {
+  const params = { action: "getKpis" };
+  if (renderKpiState.mode === "custom") {
+    params.from = renderKpiState.from;
+    params.to = renderKpiState.to;
+  } else {
+    params.days = renderKpiState.days;
+  }
+  return params;
+}
+
+function formatKpiNumber(value) {
+  const num = Number(value || 0);
+  return Number.isInteger(num)
+    ? String(num)
+    : num.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function formatSigned(value, suffix) {
+  const num = Number(value || 0);
+  const sign = num > 0 ? "+" : "";
+  return `${sign}${formatKpiNumber(num)}${suffix || ""}`;
+}
+
+function renderSparkline(id, series) {
+  const svg = document.getElementById(id);
+  if (!svg) return;
+  const values = Array.isArray(series) && series.length ? series.map((item) => Number(item || 0)) : [0, 0];
+  const width = 120;
+  const height = 34;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const step = values.length > 1 ? width / (values.length - 1) : width;
+  const points = values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - ((value - min) / range) * (height - 6) - 3;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  svg.innerHTML = `<polyline points="${points}" vector-effect="non-scaling-stroke"></polyline>`;
+}
+
+function updateKpiCard(cardKey, metric, config) {
+  if (!metric) return;
+  const card = document.querySelector(`[data-kpi-card="${cardKey}"]`);
+  if (card) {
+    card.classList.remove("is-positive", "is-negative", "is-neutral");
+    card.classList.add(`is-${metric.sentiment || "neutral"}`);
+  }
+
+  const value = config.percent
+    ? `${formatKpiNumber(metric.current)}%`
+    : formatKpiNumber(metric.current);
+  setText(config.valueId, value);
+
+  const arrow = metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
+  const changeSuffix = config.percent ? " p.p." : "%";
+  const changeText = formatSigned(metric.change, changeSuffix);
+  const diffText = config.percent
+    ? ""
+    : `${formatSigned(metric.diff, "")} ${Math.abs(Number(metric.diff || 0)) === 1 ? config.singular : config.plural}`;
+  const delta = document.getElementById(config.deltaId);
+  if (delta) {
+    delta.innerHTML = diffText
+      ? `<span>${arrow} ${changeText}</span><small>${diffText}</small>`
+      : `<span>${arrow} ${changeText}</span>`;
+  }
+
+  setText(config.diffId, "vs periodo anterior");
+  renderSparkline(config.sparkId, metric.series);
+}
+
+function updateTopResponsavel(highlight) {
+  const top = highlight && highlight.top_responsavel ? highlight.top_responsavel : {};
+  const total = parseInt(top.total || 0, 10);
+  const sentiment = top.sentiment || "neutral";
+  const card = document.getElementById("renderTopResponsavelCard");
+  if (card) {
+    card.classList.remove("is-positive", "is-negative", "is-neutral");
+    card.classList.add(`is-${sentiment}`);
+  }
+  setText("renderKpiTopNome", top.nome_colaborador || "Sem dados");
+  setText("renderKpiTopTotal", `${total} render${total === 1 ? "" : "s"} aprovado${total === 1 ? "" : "s"}`);
+  setText("renderKpiTopDelta", `${formatSigned(top.change || 0, "%")} vs periodo anterior`);
+}
+
+function loadRenderKpis() {
+  if (!document.getElementById("renderKpiGrid")) return;
+  setRenderKpiLoading(true);
+
+  $.ajax({
+    url: "ajax.php",
+    method: "GET",
+    data: buildRenderKpiParams(),
+    dataType: "json",
+    success: function (response) {
+      if (!response || response.status !== "sucesso") return;
+      const metrics = response.metrics || {};
+      updateKpiCard("aprovados", metrics.aprovados, {
+        valueId: "renderKpiAprovados",
+        deltaId: "renderKpiAprovadosDelta",
+        diffId: "renderKpiAprovadosDiff",
+        sparkId: "renderKpiAprovadosSpark",
+        singular: "render",
+        plural: "renders",
+      });
+      updateKpiCard("retrabalho", metrics.retrabalho, {
+        valueId: "renderKpiRetrabalho",
+        deltaId: "renderKpiRetrabalhoDelta",
+        diffId: "renderKpiRetrabalhoDiff",
+        sparkId: "renderKpiRetrabalhoSpark",
+        singular: "render",
+        plural: "renders",
+      });
+      updateKpiCard("erros", metrics.erros, {
+        valueId: "renderKpiErros",
+        deltaId: "renderKpiErrosDelta",
+        diffId: "renderKpiErrosDiff",
+        sparkId: "renderKpiErrosSpark",
+        singular: "render",
+        plural: "renders",
+      });
+      updateKpiCard("taxa_aprovacao", metrics.taxa_aprovacao, {
+        valueId: "renderKpiTaxaAprovacao",
+        deltaId: "renderKpiTaxaAprovacaoDelta",
+        diffId: "renderKpiTaxaAprovacaoDiff",
+        sparkId: "renderKpiTaxaAprovacaoSpark",
+        percent: true,
+      });
+      updateTopResponsavel(response.highlight);
+      updateRenderKpiPeriodLabel(response.period);
+    },
+    error: function (xhr, status, error) {
+      console.error("Erro ao carregar KPIs de renders:", status, error);
+    },
+    complete: function () {
+      setRenderKpiLoading(false);
+    },
+  });
+}
+
+function initRenderKpis() {
+  const controls = document.querySelector('[data-kpi-controls="render"]');
+  if (!controls) return;
+
+  const customRange = document.getElementById("renderKpiCustomRange");
+  const fromInput = document.getElementById("renderKpiDateFrom");
+  const toInput = document.getElementById("renderKpiDateTo");
+  const defaultRange = getQuickRange(7);
+  if (fromInput) fromInput.value = defaultRange.from;
+  if (toInput) toInput.value = defaultRange.to;
+
+  controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      controls.querySelectorAll(".kpi-period-btn").forEach((item) => item.classList.remove("active"));
+      btn.classList.add("active");
+
+      if (btn.dataset.custom === "1") {
+        renderKpiState.mode = "custom";
+        renderKpiState.from = fromInput ? fromInput.value : defaultRange.from;
+        renderKpiState.to = toInput ? toInput.value : defaultRange.to;
+        if (customRange) customRange.classList.add("is-open");
+      } else {
+        renderKpiState.mode = "quick";
+        renderKpiState.days = parseInt(btn.dataset.days || "7", 10);
+        if (customRange) customRange.classList.remove("is-open");
+      }
+
+      loadRenderKpis();
+    });
+  });
+
+  [fromInput, toInput].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("change", () => {
+      renderKpiState.mode = "custom";
+      renderKpiState.from = fromInput ? fromInput.value : defaultRange.from;
+      renderKpiState.to = toInput ? toInput.value : defaultRange.to;
+      controls.querySelectorAll(".kpi-period-btn").forEach((item) => {
+        item.classList.toggle("active", item.dataset.custom === "1");
+      });
+      if (customRange) customRange.classList.add("is-open");
+      if (renderKpiState.from && renderKpiState.to) loadRenderKpis();
+    });
+  });
+
+  loadRenderKpis();
+}
 
 function renderObraFilter() {
   const obras = [
@@ -711,6 +950,7 @@ $("#aprovarRender").click(function () {
       if (response.status === "sucesso") {
         // Atualiza os renders
         loadRenders();
+        loadRenderKpis();
         Toastify({
           text: "Render aprovado com sucesso!",
           duration: 3000,
@@ -829,6 +1069,7 @@ $("#reprovarRender").click(function () {
     function (response) {
       if (response.status === "sucesso") {
         loadRenders();
+        loadRenderKpis();
         $("#myModal").removeClass("is-open");
         Toastify({
           text: "Render reprovado com sucesso!",
@@ -877,6 +1118,7 @@ $("#deleteRender")
       success: function (response) {
         if (response.status == "sucesso") {
           loadRenders();
+          loadRenderKpis();
           $("#myModal").removeClass("is-open");
 
           Toastify({
@@ -894,6 +1136,7 @@ $("#deleteRender")
 // Carregar os renders quando a página for carregada
 $(document).ready(function () {
   loadRenders(1);
+  initRenderKpis();
 
   $("#btnLoadMore").on("click", function () {
     loadRenders(currentPage + 1);

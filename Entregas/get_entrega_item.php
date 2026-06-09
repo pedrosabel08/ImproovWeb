@@ -4,8 +4,10 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/prazo_entrega_helper.php';
 
 improov_p00_ensure_schema($conn);
+entregas_ensure_data_recebimento_schema($conn);
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     http_response_code(400);
@@ -17,7 +19,7 @@ $entrega_id = intval($_GET['id']);
 
 try {
     // buscar informações da entrega
-    $sql = "SELECT e.id, e.obra_id, e.status_id, e.data_prevista, e.status, e.data_conclusao, e.observacoes, COALESCE(e.tipo_entrega, 'PADRAO') AS tipo_entrega, s.nome_status as nome_etapa, o.nomenclatura
+    $sql = "SELECT e.id, e.obra_id, e.status_id, e.data_recebimento, e.data_prevista, e.status, e.data_conclusao, e.observacoes, COALESCE(e.tipo_entrega, 'PADRAO') AS tipo_entrega, s.nome_status as nome_etapa, o.nomenclatura
             FROM entregas e 
             JOIN status_imagem s ON e.status_id = s.idstatus
             JOIN obra o ON e.obra_id = o.idobra

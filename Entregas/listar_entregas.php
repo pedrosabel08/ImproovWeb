@@ -3,8 +3,10 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/prazo_entrega_helper.php';
 
 improov_p00_ensure_schema($conn);
+entregas_ensure_data_recebimento_schema($conn);
 
 $obra_id = isset($_GET['obra_id']) && is_numeric($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
 
@@ -21,6 +23,7 @@ $sql = "SELECT
     e.id,
     e.obra_id,
     e.status_id,
+    e.data_recebimento,
     e.data_prevista,
     e.data_conclusao,
     e.status,
@@ -82,6 +85,7 @@ while ($row = $res->fetch_assoc()) {
     $out[] = [
         'id' => intval($row['id']),
         'obra_id' => $row['obra_id'],
+        'data_recebimento' => $row['data_recebimento'],
         'data_prevista' => $row['data_prevista'],
         'data_conclusao' => $row['data_conclusao'],
         'status' => $row['status'],
@@ -116,6 +120,7 @@ $sqlP00 = "SELECT
     e.id,
     e.obra_id,
     e.status_id,
+    e.data_recebimento,
     e.data_prevista,
     e.data_conclusao,
     e.status,
@@ -161,6 +166,7 @@ if ($resP00) {
         $out[] = [
             'id' => intval($row['id']),
             'obra_id' => $row['obra_id'],
+            'data_recebimento' => $row['data_recebimento'],
             'data_prevista' => $row['data_prevista'],
             'data_conclusao' => $row['data_conclusao'],
             'status' => $row['status'],

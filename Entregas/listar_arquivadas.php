@@ -1,11 +1,15 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/prazo_entrega_helper.php';
+
+entregas_ensure_data_recebimento_schema($conn);
 
 $sql = "SELECT 
     e.id,
     e.obra_id,
     e.status_id,
+    e.data_recebimento,
     e.data_prevista,
     e.data_conclusao,
     e.status,
@@ -63,6 +67,7 @@ while ($row = $res->fetch_assoc()) {
     $out[] = [
         'id'            => intval($row['id']),
         'obra_id'       => $row['obra_id'],
+        'data_recebimento' => $row['data_recebimento'],
         'data_prevista' => $row['data_prevista'],
         'status'        => $row['status'],
         'status_id'     => intval($row['status_id'] ?? 0),

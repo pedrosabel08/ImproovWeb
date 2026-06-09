@@ -151,6 +151,64 @@ $conn->close();
 
         </div>
 
+        <section class="kpi-panel" aria-label="KPIs de renders">
+            <div class="kpi-panel-header">
+                <div class="kpi-title-row">
+                    <span>Periodo atual: <strong id="renderKpiPeriodo">Ultimos 7 dias</strong></span>
+                    <span>Comparacao: <strong id="renderKpiComparacao">-</strong></span>
+                </div>
+                <div class="kpi-period-controls" data-kpi-controls="render">
+                    <button type="button" class="kpi-period-btn active" data-days="7">7D</button>
+                    <button type="button" class="kpi-period-btn" data-days="15">15D</button>
+                    <button type="button" class="kpi-period-btn" data-days="30">30D</button>
+                    <button type="button" class="kpi-period-btn" data-custom="1">Personalizado</button>
+                    <div class="kpi-custom-range" id="renderKpiCustomRange">
+                        <input type="date" id="renderKpiDateFrom" title="Data inicial dos KPIs">
+                        <span>ate</span>
+                        <input type="date" id="renderKpiDateTo" title="Data final dos KPIs">
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-grid" id="renderKpiGrid">
+                <div class="kpi-card kpi-green" data-kpi-card="aprovados">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-circle-check"></i></span>
+                        <span class="kpi-label">Aprovados</span>
+                    </div>
+                    <strong class="kpi-value" id="renderKpiAprovados">0</strong>
+                    <div class="kpi-delta" id="renderKpiAprovadosDelta">-</div>
+                    <svg class="kpi-sparkline" id="renderKpiAprovadosSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-yellow" data-kpi-card="retrabalho">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-rotate-right"></i></span>
+                        <span class="kpi-label">Com retrabalho</span>
+                    </div>
+                    <strong class="kpi-value" id="renderKpiRetrabalho">0</strong>
+                    <div class="kpi-delta" id="renderKpiRetrabalhoDelta">-</div>
+                    <svg class="kpi-sparkline" id="renderKpiRetrabalhoSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-red" data-kpi-card="erros">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                        <span class="kpi-label">Com erro</span>
+                    </div>
+                    <strong class="kpi-value" id="renderKpiErros">0</strong>
+                    <div class="kpi-delta" id="renderKpiErrosDelta">-</div>
+                    <svg class="kpi-sparkline" id="renderKpiErrosSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+                <div class="kpi-card kpi-purple" data-kpi-card="taxa_aprovacao">
+                    <div class="kpi-card-top">
+                        <span class="kpi-icon"><i class="fa-solid fa-bullseye"></i></span>
+                        <span class="kpi-label">Taxa de aprovacao</span>
+                    </div>
+                    <strong class="kpi-value" id="renderKpiTaxaAprovacao">0%</strong>
+                    <div class="kpi-delta" id="renderKpiTaxaAprovacaoDelta">-</div>
+                    <svg class="kpi-sparkline" id="renderKpiTaxaAprovacaoSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                </div>
+            </div>
+        </section>
+
         <!-- Mobile: FAB to toggle filters -->
         <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filters" class="fab-filter" title="Filtros" style="display:none;">
             <i class="fa-solid fa-filter"></i>
@@ -158,6 +216,17 @@ $conn->close();
 
         <!-- Render Grid + Load More (scrollable area) -->
         <div class="grid-scroll-area">
+            <section class="period-highlight" id="renderTopResponsavelCard" aria-label="Destaque do periodo">
+                <div class="period-highlight-icon"><i class="fa-solid fa-trophy"></i></div>
+                <div class="period-highlight-body">
+                    <span>Destaque do periodo</span>
+                    <strong id="renderKpiTopNome">Sem dados</strong>
+                </div>
+                <div class="period-highlight-metric">
+                    <strong id="renderKpiTopTotal">0 renders aprovados</strong>
+                    <span id="renderKpiTopDelta">vs periodo anterior</span>
+                </div>
+            </section>
             <div id="renderGrid" class="render-grid">
                 <!-- Skeleton placeholders shown while loading -->
                 <?php for ($i = 0; $i < 8; $i++): ?>

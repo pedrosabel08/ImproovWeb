@@ -52,6 +52,236 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // global store of fetched entregas so we can filter client-side
   let entregasAll = [];
+  const entregasKpiState = { mode: "quick", days: 7, from: "", to: "" };
+
+  function toInputDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function getQuickRange(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (days - 1));
+    return {
+      from: toInputDate(start),
+      to: toInputDate(end),
+    };
+  }
+
+  function formatKpiDate(dateValue) {
+    if (!dateValue || !dateValue.includes("-")) return "";
+    const [year, month, day] = dateValue.split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  function updateEntregasKpiPeriodLabel(period) {
+    if (!period || !period.current) return;
+    setText(
+      "entregasKpiPeriodo",
+      `${formatKpiDate(period.current.from)} a ${formatKpiDate(period.current.to)}`,
+    );
+    if (period.previous) {
+      setText(
+        "entregasKpiComparacao",
+        `${formatKpiDate(period.previous.from)} a ${formatKpiDate(period.previous.to)}`,
+      );
+    }
+  }
+
+  function setEntregasKpiLoading(isLoading) {
+    const panel = document.querySelector(".kpi-panel");
+    if (panel) panel.classList.toggle("is-loading", !!isLoading);
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function formatKpiNumber(value) {
+    const num = Number(value || 0);
+    return Number.isInteger(num)
+      ? String(num)
+      : num.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+
+  function formatSigned(value, suffix) {
+    const num = Number(value || 0);
+    const sign = num > 0 ? "+" : "";
+    return `${sign}${formatKpiNumber(num)}${suffix || ""}`;
+  }
+
+  function renderSparkline(id, series) {
+    const svg = document.getElementById(id);
+    if (!svg) return;
+    const values = Array.isArray(series) && series.length ? series.map((item) => Number(item || 0)) : [0, 0];
+    const width = 120;
+    const height = 34;
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const range = max - min || 1;
+    const step = values.length > 1 ? width / (values.length - 1) : width;
+    const points = values
+      .map((value, index) => {
+        const x = index * step;
+        const y = height - ((value - min) / range) * (height - 6) - 3;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+    svg.innerHTML = `<polyline points="${points}" vector-effect="non-scaling-stroke"></polyline>`;
+  }
+
+  function updateKpiCard(cardKey, metric, config) {
+    if (!metric) return;
+    const card = document.querySelector(`[data-kpi-card="${cardKey}"]`);
+    if (card) {
+      card.classList.remove("is-positive", "is-negative", "is-neutral");
+      card.classList.add(`is-${metric.sentiment || "neutral"}`);
+    }
+
+    const value = config.percent
+      ? `${formatKpiNumber(metric.current)}%`
+      : formatKpiNumber(metric.current);
+    setText(config.valueId, value);
+
+    const arrow = metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
+    const changeSuffix = config.percent ? " p.p." : "%";
+    const changeText = config.percent
+      ? formatSigned(metric.change, changeSuffix)
+      : formatSigned(metric.change, changeSuffix);
+    const diffText = config.percent
+      ? ""
+      : `${formatSigned(metric.diff, "")} ${Math.abs(Number(metric.diff || 0)) === 1 ? config.singular : config.plural}`;
+    const delta = document.getElementById(config.deltaId);
+    if (delta) {
+      delta.innerHTML = diffText
+        ? `<span>${arrow} ${changeText}</span><small>${diffText}</small>`
+        : `<span>${arrow} ${changeText}</span>`;
+    }
+
+    setText(config.diffId, "vs periodo anterior");
+    renderSparkline(config.sparkId, metric.series);
+  }
+
+  function buildEntregasKpiParams() {
+    const params = new URLSearchParams();
+    if (entregasKpiState.mode === "custom") {
+      params.set("from", entregasKpiState.from);
+      params.set("to", entregasKpiState.to);
+    } else {
+      params.set("days", String(entregasKpiState.days));
+    }
+    return params;
+  }
+
+  async function carregarEntregasKpis() {
+    const grid = document.getElementById("entregasKpiGrid");
+    if (!grid) return;
+
+    try {
+      setEntregasKpiLoading(true);
+      const res = await fetch(BASE + "kpis_entregas.php?" + buildEntregasKpiParams().toString());
+      const data = await res.json();
+      if (!data || !data.success) throw new Error(data && data.error ? data.error : "Falha ao carregar KPIs");
+
+      const metrics = data.metrics || {};
+      updateKpiCard("total", metrics.total, {
+        valueId: "entregasKpiTotal",
+        deltaId: "entregasKpiTotalDelta",
+        diffId: "entregasKpiTotalDiff",
+        sparkId: "entregasKpiTotalSpark",
+        singular: "entrega",
+        plural: "entregas",
+      });
+      updateKpiCard("no_prazo", metrics.no_prazo, {
+        valueId: "entregasKpiNoPrazo",
+        deltaId: "entregasKpiNoPrazoDelta",
+        diffId: "entregasKpiNoPrazoDiff",
+        sparkId: "entregasKpiNoPrazoSpark",
+        singular: "entrega",
+        plural: "entregas",
+      });
+      updateKpiCard("com_atraso", metrics.com_atraso, {
+        valueId: "entregasKpiAtraso",
+        deltaId: "entregasKpiAtrasoDelta",
+        diffId: "entregasKpiAtrasoDiff",
+        sparkId: "entregasKpiAtrasoSpark",
+        singular: "entrega",
+        plural: "entregas",
+      });
+      updateKpiCard("antecipadas", metrics.antecipadas, {
+        valueId: "entregasKpiAntecipadas",
+        deltaId: "entregasKpiAntecipadasDelta",
+        diffId: "entregasKpiAntecipadasDiff",
+        sparkId: "entregasKpiAntecipadasSpark",
+        singular: "entrega",
+        plural: "entregas",
+      });
+      updateKpiCard("pontualidade", metrics.pontualidade, {
+        valueId: "entregasKpiPontualidade",
+        deltaId: "entregasKpiPontualidadeDelta",
+        diffId: "entregasKpiPontualidadeDiff",
+        sparkId: "entregasKpiPontualidadeSpark",
+        percent: true,
+      });
+      updateEntregasKpiPeriodLabel(data.period);
+    } catch (err) {
+      console.error("Erro ao carregar KPIs de entregas:", err);
+    } finally {
+      setEntregasKpiLoading(false);
+    }
+  }
+
+  function initEntregasKpis() {
+    const controls = document.querySelector('[data-kpi-controls="entregas"]');
+    if (!controls) return;
+
+    const customRange = document.getElementById("entregasKpiCustomRange");
+    const fromInput = document.getElementById("entregasKpiDateFrom");
+    const toInput = document.getElementById("entregasKpiDateTo");
+    const defaultRange = getQuickRange(7);
+    if (fromInput) fromInput.value = defaultRange.from;
+    if (toInput) toInput.value = defaultRange.to;
+
+    controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        controls.querySelectorAll(".kpi-period-btn").forEach((item) => item.classList.remove("active"));
+        btn.classList.add("active");
+
+        if (btn.dataset.custom === "1") {
+          entregasKpiState.mode = "custom";
+          entregasKpiState.from = fromInput ? fromInput.value : defaultRange.from;
+          entregasKpiState.to = toInput ? toInput.value : defaultRange.to;
+          if (customRange) customRange.classList.add("is-open");
+        } else {
+          entregasKpiState.mode = "quick";
+          entregasKpiState.days = parseInt(btn.dataset.days || "7", 10);
+          if (customRange) customRange.classList.remove("is-open");
+        }
+
+        carregarEntregasKpis();
+      });
+    });
+
+    [fromInput, toInput].forEach((input) => {
+      if (!input) return;
+      input.addEventListener("change", () => {
+        entregasKpiState.mode = "custom";
+        entregasKpiState.from = fromInput ? fromInput.value : defaultRange.from;
+        entregasKpiState.to = toInput ? toInput.value : defaultRange.to;
+        controls.querySelectorAll(".kpi-period-btn").forEach((item) => {
+          item.classList.toggle("active", item.dataset.custom === "1");
+        });
+        if (customRange) customRange.classList.add("is-open");
+        if (entregasKpiState.from && entregasKpiState.to) carregarEntregasKpis();
+      });
+    });
+
+    carregarEntregasKpis();
+  }
 
   // Helper: create card element for a entrega
   function createCard(entrega) {
@@ -995,6 +1225,7 @@ document.addEventListener("DOMContentLoaded", () => {
   } catch (e) {}
 
   carregarKanban();
+  initEntregasKpis();
 
   // wire filter UI events (after initial load will populate options)
   const obraSelectEl = document.getElementById("filterObra");
@@ -1521,6 +1752,7 @@ document.addEventListener("DOMContentLoaded", () => {
         modalEntrega.classList.remove("is-open");
         entregaAtualId = null;
         carregarKanban();
+        carregarEntregasKpis();
       } else {
         alert("Erro ao registrar entrega: " + (json.error || "desconhecido"));
       }
@@ -2462,10 +2694,41 @@ document
     document.getElementById("modalAdicionarEntrega").classList.add("is-open");
   });
 
-document.getElementById("obra_id").addEventListener("change", carregarImagens);
+document.getElementById("obra_id").addEventListener("change", () => {
+  carregarImagens();
+  atualizarPrazoPrevisto();
+});
+document.getElementById("status_id").addEventListener("change", () => {
+  carregarImagens();
+  atualizarPrazoPrevisto();
+});
 document
-  .getElementById("status_id")
-  .addEventListener("change", carregarImagens);
+  .getElementById("data_recebimento")
+  .addEventListener("change", atualizarPrazoPrevisto);
+
+function atualizarPrazoPrevisto() {
+  const obraId = document.getElementById("obra_id").value;
+  const statusId = document.getElementById("status_id").value;
+  const dataRecebimento = document.getElementById("data_recebimento").value;
+  const prazoInput = document.getElementById("prazo");
+
+  if (!obraId || !statusId || !dataRecebimento || !prazoInput) return;
+
+  const params = new URLSearchParams({
+    obra_id: obraId,
+    status_id: statusId,
+    data_recebimento: dataRecebimento,
+  });
+
+  fetch(BASE + `calcular_prazo_entrega.php?${params.toString()}`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (data && data.success && data.data_prevista) {
+        prazoInput.value = data.data_prevista;
+      }
+    })
+    .catch((err) => console.error("Erro ao calcular prazo previsto:", err));
+}
 
 function carregarImagens() {
   const obraId = document.getElementById("obra_id").value;
@@ -2473,7 +2736,7 @@ function carregarImagens() {
 
   if (!obraId || !statusId) {
     document.getElementById("imagens_container").innerHTML =
-      "<p>Selecione uma obra e um status.</p>";
+      "<p>Selecione uma obra e uma etapa.</p>";
     return;
   }
 
@@ -2572,7 +2835,7 @@ document
           // Aqui você pode atualizar a tabela, fechar modal, etc.
           document.getElementById("formAdicionarEntrega").reset();
           document.getElementById("imagens_container").innerHTML =
-            "<p>Selecione uma obra e status.</p>";
+            "<p>Selecione uma obra e uma etapa.</p>";
         } else {
           alert("Erro: " + data.msg);
         }

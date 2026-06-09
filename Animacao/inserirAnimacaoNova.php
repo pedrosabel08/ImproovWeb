@@ -6,6 +6,7 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/tipos_animacao_helpers.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'error' => 'Método inválido']);
@@ -33,8 +34,15 @@ if (!$imagem_id || !$colaborador_id) {
     exit;
 }
 
-$conn->begin_transaction();
+$transactionStarted = false;
+
 try {
+    $tipo = animacao_tipo_salvar($conn, $tipo_animacao);
+    $tipo_animacao = $tipo['nome'];
+
+    $conn->begin_transaction();
+    $transactionStarted = true;
+
     // 1. Inserir animacao (substatus_id=7 = HOLD por DEFAULT na tabela)
     $stmt = $conn->prepare(
         "INSERT INTO animacao
@@ -79,7 +87,9 @@ try {
     $conn->commit();
     echo json_encode(['success' => true, 'animacao_id' => $animacao_id]);
 } catch (Exception $e) {
-    $conn->rollback();
+    if ($transactionStarted) {
+        $conn->rollback();
+    }
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 

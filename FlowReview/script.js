@@ -1583,6 +1583,7 @@ let currentAngleSelection = {
   chosen: null,
   available: [],
 };
+let currentIsFlowAngulo = false;
 const processHistoryState = {
   currentImageId: null,
   isOpen: false,
@@ -1955,6 +1956,8 @@ function getCurrentAngleThumbUrl(img) {
 }
 
 function updateAngleActionForSelection(imagensDoIndice, context) {
+  if (!currentIsFlowAngulo) return;
+
   const available = Array.isArray(imagensDoIndice) ? imagensDoIndice : [];
   const isP00Finalizacao = isP00FinalizacaoEnvio(context, available);
   const chosen = available.find((img) => isAnguloDefinitivo(img)) || null;
@@ -2554,6 +2557,15 @@ function historyAJAX(idfuncao_imagem) {
             String(img?.nome_status_envio || img?.nome_status || "").toLowerCase() ===
             "p00",
         );
+      currentIsFlowAngulo = isFlowAngulo;
+      if (!isFlowAngulo) {
+        currentAngleSelection = {
+          isP00Finalizacao: false,
+          hasChosen: false,
+          chosen: null,
+          available: [],
+        };
+      }
 
       const podeAprovar =
         ([1, 2, 9, 20, 3].includes(idusuario) ||
@@ -2759,7 +2771,9 @@ function historyAJAX(idfuncao_imagem) {
         imageContainer.innerHTML = "";
 
         const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
-        updateAngleActionForSelection(imagensDoIndice, item);
+        if (isFlowAngulo) {
+          updateAngleActionForSelection(imagensDoIndice, item);
+        }
 
         const textoGeral = Array.isArray(imagensDoIndice)
           ? String(

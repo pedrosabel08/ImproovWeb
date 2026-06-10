@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../conexao.php';
 require_once __DIR__ . '/../../PaginaPrincipal/heatmap_helpers.php';
+require_once __DIR__ . '/../../helpers/fila_operacional.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     http_response_code(401);
@@ -26,7 +27,7 @@ function operacional_table_exists(mysqli $conn, string $table): bool
 
 function operacional_fetch_function_catalog(mysqli $conn): array
 {
-    $result = $conn->query('SELECT idfuncao AS id, nome_funcao AS nome FROM funcao WHERE idfuncao <> 9 ORDER BY nome_funcao');
+    $result = $conn->query('SELECT idfuncao AS id, nome_funcao AS nome FROM funcao WHERE idfuncao NOT IN (9,6) ORDER BY FIELD(idfuncao, 1, 8, 2, 3, 4, 7, 5)');
     $items = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
@@ -279,6 +280,265 @@ function operacional_append_queue_detail(array &$details, array $row): void
     ];
 }
 
+function operacional_status_case_sql(string $statusExpr): string
+{
+    return "CASE
+        WHEN LOWER(TRIM({$statusExpr})) IN ('não iniciado', 'nao iniciado') THEN 'nao_iniciado'
+        WHEN LOWER(TRIM({$statusExpr})) = 'em andamento' THEN 'em_andamento'
+        WHEN LOWER(TRIM({$statusExpr})) IN ('em aprovação', 'em aprovacao') THEN 'em_aprovacao'
+        WHEN LOWER(TRIM({$statusExpr})) IN ('ajuste', 'em ajuste') THEN 'ajuste'
+        WHEN LOWER(TRIM({$statusExpr})) = 'aprovado com ajustes' THEN 'aprovado_com_ajustes'
+        ELSE NULL
+    END";
+}
+
+function operacional_status_label(string $statusKey): string
+{
+    $labels = [
+        'planejada' => 'Planejada',
+        'p00' => 'P00',
+        'nao_iniciado' => 'Não iniciado',
+        'em_andamento' => 'Em andamento',
+        'em_aprovacao' => 'Em aprovação',
+        'ajuste' => 'Em ajuste',
+        'aprovado_com_ajustes' => 'Aprovado com ajustes',
+    ];
+
+    return $labels[$statusKey] ?? $statusKey;
+}
+
+function operacional_append_status_detail(array &$data, array $row): void
+{
+    $functionId = (int) ($row['funcao_id'] ?? 0);
+    $statusKey = (string) ($row['status_key'] ?? '');
+    if ($functionId <= 0 || $statusKey === '') {
+        return;
+    }
+
+    $imageId = (int) ($row['imagem_id'] ?? 0);
+    $obraId = (int) ($row['obra_id'] ?? 0);
+    $obraNome = (string) ($row['obra_nome'] ?? ('Obra ' . $obraId));
+    $inicioEm = $row['inicio_em'] ?? null;
+    $dias = $inicioEm ? max(0, (int) floor((time() - strtotime((string) $inicioEm)) / 86400)) : null;
+
+    $data['counts'][$functionId][$statusKey] = ($data['counts'][$functionId][$statusKey] ?? 0) + 1;
+    if (in_array($statusKey, ['planejada', 'p00', 'nao_iniciado'], true) && $imageId > 0) {
+        $data['available_images'][$functionId][$imageId] = true;
+    }
+
+    if (!isset($data['details'][$functionId]['obras'][$obraNome])) {
+        $data['details'][$functionId]['obras'][$obraNome] = [
+            'obra_id' => $obraId,
+            'obra_nome' => $obraNome,
+            'itens' => [],
+        ];
+    }
+
+    $data['details'][$functionId]['obras'][$obraNome]['itens'][] = [
+        'origem' => (string) ($row['origem'] ?? ''),
+        'status_key' => $statusKey,
+        'status_label' => operacional_status_label($statusKey),
+        'item_id' => (int) ($row['item_id'] ?? 0),
+        'imagem_id' => $imageId,
+        'imagem_nome' => (string) ($row['imagem_nome'] ?? ''),
+        'tipo_imagem' => (string) ($row['tipo_imagem'] ?? ''),
+        'responsavel' => (string) ($row['responsavel'] ?? 'Sem colaborador'),
+        'inicio_em' => $inicioEm,
+        'dias_no_status' => $dias,
+        'tempo_label' => $dias === null ? '-' : ($dias . ' ' . ($dias === 1 ? 'dia' : 'dias')),
+    ];
+}
+
+function operacional_fetch_status_data(mysqli $conn, int $funcaoId, string $tipoImagem): array
+{
+    $data = [
+        'counts' => [],
+        'details' => [],
+        'available_images' => [],
+    ];
+
+    $effectiveExec = operacional_effective_function_expr('fi', 'ico');
+    [$whereExec, $typesExec, $valuesExec] = operacional_build_effective_filter_sql($funcaoId, $tipoImagem, $effectiveExec);
+    $statusCase = operacional_status_case_sql('fi.status');
+
+    $sqlExec = "
+        SELECT
+            {$effectiveExec} AS funcao_id,
+            'execution' AS origem,
+            {$statusCase} AS status_key,
+            fi.idfuncao_imagem AS item_id,
+            ico.idimagens_cliente_obra AS imagem_id,
+            ico.imagem_nome,
+            ico.tipo_imagem,
+            o.idobra AS obra_id,
+            COALESCE(NULLIF(TRIM(o.nomenclatura), ''), NULLIF(TRIM(o.nome_obra), ''), CONCAT('Obra ', o.idobra)) AS obra_nome,
+            COALESCE(NULLIF(TRIM(c.nome_colaborador), ''), 'Sem colaborador') AS responsavel,
+            (
+                SELECT MAX(la.data)
+                FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND LOWER(TRIM(la.status_novo)) = LOWER(TRIM(fi.status))
+            ) AS inicio_em
+        FROM funcao_imagem fi
+        INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+        INNER JOIN obra o ON o.idobra = ico.obra_id
+        LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+        WHERE {$statusCase} IS NOT NULL
+          AND ico.obra_id != 74
+          AND fi.funcao_id NOT IN (9, 6)
+          AND o.status_obra = 0
+          AND (fi.colaborador_id IS NULL OR fi.colaborador_id NOT IN (21, 15))
+          AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+          AND NOT (
+              fi.funcao_id = 4
+              AND ico.status_id = 1
+              AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+          )
+          {$whereExec}
+        ORDER BY obra_nome ASC, ico.idimagens_cliente_obra ASC, fi.idfuncao_imagem ASC
+    ";
+
+    $stmtExec = $conn->prepare($sqlExec);
+    if ($stmtExec) {
+        if ($typesExec !== '') {
+            $stmtExec->bind_param($typesExec, ...$valuesExec);
+        }
+        $stmtExec->execute();
+        $resultExec = $stmtExec->get_result();
+        while ($resultExec && ($row = $resultExec->fetch_assoc())) {
+            operacional_append_status_detail($data, $row);
+        }
+        $stmtExec->close();
+    }
+
+    if (operacional_table_exists($conn, 'imagem_funcao_planejada')) {
+        $effectivePlan = operacional_effective_function_expr('ifp', 'ico');
+        [$wherePlan, $typesPlan, $valuesPlan] = operacional_build_effective_filter_sql($funcaoId, $tipoImagem, $effectivePlan);
+        $sqlPlan = "
+            SELECT
+                {$effectivePlan} AS funcao_id,
+                'planned' AS origem,
+                'planejada' AS status_key,
+                ifp.idimagem_funcao_planejada AS item_id,
+                ico.idimagens_cliente_obra AS imagem_id,
+                ico.imagem_nome,
+                ico.tipo_imagem,
+                o.idobra AS obra_id,
+                COALESCE(NULLIF(TRIM(o.nomenclatura), ''), NULLIF(TRIM(o.nome_obra), ''), CONCAT('Obra ', o.idobra)) AS obra_nome,
+                'Sem colaborador' AS responsavel,
+                COALESCE(
+                    (
+                        SELECT MIN(ifph.created_at)
+                        FROM imagem_funcao_planejada_historico ifph
+                        WHERE ifph.imagem_funcao_planejada_id = ifp.idimagem_funcao_planejada
+                    ),
+                    ifp.created_at
+                ) AS inicio_em
+            FROM imagem_funcao_planejada ifp
+            INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = ifp.imagem_id
+            INNER JOIN obra o ON o.idobra = ico.obra_id
+            WHERE ifp.status = 'TODO'
+              AND ifp.funcao_imagem_id IS NULL
+              AND ifp.funcao_id NOT IN (9, 6)
+              AND ico.obra_id != 74
+              AND o.status_obra = 0
+              {$wherePlan}
+            ORDER BY obra_nome ASC, ico.idimagens_cliente_obra ASC
+        ";
+
+        $stmtPlan = $conn->prepare($sqlPlan);
+        if ($stmtPlan) {
+            if ($typesPlan !== '') {
+                $stmtPlan->bind_param($typesPlan, ...$valuesPlan);
+            }
+            $stmtPlan->execute();
+            $resultPlan = $stmtPlan->get_result();
+            while ($resultPlan && ($row = $resultPlan->fetch_assoc())) {
+                operacional_append_status_detail($data, $row);
+            }
+            $stmtPlan->close();
+        }
+    }
+
+    if ($funcaoId === 0 || $funcaoId === 4) {
+        $whereP00 = '';
+        $typesP00 = '';
+        $valuesP00 = [];
+        if ($tipoImagem !== '') {
+            $whereP00 = ' AND ico.tipo_imagem = ?';
+            $typesP00 = 's';
+            $valuesP00[] = $tipoImagem;
+        }
+
+        $sqlP00 = "
+            SELECT
+                4 AS funcao_id,
+                'p00' AS origem,
+                'p00' AS status_key,
+                MIN(fi.idfuncao_imagem) AS item_id,
+                ico.idimagens_cliente_obra AS imagem_id,
+                ico.imagem_nome,
+                ico.tipo_imagem,
+                o.idobra AS obra_id,
+                COALESCE(NULLIF(TRIM(o.nomenclatura), ''), NULLIF(TRIM(o.nome_obra), ''), CONCAT('Obra ', o.idobra)) AS obra_nome,
+                COALESCE(NULLIF(TRIM(MAX(c.nome_colaborador)), ''), 'Sem colaborador') AS responsavel,
+                (
+                    SELECT MAX(hi.data_movimento)
+                    FROM historico_imagens hi
+                    WHERE hi.imagem_id = ico.idimagens_cliente_obra
+                      AND hi.status_id = 1
+                ) AS inicio_em
+            FROM imagens_cliente_obra ico
+            INNER JOIN obra o ON o.idobra = ico.obra_id
+            INNER JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra AND fi.funcao_id = 4
+            LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+            WHERE ico.status_id = 1
+              AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+              AND ico.obra_id != 74
+              AND o.status_obra = 0
+              AND (fi.colaborador_id IS NULL OR fi.colaborador_id NOT IN (21, 15, 7, 34))
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM imagem_funcao_planejada ifp_active
+                  WHERE ifp_active.imagem_id = ico.idimagens_cliente_obra
+                    AND ifp_active.funcao_id = 4
+                    AND ifp_active.status = 'TODO'
+                    AND ifp_active.funcao_imagem_id IS NULL
+              )
+              {$whereP00}
+            GROUP BY
+                ico.idimagens_cliente_obra,
+                ico.imagem_nome,
+                ico.tipo_imagem,
+                o.idobra,
+                o.nomenclatura,
+                o.nome_obra
+            ORDER BY obra_nome ASC, ico.idimagens_cliente_obra ASC
+        ";
+
+        $stmtP00 = $conn->prepare($sqlP00);
+        if ($stmtP00) {
+            if ($typesP00 !== '') {
+                $stmtP00->bind_param($typesP00, ...$valuesP00);
+            }
+            $stmtP00->execute();
+            $resultP00 = $stmtP00->get_result();
+            while ($resultP00 && ($row = $resultP00->fetch_assoc())) {
+                operacional_append_status_detail($data, $row);
+            }
+            $stmtP00->close();
+        }
+    }
+
+    foreach ($data['details'] as &$functionGroup) {
+        ksort($functionGroup['obras'], SORT_NATURAL | SORT_FLAG_CASE);
+        $functionGroup['obras'] = array_values($functionGroup['obras']);
+    }
+    unset($functionGroup);
+
+    return $data;
+}
+
 function operacional_fetch_consumption_dataset(mysqli $conn, array $filters, int $functionId): array
 {
     $tipoImagem = (string) ($filters['tipo_imagem'] ?? '');
@@ -449,8 +709,8 @@ $filterOptions = heatmap_fetch_filter_options($conn);
 $filterOptions['funcoes'] = array_values(array_filter($filterOptions['funcoes'], function (array $function): bool {
     return (int) ($function['id'] ?? 0) !== 9;
 }));
-$queueCounts = operacional_fetch_queue_counts($conn, $filters['funcao_id'], $filters['tipo_imagem']);
-$queueDetails = operacional_fetch_queue_details($conn, $filters['funcao_id'], $filters['tipo_imagem']);
+$statusData = operacional_fetch_status_data($conn, $filters['funcao_id'], $filters['tipo_imagem']);
+$finalizationQueueTotal = operacional_fetch_finalization_queue_total($conn);
 $monthlyGoals = operacional_fetch_monthly_goals($conn, $filters['mes'], $filters['ano'], $filters['funcao_id']);
 $trendDataset = $filters['funcao_id'] > 0
     ? operacional_fetch_consumption_dataset($conn, $filters, $filters['funcao_id'])
@@ -460,10 +720,7 @@ $functionIds = [];
 foreach ($filterOptions['funcoes'] as $function) {
     $functionIds[(int) $function['id']] = true;
 }
-foreach (array_keys($queueCounts['planned']) as $functionId) {
-    $functionIds[(int) $functionId] = true;
-}
-foreach (array_keys($queueCounts['execution']) as $functionId) {
+foreach (array_keys($statusData['counts']) as $functionId) {
     $functionIds[(int) $functionId] = true;
 }
 if ($filters['funcao_id'] > 0) {
@@ -481,9 +738,26 @@ foreach (array_keys($functionIds) as $functionId) {
         continue;
     }
 
-    $planned = $queueCounts['planned'][$functionId] ?? 0;
-    $execution = $queueCounts['execution'][$functionId] ?? 0;
-    $total = $planned + $execution;
+    $statusCounts = array_merge([
+        'planejada' => 0,
+        'p00' => 0,
+        'nao_iniciado' => 0,
+        'em_andamento' => 0,
+        'em_aprovacao' => 0,
+        'ajuste' => 0,
+        'aprovado_com_ajustes' => 0,
+    ], $statusData['counts'][$functionId] ?? []);
+    $planned = $statusCounts['planejada'];
+    $execution = $statusCounts['nao_iniciado'];
+    $total = $functionId === 4 && $filters['tipo_imagem'] === ''
+        ? $finalizationQueueTotal
+        : ($functionId === 4
+            ? count($statusData['available_images'][$functionId] ?? [])
+            : $planned + $execution);
+    $productionTotal = $statusCounts['em_andamento']
+        + $statusCounts['em_aprovacao']
+        + $statusCounts['ajuste']
+        + $statusCounts['aprovado_com_ajustes'];
     $consumptionData = operacional_fetch_consumption_dataset($conn, $filters, $functionId);
     $dailyConsumption = (float) $consumptionData['media_diaria'];
     $historicalGoal = $dailyConsumption > 0 ? max(1, (int) round($dailyConsumption * 20)) : 0;
@@ -504,7 +778,9 @@ foreach (array_keys($functionIds) as $functionId) {
         'nome' => $functionCatalog[$functionId]['nome'],
         'planejada' => $planned,
         'nao_iniciado' => $execution,
+        'contagens_status' => $statusCounts,
         'fila_total' => $total,
+        'producao_total' => $productionTotal,
         'meta_mensal' => $monthlyGoal,
         'meta_origem' => isset($monthlyGoals[$functionId]) ? 'metas' : 'historico',
         'abastecimento' => $supplyPercent,
@@ -514,7 +790,7 @@ foreach (array_keys($functionIds) as $functionId) {
         'cobertura_label' => $coverage === null ? '-' : number_format($coverage, 1, ',', '') . ' ' . ($coverage == 1.0 ? 'dia' : 'dias'),
         'status' => $status['key'],
         'status_label' => $status['label'],
-        'detalhes' => $queueDetails[$functionId] ?? ['obras' => []],
+        'detalhes' => $statusData['details'][$functionId] ?? ['obras' => []],
     ];
 }
 

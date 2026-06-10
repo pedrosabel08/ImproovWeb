@@ -63,7 +63,7 @@
 
   function fetchData() {
     const params = new URLSearchParams(new FormData(form));
-    functionsBody.innerHTML = '<tr><td colspan="7" class="op-empty">Carregando...</td></tr>';
+    functionsBody.innerHTML = '<tr><td colspan="9" class="op-empty">Carregando...</td></tr>';
 
     fetch(`dados.php?${params.toString()}`)
       .then((response) => {
@@ -83,7 +83,7 @@
       })
       .catch((error) => {
         console.error("Dashboard Operacional:", error);
-        functionsBody.innerHTML = '<tr><td colspan="7" class="op-empty">Erro ao carregar dados.</td></tr>';
+        functionsBody.innerHTML = '<tr><td colspan="9" class="op-empty">Erro ao carregar dados.</td></tr>';
       });
   }
 
@@ -120,17 +120,19 @@
 
   function renderTable(rows) {
     if (!rows.length) {
-      functionsBody.innerHTML = '<tr><td colspan="7" class="op-empty">Nenhuma função encontrada para os filtros.</td></tr>';
+      functionsBody.innerHTML = '<tr><td colspan="9" class="op-empty">Nenhuma função encontrada para os filtros.</td></tr>';
       return;
     }
 
-    const maxQueue = Math.max(...rows.map((row) => Number(row.fila_total || 0)), 1);
     functionsBody.innerHTML = rows
       .map((row) => {
-        const width = Math.max(4, Math.min(100, (Number(row.fila_total || 0) / maxQueue) * 100));
+        const queueTotal = Number(row.fila_total || 0);
+        const monthlyGoal = Number(row.meta_mensal || 0);
+        const width = monthlyGoal > 0 ? Math.min(100, (queueTotal / monthlyGoal) * 100) : 0;
         const functionId = String(row.id);
         const isExpanded = expandedFunctions.has(functionId);
         const detailId = `op-detail-${functionId}`;
+        const counts = row.contagens_status || {};
 
         return `
           <tr class="op-function-row ${isExpanded ? "is-expanded" : ""}" data-function-id="${escapeHtml(functionId)}" aria-expanded="${isExpanded ? "true" : "false"}" aria-controls="${detailId}">
@@ -143,8 +145,9 @@
                 ${escapeHtml(row.nome)}
               </span>
             </td>
-            <td>${formatNumber(row.planejada)}</td>
-            <td>${formatNumber(row.nao_iniciado)}</td>
+            <td>${formatNumber(counts.planejada)}</td>
+            <td>${formatNumber(counts.p00)}</td>
+            <td>${formatNumber(counts.nao_iniciado)}</td>
             <td>
               <span class="op-progress">
                 <span>${formatNumber(row.fila_total)}</span>
@@ -152,11 +155,12 @@
               </span>
             </td>
             <td title="Origem: ${row.meta_origem === "metas" ? "tabela metas" : "média diária x 20 dias úteis"}">${formatNumber(row.meta_mensal)}</td>
+            <td class="op-production-total">${formatNumber(row.producao_total)}</td>
             <td class="${statusColor(row.status)}" title="Cobertura em dias: ${escapeHtml(row.cobertura_label || "-")}">${escapeHtml(row.abastecimento_label || "-")}</td>
             <td><span class="op-badge ${escapeHtml(row.status)}">${escapeHtml(row.status_label)}</span></td>
           </tr>
           <tr id="${detailId}" class="op-detail-row ${isExpanded ? "is-open" : ""}">
-            <td colspan="7">${renderDetailsDrawer(row)}</td>
+            <td colspan="9">${renderDetailsDrawer(row)}</td>
           </tr>`;
       })
       .join("");
@@ -164,8 +168,17 @@
 
   function renderDetailsDrawer(row) {
     const obras = row?.detalhes?.obras || [];
+    const counts = row?.contagens_status || {};
+    const productionSummary = `
+      <div class="op-production-summary" aria-label="Detalhamento das imagens em produção">
+        ${renderProductionStat("Em andamento", counts.em_andamento, "em_andamento")}
+        ${renderProductionStat("Em aprovação", counts.em_aprovacao, "em_aprovacao")}
+        ${renderProductionStat("Em ajuste", counts.ajuste, "ajuste")}
+        ${renderProductionStat("Aprovado c/ ajustes", counts.aprovado_com_ajustes, "aprovado_com_ajustes")}
+      </div>`;
+
     if (!obras.length) {
-      return '<div class="op-drawer"><div class="op-drawer-empty">Nenhuma imagem não iniciada encontrada para esta função.</div></div>';
+      return `<div class="op-drawer">${productionSummary}<div class="op-drawer-empty">Nenhuma imagem encontrada para esta função.</div></div>`;
     }
 
     let counter = 1;
@@ -174,14 +187,13 @@
         const items = (obra.itens || [])
           .map((item) => {
             const index = counter++;
-            const sourceLabel = item.origem === "planned" ? "Planejada" : "Não iniciado";
             return `
               <li class="op-drawer-item">
                 <span class="op-drawer-index">${index}.</span>
                 <span class="op-drawer-image">${escapeHtml(item.imagem_nome || "-")}</span>
                 <span class="op-drawer-person">${escapeHtml(item.responsavel || "Sem colaborador")}</span>
                 <span class="op-drawer-time">${escapeHtml(item.tempo_label || "-")}</span>
-                <span class="op-drawer-source ${escapeHtml(item.origem || "")}">${sourceLabel}</span>
+                <span class="op-drawer-source status-${escapeHtml(item.status_key || "")}">${escapeHtml(item.status_label || "-")}</span>
               </li>`;
           })
           .join("");
@@ -194,7 +206,15 @@
       })
       .join("");
 
-    return `<div class="op-drawer">${groups}</div>`;
+    return `<div class="op-drawer">${productionSummary}${groups}</div>`;
+  }
+
+  function renderProductionStat(label, value, statusKey) {
+    return `
+      <div class="op-production-stat status-${escapeHtml(statusKey)}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${formatNumber(value)}</strong>
+      </div>`;
   }
 
   function renderAlerts(alerts) {

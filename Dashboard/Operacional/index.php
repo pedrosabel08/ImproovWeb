@@ -179,20 +179,33 @@ $conn->close();
                 </div>
                 <div class="op-table-wrap">
                     <table class="op-table">
+                        <colgroup>
+                            <col class="op-col-function">
+                            <col class="op-col-planned">
+                            <col class="op-col-p00">
+                            <col class="op-col-not-started">
+                            <col class="op-col-queue">
+                            <col class="op-col-goal">
+                            <col class="op-col-production">
+                            <col class="op-col-supply">
+                            <col class="op-col-classification">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Função</th>
                                 <th>Planejada</th>
+                                <th>P00</th>
                                 <th>Não iniciado</th>
-                                <th>Fila total</th>
+                                <th>Total da fila operacional</th>
                                 <th>Meta mensal</th>
+                                <th>Em produção</th>
                                 <th>Abastecimento</th>
-                                <th>Status</th>
+                                <th>Classificação</th>
                             </tr>
                         </thead>
                         <tbody id="functionsBody">
                             <tr>
-                                <td colspan="7" class="op-empty">Carregando...</td>
+                                <td colspan="9" class="op-empty">Carregando...</td>
                             </tr>
                         </tbody>
                     </table>

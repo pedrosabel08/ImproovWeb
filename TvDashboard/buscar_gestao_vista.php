@@ -8,11 +8,13 @@
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/fila_operacional.php';
 
 $conn->query("SET SESSION sql_mode = (SELECT REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
 
 $mes = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');
 $ano = isset($_GET['ano']) ? (int) $_GET['ano'] : (int) date('Y');
+$finalizationQueueTotal = operacional_fetch_finalization_queue_total($conn);
 
 $fimMesDia = cal_days_in_month(CAL_GREGORIAN, $mes, $ano);
 $fimMesData = sprintf('%04d-%02d-%02d', $ano, $mes, $fimMesDia);
@@ -522,6 +524,7 @@ foreach ($alterIds as $cid) {
 }
 
 echo json_encode([
+  'fila_operacional_finalizacao' => $finalizationQueueTotal,
   'perspectivas' => [
     'funcionarios'    => $perspFunc,
     'meta_total'      => $metaPerspTotal,

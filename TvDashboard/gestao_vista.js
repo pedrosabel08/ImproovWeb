@@ -443,6 +443,9 @@ function buildSummaryBar(dados) {
     : (perspectivas.meta_total ?? 0) + (plantas_humanizadas.meta_total ?? 0);
 
   const statusLabel = isTv ? "Status Perspectivas" : "Status Geral do Mês";
+  const finalizationQueueTotal = Number(
+    dados.fila_operacional_finalizacao || 0,
+  );
 
   document.getElementById("gvSummaryBar").innerHTML = `
     <div class="gv-kpi gv-kpi--status">
@@ -452,6 +455,10 @@ function buildSummaryBar(dados) {
         <span class="gv-kpi-status-val ${statusCls}">${statusTxt}</span>
         <span class="gv-kpi-status-sub">${statusSub}</span>
       </div>
+    </div>
+    <div class="gv-kpi gv-kpi--queue">
+      <span class="gv-kpi-label">Total de imagens a produzir</span>
+      <span class="gv-kpi-value accent">${finalizationQueueTotal}</span>
     </div>
     <div class="gv-kpi">
       <span class="gv-kpi-label">Produção Total</span>

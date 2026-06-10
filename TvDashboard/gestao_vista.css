@@ -173,10 +173,13 @@ body {
   min-width: 0;
 }
 .gv-kpi--status {
-  flex: 1.5;
+  flex: 1.4;
   flex-direction: row;
   align-items: center;
   gap: 12px;
+}
+.gv-kpi--queue {
+  flex: 1.1;
 }
 .gv-kpi-icon {
   width: 44px;
@@ -1207,10 +1210,6 @@ body {
   }
   .gv-kpi {
     padding: 7px 9px;
-  }
-  .gv-kpi:last-child {
-    grid-column: 1 / 3;
-    text-align: center;
   }
   .gv-kpi--status {
     grid-column: 1 / -1;

@@ -1937,6 +1937,8 @@ document.addEventListener("DOMContentLoaded", () => {
           entregaAtualId = null;
           entregaDados = null;
           carregarKanban();
+          if (window.atualizarPendenciasEntrega) window.atualizarPendenciasEntrega(true);
+          if (window.refreshSidebarCounts) window.refreshSidebarCounts();
         } else {
           alert("Erro ao adicionar: " + (json.error || "desconhecido"));
         }
@@ -2737,10 +2739,10 @@ function carregarImagens() {
   if (!obraId || !statusId) {
     document.getElementById("imagens_container").innerHTML =
       "<p>Selecione uma obra e uma etapa.</p>";
-    return;
+    return Promise.resolve();
   }
 
-  fetch(BASE + `get_imagens.php?obra_id=${obraId}&status_id=${statusId}`)
+  return fetch(BASE + `get_imagens.php?obra_id=${obraId}&status_id=${statusId}`)
     .then((res) => res.json())
     .then((imagens) => {
       const container = document.getElementById("imagens_container");
@@ -2817,6 +2819,252 @@ function carregarImagens() {
     });
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function cssEscapeValue(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(String(value));
+  }
+  return String(value).replace(/["\\]/g, "\\$&");
+}
+
+function formatarDataCurta(value) {
+  if (!value) return "-";
+  return formatarDataHora(value);
+}
+
+function hojeInputDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function agruparPendenciasEntrega(pendencias) {
+  const grupos = new Map();
+
+  pendencias.forEach((p) => {
+    const key = `${p.obra_id}:${p.status_id}`;
+    if (!grupos.has(key)) {
+      grupos.set(key, {
+        key,
+        obra_id: p.obra_id,
+        status_id: p.status_id,
+        nomenclatura: p.nomenclatura,
+        nome_etapa: p.nome_etapa,
+        entregas_existentes: Array.isArray(p.entregas_existentes)
+          ? p.entregas_existentes
+          : [],
+        pendencias: [],
+      });
+    }
+    grupos.get(key).pendencias.push(p);
+  });
+
+  return Array.from(grupos.values());
+}
+
+function pendenciaImageIdsFromItem(item) {
+  return String(item.dataset.imagemIds || "")
+    .split(",")
+    .map((id) => parseInt(id, 10))
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
+async function atualizarPendenciasEntrega(forceOpen = false) {
+  const panel = document.getElementById("pendenciasEntregaPanel");
+  const list = document.getElementById("pendenciasEntregaList");
+  if (!panel || !list) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const shouldOpen = forceOpen || params.get("pendencias") === "1";
+  if (!shouldOpen && panel.hidden) return;
+
+  try {
+    const res = await fetch(BASE + "listar_pendencias.php", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await res.json();
+    const pendencias = data && data.success && Array.isArray(data.pendencias)
+      ? data.pendencias
+      : [];
+
+    panel.hidden = false;
+    if (!pendencias.length) {
+      list.innerHTML = '<p class="delivery-pending-empty">Nenhuma pendência aberta.</p>';
+      return;
+    }
+
+    const grupos = agruparPendenciasEntrega(pendencias);
+
+    list.innerHTML = grupos
+      .map((grupo) => {
+        const entregas = grupo.entregas_existentes;
+        const imageIds = grupo.pendencias
+          .map((p) => parseInt(p.imagem_id, 10))
+          .filter((id) => Number.isInteger(id) && id > 0);
+        const funcoes = Array.from(
+          new Set(grupo.pendencias.map((p) => p.nome_funcao).filter(Boolean)),
+        );
+        const datas = grupo.pendencias
+          .map((p) => p.criada_em)
+          .filter(Boolean)
+          .sort();
+        const periodo =
+          datas.length > 1
+            ? `${formatarDataCurta(datas[0])} - ${formatarDataCurta(datas[datas.length - 1])}`
+            : formatarDataCurta(datas[0]);
+        const imagensHtml = grupo.pendencias
+          .map(
+            (p) =>
+              `<span title="${escapeHtml(p.imagem_nome)}">${escapeHtml(p.imagem_nome || "Imagem sem nome")}</span>`,
+          )
+          .join("");
+        const selectHtml = entregas.length
+          ? `<select class="delivery-pending-select" data-pending-entrega-select="${escapeHtml(grupo.key)}">
+              ${entregas
+                .map((e) => {
+                  const label = `#${e.id} · ${formatarDataCurta(e.data_recebimento)} · ${e.total_itens} img`;
+                  return `<option value="${e.id}">${escapeHtml(label)}</option>`;
+                })
+                .join("")}
+            </select>
+            <button type="button" class="btn-action btn-secondary" data-pending-add="${escapeHtml(grupo.key)}">
+              <i class="fa-solid fa-plus"></i> Adicionar lote
+            </button>`
+          : "";
+
+        return `<article class="delivery-pending-item" data-pending-id="${escapeHtml(grupo.key)}" data-obra-id="${grupo.obra_id}" data-status-id="${grupo.status_id}" data-imagem-ids="${escapeHtml(imageIds.join(","))}">
+          <div class="delivery-pending-main">
+            <p class="delivery-pending-title">
+              <span>${escapeHtml(grupo.nomenclatura || "Obra")}</span>
+              <strong>${escapeHtml(grupo.nome_etapa || "Etapa")}</strong>
+              <small>${grupo.pendencias.length} imagem(ns)</small>
+            </p>
+            <div class="delivery-pending-meta">
+              <span>${escapeHtml(funcoes.join(", ") || "Função")}</span>
+              <span>${periodo}</span>
+            </div>
+            <div class="delivery-pending-images">${imagensHtml}</div>
+          </div>
+          <div class="delivery-pending-actions">
+            ${selectHtml}
+            <button type="button" class="btn-action btn-primary" data-pending-create="${escapeHtml(grupo.key)}">
+              <i class="fa-solid fa-box"></i> Criar entrega
+            </button>
+          </div>
+        </article>`;
+      })
+      .join("");
+  } catch (err) {
+    console.error("Erro ao carregar pendências de entrega:", err);
+    panel.hidden = false;
+    list.innerHTML = '<p class="delivery-pending-empty">Erro ao carregar pendências.</p>';
+  }
+}
+
+window.atualizarPendenciasEntrega = atualizarPendenciasEntrega;
+
+async function abrirNovaEntregaParaPendencia(item) {
+  const obraId = item.dataset.obraId;
+  const statusId = item.dataset.statusId;
+  const imagemIds = pendenciaImageIdsFromItem(item);
+  const modal = document.getElementById("modalAdicionarEntrega");
+  const obraSelect = document.getElementById("obra_id");
+  const statusSelect = document.getElementById("status_id");
+  const dataRecebimento = document.getElementById("data_recebimento");
+
+  if (!modal || !obraSelect || !statusSelect) return;
+
+  obraSelect.value = obraId;
+  statusSelect.value = statusId;
+  if (dataRecebimento && !dataRecebimento.value) {
+    dataRecebimento.value = hojeInputDate();
+  }
+
+  modal.classList.add("is-open");
+  await carregarImagens();
+
+  let firstSelected = null;
+  imagemIds.forEach((imagemId) => {
+    const checkbox = document.querySelector(
+      `#imagens_container input[name="imagem_ids[]"][value="${cssEscapeValue(imagemId)}"]`,
+    );
+    if (checkbox) {
+      checkbox.checked = true;
+      if (!firstSelected) firstSelected = checkbox;
+    }
+  });
+  if (firstSelected) {
+    firstSelected.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  atualizarPrazoPrevisto();
+}
+
+async function adicionarPendenciaEmEntrega(item) {
+  const imagemIds = pendenciaImageIdsFromItem(item);
+  const pendingId = item.dataset.pendingId;
+  const select = document.querySelector(
+    `[data-pending-entrega-select="${cssEscapeValue(pendingId)}"]`,
+  );
+  const entregaId = select ? parseInt(select.value, 10) : 0;
+  if (!entregaId || !imagemIds.length) return;
+
+  try {
+    const res = await fetch(BASE + "add_imagem_entrega_id.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ entrega_id: entregaId, imagem_ids: imagemIds }),
+    });
+    const json = await res.json();
+    if (!json.success) {
+      alert("Erro ao adicionar: " + (json.error || "desconhecido"));
+      return;
+    }
+
+    await atualizarPendenciasEntrega(true);
+    if (window.carregarKanban) window.carregarKanban();
+    if (window.refreshSidebarCounts) window.refreshSidebarCounts();
+  } catch (err) {
+    console.error("Erro ao resolver pendência em entrega existente:", err);
+    alert("Erro ao adicionar imagem na entrega.");
+  }
+}
+
+document.addEventListener("click", function (event) {
+  const closeBtn = event.target.closest("#btnFecharPendenciasEntrega");
+  if (closeBtn) {
+    const panel = document.getElementById("pendenciasEntregaPanel");
+    if (panel) panel.hidden = true;
+    return;
+  }
+
+  const createBtn = event.target.closest("[data-pending-create]");
+  if (createBtn) {
+    const item = createBtn.closest(".delivery-pending-item");
+    if (item) abrirNovaEntregaParaPendencia(item);
+    return;
+  }
+
+  const addBtn = event.target.closest("[data-pending-add]");
+  if (addBtn) {
+    const item = addBtn.closest(".delivery-pending-item");
+    if (item) adicionarPendenciaEmEntrega(item);
+  }
+});
+
+atualizarPendenciasEntrega();
+
 // enviar form via AJAX
 document
   .getElementById("formAdicionarEntrega")
@@ -2832,10 +3080,13 @@ document
       .then((data) => {
         if (data.success) {
           alert("Entrega adicionada com sucesso!");
-          // Aqui você pode atualizar a tabela, fechar modal, etc.
+          document.getElementById("modalAdicionarEntrega").classList.remove("is-open");
           document.getElementById("formAdicionarEntrega").reset();
           document.getElementById("imagens_container").innerHTML =
             "<p>Selecione uma obra e uma etapa.</p>";
+          atualizarPendenciasEntrega(true);
+          if (window.carregarKanban) window.carregarKanban();
+          if (window.refreshSidebarCounts) window.refreshSidebarCounts();
         } else {
           alert("Erro: " + data.msg);
         }
@@ -3398,6 +3649,8 @@ if (btnAdicionarImagem) {
         entregaAtualId = null;
         entregaDados = null;
         carregarKanban();
+        if (window.atualizarPendenciasEntrega) window.atualizarPendenciasEntrega(true);
+        if (window.refreshSidebarCounts) window.refreshSidebarCounts();
       } else {
         alert("Erro: " + (json.error || "desconhecido"));
       }

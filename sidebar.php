@@ -10,9 +10,23 @@ $__absWarnSeconds = defined('IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS') ? (int) IMP
 $__loginTs = isset($_SESSION['login_ts']) ? (int) $_SESSION['login_ts'] : null;
 
 $__reqUri = $_SERVER['REQUEST_URI'] ?? '';
-$__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~^/flow/ImproovWeb(?:/|$)~', $__reqUri))
-    ? '/flow/ImproovWeb/'
-    : '/ImproovWeb/';
+$__reqPath = parse_url($__reqUri, PHP_URL_PATH) ?: '';
+if (preg_match('~^(/flow/ImproovWeb)(?:/|$)~i', $__reqPath, $__baseMatch)) {
+    $__basePath = rtrim($__baseMatch[1], '/') . '/';
+} elseif (preg_match('~^(/ImproovWeb)(?:/|$)~i', $__reqPath, $__baseMatch)) {
+    $__basePath = rtrim($__baseMatch[1], '/') . '/';
+} else {
+    $__basePath = '/ImproovWeb/';
+}
+unset($__baseMatch);
+
+if (!function_exists('improov_sidebar_url')) {
+    function improov_sidebar_url(string $path = ''): string
+    {
+        $base = $GLOBALS['__basePath'] ?? '/ImproovWeb/';
+        return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+}
 
 if (!isset($obras) || !is_array($obras)) {
     $obras = [];
@@ -178,9 +192,13 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             class="fa-solid fa-tv"></i><span> TV Dashboard</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <!-- <li><a title="Obras" href="https://improov.com.br/flow/ImproovWeb/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
-                    <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i
+                    <li><a title="Entregas" href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>"
+                            data-module-link="entregas"
+                            data-default-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>"
+                            data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i
                                 class="fa-solid fa-truck-fast"></i><span> Entregas</span><span class="sidebar-badge"
-                                data-module="entregas" aria-hidden="true"></span></a></li>
+                                data-module="entregas" aria-hidden="true"></span><span class="sidebar-badge sidebar-badge--warning sidebar-badge--offset"
+                                data-module="entregas_pendencias" aria-hidden="true"></span></a></li>
                     <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
                 <?php endif; ?>
             </ul>
@@ -344,9 +362,15 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
 
             // Do mesmo jeito que seu script/sidebar.js:
             // se estiver em /flow/ImproovWeb/ usa essa base, senão usa /ImproovWeb/
-            var basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb')) ?
-                '/flow/ImproovWeb/' :
-                '/ImproovWeb/';
+            var pathLower = window.location.pathname.toLowerCase();
+            var flowIdx = pathLower.indexOf('/flow/improovweb');
+            var rootIdx = pathLower.indexOf('/improovweb');
+            var basePath = '/ImproovWeb/';
+            if (flowIdx === 0) {
+                basePath = window.location.pathname.slice(0, '/flow/improovweb'.length) + '/';
+            } else if (rootIdx === 0) {
+                basePath = window.location.pathname.slice(0, '/improovweb'.length) + '/';
+            }
 
             var endpoint = window.location.origin + basePath + 'system_version.php';
 
@@ -404,9 +428,15 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
 
             // envia de forma assíncrona; o endpoint ignora se usuário não autenticado
             // usa o caminho absoluto para evitar requests relativos incorretos
-            const basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb')) ?
-                '/flow/ImproovWeb/' :
-                '/ImproovWeb/';
+            const pathLower = window.location.pathname.toLowerCase();
+            const flowIdx = pathLower.indexOf('/flow/improovweb');
+            const rootIdx = pathLower.indexOf('/improovweb');
+            let basePath = '/ImproovWeb/';
+            if (flowIdx === 0) {
+                basePath = window.location.pathname.slice(0, '/flow/improovweb'.length) + '/';
+            } else if (rootIdx === 0) {
+                basePath = window.location.pathname.slice(0, '/improovweb'.length) + '/';
+            }
             const endpoint = window.location.origin + basePath + 'atualiza_log_tela.php';
             fetch(endpoint, {
                 method: 'POST',

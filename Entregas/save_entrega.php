@@ -1,7 +1,9 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/prazo_entrega_helper.php';
+require_once __DIR__ . '/pendencias_entrega_helper.php';
 
 $obra_id = $_POST['obra_id'] ?? null;
 $status_id = $_POST['status_id'] ?? null;
@@ -43,6 +45,7 @@ if (!$is_p00_delivery && empty($imagem_ids)) {
     exit;
 }
 
+entregas_pendencias_ensure_schema($conn);
 $conn->begin_transaction();
 
 try {
@@ -63,9 +66,15 @@ try {
     } else {
         // Inserir itens
         $stmtItem = $conn->prepare("INSERT INTO entregas_itens (entrega_id, imagem_id, data_prevista) VALUES (?, ?, ?)");
+        $pendenciasResolvidas = 0;
+        $resolvidaPor = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
         foreach ($imagem_ids as $imagem_id) {
             $stmtItem->bind_param("iis", $entrega_id, $imagem_id, $prazo);
             $stmtItem->execute();
+            $entrega_item_id = (int) $stmtItem->insert_id;
+            if ($entrega_item_id > 0) {
+                $pendenciasResolvidas += resolver_pendencias_entrega($conn, $entrega_id, $imagem_id, $entrega_item_id, $resolvidaPor);
+            }
         }
         $stmtItem->close();
     }
@@ -98,7 +107,7 @@ try {
     }
 
     $conn->commit();
-    echo json_encode(['success' => true, 'entrega_id' => $entrega_id]);
+    echo json_encode(['success' => true, 'entrega_id' => $entrega_id, 'pendencias_resolvidas' => $pendenciasResolvidas ?? 0]);
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(['success' => false, 'msg' => 'Erro: ' . $e->getMessage()]);

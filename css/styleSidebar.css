@@ -362,6 +362,11 @@ button#menuButton:active {
   background: #10b981;
 }
 
+.sidebar .sidebar-badge--warning {
+  background: #f59e0b;
+  color: #111827;
+}
+
 /* ── Modo claro via media query ────────────────────────────── */
 @media (prefers-color-scheme: light) {
   :root {

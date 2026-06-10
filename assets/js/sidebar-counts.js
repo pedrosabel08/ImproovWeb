@@ -35,6 +35,25 @@
           );
           if (el) setBadge(el, data.modules[k]);
         });
+
+        var entregasPendencias = parseInt(data.modules.entregas_pendencias) || 0;
+        var entregasBadge = document.querySelector(
+          '.sidebar-badge[data-module="entregas"]'
+        );
+        var entregasLink = document.querySelector(
+          '[data-module-link="entregas"]'
+        );
+
+        if (entregasPendencias > 0) {
+          setBadge(entregasBadge, 0);
+          if (entregasLink) {
+            var pendingHref = entregasLink.getAttribute("data-pending-href");
+            if (pendingHref) entregasLink.setAttribute("href", pendingHref);
+          }
+        } else if (entregasLink) {
+          var defaultHref = entregasLink.getAttribute("data-default-href");
+          if (defaultHref) entregasLink.setAttribute("href", defaultHref);
+        }
       }
       if (data.counts_by_obra) {
         Object.keys(data.counts_by_obra).forEach(function (obraId) {
@@ -66,7 +85,21 @@
     }
   }
 
+  window.refreshSidebarCounts = fetchCounts;
+
   document.addEventListener("DOMContentLoaded", function () {
+    document
+      .querySelectorAll(".sidebar-badge[data-href]")
+      .forEach(function (badge) {
+        badge.addEventListener("click", function (event) {
+          var href = badge.getAttribute("data-href");
+          if (!href) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.href = href;
+        });
+      });
+
     fetchCounts();
     setInterval(fetchCounts, POLL_MS);
   });

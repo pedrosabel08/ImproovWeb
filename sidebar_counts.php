@@ -7,6 +7,7 @@ require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/conexaoMain.php';
 require_once __DIR__ . '/Dashboard/onboarding_helpers.php';
 require_once __DIR__ . '/Entregas/p00_delivery_helpers.php';
+require_once __DIR__ . '/Entregas/pendencias_entrega_helper.php';
 
 // Basic auth check: require logged collaborator
 $userId = isset($_SESSION['idcolaborador']) ? intval($_SESSION['idcolaborador']) : null;
@@ -51,6 +52,14 @@ foreach (array_keys($counts_by_obra) as $obraId) {
     }
 }
 $total_ready = array_sum(array_map('intval', $counts_by_obra));
+
+$pendencias_entrega_by_obra = contar_pendencias_entrega($conn);
+foreach (array_keys($pendencias_entrega_by_obra) as $obraId) {
+    if (!improov_usuario_pode_acessar_obra($conn, (int) $obraId)) {
+        unset($pendencias_entrega_by_obra[$obraId]);
+    }
+}
+$total_pendencias_entrega = array_sum(array_map('intval', $pendencias_entrega_by_obra));
 
 $onboarding_progress = dashboard_get_onboarding_progress($conn);
 $onboarding_pending_total = 0;
@@ -139,6 +148,7 @@ if ($userId == 21) {
 
 $modules = [
     'entregas' => $total_ready,
+    'entregas_pendencias' => $total_pendencias_entrega,
     'onboarding' => $onboarding_pending_total,
     'pos_producao' => $pos_count,
     'render' => $render_count,

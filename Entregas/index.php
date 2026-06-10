@@ -108,6 +108,19 @@ $conn->close();
             </button>
         </div>
 
+        <section id="pendenciasEntregaPanel" class="delivery-pending-panel" hidden>
+            <div class="delivery-pending-header">
+                <div>
+                    <h2>Pendências de entrega</h2>
+                    <p>Imagens aprovadas que ainda não têm entrega registrada na etapa atual.</p>
+                </div>
+                <button type="button" class="btn-clear" id="btnFecharPendenciasEntrega" title="Ocultar pendências">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="pendenciasEntregaList" class="delivery-pending-list"></div>
+        </section>
+
         <section class="kpi-panel" aria-label="KPIs de entregas">
             <div class="kpi-panel-header">
                 <div class="kpi-title-row">

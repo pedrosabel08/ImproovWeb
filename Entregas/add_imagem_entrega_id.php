@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/pendencias_entrega_helper.php';
 
 // Recebe JSON: { entrega_id: int, imagem_ids: [int, ...] }
 $raw = file_get_contents('php://input');
@@ -22,6 +24,7 @@ if ($entrega_id <= 0 || count($imagem_ids) === 0) {
 }
 
 try {
+    entregas_pendencias_ensure_schema($conn);
     $conn->begin_transaction();
 
     // Verifica existência da entrega
@@ -37,6 +40,8 @@ try {
 
     $added = 0;
     $skipped = 0;
+    $pendenciasResolvidas = 0;
+    $resolvidaPor = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
 
     // Prepara statements
     $sel = $conn->prepare("SELECT idimagens_cliente_obra FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? AND obra_id = ?");
@@ -59,18 +64,34 @@ try {
         $check->execute();
         $r2 = $check->get_result();
         if ($r2->num_rows > 0) {
+            $existing = $r2->fetch_assoc();
+            $entregaItemId = isset($existing['id']) ? (int) $existing['id'] : 0;
+            if ($entregaItemId > 0) {
+                $pendenciasResolvidas += resolver_pendencias_entrega($conn, $entrega_id, $imgId, $entregaItemId, $resolvidaPor);
+            }
             $skipped++;
             continue;
         }
 
         // inserir
         $ins->bind_param('ii', $entrega_id, $imgId);
-        if ($ins->execute()) $added++;
+        if ($ins->execute()) {
+            $added++;
+            $entregaItemId = (int) $ins->insert_id;
+            if ($entregaItemId > 0) {
+                $pendenciasResolvidas += resolver_pendencias_entrega($conn, $entrega_id, $imgId, $entregaItemId, $resolvidaPor);
+            }
+        }
     }
 
     $conn->commit();
 
-    echo json_encode(['success' => true, 'added_count' => $added, 'skipped_count' => $skipped]);
+    echo json_encode([
+        'success' => true,
+        'added_count' => $added,
+        'skipped_count' => $skipped,
+        'pendencias_resolvidas' => $pendenciasResolvidas
+    ]);
 } catch (Exception $e) {
     $conn->rollback();
     http_response_code(500);

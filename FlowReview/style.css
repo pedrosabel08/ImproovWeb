@@ -2883,6 +2883,215 @@ nav.breadcrumb-nav a {
   background: #2467d6;
 }
 
+.confirm-btn:disabled,
+.confirm-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.modal-angle-change {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 13, 24, 0.72);
+}
+
+.modal-angle-change.hidden {
+  display: none !important;
+}
+
+.modal-angle-change-panel {
+  width: min(880px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #1e2535;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.38);
+  color: #fff;
+}
+
+.modal-angle-change-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modal-angle-change-kicker {
+  margin-bottom: 4px;
+  color: #7eaadd;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.modal-angle-change-header h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.modal-angle-change-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+}
+
+.modal-angle-change-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.modal-angle-change-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  max-height: 430px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.angle-change-card {
+  position: relative;
+  min-height: 172px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.angle-change-card:hover {
+  border-color: rgba(126, 170, 221, 0.65);
+}
+
+.angle-change-card.is-current {
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.16);
+  cursor: default;
+}
+
+.angle-change-card.is-selected {
+  border-color: #4f8cff;
+  box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.22);
+}
+
+.angle-change-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0f1522;
+}
+
+.angle-change-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.angle-change-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  font-size: 12px;
+}
+
+.angle-change-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.angle-change-check {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  color: transparent;
+}
+
+.angle-change-card.is-selected .angle-change-check {
+  border-color: #4f8cff;
+  background: #4f8cff;
+  color: #fff;
+}
+
+.angle-change-card.is-current .angle-change-check {
+  border-color: #2e7d32;
+  background: #2e7d32;
+  color: #fff;
+}
+
+.angle-change-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.modal-angle-change-observation {
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  outline: none;
+}
+
+.modal-angle-change-observation::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.modal-angle-change-feedback {
+  min-height: 18px;
+  color: #ffb3b3;
+  font-size: 12px;
+}
+
+.modal-angle-change-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .angulo-actions-group {
   width: 100%;
   display: flex;
@@ -2923,6 +3132,11 @@ nav.breadcrumb-nav a {
   cursor: pointer;
   gap: 6px;
   transition: background-color 0.2s;
+}
+
+#submit_decision:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 #submit_decision:hover {

@@ -14,6 +14,7 @@ error_reporting(E_ALL);
 
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
+require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use phpseclib3\Net\SFTP;
@@ -432,6 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtNotif->close();
         }
 
+        entregas_pendencias_ensure_schema($conn);
         $conn->begin_transaction();
 
         $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
@@ -464,6 +466,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $img_status_id_context = null;
             $img_obra_id_context = null;
             $nomenclatura_obra = null;
+            $funcao_id_context = null;
+            $nome_funcao_db = null;
             if ($imagem_id) {
                 $stmtTipo = $conn->prepare("SELECT i.tipo_imagem, i.status_id, i.obra_id, s.nome_status, o.nomenclatura
                     FROM imagens_cliente_obra i
@@ -477,7 +481,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtTipo->close();
             }
 
-            $nomeFuncaoLower = mb_strtolower((string)$nome_funcao, 'UTF-8');
+            $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao
+                FROM funcao_imagem fi
+                LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
+                WHERE fi.idfuncao_imagem = ?
+                LIMIT 1");
+            if ($stmtFuncaoContext) {
+                $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
+                $stmtFuncaoContext->execute();
+                $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db);
+                $stmtFuncaoContext->fetch();
+                $stmtFuncaoContext->close();
+            }
+
+            $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
             $isP00ModelagemReview = (
                 in_array($status, ['Aprovado'], true)
                 && $nomeFuncaoLower === 'modelagem'
@@ -521,6 +538,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (
                 in_array($status, ['Aprovado']) &&
                 (
+                    (int)$funcao_id_context === 6 ||
                     $nomeFuncaoLower === 'pós-produção' ||
                     ($nomeFuncaoLower === 'finalização' && stripos((string)$tipo_imagem_nome, 'humanizada') !== false)
                 )
@@ -545,24 +563,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stmtSt->close();
                         }
 
-                        // encontra a entrega correspondente (escolhe a mais recente)
-                        $stmtEnt = $conn->prepare("SELECT id FROM entregas WHERE status_id = ? AND obra_id = ? ORDER BY id DESC LIMIT 1");
-                        $stmtEnt->bind_param("ii", $img_status_id, $img_obra_id);
-                        $stmtEnt->execute();
-                        $stmtEnt->bind_result($entrega_id_found);
-                        if ($stmtEnt->fetch()) {
-                            $stmtEnt->close();
-
-                            // encontra o item da entrega para essa imagem
-                            $stmtItem = $conn->prepare("SELECT id FROM entregas_itens WHERE entrega_id = ? AND imagem_id = ? LIMIT 1");
-                            $stmtItem->bind_param("ii", $entrega_id_found, $imagem_id);
+                        // Encontra o item dessa imagem em qualquer entrega da mesma obra/etapa.
+                        // Pode haver mais de uma entrega R01/R02/etc.; a entrega mais recente nem sempre contem a imagem.
+                        $stmtItem = $conn->prepare("SELECT ei.id, ei.entrega_id
+                            FROM entregas_itens ei
+                            JOIN entregas e ON e.id = ei.entrega_id
+                            WHERE e.status_id = ? AND e.obra_id = ? AND ei.imagem_id = ?
+                            ORDER BY e.id DESC, ei.id DESC
+                            LIMIT 1");
+                        if ($stmtItem) {
+                            $stmtItem->bind_param("iii", $img_status_id, $img_obra_id, $imagem_id);
                             $stmtItem->execute();
-                            $stmtItem->bind_result($entrega_item_id);
+                            $stmtItem->bind_result($entrega_item_id, $entrega_id_found);
                             if ($stmtItem->fetch()) {
                                 $stmtItem->close();
 
+                                resolver_pendencias_entrega(
+                                    $conn,
+                                    (int) $entrega_id_found,
+                                    (int) $imagem_id,
+                                    (int) $entrega_item_id,
+                                    isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                                    $resultadoFinal['logs']
+                                );
+
                                 // Verifica se é o caso especial de P00 + função finalização
-                                $isFinalizacao = (mb_strtolower($nome_funcao, 'UTF-8') === 'finalização');
+                                $isFinalizacao = ($nomeFuncaoLower === 'finalização');
                                 $isP00 = ($status_nome_atual === 'P00');
 
                                 if ($isFinalizacao && $isP00) {
@@ -626,11 +652,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             } else {
                                 $stmtItem->close();
-                                $resultadoFinal['logs'][] = "entregas_itens para entrega_id=$entrega_id_found imagem_id=$imagem_id não encontrado.";
+                                $hist_img_id_pendente = null;
+                                $stmtHistPend = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                                if ($stmtHistPend) {
+                                    $stmtHistPend->bind_param("i", $idfuncao_imagem);
+                                    $stmtHistPend->execute();
+                                    $stmtHistPend->bind_result($hist_img_id_pendente);
+                                    $stmtHistPend->fetch();
+                                    $stmtHistPend->close();
+                                }
+
+                                $motivoPendencia = "Aprovacao sem entrega_item para obra_id={$img_obra_id}, status_id={$img_status_id}, imagem_id={$imagem_id}.";
+                                $pendenciaId = registrar_pendencia_entrega(
+                                    $conn,
+                                    (int) $img_obra_id,
+                                    (int) $img_status_id,
+                                    (int) $imagem_id,
+                                    (int) $idfuncao_imagem,
+                                    $hist_img_id_pendente ? (int) $hist_img_id_pendente : null,
+                                    $motivoPendencia,
+                                    $resultadoFinal['logs']
+                                );
+                                $resultadoFinal['entrega_pendencia_id'] = $pendenciaId;
+                                $resultadoFinal['logs'][] = "entregas_itens para status_id=$img_status_id obra_id=$img_obra_id imagem_id=$imagem_id não encontrado; pendencia registrada.";
                             }
                         } else {
-                            $stmtEnt->close();
-                            $resultadoFinal['logs'][] = "entrega com status_id=$img_status_id e obra_id=$img_obra_id não encontrada.";
+                            $resultadoFinal['logs'][] = "Falha ao preparar busca de entregas_itens para status_id=$img_status_id obra_id=$img_obra_id imagem_id=$imagem_id.";
                         }
                     } else {
                         $stmtImg->close();
@@ -653,13 +700,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isP00ModelagemReview
             ||
             (
-                in_array(mb_strtolower($nome_funcao, 'UTF-8'), ['pós-produção', 'alteração']) &&
+                (in_array($nomeFuncaoLower, ['pós-produção', 'alteração']) || (int)$funcao_id_context === 6) &&
                 in_array($status, ['Aprovado'])
             )
             ||
             (
                 // 🔸 Nova condição: finalização de planta humanizada
-                mb_strtolower($nome_funcao, 'UTF-8') === 'finalização' &&
+                $nomeFuncaoLower === 'finalização' &&
                 stripos((string)$tipo_imagem_nome, 'humanizada') !== false &&
                 in_array($status, ['Aprovado'])
             )

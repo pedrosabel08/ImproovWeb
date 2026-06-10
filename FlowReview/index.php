@@ -354,6 +354,26 @@ $conn->close();
                         </div>
                     </div>
                 </div>
+                <div id="trocarAnguloModal" class="modal-angle-change hidden">
+                    <div class="modal-angle-change-panel">
+                        <div class="modal-angle-change-header">
+                            <div>
+                                <div class="modal-angle-change-kicker">Ângulo definitivo</div>
+                                <h3>Escolher outro ângulo</h3>
+                            </div>
+                            <button type="button" id="trocarAnguloClose" class="modal-angle-change-close" aria-label="Fechar">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div id="trocarAnguloList" class="modal-angle-change-list"></div>
+                        <textarea id="trocarAnguloObservacao" class="modal-angle-change-observation" placeholder="Observação da troca (opcional)"></textarea>
+                        <div id="trocarAnguloFeedback" class="modal-angle-change-feedback"></div>
+                        <div class="modal-angle-change-actions">
+                            <button type="button" id="trocarAnguloCancel" class="cancel-btn">Cancelar</button>
+                            <button type="button" id="trocarAnguloConfirm" class="confirm-btn" disabled>Confirmar troca</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="comentarios"></div>
             </div>
         </div>

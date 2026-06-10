@@ -1577,6 +1577,12 @@ const idcolaboradorLogado = parseInt(localStorage.getItem("idcolaborador"), 10);
 let funcaoImagemId = null; // armazenado globalmente
 let currentFuncaoContext = null; // {imagem_id, funcao_imagem_id, colaborador_id, nome_funcao, nome_status, imagem_nome}
 let currentIndiceEnvio = null;
+let currentAngleSelection = {
+  isP00Finalizacao: false,
+  hasChosen: false,
+  chosen: null,
+  available: [],
+};
 const processHistoryState = {
   currentImageId: null,
   isOpen: false,
@@ -1915,9 +1921,68 @@ function initProcessHistory() {
 }
 
 function isP00FinalizacaoContext(context) {
-  const isP00 = String(context?.nome_status || "").toLowerCase() === "p00";
+  const isP00 =
+    String(context?.nome_status || "").toLowerCase() === "p00" ||
+    String(context?.nome_status_envio || "").toLowerCase() === "p00";
   const nomeFuncao = String(context?.nome_funcao || "").toLowerCase();
-  return isP00 && nomeFuncao === "finalização";
+  return nomeFuncao === "finalização" && isP00;
+}
+
+function isFinalizacaoContext(context) {
+  return String(context?.nome_funcao || "").toLowerCase() === "finalização";
+}
+
+function isP00FinalizacaoEnvio(context, imagensDoIndice) {
+  if (!isFinalizacaoContext(context)) return false;
+  if (!Array.isArray(imagensDoIndice) || imagensDoIndice.length === 0) {
+    return isP00FinalizacaoContext(context);
+  }
+  return imagensDoIndice.some(
+    (img) =>
+      String(img?.nome_status_envio || img?.nome_status || "").toLowerCase() ===
+      "p00",
+  );
+}
+
+function isAnguloDefinitivo(img) {
+  const liberada = img?.angulo_liberada == 1 || img?.angulo_liberada === "1";
+  const sugerida = img?.angulo_sugerida == 1 || img?.angulo_sugerida === "1";
+  return liberada && !sugerida;
+}
+
+function getCurrentAngleThumbUrl(img) {
+  return `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img?.imagem || "")}&w=320&q=85`;
+}
+
+function updateAngleActionForSelection(imagensDoIndice, context) {
+  const available = Array.isArray(imagensDoIndice) ? imagensDoIndice : [];
+  const isP00Finalizacao = isP00FinalizacaoEnvio(context, available);
+  const chosen = available.find((img) => isAnguloDefinitivo(img)) || null;
+
+  currentAngleSelection = {
+    isP00Finalizacao,
+    hasChosen: Boolean(isP00Finalizacao && chosen),
+    chosen,
+    available,
+  };
+
+  const btnOpen = document.getElementById("submit_decision");
+  const actionsGroupLabel = document.querySelector(".angulo-actions-group-label");
+  if (!btnOpen) return;
+
+  if (!isP00Finalizacao) {
+    btnOpen.textContent = "Escolher ângulo";
+    btnOpen.disabled = true;
+    btnOpen.title = "Selecione um envio P00 para decidir o ângulo.";
+    return;
+  }
+
+  if (actionsGroupLabel) {
+    actionsGroupLabel.textContent = "Decisão do ângulo (P00)";
+  }
+  btnOpen.disabled = false;
+  btnOpen.title = "";
+  btnOpen.textContent = chosen ? "Escolher outro ângulo" : "Escolher ângulo";
 }
 
 async function atualizarAnguloEscolhido(acao, observacao = "") {
@@ -2026,6 +2091,187 @@ async function abrirModalEscolhaAngulo() {
     document.getElementById("submit_decision") ||
     document.querySelector("#submit_decision");
   positionDecisionModal(trigger, modal);
+}
+
+async function trocarAnguloDefinitivo(novoHistoricoId, observacao = "") {
+  if (!currentFuncaoContext || !novoHistoricoId) {
+    Toastify({
+      text: "Selecione um ângulo para continuar.",
+      duration: 2500,
+      backgroundColor: "orange",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return false;
+  }
+
+  const payload = {
+    imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
+    funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
+    novo_historico_id: parseInt(novoHistoricoId, 10),
+    observacao,
+  };
+
+  try {
+    const res = await fetch("trocar_angulo.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      Toastify({
+        text: data.message || "Erro ao trocar ângulo.",
+        duration: 4000,
+        backgroundColor: "red",
+        close: true,
+        gravity: "top",
+        position: "right",
+      }).showToast();
+      return false;
+    }
+
+    Toastify({
+      text: "Ângulo definitivo trocado.",
+      duration: 2500,
+      backgroundColor: "green",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    historyAJAX(funcaoImagemId);
+    return true;
+  } catch (e) {
+    console.error(e);
+    Toastify({
+      text: "Erro ao trocar ângulo.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return false;
+  }
+}
+
+function abrirModalTrocarAngulo() {
+  const modal = document.getElementById("trocarAnguloModal");
+  const list = document.getElementById("trocarAnguloList");
+  const feedback = document.getElementById("trocarAnguloFeedback");
+  const observacao = document.getElementById("trocarAnguloObservacao");
+  if (!modal || !list || !feedback || !observacao) {
+    Toastify({
+      text: "Modal de troca não encontrado.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return;
+  }
+
+  const chosen = currentAngleSelection.chosen;
+  const available = Array.isArray(currentAngleSelection.available)
+    ? currentAngleSelection.available
+    : [];
+  if (!chosen || available.length < 2) {
+    Toastify({
+      text: "Não há outro ângulo disponível para troca.",
+      duration: 3000,
+      backgroundColor: "orange",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return;
+  }
+
+  let selectedId = null;
+  list.innerHTML = "";
+  feedback.textContent = "";
+  observacao.value = "";
+
+  const btnClose = replaceElementById("trocarAnguloClose");
+  const btnCancel = replaceElementById("trocarAnguloCancel");
+  const btnConfirm = replaceElementById("trocarAnguloConfirm");
+  btnConfirm.disabled = true;
+
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    feedback.textContent = "";
+  };
+
+  available.forEach((img, index) => {
+    const isCurrent = String(img.id) === String(chosen.id);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "angle-change-card" + (isCurrent ? " is-current" : "");
+    card.dataset.historicoId = String(img.id);
+    card.innerHTML = `
+      ${isCurrent ? '<span class="angle-change-badge">Atual</span>' : ""}
+      <span class="angle-change-thumb">
+        <img src="${getCurrentAngleThumbUrl(img)}" alt="Ângulo ${index + 1}">
+      </span>
+      <span class="angle-change-meta">
+        <span class="angle-change-title">${escapeHtml(img.nome_arquivo || `Ângulo ${index + 1}`)}</span>
+        <span class="angle-change-check"><i class="fa-solid fa-check"></i></span>
+      </span>
+    `;
+
+    card.addEventListener("click", () => {
+      if (isCurrent) {
+        selectedId = null;
+        feedback.textContent = "Escolha um ângulo diferente do atual.";
+        btnConfirm.disabled = true;
+        list
+          .querySelectorAll(".angle-change-card")
+          .forEach((el) => el.classList.remove("is-selected"));
+        return;
+      }
+
+      selectedId = String(img.id);
+      feedback.textContent = "";
+      list
+        .querySelectorAll(".angle-change-card")
+        .forEach((el) => el.classList.remove("is-selected"));
+      card.classList.add("is-selected");
+      btnConfirm.disabled = false;
+    });
+
+    list.appendChild(card);
+  });
+
+  btnClose.addEventListener("click", closeModal);
+  btnCancel.addEventListener("click", closeModal);
+  modal.onclick = (event) => {
+    if (event.target === modal) closeModal();
+  };
+
+  btnConfirm.addEventListener("click", async () => {
+    if (!selectedId || String(selectedId) === String(chosen.id)) {
+      feedback.textContent = "Escolha um ângulo diferente do atual.";
+      btnConfirm.disabled = true;
+      return;
+    }
+
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = "Trocando...";
+    const ok = await trocarAnguloDefinitivo(
+      selectedId,
+      String(observacao.value || "").trim(),
+    );
+    btnConfirm.textContent = "Confirmar troca";
+    if (ok) {
+      closeModal();
+    } else {
+      btnConfirm.disabled = false;
+    }
+  });
+
+  modal.classList.remove("hidden");
 }
 
 // Position the modal centered to the trigger button; prefer below, fallback to above.
@@ -2301,9 +2547,13 @@ function historyAJAX(idfuncao_imagem) {
       }
 
       const isFlowAngulo =
-        isP00FinalizacaoContext(item) &&
+        isFinalizacaoContext(item) &&
         Array.isArray(imagens) &&
-        imagens.length > 0;
+        imagens.some(
+          (img) =>
+            String(img?.nome_status_envio || img?.nome_status || "").toLowerCase() ===
+            "p00",
+        );
 
       const podeAprovar =
         ([1, 2, 9, 20, 3].includes(idusuario) ||
@@ -2328,10 +2578,16 @@ function historyAJAX(idfuncao_imagem) {
           if (actionsGroupLabel)
             actionsGroupLabel.textContent = "Decisão do ângulo (P00)";
           btnOpen.textContent = "Escolher ângulo";
+          btnOpen.disabled = false;
+          btnOpen.title = "";
           btnOpen.style.display = "flex";
           modal.classList.add("hidden");
           btnOpen.addEventListener("click", () => {
-            abrirModalEscolhaAngulo();
+            if (currentAngleSelection.hasChosen) {
+              abrirModalTrocarAngulo();
+            } else {
+              abrirModalEscolhaAngulo();
+            }
           });
 
           btnAjustesFuncao.style.display = "flex";
@@ -2344,6 +2600,8 @@ function historyAJAX(idfuncao_imagem) {
           if (actionsGroupLabel)
             actionsGroupLabel.textContent = "Enviar Aprovação";
           btnOpen.textContent = "Enviar aprovação";
+          btnOpen.disabled = false;
+          btnOpen.title = "";
           const labels = document.querySelectorAll("#decisionModal label");
           if (labels[0])
             labels[0].innerHTML =
@@ -2501,6 +2759,7 @@ function historyAJAX(idfuncao_imagem) {
         imageContainer.innerHTML = "";
 
         const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
+        updateAngleActionForSelection(imagensDoIndice, item);
 
         const textoGeral = Array.isArray(imagensDoIndice)
           ? String(

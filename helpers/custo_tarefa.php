@@ -4,7 +4,6 @@ if (!isset($GLOBALS['_custo_tarefa_contexto'])) {
     $GLOBALS['_custo_tarefa_contexto'] = [
         'funcao_map' => [],
         'valor_fixo_map' => [],
-        'valor_fixo_carregado' => false,
     ];
 }
 
@@ -22,8 +21,6 @@ function custo_tarefa_carregar_contexto(mysqli $conn, array $colaboradorIds): vo
     $ids = custo_tarefa_normalizar_ids($colaboradorIds);
     $contexto = [
         'funcao_map' => [],
-        'valor_fixo_map' => [],
-        'valor_fixo_carregado' => false,
     ];
 
     if ($ids) {
@@ -46,24 +43,6 @@ function custo_tarefa_carregar_contexto(mysqli $conn, array $colaboradorIds): vo
             }
             $stmt->close();
         }
-
-        $checkValorFixo = $conn->query("SHOW COLUMNS FROM colaborador LIKE 'valor_fixo'");
-        $contexto['valor_fixo_carregado'] = $checkValorFixo && $checkValorFixo->num_rows > 0;
-
-        if ($contexto['valor_fixo_carregado']) {
-            $stmtFixo = $conn->prepare(
-                "SELECT idcolaborador, valor_fixo FROM colaborador WHERE idcolaborador IN ($placeholders)"
-            );
-            if ($stmtFixo) {
-                $stmtFixo->bind_param(str_repeat('i', count($ids)), ...$ids);
-                $stmtFixo->execute();
-                $resFixo = $stmtFixo->get_result();
-                while ($row = $resFixo->fetch_assoc()) {
-                    $contexto['valor_fixo_map'][(int) $row['idcolaborador']] = $row['valor_fixo'] !== null ? (float) $row['valor_fixo'] : null;
-                }
-                $stmtFixo->close();
-            }
-        }
     }
 
     $GLOBALS['_custo_tarefa_contexto'] = $contexto;
@@ -73,8 +52,6 @@ function custo_tarefa_obter_contexto(): array
 {
     return $GLOBALS['_custo_tarefa_contexto'] ?? [
         'funcao_map' => [],
-        'valor_fixo_map' => [],
-        'valor_fixo_carregado' => false,
     ];
 }
 
@@ -84,11 +61,6 @@ function custo_tarefa_obter_valor_base(int $colaboradorId, int $funcaoId): float
     $valorFuncao = $contexto['funcao_map'][$colaboradorId][$funcaoId] ?? null;
     if ($valorFuncao !== null && (float) $valorFuncao > 0) {
         return round((float) $valorFuncao, 2);
-    }
-
-    $valorFixo = $contexto['valor_fixo_map'][$colaboradorId] ?? null;
-    if ($valorFixo !== null && (float) $valorFixo > 0) {
-        return round((float) $valorFixo, 2);
     }
 
     return 0.0;
@@ -201,19 +173,6 @@ function custo_tarefa_carregar_status_finalizacao(mysqli $conn, array $tarefas, 
 
     return $status;
 }
-
-function custo_tarefa_sql_valor_fixo_expr(mysqli $conn, string $expr): string
-{
-    static $temColuna = null;
-
-    if ($temColuna === null) {
-        $check = $conn->query("SHOW COLUMNS FROM colaborador LIKE 'valor_fixo'");
-        $temColuna = $check && $check->num_rows > 0;
-    }
-
-    return $temColuna ? $expr : 'NULL';
-}
-
 function custo_tarefa_sql_expressao(
     string $colaboradorExpr,
     string $funcaoExpr,

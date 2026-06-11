@@ -83,9 +83,13 @@
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* STATUS GERAL */
-  --status-R00: #22c78f;
-  --status-R01: #f59e0b;
-  --status-R02: #ef4444;
+  --status-P00: #ffbe62;
+  --status-R00: #09e0d6;
+  --status-R01: #ff6200;
+  --status-R02: #ff3c00;
+  --status-R03: #ff0000;
+  --status-EF: #139e2a;
+  --status-default: #6c757d;
 
   /* SITUAÇÕES / STATUS IMAGEM */
   --si-p00: #fbbf24;
@@ -4805,7 +4809,10 @@ form#form-add.allocation-modal {
 .alloc-task-head,
 .alloc-task-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(150px, 0.9fr) minmax(140px, 0.8fr) 128px;
+  grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(
+      150px,
+      0.9fr
+    ) minmax(140px, 0.8fr) 128px;
   gap: 10px;
   align-items: center;
 }

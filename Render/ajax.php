@@ -120,6 +120,12 @@ function render_kpi_sum($daily)
     return array_sum(array_map('intval', $daily));
 }
 
+function render_kpi_daily_average($total, $days)
+{
+    $days = max(1, (int) $days);
+    return round(((float) $total) / $days, 1);
+}
+
 function render_kpi_percent_change($current, $previous)
 {
     if ((float) $previous === 0.0) {
@@ -154,28 +160,6 @@ function render_kpi_metric($current, $previous, $series, $inverse = false, $unit
         'sentiment' => $sentiment,
         'series' => $series,
     ];
-}
-
-function render_kpi_rate_series($from, $days, $approvedDaily, $sentDaily)
-{
-    $series = [];
-    $start = new DateTimeImmutable($from);
-    $approved = 0;
-    $sent = 0;
-
-    for ($i = 0; $i < $days; $i++) {
-        $date = $start->modify('+' . $i . ' days')->format('Y-m-d');
-        $approved += (int) ($approvedDaily[$date] ?? 0);
-        $sent += (int) ($sentDaily[$date] ?? 0);
-        $series[] = $sent > 0 ? round(($approved / $sent) * 100, 1) : 0;
-    }
-
-    return $series;
-}
-
-function render_kpi_approval_rate($approved, $sent)
-{
-    return $sent > 0 ? round(($approved / $sent) * 100, 1) : 0.0;
 }
 
 function render_kpi_approved_daily($conn, $startAt, $endAt)
@@ -259,19 +243,6 @@ function render_kpi_sent_daily($conn, $startAt, $endAt)
         FROM render_alta r
         WHERE r.submitted BETWEEN ? AND ?
           AND r.status != 'Arquivado'
-        GROUP BY DATE(r.submitted)
-        ORDER BY dia ASC
-    ";
-    return render_kpi_fetch_daily($conn, $sql, 'ss', $startAt, $endAt);
-}
-
-function render_kpi_sent_approved_daily($conn, $startAt, $endAt)
-{
-    $sql = "
-        SELECT DATE(r.submitted) AS dia, COUNT(*) AS total
-        FROM render_alta r
-        WHERE r.submitted BETWEEN ? AND ?
-          AND r.status = 'Aprovado'
         GROUP BY DATE(r.submitted)
         ORDER BY dia ASC
     ";
@@ -383,15 +354,11 @@ if (isset($_GET['action'])) {
             $errorPreviousDaily = render_kpi_error_daily($conn, $previous['start_at'], $previous['end_at']);
             $sentDaily = render_kpi_sent_daily($conn, $current['start_at'], $current['end_at']);
             $sentPreviousDaily = render_kpi_sent_daily($conn, $previous['start_at'], $previous['end_at']);
-            $sentApprovedDaily = render_kpi_sent_approved_daily($conn, $current['start_at'], $current['end_at']);
-            $sentApprovedPreviousDaily = render_kpi_sent_approved_daily($conn, $previous['start_at'], $previous['end_at']);
 
             $approved = render_kpi_sum($approvedDaily);
             $approvedPrevious = render_kpi_sum($approvedPreviousDaily);
             $sent = render_kpi_sum($sentDaily);
             $sentPrevious = render_kpi_sum($sentPreviousDaily);
-            $sentApproved = render_kpi_sum($sentApprovedDaily);
-            $sentApprovedPrevious = render_kpi_sum($sentApprovedPreviousDaily);
 
             echo json_encode([
                 'status' => 'sucesso',
@@ -423,12 +390,10 @@ if (isset($_GET['action'])) {
                         render_kpi_date_series($current['from'], $days, $errorDaily),
                         true
                     ),
-                    'taxa_aprovacao' => render_kpi_metric(
-                        render_kpi_approval_rate($sentApproved, $sent),
-                        render_kpi_approval_rate($sentApprovedPrevious, $sentPrevious),
-                        render_kpi_rate_series($current['from'], $days, $sentApprovedDaily, $sentDaily),
-                        false,
-                        'percent'
+                    'media_diaria' => render_kpi_metric(
+                        render_kpi_daily_average($sent, $days),
+                        render_kpi_daily_average($sentPrevious, $days),
+                        render_kpi_date_series($current['from'], $days, $sentDaily)
                     ),
                 ],
                 'highlight' => [

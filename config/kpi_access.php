@@ -2,7 +2,7 @@
 
 function improov_management_kpi_allowed_user_ids(): array
 {
-    return [1, 9, 21];
+    return [1, 2, 9];
 }
 
 function improov_kpi_permissions_for_user(?int $userId): array

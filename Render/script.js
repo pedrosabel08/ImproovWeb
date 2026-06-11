@@ -2,7 +2,13 @@ let allRenders = [];
 let currentPage = 1;
 let totalRenders = 0;
 const PAGE_LIMIT = 100;
-const renderKpiState = { mode: "quick", days: 7, from: "", to: "" };
+const RENDER_KPI_DEFAULT_DAYS = 30;
+const renderKpiState = {
+  mode: "quick",
+  days: RENDER_KPI_DEFAULT_DAYS,
+  from: "",
+  to: "",
+};
 
 function toInputDate(date) {
   const year = date.getFullYear();
@@ -105,7 +111,7 @@ function updateKpiCard(cardKey, metric, config) {
 
   const value = config.percent
     ? `${formatKpiNumber(metric.current)}%`
-    : formatKpiNumber(metric.current);
+    : `${formatKpiNumber(metric.current)}${config.valueSuffix || ""}`;
   setText(config.valueId, value);
 
   const arrow = metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
@@ -175,12 +181,14 @@ function loadRenderKpis() {
         singular: "render",
         plural: "renders",
       });
-      updateKpiCard("taxa_aprovacao", metrics.taxa_aprovacao, {
-        valueId: "renderKpiTaxaAprovacao",
-        deltaId: "renderKpiTaxaAprovacaoDelta",
-        diffId: "renderKpiTaxaAprovacaoDiff",
-        sparkId: "renderKpiTaxaAprovacaoSpark",
-        percent: true,
+      updateKpiCard("media_diaria", metrics.media_diaria, {
+        valueId: "renderKpiMediaDia",
+        deltaId: "renderKpiMediaDiaDelta",
+        diffId: "renderKpiMediaDiaDiff",
+        sparkId: "renderKpiMediaDiaSpark",
+        singular: "render/dia",
+        plural: "renders/dia",
+        valueSuffix: "/dia",
       });
       updateTopResponsavel(response.highlight);
       updateRenderKpiPeriodLabel(response.period);
@@ -196,14 +204,21 @@ function loadRenderKpis() {
 
 function initRenderKpis() {
   const controls = document.querySelector('[data-kpi-controls="render"]');
-  if (!controls) return;
-
   const customRange = document.getElementById("renderKpiCustomRange");
   const fromInput = document.getElementById("renderKpiDateFrom");
   const toInput = document.getElementById("renderKpiDateTo");
-  const defaultRange = getQuickRange(7);
+  const defaultRange = getQuickRange(RENDER_KPI_DEFAULT_DAYS);
   if (fromInput) fromInput.value = defaultRange.from;
   if (toInput) toInput.value = defaultRange.to;
+
+  if (!controls) {
+    loadRenderKpis();
+    return;
+  }
+
+  controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.days === String(RENDER_KPI_DEFAULT_DAYS));
+  });
 
   controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -217,7 +232,7 @@ function initRenderKpis() {
         if (customRange) customRange.classList.add("is-open");
       } else {
         renderKpiState.mode = "quick";
-        renderKpiState.days = parseInt(btn.dataset.days || "7", 10);
+        renderKpiState.days = parseInt(btn.dataset.days || String(RENDER_KPI_DEFAULT_DAYS), 10);
         if (customRange) customRange.classList.remove("is-open");
       }
 

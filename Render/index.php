@@ -152,23 +152,6 @@ $conn->close();
         </div>
 
         <section class="kpi-panel" aria-label="KPIs de renders">
-            <div class="kpi-panel-header">
-                <div class="kpi-title-row">
-                    <span>Periodo atual: <strong id="renderKpiPeriodo">Ultimos 7 dias</strong></span>
-                    <span>Comparacao: <strong id="renderKpiComparacao">-</strong></span>
-                </div>
-                <div class="kpi-period-controls" data-kpi-controls="render">
-                    <button type="button" class="kpi-period-btn active" data-days="7">7D</button>
-                    <button type="button" class="kpi-period-btn" data-days="15">15D</button>
-                    <button type="button" class="kpi-period-btn" data-days="30">30D</button>
-                    <button type="button" class="kpi-period-btn" data-custom="1">Personalizado</button>
-                    <div class="kpi-custom-range" id="renderKpiCustomRange">
-                        <input type="date" id="renderKpiDateFrom" title="Data inicial dos KPIs">
-                        <span>ate</span>
-                        <input type="date" id="renderKpiDateTo" title="Data final dos KPIs">
-                    </div>
-                </div>
-            </div>
             <div class="kpi-grid" id="renderKpiGrid">
                 <div class="kpi-card kpi-green" data-kpi-card="aprovados">
                     <div class="kpi-card-top">
@@ -197,14 +180,14 @@ $conn->close();
                     <div class="kpi-delta" id="renderKpiErrosDelta">-</div>
                     <svg class="kpi-sparkline" id="renderKpiErrosSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </div>
-                <div class="kpi-card kpi-purple" data-kpi-card="taxa_aprovacao">
+                <div class="kpi-card kpi-purple" data-kpi-card="media_diaria">
                     <div class="kpi-card-top">
-                        <span class="kpi-icon"><i class="fa-solid fa-bullseye"></i></span>
-                        <span class="kpi-label">Taxa de aprovacao</span>
+                        <span class="kpi-icon"><i class="fa-solid fa-chart-line"></i></span>
+                        <span class="kpi-label">Media por dia</span>
                     </div>
-                    <strong class="kpi-value" id="renderKpiTaxaAprovacao">0%</strong>
-                    <div class="kpi-delta" id="renderKpiTaxaAprovacaoDelta">-</div>
-                    <svg class="kpi-sparkline" id="renderKpiTaxaAprovacaoSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+                    <strong class="kpi-value" id="renderKpiMediaDia">0/dia</strong>
+                    <div class="kpi-delta" id="renderKpiMediaDiaDelta">-</div>
+                    <svg class="kpi-sparkline" id="renderKpiMediaDiaSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </div>
             </div>
         </section>

@@ -21,23 +21,25 @@ const BASE = (function () {
   }
 })();
 
-  function formatarData(data) {
-    const partes = data.split("-");
-    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-    return dataFormatada;
-  }
+const ENTREGAS_KPI_DEFAULT_DAYS = 30;
 
-  function formatarDataHora(dataHora) {
-    if (!dataHora) return "-";
+function formatarData(data) {
+  const partes = data.split("-");
+  const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+  return dataFormatada;
+}
 
-    const raw = String(dataHora).trim();
-    const [datePart, timePart = ""] = raw.split(" ");
-    if (!datePart || !datePart.includes("-")) return raw;
+function formatarDataHora(dataHora) {
+  if (!dataHora) return "-";
 
-    const [year, month, day] = datePart.split("-");
-    const timeLabel = timePart ? ` ${timePart.slice(0, 5)}` : "";
-    return `${day}/${month}/${year}${timeLabel}`;
-  }
+  const raw = String(dataHora).trim();
+  const [datePart, timePart = ""] = raw.split(" ");
+  if (!datePart || !datePart.includes("-")) return raw;
+
+  const [year, month, day] = datePart.split("-");
+  const timeLabel = timePart ? ` ${timePart.slice(0, 5)}` : "";
+  return `${day}/${month}/${year}${timeLabel}`;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const columns = document.querySelectorAll(".column");
@@ -52,7 +54,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // global store of fetched entregas so we can filter client-side
   let entregasAll = [];
-  const entregasKpiState = { mode: "quick", days: 7, from: "", to: "" };
+  const entregasKpiState = {
+    mode: "quick",
+    days: ENTREGAS_KPI_DEFAULT_DAYS,
+    from: "",
+    to: "",
+  };
 
   function toInputDate(date) {
     const year = date.getFullYear();
@@ -105,7 +112,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const num = Number(value || 0);
     return Number.isInteger(num)
       ? String(num)
-      : num.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      : num.toLocaleString("pt-BR", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        });
   }
 
   function formatSigned(value, suffix) {
@@ -117,7 +127,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderSparkline(id, series) {
     const svg = document.getElementById(id);
     if (!svg) return;
-    const values = Array.isArray(series) && series.length ? series.map((item) => Number(item || 0)) : [0, 0];
+    const values =
+      Array.isArray(series) && series.length
+        ? series.map((item) => Number(item || 0))
+        : [0, 0];
     const width = 120;
     const height = 34;
     const max = Math.max(...values);
@@ -147,7 +160,8 @@ document.addEventListener("DOMContentLoaded", () => {
       : formatKpiNumber(metric.current);
     setText(config.valueId, value);
 
-    const arrow = metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
+    const arrow =
+      metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
     const changeSuffix = config.percent ? " p.p." : "%";
     const changeText = config.percent
       ? formatSigned(metric.change, changeSuffix)
@@ -183,9 +197,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       setEntregasKpiLoading(true);
-      const res = await fetch(BASE + "kpis_entregas.php?" + buildEntregasKpiParams().toString());
+      const res = await fetch(
+        BASE + "kpis_entregas.php?" + buildEntregasKpiParams().toString(),
+      );
       const data = await res.json();
-      if (!data || !data.success) throw new Error(data && data.error ? data.error : "Falha ao carregar KPIs");
+      if (!data || !data.success)
+        throw new Error(
+          data && data.error ? data.error : "Falha ao carregar KPIs",
+        );
 
       const metrics = data.metrics || {};
       updateKpiCard("total", metrics.total, {
@@ -237,28 +256,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function initEntregasKpis() {
     const controls = document.querySelector('[data-kpi-controls="entregas"]');
-    if (!controls) return;
-
     const customRange = document.getElementById("entregasKpiCustomRange");
     const fromInput = document.getElementById("entregasKpiDateFrom");
     const toInput = document.getElementById("entregasKpiDateTo");
-    const defaultRange = getQuickRange(7);
+    const defaultRange = getQuickRange(ENTREGAS_KPI_DEFAULT_DAYS);
     if (fromInput) fromInput.value = defaultRange.from;
     if (toInput) toInput.value = defaultRange.to;
 
+    if (!controls) {
+      carregarEntregasKpis();
+      return;
+    }
+
+    controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
+      btn.classList.toggle(
+        "active",
+        btn.dataset.days === String(ENTREGAS_KPI_DEFAULT_DAYS),
+      );
+    });
+
     controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        controls.querySelectorAll(".kpi-period-btn").forEach((item) => item.classList.remove("active"));
+        controls
+          .querySelectorAll(".kpi-period-btn")
+          .forEach((item) => item.classList.remove("active"));
         btn.classList.add("active");
 
         if (btn.dataset.custom === "1") {
           entregasKpiState.mode = "custom";
-          entregasKpiState.from = fromInput ? fromInput.value : defaultRange.from;
+          entregasKpiState.from = fromInput
+            ? fromInput.value
+            : defaultRange.from;
           entregasKpiState.to = toInput ? toInput.value : defaultRange.to;
           if (customRange) customRange.classList.add("is-open");
         } else {
           entregasKpiState.mode = "quick";
-          entregasKpiState.days = parseInt(btn.dataset.days || "7", 10);
+          entregasKpiState.days = parseInt(
+            btn.dataset.days || String(ENTREGAS_KPI_DEFAULT_DAYS),
+            10,
+          );
           if (customRange) customRange.classList.remove("is-open");
         }
 
@@ -276,7 +312,8 @@ document.addEventListener("DOMContentLoaded", () => {
           item.classList.toggle("active", item.dataset.custom === "1");
         });
         if (customRange) customRange.classList.add("is-open");
-        if (entregasKpiState.from && entregasKpiState.to) carregarEntregasKpis();
+        if (entregasKpiState.from && entregasKpiState.to)
+          carregarEntregasKpis();
       });
     });
 
@@ -316,7 +353,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (entrega.em_hold) card.classList.add("card-hold");
 
     const readyCount = parseInt(entrega.ready_count || 0, 10);
-    const reviewOverdueCount = parseInt(entrega.review_batches_overdue || 0, 10);
+    const reviewOverdueCount = parseInt(
+      entrega.review_batches_overdue || 0,
+      10,
+    );
     const reviewBadgeSeverity = String(
       entrega.review_badge_severity || "none",
     ).toLowerCase();
@@ -367,7 +407,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderEntregas(list) {
     // clear existing cards
     columns.forEach((col) =>
-      (col.querySelector(".column-cards") || col).querySelectorAll(".card-entrega").forEach((card) => card.remove()),
+      (col.querySelector(".column-cards") || col)
+        .querySelectorAll(".card-entrega")
+        .forEach((card) => card.remove()),
     );
 
     list.forEach((entrega) => {
@@ -580,7 +622,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getReviewBatchStatusLabel(status) {
-    const normalized = String(status || "").trim().toUpperCase();
+    const normalized = String(status || "")
+      .trim()
+      .toUpperCase();
     const labels = {
       PENDING: "Dentro do SLA",
       OVERDUE: "Vencido",
@@ -630,8 +674,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const batches = Array.isArray(data.review_batches) ? data.review_batches : [];
-    const summary = data.review_batches_summary || summarizeReviewBatches(batches);
+    const batches = Array.isArray(data.review_batches)
+      ? data.review_batches
+      : [];
+    const summary =
+      data.review_batches_summary || summarizeReviewBatches(batches);
 
     modalReviewBatches.style.display = "block";
 
@@ -735,7 +782,8 @@ document.addEventListener("DOMContentLoaded", () => {
       : [];
 
     return (
-      batches.find((batch) => Number(batch?.id) === Number(reviewBatchId)) || null
+      batches.find((batch) => Number(batch?.id) === Number(reviewBatchId)) ||
+      null
     );
   }
 
@@ -787,10 +835,13 @@ document.addEventListener("DOMContentLoaded", () => {
           const snoozeUntil = document.getElementById(
             "swal-review-snooze-until",
           )?.value;
-          const note = document.getElementById("swal-review-snooze-note")?.value || "";
+          const note =
+            document.getElementById("swal-review-snooze-note")?.value || "";
 
           if (!snoozeUntil) {
-            Swal.showValidationMessage("Defina até quando a cobrança ficará pausada.");
+            Swal.showValidationMessage(
+              "Defina até quando a cobrança ficará pausada.",
+            );
             return false;
           }
 
@@ -831,7 +882,9 @@ document.addEventListener("DOMContentLoaded", () => {
           cancelButtonText: "Cancelar",
           focusConfirm: false,
           didOpen: () => {
-            const responseEl = document.getElementById("swal-review-p00-response");
+            const responseEl = document.getElementById(
+              "swal-review-p00-response",
+            );
             const originEl = document.getElementById("swal-review-p00-origin");
             const originDetailEl = document.getElementById(
               "swal-review-p00-origin-detail",
@@ -839,7 +892,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const syncP00ResolveFields = () => {
               const needsOrigin = responseEl?.value === "change_requested";
-              const needsOriginDetail = needsOrigin && originEl?.value === "Outro";
+              const needsOriginDetail =
+                needsOrigin && originEl?.value === "Outro";
 
               if (originEl) {
                 originEl.style.display = needsOrigin ? "block" : "none";
@@ -849,7 +903,9 @@ document.addEventListener("DOMContentLoaded", () => {
               }
 
               if (originDetailEl) {
-                originDetailEl.style.display = needsOriginDetail ? "block" : "none";
+                originDetailEl.style.display = needsOriginDetail
+                  ? "block"
+                  : "none";
                 if (!needsOriginDetail) {
                   originDetailEl.value = "";
                 }
@@ -866,8 +922,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const changeOrigin =
               document.getElementById("swal-review-p00-origin")?.value || "";
             const changeOriginDetail =
-              document.getElementById("swal-review-p00-origin-detail")?.value || "";
-            const note = document.getElementById("swal-review-p00-note")?.value || "";
+              document.getElementById("swal-review-p00-origin-detail")?.value ||
+              "";
+            const note =
+              document.getElementById("swal-review-p00-note")?.value || "";
 
             if (!customerResponse) {
               Swal.showValidationMessage("Selecione a resposta do cliente.");
@@ -884,14 +942,17 @@ document.addEventListener("DOMContentLoaded", () => {
               changeOrigin === "Outro" &&
               !changeOriginDetail.trim()
             ) {
-              Swal.showValidationMessage("Detalhe a origem quando selecionar Outro.");
+              Swal.showValidationMessage(
+                "Detalhe a origem quando selecionar Outro.",
+              );
               return false;
             }
 
             return {
               action,
               customer_response: customerResponse,
-              change_origin: customerResponse === "change_requested" ? changeOrigin : "",
+              change_origin:
+                customerResponse === "change_requested" ? changeOrigin : "",
               change_origin_detail:
                 customerResponse === "change_requested"
                   ? changeOriginDetail.trim()
@@ -915,8 +976,10 @@ document.addEventListener("DOMContentLoaded", () => {
         cancelButtonText: "Cancelar",
         focusConfirm: false,
         preConfirm: () => {
-          const reason = document.getElementById("swal-review-resolve-reason")?.value || "";
-          const note = document.getElementById("swal-review-resolve-note")?.value || "";
+          const reason =
+            document.getElementById("swal-review-resolve-reason")?.value || "";
+          const note =
+            document.getElementById("swal-review-resolve-note")?.value || "";
 
           if (!reason.trim()) {
             Swal.showValidationMessage("Informe o motivo da resolução.");
@@ -945,7 +1008,9 @@ document.addEventListener("DOMContentLoaded", () => {
         cancelButtonText: "Cancelar",
         preConfirm: (value) => {
           if (!String(value || "").trim()) {
-            Swal.showValidationMessage("Informe o motivo para ignorar o batch.");
+            Swal.showValidationMessage(
+              "Informe o motivo para ignorar o batch.",
+            );
             return false;
           }
 
@@ -1003,7 +1068,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       entregaDados.review_batches_enabled = true;
       entregaDados.review_batches = existingBatches;
-      entregaDados.review_batches_summary = summarizeReviewBatches(existingBatches);
+      entregaDados.review_batches_summary =
+        summarizeReviewBatches(existingBatches);
       renderReviewBatchPanel(entregaDados);
       await carregarKanban();
 
@@ -1079,7 +1145,10 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       e.stopPropagation();
 
-      const reviewBatchId = parseInt(actionBtn.dataset.reviewBatchId || "0", 10);
+      const reviewBatchId = parseInt(
+        actionBtn.dataset.reviewBatchId || "0",
+        10,
+      );
       const action = String(actionBtn.dataset.action || "").trim();
       if (!reviewBatchId || !action) return;
 
@@ -1727,7 +1796,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!entregaAtualId) return;
 
     const checkboxes = modalImagens.querySelectorAll(
-      'input.entrega-item-checkbox:checked:not([disabled])',
+      "input.entrega-item-checkbox:checked:not([disabled])",
     );
     if (checkboxes.length === 0) {
       alert("Nenhuma imagem selecionada para entrega.");
@@ -1805,7 +1874,9 @@ document.addEventListener("DOMContentLoaded", () => {
           const icon = btnCopiarCaminho.querySelector("i");
           if (icon) {
             icon.className = "fa-solid fa-check";
-            setTimeout(() => { icon.className = "fa-regular fa-copy"; }, 1500);
+            setTimeout(() => {
+              icon.className = "fa-regular fa-copy";
+            }, 1500);
           }
         });
       } else {
@@ -1814,7 +1885,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ta.style.cssText = "position:fixed;opacity:0;pointer-events:none;";
         document.body.appendChild(ta);
         ta.select();
-        try { document.execCommand("copy"); } catch (e) {}
+        try {
+          document.execCommand("copy");
+        } catch (e) {}
         document.body.removeChild(ta);
       }
     });
@@ -1937,7 +2010,8 @@ document.addEventListener("DOMContentLoaded", () => {
           entregaAtualId = null;
           entregaDados = null;
           carregarKanban();
-          if (window.atualizarPendenciasEntrega) window.atualizarPendenciasEntrega(true);
+          if (window.atualizarPendenciasEntrega)
+            window.atualizarPendenciasEntrega(true);
           if (window.refreshSidebarCounts) window.refreshSidebarCounts();
         } else {
           alert("Erro ao adicionar: " + (json.error || "desconhecido"));
@@ -2706,7 +2780,7 @@ document.getElementById("status_id").addEventListener("change", () => {
 });
 document
   .getElementById("data_recebimento")
-  .addEventListener("change", atualizarPrazoPrevisto);
+  ?.addEventListener("change", atualizarPrazoPrevisto);
 
 function atualizarPrazoPrevisto() {
   const obraId = document.getElementById("obra_id").value;
@@ -2894,13 +2968,15 @@ async function atualizarPendenciasEntrega(forceOpen = false) {
       cache: "no-store",
     });
     const data = await res.json();
-    const pendencias = data && data.success && Array.isArray(data.pendencias)
-      ? data.pendencias
-      : [];
+    const pendencias =
+      data && data.success && Array.isArray(data.pendencias)
+        ? data.pendencias
+        : [];
 
     panel.hidden = false;
     if (!pendencias.length) {
-      list.innerHTML = '<p class="delivery-pending-empty">Nenhuma pendência aberta.</p>';
+      list.innerHTML =
+        '<p class="delivery-pending-empty">Nenhuma pendência aberta.</p>';
       return;
     }
 
@@ -2968,7 +3044,8 @@ async function atualizarPendenciasEntrega(forceOpen = false) {
   } catch (err) {
     console.error("Erro ao carregar pendências de entrega:", err);
     panel.hidden = false;
-    list.innerHTML = '<p class="delivery-pending-empty">Erro ao carregar pendências.</p>';
+    list.innerHTML =
+      '<p class="delivery-pending-empty">Erro ao carregar pendências.</p>';
   }
 }
 
@@ -3080,7 +3157,9 @@ document
       .then((data) => {
         if (data.success) {
           alert("Entrega adicionada com sucesso!");
-          document.getElementById("modalAdicionarEntrega").classList.remove("is-open");
+          document
+            .getElementById("modalAdicionarEntrega")
+            .classList.remove("is-open");
           document.getElementById("formAdicionarEntrega").reset();
           document.getElementById("imagens_container").innerHTML =
             "<p>Selecione uma obra e uma etapa.</p>";
@@ -3649,7 +3728,8 @@ if (btnAdicionarImagem) {
         entregaAtualId = null;
         entregaDados = null;
         carregarKanban();
-        if (window.atualizarPendenciasEntrega) window.atualizarPendenciasEntrega(true);
+        if (window.atualizarPendenciasEntrega)
+          window.atualizarPendenciasEntrega(true);
         if (window.refreshSidebarCounts) window.refreshSidebarCounts();
       } else {
         alert("Erro: " + (json.error || "desconhecido"));
@@ -3666,18 +3746,18 @@ if (btnAdicionarImagem) {
  *  Accordion hierarchy: Obra → Etapa → Entrega → Images table
  * ══════════════════════════════════════════════════════════════════════════ */
 (function initRelatorioProducao() {
-  const btnOpen    = document.getElementById("btnRelatorioProducao");
-  const modal      = document.getElementById("modalRelatorioProducao");
-  const btnLoad    = document.getElementById("btnCarregarRelatorio");
+  const btnOpen = document.getElementById("btnRelatorioProducao");
+  const modal = document.getElementById("modalRelatorioProducao");
+  const btnLoad = document.getElementById("btnCarregarRelatorio");
   const obraSelect = document.getElementById("relatorioObraSelect");
-  const body       = document.getElementById("relatorioBody");
-  const empty      = document.getElementById("relatorioEmpty");
-  const content    = document.getElementById("relatorioContent");
-  const loading    = document.getElementById("relatorioLoading");
-  const infoBar    = document.getElementById("relatorioInfoBar");
-  const summary    = document.getElementById("relatorioSummary");
-  const etapasEl   = document.getElementById("relatorioEtapas");
-  const btnExport  = document.getElementById("btnExportarRelatorio");
+  const body = document.getElementById("relatorioBody");
+  const empty = document.getElementById("relatorioEmpty");
+  const content = document.getElementById("relatorioContent");
+  const loading = document.getElementById("relatorioLoading");
+  const infoBar = document.getElementById("relatorioInfoBar");
+  const summary = document.getElementById("relatorioSummary");
+  const etapasEl = document.getElementById("relatorioEtapas");
+  const btnExport = document.getElementById("btnExportarRelatorio");
 
   if (!btnOpen || !modal) return;
 
@@ -3705,9 +3785,9 @@ if (btnAdicionarImagem) {
     if (e.target === modal) closeModal();
   });
 
-  modal.querySelectorAll(".fecharModal").forEach((btn) =>
-    btn.addEventListener("click", closeModal)
-  );
+  modal
+    .querySelectorAll(".fecharModal")
+    .forEach((btn) => btn.addEventListener("click", closeModal));
 
   function closeModal() {
     modal.classList.remove("is-open");
@@ -3730,13 +3810,15 @@ if (btnAdicionarImagem) {
 
   async function loadRelatorio(obraId) {
     // show loading
-    empty.style.display     = "none";
-    content.style.display   = "none";
-    loading.style.display   = "flex";
+    empty.style.display = "none";
+    content.style.display = "none";
+    loading.style.display = "flex";
     btnExport.style.display = "none";
 
     try {
-      const res  = await fetch(BASE + "relatorio_producao.php?obra_id=" + encodeURIComponent(obraId));
+      const res = await fetch(
+        BASE + "relatorio_producao.php?obra_id=" + encodeURIComponent(obraId),
+      );
       const data = await res.json();
 
       loading.style.display = "none";
@@ -3748,12 +3830,13 @@ if (btnAdicionarImagem) {
       }
 
       renderRelatorio(data);
-      content.style.display   = "block";
+      content.style.display = "block";
       btnExport.style.display = "inline-flex";
     } catch (err) {
       loading.style.display = "none";
-      empty.style.display   = "flex";
-      empty.querySelector("p").textContent = "Erro ao carregar dados. Tente novamente.";
+      empty.style.display = "flex";
+      empty.querySelector("p").textContent =
+        "Erro ao carregar dados. Tente novamente.";
       console.error("relatorio_producao error:", err);
     }
   }
@@ -3791,7 +3874,7 @@ if (btnAdicionarImagem) {
 
   function renderRelatorio(data) {
     const obra = data.obra || {};
-    const sum  = data.summary || {};
+    const sum = data.summary || {};
 
     /* info bar */
     infoBar.innerHTML = `
@@ -3833,7 +3916,7 @@ if (btnAdicionarImagem) {
       </div>
       <div class="relatorio-card">
         <div class="relatorio-card-label">% Concluído</div>
-        <div class="relatorio-card-value ${(sum.pct ?? 0) >= 100 ? 'is-green' : ''}">${sum.pct ?? 0}%</div>
+        <div class="relatorio-card-value ${(sum.pct ?? 0) >= 100 ? "is-green" : ""}">${sum.pct ?? 0}%</div>
       </div>
     `;
 
@@ -3849,8 +3932,8 @@ if (btnAdicionarImagem) {
     const el = document.createElement("div");
     el.className = "rel-etapa";
 
-    const isP00    = etapa.tipo === "p00";
-    const count    = isP00 ? (etapa.versoes_count || 0) : (etapa.entregas_count || 0);
+    const isP00 = etapa.tipo === "p00";
+    const count = isP00 ? etapa.versoes_count || 0 : etapa.entregas_count || 0;
     const countLbl = isP00
       ? `${count} versão(ões)`
       : `${count} entrega${count !== 1 ? "s" : ""}`;
@@ -3871,7 +3954,7 @@ if (btnAdicionarImagem) {
     `;
 
     const header = el.querySelector(".rel-etapa-header");
-    const body2  = el.querySelector(".rel-etapa-body");
+    const body2 = el.querySelector(".rel-etapa-body");
 
     // Build children lazily on first open
     let built = false;
@@ -3895,7 +3978,7 @@ if (btnAdicionarImagem) {
   /* ── P00 block (versoes as "entregas") ─────────────────────────────────── */
   function buildP00Body(container, etapa) {
     // For P00, versoes are shown inline as image rows in a single table
-    const stats  = etapa.stats || {};
+    const stats = etapa.stats || {};
     const versoes = etapa.versoes || [];
 
     const statsHtml = `
@@ -3919,7 +4002,8 @@ if (btnAdicionarImagem) {
 
     if (versoes.length === 0) {
       const empty2 = document.createElement("div");
-      empty2.style.cssText = "padding:14px 16px;color:var(--text-muted);font-size:12px;";
+      empty2.style.cssText =
+        "padding:14px 16px;color:var(--text-muted);font-size:12px;";
       empty2.textContent = "Nenhuma versão encontrada.";
       container.appendChild(empty2);
       return;
@@ -3943,18 +4027,22 @@ if (btnAdicionarImagem) {
           </tr>
         </thead>
         <tbody>
-          ${versoes.map((v) => `
+          ${versoes
+            .map(
+              (v) => `
             <tr>
               <td><strong>${v.versao_label || "V1"}</strong></td>
               <td class="col-imagem">${v.imagem_nome || "—"}</td>
               <td>${formatarDataHora(v.recebimento)}</td>
               <td>${fmtDate(v.prazo_ajustado)}</td>
               <td>${fmtDate(v.data_entregue)}</td>
-              <td class="col-num" style="color:${(parseInt(v.dias_atraso,10)||0) > 0 ? '#ef4444' : 'inherit'};">
+              <td class="col-num" style="color:${(parseInt(v.dias_atraso, 10) || 0) > 0 ? "#ef4444" : "inherit"};">
                 ${fmtDias(v.dias_atraso)}
               </td>
               <td>${statusBadge(v.status)}</td>
-            </tr>`).join("")}
+            </tr>`,
+            )
+            .join("")}
         </tbody>
       </table>`;
 
@@ -3967,13 +4055,14 @@ if (btnAdicionarImagem) {
     el.className = "rel-entrega";
 
     const stats = entrega.stats || {};
-    const pct   = entrega.pct ?? 0;
-    const label = entrega.label || (`${etapaCodigo} #${idx + 1}`);
+    const pct = entrega.pct ?? 0;
+    const label = entrega.label || `${etapaCodigo} #${idx + 1}`;
 
     const metaParts = [];
-    if (entrega.prazo)     metaParts.push(`Prazo: ${fmtDate(entrega.prazo)}`);
-    if (entrega.conclusao) metaParts.push(`Concluído: ${fmtDate(entrega.conclusao)}`);
-    if (entrega.em_hold)   metaParts.push("⏸ HOLD");
+    if (entrega.prazo) metaParts.push(`Prazo: ${fmtDate(entrega.prazo)}`);
+    if (entrega.conclusao)
+      metaParts.push(`Concluído: ${fmtDate(entrega.conclusao)}`);
+    if (entrega.em_hold) metaParts.push("⏸ HOLD");
     const meta = metaParts.join(" · ") || "";
 
     el.innerHTML = `
@@ -3990,7 +4079,7 @@ if (btnAdicionarImagem) {
     `;
 
     const header = el.querySelector(".rel-entrega-header");
-    const body2  = el.querySelector(".rel-entrega-body");
+    const body2 = el.querySelector(".rel-entrega-body");
 
     let built = false;
     header.addEventListener("click", () => {
@@ -4026,7 +4115,8 @@ if (btnAdicionarImagem) {
     const itens = entrega.itens || [];
     if (itens.length === 0) {
       const empty2 = document.createElement("div");
-      empty2.style.cssText = "font-size:12px;color:var(--text-muted);margin-top:8px;";
+      empty2.style.cssText =
+        "font-size:12px;color:var(--text-muted);margin-top:8px;";
       empty2.textContent = "Nenhuma imagem nesta entrega.";
       container.appendChild(empty2);
       return;
@@ -4048,17 +4138,21 @@ if (btnAdicionarImagem) {
           </tr>
         </thead>
         <tbody>
-          ${itens.map((item) => `
+          ${itens
+            .map(
+              (item) => `
             <tr>
               <td class="col-imagem">${item.imagem_nome || "—"}</td>
               <td>${formatarDataHora(item.recebimento)}</td>
               <td>${fmtDate(item.prazo_ajustado)}</td>
               <td>${fmtDate(item.data_entregue)}</td>
-              <td class="col-num" style="color:${(parseInt(item.dias_atraso,10)||0) > 0 ? '#ef4444' : 'inherit'};">
+              <td class="col-num" style="color:${(parseInt(item.dias_atraso, 10) || 0) > 0 ? "#ef4444" : "inherit"};">
                 ${fmtDias(item.dias_atraso)}
               </td>
               <td>${statusBadge(item.status)}</td>
-            </tr>`).join("")}
+            </tr>`,
+            )
+            .join("")}
         </tbody>
       </table>`;
 
@@ -4077,7 +4171,12 @@ if (btnAdicionarImagem) {
   btnExport.addEventListener("click", () => {
     const obraId = obraSelect.value;
     if (!obraId) return;
-    window.open(BASE + "relatorio_producao.php?obra_id=" + encodeURIComponent(obraId) + "&export=csv", "_blank");
+    window.open(
+      BASE +
+        "relatorio_producao.php?obra_id=" +
+        encodeURIComponent(obraId) +
+        "&export=csv",
+      "_blank",
+    );
   });
 })();
-

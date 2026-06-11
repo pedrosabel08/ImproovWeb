@@ -122,23 +122,6 @@ $conn->close();
         </section>
 
         <section class="kpi-panel" aria-label="KPIs de entregas">
-            <div class="kpi-panel-header">
-                <div class="kpi-title-row">
-                    <span>Periodo atual: <strong id="entregasKpiPeriodo">Ultimos 7 dias</strong></span>
-                    <span>Comparacao: <strong id="entregasKpiComparacao">-</strong></span>
-                </div>
-                <div class="kpi-period-controls" data-kpi-controls="entregas">
-                    <button type="button" class="kpi-period-btn active" data-days="7">7D</button>
-                    <button type="button" class="kpi-period-btn" data-days="15">15D</button>
-                    <button type="button" class="kpi-period-btn" data-days="30">30D</button>
-                    <button type="button" class="kpi-period-btn" data-custom="1">Personalizado</button>
-                    <div class="kpi-custom-range" id="entregasKpiCustomRange">
-                        <input type="date" id="entregasKpiDateFrom" title="Data inicial dos KPIs">
-                        <span>ate</span>
-                        <input type="date" id="entregasKpiDateTo" title="Data final dos KPIs">
-                    </div>
-                </div>
-            </div>
             <div class="kpi-grid" id="entregasKpiGrid">
                 <div class="kpi-card kpi-blue" data-kpi-card="total">
                     <div class="kpi-card-top">

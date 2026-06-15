@@ -140,7 +140,6 @@ JOIN obra o                 ON o.idobra = ico.obra_id
 LEFT JOIN status_imagem si  ON si.idstatus = ico.status_id
 WHERE fa.colaborador_id = ?
   AND o.status_obra = 0
-  AND fa.status NOT IN ('Finalizado', 'Aprovado')
 ORDER BY fa.prazo ASC";
 
 $stmtAnim = $conn->prepare($sqlAnimFuncoes);

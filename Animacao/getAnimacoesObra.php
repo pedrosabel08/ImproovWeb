@@ -64,7 +64,7 @@ GROUP BY
     ico.substatus_id,
     sico.nome_substatus,
     c.nome_colaborador
-ORDER BY animacao_pronta DESC, a.idanimacao DESC";
+ORDER BY ico.idimagens_cliente_obra ASC, animacao_pronta DESC, a.idanimacao DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $obra_id);

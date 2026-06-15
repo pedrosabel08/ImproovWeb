@@ -1,6 +1,7 @@
-// Global upload WebSocket listener
+// Global upload WebSocket listener.
 (function () {
   const STORAGE_KEY = "improov_client_id";
+  const STATE_KEY = "improov_upload_state";
   const NOTIFIED_PREFIX = "improov_upload_notified_";
   const BC_NAME = "improov-upload";
 
@@ -34,8 +35,48 @@
     }
   }
 
+  function getActiveUploadIds() {
+    try {
+      var state = JSON.parse(localStorage.getItem(STATE_KEY) || "[]");
+      var ids = [];
+      state.forEach(function (s) {
+        var id = s && s.id ? String(s.id) : "";
+        if (id && !wasNotified(id) && ids.indexOf(id) === -1) ids.push(id);
+      });
+      return ids;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function dispatchProgress(payload) {
+    try {
+      window.dispatchEvent(
+        new CustomEvent("improov:uploadProgress", {
+          detail: payload,
+        }),
+      );
+    } catch (e) {}
+  }
+
+  function dispatchUploadDone(id, message) {
+    if (!id) return;
+    dispatchProgress({
+      id: String(id),
+      status: "done",
+      progress: 100,
+      message: message || "Upload finalizado com sucesso.",
+    });
+  }
+
+  function sendSubscribe(id) {
+    if (!ws || !id || wasNotified(id)) return;
+    try {
+      ws.send(JSON.stringify({ subscribe: id }));
+    } catch (e) {}
+  }
+
   function notify(title, body) {
-    // prefer Notifications API
     try {
       if (window.Notification) {
         if (Notification.permission === "granted") {
@@ -43,14 +84,14 @@
           return;
         }
         if (Notification.permission === "default") {
-          // request permission and notify if granted
           Notification.requestPermission().then((p) => {
-            if (p === "granted")
+            if (p === "granted") {
               try {
                 new Notification(title, { body });
               } catch (e) {
                 log("notify new error", e);
               }
+            }
           });
           return;
         }
@@ -59,10 +100,9 @@
       log("notify check error", e);
     }
 
-    // fallback UI: small transient toast in-page
     try {
       var t = document.createElement("div");
-      t.textContent = title + " — " + body;
+      t.textContent = title + " - " + body;
       t.style.position = "fixed";
       t.style.right = "16px";
       t.style.bottom = "16px";
@@ -83,7 +123,6 @@
     }
   }
 
-  // ensure notification for payload (handles permission flow)
   function ensureNotify(payload) {
     var title = "Upload concluído";
     var body = payload.message || "Upload finalizado com sucesso.";
@@ -93,11 +132,9 @@
         return;
       }
       if (window.Notification && Notification.permission === "default") {
-        // try requesting permission on user gesture; if browser blocks, fallback will show
         Notification.requestPermission()
           .then((p) => {
-            if (p === "granted") notify(title, body);
-            else notify(title, body); // will use in-page fallback
+            notify(title, body);
           })
           .catch(function (e) {
             log("requestPermission error", e);
@@ -108,21 +145,18 @@
     } catch (e) {
       log("ensureNotify error", e);
     }
-    // fallback
     notify(title, body);
   }
 
   function connect() {
     const id = getClientId();
-    if (!id) {
+    const activeUploadIds = getActiveUploadIds();
+    if (!id && activeUploadIds.length === 0) {
       log("upload-ws: no client id in localStorage; not connecting");
       return;
     }
-    subscribedId = id;
+    subscribedId = id || activeUploadIds[0] || null;
 
-    // Use URL provided by PHP (window.IMPROOV_WS_URL, set in sidebar.php).
-    // PHP decides: production → wss://.../ws/ (proxy), local HTTP → ws://:8082,
-    // local HTTPS → wss://improov.com.br/ws/ (avoids SecurityError).
     const wsUrl =
       typeof window !== "undefined" && window.IMPROOV_WS_URL
         ? window.IMPROOV_WS_URL
@@ -139,42 +173,34 @@
     }
 
     ws.addEventListener("open", () => {
-      // Skip re-subscribing to uploads already marked as done (avoids spurious notifications)
-      if (subscribedId && !wasNotified(subscribedId)) {
-        log("upload-ws open", wsUrl, "subscribe", subscribedId);
+      var idsToSubscribe = [];
+      if (id && !wasNotified(id)) {
+        idsToSubscribe.push(String(id));
+      } else if (id) {
         try {
-          ws.send(JSON.stringify({ subscribe: subscribedId }));
+          localStorage.removeItem(STORAGE_KEY);
         } catch (e) {}
-      } else if (subscribedId) {
-        // Upload já finalizado — remove a chave para não reconectar em loads futuros
-        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
       }
-      // Também subscreve a todos os uploads ativos (para receber snapshots)
-      try {
-        var state = JSON.parse(
-          localStorage.getItem("improov_upload_state") || "[]",
-        );
-        state.forEach(function (s) {
-          if (s.id && s.id !== subscribedId && !wasNotified(s.id)) {
-            try {
-              ws.send(JSON.stringify({ subscribe: s.id }));
-            } catch (e) {}
-          }
-        });
-      } catch (e) {}
+
+      getActiveUploadIds().forEach(function (activeId) {
+        if (idsToSubscribe.indexOf(activeId) === -1) idsToSubscribe.push(activeId);
+      });
+
+      idsToSubscribe.forEach(function (subscribeId) {
+        log("upload-ws open", wsUrl, "subscribe", subscribeId);
+        sendSubscribe(subscribeId);
+      });
     });
 
     ws.addEventListener("message", (ev) => {
       try {
         const data = JSON.parse(ev.data);
 
-        // pos_producao channel: dispatch event for table refresh
         if (data.channel && data.channel.startsWith("pos_producao:")) {
           window.dispatchEvent(new CustomEvent("improov:posProducaoUpdated"));
           return;
         }
 
-        // funcao_atualizada channel: dispatch event for UI refresh
         if (data.channel && data.channel.startsWith("funcao_atualizada:")) {
           window.dispatchEvent(
             new CustomEvent("improov:funcaoAtualizada", {
@@ -186,44 +212,39 @@
 
         const payload = data.payload || data;
         if (!payload || !payload.id) return;
-
-        // Ignora confirmações de subscrição do servidor (não são eventos de progresso)
         if (payload.info === "subscribed") return;
 
-        // Aceita eventos para o upload atual OU qualquer upload ativo no localStorage
-        var isTracked = payload.id === subscribedId;
+        var payloadId = String(payload.id);
+        var isTracked = payloadId === String(subscribedId);
         if (!isTracked) {
           try {
-            var _state = JSON.parse(
-              localStorage.getItem("improov_upload_state") || "[]",
-            );
-            isTracked = _state.some(function (s) {
-              return s.id === payload.id;
+            var state = JSON.parse(localStorage.getItem(STATE_KEY) || "[]");
+            isTracked = state.some(function (s) {
+              return String(s.id) === payloadId;
             });
           } catch (e) {}
         }
-        if (!isTracked) return; // ignora completamente não relacionados
+        if (!isTracked) return;
 
         log("upload-ws got", payload);
 
         const isDone =
           (payload.status &&
             payload.status.toString().toLowerCase() === "done") ||
-          payload.progress === 100;
+          Number(payload.progress) >= 100;
+
         if (isDone) {
-          // Limpa a chave principal para que próximos page loads não resubscrevam a este upload
           try {
-            if (localStorage.getItem(STORAGE_KEY) === String(payload.id)) {
+            if (localStorage.getItem(STORAGE_KEY) === payloadId) {
               localStorage.removeItem(STORAGE_KEY);
             }
           } catch (e) {}
         }
-        if (isDone && !wasNotified(payload.id)) {
-          // mark once and notify
-          markNotified(payload.id);
-          // also broadcast so other tabs update quickly
+
+        if (isDone && !wasNotified(payloadId)) {
+          markNotified(payloadId);
           try {
-            bc.postMessage({ type: "notified", id: payload.id });
+            bc.postMessage({ type: "notified", id: payloadId });
           } catch (e) {}
           try {
             ensureNotify(payload);
@@ -234,13 +255,8 @@
             );
           }
         }
-        // optionally: dispatch a DOM event for pages to hook into
-        try {
-          const evn = new CustomEvent("improov:uploadProgress", {
-            detail: payload,
-          });
-          window.dispatchEvent(evn);
-        } catch (e) {}
+
+        dispatchProgress(payload);
       } catch (e) {
         log("upload-ws parse error", e, ev.data);
       }
@@ -250,6 +266,7 @@
       log("upload-ws closed", ev);
       scheduleReconnect();
     });
+
     ws.addEventListener("error", (err) => {
       log("upload-ws error", err);
       try {
@@ -266,11 +283,11 @@
     }, 2500);
   }
 
-  // BroadcastChannel to coordinate notifications between tabs
   const bc =
     typeof BroadcastChannel !== "undefined"
       ? new BroadcastChannel(BC_NAME)
       : null;
+
   if (bc) {
     bc.onmessage = (ev) => {
       try {
@@ -278,53 +295,53 @@
         if (!d) return;
         if (d.type === "notified" && d.id) {
           markNotified(d.id);
+          dispatchUploadDone(d.id);
         }
       } catch (e) {}
     };
   }
 
-  // watch for storage changes (other tabs setting client id or notified keys)
   window.addEventListener("storage", (ev) => {
     try {
       if (!ev.key) return;
       if (ev.key === STORAGE_KEY) {
-        // client id changed -> reconnect
         log("upload-ws storage change client id", ev.newValue);
-        if (ws)
+        if (ws) {
           try {
             ws.close();
           } catch (e) {}
+        }
         connect();
       }
-      if (ev.key && ev.key.indexOf(NOTIFIED_PREFIX) === 0) {
-        // nothing to do, but kept for completeness
+      if (ev.key.indexOf(NOTIFIED_PREFIX) === 0) {
+        var doneId = ev.key.slice(NOTIFIED_PREFIX.length);
+        if (doneId && ev.newValue) dispatchUploadDone(doneId);
       }
     } catch (e) {}
   });
 
-  // expose a helper for other scripts to force subscribe
   window.improovUploadWS = {
     subscribe: function (id) {
+      var nextId = id ? String(id) : "";
+      if (!nextId) return;
+      subscribedId = nextId;
       try {
-        localStorage.setItem(STORAGE_KEY, id);
+        localStorage.setItem(STORAGE_KEY, nextId);
       } catch (e) {}
       if (ws && ws.readyState === WebSocket.OPEN) {
-        try {
-          ws.send(JSON.stringify({ subscribe: id }));
-        } catch (e) {}
+        sendSubscribe(nextId);
       } else {
-        // close current and reconnect
-        if (ws)
+        if (ws) {
           try {
             ws.close();
           } catch (e) {}
+        }
         connect();
       }
     },
   };
 
-  // initial connect if id present
   try {
-    if (getClientId()) connect();
+    if (getClientId() || getActiveUploadIds().length > 0) connect();
   } catch (e) {}
 })();

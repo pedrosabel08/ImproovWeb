@@ -74,8 +74,12 @@ try {
     $stmt4->execute();
     $stmt4->close();
 
-    // 3. funcao_animacao: funcao_id=5 (Pós-produção) — sempre colaborador_id=13
-    $colab_pos = 13;
+    // 3. funcao_animacao: funcao_id=5 (Pós-produção) — sempre colaborador_id=13 (André Tavares), exceto se o colaborador selecionado for o André, nesse caso a pós-produção ficará sem responsável definido para evitar que ele fique com as duas funções na mesma animação
+    if ($colaborador_id === 13) { // Se o colaborador selecionado for o André Tavares, ele também ficará responsável pela pós-produção
+        $colab_pos = NULL; // Se o colaborador selecionado for o Lucas, ele também ficará responsável pela pós-produção
+    } else {
+        $colab_pos = 13;
+    }
     $stmt5 = $conn->prepare(
         "INSERT INTO funcao_animacao (animacao_id, funcao_id, colaborador_id, prazo, status)
          VALUES (?, 5, ?, ?, 'HOLD')"

@@ -349,6 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
     card.dataset.statusId = entrega.status_id || "0";
     card.dataset.emHold = entrega.em_hold ? "1" : "0";
     card.dataset.motivoHold = entrega.motivo_hold || "";
+    card.dataset.observacoes = entrega.observacoes || "";
 
     if (entrega.em_hold) card.classList.add("card-hold");
 
@@ -362,6 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ).toLowerCase();
     const isConcluida = (entrega.kanban_status || "") === "concluida";
     const isHold = !!entrega.em_hold;
+    const observacoes = String(entrega.observacoes || "").trim();
     const cardBadges = [];
 
     if (readyCount > 0 && !isHold) {
@@ -391,6 +393,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <p><strong>Status:</strong> ${entrega.nome_etapa || entrega.status || entrega.kanban_status || ""}</p>
                 <p><strong>Prazo:</strong> ${entrega.data_prevista ? formatarData(entrega.data_prevista) : "-"}</p>
+                ${
+                  observacoes
+                    ? `<div class="observacao-badge" title="${escapeHtml(observacoes)}">
+                        <i class="fa-solid fa-note-sticky"></i>
+                        <span>${escapeHtml(observacoes)}</span>
+                      </div>`
+                    : ""
+                }
                 <div class="progress-entrega">
                     <div class="progress-bar" style="width:${entrega.pct_entregue || 0}%"></div>
                 </div>
@@ -3192,6 +3202,7 @@ document
       <div class="ctx-body">
         <button class="ctx-item ctx-date"><i class="fa-solid fa-calendar-days"></i> Mudar data prevista</button>
         <button class="ctx-item ctx-status-change"><i class="fa-solid fa-tag"></i> Mudar status</button>
+        <button class="ctx-item ctx-observacao"><i class="fa-solid fa-note-sticky"></i> <span>Adicionar observação</span></button>
         <button class="ctx-item ctx-hold-colocar"><i class="fa-solid fa-pause"></i> Colocar em HOLD</button>
         <button class="ctx-item ctx-hold-remover"><i class="fa-solid fa-play"></i> Remover HOLD</button>
         <button class="ctx-item ctx-archive"><i class="fa-solid fa-box-archive"></i> Arquivar</button>
@@ -3271,6 +3282,38 @@ document
         );
       },
     );
+
+    m.querySelector(".ctx-observacao").addEventListener("click", async () => {
+      const card = currentCard;
+      hideMenu();
+      if (!card) return;
+
+      const entregaId = card.dataset.id;
+      const currentValue = card.dataset.observacoes || "";
+      const { value, isConfirmed } = await Swal.fire({
+        title: currentValue ? "Editar observação" : "Adicionar observação",
+        input: "textarea",
+        inputValue: currentValue,
+        inputPlaceholder: "Digite uma observação para esta entrega...",
+        inputAttributes: {
+          maxlength: "2000",
+        },
+        showCancelButton: true,
+        confirmButtonText: "Salvar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#4f80e1",
+        footer: currentValue
+          ? "Deixe o campo vazio para remover a observação."
+          : "",
+      });
+      if (!isConfirmed) return;
+
+      await _callUpdate(
+        entregaId,
+        { observacoes: String(value || "").trim() },
+        currentValue ? "Observação atualizada!" : "Observação adicionada!",
+      );
+    });
 
     // ── Arquivar / Desarquivar ─────────────────────────────────────────
     m.querySelector(".ctx-archive").addEventListener("click", async () => {
@@ -3557,6 +3600,15 @@ document
     const modoArq = window._modoArquivadas || false;
     const isHold = card.dataset.emHold === "1";
     const archiveBtn = menu.querySelector(".ctx-archive");
+    const observacaoBtn = menu.querySelector(".ctx-observacao");
+    if (observacaoBtn) {
+      const label = observacaoBtn.querySelector("span");
+      if (label) {
+        label.textContent = card.dataset.observacoes
+          ? "Editar observação"
+          : "Adicionar observação";
+      }
+    }
     if (archiveBtn) {
       if (modoArq && canUnarchive) {
         archiveBtn.innerHTML =
@@ -3588,9 +3640,12 @@ document
     }
 
     // Position menu to the right of the card (flip left if no space)
+    menu.style.visibility = "hidden";
+    menu.style.display = "block";
+
     const rect = card.getBoundingClientRect();
-    const menuW = 240;
-    const menuH = 190;
+    const menuW = menu.offsetWidth || 240;
+    const menuH = menu.offsetHeight || 240;
     let left = rect.right + 8 + window.scrollX;
     if (rect.right + menuW + 16 > window.innerWidth) {
       left = rect.left - menuW - 8 + window.scrollX;
@@ -3603,7 +3658,7 @@ document
 
     menu.style.left = Math.max(10, left) + "px";
     menu.style.top = Math.max(10, top) + "px";
-    menu.style.display = "block";
+    menu.style.visibility = "visible";
   }
 
   function hideMenu() {
@@ -3844,9 +3899,43 @@ if (btnAdicionarImagem) {
   /* ── render ────────────────────────────────────────────────────────────── */
   function fmtDate(d) {
     if (!d) return "—";
-    const parts = String(d).split("T")[0].split("-");
+    const datePart = String(d).trim().split(/[T\s]/)[0];
+    const parts = datePart.split("-");
     if (parts.length < 3) return d;
     return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+
+  function parseDateOnly(value) {
+    if (!value) return null;
+    const parts = String(value).trim().split(/[T\s]/)[0].split("-");
+    if (parts.length < 3) return null;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+  }
+
+  function addBusinessDays(date, days) {
+    const result = new Date(date.getTime());
+    let added = 0;
+    while (added < days) {
+      result.setDate(result.getDate() + 1);
+      const weekDay = result.getDay();
+      if (weekDay === 0 || weekDay === 6) continue;
+      added++;
+    }
+    return result.toISOString().slice(0, 10);
+  }
+
+  function getPrazoContratualData(obra) {
+    if (obra.prazo_contratual_data) return obra.prazo_contratual_data;
+
+    const recebimento = parseDateOnly(obra.recebimento_arquivos);
+    const prazo = parseInt(obra.prazo_contratual ?? obra.prazo_contratual_dias, 10);
+    if (!recebimento || !prazo) return null;
+
+    return addBusinessDays(recebimento, prazo);
   }
 
   function fmtDias(n) {
@@ -3875,6 +3964,7 @@ if (btnAdicionarImagem) {
   function renderRelatorio(data) {
     const obra = data.obra || {};
     const sum = data.summary || {};
+    const prazoContratualData = getPrazoContratualData(obra);
 
     /* info bar */
     infoBar.innerHTML = `
@@ -3888,7 +3978,7 @@ if (btnAdicionarImagem) {
       </div>
       <div class="relatorio-info-item">
         <span class="relatorio-info-label"><i class="fa-solid fa-calendar-check" style="margin-right:4px;"></i>Prazo contratual</span>
-        <span class="relatorio-info-value">${fmtDate(obra.data_final)}</span>
+        <span class="relatorio-info-value">${fmtDate(prazoContratualData)}</span>
       </div>
       <div class="relatorio-info-item">
         <span class="relatorio-info-label"><i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>Status atual do projeto</span>

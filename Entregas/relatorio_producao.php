@@ -11,6 +11,7 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/prazo_entrega_helper.php';
 
 improov_p00_ensure_schema($conn);
 
@@ -25,9 +26,35 @@ if (!$obra_id) {
 
 /* ── Obra info ─────────────────────────────────────────────────────────── */
 $stmt = $conn->prepare(
-    "SELECT idobra, nomenclatura, recebimento_arquivos, data_final,
-            COALESCE(dias_uteis, 30) AS prazo_contratual_dias
-     FROM obra WHERE idobra = ? LIMIT 1"
+    "SELECT
+        o.idobra,
+        o.nomenclatura,
+
+        (
+            SELECT MIN(e.data_recebimento)
+            FROM entregas e
+            INNER JOIN historico_imagens hi
+            WHERE e.obra_id = o.idobra
+        ) AS recebimento_arquivos,
+
+        o.data_final,
+
+        COALESCE(
+            (
+                SELECT op.prazo_contratual
+                FROM obra_pacote op
+                WHERE op.obra_id = o.idobra
+                  AND op.tipo = 'STILL'
+                  AND op.status = 'ATIVO'
+                ORDER BY op.idobra_pacote DESC
+                LIMIT 1
+            ),
+            30
+        ) AS prazo_contratual_dias
+
+     FROM obra o
+     WHERE o.idobra = ?
+     LIMIT 1"
 );
 $stmt->bind_param('i', $obra_id);
 $stmt->execute();
@@ -40,6 +67,16 @@ if (!$obra) {
 }
 
 /* ── Auxiliary: etapa order ────────────────────────────────────────────── */
+$prazo_contratual_dias = intval($obra['prazo_contratual_dias'] ?? 0);
+$prazo_contratual_data = null;
+$data_recebimento_base = $obra['recebimento_arquivos']
+    ? substr((string) $obra['recebimento_arquivos'], 0, 10)
+    : null;
+
+if ($data_recebimento_base && $prazo_contratual_dias > 0 && entregas_valid_date($data_recebimento_base)) {
+    $prazo_contratual_data = entregas_adicionar_dias_uteis($data_recebimento_base, $prazo_contratual_dias);
+}
+
 $etapa_order = [
     'P00' => 0,
     'R00' => 1,
@@ -200,7 +237,7 @@ foreach ($etapa_seq as $codigo) {
                 ei.data_prevista    AS prazo_ajustado,
                 ei.data_entregue,
                 ico.imagem_nome,
-                ei.created_at          AS recebimento_arquivos,
+                e.data_recebimento          AS recebimento_arquivos,
                 ico.prazo           AS prazo_contratual,
                 ico.tipo_imagem     AS funcao,
                 CASE
@@ -213,6 +250,7 @@ foreach ($etapa_seq as $codigo) {
                 END AS dias_atraso
             FROM entregas_itens ei
             LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = ei.imagem_id
+            LEFT JOIN entregas e ON e.id = ei.entrega_id
             WHERE ei.entrega_id = ?
             ORDER BY ico.imagem_nome ASC";
 
@@ -323,7 +361,9 @@ echo json_encode([
         'nomenclatura'            => $obra['nomenclatura'],
         'recebimento_arquivos'    => $obra['recebimento_arquivos'],
         'data_final'              => $obra['data_final'],
-        'prazo_contratual_dias'   => intval($obra['prazo_contratual_dias']),
+        'prazo_contratual'        => $prazo_contratual_dias,
+        'prazo_contratual_dias'   => $prazo_contratual_dias,
+        'prazo_contratual_data'   => $prazo_contratual_data,
     ],
     'summary' => [
         'total_etapas'   => $total_etapas,

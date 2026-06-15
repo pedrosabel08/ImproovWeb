@@ -14,6 +14,8 @@ if (!$input || !isset($input['entrega_id'])) {
 $entrega_id    = intval($input['entrega_id']);
 $data_prevista = isset($input['data_prevista']) ? trim($input['data_prevista']) : null;
 $status_id     = isset($input['status_id'])     ? intval($input['status_id'])   : null;
+$has_observacoes = array_key_exists('observacoes', $input);
+$observacoes = $has_observacoes ? trim((string) $input['observacoes']) : null;
 
 if ($entrega_id <= 0) {
     http_response_code(400);
@@ -28,27 +30,42 @@ if ($data_prevista !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_previs
     exit;
 }
 
-if ($data_prevista === null && $status_id === null) {
+if ($data_prevista === null && $status_id === null && !$has_observacoes) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Nenhum campo a atualizar']);
+    exit;
+}
+
+if ($observacoes !== null && mb_strlen($observacoes) > 2000) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'A observação deve ter no máximo 2000 caracteres']);
     exit;
 }
 
 $conn->begin_transaction();
 
 try {
-    if ($data_prevista !== null && $status_id !== null) {
-        $stmt = $conn->prepare("UPDATE entregas SET data_prevista = ?, status_id = ? WHERE id = ?");
-        $stmt->bind_param('sii', $data_prevista, $status_id, $entrega_id);
-    } elseif ($data_prevista !== null) {
+    if ($data_prevista !== null) {
         $stmt = $conn->prepare("UPDATE entregas SET data_prevista = ? WHERE id = ?");
         $stmt->bind_param('si', $data_prevista, $entrega_id);
-    } else {
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    if ($status_id !== null) {
         $stmt = $conn->prepare("UPDATE entregas SET status_id = ? WHERE id = ?");
         $stmt->bind_param('ii', $status_id, $entrega_id);
+        $stmt->execute();
+        $stmt->close();
     }
-    $stmt->execute();
-    $stmt->close();
+
+    if ($has_observacoes) {
+        $observacoes_db = $observacoes !== '' ? $observacoes : null;
+        $stmt = $conn->prepare("UPDATE entregas SET observacoes = ? WHERE id = ?");
+        $stmt->bind_param('si', $observacoes_db, $entrega_id);
+        $stmt->execute();
+        $stmt->close();
+    }
 
     // When data_prevista changes, also update entregas_itens.data_prevista
     if ($data_prevista !== null) {

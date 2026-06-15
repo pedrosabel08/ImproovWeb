@@ -4809,10 +4809,9 @@ form#form-add.allocation-modal {
 .alloc-task-head,
 .alloc-task-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(
-      150px,
-      0.9fr
-    ) minmax(140px, 0.8fr) 128px;
+  grid-template-columns:
+    minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(150px, 0.9fr)
+    minmax(140px, 0.8fr) 128px;
   gap: 10px;
   align-items: center;
 }
@@ -8641,4 +8640,31 @@ tr#linha-porcentagem {
   height: 22px;
   border-radius: var(--radius-full);
   padding: 0 6px;
+}
+
+.observacao-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.observacao-badge i {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.observacao-badge span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
 }

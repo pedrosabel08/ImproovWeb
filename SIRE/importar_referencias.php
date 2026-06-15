@@ -81,6 +81,16 @@ $dbName = improov_env('DB_DATABASE', 'flowdb');
 
 // Log
 $logFile = '/var/log/importador_referencias.log';
+$flowReviewAutoload = SIRE_PROJECT_DIR . '/FlowReview/vendor/autoload.php';
+if (file_exists($flowReviewAutoload)) {
+    require_once $flowReviewAutoload;
+}
+if (class_exists('Dotenv\\Dotenv')) {
+    Dotenv\Dotenv::createImmutable(SIRE_PROJECT_DIR . '/FlowReview')->safeLoad();
+}
+$slackToken = $_ENV['SLACK_TOKEN'] ?? getenv('SLACK_TOKEN');
+$slackToken = $slackToken !== false ? (string) $slackToken : '';
+$slackUsuarioId = 1;
 
 // ── Funções utilitárias ─────────────────────────────────────────────────────────
 
@@ -141,6 +151,78 @@ function sire_create_pdo(
     ]);
 }
 
+/**
+ * Envia uma mensagem direta no Slack usando o nome_slack do usuario informado.
+ */
+function sire_notify_slack_user(PDO $pdo, int $usuarioId, string $mensagem): bool
+{
+    global $slackToken;
+
+    if ($slackToken === '') {
+        sire_log('Slack: token ausente, notificação ignorada.', 'WARN');
+        return false;
+    }
+    if (!function_exists('curl_init')) {
+        sire_log('Slack: extensão curl ausente, notificação ignorada.', 'WARN');
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT nome_slack
+             FROM usuario
+             WHERE idusuario = :idusuario
+               AND nome_slack IS NOT NULL
+               AND nome_slack != ''
+             LIMIT 1"
+        );
+        $stmt->bindValue(':idusuario', $usuarioId, PDO::PARAM_INT);
+        $stmt->execute();
+        $slackUserId = trim((string) $stmt->fetchColumn());
+    } catch (Throwable $e) {
+        sire_log('Slack: erro ao buscar usuário ' . $usuarioId . ': ' . $e->getMessage(), 'WARN');
+        return false;
+    }
+
+    if ($slackUserId === '') {
+        sire_log('Slack: usuário ' . $usuarioId . ' sem nome_slack.', 'WARN');
+        return false;
+    }
+
+    $payload = [
+        'channel' => $slackUserId,
+        'text'    => $mensagem,
+    ];
+
+    $ch = curl_init('https://slack.com/api/chat.postMessage');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $slackToken,
+        'Content-Type: application/json',
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+    $response = curl_exec($ch);
+    if (curl_errno($ch)) {
+        sire_log('Slack: erro curl: ' . curl_error($ch), 'WARN');
+        curl_close($ch);
+        return false;
+    }
+    curl_close($ch);
+
+    $data = json_decode((string) $response, true);
+    if (!is_array($data) || empty($data['ok'])) {
+        sire_log('Slack: erro API: ' . ($data['error'] ?? 'resposta inválida'), 'WARN');
+        return false;
+    }
+
+    sire_log('Slack: notificação enviada para usuário ' . $usuarioId . '.', 'OK');
+    return true;
+}
+
 // ── Início do processamento ────────────────────────────────────────────────────
 
 sire_log('════════════════════════════════════════════════════════════');
@@ -170,22 +252,8 @@ try {
     sire_log('Conectando ao banco de dados (' . $dbHost . ':' . $dbPort . ')...');
     $pdo = sire_create_pdo($dbHost, $dbPort, $dbUser, $dbPass, $dbName);
     sire_log('Banco de dados: OK');
-
-    sire_log('Conectando ao VPS via SFTP (' . $vpsHost . ':' . $vpsPort . ')...');
-    $sftpVps = new SFTP($vpsHost, $vpsPort);
-    if (!$sftpVps->login($vpsUser, $vpsPass)) {
-        throw new RuntimeException('Falha na autenticação SFTP VPS (' . $vpsHost . ')');
-    }
-    sire_log('VPS SFTP: OK');
-
-    sire_log('Conectando ao NAS via SFTP (' . $nasCfg['host'] . ':' . $nasCfg['port'] . ')...');
-    $sftpNas = new SFTP($nasCfg['host'], $nasCfg['port']);
-    if (!$sftpNas->login($nasCfg['user'], $nasCfg['pass'])) {
-        throw new RuntimeException('Falha na autenticação SFTP NAS (' . $nasCfg['host'] . ')');
-    }
-    sire_log('NAS SFTP: OK');
 } catch (Throwable $e) {
-    sire_log('ERRO na inicialização de conexões: ' . $e->getMessage(), 'FATAL');
+    sire_log('ERRO na inicialização do banco de dados: ' . $e->getMessage(), 'FATAL');
     exit(1);
 }
 
@@ -193,51 +261,78 @@ try {
 
 $querySql = "
     WITH candidatos AS (
-        SELECT
-            o.nomenclatura,
-            hi.nome_arquivo,
-            hi.funcao_imagem_id,
-            fi.imagem_id,
-            fi.funcao_id,
-            ROW_NUMBER() OVER (
-                PARTITION BY hi.funcao_imagem_id
-                ORDER BY hi.id DESC
-            ) AS rn
-        FROM historico_aprovacoes_imagens hi
-        JOIN funcao_imagem fi
-            ON hi.funcao_imagem_id = fi.idfuncao_imagem
-        JOIN imagens_cliente_obra i
-            ON i.idimagens_cliente_obra = fi.imagem_id
-        JOIN obra o
-            ON o.idobra = i.obra_id
-        WHERE
-            i.status_id = 6
-            AND i.substatus_id = 9
-            AND i.tipo_imagem = 'Planta Humanizada'
-            AND fi.funcao_id IN (4, 6)
-            AND hi.nome_arquivo IS NOT NULL
-            AND hi.nome_arquivo != ''
-    ),
-    ultimos AS (
-        SELECT * FROM candidatos WHERE rn = 1
-    ),
-    priorizados AS (
-        SELECT
-            nomenclatura,
-            nome_arquivo,
-            funcao_imagem_id,
-            ROW_NUMBER() OVER (
-                PARTITION BY imagem_id
-                ORDER BY CASE funcao_id WHEN 6 THEN 1 ELSE 2 END
-            ) AS rn2
-        FROM ultimos
-    )
+    SELECT
+        o.nomenclatura,
+        hi.nome_arquivo,
+        hi.funcao_imagem_id,
+        fi.imagem_id,
+        fi.funcao_id,
+        i.tipo_imagem,
+        ROW_NUMBER() OVER (
+            PARTITION BY hi.funcao_imagem_id
+            ORDER BY hi.id DESC
+        ) AS rn
+    FROM historico_aprovacoes_imagens hi
+    JOIN funcao_imagem fi
+        ON hi.funcao_imagem_id = fi.idfuncao_imagem
+    JOIN imagens_cliente_obra i
+        ON i.idimagens_cliente_obra = fi.imagem_id
+    JOIN obra o
+        ON o.idobra = i.obra_id
+    WHERE
+        i.status_id = 6
+        AND i.substatus_id = 9
+        AND hi.nome_arquivo IS NOT NULL
+        AND hi.nome_arquivo != ''
+        AND (
+            (
+                i.tipo_imagem = 'Planta Humanizada'
+                AND fi.funcao_id IN (4, 6)
+            )
+            OR
+            (
+                i.tipo_imagem <> 'Planta Humanizada'
+                AND fi.funcao_id = 5
+            )
+        )
+),
+ultimos AS (
+    SELECT *
+    FROM candidatos
+    WHERE rn = 1
+),
+priorizados AS (
     SELECT
         nomenclatura,
         nome_arquivo,
-        funcao_imagem_id
-    FROM priorizados
-    WHERE rn2 = 1
+        funcao_imagem_id,
+        imagem_id,
+        funcao_id,
+        tipo_imagem,
+        ROW_NUMBER() OVER (
+            PARTITION BY imagem_id
+            ORDER BY
+                CASE
+                    WHEN tipo_imagem = 'Planta Humanizada' AND funcao_id = 6 THEN 1
+                    WHEN tipo_imagem = 'Planta Humanizada' AND funcao_id = 4 THEN 2
+                    WHEN tipo_imagem <> 'Planta Humanizada' AND funcao_id = 5 THEN 1
+                    ELSE 99
+                END
+        ) AS rn2
+    FROM ultimos
+)
+SELECT
+    nomenclatura,
+    nome_arquivo,
+    funcao_imagem_id
+FROM priorizados
+WHERE rn2 = 1
+    AND NOT EXISTS (
+        SELECT 1
+        FROM referencias_imagens ri
+        WHERE ri.funcao_imagem_id = priorizados.funcao_imagem_id
+    )
+ORDER BY funcao_imagem_id ASC
     LIMIT :limit
 ";
 
@@ -252,7 +347,40 @@ try {
     sire_log('Registros encontrados: ' . $stats['total']);
 } catch (Throwable $e) {
     sire_log('ERRO ao executar query: ' . $e->getMessage(), 'FATAL');
+    sire_notify_slack_user(
+        $pdo,
+        $slackUsuarioId,
+        'SIRE: importacao de referencias falhou ao executar a query. Erro: ' . $e->getMessage()
+    );
     exit(1);
+}
+
+if ($stats['total'] > 0) {
+    try {
+        sire_log('Conectando ao VPS via SFTP (' . $vpsHost . ':' . $vpsPort . ')...');
+        $sftpVps = new SFTP($vpsHost, $vpsPort);
+        if (!$sftpVps->login($vpsUser, $vpsPass)) {
+            throw new RuntimeException('Falha na autenticação SFTP VPS (' . $vpsHost . ')');
+        }
+        sire_log('VPS SFTP: OK');
+
+        sire_log('Conectando ao NAS via SFTP (' . $nasCfg['host'] . ':' . $nasCfg['port'] . ')...');
+        $sftpNas = new SFTP($nasCfg['host'], $nasCfg['port']);
+        if (!$sftpNas->login($nasCfg['user'], $nasCfg['pass'])) {
+            throw new RuntimeException('Falha na autenticação SFTP NAS (' . $nasCfg['host'] . ')');
+        }
+        sire_log('NAS SFTP: OK');
+    } catch (Throwable $e) {
+        sire_log('ERRO na inicialização dos SFTPs: ' . $e->getMessage(), 'FATAL');
+        sire_notify_slack_user(
+            $pdo,
+            $slackUsuarioId,
+            'SIRE: importação de referências falhou ao conectar nos SFTPs. Erro: ' . $e->getMessage()
+        );
+        exit(1);
+    }
+} else {
+    sire_log('Nenhuma imagem pendente de importação. SFTPs não serão conectados.');
 }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
@@ -433,5 +561,24 @@ sire_log(sprintf('Não encontrado    : %d', $stats['nao_encontrado']));
 sire_log(sprintf('Total com erro    : %d', $stats['erro']));
 sire_log('Log salvo em: ' . $logFile);
 sire_log('════════════════════════════════════════════════════════════');
+
+$statusSlack = $stats['erro'] > 0 ? 'finalizada com erros' : 'finalizada com sucesso';
+if ($dryRun) {
+    $statusSlack .= ' [dry-run]';
+}
+
+$mensagemSlack = sprintf(
+    "SIRE: importacao de referencias %s.\nProcessados: %d\nImportados: %d\nIgnorados: %d\nDuplicados: %d\nNao encontrados: %d\nErros: %d\nLog: %s",
+    $statusSlack,
+    $stats['total'],
+    $stats['importado'],
+    $stats['ignorado'],
+    $stats['duplicado'],
+    $stats['nao_encontrado'],
+    $stats['erro'],
+    $logFile
+);
+
+sire_notify_slack_user($pdo, $slackUsuarioId, $mensagemSlack);
 
 exit($stats['erro'] > 0 ? 1 : 0);

@@ -130,20 +130,49 @@ if ($stmt_fr) {
 }
 
 $pre_alt_analise_count = 0;
-// ── Pré-Alteração: imagens aguardando análise (substatus 10) ──────────────────
-if ($userId == 1) {
-    $res_pa = $conn->query(
-        "SELECT COUNT(DISTINCT obra_id) AS cnt FROM imagens_cliente_obra WHERE substatus_id = 10"
-    );
-    $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
+$preAltTablesReady = false;
+$resPreAltTables = $conn->query(
+    "SELECT COUNT(*) AS cnt
+     FROM information_schema.tables
+     WHERE table_schema = DATABASE()
+       AND table_name IN ('pre_alt_lote', 'pre_alt_itens')"
+);
+if ($resPreAltTables) {
+    $preAltTablesReady = intval($resPreAltTables->fetch_assoc()['cnt'] ?? 0) === 2;
 }
 
-// ── Pré-Alteração: imagens aguardando planejamento (substatus 12) ──────────────────
-if ($userId == 21) {
-    $res_pa = $conn->query(
-        "SELECT COUNT(DISTINCT obra_id) AS cnt FROM imagens_cliente_obra WHERE substatus_id = 12"
-    );
-    $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
+if ($preAltTablesReady) {
+    if ($userId == 1) {
+        $res_pa = $conn->query(
+            "SELECT COUNT(*) AS cnt
+             FROM pre_alt_lote
+             WHERE status IN ('EM_TRIAGEM', 'AGUARDANDO_CLIENTE')"
+        );
+        $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
+    }
+
+    if ($userId == 21) {
+        $res_pa = $conn->query(
+            "SELECT COUNT(*) AS cnt
+             FROM pre_alt_lote
+             WHERE status = 'PRONTO_PLANEJAMENTO'"
+        );
+        $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
+    }
+} else {
+    if ($userId == 1) {
+        $res_pa = $conn->query(
+            "SELECT COUNT(DISTINCT obra_id) AS cnt FROM imagens_cliente_obra WHERE substatus_id = 10"
+        );
+        $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
+    }
+
+    if ($userId == 21) {
+        $res_pa = $conn->query(
+            "SELECT COUNT(DISTINCT obra_id) AS cnt FROM imagens_cliente_obra WHERE substatus_id = 12"
+        );
+        $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
+    }
 }
 
 $modules = [

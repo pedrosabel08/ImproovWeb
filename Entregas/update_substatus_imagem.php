@@ -59,6 +59,7 @@ if ($stmt->execute()) {
         }
     }
     foreach ($imagem_ids as $imagem_id) {
+        entregas_review_sync_standard_batch_state($conn, (int) $imagem_id, $substatus_id);
         entregas_review_sync_p00_batch_state($conn, (int) $imagem_id, null, $substatus_id);
     }
     echo json_encode(['success' => true, 'affected' => $stmt->affected_rows]);

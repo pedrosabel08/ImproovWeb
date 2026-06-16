@@ -74,23 +74,30 @@ $conn->close();
             <p>Nenhuma imagem em pré-análise encontrada.</p>
         </div>
 
-        <!-- Two-column layout -->
+        <!-- Triagem layout -->
         <div class="columns-layout" id="columnsLayout" style="display:none">
-            <!-- Left: Pré-Análise -->
             <div class="col-panel col-pre-analise">
                 <div class="col-panel-header">
                     <div class="col-panel-title">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <span>Pré-Análise</span>
+                        <span>Em Triagem</span>
                     </div>
-                    <span class="col-panel-count" id="countPreAnalise">0</span>
+                    <span class="col-panel-count" id="countTriagem">0</span>
                 </div>
-                <div class="col-panel-body" id="colPreAnalise">
-                    <!-- Cards: substatus 10 (RVW_DONE) e 11 (PRE_ALT) -->
-                </div>
+                <div class="col-panel-body" id="colTriagem"></div>
             </div>
 
-            <!-- Right: Para Planejamento -->
+            <div class="col-panel col-aguardando">
+                <div class="col-panel-header">
+                    <div class="col-panel-title">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Aguardando Cliente</span>
+                    </div>
+                    <span class="col-panel-count" id="countAguardando">0</span>
+                </div>
+                <div class="col-panel-body" id="colAguardando"></div>
+            </div>
+
             <div class="col-panel col-planejamento">
                 <div class="col-panel-header">
                     <div class="col-panel-title">
@@ -99,9 +106,7 @@ $conn->close();
                     </div>
                     <span class="col-panel-count col-panel-count--green" id="countPlanejamento">0</span>
                 </div>
-                <div class="col-panel-body" id="colPlanejamento">
-                    <!-- Cards: substatus 12 (READY_FOR_PLANNING) -->
-                </div>
+                <div class="col-panel-body" id="colPlanejamento"></div>
             </div>
         </div>
     </div>

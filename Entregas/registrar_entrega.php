@@ -271,6 +271,8 @@ try {
                 $stmtUpdateImg->bind_param('ii', $substatus_to_set, $img_id);
                 $stmtUpdateImg->execute();
 
+                entregas_review_sync_standard_batch_state($conn, $img_id, $substatus_to_set);
+
                 if ($img_status_id === 1) {
                     entregas_review_sync_p00_batch_state($conn, $img_id, $img_status_id, $substatus_to_set);
                 }

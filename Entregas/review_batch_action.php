@@ -5,6 +5,7 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
+require_once __DIR__ . '/../PreAlteracao/pre_alt_helpers.php';
 
 function review_batch_action_active_p00_items(array $batch): array
 {
@@ -193,6 +194,7 @@ $customerResponse = isset($input['customer_response']) ? strtolower(trim((string
 $changeOrigin = isset($input['change_origin']) ? trim((string) $input['change_origin']) : '';
 $changeOriginDetail = isset($input['change_origin_detail']) ? trim((string) $input['change_origin_detail']) : '';
 $actorUserId = (int) ($_SESSION['idusuario'] ?? 0);
+$actorColaboradorId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
 
 if ($reviewBatchId <= 0 || !in_array($action, ['notify', 'snooze', 'resolve', 'ignore'], true)) {
     http_response_code(400);
@@ -242,6 +244,14 @@ if ($billingId <= 0) {
     $stmtCreate->bind_param('is', $reviewBatchId, $current['data_entrega_lote']);
     $stmtCreate->execute();
     $stmtCreate->close();
+}
+
+if (
+    $action === 'resolve'
+    && $customerResponse === 'change_requested'
+    && !review_batch_action_is_p00_batch($current)
+) {
+    pre_alt_ensure_schema($conn);
 }
 
 try {
@@ -304,8 +314,27 @@ try {
     if ($action === 'resolve') {
         $resolvedReason = $reason !== '' ? substr($reason, 0, 255) : 'MANUAL_RESOLVED';
         $noteValue = $note !== '' ? substr($note, 0, 255) : 'Batch resolvido manualmente.';
+        $shouldCreatePreAlt = false;
+        $isP00Batch = review_batch_action_is_p00_batch($current);
 
-        if (review_batch_action_is_p00_batch($current)) {
+        if (!$isP00Batch) {
+            if ($customerResponse === 'approved') {
+                $resolvedReason = 'Aprovada';
+                if ($note === '') {
+                    $noteValue = 'Cliente aprovou o lote sem alteracoes.';
+                }
+            } elseif ($customerResponse === 'change_requested') {
+                $resolvedReason = 'Alteracao solicitada';
+                $shouldCreatePreAlt = true;
+                if ($note === '') {
+                    $noteValue = 'Cliente solicitou alteracoes. Lote enviado para Pre-Alteracao.';
+                }
+            } else {
+                throw new RuntimeException('Selecione se o cliente aprovou o lote ou pediu alteracao.');
+            }
+        }
+
+        if ($isP00Batch) {
             $activeP00Items = review_batch_action_active_p00_items($current);
             if (empty($activeP00Items)) {
                 throw new RuntimeException('Nenhuma versão P00 ativa foi encontrada para este batch.');
@@ -389,6 +418,10 @@ try {
         $stmtBatch->bind_param('i', $reviewBatchId);
         $stmtBatch->execute();
         $stmtBatch->close();
+
+        if ($shouldCreatePreAlt) {
+            pre_alt_criar_de_review_batch($conn, $reviewBatchId, $actorColaboradorId, date('Y-m-d'));
+        }
     }
 
     if ($action === 'ignore') {

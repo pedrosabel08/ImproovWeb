@@ -774,6 +774,239 @@ function entregas_review_sync_p00_batch_state(mysqli $conn, int $imagemId, ?int 
     entregas_review_close_p00_batch_for_image($conn, $imagemId, $changedAt);
 }
 
+function entregas_review_sync_standard_batch_state(mysqli $conn, int $imagemId, ?int $substatusId = null, ?string $changedAt = null): void
+{
+    if ($imagemId <= 0 || !entregas_review_schema_ready($conn)) {
+        return;
+    }
+
+    if ($substatusId === null) {
+        $stmt = $conn->prepare('SELECT substatus_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? LIMIT 1');
+        if (!$stmt) {
+            return;
+        }
+
+        $stmt->bind_param('i', $imagemId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return;
+        }
+
+        $substatusId = isset($row['substatus_id']) ? (int) $row['substatus_id'] : 0;
+    }
+
+    if ($substatusId === 6) {
+        entregas_review_open_standard_batch_for_image($conn, $imagemId, $changedAt);
+        return;
+    }
+
+    entregas_review_close_standard_batch_for_image($conn, $imagemId, $changedAt);
+}
+
+function entregas_review_open_standard_batch_for_image(mysqli $conn, int $imagemId, ?string $changedAt = null): void
+{
+    $imagemId = (int) $imagemId;
+    if ($imagemId <= 0) {
+        return;
+    }
+
+    $changedAt = $changedAt ?: date('Y-m-d H:i:s');
+
+    $stmtItem = $conn->prepare("SELECT
+            ei.id,
+            ei.entrega_id,
+            ei.data_entregue,
+            DATE(ei.data_entregue) AS data_lote
+        FROM entregas_itens ei
+        INNER JOIN entregas e ON e.id = ei.entrega_id
+        WHERE ei.imagem_id = ?
+          AND ei.data_entregue IS NOT NULL
+          AND COALESCE(e.tipo_entrega, 'PADRAO') <> 'P00'
+        ORDER BY ei.data_entregue DESC, ei.id DESC
+        LIMIT 1");
+    if (!$stmtItem) {
+        return;
+    }
+
+    $stmtItem->bind_param('i', $imagemId);
+    $stmtItem->execute();
+    $item = $stmtItem->get_result()->fetch_assoc();
+    $stmtItem->close();
+
+    if (!$item) {
+        return;
+    }
+
+    $entregaId = (int) ($item['entrega_id'] ?? 0);
+    $entregaItemId = (int) ($item['id'] ?? 0);
+    $dataLote = (string) ($item['data_lote'] ?? '');
+    $dataEntregue = (string) ($item['data_entregue'] ?? $changedAt);
+
+    if ($entregaId <= 0 || $entregaItemId <= 0 || $dataLote === '') {
+        return;
+    }
+
+    $batchId = 0;
+    $stmtBatch = $conn->prepare("SELECT id
+        FROM review_batch
+        WHERE entrega_id = ?
+          AND data_entrega_lote = ?
+          AND status IN ('OPEN', 'OVERDUE', 'NOTIFIED', 'SNOOZED')
+        ORDER BY review_round DESC, id DESC
+        LIMIT 1");
+    if ($stmtBatch) {
+        $stmtBatch->bind_param('is', $entregaId, $dataLote);
+        $stmtBatch->execute();
+        $found = $stmtBatch->get_result()->fetch_assoc();
+        $stmtBatch->close();
+        if ($found) {
+            $batchId = (int) ($found['id'] ?? 0);
+        }
+    }
+
+    if ($batchId <= 0) {
+        $reviewRound = 1;
+        $stmtRound = $conn->prepare('SELECT COALESCE(MAX(review_round), 0) + 1 AS next_round FROM review_batch WHERE entrega_id = ? AND data_entrega_lote = ?');
+        if ($stmtRound) {
+            $stmtRound->bind_param('is', $entregaId, $dataLote);
+            $stmtRound->execute();
+            $roundRow = $stmtRound->get_result()->fetch_assoc();
+            $stmtRound->close();
+            $reviewRound = (int) ($roundRow['next_round'] ?? 1);
+        }
+
+        $stmtInsertBatch = $conn->prepare("INSERT INTO review_batch (entrega_id, data_entrega_lote, review_round, status, batch_active_slot, created_at, updated_at)
+            VALUES (?, ?, ?, 'OPEN', 1, ?, ?)");
+        if (!$stmtInsertBatch) {
+            return;
+        }
+
+        $stmtInsertBatch->bind_param('isiss', $entregaId, $dataLote, $reviewRound, $changedAt, $changedAt);
+        if (!$stmtInsertBatch->execute()) {
+            $stmtInsertBatch->close();
+            return;
+        }
+        $batchId = (int) $conn->insert_id;
+        $stmtInsertBatch->close();
+    }
+
+    $stmtActive = $conn->prepare('SELECT id FROM review_batch_items WHERE review_batch_id = ? AND entrega_item_id = ? AND imagem_id = ? AND left_rvw_at IS NULL LIMIT 1');
+    if ($stmtActive) {
+        $stmtActive->bind_param('iii', $batchId, $entregaItemId, $imagemId);
+        $stmtActive->execute();
+        $activeRow = $stmtActive->get_result()->fetch_assoc();
+        $stmtActive->close();
+        if ($activeRow) {
+            entregas_review_sync_batch_billing($conn, $batchId, $dataLote, $changedAt);
+            return;
+        }
+    }
+
+    $enteredAt = $dataEntregue !== '' ? $dataEntregue : $changedAt;
+    $stmtInsertItem = $conn->prepare('INSERT INTO review_batch_items (review_batch_id, entrega_item_id, imagem_id, entered_rvw_at) VALUES (?, ?, ?, ?)');
+    if (!$stmtInsertItem) {
+        return;
+    }
+
+    $stmtInsertItem->bind_param('iiis', $batchId, $entregaItemId, $imagemId, $enteredAt);
+    $stmtInsertItem->execute();
+    $stmtInsertItem->close();
+
+    entregas_review_sync_batch_billing($conn, $batchId, $dataLote, $changedAt);
+}
+
+function entregas_review_close_standard_batch_for_image(mysqli $conn, int $imagemId, ?string $changedAt = null): void
+{
+    $imagemId = (int) $imagemId;
+    if ($imagemId <= 0) {
+        return;
+    }
+
+    $changedAt = $changedAt ?: date('Y-m-d H:i:s');
+
+    $stmtBatch = $conn->prepare("SELECT rbi.review_batch_id
+        FROM review_batch_items rbi
+        INNER JOIN review_batch rb ON rb.id = rbi.review_batch_id
+        WHERE rbi.imagem_id = ?
+          AND rbi.p00_versao_id IS NULL
+          AND rbi.left_rvw_at IS NULL
+          AND rb.status IN ('OPEN', 'OVERDUE', 'NOTIFIED', 'SNOOZED')
+        ORDER BY rbi.id DESC
+        LIMIT 1");
+    if (!$stmtBatch) {
+        return;
+    }
+
+    $stmtBatch->bind_param('i', $imagemId);
+    $stmtBatch->execute();
+    $batchRow = $stmtBatch->get_result()->fetch_assoc();
+    $stmtBatch->close();
+
+    $batchId = isset($batchRow['review_batch_id']) ? (int) $batchRow['review_batch_id'] : 0;
+    if ($batchId <= 0) {
+        return;
+    }
+
+    $stmtUpdate = $conn->prepare("UPDATE review_batch_items
+        SET left_rvw_at = COALESCE(left_rvw_at, ?),
+            item_active_slot = NULL
+        WHERE review_batch_id = ?
+          AND imagem_id = ?
+          AND p00_versao_id IS NULL
+          AND left_rvw_at IS NULL");
+    if (!$stmtUpdate) {
+        return;
+    }
+
+    $stmtUpdate->bind_param('sii', $changedAt, $batchId, $imagemId);
+    $stmtUpdate->execute();
+    $stmtUpdate->close();
+
+    $stmtCount = $conn->prepare('SELECT COUNT(*) AS active_items FROM review_batch_items WHERE review_batch_id = ? AND left_rvw_at IS NULL');
+    if (!$stmtCount) {
+        return;
+    }
+
+    $stmtCount->bind_param('i', $batchId);
+    $stmtCount->execute();
+    $countRow = $stmtCount->get_result()->fetch_assoc();
+    $stmtCount->close();
+
+    if ((int) ($countRow['active_items'] ?? 0) !== 0) {
+        return;
+    }
+
+    $stmtBilling = $conn->prepare("UPDATE cobranca_review
+        SET status = CASE WHEN status = 'IGNORED' THEN status ELSE 'RESOLVED' END,
+            resolved_at = COALESCE(resolved_at, ?),
+            resolved_reason = COALESCE(NULLIF(resolved_reason, ''), 'AUTO_EMPTY_BATCH'),
+            snooze_until = NULL,
+            status_changed_at = ?,
+            last_action_note = COALESCE(NULLIF(last_action_note, ''), 'Batch resolvido automaticamente apos saida do ultimo item do RVW.')
+        WHERE review_batch_id = ?
+          AND status <> 'IGNORED'");
+    if ($stmtBilling) {
+        $stmtBilling->bind_param('ssi', $changedAt, $changedAt, $batchId);
+        $stmtBilling->execute();
+        $stmtBilling->close();
+    }
+
+    $stmtBatchResolve = $conn->prepare("UPDATE review_batch
+        SET status = CASE WHEN status = 'IGNORED' THEN status ELSE 'RESOLVED' END,
+            batch_active_slot = NULL,
+            updated_at = ?
+        WHERE id = ?
+          AND status <> 'IGNORED'");
+    if ($stmtBatchResolve) {
+        $stmtBatchResolve->bind_param('si', $changedAt, $batchId);
+        $stmtBatchResolve->execute();
+        $stmtBatchResolve->close();
+    }
+}
+
 function entregas_review_open_p00_batch_for_image(mysqli $conn, int $imagemId, ?string $changedAt = null): void
 {
     $imagemId = (int) $imagemId;

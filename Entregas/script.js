@@ -976,29 +976,33 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const result = await Swal.fire({
-        title: "Resolver batch",
+        title: "Resolver retorno do cliente",
         html: `
-          <input id="swal-review-resolve-reason" class="swal2-input" type="text" placeholder="Motivo da resolução">
-          <textarea id="swal-review-resolve-note" class="swal2-textarea" placeholder="Observação opcional"></textarea>
+          <select id="swal-review-response" class="swal2-input">
+            <option value="">Selecione a resposta do cliente</option>
+            <option value="approved">Cliente aprovou / sem alteracao</option>
+            <option value="change_requested">Cliente pediu alteracao - enviar para Pre-Alteracao</option>
+          </select>
+          <textarea id="swal-review-resolve-note" class="swal2-textarea" placeholder="Observacao opcional para o lote"></textarea>
         `,
         showCancelButton: true,
         confirmButtonText: "Resolver",
         cancelButtonText: "Cancelar",
         focusConfirm: false,
         preConfirm: () => {
-          const reason =
-            document.getElementById("swal-review-resolve-reason")?.value || "";
+          const customerResponse =
+            document.getElementById("swal-review-response")?.value || "";
           const note =
             document.getElementById("swal-review-resolve-note")?.value || "";
 
-          if (!reason.trim()) {
-            Swal.showValidationMessage("Informe o motivo da resolução.");
+          if (!customerResponse) {
+            Swal.showValidationMessage("Selecione a resposta do cliente.");
             return false;
           }
 
           return {
             action,
-            reason: reason.trim(),
+            customer_response: customerResponse,
             note: note.trim(),
           };
         },

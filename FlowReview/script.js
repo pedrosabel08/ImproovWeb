@@ -2550,7 +2550,7 @@ function historyAJAX(idfuncao_imagem) {
       }
 
       const isFlowAngulo =
-        isFinalizacaoContext(item) &&
+        isP00FinalizacaoContext(item) &&
         Array.isArray(imagens) &&
         imagens.some(
           (img) =>

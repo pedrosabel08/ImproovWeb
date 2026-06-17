@@ -781,7 +781,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function getDefaultSnoozeDateTimeLocal() {
     const base = new Date();
     base.setDate(base.getDate() + 2);
-    base.setHours(9, 0, 0, 0);
+    base.setHours(0, 0, 0, 0);
     const tzOffset = base.getTimezoneOffset() * 60000;
     return new Date(base.getTime() - tzOffset).toISOString().slice(0, 16);
   }

@@ -30,6 +30,9 @@ $nivel = isset($data['nivel_complexidade']) && is_numeric($data['nivel_complexid
 $tipoAlteracao = trim((string) ($data['tipo_alteracao'] ?? ''));
 $acao = trim((string) ($data['acao'] ?? ''));
 $necessitaRetorno = !empty($data['necessita_retorno']) ? 1 : 0;
+$quantidadeComentarios = isset($data['quantidade_comentarios']) && is_numeric($data['quantidade_comentarios'])
+    ? max(0, (int) $data['quantidade_comentarios'])
+    : 0;
 $responsavelId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
 
 $resultadosValidos = ['ALTERACAO', 'SEM_ALTERACAO', 'AGUARDANDO_CLIENTE'];
@@ -56,7 +59,20 @@ if ($resultado === 'AGUARDANDO_CLIENTE') {
 
 pre_alt_ensure_schema($conn);
 
-$stmtLote = $conn->prepare('SELECT pre_alt_lote_id FROM pre_alt_itens WHERE id = ? LIMIT 1');
+$stmtLote = $conn->prepare(
+    'SELECT
+        pre_alt_lote_id,
+        resultado,
+        nivel_complexidade,
+        tipo_alteracao,
+        acao,
+        necessita_retorno,
+        quantidade_comentarios,
+        responsavel_id
+     FROM pre_alt_itens
+     WHERE id = ?
+     LIMIT 1'
+);
 if (!$stmtLote) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $conn->error]);
@@ -82,6 +98,7 @@ $stmt = $conn->prepare(
          tipo_alteracao = NULLIF(?, ''),
          acao = NULLIF(?, ''),
          necessita_retorno = ?,
+         quantidade_comentarios = ?,
          responsavel_id = ?,
          updated_at = NOW()
      WHERE id = ?"
@@ -92,7 +109,7 @@ if (!$stmt) {
     exit;
 }
 
-$stmt->bind_param('sissiii', $resultado, $nivel, $tipoAlteracao, $acao, $necessitaRetorno, $responsavelId, $itemId);
+$stmt->bind_param('sissiiii', $resultado, $nivel, $tipoAlteracao, $acao, $necessitaRetorno, $quantidadeComentarios, $responsavelId, $itemId);
 if (!$stmt->execute()) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $stmt->error]);
@@ -101,7 +118,33 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
-$loteStatus = pre_alt_recalcular_status_lote($conn, $loteId);
+$changes = [
+    'resultado' => [$rowLote['resultado'] ?? null, $resultado],
+    'nivel_complexidade' => [$rowLote['nivel_complexidade'] ?? null, $nivel],
+    'tipo_alteracao' => [$rowLote['tipo_alteracao'] ?? null, $tipoAlteracao !== '' ? $tipoAlteracao : null],
+    'acao' => [$rowLote['acao'] ?? null, $acao !== '' ? $acao : null],
+    'necessita_retorno' => [(int) ($rowLote['necessita_retorno'] ?? 0), $necessitaRetorno],
+    'quantidade_comentarios' => [$rowLote['quantidade_comentarios'] ?? null, $quantidadeComentarios],
+    'responsavel_id' => [$rowLote['responsavel_id'] ?? null, $responsavelId],
+];
+
+foreach ($changes as $campo => [$oldValue, $newValue]) {
+    if ((string) ($oldValue ?? '') === (string) ($newValue ?? '')) {
+        continue;
+    }
+    pre_alt_registrar_historico(
+        $conn,
+        $loteId,
+        'ALTERACAO_ITEM',
+        $campo,
+        $oldValue,
+        $newValue,
+        'Triagem da imagem atualizada.',
+        $itemId
+    );
+}
+
+$loteStatus = pre_alt_recalcular_status_lote($conn, $loteId, null, 'Status recalculado apos triagem de imagem.');
 
 echo json_encode([
     'success' => true,

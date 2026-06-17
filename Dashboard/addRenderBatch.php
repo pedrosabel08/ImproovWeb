@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/alteracoes_helper.php';
 
 header('Content-Type: application/json');
 
@@ -87,7 +88,6 @@ try {
     $stmtResetStatus  = $conn->prepare('UPDATE funcao_imagem SET status = \'Não iniciado\' WHERE idfuncao_imagem = ?');
     $stmtUpdateImagem = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?');
     $stmtInsertEvento = $conn->prepare('INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)');
-    $stmtInsertAlt    = $conn->prepare('INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, ?, ?)');
 
     foreach ($ids as $imagemId) {
         $obraId = null;
@@ -131,8 +131,7 @@ try {
         $stmtInsertEvento->bind_param('sssii', $descricao, $novoPrazo, $tipoEvento, $obraId, $responsavelId);
         $stmtInsertEvento->execute();
 
-        $stmtInsertAlt->bind_param('isi', $funcaoId, $dataRecebimento, $statusId);
-        $stmtInsertAlt->execute();
+        alteracoes_upsert_registro($conn, $funcaoId, $statusId, $dataRecebimento);
     }
 
     $stmtObra->close();
@@ -142,7 +141,6 @@ try {
     $stmtResetStatus->close();
     $stmtUpdateImagem->close();
     $stmtInsertEvento->close();
-    $stmtInsertAlt->close();
 
     $conn->commit();
 

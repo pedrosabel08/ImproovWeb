@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/alteracoes_helper.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -92,31 +93,8 @@ if ($data && isset($data['imagem_id']) && !empty($data['data_recebimento'])) {
         }
 
         // 2. Conta quantas alterações já existem para essa função
-        $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM alteracoes WHERE funcao_id = ?");
-        $stmtCount->bind_param("i", $funcao_id);
-        $stmtCount->execute();
-        $result = $stmtCount->get_result();
-        $total_alteracoes = $result->fetch_assoc()['total'];
-        $stmtCount->close();
-
-        // 3. Define o novo status_id com base na contagem
-        switch ($total_alteracoes) {
-            case 0:
-                $novo_status = 3;
-                break; // R01
-            case 1:
-                $novo_status = 4;
-                break; // R02
-            case 2:
-                $novo_status = 5;
-                break; // R03
-            case 3:
-                $novo_status = 14;
-                break; // R04
-            default:
-                $novo_status = 15;
-                break; // R05+
-        }
+        $statusAtual = alteracoes_current_image_status($conn, (int) $imagem_id);
+        $novo_status = alteracoes_next_status_from_funcao($conn, (int) $funcao_id, $statusAtual);
 
         // 4. Calcula novo prazo (7 dias úteis) a partir da data informada
         $novoPrazo = adicionarDiasUteis($data_recebimento, 7);
@@ -145,10 +123,7 @@ if ($data && isset($data['imagem_id']) && !empty($data['data_recebimento'])) {
         $stmtEvento->close();
 
         // 7. Insere a alteração na tabela alteracoes
-        $stmtAlt = $conn->prepare("INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, ?, ?)");
-        $stmtAlt->bind_param("isi", $funcao_id, $data_recebimento, $novo_status);
-        $stmtAlt->execute();
-        $stmtAlt->close();
+        alteracoes_upsert_registro($conn, (int) $funcao_id, (int) $novo_status, $data_recebimento);
 
         // 8. Confirma transação
         $conn->commit();

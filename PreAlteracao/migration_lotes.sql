@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS `pre_alt_lote` (
         'PLANEJADO',
         'CANCELADO'
     ) NOT NULL DEFAULT 'EM_TRIAGEM',
+    `prioridade` ENUM('BAIXA', 'NORMAL', 'ALTA', 'CRITICA') NOT NULL DEFAULT 'NORMAL',
+    `prazo` DATE NULL,
+    `responsavel_id` INT UNSIGNED NULL,
     `created_by` INT UNSIGNED NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -59,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `pre_alt_itens` (
     `tipo_alteracao` VARCHAR(80) NULL,
     `acao` TEXT NULL,
     `necessita_retorno` TINYINT(1) NOT NULL DEFAULT 0,
+    `quantidade_comentarios` INT UNSIGNED NULL,
     `responsavel_id` INT UNSIGNED NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -80,3 +84,29 @@ CREATE TABLE IF NOT EXISTS `pre_alt_itens` (
         FOREIGN KEY (`imagem_id`) REFERENCES `imagens_cliente_obra` (`idimagens_cliente_obra`)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pre_alt_lote_historico` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `pre_alt_lote_id` INT UNSIGNED NOT NULL,
+    `item_id` INT UNSIGNED NULL,
+    `batch_id` VARCHAR(36) NULL,
+    `tipo_evento` VARCHAR(40) NOT NULL,
+    `campo` VARCHAR(80) NULL,
+    `valor_anterior` TEXT NULL,
+    `valor_novo` TEXT NULL,
+    `observacao` TEXT NULL,
+    `usuario_id` INT UNSIGNED NULL,
+    `colaborador_id` INT UNSIGNED NULL,
+    `contexto_json` LONGTEXT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_pre_alt_hist_lote_data` (`pre_alt_lote_id`, `created_at`),
+    KEY `idx_pre_alt_hist_batch` (`batch_id`),
+    KEY `idx_pre_alt_hist_evento` (`tipo_evento`),
+    CONSTRAINT `fk_pre_alt_hist_lote`
+        FOREIGN KEY (`pre_alt_lote_id`) REFERENCES `pre_alt_lote` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `alteracoes`
+    ADD COLUMN IF NOT EXISTS `nivel_complexidade` TINYINT UNSIGNED NULL AFTER `status_id`;

@@ -150,10 +150,17 @@ function criarCard(item) {
   const efLabelHtml = item.is_ef
     ? `<div class="ef-label"><i class="fa-solid fa-bolt"></i> Render em Alta</div>`
     : "";
+  const nivel = Number(item.nivel_complexidade || 0);
+  const nivelHtml = nivel >= 1 && nivel <= 5
+    ? `<span class="nivel-chip nivel-n${nivel}">N${nivel}</span>`
+    : "";
 
   card.innerHTML = `
     ${efLabelHtml}
-    <span class="badge">${item.status_nome}</span>
+    <div class="card-badges-row">
+      <span class="badge">${item.status_nome}</span>
+      ${nivelHtml}
+    </div>
     <div class="card-title">${item.imagem_nome}</div>
     <div class="card-sub"><i class="fa-solid fa-building"></i> ${item.obra_nome}</div>
     <div class="card-footer">

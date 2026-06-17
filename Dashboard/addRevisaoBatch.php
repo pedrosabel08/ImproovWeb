@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/alteracoes_helper.php';
 
 header('Content-Type: application/json');
 
@@ -47,22 +48,6 @@ function feriadosMoveis($ano)
     ];
 }
 
-function proximoStatusPorContagem($totalAlteracoes)
-{
-    switch ((int)$totalAlteracoes) {
-        case 0:
-            return 3;
-        case 1:
-            return 4;
-        case 2:
-            return 5;
-        case 3:
-            return 14;
-        default:
-            return 15;
-    }
-}
-
 if (!$data || !isset($data['ids']) || !is_array($data['ids']) || empty($data['data_recebimento'])) {
     echo json_encode(['status' => 'erro', 'message' => 'Dados inválidos.']);
     exit;
@@ -102,10 +87,8 @@ try {
     $stmtCheckFuncao = $conn->prepare('SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 6');
     $stmtInsertFuncao = $conn->prepare('INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id) VALUES (?, NULL, 6)');
     $stmtUpdateColab = $conn->prepare('UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ?');
-    $stmtCountAlt = $conn->prepare('SELECT COUNT(*) as total FROM alteracoes WHERE funcao_id = ?');
     $stmtUpdateImagem = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?');
     $stmtInsertEvento = $conn->prepare('INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)');
-    $stmtInsertAlt = $conn->prepare('INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, ?, ?)');
 
     foreach ($ids as $imagemId) {
         $obraId = null;
@@ -138,12 +121,8 @@ try {
             $stmtUpdateColab->execute();
         }
 
-        $stmtCountAlt->bind_param('i', $funcaoId);
-        $stmtCountAlt->execute();
-        $resCount = $stmtCountAlt->get_result();
-        $totalAlteracoes = (int)($resCount->fetch_assoc()['total'] ?? 0);
-
-        $novoStatus = proximoStatusPorContagem($totalAlteracoes);
+        $statusAtual = alteracoes_current_image_status($conn, (int) $imagemId);
+        $novoStatus = alteracoes_next_status_from_funcao($conn, (int) $funcaoId, $statusAtual);
 
         $statusPorImagem[] = ['imagem_id' => $imagemId, 'novo_status' => $novoStatus];
 
@@ -156,18 +135,15 @@ try {
         $stmtInsertEvento->bind_param('sssii', $descricao, $novoPrazo, $tipoEvento, $obraId, $responsavelId);
         $stmtInsertEvento->execute();
 
-        $stmtInsertAlt->bind_param('isi', $funcaoId, $dataRecebimento, $novoStatus);
-        $stmtInsertAlt->execute();
+        alteracoes_upsert_registro($conn, (int) $funcaoId, (int) $novoStatus, $dataRecebimento);
     }
 
     $stmtObra->close();
     $stmtCheckFuncao->close();
     $stmtInsertFuncao->close();
     $stmtUpdateColab->close();
-    $stmtCountAlt->close();
     $stmtUpdateImagem->close();
     $stmtInsertEvento->close();
-    $stmtInsertAlt->close();
 
     $conn->commit();
     echo json_encode(['status' => 'sucesso', 'message' => 'Revisões adicionadas com sucesso.', 'novo_prazo' => $novoPrazo, 'status_por_imagem' => $statusPorImagem]);

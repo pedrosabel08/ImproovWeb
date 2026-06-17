@@ -182,7 +182,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                     isset($_SESSION['nivel_acesso']) && (
                         $_SESSION['nivel_acesso'] == 1 ||
                         $_SESSION['nivel_acesso'] == 2 ||
-                        in_array($_SESSION['idcolaborador'] ?? null, [7, 34])
+                        in_array($_SESSION['idcolaborador'] ?? null, [7, 34, 37])
                     )
                 ): ?>
                     <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i

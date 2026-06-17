@@ -5,6 +5,7 @@ header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
 include 'conexao.php';
+require_once __DIR__ . '/helpers/alteracoes_helper.php';
 
 // Simple file logger for debugging (insereFuncao2)
 function write_log_insere_funcao2($msg)
@@ -171,28 +172,9 @@ try {
                 $stmtGetId->fetch();
                 $stmtGetId->close();
 
-                if ($funcao_imagem_id && $status_id !== null) {
-                    // Verificar se já existe registro em alteracoes
-                    $stmtCheck = $conn->prepare(
-                        "SELECT idalt FROM alteracoes WHERE funcao_id = ? AND status_id = ? LIMIT 1"
-                    );
-                    $stmtCheck->bind_param("ii", $funcao_imagem_id, $status_id);
-                    $stmtCheck->execute();
-                    $stmtCheck->store_result();
-                    $exists = $stmtCheck->num_rows > 0;
-                    $stmtCheck->close();
-
-                    // Se não existe, inserir na tabela alteracoes
-                    if (!$exists) {
-                        $stmtAlt = $conn->prepare(
-                            "INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, NOW(), ?)"
-                        );
-                        $stmtAlt->bind_param("ii", $funcao_imagem_id, $status_id);
-                        if (!$stmtAlt->execute()) {
-                            write_log_insere_funcao2("ALTERACOES INSERT ERROR: " . $stmtAlt->error);
-                        }
-                        $stmtAlt->close();
-                    }
+                $targetStatusId = $status_id !== null ? $status_id : alteracoes_current_image_status($conn, $imagem_id);
+                if ($funcao_imagem_id && in_array($targetStatusId, [3, 4, 5, 6, 14, 15], true)) {
+                    alteracoes_upsert_registro($conn, (int) $funcao_imagem_id, (int) $targetStatusId);
                 }
             }
             // ──────────────────────────────────────────────────────────────────────

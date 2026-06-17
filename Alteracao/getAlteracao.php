@@ -1,6 +1,23 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/alteracoes_helper.php';
+
+function alteracao_column_exists(mysqli $conn, string $tableName, string $columnName): bool
+{
+    $stmt = $conn->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('ss', $tableName, $columnName);
+    $stmt->execute();
+    $stmt->store_result();
+    $exists = $stmt->num_rows > 0;
+    $stmt->close();
+    return $exists;
+}
+
+alteracoes_ensure_schema($conn);
 
 $obraId = isset($_GET['obra_id']) && $_GET['obra_id'] !== '' ? (int)$_GET['obra_id'] : null;
 $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
@@ -19,7 +36,8 @@ $sql = "SELECT
     o.nomenclatura,
     c.nome_colaborador,
     s.nome_status,
-    a.status_id AS imagem_status_id
+    a.status_id AS imagem_status_id,
+    a.nivel_complexidade
 FROM alteracoes a
 JOIN funcao_imagem f ON f.idfuncao_imagem = a.funcao_id
 JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
@@ -33,7 +51,7 @@ $params = [];
 $types = '';
 
 if ($obraId !== null) {
-    $sql .= " AND i.obra_id = ?";           
+    $sql .= " AND i.obra_id = ?";
     $params[] = $obraId;
     $types .= 'i';
 }
@@ -65,7 +83,7 @@ if ($busca !== '') {
     $types .= 'sss';
 }
 
-$sql .= " ORDER BY i.prazo IS NULL, i.prazo ASC, i.imagem_nome ASC";
+$sql .= " ORDER BY i.prazo IS NULL, i.prazo ASC, CASE WHEN i.status_id = 6 THEN 0 ELSE 1 END, i.idimagens_cliente_obra ASC";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -83,6 +101,7 @@ $result = $stmt->get_result();
 $items = [];
 $obrasMap = [];
 $colabMap = [];
+$statusImagemMap = [];
 
 while ($row = $result->fetch_assoc()) {
     $statusNormalizado = mb_strtolower(trim((string)$row['status_funcao']), 'UTF-8');
@@ -104,6 +123,7 @@ while ($row = $result->fetch_assoc()) {
         'prazo' => $row['prazo'] ? date('d/m/Y', strtotime($row['prazo'])) : null,
         'is_ef' => ((int)$row['imagem_status_id'] === 6),
         'idstatus' => (int)$row['imagem_status_id'],
+        'nivel_complexidade' => $row['nivel_complexidade'] !== null ? (int)$row['nivel_complexidade'] : null,
     ];
 
     $items[] = $item;

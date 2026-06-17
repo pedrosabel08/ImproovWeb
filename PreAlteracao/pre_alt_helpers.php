@@ -14,6 +14,9 @@ function pre_alt_ensure_schema(mysqli $conn): void
         status_id INT NOT NULL,
         data_finalizacao_cliente DATE NOT NULL,
         status ENUM('EM_TRIAGEM','AGUARDANDO_CLIENTE','PRONTO_PLANEJAMENTO','PLANEJADO','CANCELADO') NOT NULL DEFAULT 'EM_TRIAGEM',
+        prioridade ENUM('BAIXA','NORMAL','ALTA','CRITICA') NOT NULL DEFAULT 'NORMAL',
+        prazo DATE NULL,
+        responsavel_id INT UNSIGNED NULL,
         created_by INT UNSIGNED NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -47,6 +50,7 @@ function pre_alt_ensure_schema(mysqli $conn): void
         tipo_alteracao VARCHAR(80) NULL,
         acao TEXT NULL,
         necessita_retorno TINYINT(1) NOT NULL DEFAULT 0,
+        quantidade_comentarios INT UNSIGNED NULL,
         responsavel_id INT UNSIGNED NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -60,6 +64,57 @@ function pre_alt_ensure_schema(mysqli $conn): void
         CONSTRAINT fk_pre_alt_itens_entrega FOREIGN KEY (entrega_id) REFERENCES entregas (id) ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT fk_pre_alt_itens_imagem FOREIGN KEY (imagem_id) REFERENCES imagens_cliente_obra (idimagens_cliente_obra) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    if (!pre_alt_column_exists($conn, 'pre_alt_lote', 'prioridade')) {
+        $conn->query("ALTER TABLE pre_alt_lote ADD COLUMN prioridade ENUM('BAIXA','NORMAL','ALTA','CRITICA') NOT NULL DEFAULT 'NORMAL' AFTER status");
+    }
+    if (!pre_alt_column_exists($conn, 'pre_alt_lote', 'prazo')) {
+        $conn->query("ALTER TABLE pre_alt_lote ADD COLUMN prazo DATE NULL AFTER prioridade");
+    }
+    if (!pre_alt_column_exists($conn, 'pre_alt_lote', 'responsavel_id')) {
+        $conn->query("ALTER TABLE pre_alt_lote ADD COLUMN responsavel_id INT UNSIGNED NULL AFTER prazo");
+    }
+    if (!pre_alt_column_exists($conn, 'pre_alt_itens', 'quantidade_comentarios')) {
+        $conn->query("ALTER TABLE pre_alt_itens ADD COLUMN quantidade_comentarios INT UNSIGNED NULL AFTER necessita_retorno");
+    }
+    if (pre_alt_table_exists($conn, 'alteracoes') && !pre_alt_column_exists($conn, 'alteracoes', 'nivel_complexidade')) {
+        $conn->query("ALTER TABLE alteracoes ADD COLUMN nivel_complexidade TINYINT UNSIGNED NULL AFTER status_id");
+    }
+
+    $conn->query("CREATE TABLE IF NOT EXISTS pre_alt_lote_historico (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        pre_alt_lote_id INT UNSIGNED NOT NULL,
+        item_id INT UNSIGNED NULL,
+        batch_id VARCHAR(36) NULL,
+        tipo_evento VARCHAR(40) NOT NULL,
+        campo VARCHAR(80) NULL,
+        valor_anterior TEXT NULL,
+        valor_novo TEXT NULL,
+        observacao TEXT NULL,
+        usuario_id INT UNSIGNED NULL,
+        colaborador_id INT UNSIGNED NULL,
+        contexto_json LONGTEXT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_pre_alt_hist_lote_data (pre_alt_lote_id, created_at),
+        KEY idx_pre_alt_hist_batch (batch_id),
+        KEY idx_pre_alt_hist_evento (tipo_evento),
+        CONSTRAINT fk_pre_alt_hist_lote FOREIGN KEY (pre_alt_lote_id) REFERENCES pre_alt_lote (id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function pre_alt_column_exists(mysqli $conn, string $tableName, string $columnName): bool
+{
+    $stmt = $conn->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('ss', $tableName, $columnName);
+    $stmt->execute();
+    $stmt->store_result();
+    $exists = $stmt->num_rows > 0;
+    $stmt->close();
+    return $exists;
 }
 
 function pre_alt_table_exists(mysqli $conn, string $tableName): bool
@@ -88,7 +143,93 @@ function pre_alt_schema_ready(mysqli $conn): bool
     return (int) ($row['total'] ?? 0) === 3;
 }
 
-function pre_alt_recalcular_status_lote(mysqli $conn, int $loteId): string
+function pre_alt_actor(): array
+{
+    return [
+        'usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+        'colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+    ];
+}
+
+function pre_alt_batch_id(): string
+{
+    try {
+        return bin2hex(random_bytes(16));
+    } catch (Throwable $e) {
+        return str_replace('.', '', uniqid('batch_', true));
+    }
+}
+
+function pre_alt_hist_value($value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+    if (is_scalar($value)) {
+        return (string) $value;
+    }
+    return json_encode($value, JSON_UNESCAPED_UNICODE);
+}
+
+function pre_alt_registrar_historico(
+    mysqli $conn,
+    int $loteId,
+    string $tipoEvento,
+    ?string $campo = null,
+    $valorAnterior = null,
+    $valorNovo = null,
+    ?string $observacao = null,
+    ?int $itemId = null,
+    ?string $batchId = null,
+    ?array $contexto = null,
+    ?int $usuarioId = null,
+    ?int $colaboradorId = null
+): void {
+    if ($loteId <= 0 || !pre_alt_table_exists($conn, 'pre_alt_lote_historico')) {
+        return;
+    }
+
+    $actor = pre_alt_actor();
+    $usuarioId = $usuarioId ?? $actor['usuario_id'];
+    $colaboradorId = $colaboradorId ?? $actor['colaborador_id'];
+    $anterior = pre_alt_hist_value($valorAnterior);
+    $novo = pre_alt_hist_value($valorNovo);
+    $contextoJson = $contexto !== null ? json_encode($contexto, JSON_UNESCAPED_UNICODE) : null;
+
+    $stmt = $conn->prepare(
+        "INSERT INTO pre_alt_lote_historico (
+            pre_alt_lote_id, item_id, batch_id, tipo_evento, campo,
+            valor_anterior, valor_novo, observacao, usuario_id, colaborador_id, contexto_json
+        ) VALUES (?, ?, NULLIF(?, ''), ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, ?)"
+    );
+    if (!$stmt) {
+        return;
+    }
+    $batchValue = $batchId ?? '';
+    $campoValue = $campo ?? '';
+    $obsValue = $observacao ?? '';
+    $stmt->bind_param(
+        'iissssssiis',
+        $loteId,
+        $itemId,
+        $batchValue,
+        $tipoEvento,
+        $campoValue,
+        $anterior,
+        $novo,
+        $obsValue,
+        $usuarioId,
+        $colaboradorId,
+        $contextoJson
+    );
+    @$stmt->execute();
+    $stmt->close();
+}
+
+function pre_alt_recalcular_status_lote(mysqli $conn, int $loteId, ?string $batchId = null, ?string $observacao = null): string
 {
     $statusAtual = null;
     $stmtAtual = $conn->prepare('SELECT status FROM pre_alt_lote WHERE id = ? LIMIT 1');
@@ -141,6 +282,20 @@ function pre_alt_recalcular_status_lote(mysqli $conn, int $loteId): string
         $stmtUpdate->bind_param('si', $novoStatus, $loteId);
         $stmtUpdate->execute();
         $stmtUpdate->close();
+    }
+
+    if ($statusAtual !== null && $novoStatus !== $statusAtual) {
+        pre_alt_registrar_historico(
+            $conn,
+            $loteId,
+            'ALTERACAO_STATUS',
+            'status',
+            $statusAtual,
+            $novoStatus,
+            $observacao,
+            null,
+            $batchId
+        );
     }
 
     return $novoStatus;
@@ -196,16 +351,29 @@ function pre_alt_criar_de_review_batch(mysqli $conn, int $reviewBatchId, ?int $c
 
     if ($loteId <= 0) {
         $stmtInsert = $conn->prepare(
-            "INSERT INTO pre_alt_lote (obra_id, status_id, data_finalizacao_cliente, status, created_by)
-             VALUES (?, ?, ?, 'EM_TRIAGEM', ?)"
+            "INSERT INTO pre_alt_lote (obra_id, status_id, data_finalizacao_cliente, status, created_by, responsavel_id)
+             VALUES (?, ?, ?, 'EM_TRIAGEM', ?, ?)"
         );
         if (!$stmtInsert) {
             throw new RuntimeException('Nao foi possivel criar o lote de pre-alteracao.');
         }
-        $stmtInsert->bind_param('iisi', $obraId, $statusId, $dataFinalizacaoCliente, $createdBy);
+        $stmtInsert->bind_param('iisii', $obraId, $statusId, $dataFinalizacaoCliente, $createdBy, $createdBy);
         $stmtInsert->execute();
         $loteId = (int) $stmtInsert->insert_id;
         $stmtInsert->close();
+
+        pre_alt_registrar_historico(
+            $conn,
+            $loteId,
+            'CRIACAO',
+            'lote',
+            null,
+            'EM_TRIAGEM',
+            'Triagem criada a partir do lote de Review.',
+            null,
+            null,
+            ['review_batch_id' => $reviewBatchId]
+        );
     }
 
     $stmtLink = $conn->prepare(

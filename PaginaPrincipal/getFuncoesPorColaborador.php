@@ -36,6 +36,27 @@ $sql = "SELECT
     ) AS hold_justificativa_recente,
     fi.file_uploaded_at,
     fi.requires_file_upload,
+    CASE
+        WHEN fi.funcao_id = 6
+         AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
+         AND COALESCE((
+             SELECT ha.responsavel
+             FROM historico_aprovacoes ha
+             WHERE ha.funcao_imagem_id = fi.idfuncao_imagem
+               AND ha.status_novo IN ('Aprovado', 'Aprovado com ajustes')
+             ORDER BY ha.id DESC
+             LIMIT 1
+         ), 0) IN (21, 2)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM render_alta ra
+             WHERE ra.imagem_id = ico.idimagens_cliente_obra
+               AND ra.status_id = ico.status_id
+             LIMIT 1
+         )
+        THEN 1
+        ELSE 0
+    END AS requires_render_send,
     TIMESTAMPDIFF(
         MINUTE,
         (SELECT la.data FROM log_alteracoes la
@@ -505,7 +526,8 @@ foreach ($funcoes as $funcao) {
         'tempo_calculado'            => $tempoCalculado,
         'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0,
         'file_uploaded_at'           => $funcao['file_uploaded_at'],
-        'requires_file_upload'       => $funcao['requires_file_upload']
+        'requires_file_upload'       => $funcao['requires_file_upload'],
+        'requires_render_send'       => isset($funcao['requires_render_send']) ? intval($funcao['requires_render_send']) : 0
     ];
 }
 
@@ -544,6 +566,7 @@ foreach ($animFuncoes as $af) {
         'notificacoes_nao_lidas'     => 0,
         'file_uploaded_at'           => $af['file_uploaded_at'] ?? null,
         'requires_file_upload'       => $af['requires_file_upload'] ?? 0,
+        'requires_render_send'       => 0,
         'is_animacao'                => true,
         'animacao_id'                => $af['animacao_id'],
         'tipo_animacao'              => $af['tipo_animacao'],

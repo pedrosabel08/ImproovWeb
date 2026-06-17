@@ -319,17 +319,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
         }
 
-        // ── Aprovação dupla de Pós-produção ──────────────────────────────────────
-        // Quando um finalizador (não-admin, não-direção) aprova uma pós-produção pela
-        // 1ª vez, a tarefa não muda de status: apenas registramos um histórico intermediário
-        // com status_novo='Aguardando Direção' e notificamos a direção via Slack.
-        // A 2ª aprovação (pela direção) segue o fluxo normal (SFTP incluído).
-        $aguardandoDirecao = false;
-        $isPosProducao = (mb_strtolower((string)$nome_funcao, 'UTF-8') === 'pós-produção');
-        $isAdminAprovador = in_array($idusuario_session, [1, 2]);
-        $isDirecaoAprovador = in_array($idcolaborador_session, [9, 21]);
+        $funcao_id_context = null;
+        $nome_funcao_db = null;
+        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao
+            FROM funcao_imagem fi
+            LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
+            WHERE fi.idfuncao_imagem = ?
+            LIMIT 1");
+        if ($stmtFuncaoContext) {
+            $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
+            $stmtFuncaoContext->execute();
+            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db);
+            $stmtFuncaoContext->fetch();
+            $stmtFuncaoContext->close();
+        }
 
-        if ($isPosProducao && $tipoRevisao === 'aprovado' && !$isAdminAprovador && !$isDirecaoAprovador) {
+        $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
+
+        // ── Aprovação dupla de Pós-produção/Alteração ────────────────────────────
+        // Quando o aprovador operacional (colaborador 1) aprova pós-produção ou
+        // alteração, a tarefa aguarda validação da direção. Somente direção
+        // (colaboradores 21 ou 2) segue para o fluxo final/SFTP.
+        $aguardandoDirecao = false;
+        $aprovadorDirecaoId = (int)($responsavel ?: $idcolaborador_session);
+        $isFuncaoComDirecao = (
+            in_array((int)$funcao_id_context, [5, 6], true)
+            || in_array($nomeFuncaoLower, ['pós-produção', 'alteração'], true)
+        );
+        $isTipoAprovacaoComDirecao = in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true);
+        $isPrimeiroAprovadorDirecao = ($aprovadorDirecaoId === 1);
+        $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 2], true);
+
+        if ($isFuncaoComDirecao && $isTipoAprovacaoComDirecao && $isPrimeiroAprovadorDirecao && !$isDirecaoAprovador) {
             // Verifica se já existe um histórico 'Aguardando Direção' para esta tarefa
             $stmtChkDir = $conn->prepare(
                 "SELECT id FROM historico_aprovacoes WHERE funcao_imagem_id = ? AND status_novo = 'Aguardando Direção' LIMIT 1"
@@ -337,10 +358,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtChkDir->bind_param("i", $idfuncao_imagem);
             $stmtChkDir->execute();
             $stmtChkDir->store_result();
-            $isSegundaAprovacao = ($stmtChkDir->num_rows > 0);
+            $jaAguardandoDirecao = ($stmtChkDir->num_rows > 0);
             $stmtChkDir->close();
 
-            if (!$isSegundaAprovacao) {
+            if (!$jaAguardandoDirecao) {
                 // 1ª aprovação pelo finalizador: NÃO atualiza funcao_imagem.status
                 // Registra apenas no histórico como intermediário
                 $status_ant_dir = "Em aprovação";
@@ -352,26 +373,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtDir->execute();
                 $stmtDir->close();
 
-                // Notifica direção via Slack (busca nome_slack dos colaboradores 9 e 21)
+                // Notifica direção via Slack (busca nome_slack dos colaboradores 21 e 2)
                 $stmtDirSlack = $conn->prepare(
-                    "SELECT u.nome_slack FROM usuario u WHERE u.idcolaborador IN (9, 21) AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
+                    "SELECT u.nome_slack FROM usuario u WHERE u.idcolaborador IN (21, 2) AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
                 );
                 $stmtDirSlack->execute();
                 $resDirSlack = $stmtDirSlack->get_result();
-                $mensagemDirecao = "⏳ A Pós-produção de {$imagem_resumida} aguarda validação da direção (aprovada por {$nome_responsavel}).";
+                $funcaoDirecaoLabel = $nome_funcao_db ?: $nome_funcao;
+                $mensagemDirecao = "⏳ A {$funcaoDirecaoLabel} de {$imagem_resumida} aguarda validação da direção (aprovada por {$nome_responsavel}).";
                 while ($rowSlack = $resDirSlack->fetch_assoc()) {
                     enviarNotificacaoSlack($rowSlack['nome_slack'], $mensagemDirecao, $resultadoFinal['logs']);
                 }
                 $stmtDirSlack->close();
-
-                $resultadoFinal['success']          = true;
-                $resultadoFinal['message']          = 'Aprovação registrada. Aguardando validação da direção.';
-                $resultadoFinal['aguardando_direcao'] = true;
-                echo json_encode($resultadoFinal);
-                $conn->close();
-                exit;
             }
-            // Se já existe histórico 'Aguardando Direção', é a 2ª aprovação — deixa passar normalmente
+
+            $resultadoFinal['success']          = true;
+            $resultadoFinal['message']          = 'Aprovação registrada. Aguardando validação da direção.';
+            $resultadoFinal['aguardando_direcao'] = true;
+            echo json_encode($resultadoFinal);
+            $conn->close();
+            exit;
         }
         // ─────────────────────────────────────────────────────────────────────────
 

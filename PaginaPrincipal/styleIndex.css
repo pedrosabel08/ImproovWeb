@@ -578,6 +578,31 @@ main .kanban div .header .task-count {
   z-index: 2;
 }
 
+.kanban-card.render-pendente:not(.arquivo-pendente) {
+  border-left: 4px solid #0ea5e9;
+}
+
+.kanban-card .pending-render-ribbon {
+  position: absolute;
+  left: -1px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+}
+
+.kanban-card .pending-render-ribbon.below-file-ribbon {
+  top: 34px;
+}
+
 .kanban-card.tarefa-criada {
   background-color: #f0f8ff;
   /* azul claro */

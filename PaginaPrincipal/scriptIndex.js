@@ -361,11 +361,16 @@ function processarDados(data) {
     card.className = `kanban-card ${tipoClasse}`; // só a classe base
     const hasPendingFile =
       tipo === "imagem" && Number(item.requires_file_upload || 0) === 1;
+    const hasPendingRender =
+      tipo === "imagem" && Number(item.requires_render_send || 0) === 1;
     let cardEmHold = false;
     let imagemEmHold = false;
 
     if (hasPendingFile) {
       card.classList.add("arquivo-pendente");
+    }
+    if (hasPendingRender) {
+      card.classList.add("render-pendente");
     }
 
     if (tipo === "imagem") {
@@ -417,6 +422,9 @@ function processarDados(data) {
       card.dataset.requiresFileUpload = String(
         Number(item.requires_file_upload || 0),
       );
+      card.dataset.requiresRenderSend = String(
+        Number(item.requires_render_send || 0),
+      );
       card.dataset.nomeObraReal = item.nome_obra || "";
 
       // Unified pair attributes
@@ -455,6 +463,7 @@ function processarDados(data) {
       card.dataset.liberado = "1";
       card.dataset.imagemEmHold = "0";
       card.dataset.requiresFileUpload = "0";
+      card.dataset.requiresRenderSend = "0";
     }
 
     const holdMovel = tipo === "imagem" && status === "HOLD" && !cardEmHold;
@@ -587,6 +596,7 @@ function processarDados(data) {
 
     card.innerHTML = `
                     ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ""}
+                    ${hasPendingRender ? `<div class="pending-render-ribbon${hasPendingFile ? " below-file-ribbon" : ""}"><i class="ri-send-plane-line"></i> Enviar render</div>` : ""}
                     <div class="header-kanban">
                         ${funcaoBadgeHTML}
                         ${bolinhaHTML}

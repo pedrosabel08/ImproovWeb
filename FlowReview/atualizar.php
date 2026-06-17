@@ -442,19 +442,20 @@ try {
   // ==== END FINALIZADOR PODE APROVAR ====
 
   // ==== PENDENTE DIREÇÃO ====
-  // Para tarefas de Pós-produção (funcao_id=5) com status_novo histórico = 'Aguardando Direção',
-  // sinaliza pendente_direcao e, se o colaborador atual for direção (9 ou 21), diretor_pode_aprovar.
-  $funcaoImagemIds5 = [];
+  // Para tarefas de Pós-produção/Alteração (funcao_id 5/6) com status_novo
+  // histórico = 'Aguardando Direção', sinaliza pendente_direcao e, se o
+  // colaborador atual for direção (21 ou 2), diretor_pode_aprovar.
+  $funcaoImagemIdsDirecao = [];
   foreach ($tarefas as $t) {
-    if (intval($t['funcao_id']) == 5) {
-      $funcaoImagemIds5[] = intval($t['idfuncao_imagem']);
+    if (in_array(intval($t['funcao_id']), [5, 6], true)) {
+      $funcaoImagemIdsDirecao[] = intval($t['idfuncao_imagem']);
     }
   }
 
-  if (!empty($funcaoImagemIds5)) {
-    $funcaoImagemIds5 = array_unique($funcaoImagemIds5);
-    $inDir   = implode(',', array_fill(0, count($funcaoImagemIds5), '?'));
-    $typDir  = str_repeat('i', count($funcaoImagemIds5));
+  if (!empty($funcaoImagemIdsDirecao)) {
+    $funcaoImagemIdsDirecao = array_unique($funcaoImagemIdsDirecao);
+    $inDir   = implode(',', array_fill(0, count($funcaoImagemIdsDirecao), '?'));
+    $typDir  = str_repeat('i', count($funcaoImagemIdsDirecao));
 
     $stmtDir = $conn->prepare(
       "SELECT DISTINCT h.funcao_imagem_id
@@ -468,7 +469,7 @@ try {
                AND h2.id > h.id
          )"
     );
-    $stmtDir->bind_param($typDir, ...$funcaoImagemIds5);
+    $stmtDir->bind_param($typDir, ...$funcaoImagemIdsDirecao);
     $stmtDir->execute();
     $resDir = $stmtDir->get_result();
     $pendenteDirecaoIds = [];
@@ -477,10 +478,10 @@ try {
     }
     $stmtDir->close();
 
-    $isDirecao = in_array((int)$idcolaborador, [9, 21]);
+    $isDirecao = in_array((int)$idcolaborador, [21, 2], true);
 
     foreach ($tarefas as &$t) {
-      if (intval($t['funcao_id']) == 5 && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {
+      if (in_array(intval($t['funcao_id']), [5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {
         $t['pendente_direcao']      = true;
         // Remove finalizador_pode_aprovar se foi marcado antes desta detecção
         unset($t['finalizador_pode_aprovar']);

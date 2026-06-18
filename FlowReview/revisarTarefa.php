@@ -15,6 +15,7 @@ error_reporting(E_ALL);
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
+require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use phpseclib3\Net\SFTP;
@@ -455,6 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         entregas_pendencias_ensure_schema($conn);
+        aprovacao_interna_ensure_schema($conn);
         $conn->begin_transaction();
 
         $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
@@ -477,6 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
             $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel);
             $stmt->execute();
+            $historicoAprovacaoId = (int)$conn->insert_id;
             $stmt->close();
 
             $resultadoFinal['success'] = true;
@@ -516,6 +519,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
+
+            if (
+                in_array($status, ['Aprovado', 'Aprovado com ajustes'], true)
+                && $isDirecaoAprovador
+                && (int)$funcao_id_context === 6
+            ) {
+                $alteracaoAprovacao = aprovacao_interna_resolver_alteracao_por_funcao($conn, (int)$idfuncao_imagem);
+                if (
+                    $alteracaoAprovacao
+                    && !aprovacao_interna_render_existe_na_etapa($conn, $alteracaoAprovacao['imagem_id'], $alteracaoAprovacao['status_id'])
+                ) {
+                    $aprovacaoRegistrada = aprovacao_interna_registrar(
+                        $conn,
+                        $alteracaoAprovacao['funcao_imagem_id'],
+                        $alteracaoAprovacao['imagem_id'],
+                        $alteracaoAprovacao['status_id'],
+                        'flowreview',
+                        $aprovadorDirecaoId,
+                        null,
+                        $historicoAprovacaoId,
+                        null
+                    );
+                    $resultadoFinal['logs'][] = $aprovacaoRegistrada
+                        ? 'aprovacao_interna.flowreview_registrada'
+                        : 'aprovacao_interna.flowreview_nao_registrada';
+                } else {
+                    $resultadoFinal['logs'][] = 'aprovacao_interna.flowreview_ignorada_render_existente';
+                }
+            }
+
             $isP00ModelagemReview = (
                 in_array($status, ['Aprovado'], true)
                 && $nomeFuncaoLower === 'modelagem'

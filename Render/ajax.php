@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -596,9 +597,88 @@ if (isset($_POST['action'])) {
                 $logs = [];
                 $debug = isset($_POST['debug']) && (string)$_POST['debug'] === '1';
                 $logs[] = "updateRender: idrender_alta={$idrender_alta}, status={$status}";
+                $manualApprovalData = null;
+                $transactionStarted = false;
+
+                if (strtolower($status) === 'aprovado') {
+                    aprovacao_interna_ensure_schema($conn);
+                    $alteracaoAprovacao = aprovacao_interna_resolver_alteracao_por_render($conn, (int)$idrender_alta);
+
+                    if ($alteracaoAprovacao) {
+                        $logs[] = 'aprovacao_interna.alteracao_detectada=' . $alteracaoAprovacao['funcao_imagem_id'];
+                        $temAprovacaoInterna = aprovacao_interna_tem_registro(
+                            $conn,
+                            (int)$alteracaoAprovacao['funcao_imagem_id'],
+                            (int)$alteracaoAprovacao['status_id']
+                        );
+
+                        if (!$temAprovacaoInterna) {
+                            $approvalOrigin = isset($_POST['approval_origin'])
+                                ? strtolower(trim((string)$_POST['approval_origin']))
+                                : '';
+
+                            if (!in_array($approvalOrigin, ['presencial', 'whatsapp'], true)) {
+                                $resp = [
+                                    'status' => 'aprovacao_interna_pendente',
+                                    'message' => 'A alteração desta imagem não possui aprovação interna registrada.',
+                                    'question' => 'A alteração foi aprovada?',
+                                ];
+                                if ($debug) $resp['logs'] = $logs;
+                                echo json_encode($resp);
+                                break;
+                            }
+
+                            $registradoPor = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : 0;
+                            if ($registradoPor <= 0) {
+                                $resp = ['status' => 'erro', 'message' => 'Usuário sem colaborador vinculado para registrar a aprovação interna.'];
+                                if ($debug) $resp['logs'] = $logs;
+                                echo json_encode($resp);
+                                break;
+                            }
+
+                            $manualApprovalData = [
+                                'funcao_imagem_id' => (int)$alteracaoAprovacao['funcao_imagem_id'],
+                                'imagem_id' => (int)$alteracaoAprovacao['imagem_id'],
+                                'status_id' => (int)$alteracaoAprovacao['status_id'],
+                                'origem' => $approvalOrigin,
+                                'registrado_por' => $registradoPor,
+                                'render_id' => (int)$idrender_alta,
+                            ];
+                        }
+                    } else {
+                        $logs[] = 'aprovacao_interna.sem_funcao_alteracao';
+                    }
+                }
 
                 // Ao reprovar, limpar job_folder e previa_jpg para que o script
                 // possa registrar o novo job corretamente quando rodar (a cada 5 min)
+                if ($manualApprovalData) {
+                    $conn->begin_transaction();
+                    $transactionStarted = true;
+                    $approvalOk = aprovacao_interna_registrar(
+                        $conn,
+                        $manualApprovalData['funcao_imagem_id'],
+                        $manualApprovalData['imagem_id'],
+                        $manualApprovalData['status_id'],
+                        $manualApprovalData['origem'],
+                        $manualApprovalData['registrado_por'],
+                        $manualApprovalData['render_id'],
+                        null,
+                        null
+                    );
+
+                    if (!$approvalOk) {
+                        $conn->rollback();
+                        $transactionStarted = false;
+                        $resp = ['status' => 'erro', 'message' => 'Erro ao registrar aprovação interna.'];
+                        if ($debug) $resp['logs'] = $logs;
+                        echo json_encode($resp);
+                        break;
+                    }
+
+                    $logs[] = 'aprovacao_interna.manual_registrada=' . $manualApprovalData['origem'];
+                }
+
                 if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
                     $stmtUpd = $conn->prepare(
                         "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL WHERE idrender_alta = ?"
@@ -607,6 +687,9 @@ if (isset($_POST['action'])) {
                     $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");
                 }
                 if (!$stmtUpd) {
+                    if ($transactionStarted) {
+                        $conn->rollback();
+                    }
                     $logs[] = 'Erro prepare update: ' . $conn->error;
                     echo json_encode(['status' => 'erro', 'message' => 'Erro ao atualizar o render', 'logs' => $debug ? $logs : null]);
                     break;
@@ -616,6 +699,11 @@ if (isset($_POST['action'])) {
                 $stmtUpd->close();
 
                 if ($okUpd === TRUE) {
+                    if ($transactionStarted) {
+                        $conn->commit();
+                        $transactionStarted = false;
+                    }
+
                     // Ao reprovar/refazer, zerar status_pos em pos_producao
                     if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
                         $stmtPos = $conn->prepare("UPDATE pos_producao SET status_pos = 1 WHERE render_id = ?");
@@ -935,6 +1023,9 @@ if (isset($_POST['action'])) {
                     if ($debug) $resp['logs'] = $logs;
                     echo json_encode($resp);
                 } else {
+                    if ($transactionStarted) {
+                        $conn->rollback();
+                    }
                     $logs[] = 'Erro ao atualizar o render (execute=false): ' . $conn->error;
                     $resp = ['status' => 'erro', 'message' => 'Erro ao atualizar o render'];
                     if ($debug) $resp['logs'] = $logs;

@@ -1002,6 +1002,116 @@ $("#aprovarRender").click(function () {
   });
 });
 
+function abrirPosAposAprovarRender(idrender_alta) {
+  loadRenders();
+  loadRenderKpis();
+  Toastify({
+    text: "Render aprovado com sucesso!",
+    duration: 3000,
+    gravity: "top",
+    position: "right",
+    backgroundColor: "#4caf50",
+  }).showToast();
+
+  $("#modalPOS").addClass("is-open");
+  $("#pos_render_id").val(idrender_alta);
+}
+
+function mostrarModalAprovacaoInterna() {
+  if (typeof Swal === "undefined") {
+    Toastify({
+      text: "A aprova\u00e7\u00e3o interna precisa ser registrada antes de seguir.",
+      duration: 4000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+    return;
+  }
+
+  Swal.fire({
+    icon: "warning",
+    title: "A altera\u00e7\u00e3o foi aprovada?",
+    text: "A altera\u00e7\u00e3o desta imagem n\u00e3o possui aprova\u00e7\u00e3o interna registrada.",
+    showDenyButton: true,
+    showCancelButton: true,
+    confirmButtonText: "Sim, presencialmente",
+    denyButtonText: "Sim, via WhatsApp",
+    cancelButtonText: "N\u00e3o",
+    reverseButtons: true,
+  }).then(function (result) {
+    if (result.isConfirmed) {
+      aprovarRender("presencial");
+      return;
+    }
+
+    if (result.isDenied) {
+      aprovarRender("whatsapp");
+      return;
+    }
+
+    Toastify({
+      text: "Aprova\u00e7\u00e3o do Render cancelada.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#607d8b",
+    }).showToast();
+  });
+}
+
+function aprovarRender(approvalOrigin) {
+  const idrender_alta = $("#modal_idrender").text();
+  const payload = {
+    action: "updateRender",
+    idrender_alta: idrender_alta,
+    status: "Aprovado",
+  };
+
+  if (approvalOrigin) {
+    payload.approval_origin = approvalOrigin;
+  }
+
+  $.post(
+    "ajax.php",
+    payload,
+    function (response) {
+      console.log("Resposta updateRender:", response);
+      if (response.status === "sucesso") {
+        abrirPosAposAprovarRender(idrender_alta);
+        return;
+      }
+
+      if (response.status === "aprovacao_interna_pendente") {
+        mostrarModalAprovacaoInterna();
+        return;
+      }
+
+      Toastify({
+        text: response.message || "Erro ao atualizar Render!",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#f44336",
+      }).showToast();
+    },
+    "json",
+  ).fail(function (xhr, status, error) {
+    console.error("AJAX error:", error, xhr.responseText);
+    Toastify({
+      text: "Erro de comunicacao com o servidor!",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+  });
+}
+
+$("#aprovarRender").off("click").on("click", function () {
+  aprovarRender();
+});
+
 // Fechar modal POS
 $("#fecharPOS").click(function () {
   $("#modalPOS").removeClass("is-open");

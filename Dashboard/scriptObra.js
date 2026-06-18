@@ -13566,44 +13566,44 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   });
 
   // Alert if no handoff exists for this obra
-  (async function warnIfMissing() {
-    try {
-      const idObra =
-        typeof obraId !== "undefined" && obraId
-          ? obraId
-          : localStorage.getItem("obraId");
-      if (!idObra) return;
-      // show this alert only for specific collaborators (1,9,21)
-      const colaboradorId = localStorage.getItem("idcolaborador"); // implemente essa função ou defina a variável
+  // (async function warnIfMissing() {
+  //   try {
+  //     const idObra =
+  //       typeof obraId !== "undefined" && obraId
+  //         ? obraId
+  //         : localStorage.getItem("obraId");
+  //     if (!idObra) return;
+  //     // show this alert only for specific collaborators (1,9,21)
+  //     const colaboradorId = localStorage.getItem("idcolaborador"); // implemente essa função ou defina a variável
 
-      if (
-        !(
-          colaboradorId === "1" ||
-          colaboradorId === "9" ||
-          colaboradorId === "21"
-        )
-      )
-        return;
-      const js = await fetchHandoff();
-      const missing = js && js.success && !js.data;
-      if (!missing) return;
+  //     if (
+  //       !(
+  //         colaboradorId === "1" ||
+  //         colaboradorId === "9" ||
+  //         colaboradorId === "21"
+  //       )
+  //     )
+  //       return;
+  //     const js = await fetchHandoff();
+  //     const missing = js && js.success && !js.data;
+  //     if (!missing) return;
 
-      const result = await Swal.fire({
-        icon: "warning",
-        title: "Handoff comercial pendente",
-        text: "Esta obra ainda não possui o handoff comercial preenchido. Deseja preencher agora? ",
-        showCancelButton: true,
-        confirmButtonText: "Abrir handoff",
-        cancelButtonText: "Depois",
-      });
-      if (result.isConfirmed) {
-        openAndLoad();
-      }
-    } catch (e) {
-      // silently ignore if endpoint/table not available yet
-      console.warn("Aviso handoff não pôde ser verificado:", e);
-    }
-  })();
+  //     const result = await Swal.fire({
+  //       icon: "warning",
+  //       title: "Handoff comercial pendente",
+  //       text: "Esta obra ainda não possui o handoff comercial preenchido. Deseja preencher agora? ",
+  //       showCancelButton: true,
+  //       confirmButtonText: "Abrir handoff",
+  //       cancelButtonText: "Depois",
+  //     });
+  //     if (result.isConfirmed) {
+  //       openAndLoad();
+  //     }
+  //   } catch (e) {
+  //     // silently ignore if endpoint/table not available yet
+  //     console.warn("Aviso handoff não pôde ser verificado:", e);
+  //   }
+  // })();
 
   // initial conditionals
   applyConditionals();

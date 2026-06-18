@@ -360,17 +360,19 @@ $conn->close();
 
                                 <div class="onb-form-grid onb-form-grid-3">
                                     <div class="onb-field">
-                                        <label for="onbClienteSelect">Cliente</label>
+                                        <label for="onbClienteSelect">Selecionar Cliente</label>
                                         <select id="onbClienteSelect">
-                                            <option value="0">Novo cliente</option>
+                                            <option value="">Selecione um cliente</option>
+                                            <option value="0">Novo Cliente</option>
                                             <?php if (!empty($clientes) && is_array($clientes)): ?>
                                                 <?php foreach ($clientes as $c): ?>
                                                     <?php
                                                     $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id']) ? $c['id'] : '');
                                                     $cname = isset($c['nome_cliente']) ? $c['nome_cliente'] : (isset($c['nome']) ? $c['nome'] : '');
+                                                    $csigla = isset($c['sigla_cliente']) ? $c['sigla_cliente'] : '';
                                                     ?>
                                                     <?php if ($cid !== ''): ?>
-                                                        <option value="<?php echo $cid; ?>"><?php echo htmlspecialchars($cname); ?></option>
+                                                        <option value="<?php echo $cid; ?>" data-sigla="<?php echo htmlspecialchars($csigla); ?>"><?php echo htmlspecialchars($cname); ?></option>
                                                     <?php endif; ?>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
@@ -378,23 +380,23 @@ $conn->close();
                                     </div>
 
                                     <div class="onb-field">
-                                        <label for="onbProjetoInterno">Projeto (nome interno)</label>
-                                        <input id="onbProjetoInterno" type="text" autocomplete="off" placeholder="Ex.: CYR_OCE_VIEW">
+                                        <label for="onbClienteSigla">Sigla do Cliente</label>
+                                        <input id="onbClienteSigla" type="text" autocomplete="off" maxlength="3" placeholder="Ex.: MUS" disabled>
                                     </div>
 
                                     <div class="onb-field">
-                                        <label for="onbProjetoComercial">Projeto (nome comercial)</label>
-                                        <input id="onbProjetoComercial" type="text" autocomplete="off" placeholder="Ex.: Ocean View">
+                                        <label for="onbProjetoInterno">Nome Interno do Projeto</label>
+                                        <input id="onbProjetoInterno" type="text" autocomplete="off" maxlength="3" placeholder="Ex.: AKE">
                                     </div>
 
                                     <div class="onb-field">
-                                        <label for="onbCodigoInterno">Sigla / Código interno</label>
-                                        <input id="onbCodigoInterno" type="text" autocomplete="off" maxlength="10" placeholder="Ex.: OCV_2026">
+                                        <label for="onbProjetoComercial">Nome Comercial</label>
+                                        <input id="onbProjetoComercial" type="text" autocomplete="off" placeholder="Mussi Emp. - Projeto Akena">
                                     </div>
 
-                                    <div class="onb-field onb-field-hidden" id="onbClienteNovoField">
-                                        <label for="onbClienteNovo">Novo cliente</label>
-                                        <input id="onbClienteNovo" type="text" autocomplete="off" placeholder="Nome do cliente">
+                                    <div class="onb-field">
+                                        <label for="onbCodigoInterno">Nomenclatura</label>
+                                        <input id="onbCodigoInterno" type="text" autocomplete="off" placeholder="MUS_AKE" readonly>
                                     </div>
 
                                     <div class="onb-field onb-field-span-3">

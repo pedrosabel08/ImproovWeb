@@ -356,12 +356,6 @@ if (count($validNewContacts) === 0 && count($legacyDraftContacts) > 0) {
     $validNewContacts = $legacyDraftContacts;
 }
 
-if (count($normalizedSelectedContactIds) === 0 && count($validNewContacts) === 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Adicione pelo menos um contato do cliente.']);
-    exit;
-}
-
 $preparedImages = dashboard_prepare_image_entries($rawImages, $nomenclatura);
 $preparedImageEntries = $preparedImages['entries'];
 $packageRows = onboarding_build_package_rows($packages, $observacoes);

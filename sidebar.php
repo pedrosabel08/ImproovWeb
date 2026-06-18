@@ -62,7 +62,8 @@ if (!function_exists('improov_sidebar_render_obra_item')) {
     {
         $id = (int) ($obra['idobra'] ?? 0);
         $nome = htmlspecialchars((string) ($obra['nomenclatura'] ?? ''), ENT_QUOTES, 'UTF-8');
-        $classe = trim('obra ' . $extraClass);
+        $emOnboarding = isset($obra['status_obra']) && (int) $obra['status_obra'] === 2;
+        $classe = trim('obra ' . ($emOnboarding ? 'obra-onboarding ' : '') . $extraClass);
 
         echo '<li class="' . htmlspecialchars($classe, ENT_QUOTES, 'UTF-8') . '">';
         echo '<i class="fa fa-star favorite-icon" data-id="' . $id . '" title="' . $nome . '"></i>';

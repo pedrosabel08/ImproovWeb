@@ -63,9 +63,18 @@
   }
 
   function setLockedState(isLocked) {
+    document.body.classList.remove("onboarding-checking");
     document.body.classList.toggle("onboarding-locked", isLocked);
     if (pageContainer) {
+      pageContainer.classList.remove("onboarding-checking");
       pageContainer.classList.toggle("onboarding-locked", isLocked);
+    }
+  }
+
+  function setCheckingState(isChecking) {
+    document.body.classList.toggle("onboarding-checking", isChecking);
+    if (pageContainer) {
+      pageContainer.classList.toggle("onboarding-checking", isChecking);
     }
   }
 
@@ -302,8 +311,11 @@
   async function fetchChecklist() {
     const obraId = resolveObraId();
     if (!obraId) {
+      setCheckingState(false);
       return;
     }
+
+    setCheckingState(true);
 
     try {
       const response = await fetch(
@@ -333,6 +345,7 @@
         Number(data.status_obra) === 2 && Number(data.pending_items || 0) > 0,
       );
     } catch (error) {
+      setCheckingState(false);
       console.error(error);
       notify(
         error.message || "Erro ao carregar checklist de onboarding.",

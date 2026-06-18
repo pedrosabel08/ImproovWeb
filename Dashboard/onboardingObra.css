@@ -4,16 +4,21 @@ body.onboarding-locked {
     linear-gradient(180deg, #08111c 0%, #0b1421 100%);
 }
 
+body.onboarding-checking #quickAccess,
+body.onboarding-checking #quickHamburger,
+body.onboarding-checking #quickMobileMenu,
 body.onboarding-locked #quickAccess,
 body.onboarding-locked #quickHamburger,
 body.onboarding-locked #quickMobileMenu {
   display: none !important;
 }
 
-body.onboarding-locked .container > :not(header):not(#onboardingObraPanel) {
+body.onboarding-checking .container > :not(#onboardingObraPanel),
+body.onboarding-locked .container > :not(#onboardingObraPanel) {
   display: none !important;
 }
 
+body.onboarding-checking .container,
 body.onboarding-locked .container {
   padding-bottom: 28px;
 }

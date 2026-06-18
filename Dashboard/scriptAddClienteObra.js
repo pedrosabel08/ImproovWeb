@@ -6,8 +6,7 @@
   const elements = {
     close: document.getElementById("closeAddClienteObra"),
     clienteSelect: document.getElementById("onbClienteSelect"),
-    clienteNovoField: document.getElementById("onbClienteNovoField"),
-    clienteNovo: document.getElementById("onbClienteNovo"),
+    clienteSigla: document.getElementById("onbClienteSigla"),
     projetoInterno: document.getElementById("onbProjetoInterno"),
     projetoComercial: document.getElementById("onbProjetoComercial"),
     codigoInterno: document.getElementById("onbCodigoInterno"),
@@ -97,8 +96,9 @@
   function createInitialState() {
     return {
       step: 1,
-      clientId: "0",
+      clientId: "",
       clientName: "",
+      clientCode: "",
       projectInternal: "",
       projectCommercial: "",
       code: "",
@@ -152,6 +152,40 @@
 
   function contactTypeLabel(value) {
     return contactTypeLabels[value] || contactTypeLabels.OUTRO;
+  }
+
+  function onlyLetters(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z]/g, "")
+      .toUpperCase()
+      .slice(0, 3);
+  }
+
+  function projectCodePart(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 3);
+  }
+
+  function fallbackClientCode(label) {
+    return onlyLetters(label);
+  }
+
+  function syncNomenclature() {
+    const clientCode = onlyLetters(state.clientCode);
+    const projectInternal = projectCodePart(state.projectInternal);
+    state.clientCode = clientCode;
+    state.projectInternal = projectInternal;
+    state.code = clientCode && projectInternal ? `${clientCode}_${projectInternal}` : "";
+
+    elements.clienteSigla.value = clientCode;
+    elements.projetoInterno.value = projectInternal;
+    elements.codigoInterno.value = state.code;
   }
 
   function contactPayload(contact) {
@@ -219,7 +253,7 @@
   }
 
   async function fetchClientContacts() {
-    if (state.clientId === "0") {
+    if (state.clientId === "" || state.clientId === "0") {
       renderContacts();
       renderSummary();
       return;
@@ -282,6 +316,11 @@
       return;
     }
 
+    if (state.clientId === "") {
+      notify("Selecione um cliente antes de adicionar contatos.", "error");
+      return;
+    }
+
     if (state.clientId === "0") {
       state.contacts.drafts.unshift({
         draftId: String(Date.now() + Math.random()),
@@ -334,12 +373,15 @@
   }
 
   function selectedClientLabel() {
-    if (state.clientId !== "0") {
+    if (state.clientId !== "" && state.clientId !== "0") {
       const option =
         elements.clienteSelect.options[elements.clienteSelect.selectedIndex];
       return option ? option.textContent.trim() : "Cliente existente";
     }
-    return state.clientName || "Novo cliente";
+    if (state.clientId === "0") {
+      return state.clientCode || "Novo cliente";
+    }
+    return "Cliente não selecionado";
   }
 
   function selectedPackages() {
@@ -398,7 +440,12 @@
 
   function updateClientMode() {
     const isNewClient = state.clientId === "0";
-    elements.clienteNovoField.style.display = isNewClient ? "flex" : "none";
+    elements.clienteSigla.disabled = !isNewClient;
+    if (!isNewClient) {
+      elements.clienteSigla.setAttribute("readonly", "readonly");
+    } else {
+      elements.clienteSigla.removeAttribute("readonly");
+    }
   }
 
   function updatePackageCardVisual(packageKey) {
@@ -432,7 +479,7 @@
 
   function renderContacts() {
     const selectedCount = selectedContactsCount();
-    const usingExistingClient = state.clientId !== "0";
+    const usingExistingClient = state.clientId !== "" && state.clientId !== "0";
 
     elements.contactsCounter.textContent = `${selectedCount} selecionado(s)`;
     elements.contactModeNote.textContent = usingExistingClient
@@ -442,7 +489,12 @@
       ? "Salvar novo contato"
       : "Adicionar ao onboarding";
 
-    if (!usingExistingClient) {
+    if (state.clientId === "") {
+      elements.contactsState.textContent =
+        "Selecione um cliente para carregar a base de contatos.";
+      elements.contactsList.innerHTML =
+        '<div class="onb-contact-empty">Nenhum cliente selecionado.</div>';
+    } else if (!usingExistingClient) {
       elements.contactsState.textContent =
         "Cliente novo: ainda nao existe base cadastrada. Use o formulario ao lado para montar os contatos desta obra.";
       elements.contactsList.innerHTML =
@@ -553,7 +605,7 @@
             <div class="onb-summary-item"><span>Cliente</span><strong>${escapeHtml(selectedClientLabel())}</strong></div>
             <div class="onb-summary-item"><span>Projeto interno</span><strong>${escapeHtml(state.projectInternal || "A definir")}</strong></div>
             <div class="onb-summary-item"><span>Projeto comercial</span><strong>${escapeHtml(state.projectCommercial || "A definir")}</strong></div>
-            <div class="onb-summary-item"><span>Código</span><strong>${escapeHtml(state.code || "A definir")}</strong></div>
+            <div class="onb-summary-item"><span>Nomenclatura</span><strong>${escapeHtml(state.code || "A definir")}</strong></div>
               <div class="onb-summary-item"><span>Pacotes</span><strong>${packages.length ? escapeHtml(packages.join(" • ")) : "Nenhum pacote selecionado"}</strong></div>
               <div class="onb-summary-item"><span>Importação</span><strong>${state.images.entries.length} img / ${state.images.duplicates.length} dup / ${state.images.errors.length} err</strong></div>
             <div class="onb-summary-item"><span>Contatos</span><strong>${contactsCount} contato(s) selecionado(s)</strong></div>
@@ -571,6 +623,7 @@
   }
 
   function renderAll() {
+    syncNomenclature();
     updateClientMode();
     updatePackageCardVisual("still");
     updatePackageCardVisual("animation");
@@ -583,8 +636,9 @@
 
   function resetForm() {
     state = createInitialState();
-    elements.clienteSelect.value = "0";
-    elements.clienteNovo.value = "";
+    elements.clienteSelect.value = "";
+    elements.clienteSigla.value = "";
+    elements.clienteSigla.disabled = true;
     elements.projetoInterno.value = "";
     elements.projetoComercial.value = "";
     elements.codigoInterno.value = "";
@@ -726,14 +780,19 @@
 
   function validateStep(step) {
     if (step === 1) {
-      const usingExistingClient = state.clientId !== "0";
-      if (!usingExistingClient && !state.clientName) {
-        notify("Informe o nome do novo cliente.", "error");
+      const usingExistingClient = state.clientId !== "" && state.clientId !== "0";
+      const usingNewClient = state.clientId === "0";
+      if (!usingExistingClient && !usingNewClient) {
+        notify("Selecione um cliente ou escolha Novo Cliente.", "error");
+        return false;
+      }
+      if (!state.clientCode) {
+        notify("Informe a sigla do cliente.", "error");
         return false;
       }
       if (!state.projectInternal || !state.projectCommercial || !state.code) {
         notify(
-          "Preencha projeto interno, projeto comercial e código interno.",
+          "Preencha nome interno do projeto, nome comercial e nomenclatura.",
           "error",
         );
         return false;
@@ -759,14 +818,61 @@
       }
     }
 
-    if (step === 4) {
-      if (selectedContactsCount() === 0) {
-        notify("Adicione pelo menos um contato do cliente.", "error");
-        return false;
-      }
+    return true;
+  }
+
+  function confirmNoContacts() {
+    if (selectedContactsCount() > 0) {
+      return Promise.resolve(true);
     }
 
-    return true;
+    if (window.Swal && typeof window.Swal.fire === "function") {
+      return window.Swal.fire({
+        title: "Concluir sem contatos?",
+        html:
+          "Nenhum contato foi cadastrado para este projeto.<br><br>" +
+          "Deseja realmente concluir o cadastro sem adicionar contatos?<br><br>" +
+          "Você poderá cadastrá-los posteriormente.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Criar Projeto",
+        cancelButtonText: "Voltar",
+        reverseButtons: true,
+      }).then((result) => Boolean(result.isConfirmed));
+    }
+
+    return new Promise((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.className = "onb-confirm-overlay";
+      overlay.innerHTML = `
+        <div class="onb-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="onbConfirmNoContactsTitle">
+          <h3 id="onbConfirmNoContactsTitle">Concluir sem contatos?</h3>
+          <p>Nenhum contato foi cadastrado para este projeto.</p>
+          <p>Deseja realmente concluir o cadastro sem adicionar contatos?</p>
+          <p>Você poderá cadastrá-los posteriormente.</p>
+          <div class="onb-confirm-actions">
+            <button type="button" class="onb-ghost-btn" data-onb-confirm="back">Voltar</button>
+            <button type="button" class="onb-primary-btn" data-onb-confirm="create">Criar Projeto</button>
+          </div>
+        </div>`;
+
+      function closeConfirm(value) {
+        overlay.remove();
+        resolve(value);
+      }
+
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          closeConfirm(false);
+          return;
+        }
+        const action = event.target.closest("[data-onb-confirm]");
+        if (!action) return;
+        closeConfirm(action.getAttribute("data-onb-confirm") === "create");
+      });
+
+      document.body.appendChild(overlay);
+    });
   }
 
   function goToStep(nextStep) {
@@ -780,8 +886,11 @@
 
   function buildPayload() {
     return {
-      cliente_id: state.clientId !== "0" ? Number(state.clientId) : null,
-      cliente: state.clientId === "0" ? state.clientName : "",
+      cliente_id:
+        state.clientId !== "" && state.clientId !== "0"
+          ? Number(state.clientId)
+          : null,
+      cliente: state.clientId === "0" ? state.clientCode : "",
       obra: state.projectInternal,
       nome_real: state.projectCommercial,
       nomenclatura: state.code,
@@ -809,7 +918,11 @@
   }
 
   async function submitOnboarding() {
-    if (!validateStep(1) || !validateStep(2) || !validateStep(4)) {
+    if (!validateStep(1) || !validateStep(2)) {
+      return;
+    }
+
+    if (!(await confirmNoContacts())) {
       return;
     }
 
@@ -863,33 +976,37 @@
   elements.submit.addEventListener("click", submitOnboarding);
 
   elements.clienteSelect.addEventListener("change", () => {
-    state.clientId = elements.clienteSelect.value || "0";
+    state.clientId = elements.clienteSelect.value || "";
     resetContactsState();
-    if (state.clientId !== "0") {
-      state.clientName = "";
-      elements.clienteNovo.value = "";
+    const option =
+      elements.clienteSelect.options[elements.clienteSelect.selectedIndex];
+
+    if (state.clientId !== "" && state.clientId !== "0") {
+      state.clientName = option ? option.textContent.trim() : "";
+      state.clientCode =
+        onlyLetters(option ? option.dataset.sigla || "" : "") ||
+        fallbackClientCode(state.clientName);
       renderAll();
       fetchClientContacts();
       return;
     }
+
+    state.clientCode = "";
+    state.clientName = "";
     renderAll();
   });
 
-  elements.clienteNovo.addEventListener("input", () => {
-    state.clientName = elements.clienteNovo.value.trim();
-    renderSummary();
+  elements.clienteSigla.addEventListener("input", () => {
+    state.clientCode = onlyLetters(elements.clienteSigla.value);
+    state.clientName = state.clientId === "0" ? state.clientCode : state.clientName;
+    renderAll();
   });
   elements.projetoInterno.addEventListener("input", () => {
-    state.projectInternal = elements.projetoInterno.value.trim();
-    renderSummary();
+    state.projectInternal = projectCodePart(elements.projetoInterno.value);
+    renderAll();
   });
   elements.projetoComercial.addEventListener("input", () => {
     state.projectCommercial = elements.projetoComercial.value.trim();
-    renderSummary();
-  });
-  elements.codigoInterno.addEventListener("input", () => {
-    state.code = elements.codigoInterno.value.trim().toUpperCase();
-    elements.codigoInterno.value = state.code;
     renderSummary();
   });
   elements.observacoes.addEventListener("input", () => {

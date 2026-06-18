@@ -460,6 +460,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const obraSelect = document.getElementById("filterObra");
       const statusSelect = document.getElementById("filterStatus");
       if (!obraSelect || !statusSelect) return;
+      const selectedObra = obraSelect.value || "";
+      const selectedStatus = statusSelect.value || "";
 
       // derive unique obras and statuses present in entregas
       const obras = new Map();
@@ -488,6 +490,12 @@ document.addEventListener("DOMContentLoaded", () => {
         opt.textContent = label;
         obraSelect.appendChild(opt);
       });
+      if (
+        selectedObra &&
+        Array.from(obraSelect.options).some((opt) => opt.value === selectedObra)
+      ) {
+        obraSelect.value = selectedObra;
+      }
 
       // clear and fill status select - sort alphabetically
       const statusDefault = statusSelect.querySelector("option");
@@ -502,6 +510,14 @@ document.addEventListener("DOMContentLoaded", () => {
         opt.textContent = label;
         statusSelect.appendChild(opt);
       });
+      if (
+        selectedStatus &&
+        Array.from(statusSelect.options).some(
+          (opt) => opt.value === selectedStatus,
+        )
+      ) {
+        statusSelect.value = selectedStatus;
+      }
     } catch (err) {
       console.error("Erro ao popular filtros:", err);
     }
@@ -1144,7 +1160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         modalReviewBatches.innerHTML = "";
         modalReviewBatches.style.display = "none";
       }
-      carregarKanban();
+      carregarKanban()
       // remover painel lateral se existir
       const mini = document.getElementById("miniImagePanel");
       if (mini) mini.remove();

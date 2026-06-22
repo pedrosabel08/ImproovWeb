@@ -31,6 +31,21 @@ function review_batch_action_validate_change_origin(string $origin): string
     return $origin;
 }
 
+function review_batch_action_validate_date(?string $date): string
+{
+    $date = trim((string) ($date ?? ''));
+    if ($date === '') {
+        return date('Y-m-d');
+    }
+
+    $parsed = DateTime::createFromFormat('Y-m-d', $date);
+    if (!$parsed || $parsed->format('Y-m-d') !== $date) {
+        throw new RuntimeException('Data do retorno invalida.');
+    }
+
+    return $date;
+}
+
 function review_batch_action_mark_pending_upload(mysqli $conn, int $funcaoImagemId): void
 {
     if ($funcaoImagemId <= 0) {
@@ -193,6 +208,7 @@ $snoozeUntil = isset($input['snooze_until']) ? trim((string) $input['snooze_unti
 $customerResponse = isset($input['customer_response']) ? strtolower(trim((string) $input['customer_response'])) : '';
 $changeOrigin = isset($input['change_origin']) ? trim((string) $input['change_origin']) : '';
 $changeOriginDetail = isset($input['change_origin_detail']) ? trim((string) $input['change_origin_detail']) : '';
+$resolvedDate = isset($input['resolved_date']) ? trim((string) $input['resolved_date']) : '';
 $actorUserId = (int) ($_SESSION['idusuario'] ?? 0);
 $actorColaboradorId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
 
@@ -312,6 +328,8 @@ try {
     }
 
     if ($action === 'resolve') {
+        $resolvedDate = review_batch_action_validate_date($resolvedDate);
+        $resolvedAt = $resolvedDate . ' ' . date('H:i:s');
         $resolvedReason = $reason !== '' ? substr($reason, 0, 255) : 'MANUAL_RESOLVED';
         $noteValue = $note !== '' ? substr($note, 0, 255) : 'Batch resolvido manualmente.';
         $shouldCreatePreAlt = false;
@@ -401,26 +419,26 @@ try {
 
         $sql = "UPDATE cobranca_review
                 SET status = 'RESOLVED',
-                    resolved_at = NOW(),
+                    resolved_at = ?,
                     resolved_reason = ?,
                     snooze_until = NULL,
-                    status_changed_at = NOW(),
+                    status_changed_at = ?,
                     status_changed_by = ?,
                     last_action_note = ?
                 WHERE review_batch_id = ?
                   AND status <> 'IGNORED'";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('sisi', $resolvedReason, $actorUserId, $noteValue, $reviewBatchId);
+        $stmt->bind_param('sssisi', $resolvedAt, $resolvedReason, $resolvedAt, $actorUserId, $noteValue, $reviewBatchId);
         $stmt->execute();
         $stmt->close();
 
-        $stmtBatch = $conn->prepare("UPDATE review_batch SET status = 'RESOLVED', batch_active_slot = NULL, updated_at = NOW() WHERE id = ? AND status <> 'IGNORED'");
-        $stmtBatch->bind_param('i', $reviewBatchId);
+        $stmtBatch = $conn->prepare("UPDATE review_batch SET status = 'RESOLVED', batch_active_slot = NULL, updated_at = ? WHERE id = ? AND status <> 'IGNORED'");
+        $stmtBatch->bind_param('si', $resolvedAt, $reviewBatchId);
         $stmtBatch->execute();
         $stmtBatch->close();
 
         if ($shouldCreatePreAlt) {
-            pre_alt_criar_de_review_batch($conn, $reviewBatchId, $actorColaboradorId, date('Y-m-d'));
+            pre_alt_criar_de_review_batch($conn, $reviewBatchId, $actorColaboradorId, $resolvedDate);
         }
     }
 

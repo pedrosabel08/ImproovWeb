@@ -31,6 +31,13 @@ function entregas_ensure_data_recebimento_schema(mysqli $conn): void
              ADD COLUMN data_recebimento DATE NULL AFTER obra_id"
         );
     }
+
+    if (!entregas_table_has_column($conn, 'obra_pacote', 'prazo_dias_corridos')) {
+        $conn->query(
+            "ALTER TABLE obra_pacote
+             ADD COLUMN prazo_dias_corridos TINYINT(1) NOT NULL DEFAULT 0 AFTER prazo_contratual"
+        );
+    }
 }
 
 function entregas_feriados_moveis(int $ano): array
@@ -77,6 +84,23 @@ function entregas_adicionar_dias_uteis(string $dataInicial, int $diasUteis): str
     return date('Y-m-d', $data);
 }
 
+function entregas_adicionar_dias_corridos(string $dataInicial, int $dias): string
+{
+    $data = strtotime($dataInicial);
+    if ($dias > 0) {
+        $data = strtotime('+' . $dias . ' days', $data);
+    }
+
+    return date('Y-m-d', $data);
+}
+
+function entregas_calcular_data_prazo(string $dataInicial, int $dias, bool $diasCorridos): string
+{
+    return $diasCorridos
+        ? entregas_adicionar_dias_corridos($dataInicial, $dias)
+        : entregas_adicionar_dias_uteis($dataInicial, $dias);
+}
+
 function entregas_buscar_codigo_etapa(mysqli $conn, int $statusId): string
 {
     $stmt = $conn->prepare('SELECT nome_status FROM status_imagem WHERE idstatus = ? LIMIT 1');
@@ -94,8 +118,18 @@ function entregas_buscar_codigo_etapa(mysqli $conn, int $statusId): string
 
 function entregas_buscar_prazo_contratual_still(mysqli $conn, int $obraId): ?int
 {
+    $info = entregas_buscar_prazo_contratual_still_info($conn, $obraId);
+    return $info ? (int) $info['dias'] : null;
+}
+
+function entregas_buscar_prazo_contratual_still_info(mysqli $conn, int $obraId): ?array
+{
+    $prazoCorridosSelect = entregas_table_has_column($conn, 'obra_pacote', 'prazo_dias_corridos')
+        ? 'prazo_dias_corridos'
+        : '0 AS prazo_dias_corridos';
+
     $stmt = $conn->prepare(
-        "SELECT prazo_contratual
+        "SELECT prazo_contratual, {$prazoCorridosSelect}
          FROM obra_pacote
          WHERE obra_id = ?
            AND tipo = 'STILL'
@@ -125,7 +159,14 @@ function entregas_buscar_prazo_contratual_still(mysqli $conn, int $obraId): ?int
     }
 
     $prazo = (int) $row['prazo_contratual'];
-    return $prazo > 0 ? $prazo : null;
+    if ($prazo <= 0) {
+        return null;
+    }
+
+    return [
+        'dias' => $prazo,
+        'dias_corridos' => !empty($row['prazo_dias_corridos']),
+    ];
 }
 
 function entregas_calcular_prazo_previsto(mysqli $conn, int $obraId, int $statusId, string $dataRecebimento): ?array
@@ -138,15 +179,19 @@ function entregas_calcular_prazo_previsto(mysqli $conn, int $obraId, int $status
     $codigoNormalizado = preg_replace('/[^A-Z0-9]/', '', $codigoEtapa);
 
     if ($statusId === 2 || $codigoNormalizado === 'R00') {
-        $prazoContratual = entregas_buscar_prazo_contratual_still($conn, $obraId);
+        $prazoContratual = entregas_buscar_prazo_contratual_still_info($conn, $obraId);
         if ($prazoContratual === null) {
             return null;
         }
 
+        $diasCorridos = (bool) $prazoContratual['dias_corridos'];
+        $dias = (int) $prazoContratual['dias'];
+
         return [
-            'data_prevista' => entregas_adicionar_dias_uteis($dataRecebimento, $prazoContratual),
+            'data_prevista' => entregas_calcular_data_prazo($dataRecebimento, $dias, $diasCorridos),
             'tipo_calculo' => 'prazo_contratual_still',
-            'dias_uteis' => $prazoContratual,
+            'dias_uteis' => $dias,
+            'dias_corridos' => $diasCorridos,
         ];
     }
 

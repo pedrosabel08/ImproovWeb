@@ -14,6 +14,10 @@ require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/prazo_entrega_helper.php';
 
 improov_p00_ensure_schema($conn);
+entregas_ensure_data_recebimento_schema($conn);
+$prazoDiasCorridosSelect = entregas_table_has_column($conn, 'obra_pacote', 'prazo_dias_corridos')
+    ? 'op.prazo_dias_corridos'
+    : '0';
 
 $obra_id = isset($_GET['obra_id']) && is_numeric($_GET['obra_id'])
     ? intval($_GET['obra_id'])
@@ -50,7 +54,20 @@ $stmt = $conn->prepare(
                 LIMIT 1
             ),
             30
-        ) AS prazo_contratual_dias
+        ) AS prazo_contratual_dias,
+
+        COALESCE(
+            (
+                SELECT {$prazoDiasCorridosSelect}
+                FROM obra_pacote op
+                WHERE op.obra_id = o.idobra
+                  AND op.tipo = 'STILL'
+                  AND op.status = 'ATIVO'
+                ORDER BY op.idobra_pacote DESC
+                LIMIT 1
+            ),
+            0
+        ) AS prazo_contratual_dias_corridos
 
      FROM obra o
      WHERE o.idobra = ?
@@ -68,13 +85,14 @@ if (!$obra) {
 
 /* ── Auxiliary: etapa order ────────────────────────────────────────────── */
 $prazo_contratual_dias = intval($obra['prazo_contratual_dias'] ?? 0);
+$prazo_contratual_dias_corridos = !empty($obra['prazo_contratual_dias_corridos']);
 $prazo_contratual_data = null;
 $data_recebimento_base = $obra['recebimento_arquivos']
     ? substr((string) $obra['recebimento_arquivos'], 0, 10)
     : null;
 
 if ($data_recebimento_base && $prazo_contratual_dias > 0 && entregas_valid_date($data_recebimento_base)) {
-    $prazo_contratual_data = entregas_adicionar_dias_uteis($data_recebimento_base, $prazo_contratual_dias);
+    $prazo_contratual_data = entregas_calcular_data_prazo($data_recebimento_base, $prazo_contratual_dias, $prazo_contratual_dias_corridos);
 }
 
 $etapa_order = [
@@ -363,6 +381,7 @@ echo json_encode([
         'data_final'              => $obra['data_final'],
         'prazo_contratual'        => $prazo_contratual_dias,
         'prazo_contratual_dias'   => $prazo_contratual_dias,
+        'prazo_contratual_dias_corridos' => $prazo_contratual_dias_corridos,
         'prazo_contratual_data'   => $prazo_contratual_data,
     ],
     'summary' => [

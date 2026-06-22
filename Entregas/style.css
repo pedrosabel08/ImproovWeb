@@ -1980,6 +1980,109 @@ option.colab-busy {
   background: rgba(148, 163, 184, 0.18);
 }
 
+.review-return-modal.swal2-popup {
+  width: min(520px, calc(100vw - 32px));
+  padding: 24px;
+  border-radius: var(--radius-md);
+  background: var(--bg-modal);
+  color: var(--text-primary);
+  border: 1px solid var(--border-modal);
+  box-shadow: var(--shadow-modal);
+}
+
+.review-return-modal .swal2-title {
+  margin: 0 0 16px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.review-return-html {
+  margin: 0;
+}
+
+.review-return-modal .swal2-input,
+.review-return-modal .swal2-textarea {
+  width: 100%;
+  margin: 0 0 12px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  box-shadow: none;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.review-return-modal select.swal2-input {
+  height: 42px;
+  padding: 0 38px 0 12px;
+  appearance: none;
+  background-color: var(--bg-input);
+  background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9L12 15L18 9' stroke='%2394A3B8' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: calc(100% - 14px) center;
+  background-size: 14px 14px;
+  background-repeat: no-repeat;
+}
+
+.review-return-modal .review-return-date {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.review-return-label {
+  display: block;
+  margin: 2px 0 6px;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.review-return-modal .swal2-textarea {
+  min-height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.review-return-modal .swal2-input:focus,
+.review-return-modal .swal2-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.review-return-modal .swal2-actions {
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.review-return-modal .swal2-styled.swal2-confirm {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.review-return-modal .swal2-styled.swal2-confirm:hover {
+  background: var(--accent-hover);
+}
+
+.review-return-modal .swal2-styled.swal2-cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.review-return-modal .swal2-styled.swal2-cancel:hover {
+  background: var(--bg-count);
+}
+
 .review-batch-empty,
 .review-batch-empty-inline {
   font-size: 12px;

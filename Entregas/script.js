@@ -41,6 +41,12 @@ function formatarDataHora(dataHora) {
   return `${day}/${month}/${year}${timeLabel}`;
 }
 
+function getTodayLocalDate() {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 10);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const columns = document.querySelectorAll(".column");
   const modalEntrega = document.getElementById("entregaModal");
@@ -886,12 +892,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (isP00ReviewBatch(batch)) {
         const result = await Swal.fire({
           title: "Resolver retorno P00",
+          customClass: {
+            popup: "review-return-modal",
+            htmlContainer: "review-return-html",
+          },
           html: `
             <select id="swal-review-p00-response" class="swal2-input">
               <option value="">Selecione a resposta do cliente</option>
               <option value="approved">Aprovada</option>
               <option value="change_requested">Alteração</option>
             </select>
+            <label class="review-return-label" for="swal-review-p00-resolved-date">Data do retorno</label>
+            <input id="swal-review-p00-resolved-date" class="swal2-input review-return-date" type="date" value="${getTodayLocalDate()}">
             <select id="swal-review-p00-origin" class="swal2-input" style="display:none;">
               <option value="">Selecione a origem da alteração</option>
               <option value="WhatsApp">WhatsApp</option>
@@ -950,11 +962,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const changeOriginDetail =
               document.getElementById("swal-review-p00-origin-detail")?.value ||
               "";
+            const resolvedDate =
+              document.getElementById("swal-review-p00-resolved-date")?.value ||
+              "";
             const note =
               document.getElementById("swal-review-p00-note")?.value || "";
 
             if (!customerResponse) {
               Swal.showValidationMessage("Selecione a resposta do cliente.");
+              return false;
+            }
+
+            if (!resolvedDate) {
+              Swal.showValidationMessage("Informe a data do retorno.");
               return false;
             }
 
@@ -983,6 +1003,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 customerResponse === "change_requested"
                   ? changeOriginDetail.trim()
                   : "",
+              resolved_date: resolvedDate,
               note: note.trim(),
             };
           },
@@ -993,12 +1014,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const result = await Swal.fire({
         title: "Resolver retorno do cliente",
+        customClass: {
+          popup: "review-return-modal",
+          htmlContainer: "review-return-html",
+        },
         html: `
           <select id="swal-review-response" class="swal2-input">
             <option value="">Selecione a resposta do cliente</option>
             <option value="approved">Cliente aprovou / sem alteracao</option>
             <option value="change_requested">Cliente pediu alteracao - enviar para Pre-Alteracao</option>
           </select>
+          <label class="review-return-label" for="swal-review-resolved-date">Data do retorno</label>
+          <input id="swal-review-resolved-date" class="swal2-input review-return-date" type="date" value="${getTodayLocalDate()}">
           <textarea id="swal-review-resolve-note" class="swal2-textarea" placeholder="Observacao opcional para o lote"></textarea>
         `,
         showCancelButton: true,
@@ -1008,6 +1035,8 @@ document.addEventListener("DOMContentLoaded", () => {
         preConfirm: () => {
           const customerResponse =
             document.getElementById("swal-review-response")?.value || "";
+          const resolvedDate =
+            document.getElementById("swal-review-resolved-date")?.value || "";
           const note =
             document.getElementById("swal-review-resolve-note")?.value || "";
 
@@ -1016,9 +1045,15 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
           }
 
+          if (!resolvedDate) {
+            Swal.showValidationMessage("Informe a data do retorno.");
+            return false;
+          }
+
           return {
             action,
             customer_response: customerResponse,
+            resolved_date: resolvedDate,
             note: note.trim(),
           };
         },
@@ -3948,6 +3983,12 @@ if (btnAdicionarImagem) {
     return result.toISOString().slice(0, 10);
   }
 
+  function addCalendarDays(date, days) {
+    const result = new Date(date.getTime());
+    result.setDate(result.getDate() + days);
+    return result.toISOString().slice(0, 10);
+  }
+
   function getPrazoContratualData(obra) {
     if (obra.prazo_contratual_data) return obra.prazo_contratual_data;
 
@@ -3955,7 +3996,9 @@ if (btnAdicionarImagem) {
     const prazo = parseInt(obra.prazo_contratual ?? obra.prazo_contratual_dias, 10);
     if (!recebimento || !prazo) return null;
 
-    return addBusinessDays(recebimento, prazo);
+    return obra.prazo_contratual_dias_corridos
+      ? addCalendarDays(recebimento, prazo)
+      : addBusinessDays(recebimento, prazo);
   }
 
   function fmtDias(n) {

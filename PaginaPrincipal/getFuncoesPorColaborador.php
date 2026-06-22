@@ -15,7 +15,12 @@ $sql = "SELECT
     ico.imagem_nome,
     fi.status,
     fi.prazo,
-    f.nome_funcao,
+    CASE
+        WHEN fi.funcao_id = 4 AND si.nome_status = 'P00'
+            THEN 'Escolha de Ângulos'
+        ELSE
+            f.nome_funcao
+    END AS nome_funcao,
     fi.observacao,
     COALESCE(pc.prioridade, 3) AS prioridade,
     fi.idfuncao_imagem,

@@ -697,6 +697,10 @@ span.notif-icon {
   background: #fbe9e7;
   color: #bf360c;
 } /* Pré-Finalização */
+.funcao-id-11 {
+  background: #fff7e0;
+  color: #ff8f00;
+} /* Escolha de ângulos */
 
 /* Indicador de início no log de alterações */
 .log-inicio {

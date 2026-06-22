@@ -578,6 +578,9 @@ function processarDados(data) {
     if (tipo === "imagem" && item.par_tipo === "caderno_filtro") {
       subtitulo = "Caderno + Filtro de Assets";
       funcaoIdBadge = 1;
+    } else if (tipo === "imagem" && item.nome_funcao === "Escolha de Ângulos") {
+      subtitulo = "Escolha de Ângulos";
+      funcaoIdBadge = 11; // escolha um ID/classe para estilização
     } else {
       subtitulo = item.nome_funcao;
       funcaoIdBadge = item.funcao_id || 0;

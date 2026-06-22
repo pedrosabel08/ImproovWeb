@@ -70,7 +70,7 @@ foreach ($onboarding_progress as $obra_progress) {
 // ── Pós-Produção: status_pos = 1 = "Não começou" ──────────────────────────────
 $pos_count = 0;
 if ($userId === 9 || $userId === 21) { // Apenas para colaboradores administradores (21)
-    $res_pos = $conn->query("SELECT COUNT(*) AS cnt FROM pos_producao WHERE status_pos = 1");
+    $res_pos = $conn->query("SELECT COUNT(*) AS cnt FROM pos_producao p JOIN render_alta ra on ra.idrender_alta = p.render_id WHERE status_pos = 1 AND ra.status IN ('Aprovado', 'Em aprovação')");
     $pos_count = ($res_pos) ? intval($res_pos->fetch_assoc()['cnt']) : 0;
 }
 // ── Render: items with status 'Em aprovação' ────────────────────────────────────

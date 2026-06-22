@@ -974,7 +974,7 @@ h2#dataEnvio {
   color: #e8edf5;
 }
 
-.obra-card::after {
+/* .obra-card::after {
   content: "";
   position: absolute;
   top: 0;
@@ -990,7 +990,7 @@ h2#dataEnvio {
   );
   pointer-events: none;
   transition: opacity 140ms ease;
-}
+} */
 
 .obra-card[data-tone]::after {
   opacity: 0.16;

@@ -447,7 +447,7 @@ try {
   // colaborador atual for direção (21 ou 2), diretor_pode_aprovar.
   $funcaoImagemIdsDirecao = [];
   foreach ($tarefas as $t) {
-    if (in_array(intval($t['funcao_id']), [5, 6], true)) {
+    if (in_array(intval($t['funcao_id']), [4, 5, 6], true)) {
       $funcaoImagemIdsDirecao[] = intval($t['idfuncao_imagem']);
     }
   }

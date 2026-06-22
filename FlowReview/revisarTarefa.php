@@ -344,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $aguardandoDirecao = false;
         $aprovadorDirecaoId = (int)($responsavel ?: $idcolaborador_session);
         $isFuncaoComDirecao = (
-            in_array((int)$funcao_id_context, [5, 6], true)
+            in_array((int)$funcao_id_context, [4, 5, 6], true)
             || in_array($nomeFuncaoLower, ['pós-produção', 'alteração'], true)
         );
         $isTipoAprovacaoComDirecao = in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true);

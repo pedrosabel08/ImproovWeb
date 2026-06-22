@@ -322,7 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $funcao_id_context = null;
         $nome_funcao_db = null;
-        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao
+        $imagem_id_context = $imagem_id ? (int)$imagem_id : null;
+        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id
             FROM funcao_imagem fi
             LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
             WHERE fi.idfuncao_imagem = ?
@@ -330,9 +331,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmtFuncaoContext) {
             $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
             $stmtFuncaoContext->execute();
-            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db);
+            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db);
             $stmtFuncaoContext->fetch();
             $stmtFuncaoContext->close();
+            if ($imagem_id_context_db) {
+                $imagem_id_context = (int)$imagem_id_context_db;
+            }
         }
 
         $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
@@ -350,8 +354,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isTipoAprovacaoComDirecao = in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true);
         $isPrimeiroAprovadorDirecao = ($aprovadorDirecaoId === 1);
         $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 2], true);
+        $isFinalizadorAprovadorDirecao = false;
 
-        if ($isFuncaoComDirecao && $isTipoAprovacaoComDirecao && $isPrimeiroAprovadorDirecao && !$isDirecaoAprovador) {
+        if (
+            !$isDirecaoAprovador
+            && $aprovadorDirecaoId > 0
+            && $imagem_id_context
+            && in_array((int)$funcao_id_context, [5, 6], true)
+        ) {
+            $stmtFinalizadorDirecao = $conn->prepare(
+                "SELECT 1
+                 FROM funcao_imagem
+                 WHERE imagem_id = ?
+                   AND colaborador_id = ?
+                   AND funcao_id IN (4, 6)
+                   AND idfuncao_imagem <> ?
+                 LIMIT 1"
+            );
+            if ($stmtFinalizadorDirecao) {
+                $stmtFinalizadorDirecao->bind_param("iii", $imagem_id_context, $aprovadorDirecaoId, $idfuncao_imagem);
+                $stmtFinalizadorDirecao->execute();
+                $stmtFinalizadorDirecao->store_result();
+                $isFinalizadorAprovadorDirecao = ($stmtFinalizadorDirecao->num_rows > 0);
+                $stmtFinalizadorDirecao->close();
+            }
+        }
+
+        if ($isFuncaoComDirecao && $isTipoAprovacaoComDirecao && ($isPrimeiroAprovadorDirecao || $isFinalizadorAprovadorDirecao) && !$isDirecaoAprovador) {
             // Verifica se já existe um histórico 'Aguardando Direção' para esta tarefa
             $stmtChkDir = $conn->prepare(
                 "SELECT id FROM historico_aprovacoes WHERE funcao_imagem_id = ? AND status_novo = 'Aguardando Direção' LIMIT 1"

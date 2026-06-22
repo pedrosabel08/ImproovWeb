@@ -481,7 +481,7 @@ try {
     $isDirecao = in_array((int)$idcolaborador, [21, 2], true);
 
     foreach ($tarefas as &$t) {
-      if (in_array(intval($t['funcao_id']), [5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {
+      if (in_array(intval($t['funcao_id']), [4, 5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {
         $t['pendente_direcao']      = true;
         // Remove finalizador_pode_aprovar se foi marcado antes desta detecção
         unset($t['finalizador_pode_aprovar']);

@@ -230,19 +230,24 @@ async function revisarTarefa(
 
     let message = "";
     let bgColor = "";
-    switch (tipoRevisao) {
-      case "aprovado":
-        message = "Tarefa aprovada com sucesso!";
-        bgColor = "green";
-        break;
-      case "ajuste":
-        message = "Tarefa marcada como necessitando de ajustes!";
-        bgColor = "orange";
-        break;
-      case "aprovado_com_ajustes":
-        message = "Tarefa aprovada com ajustes!";
-        bgColor = "blue";
-        break;
+    if (data?.aguardando_direcao) {
+      message = data.message || "Aprovacao registrada. Aguardando Direcao.";
+      bgColor = "blue";
+    } else {
+      switch (tipoRevisao) {
+        case "aprovado":
+          message = "Tarefa aprovada com sucesso!";
+          bgColor = "green";
+          break;
+        case "ajuste":
+          message = "Tarefa marcada como necessitando de ajustes!";
+          bgColor = "orange";
+          break;
+        case "aprovado_com_ajustes":
+          message = "Tarefa aprovada com ajustes!";
+          bgColor = "blue";
+          break;
+      }
     }
 
     Toastify({
@@ -264,12 +269,21 @@ async function revisarTarefa(
         ajuste: "Ajuste",
         aprovado_com_ajustes: "Aprovado com ajustes",
       };
-      const novoStatus = statusMap[tipoRevisao];
+      const novoStatus = data.aguardando_direcao
+        ? "Aguardando Direção"
+        : statusMap[tipoRevisao];
       if (novoStatus) {
         const task = dadosTarefas.find(
           (t) => t.idfuncao_imagem == idfuncao_imagem,
         );
-        if (task) task.status_novo = novoStatus;
+        if (task) {
+          task.status_novo = novoStatus;
+          if (data.aguardando_direcao) {
+            task.pendente_direcao = true;
+            task.diretor_pode_aprovar = false;
+            delete task.finalizador_pode_aprovar;
+          }
+        }
       }
 
       filtrarTarefasPorObra(obraSelecionada);

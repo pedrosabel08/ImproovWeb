@@ -1,6 +1,40 @@
 <?php
 require_once __DIR__ . '/../conexao.php'; // Inclui o arquivo de conexão
 
+function tableHasColumn(mysqli $conn, string $table, string $column): bool
+{
+    $sql = "SELECT 1
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?
+              AND COLUMN_NAME = ?
+            LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param('ss', $table, $column);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result && $result->num_rows > 0;
+    $stmt->close();
+
+    return $exists;
+}
+
+function ensurePrazoDiasCorridosSchema(mysqli $conn): void
+{
+    if (!tableHasColumn($conn, 'obra', 'prazo_dias_corridos')) {
+        $conn->query(
+            "ALTER TABLE obra
+             ADD COLUMN prazo_dias_corridos TINYINT(1) NOT NULL DEFAULT 0 AFTER dias_uteis"
+        );
+    }
+}
+
+ensurePrazoDiasCorridosSchema($conn);
+
 // Receber os dados do AJAX
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -115,6 +149,23 @@ function adicionarDiasUteis($dataInicial, $diasUteis)
     return end($diasUteisContados); // Retorna o último dia útil
 }
 
+function adicionarDiasCorridos($dataInicial, $dias)
+{
+    $data = strtotime($dataInicial);
+    if ($dias > 0) {
+        $data = strtotime('+' . $dias . ' days', $data);
+    }
+
+    return date('Y-m-d', $data);
+}
+
+function calcularPrazoPorTipoDia($dataInicial, $dias, $diasCorridos)
+{
+    return $diasCorridos
+        ? adicionarDiasCorridos($dataInicial, (int) $dias)
+        : adicionarDiasUteis($dataInicial, (int) $dias);
+}
+
 function feriadosMoveis($ano)
 {
     // Cálculo da Páscoa
@@ -162,16 +213,17 @@ while ($row = $result->fetch_assoc()) {
     $dataRecebimento = $row['ultima_data'];
 
     // Buscar os dias úteis da obra
-    $queryObra = "SELECT dias_uteis FROM obra WHERE idobra = ?";
+    $queryObra = "SELECT dias_uteis, prazo_dias_corridos FROM obra WHERE idobra = ?";
     $stmtObra = $conn->prepare($queryObra);
     $stmtObra->bind_param('i', $obraId);
     $stmtObra->execute();
     $resultObra = $stmtObra->get_result();
     $obra = $resultObra->fetch_assoc();
     $diasUteis = $obra['dias_uteis'] ?? 0;
+    $diasCorridos = !empty($obra['prazo_dias_corridos']);
 
     // Calcular o novo prazo (adicionando dias úteis)
-    $novoPrazo = adicionarDiasUteis($dataRecebimento, $diasUteis);
+    $novoPrazo = calcularPrazoPorTipoDia($dataRecebimento, $diasUteis, $diasCorridos);
 
     // Atualizar a tabela `imagens_cliente_obra`
     $updatePrazoStmt = $conn->prepare("UPDATE imagens_cliente_obra AS ico
@@ -203,16 +255,17 @@ $maiorRecebimento = $row['maior_recebimento'] ?? null;
 
 if ($maiorRecebimento) {
     // Buscar os dias úteis da obra
-    $queryObra = "SELECT dias_uteis FROM obra WHERE idobra = ?";
+    $queryObra = "SELECT dias_uteis, prazo_dias_corridos FROM obra WHERE idobra = ?";
     $stmtObra = $conn->prepare($queryObra);
     $stmtObra->bind_param('i', $obraId);
     $stmtObra->execute();
     $resultObra = $stmtObra->get_result();
     $obra = $resultObra->fetch_assoc();
     $diasUteis = $obra['dias_uteis'] ?? 0;
+    $diasCorridos = !empty($obra['prazo_dias_corridos']);
 
     // Calcular novo prazo para Planta Humanizada
-    $prazoPlantaHumanizada = adicionarDiasUteis($maiorRecebimento, $diasUteis);
+    $prazoPlantaHumanizada = calcularPrazoPorTipoDia($maiorRecebimento, $diasUteis, $diasCorridos);
 
     // Atualizar imagens_cliente_obra para o tipo Planta Humanizada
     $updatePH = $conn->prepare("UPDATE imagens_cliente_obra 

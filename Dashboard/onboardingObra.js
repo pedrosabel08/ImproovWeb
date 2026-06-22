@@ -88,7 +88,10 @@
       details.push(packageItem.segundos + " s");
     }
     if (packageItem.prazo_contratual) {
-      details.push(packageItem.prazo_contratual + " d úteis");
+      details.push(
+        packageItem.prazo_contratual +
+          (packageItem.prazo_dias_corridos ? " d corridos" : " d uteis"),
+      );
     }
     if (packageItem.status) {
       details.push(packageItem.status);

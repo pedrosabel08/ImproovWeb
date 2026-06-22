@@ -96,6 +96,36 @@ function onboarding_client_exists(mysqli $conn, int $clienteId): bool
     return $exists;
 }
 
+function onboarding_sigla_exists(mysqli $conn, string $table, string $column, string $value, ?string $idColumn = null, ?int $excludeId = null): bool
+{
+    if ($value === '') {
+        return false;
+    }
+
+    $where = "UPPER(TRIM({$column})) = UPPER(TRIM(?))";
+    $types = 's';
+    $params = [$value];
+
+    if ($idColumn && $excludeId && $excludeId > 0) {
+        $where .= " AND {$idColumn} <> ?";
+        $types .= 'i';
+        $params[] = $excludeId;
+    }
+
+    $stmt = $conn->prepare("SELECT 1 FROM {$table} WHERE {$where} LIMIT 1");
+    if (!$stmt) {
+        throw new RuntimeException('Erro ao preparar validacao de sigla: ' . $conn->error);
+    }
+
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result && $result->num_rows > 0;
+    $stmt->close();
+
+    return $exists;
+}
+
 function onboarding_store_contacts(mysqli $conn, int $clienteId, int $obraId, array $selectedContactIds, array $newContacts): array
 {
     $contactIds = array_values(array_unique(array_filter(array_map(static function ($value) {
@@ -183,6 +213,7 @@ function onboarding_build_package_rows(array $packages, string $observacoes): ar
             'quantidade' => max(0, (int) ($packages['still']['quantity'] ?? 0)),
             'segundos' => null,
             'prazo_contratual' => max(0, (int) ($packages['still']['deadline_days'] ?? 0)),
+            'prazo_dias_corridos' => !empty($packages['still']['deadline_calendar_days']) ? 1 : 0,
             'data_inicio_sla' => $today,
             'status' => 'ATIVO',
             'observacoes' => $observacoes !== '' ? $observacoes : null,
@@ -195,6 +226,7 @@ function onboarding_build_package_rows(array $packages, string $observacoes): ar
             'quantidade' => null,
             'segundos' => max(0, (int) ($packages['animation']['seconds'] ?? 0)),
             'prazo_contratual' => max(0, (int) ($packages['animation']['deadline_days'] ?? 0)),
+            'prazo_dias_corridos' => !empty($packages['animation']['deadline_calendar_days']) ? 1 : 0,
             'data_inicio_sla' => $today,
             'status' => 'HOLD',
             'observacoes' => $observacoes !== '' ? $observacoes : null,
@@ -217,6 +249,7 @@ function onboarding_build_package_rows(array $packages, string $observacoes): ar
             'quantidade' => null,
             'segundos' => $filmSeconds,
             'prazo_contratual' => max(0, (int) ($packages['film']['deadline_days'] ?? 0)),
+            'prazo_dias_corridos' => !empty($packages['film']['deadline_calendar_days']) ? 1 : 0,
             'data_inicio_sla' => $today,
             'status' => 'HOLD',
             'observacoes' => !empty($filmObservacoes) ? implode(' | ', $filmObservacoes) : null,
@@ -232,7 +265,7 @@ function onboarding_insert_package_rows(mysqli $conn, int $obraId, array $packag
         return 0;
     }
 
-    $sql = 'INSERT INTO obra_pacote (obra_id, tipo, quantidade, segundos, prazo_contratual, data_inicio_sla, status, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    $sql = 'INSERT INTO obra_pacote (obra_id, tipo, quantidade, segundos, prazo_contratual, prazo_dias_corridos, data_inicio_sla, status, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new RuntimeException('Erro ao preparar INSERT obra_pacote: ' . $conn->error);
@@ -244,11 +277,12 @@ function onboarding_insert_package_rows(mysqli $conn, int $obraId, array $packag
         $quantidade = isset($row['quantidade']) ? (int) $row['quantidade'] : null;
         $segundos = isset($row['segundos']) ? (int) $row['segundos'] : null;
         $prazoContratual = isset($row['prazo_contratual']) ? (int) $row['prazo_contratual'] : null;
+        $prazoDiasCorridos = !empty($row['prazo_dias_corridos']) ? 1 : 0;
         $dataInicioSla = $row['data_inicio_sla'];
         $status = (string) $row['status'];
         $observacoes = $row['observacoes'];
 
-        $stmt->bind_param('isiiisss', $obraId, $tipo, $quantidade, $segundos, $prazoContratual, $dataInicioSla, $status, $observacoes);
+        $stmt->bind_param('isiiiisss', $obraId, $tipo, $quantidade, $segundos, $prazoContratual, $prazoDiasCorridos, $dataInicioSla, $status, $observacoes);
         if (!$stmt->execute()) {
             $error = $stmt->error;
             $stmt->close();
@@ -270,8 +304,10 @@ if (!is_array($payload)) {
 }
 
 $clienteNome = trim((string) ($payload['cliente'] ?? ''));
+$clienteNomeCompleto = trim((string) ($payload['cliente_nome_completo'] ?? $payload['cliente_nome'] ?? ''));
 $clienteIdFromReq = isset($payload['cliente_id']) ? (int) $payload['cliente_id'] : null;
 $obraNome = trim((string) ($payload['obra'] ?? ''));
+$obraNomeCompleto = trim((string) ($payload['obra_nome_completo'] ?? $payload['nome_real'] ?? ''));
 $nomenclatura = trim((string) ($payload['nomenclatura'] ?? ''));
 $nomeReal = trim((string) ($payload['nome_real'] ?? ''));
 $observacoes = trim((string) ($payload['observacoes'] ?? ''));
@@ -285,17 +321,33 @@ $imageImport = is_array($payload['image_import'] ?? null) ? $payload['image_impo
 if (strlen($clienteNome) > 45) {
     $clienteNome = substr($clienteNome, 0, 45);
 }
+if (strlen($clienteNomeCompleto) > 150) {
+    $clienteNomeCompleto = substr($clienteNomeCompleto, 0, 150);
+}
 if (strlen($obraNome) > 45) {
     $obraNome = substr($obraNome, 0, 45);
 }
+if (strlen($obraNomeCompleto) > 150) {
+    $obraNomeCompleto = substr($obraNomeCompleto, 0, 150);
+}
 if (strlen($nomenclatura) > 10) {
     $nomenclatura = substr($nomenclatura, 0, 10);
+}
+$nomeRealParts = [];
+if ($clienteNomeCompleto !== '') {
+    $nomeRealParts[] = $clienteNomeCompleto;
+}
+if ($obraNomeCompleto !== '') {
+    $nomeRealParts[] = $obraNomeCompleto;
+}
+if (!empty($nomeRealParts)) {
+    $nomeReal = implode(' - ', $nomeRealParts);
 }
 if (strlen($nomeReal) > 100) {
     $nomeReal = substr($nomeReal, 0, 100);
 }
 
-if ((is_null($clienteIdFromReq) && $clienteNome === '') || $obraNome === '' || $nomenclatura === '' || $nomeReal === '') {
+if ((is_null($clienteIdFromReq) && $clienteNome === '') || $clienteNomeCompleto === '' || $obraNome === '' || $nomenclatura === '' || $nomeReal === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Preencha cliente, projeto interno, código interno e projeto comercial.']);
     exit;
@@ -307,16 +359,19 @@ if (!empty($packages['still']['enabled'])) {
     $selectedPackages[] = 'still';
     $slaMetadata['still_qtd'] = max(0, (int) ($packages['still']['quantity'] ?? 0));
     $slaMetadata['prazo_still'] = max(0, (int) ($packages['still']['deadline_days'] ?? 0));
+    $slaMetadata['prazo_still_dias_corridos'] = !empty($packages['still']['deadline_calendar_days']);
 }
 if (!empty($packages['animation']['enabled'])) {
     $selectedPackages[] = 'animacao';
     $slaMetadata['animacao_segundos'] = max(0, (int) ($packages['animation']['seconds'] ?? 0));
     $slaMetadata['prazo_animacao'] = max(0, (int) ($packages['animation']['deadline_days'] ?? 0));
+    $slaMetadata['prazo_animacao_dias_corridos'] = !empty($packages['animation']['deadline_calendar_days']);
 }
 if (!empty($packages['film']['enabled'])) {
     $selectedPackages[] = 'filme';
     $slaMetadata['filme_duracao'] = trim((string) ($packages['film']['duration'] ?? ''));
     $slaMetadata['prazo_filme'] = max(0, (int) ($packages['film']['deadline_days'] ?? 0));
+    $slaMetadata['prazo_filme_dias_corridos'] = !empty($packages['film']['deadline_calendar_days']);
 }
 
 if (count($selectedPackages) === 0) {
@@ -359,23 +414,58 @@ if (count($validNewContacts) === 0 && count($legacyDraftContacts) > 0) {
 $preparedImages = dashboard_prepare_image_entries($rawImages, $nomenclatura);
 $preparedImageEntries = $preparedImages['entries'];
 $packageRows = onboarding_build_package_rows($packages, $observacoes);
+$stillDeadlineDays = !empty($packages['still']['enabled'])
+    ? max(0, (int) ($packages['still']['deadline_days'] ?? 0))
+    : 0;
+$stillDeadlineCalendarDays = !empty($packages['still']['deadline_calendar_days']) ? 1 : 0;
 
 $colaboradorId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
 
 try {
+    dashboard_ensure_onboarding_project_schema($conn);
     $conn->begin_transaction();
+
+    if (is_null($clienteIdFromReq) && onboarding_sigla_exists($conn, 'cliente', 'nome_cliente', $clienteNome)) {
+        throw new RuntimeException('A sigla do cliente ja existe. Altere antes de continuar.');
+    }
+    if (onboarding_sigla_exists($conn, 'obra', 'nome_obra', $obraNome)) {
+        throw new RuntimeException('A sigla do projeto ja existe. Altere antes de continuar.');
+    }
+    if (onboarding_sigla_exists($conn, 'obra', 'nomenclatura', $nomenclatura)) {
+        throw new RuntimeException('A nomenclatura ja existe. Altere antes de continuar.');
+    }
 
     if (!is_null($clienteIdFromReq) && $clienteIdFromReq > 0) {
         if (!onboarding_client_exists($conn, $clienteIdFromReq)) {
             throw new RuntimeException('Cliente selecionado não existe.');
         }
         $clienteId = $clienteIdFromReq;
+        if (dashboard_table_has_column($conn, 'cliente', 'nome_completo') && $clienteNomeCompleto !== '') {
+            $updateCliente = $conn->prepare('UPDATE cliente SET nome_completo = ? WHERE idcliente = ?');
+            if ($updateCliente) {
+                $updateCliente->bind_param('si', $clienteNomeCompleto, $clienteId);
+                $updateCliente->execute();
+                $updateCliente->close();
+            }
+        }
     } else {
-        $stmtCliente = $conn->prepare('INSERT INTO cliente (nome_cliente) VALUES (?)');
+        $clienteCols = ['nome_cliente'];
+        $clientePlaceholders = ['?'];
+        $clienteTypes = 's';
+        $clienteValues = [$clienteNome];
+
+        if (dashboard_table_has_column($conn, 'cliente', 'nome_completo')) {
+            $clienteCols[] = 'nome_completo';
+            $clientePlaceholders[] = '?';
+            $clienteTypes .= 's';
+            $clienteValues[] = $clienteNomeCompleto;
+        }
+
+        $stmtCliente = $conn->prepare('INSERT INTO cliente (' . implode(', ', $clienteCols) . ') VALUES (' . implode(', ', $clientePlaceholders) . ')');
         if (!$stmtCliente) {
             throw new RuntimeException('Erro ao preparar INSERT cliente: ' . $conn->error);
         }
-        $stmtCliente->bind_param('s', $clienteNome);
+        $stmtCliente->bind_param($clienteTypes, ...$clienteValues);
         if (!$stmtCliente->execute()) {
             $error = $stmtCliente->error;
             $stmtCliente->close();
@@ -390,6 +480,24 @@ try {
     $types = 's';
     $values = [$obraNome];
 
+    if (dashboard_table_has_column($conn, 'obra', 'dias_uteis')) {
+        $cols[] = 'dias_uteis';
+        $placeholders[] = '?';
+        $types .= 'i';
+        $values[] = $stillDeadlineDays;
+    }
+    if (dashboard_table_has_column($conn, 'obra', 'prazo_dias_corridos')) {
+        $cols[] = 'prazo_dias_corridos';
+        $placeholders[] = '?';
+        $types .= 'i';
+        $values[] = $stillDeadlineCalendarDays;
+    }
+    if (dashboard_table_has_column($conn, 'obra', 'nome_completo')) {
+        $cols[] = 'nome_completo';
+        $placeholders[] = '?';
+        $types .= 's';
+        $values[] = $obraNomeCompleto !== '' ? $obraNomeCompleto : $nomeReal;
+    }
     if (dashboard_table_has_column($conn, 'obra', 'nomenclatura')) {
         $cols[] = 'nomenclatura';
         $placeholders[] = '?';
@@ -442,6 +550,8 @@ try {
         [
             'cliente' => $clienteId,
             'cliente_nome' => $clienteNome !== '' ? $clienteNome : ($payload['cliente_nome'] ?? ''),
+            'cliente_nome_completo' => $clienteNomeCompleto,
+            'obra_nome_completo' => $obraNomeCompleto !== '' ? $obraNomeCompleto : $nomeReal,
             'pacotes' => $selectedPackages,
             'observacoes' => $observacoes,
             'contatos' => array_map(static function ($contact) {

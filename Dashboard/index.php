@@ -370,9 +370,10 @@ $conn->close();
                                                     $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id']) ? $c['id'] : '');
                                                     $cname = isset($c['nome_cliente']) ? $c['nome_cliente'] : (isset($c['nome']) ? $c['nome'] : '');
                                                     $csigla = isset($c['sigla_cliente']) ? $c['sigla_cliente'] : '';
+                                                    $cfull = isset($c['nome_completo']) ? $c['nome_completo'] : '';
                                                     ?>
                                                     <?php if ($cid !== ''): ?>
-                                                        <option value="<?php echo $cid; ?>" data-sigla="<?php echo htmlspecialchars($csigla); ?>"><?php echo htmlspecialchars($cname); ?></option>
+                                                        <option value="<?php echo $cid; ?>" data-sigla="<?php echo htmlspecialchars($csigla); ?>" data-nome-completo="<?php echo htmlspecialchars($cfull); ?>"><?php echo htmlspecialchars($cname); ?></option>
                                                     <?php endif; ?>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
@@ -380,23 +381,31 @@ $conn->close();
                                     </div>
 
                                     <div class="onb-field">
+                                        <label for="onbClienteNomeCompleto">Nome completo do Cliente</label>
+                                        <input id="onbClienteNomeCompleto" type="text" autocomplete="off" placeholder="Ex.: Mussi Empreendimentos">
+                                    </div>
+
+                                    <div class="onb-field">
                                         <label for="onbClienteSigla">Sigla do Cliente</label>
                                         <input id="onbClienteSigla" type="text" autocomplete="off" maxlength="3" placeholder="Ex.: MUS" disabled>
+                                        <span class="onb-unique-badge" id="onbClienteSiglaBadge" hidden>Sigla ja existe. Alterar.</span>
                                     </div>
 
                                     <div class="onb-field">
-                                        <label for="onbProjetoInterno">Nome Interno do Projeto</label>
+                                        <label for="onbProjetoComercial">Nome completo do Projeto</label>
+                                        <input id="onbProjetoComercial" type="text" autocomplete="off" placeholder="Ex.: Projeto Akena">
+                                    </div>
+
+                                    <div class="onb-field">
+                                        <label for="onbProjetoInterno">Sigla do Projeto</label>
                                         <input id="onbProjetoInterno" type="text" autocomplete="off" maxlength="3" placeholder="Ex.: AKE">
-                                    </div>
-
-                                    <div class="onb-field">
-                                        <label for="onbProjetoComercial">Nome Comercial</label>
-                                        <input id="onbProjetoComercial" type="text" autocomplete="off" placeholder="Mussi Emp. - Projeto Akena">
+                                        <span class="onb-unique-badge" id="onbProjetoSiglaBadge" hidden>Sigla ja existe. Alterar.</span>
                                     </div>
 
                                     <div class="onb-field">
                                         <label for="onbCodigoInterno">Nomenclatura</label>
                                         <input id="onbCodigoInterno" type="text" autocomplete="off" placeholder="MUS_AKE" readonly>
+                                        <span class="onb-unique-badge" id="onbNomenclaturaBadge" hidden>Nomenclatura ja existe. Alterar.</span>
                                     </div>
 
                                     <div class="onb-field onb-field-span-3">
@@ -431,8 +440,14 @@ $conn->close();
                                                 <input id="onbStillQtd" type="number" min="0" placeholder="12">
                                             </div>
                                             <div class="onb-field">
-                                                <label for="onbStillPrazo">Prazo contratual (dias úteis)</label>
-                                                <input id="onbStillPrazo" type="number" min="0" placeholder="15">
+                                                <label for="onbStillPrazo">Prazo contratual</label>
+                                                <div class="onb-deadline-row">
+                                                    <input id="onbStillPrazo" type="number" min="0" placeholder="15">
+                                                    <label class="onb-inline-check" for="onbStillDiasCorridos">
+                                                        <input id="onbStillDiasCorridos" type="checkbox">
+                                                        <span>Dias corridos</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </label>
@@ -451,8 +466,14 @@ $conn->close();
                                                 <input id="onbAnimationSeconds" type="number" min="0" placeholder="40">
                                             </div>
                                             <div class="onb-field">
-                                                <label for="onbAnimationPrazo">Prazo contratual (dias úteis)</label>
-                                                <input id="onbAnimationPrazo" type="number" min="0" placeholder="25">
+                                                <label for="onbAnimationPrazo">Prazo contratual</label>
+                                                <div class="onb-deadline-row">
+                                                    <input id="onbAnimationPrazo" type="number" min="0" placeholder="25">
+                                                    <label class="onb-inline-check" for="onbAnimationDiasCorridos">
+                                                        <input id="onbAnimationDiasCorridos" type="checkbox">
+                                                        <span>Dias corridos</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </label>
@@ -471,8 +492,14 @@ $conn->close();
                                                 <input id="onbFilmDuration" type="text" placeholder="Ex.: 60s / 1min30s">
                                             </div>
                                             <div class="onb-field">
-                                                <label for="onbFilmPrazo">Prazo contratual (dias úteis)</label>
-                                                <input id="onbFilmPrazo" type="number" min="0" placeholder="30">
+                                                <label for="onbFilmPrazo">Prazo contratual</label>
+                                                <div class="onb-deadline-row">
+                                                    <input id="onbFilmPrazo" type="number" min="0" placeholder="30">
+                                                    <label class="onb-inline-check" for="onbFilmDiasCorridos">
+                                                        <input id="onbFilmDiasCorridos" type="checkbox">
+                                                        <span>Dias corridos</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </label>

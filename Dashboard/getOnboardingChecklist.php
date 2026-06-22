@@ -114,7 +114,10 @@ function onboarding_fetch_project_summary(mysqli $conn, int $obraId): array
     }
 
     if (dashboard_table_has_column($conn, 'obra_pacote', 'obra_id')) {
-        $packageStmt = $conn->prepare("SELECT tipo, status, quantidade, segundos, prazo_contratual FROM obra_pacote WHERE obra_id = ? ORDER BY FIELD(tipo, 'STILL', 'ANIMACAO', 'FILME'), idobra_pacote ASC");
+        $prazoCorridosSelect = dashboard_table_has_column($conn, 'obra_pacote', 'prazo_dias_corridos')
+            ? 'prazo_dias_corridos'
+            : '0 AS prazo_dias_corridos';
+        $packageStmt = $conn->prepare("SELECT tipo, status, quantidade, segundos, prazo_contratual, {$prazoCorridosSelect} FROM obra_pacote WHERE obra_id = ? ORDER BY FIELD(tipo, 'STILL', 'ANIMACAO', 'FILME'), idobra_pacote ASC");
         if ($packageStmt) {
             $packageStmt->bind_param('i', $obraId);
             $packageStmt->execute();
@@ -127,6 +130,7 @@ function onboarding_fetch_project_summary(mysqli $conn, int $obraId): array
                     'quantidade' => isset($packageRow['quantidade']) ? (int) $packageRow['quantidade'] : null,
                     'segundos' => isset($packageRow['segundos']) ? (int) $packageRow['segundos'] : null,
                     'prazo_contratual' => isset($packageRow['prazo_contratual']) ? (int) $packageRow['prazo_contratual'] : null,
+                    'prazo_dias_corridos' => !empty($packageRow['prazo_dias_corridos']),
                 ];
             }
             $packageStmt->close();

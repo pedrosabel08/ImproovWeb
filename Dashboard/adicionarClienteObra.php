@@ -52,6 +52,53 @@ function table_has_column(mysqli $conn, string $table, string $column): bool
     return $ok;
 }
 
+function ensure_project_names_schema(mysqli $conn): void
+{
+    if (!table_has_column($conn, 'cliente', 'nome_completo')) {
+        $conn->query(
+            "ALTER TABLE cliente
+             ADD COLUMN nome_completo VARCHAR(150) NULL AFTER nome_cliente"
+        );
+    }
+
+    if (!table_has_column($conn, 'obra', 'nome_completo')) {
+        $conn->query(
+            "ALTER TABLE obra
+             ADD COLUMN nome_completo VARCHAR(150) NULL AFTER nome_obra"
+        );
+    }
+}
+
+function onboarding_sigla_exists(mysqli $conn, string $table, string $column, string $value, ?string $idColumn = null, ?int $excludeId = null): bool
+{
+    if ($value === '') {
+        return false;
+    }
+
+    $where = "UPPER(TRIM({$column})) = UPPER(TRIM(?))";
+    $types = 's';
+    $params = [$value];
+
+    if ($idColumn && $excludeId && $excludeId > 0) {
+        $where .= " AND {$idColumn} <> ?";
+        $types .= 'i';
+        $params[] = $excludeId;
+    }
+
+    $stmt = $conn->prepare("SELECT 1 FROM {$table} WHERE {$where} LIMIT 1");
+    if (!$stmt) {
+        throw new Exception('Erro ao preparar validacao de sigla: ' . $conn->error);
+    }
+
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result && $result->num_rows > 0;
+    $stmt->close();
+
+    return $exists;
+}
+
 function ensure_remote_project_folder(string $nomenclatura): void
 {
     // Dados SFTP/SSH
@@ -113,25 +160,44 @@ if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
 }
 
 $clienteNome = isset($data['cliente']) ? trim((string)$data['cliente']) : '';
+$clienteNomeCompleto = isset($data['cliente_nome_completo']) ? trim((string)$data['cliente_nome_completo']) : '';
 $clienteIdFromReq = isset($data['cliente_id']) ? intval($data['cliente_id']) : null;
 $obraNome = isset($data['obra']) ? trim((string)$data['obra']) : '';
+$obraNomeCompleto = isset($data['obra_nome_completo']) ? trim((string)$data['obra_nome_completo']) : '';
 $nomenclatura = isset($data['nomenclatura']) ? trim((string)$data['nomenclatura']) : '';
 $nomeReal = isset($data['nome_real']) ? trim((string)$data['nome_real']) : '';
 
 // Respeitar tamanhos do schema
 if (strlen($clienteNome) > 45) $clienteNome = substr($clienteNome, 0, 45);
+if (strlen($clienteNomeCompleto) > 150) $clienteNomeCompleto = substr($clienteNomeCompleto, 0, 150);
 if (strlen($obraNome) > 45) $obraNome = substr($obraNome, 0, 45);
+if (strlen($obraNomeCompleto) > 150) $obraNomeCompleto = substr($obraNomeCompleto, 0, 150);
 if (strlen($nomenclatura) > 10) $nomenclatura = substr($nomenclatura, 0, 10);
+$nomeRealParts = [];
+if ($clienteNomeCompleto !== '') $nomeRealParts[] = $clienteNomeCompleto;
+if ($obraNomeCompleto !== '') $nomeRealParts[] = $obraNomeCompleto;
+if (!empty($nomeRealParts)) $nomeReal = implode(' - ', $nomeRealParts);
 if (strlen($nomeReal) > 100) $nomeReal = substr($nomeReal, 0, 100);
 
-if ((is_null($clienteIdFromReq) && $clienteNome === '') || $obraNome === '' || $nomenclatura === '' || $nomeReal === '') {
+if ((is_null($clienteIdFromReq) && $clienteNome === '') || $clienteNomeCompleto === '' || $obraNome === '' || $nomenclatura === '' || $nomeReal === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Preencha cliente (ou selecione existente), obra, nomenclatura e nome real.']);
     exit;
 }
 
 try {
+    ensure_project_names_schema($conn);
     $conn->begin_transaction();
+    if (is_null($clienteIdFromReq) && onboarding_sigla_exists($conn, 'cliente', 'nome_cliente', $clienteNome)) {
+        throw new Exception('A sigla do cliente ja existe. Altere antes de continuar.');
+    }
+    if (onboarding_sigla_exists($conn, 'obra', 'nome_obra', $obraNome)) {
+        throw new Exception('A sigla do projeto ja existe. Altere antes de continuar.');
+    }
+    if (onboarding_sigla_exists($conn, 'obra', 'nomenclatura', $nomenclatura)) {
+        throw new Exception('A nomenclatura ja existe. Altere antes de continuar.');
+    }
+
     // 1) Determinar cliente: usar cliente_id enviado (se válido) ou inserir novo cliente
     if (!is_null($clienteIdFromReq) && $clienteIdFromReq > 0) {
         $check = $conn->prepare('SELECT idcliente FROM cliente WHERE idcliente = ? LIMIT 1');
@@ -145,12 +211,32 @@ try {
             throw new Exception('Cliente selecionado não existe.');
         }
         $clienteId = $clienteIdFromReq;
+        if (table_has_column($conn, 'cliente', 'nome_completo') && $clienteNomeCompleto !== '') {
+            $updateCliente = $conn->prepare('UPDATE cliente SET nome_completo = ? WHERE idcliente = ?');
+            if ($updateCliente) {
+                $updateCliente->bind_param('si', $clienteNomeCompleto, $clienteId);
+                $updateCliente->execute();
+                $updateCliente->close();
+            }
+        }
     } else {
-        $stmtCliente = $conn->prepare('INSERT INTO cliente (nome_cliente) VALUES (?)');
+        $clienteCols = ['nome_cliente'];
+        $clientePlaceholders = ['?'];
+        $clienteTypes = 's';
+        $clienteValues = [$clienteNome];
+
+        if (table_has_column($conn, 'cliente', 'nome_completo')) {
+            $clienteCols[] = 'nome_completo';
+            $clientePlaceholders[] = '?';
+            $clienteTypes .= 's';
+            $clienteValues[] = $clienteNomeCompleto;
+        }
+
+        $stmtCliente = $conn->prepare('INSERT INTO cliente (' . implode(', ', $clienteCols) . ') VALUES (' . implode(', ', $clientePlaceholders) . ')');
         if (!$stmtCliente) {
             throw new Exception('Erro ao preparar INSERT cliente: ' . $conn->error);
         }
-        $stmtCliente->bind_param('s', $clienteNome);
+        $stmtCliente->bind_param($clienteTypes, ...$clienteValues);
         if (!$stmtCliente->execute()) {
             throw new Exception('Erro ao inserir cliente: ' . $stmtCliente->error);
         }
@@ -166,6 +252,13 @@ try {
     $placeholders = ['?'];
     $types = 's';
     $values = [$obraNome];
+
+    if (table_has_column($conn, 'obra', 'nome_completo')) {
+        $cols[] = 'nome_completo';
+        $placeholders[] = '?';
+        $types .= 's';
+        $values[] = $obraNomeCompleto !== '' ? $obraNomeCompleto : $nomeReal;
+    }
 
     if (table_has_column($conn, 'obra', 'nomenclatura')) {
         $cols[] = 'nomenclatura';

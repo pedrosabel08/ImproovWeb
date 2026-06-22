@@ -282,6 +282,27 @@ body.onb-modal-open {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
 }
 
+#modalAddClienteObra .onb-unique-badge {
+  width: max-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.14);
+  color: #f8c15d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+#modalAddClienteObra .onb-unique-badge[hidden] {
+  display: none;
+}
+
 #modalAddClienteObra textarea {
   resize: vertical;
   min-height: 96px;
@@ -350,6 +371,41 @@ body.onb-modal-open {
 
 #modalAddClienteObra .onb-package-card.is-enabled .onb-package-fields {
   display: grid;
+}
+
+#modalAddClienteObra .onb-deadline-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+#modalAddClienteObra .onb-inline-check {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.76);
+  color: #c8d6ea;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#modalAddClienteObra .onb-inline-check input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: #3b82f6;
+}
+
+#modalAddClienteObra .onb-inline-check span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 #modalAddClienteObra .onb-import-grid {

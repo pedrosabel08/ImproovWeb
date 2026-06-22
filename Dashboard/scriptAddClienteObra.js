@@ -6,20 +6,27 @@
   const elements = {
     close: document.getElementById("closeAddClienteObra"),
     clienteSelect: document.getElementById("onbClienteSelect"),
+    clienteNomeCompleto: document.getElementById("onbClienteNomeCompleto"),
     clienteSigla: document.getElementById("onbClienteSigla"),
+    clienteSiglaBadge: document.getElementById("onbClienteSiglaBadge"),
     projetoInterno: document.getElementById("onbProjetoInterno"),
+    projetoSiglaBadge: document.getElementById("onbProjetoSiglaBadge"),
     projetoComercial: document.getElementById("onbProjetoComercial"),
     codigoInterno: document.getElementById("onbCodigoInterno"),
+    nomenclaturaBadge: document.getElementById("onbNomenclaturaBadge"),
     observacoes: document.getElementById("onbObservacoes"),
     packageStill: document.getElementById("onbPackageStill"),
     stillQtd: document.getElementById("onbStillQtd"),
     stillPrazo: document.getElementById("onbStillPrazo"),
+    stillDiasCorridos: document.getElementById("onbStillDiasCorridos"),
     packageAnimation: document.getElementById("onbPackageAnimation"),
     animationSeconds: document.getElementById("onbAnimationSeconds"),
     animationPrazo: document.getElementById("onbAnimationPrazo"),
+    animationDiasCorridos: document.getElementById("onbAnimationDiasCorridos"),
     packageFilm: document.getElementById("onbPackageFilm"),
     filmDuration: document.getElementById("onbFilmDuration"),
     filmPrazo: document.getElementById("onbFilmPrazo"),
+    filmDiasCorridos: document.getElementById("onbFilmDiasCorridos"),
     imageFile: document.getElementById("onbImageFile"),
     uploadBox: modal.querySelector(".onb-upload-box"),
     importedFileName: document.getElementById("onbImportedFileName"),
@@ -98,15 +105,18 @@
       step: 1,
       clientId: "",
       clientName: "",
+      clientFullName: "",
       clientCode: "",
+      clientCodeTouched: false,
       projectInternal: "",
       projectCommercial: "",
+      projectInternalTouched: false,
       code: "",
       notes: "",
       packages: {
-        still: { enabled: false, quantity: "", deadline_days: "" },
-        animation: { enabled: false, seconds: "", deadline_days: "" },
-        film: { enabled: false, duration: "", deadline_days: "" },
+        still: { enabled: false, quantity: "", deadline_days: "", deadline_calendar_days: false },
+        animation: { enabled: false, seconds: "", deadline_days: "", deadline_calendar_days: false },
+        film: { enabled: false, duration: "", deadline_days: "", deadline_calendar_days: false },
       },
       images: {
         file_name: "",
@@ -116,11 +126,20 @@
         errors: [],
       },
       contacts: createContactsState(),
+      unique: {
+        loading: false,
+        checked: false,
+        clienteSiglaExists: false,
+        obraSiglaExists: false,
+        nomenclaturaExists: false,
+      },
       isSubmitting: false,
     };
   }
 
   let state = createInitialState();
+  let uniqueCheckTimer = null;
+  let uniqueCheckSeq = 0;
 
   function notify(message, type) {
     if (window.Toastify) {
@@ -172,8 +191,37 @@
       .slice(0, 3);
   }
 
+  function inferProjectCode(value) {
+    const words = String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .match(/[A-Z0-9]+/g);
+
+    if (!words || !words.length) return "";
+
+    const usefulWords = words.filter(
+      (word) => !["DE", "DA", "DO", "DAS", "DOS", "E"].includes(word),
+    );
+    const sourceWords = usefulWords.length ? usefulWords : words;
+    const initials = sourceWords.map((word) => word.charAt(0)).join("");
+
+    return projectCodePart(initials.length >= 3 ? initials : sourceWords.join(""));
+  }
+
   function fallbackClientCode(label) {
     return onlyLetters(label);
+  }
+
+  function getClientFullName() {
+    return state.clientFullName || selectedClientLabel();
+  }
+
+  function projectRealName() {
+    return [getClientFullName(), state.projectCommercial]
+      .map((part) => String(part || "").trim())
+      .filter(Boolean)
+      .join(" - ");
   }
 
   function syncNomenclature() {
@@ -186,6 +234,95 @@
     elements.clienteSigla.value = clientCode;
     elements.projetoInterno.value = projectInternal;
     elements.codigoInterno.value = state.code;
+  }
+
+  function hasUniqueConflicts() {
+    return Boolean(
+      state.unique.clienteSiglaExists ||
+        state.unique.obraSiglaExists ||
+        state.unique.nomenclaturaExists,
+    );
+  }
+
+  function setBadgeState(element, show) {
+    if (!element) return;
+    element.hidden = !show;
+  }
+
+  function renderUniqueBadges() {
+    setBadgeState(elements.clienteSiglaBadge, state.unique.clienteSiglaExists);
+    setBadgeState(elements.projetoSiglaBadge, state.unique.obraSiglaExists);
+    setBadgeState(elements.nomenclaturaBadge, state.unique.nomenclaturaExists);
+  }
+
+  function clearUniqueState() {
+    state.unique = {
+      loading: false,
+      checked: false,
+      clienteSiglaExists: false,
+      obraSiglaExists: false,
+      nomenclaturaExists: false,
+    };
+    renderUniqueBadges();
+  }
+
+  function scheduleUniqueCheck() {
+    window.clearTimeout(uniqueCheckTimer);
+    state.unique = {
+      loading: false,
+      checked: false,
+      clienteSiglaExists: false,
+      obraSiglaExists: false,
+      nomenclaturaExists: false,
+    };
+    renderUniqueBadges();
+
+    if (!state.clientCode && !state.projectInternal && !state.code) {
+      clearUniqueState();
+      return;
+    }
+
+    uniqueCheckTimer = window.setTimeout(checkUniqueSiglas, 260);
+  }
+
+  async function checkUniqueSiglas() {
+    const params = new URLSearchParams({
+      cliente_sigla: state.clientCode || "",
+      obra_sigla: state.projectInternal || "",
+      nomenclatura: state.code || "",
+      cliente_id:
+        state.clientId !== "" && state.clientId !== "0" ? state.clientId : "",
+    });
+    const seq = ++uniqueCheckSeq;
+    state.unique.loading = true;
+
+    try {
+      const response = await fetch("checkOnboardingSiglas.php?" + params.toString(), {
+        credentials: "same-origin",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (seq !== uniqueCheckSeq) return;
+      if (!response.ok || !data || !data.success) {
+        throw new Error(data && data.message ? data.message : "Erro ao validar siglas.");
+      }
+
+      state.unique = {
+        loading: false,
+        checked: true,
+        clienteSiglaExists: Boolean(data.cliente_sigla_exists),
+        obraSiglaExists: Boolean(data.obra_sigla_exists),
+        nomenclaturaExists: Boolean(data.nomenclatura_exists),
+      };
+      renderUniqueBadges();
+      renderSummary();
+    } catch (error) {
+      console.error(error);
+      if (seq === uniqueCheckSeq) {
+        state.unique.loading = false;
+        state.unique.checked = false;
+      }
+    }
   }
 
   function contactPayload(contact) {
@@ -376,29 +513,38 @@
     if (state.clientId !== "" && state.clientId !== "0") {
       const option =
         elements.clienteSelect.options[elements.clienteSelect.selectedIndex];
-      return option ? option.textContent.trim() : "Cliente existente";
+      const fullName =
+        option && option.dataset.nomeCompleto
+          ? option.dataset.nomeCompleto.trim()
+          : "";
+      return fullName || (option ? option.textContent.trim() : "Cliente existente");
     }
     if (state.clientId === "0") {
-      return state.clientCode || "Novo cliente";
+      return state.clientFullName || state.clientCode || "Novo cliente";
     }
     return "Cliente não selecionado";
+  }
+
+  function packageDeadlineLabel(packageItem) {
+    const suffix = packageItem.deadline_calendar_days ? "corridos" : "uteis";
+    return `${packageItem.deadline_days || 0}d ${suffix}`;
   }
 
   function selectedPackages() {
     const packages = [];
     if (state.packages.still.enabled) {
       packages.push(
-        `STL ${state.packages.still.quantity || 0}img / ${state.packages.still.deadline_days || 0}d`,
+        `STL ${state.packages.still.quantity || 0}img / ${packageDeadlineLabel(state.packages.still)}`,
       );
     }
     if (state.packages.animation.enabled) {
       packages.push(
-        `ANI ${state.packages.animation.seconds || 0}s / ${state.packages.animation.deadline_days || 0}d`,
+        `ANI ${state.packages.animation.seconds || 0}s / ${packageDeadlineLabel(state.packages.animation)}`,
       );
     }
     if (state.packages.film.enabled) {
       packages.push(
-        `FLM ${state.packages.film.duration || "0s"} / ${state.packages.film.deadline_days || 0}d`,
+        `FLM ${state.packages.film.duration || "0s"} / ${packageDeadlineLabel(state.packages.film)}`,
       );
     }
     return packages;
@@ -440,12 +586,15 @@
 
   function updateClientMode() {
     const isNewClient = state.clientId === "0";
+    const hasClient = state.clientId !== "";
     elements.clienteSigla.disabled = !isNewClient;
+    elements.clienteNomeCompleto.disabled = !hasClient;
     if (!isNewClient) {
       elements.clienteSigla.setAttribute("readonly", "readonly");
     } else {
       elements.clienteSigla.removeAttribute("readonly");
     }
+    elements.clienteNomeCompleto.removeAttribute("readonly");
   }
 
   function updatePackageCardVisual(packageKey) {
@@ -629,6 +778,7 @@
     updatePackageCardVisual("animation");
     updatePackageCardVisual("film");
     updateStepUI();
+    renderUniqueBadges();
     renderContacts();
     renderImageState();
     renderSummary();
@@ -637,6 +787,8 @@
   function resetForm() {
     state = createInitialState();
     elements.clienteSelect.value = "";
+    elements.clienteNomeCompleto.value = "";
+    elements.clienteNomeCompleto.disabled = true;
     elements.clienteSigla.value = "";
     elements.clienteSigla.disabled = true;
     elements.projetoInterno.value = "";
@@ -646,14 +798,18 @@
     elements.packageStill.checked = false;
     elements.stillQtd.value = "";
     elements.stillPrazo.value = "";
+    elements.stillDiasCorridos.checked = false;
     elements.packageAnimation.checked = false;
     elements.animationSeconds.value = "";
     elements.animationPrazo.value = "";
+    elements.animationDiasCorridos.checked = false;
     elements.packageFilm.checked = false;
     elements.filmDuration.value = "";
     elements.filmPrazo.value = "";
+    elements.filmDiasCorridos.checked = false;
     elements.imageFile.value = "";
     elements.manualImages.value = "";
+    clearUniqueState();
     renderAll();
   }
 
@@ -786,6 +942,10 @@
         notify("Selecione um cliente ou escolha Novo Cliente.", "error");
         return false;
       }
+      if (!state.clientFullName) {
+        notify("Informe o nome completo do cliente.", "error");
+        return false;
+      }
       if (!state.clientCode) {
         notify("Informe a sigla do cliente.", "error");
         return false;
@@ -795,6 +955,14 @@
           "Preencha nome interno do projeto, nome comercial e nomenclatura.",
           "error",
         );
+        return false;
+      }
+      if (state.unique.loading) {
+        notify("Aguarde a validacao das siglas.", "error");
+        return false;
+      }
+      if (hasUniqueConflicts()) {
+        notify("Altere as siglas marcadas antes de continuar.", "error");
         return false;
       }
     }
@@ -891,8 +1059,10 @@
           ? Number(state.clientId)
           : null,
       cliente: state.clientId === "0" ? state.clientCode : "",
+      cliente_nome_completo: getClientFullName(),
       obra: state.projectInternal,
-      nome_real: state.projectCommercial,
+      obra_nome_completo: state.projectCommercial,
+      nome_real: projectRealName(),
       nomenclatura: state.code,
       cliente_nome: selectedClientLabel(),
       observacoes: state.notes,
@@ -977,37 +1147,65 @@
 
   elements.clienteSelect.addEventListener("change", () => {
     state.clientId = elements.clienteSelect.value || "";
+    state.clientCodeTouched = false;
     resetContactsState();
     const option =
       elements.clienteSelect.options[elements.clienteSelect.selectedIndex];
 
     if (state.clientId !== "" && state.clientId !== "0") {
       state.clientName = option ? option.textContent.trim() : "";
+      state.clientFullName =
+        option && option.dataset.nomeCompleto
+          ? option.dataset.nomeCompleto.trim()
+          : "";
       state.clientCode =
         onlyLetters(option ? option.dataset.sigla || "" : "") ||
         fallbackClientCode(state.clientName);
+      elements.clienteNomeCompleto.value = state.clientFullName;
       renderAll();
+      scheduleUniqueCheck();
       fetchClientContacts();
       return;
     }
 
     state.clientCode = "";
+    state.clientCodeTouched = false;
     state.clientName = "";
+    state.clientFullName = "";
     renderAll();
+    scheduleUniqueCheck();
+  });
+
+  elements.clienteNomeCompleto.addEventListener("input", () => {
+    state.clientFullName = elements.clienteNomeCompleto.value.trim();
+    if (state.clientId === "0" && !state.clientCodeTouched) {
+      state.clientCode = fallbackClientCode(state.clientFullName);
+    }
+    renderAll();
+    scheduleUniqueCheck();
   });
 
   elements.clienteSigla.addEventListener("input", () => {
     state.clientCode = onlyLetters(elements.clienteSigla.value);
+    state.clientCodeTouched = true;
     state.clientName = state.clientId === "0" ? state.clientCode : state.clientName;
     renderAll();
+    scheduleUniqueCheck();
   });
   elements.projetoInterno.addEventListener("input", () => {
     state.projectInternal = projectCodePart(elements.projetoInterno.value);
+    state.projectInternalTouched = true;
     renderAll();
+    scheduleUniqueCheck();
   });
   elements.projetoComercial.addEventListener("input", () => {
     state.projectCommercial = elements.projetoComercial.value.trim();
+    if (!state.projectInternalTouched) {
+      state.projectInternal = inferProjectCode(state.projectCommercial);
+      syncNomenclature();
+    }
     renderSummary();
+    scheduleUniqueCheck();
   });
   elements.observacoes.addEventListener("input", () => {
     state.notes = elements.observacoes.value.trim();
@@ -1027,15 +1225,25 @@
     });
   }
 
+  function bindPackageCalendarToggle(packageKey, element) {
+    element.addEventListener("change", () => {
+      state.packages[packageKey].deadline_calendar_days = element.checked;
+      renderSummary();
+    });
+  }
+
   bindPackageToggle("still", elements.packageStill);
   bindPackageField("still", "quantity", elements.stillQtd);
   bindPackageField("still", "deadline_days", elements.stillPrazo);
+  bindPackageCalendarToggle("still", elements.stillDiasCorridos);
   bindPackageToggle("animation", elements.packageAnimation);
   bindPackageField("animation", "seconds", elements.animationSeconds);
   bindPackageField("animation", "deadline_days", elements.animationPrazo);
+  bindPackageCalendarToggle("animation", elements.animationDiasCorridos);
   bindPackageToggle("film", elements.packageFilm);
   bindPackageField("film", "duration", elements.filmDuration);
   bindPackageField("film", "deadline_days", elements.filmPrazo);
+  bindPackageCalendarToggle("film", elements.filmDiasCorridos);
 
   elements.imageFile.addEventListener("change", async () => {
     const file = elements.imageFile.files && elements.imageFile.files[0];

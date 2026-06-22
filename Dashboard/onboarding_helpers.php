@@ -22,6 +22,37 @@ function dashboard_table_has_column(mysqli $conn, string $table, string $column)
     return $exists;
 }
 
+function dashboard_ensure_onboarding_project_schema(mysqli $conn): void
+{
+    if (!dashboard_table_has_column($conn, 'cliente', 'nome_completo')) {
+        $conn->query(
+            "ALTER TABLE cliente
+             ADD COLUMN nome_completo VARCHAR(150) NULL AFTER nome_cliente"
+        );
+    }
+
+    if (!dashboard_table_has_column($conn, 'obra', 'nome_completo')) {
+        $conn->query(
+            "ALTER TABLE obra
+             ADD COLUMN nome_completo VARCHAR(150) NULL AFTER nome_obra"
+        );
+    }
+
+    if (!dashboard_table_has_column($conn, 'obra', 'prazo_dias_corridos')) {
+        $conn->query(
+            "ALTER TABLE obra
+             ADD COLUMN prazo_dias_corridos TINYINT(1) NOT NULL DEFAULT 0 AFTER dias_uteis"
+        );
+    }
+
+    if (!dashboard_table_has_column($conn, 'obra_pacote', 'prazo_dias_corridos')) {
+        $conn->query(
+            "ALTER TABLE obra_pacote
+             ADD COLUMN prazo_dias_corridos TINYINT(1) NOT NULL DEFAULT 0 AFTER prazo_contratual"
+        );
+    }
+}
+
 function dashboard_decode_onboarding_metadata($metadata): array
 {
     if (!is_string($metadata) || trim($metadata) === '') {

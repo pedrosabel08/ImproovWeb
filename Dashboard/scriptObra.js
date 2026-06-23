@@ -8446,168 +8446,428 @@ document.querySelectorAll(".titulo_imagem").forEach((titulo_imagem) => {
   });
 });
 
-let modifiedImages = new Set(); // Armazena IDs das imagens alteradas
+const EDIT_IMAGES_MODAL = (() => {
+  const fields = [
+    "imagem_nome",
+    "recebimento_arquivos",
+    "data_inicio",
+    "prazo",
+    "tipo_imagem",
+    "subtipo_id",
+    "antecipada",
+    "animacao",
+    "clima",
+  ];
 
-document.getElementById("editImagesBtn").addEventListener("click", () => {
-  // Obtém o 'obraId' do localStorage
-  const obraId = localStorage.getItem("obraId");
+  const state = {
+    images: [],
+    originals: new Map(),
+    changedFieldsByImage: new Map(),
+    openImageId: null,
+  };
 
-  if (!obraId) {
-    alert("ID da obra não encontrado!");
-    return;
+  function el(id) {
+    return document.getElementById(id);
   }
 
-  // Busca imagens e subtipos em paralelo
-  Promise.all([
-    fetch("infosImagens.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ obraId }),
-    }).then((r) => {
-      if (!r.ok) throw new Error("Erro ao buscar imagens");
-      return r.json();
-    }),
-    fetch("getSubtipos.php")
-      .then((r) => r.json())
-      .catch(() => []),
-  ])
-    .then(([images, subtipos]) => {
-      // Monta as options de subtipo uma vez
-      const subtipoOptions = subtipos
-        .map((s) => `<option value="${s.id}">${s.nome}</option>`)
-        .join("");
+  function escapeEditImagesHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
-      const imageList = document.getElementById("imageList");
-      imageList.innerHTML = ""; // Limpa o conteúdo existente
+  function cssEscapeValue(value) {
+    if (window.CSS?.escape) return CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, "\\$&");
+  }
 
-      images.forEach((image) => {
-        const currentSubtipo = image.subtipo_id ? String(image.subtipo_id) : "";
-        const imageContainer = document.createElement("div");
-        imageContainer.innerHTML = `
-                    <div class="image-item">
-                        <div class="titulo_imagem">
-                            <h4>${displayImageName(image.imagem_nome)}</h4>
-                            <i class="fas fa-chevron-down toggle-options"></i>
-                        </div>
+  function normalizeValue(field, value) {
+    if (field === "antecipada" || field === "animacao") {
+      return value === true || value === 1 || value === "1" ? "1" : "0";
+    }
+    if (field === "subtipo_id") {
+      return value === null || value === undefined ? "" : String(value);
+    }
+    return value === null || value === undefined ? "" : String(value);
+  }
 
-                        <div class="conteudo_imagens" id="conteudo_imagens" style="display: none;">
-                            <label>Imagem: <input type="text" data-id="${image.idimagem}" name="imagem_nome" value="${image.imagem_nome}"></label><br>
-                            <label>Recebimento Arquivos: <input type="date" data-id="${image.idimagem}" name="recebimento_arquivos" value="${image.recebimento_arquivos}"></label><br>
-                            <label>Data de Início: <input type="date" data-id="${image.idimagem}" name="data_inicio" value="${image.data_inicio}"></label><br>
-                            <label>Prazo: <input type="date" data-id="${image.idimagem}" name="prazo" value="${image.prazo}"></label><br>
-                            <label>Tipo de Imagem: <input type="text" data-id="${image.idimagem}" name="tipo_imagem" value="${image.tipo_imagem}"></label>
-                            <label>Subtipo: <select data-id="${image.idimagem}" name="subtipo_id"><option value="">-- Sem subtipo --</option>${subtipoOptions}</select></label><br>
-                            <label>Antecipada: <input type="checkbox" data-id="${image.idimagem}" name="antecipada" ${image.antecipada == 1 ? "checked" : ""}></label>
-                            <label>Terá animação?: <input type="checkbox" data-id="${image.idimagem}" name="animacao" value="1" ${image.animacao == 1 ? "checked" : ""}></label>
-                            <label>Clima: <input type="text" data-id="${image.idimagem}" name="clima" value="${image.clima}"></label>
-                        </div>
-                    </div>
-                `;
-        imageList.appendChild(imageContainer);
+  function getOriginalValues(image) {
+    return fields.reduce((values, field) => {
+      values[field] = normalizeValue(field, image[field]);
+      return values;
+    }, {});
+  }
 
-        // Pre-seleciona o subtipo atual
-        if (currentSubtipo) {
-          const subtipoSel = imageContainer.querySelector(
-            `select[name="subtipo_id"]`,
-          );
-          if (subtipoSel) subtipoSel.value = currentSubtipo;
-        }
+  function readFieldValue(input) {
+    const field = input.name;
+    return normalizeValue(
+      field,
+      input.type === "checkbox" ? input.checked : input.value,
+    );
+  }
 
-        // Adiciona o evento de clique para mostrar/esconder o conteúdo e trocar o ícone
-        const tituloImagem = imageContainer.querySelector(".titulo_imagem");
-        const conteudoImagens =
-          imageContainer.querySelector(".conteudo_imagens");
-        const toggleIcon = tituloImagem.querySelector(".toggle-options");
+  function getImageCard(imageId) {
+    return el("imageList")?.querySelector(
+      `.image-item[data-image-id="${cssEscapeValue(imageId)}"]`,
+    );
+  }
 
-        tituloImagem.addEventListener("click", () => {
-          if (conteudoImagens.style.display === "none") {
-            conteudoImagens.classList.add("show-in");
-            conteudoImagens.style.display = "block";
-            toggleIcon.classList.remove("fa-chevron-down");
-            toggleIcon.classList.add("fa-chevron-up");
-          } else {
-            conteudoImagens.style.display = "none";
-            toggleIcon.classList.remove("fa-chevron-up");
-            toggleIcon.classList.add("fa-chevron-down");
-          }
-        });
-      });
+  function getInputsForImage(imageId) {
+    const card = getImageCard(imageId);
+    return card
+      ? Array.from(card.querySelectorAll("[data-edit-image-field]"))
+      : [];
+  }
 
-      // Exibe o modal
-      document.getElementById("editImagesModal").style.display = "block";
-    })
-    .catch((error) => {
+  function getCurrentValues(imageId) {
+    const values = {};
+    getInputsForImage(imageId).forEach((input) => {
+      values[input.name] = readFieldValue(input);
+    });
+    return values;
+  }
+
+  function countChangedFields(imageId) {
+    const original = state.originals.get(String(imageId));
+    if (!original) return 0;
+
+    const current = getCurrentValues(imageId);
+    return fields.reduce((count, field) => {
+      return (
+        count +
+        (normalizeValue(field, current[field]) !== original[field] ? 1 : 0)
+      );
+    }, 0);
+  }
+
+  function formatCount(value, singular, plural) {
+    return `${value} ${value === 1 ? singular : plural}`;
+  }
+
+  function updateGlobalSummary() {
+    const changedImages = state.changedFieldsByImage.size;
+    const pendingChanges = Array.from(state.changedFieldsByImage.values()).reduce(
+      (total, count) => total + count,
+      0,
+    );
+
+    const changedImagesCount = el("changedImagesCount");
+    const pendingChangesCount = el("pendingChangesCount");
+    const saveBtn = el("saveChangesBtn");
+
+    if (changedImagesCount) {
+      changedImagesCount.textContent = formatCount(
+        changedImages,
+        "imagem alterada",
+        "imagens alteradas",
+      );
+    }
+
+    if (pendingChangesCount) {
+      pendingChangesCount.textContent = formatCount(
+        pendingChanges,
+        "alteração pendente",
+        "alterações pendentes",
+      );
+    }
+
+    if (saveBtn) saveBtn.disabled = pendingChanges === 0;
+  }
+
+  function updateHeaderState(imageId) {
+    const card = getImageCard(imageId);
+    if (!card) return;
+
+    const count = state.changedFieldsByImage.get(String(imageId)) || 0;
+    const indicator = card.querySelector("[data-change-indicator]");
+
+    card.classList.toggle("image-item--changed", count > 0);
+    if (indicator) {
+      indicator.textContent = count > 0 ? `Alterada (${count})` : "";
+      indicator.hidden = count === 0;
+    }
+  }
+
+  function refreshImageChangeState(imageId) {
+    const count = countChangedFields(imageId);
+    const key = String(imageId);
+
+    if (count > 0) {
+      state.changedFieldsByImage.set(key, count);
+    } else {
+      state.changedFieldsByImage.delete(key);
+    }
+
+    updateHeaderState(imageId);
+    updateGlobalSummary();
+  }
+
+  function setAccordionOpen(imageId) {
+    const imageList = el("imageList");
+    if (!imageList) return;
+    const nextOpenId = imageId === null || imageId === undefined ? null : String(imageId);
+
+    imageList.querySelectorAll(".image-item").forEach((card) => {
+      const isOpen = nextOpenId !== null && String(card.dataset.imageId) === nextOpenId;
+      const content = card.querySelector(".conteudo_imagens");
+      const icon = card.querySelector(".toggle-options");
+      const title = card.querySelector(".titulo_imagem");
+
+      card.classList.toggle("image-item--open", isOpen);
+      if (content) content.style.display = isOpen ? "block" : "none";
+      if (title) title.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      if (icon) {
+        icon.classList.toggle("fa-chevron-up", isOpen);
+        icon.classList.toggle("fa-chevron-down", !isOpen);
+      }
+    });
+
+    state.openImageId = nextOpenId;
+  }
+
+  function buildSubtipoOptions(subtipos, currentSubtipo) {
+    const options = ['<option value="">-- Sem subtipo --</option>'];
+    subtipos.forEach((subtipo) => {
+      const value = normalizeValue("subtipo_id", subtipo.id);
+      const selected = value === currentSubtipo ? " selected" : "";
+      options.push(
+        `<option value="${escapeEditImagesHtml(value)}"${selected}>${escapeEditImagesHtml(subtipo.nome)}</option>`,
+      );
+    });
+    return options.join("");
+  }
+
+  function buildBadge(label) {
+    const text = String(label ?? "").trim();
+    return text
+      ? `<span class="image-meta-badge">${escapeEditImagesHtml(text)}</span>`
+      : "";
+  }
+
+  function formatDateBadge(value) {
+    return value ? `Prazo ${value}` : "Sem prazo";
+  }
+
+  function buildImageCard(image, subtipos) {
+    const original = getOriginalValues(image);
+    const currentSubtipoName = String(image.subtipo_nome || "").trim();
+    const title = displayImageName(image.imagem_nome);
+    const escapedId = escapeEditImagesHtml(image.idimagem);
+
+    state.originals.set(String(image.idimagem), original);
+
+    return `
+      <div class="image-item" data-image-id="${escapedId}">
+        <button type="button" class="titulo_imagem" aria-expanded="false">
+          <div class="image-title-block">
+            <div class="image-title-row">
+              <h4>${escapeEditImagesHtml(title)}</h4>
+              <span class="image-change-indicator" data-change-indicator hidden></span>
+            </div>
+            <div class="image-meta-badges">
+              ${buildBadge(image.tipo_imagem || "Sem tipo")}
+              ${buildBadge(currentSubtipoName || "Sem subtipo")}
+              ${buildBadge(formatDateBadge(image.prazo))}
+              ${Number(image.antecipada) === 1 ? buildBadge("Antecipada") : ""}
+              ${Number(image.animacao) === 1 ? buildBadge("Animação") : ""}
+            </div>
+          </div>
+          <i class="fas fa-chevron-down toggle-options"></i>
+        </button>
+
+        <div class="conteudo_imagens" style="display: none;">
+          <section class="image-field-group">
+            <h5>Informações Gerais</h5>
+            <div class="image-field-grid">
+              <label>Nome
+                <input type="text" data-id="${escapedId}" data-edit-image-field name="imagem_nome" value="${escapeEditImagesHtml(original.imagem_nome)}">
+              </label>
+              <label>Tipo
+                <input type="text" data-id="${escapedId}" data-edit-image-field name="tipo_imagem" value="${escapeEditImagesHtml(original.tipo_imagem)}">
+              </label>
+              <label>Subtipo
+                <select data-id="${escapedId}" data-edit-image-field name="subtipo_id">${buildSubtipoOptions(subtipos, original.subtipo_id)}</select>
+              </label>
+            </div>
+          </section>
+
+          <section class="image-field-group">
+            <h5>Datas</h5>
+            <div class="image-field-grid">
+              <label>Recebimento dos arquivos
+                <input type="date" data-id="${escapedId}" data-edit-image-field name="recebimento_arquivos" value="${escapeEditImagesHtml(original.recebimento_arquivos)}">
+              </label>
+              <label>Data de início
+                <input type="date" data-id="${escapedId}" data-edit-image-field name="data_inicio" value="${escapeEditImagesHtml(original.data_inicio)}">
+              </label>
+              <label>Prazo
+                <input type="date" data-id="${escapedId}" data-edit-image-field name="prazo" value="${escapeEditImagesHtml(original.prazo)}">
+              </label>
+            </div>
+          </section>
+
+          <section class="image-field-group">
+            <h5>Características</h5>
+            <div class="image-field-grid image-field-grid--compact">
+              <label class="image-checkbox-field">
+                <input type="checkbox" data-id="${escapedId}" data-edit-image-field name="antecipada" ${original.antecipada === "1" ? "checked" : ""}>
+                <span>Antecipada</span>
+              </label>
+              <label class="image-checkbox-field">
+                <input type="checkbox" data-id="${escapedId}" data-edit-image-field name="animacao" value="1" ${original.animacao === "1" ? "checked" : ""}>
+                <span>Terá animação</span>
+              </label>
+              <label>Clima
+                <input type="text" data-id="${escapedId}" data-edit-image-field name="clima" value="${escapeEditImagesHtml(original.clima)}">
+              </label>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    `;
+  }
+
+  function resetState() {
+    state.images = [];
+    state.originals.clear();
+    state.changedFieldsByImage.clear();
+    state.openImageId = null;
+    updateGlobalSummary();
+  }
+
+  function renderImages(images, subtipos) {
+    const imageList = el("imageList");
+    if (!imageList) return;
+
+    resetState();
+    state.images = Array.isArray(images) ? images : [];
+    imageList.innerHTML = state.images
+      .map((image) => buildImageCard(image, Array.isArray(subtipos) ? subtipos : []))
+      .join("");
+
+    if (state.images.length > 0) setAccordionOpen(state.images[0].idimagem);
+  }
+
+  function buildUpdatePayload(imageId) {
+    const values = getCurrentValues(imageId);
+    return {
+      idimagem: imageId,
+      imagem_nome: values.imagem_nome || "",
+      recebimento_arquivos: values.recebimento_arquivos || "",
+      data_inicio: values.data_inicio || "",
+      prazo: values.prazo || "",
+      tipo_imagem: values.tipo_imagem || "",
+      subtipo_id: values.subtipo_id || null,
+      antecipada: values.antecipada === "1" ? "1" : "0",
+      animacao: values.animacao === "1" ? "1" : "0",
+      clima: values.clima || "",
+    };
+  }
+
+  async function open() {
+    const obraId = localStorage.getItem("obraId");
+
+    if (!obraId) {
+      alert("ID da obra não encontrado!");
+      return;
+    }
+
+    try {
+      const [images, subtipos] = await Promise.all([
+        fetch("infosImagens.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ obraId }),
+        }).then((r) => {
+          if (!r.ok) throw new Error("Erro ao buscar imagens");
+          return r.json();
+        }),
+        fetch("getSubtipos.php")
+          .then((r) => r.json())
+          .catch(() => []),
+      ]);
+
+      renderImages(images, subtipos);
+      el("editImagesModal").style.display = "block";
+    } catch (error) {
       console.error("Erro:", error);
       alert("Não foi possível carregar as imagens.");
-    });
-});
+    }
+  }
 
-// Detecta alterações nos campos
-document.getElementById("imageList").addEventListener("input", (event) => {
-  const imageId = event.target.getAttribute("data-id");
-  modifiedImages.add(imageId); // Marca a imagem como alterada
-  document.getElementById("unsavedChanges").style.display = "flex"; // Mostra a mensagem de aviso
-});
+  async function save() {
+    const saveBtn = el("saveChangesBtn");
+    if (!state.changedFieldsByImage.size || saveBtn?.disabled) return;
 
-// Salva as alterações
-document.getElementById("saveChangesBtn").addEventListener("click", () => {
-  const updates = Array.from(modifiedImages).map((id) => {
-    return {
-      idimagem: id,
-      imagem_nome: document.querySelector(
-        `input[name="imagem_nome"][data-id="${id}"]`,
-      ).value,
-      recebimento_arquivos: document.querySelector(
-        `input[name="recebimento_arquivos"][data-id="${id}"]`,
-      ).value,
-      data_inicio: document.querySelector(
-        `input[name="data_inicio"][data-id="${id}"]`,
-      ).value,
-      prazo: document.querySelector(`input[name="prazo"][data-id="${id}"]`)
-        .value,
-      tipo_imagem: document.querySelector(
-        `input[name="tipo_imagem"][data-id="${id}"]`,
-      ).value,
-      subtipo_id:
-        document.querySelector(`select[name="subtipo_id"][data-id="${id}"]`)
-          ?.value || null,
-      antecipada: document.querySelector(
-        `input[name="antecipada"][data-id="${id}"]`,
-      ).checked
-        ? "1"
-        : "0",
-      animacao: document.querySelector(
-        `input[name="animacao"][data-id="${id}"]`,
-      ).checked
-        ? "1"
-        : "0",
-      clima: document.querySelector(`input[name="clima"][data-id="${id}"]`)
-        .value,
-    };
-  });
+    const updates = Array.from(state.changedFieldsByImage.keys()).map(
+      buildUpdatePayload,
+    );
+    if (saveBtn) saveBtn.disabled = true;
 
-  fetch("saveImages.php", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(updates),
-  })
-    .then((response) => response.json())
-    .then((result) => {
+    try {
+      const response = await fetch("saveImages.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      });
+      const result = await response.json();
+
       if (result.success) {
         alert("Alterações salvas com sucesso!");
-        modifiedImages.clear();
-        document.getElementById("unsavedChanges").style.display = "none"; // Esconde a mensagem
+        await open();
       } else {
         alert("Erro ao salvar alterações.");
+        updateGlobalSummary();
       }
-    })
-    .catch((error) => {
+    } catch (error) {
       console.error("Erro ao salvar alterações:", error);
       alert("Erro ao salvar alterações. Por favor, tente novamente.");
+      updateGlobalSummary();
+    }
+  }
+
+  function close() {
+    el("editImagesModal").style.display = "none";
+  }
+
+  function bindEvents() {
+    el("editImagesBtn")?.addEventListener("click", open);
+    el("saveChangesBtn")?.addEventListener("click", save);
+    el("cancelImagesChangesBtn")?.addEventListener("click", close);
+
+    el("imageList")?.addEventListener("click", (event) => {
+      const title = event.target.closest(".titulo_imagem");
+      if (title) {
+        const card = title.closest(".image-item");
+        if (card) {
+          setAccordionOpen(
+            String(state.openImageId) === String(card.dataset.imageId)
+              ? null
+              : card.dataset.imageId,
+          );
+        }
+      }
     });
-});
+
+    ["input", "change"].forEach((eventName) => {
+      el("imageList")?.addEventListener(eventName, (event) => {
+        const input = event.target.closest("[data-edit-image-field]");
+        if (!input) return;
+        refreshImageChangeState(input.dataset.id);
+      });
+    });
+  }
+
+  bindEvents();
+
+  return { close };
+})();
 
 const PLANNED_QUEUE = (() => {
   const state = {

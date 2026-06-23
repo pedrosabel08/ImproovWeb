@@ -155,7 +155,7 @@ if ($preAltTablesReady) {
         $res_pa = $conn->query(
             "SELECT COUNT(*) AS cnt
              FROM pre_alt_lote
-             WHERE status = 'PRONTO_PLANEJAMENTO'"
+             WHERE status IN ('PRONTO_PLANEJAMENTO', 'EM_TRIAGEM')"
         );
         $pre_alt_analise_count = ($res_pa) ? intval($res_pa->fetch_assoc()['cnt']) : 0;
     }

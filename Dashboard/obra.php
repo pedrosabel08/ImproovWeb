@@ -700,18 +700,25 @@ $conn->close();
             </div>
 
             <div id="editImagesModal" style="display: none;">
-                <div class="modal-content-images" style="overflow-y: auto; max-height: 600px; width: 50%;">
+                <div class="modal-content-images edit-images-shell">
                     <div id="modalHeader">
-                        <div id="unsavedChanges" style="display: none;">
-                            <p>Você fez alterações. Não esqueça de salvar!</p>
-                            <button id="saveChangesBtn">Salvar Alterações</button>
-                        </div>
                         <div class="header">
                             <h2>Editar Imagens</h2>
                             <span class="close-modal-images">&times;</span>
                         </div>
                     </div>
                     <div id="imageList"></div>
+                    <div class="edit-images-footer">
+                        <div class="edit-images-summary" aria-live="polite">
+                            <strong id="changedImagesCount">0 imagens alteradas</strong>
+                            <span>•</span>
+                            <strong id="pendingChangesCount">0 alterações pendentes</strong>
+                        </div>
+                        <div class="edit-images-actions">
+                            <button type="button" id="cancelImagesChangesBtn" class="edit-images-btn edit-images-btn-secondary">Cancelar</button>
+                            <button type="button" id="saveChangesBtn" class="edit-images-btn edit-images-btn-primary" disabled>Salvar alterações</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

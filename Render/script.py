@@ -24,6 +24,8 @@ else:
 
 PARENT_FOLDER = r"C:\Backburner_Job"
 EXCLUDE_KEYWORD = "ANIMA"
+DEADLINE_COMMAND = "deadlinecommand"
+SCHEDULER_DELETE_STATUSES = ("Aprovado", "Finalizado", "Reprovado")
 
 # Filtros opcionais (por ambiente) para evitar varredura completa
 FILTER_IMAGES = [s.strip() for s in os.getenv("FILTER_IMAGES", "").split(",") if s.strip()]
@@ -205,6 +207,40 @@ def is_truthy(value: str) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"yes", "true", "1", "sim", "y"}
+
+
+def delete_deadline_job(job_id: str) -> bool:
+    if not job_id:
+        return False
+    try:
+        result = subprocess.run(
+            [DEADLINE_COMMAND, "DeleteJob", str(job_id)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False
+        )
+    except FileNotFoundError:
+        log_and_print("❌ deadlinecommand não encontrado no PATH.", "error")
+        return False
+    except subprocess.TimeoutExpired:
+        log_and_print(f"❌ Timeout ao deletar Job Deadline {job_id}.", "error")
+        return False
+    except Exception as e:
+        log_and_print(f"❌ Falha ao deletar Job Deadline {job_id}: {e}", "error")
+        return False
+
+    output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+    if result.returncode == 0:
+        log_and_print(f"✅ Job Deadline deletado: {job_id}")
+        return True
+
+    log_and_print(f"⚠ Não foi possível deletar o Job Deadline {job_id}.", "warning")
+    if output:
+        log_and_print(output, "warning")
+    return False
 
 
 def upload_to_ftp(local_path, remote_path, ftp_host, ftp_user, ftp_pass):
@@ -678,7 +714,7 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     # ─────────────────────────────────────────────────────────────────────
     # Buscar status existente
     cursor.execute("""
-        SELECT idrender_alta, status, previa_jpg
+        SELECT idrender_alta, status, previa_jpg, deadline_job_id
         FROM render_alta
         WHERE imagem_id = %s AND status_id = %s
         ORDER BY idrender_alta DESC
@@ -689,6 +725,7 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     render_id = existing_status[0] if existing_status else None
     ultimo_status = existing_status[1] if existing_status else None
     existing_preview = existing_status[2] if existing_status else None
+    deadline_job_id = existing_status[3] if existing_status else None
 
     # Determinar status customizado
     active = is_truthy(xml_data.get("Active"))
@@ -762,19 +799,24 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
                     log_and_print(f"⚠ Upload falhou — nenhuma alteração foi feita no banco para {preview_name}", "warning")
         return  # não faz mais nada
 
-    # 2️⃣ Se status atual = Aprovado ou Finalizado → remover do Backburner
-    # Se status = Reprovado/Refazendo: o job foi reprovado/refazendo e um NOVO job foi submetido.
-    # Só removemos o job do Backburner quando o novo render COMPLETAR (complete=True).
+    # 2️⃣ Se status atual fecha o ciclo no Flow → remover do scheduler vinculado.
+    # Backburner não possui deadline_job_id; nesse caso, deletar pela pasta do job.
+    # Se status = Refazendo: o job foi refeito e um NOVO job foi submetido.
+    # Só tratamos Refazendo como novo ciclo quando o novo render COMPLETAR (complete=True).
     # Enquanto o novo job está rodando (active=True, complete=False), deixamos ele finalizar.
-    if ultimo_status in ("Aprovado", "Finalizado"):
-        log_and_print(f"⏭ Status '{ultimo_status}' detectado — removendo job do Backburner: {job_folder}")
-        delete_backburner_job(job_folder)
+    if ultimo_status in SCHEDULER_DELETE_STATUSES:
+        if deadline_job_id:
+            log_and_print(f"⏭ Status '{ultimo_status}' detectado — deletando Job Deadline: {deadline_job_id}")
+            delete_deadline_job(deadline_job_id)
+        else:
+            log_and_print(f"⏭ Status '{ultimo_status}' detectado — removendo job do Backburner: {job_folder}")
+            delete_backburner_job(job_folder)
         return
 
-    if ultimo_status in ("Reprovado", "Refazendo"):
+    if ultimo_status == "Refazendo":
         if complete:
-            # Novo render completou após reprovação → tratar como "Em aprovação" (novo ciclo)
-            log_and_print(f"🔄 Job completou após reprovação — promovendo para 'Em aprovação': {job_folder}")
+            # Novo render completou após refazimento → tratar como "Em aprovação" (novo ciclo)
+            log_and_print(f"🔄 Job completou após refazimento — promovendo para 'Em aprovação': {job_folder}")
             ultimo_status = None   # força prosseguir pelo fluxo normal
             status_custom = "Em aprovação"
         elif active and not complete:
@@ -1057,8 +1099,8 @@ def main():
                 ultimo_status = row[1] if row else None
 
                 # Atualiza status agregado no render_alta (mantém estado único por imagem)
-                # Não sobrescreve Aprovado/Finalizado quando P00 já foi aprovado
-                if render_id and ultimo_status not in ("Aprovado", "Finalizado"):
+                # Não sobrescreve status que fecha o ciclo no scheduler.
+                if render_id and ultimo_status not in SCHEDULER_DELETE_STATUSES:
                     cursor.execute(
                         "UPDATE render_alta SET status = %s WHERE idrender_alta = %s",
                         (status_agg, render_id)
@@ -1068,8 +1110,8 @@ def main():
                 image_name_db = roll.get("image_name_db")
 
                 # Enviar notificação apenas quando houver mudança real no status agregado
-                # e não houve status aprovado/finalizado anteriormente
-                if resp_id and status_agg != ultimo_status and ultimo_status not in ("Aprovado", "Finalizado"):
+                # e não houve status fechado anteriormente
+                if resp_id and status_agg != ultimo_status and ultimo_status not in SCHEDULER_DELETE_STATUSES:
                     if status_agg == "Erro":
                         msg = f"O render da imagem: {image_name_db} deu erro, favor verificar!"
                     elif status_agg == "Em aprovação":

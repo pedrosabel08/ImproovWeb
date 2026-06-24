@@ -270,7 +270,7 @@ async function revisarTarefa(
         aprovado_com_ajustes: "Aprovado com ajustes",
       };
       const novoStatus = data.aguardando_direcao
-        ? "Aguardando Direção"
+        ? data.status_aprovacao || statusMap[tipoRevisao]
         : statusMap[tipoRevisao];
       if (novoStatus) {
         const task = dadosTarefas.find(
@@ -279,6 +279,7 @@ async function revisarTarefa(
         if (task) {
           task.status_novo = novoStatus;
           if (data.aguardando_direcao) {
+            task.status = "Aguardando Direção";
             task.pendente_direcao = true;
             task.diretor_pode_aprovar = false;
             delete task.finalizador_pode_aprovar;
@@ -889,7 +890,7 @@ async function exibirCardsDeObra(tarefas) {
       title: "⏳ Aguardando sua validação!",
       html:
         linhasDir +
-        "<br><br>Finalizadores aprovaram — aguardando confirmação da direção.",
+        "<br><br>Finalizadores ou arquitetura aprovaram — aguardando confirmação da direção.",
       icon: "warning",
       confirmButtonText: "Ver",
     });
@@ -2547,8 +2548,33 @@ function historyAJAX(idfuncao_imagem) {
               const status = approver.status_novo || approver.status || "—";
               const dt = approver.data_aprovacao || approver.data || null;
               const fecha = dt ? formatarDataHora(new Date(dt)) : "";
-              const displayStatus =
-                status === "Aguardando Direção" ? "Aprovado" : status;
+              let displayStatus = status;
+              if (status === "Aguardando Direção") {
+                try {
+                  const obs = approver.observacoes
+                    ? JSON.parse(approver.observacoes)
+                    : null;
+                  displayStatus = obs?.aprovacao_operacional || displayStatus;
+                } catch (_) {
+                  displayStatus = status;
+                }
+                if (
+                  !["Aprovado", "Aprovado com ajustes"].includes(displayStatus)
+                ) {
+                  displayStatus = [
+                    "Aprovado",
+                    "Aprovado com ajustes",
+                  ].includes(approver.status_anterior)
+                    ? approver.status_anterior
+                    : "Aprovado";
+                }
+              } else if (
+                status === "Aprovado" &&
+                (tarefaAtual?.status === "Aprovado com ajustes" ||
+                  item?.status === "Aprovado com ajustes")
+              ) {
+                displayStatus = "Aprovado com ajustes";
+              }
               if (status !== "Em aprovação") {
                 approvalContainer.innerHTML = `<div><strong>${escapeHtml(name)}</strong> — <span>${escapeHtml(displayStatus)} ${fecha ? '<br><small style="color:#666">' + escapeHtml(fecha) + "</small>" : ""}</div>`;
                 approvalContainer.style.display = "block";

@@ -55,7 +55,7 @@ try {
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
-            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
@@ -104,7 +104,7 @@ try {
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id = 5
           AND (
-            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
@@ -152,7 +152,7 @@ try {
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
-            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
@@ -203,7 +203,7 @@ try {
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
-            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
@@ -257,7 +257,7 @@ try {
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
-            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
             OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
                 SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
@@ -478,7 +478,7 @@ try {
     }
     $stmtDir->close();
 
-    $isDirecao = in_array((int)$idcolaborador, [21, 2], true);
+    $isDirecao = in_array((int)$idcolaborador, [21, 2, 31], true);
 
     foreach ($tarefas as &$t) {
       if (in_array(intval($t['funcao_id']), [4, 5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {

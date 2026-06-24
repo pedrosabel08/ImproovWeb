@@ -223,6 +223,10 @@
   background-color: var(--si-apr);
   color: #fff;
 }
+.fc-status-aguardando-direcao {
+  background-color: var(--si-drv);
+  color: #000;
+}
 .fc-status-aprovado {
   background-color: var(--success);
   color: #000;

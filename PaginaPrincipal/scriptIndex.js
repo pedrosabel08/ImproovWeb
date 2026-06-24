@@ -200,6 +200,7 @@ function processarDados(data) {
     "Não iniciado": "to-do",
     "Em andamento": "in-progress",
     "Em aprovação": "in-review",
+    "Aguardando Direção": "aguardando-direcao",
     Ajuste: "ajuste",
     Aprovado: "aprovado",
     "Aprovado com ajustes": "aprovado",
@@ -216,7 +217,7 @@ function processarDados(data) {
     }
   });
   // Extra column for "Aprovado com ajustes"
-  const extraCols = ["aprovado-ajustes"];
+  const extraCols = ["aprovado-ajustes", "aguardando-direcao"];
   extraCols.forEach((colId) => {
     const col = document.getElementById(colId);
     if (col) {
@@ -234,6 +235,12 @@ function processarDados(data) {
     if (s === "ajuste") status = "Ajuste";
     else if (s === "em aprovação" || s === "em aprovacao")
       status = "Em aprovação";
+    else if (
+      s === "aguardando direção" ||
+      s === "aguardando direcao" ||
+      s === "aguardando-direcao"
+    )
+      status = "Aguardando Direção";
     else if (s === "em andamento" || s === "em-andamento")
       status = "Em andamento";
     else if (s === "aprovado") status = "Aprovado";
@@ -2083,6 +2090,7 @@ const statusMap = {
   "Não iniciado": "to-do",
   "Em andamento": "in-progress",
   "Em aprovação": "in-review",
+  "Aguardando Direção": "aguardando-direcao",
   Ajuste: "ajuste",
   Finalizado: "done",
   HOLD: "hold",
@@ -2172,7 +2180,11 @@ function atualizarTaskCount() {
     if (badge) badge.textContent = count;
 
     // Esconder colunas vazias (ajuste, aprovado, aprovado-ajustes)
-    if (["ajuste", "aprovado", "aprovado-ajustes"].includes(box.id)) {
+    if (
+      ["ajuste", "aprovado", "aprovado-ajustes", "aguardando-direcao"].includes(
+        box.id,
+      )
+    ) {
       box.style.display = count === 0 ? "none" : "";
     }
   });
@@ -3609,6 +3621,7 @@ const statusMapInvertido = {
   "to-do": "Não iniciado",
   "in-progress": "Em andamento",
   "in-review": "Em aprovação",
+  "aguardando-direcao": "Aguardando Direção",
   ajuste: "Ajuste",
   aprovado: "Aprovado",
   "aprovado-ajustes": "Aprovado com ajustes",
@@ -3923,6 +3936,7 @@ document.getElementById("salvarModal").addEventListener("click", () => {
     hold: "HOLD",
     "in-progress": "Em andamento",
     "in-review": "Em aprovação",
+    "aguardando-direcao": "Aguardando Direção",
     ajuste: "Ajuste",
     aprovado: "Aprovado",
     "aprovado-ajustes": "Aprovado com ajustes",
@@ -4511,6 +4525,10 @@ colunas.forEach((col) => {
             // if (etapaPreviaEl) etapaPreviaEl.style.display = '';
             // if (etapaFinalEl) etapaFinalEl.style.display = 'none';
             break;
+          case "aguardando-direcao":
+            document.querySelector(".modalUploads").style.display = "none";
+            document.querySelector(".statusAnterior").style.display = "flex";
+            break;
           case "done": // "Finalizado"
             // Mostra prazo, observação e botões
             document.querySelector(".modalPrazo").style.display = "flex";
@@ -4932,6 +4950,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   function normalizarStatus(status) {
     if (!status) return "Não iniciado";
     if (status === "Hold") return "HOLD";
+    if (status === "Aguardando Direcao") return "Aguardando Direção";
     if (status === "Aprovado" || status === "Aprovado com ajustes")
       return "Finalizado";
     return status;
@@ -4971,6 +4990,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
               "HOLD",
               "Em andamento",
               "Em aprovação",
+              "Aguardando Direção",
               "Ajuste",
               "Finalizado",
             ],
@@ -5464,6 +5484,7 @@ function getUnifiedStatusClass(status, scope = "auto") {
     "nao iniciado": "si-to-do",
     "em andamento": "si-tea",
     "em aprovacao": "si-apr",
+    "aguardando direcao": "si-drv",
     finalizado: "si-fin",
     aprovado: "si-fin",
     "aprovado com ajustes": "si-app",

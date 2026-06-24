@@ -42,16 +42,22 @@ $sql = "SELECT
     fi.file_uploaded_at,
     fi.requires_file_upload,
     CASE
-        WHEN fi.funcao_id = 6
+        WHEN fi.funcao_id IN (4, 6)
          AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
-         AND COALESCE((
-             SELECT ha.responsavel
+         AND EXISTS (
+             SELECT 1
              FROM historico_aprovacoes ha
              WHERE ha.funcao_imagem_id = fi.idfuncao_imagem
                AND ha.status_novo IN ('Aprovado', 'Aprovado com ajustes')
-             ORDER BY ha.id DESC
+               AND ha.responsavel IN (21, 2, 31)
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM historico_aprovacoes ha2
+                   WHERE ha2.funcao_imagem_id = ha.funcao_imagem_id
+                     AND ha2.id > ha.id
+               )
              LIMIT 1
-         ), 0) IN (21, 2)
+         )
          AND NOT EXISTS (
              SELECT 1
              FROM render_alta ra
@@ -120,7 +126,7 @@ WHERE fi.colaborador_id = ?
 ORDER BY requires_file_upload DESC, notificacoes_nao_lidas DESC, prioridade ASC, prazo DESC, imagem_id, obra_id,
     FIELD(fi.status,
           'Não iniciado','HOLD','Em andamento','Ajuste',
-          'Em aprovação','Aprovado com ajustes','Aprovado','Finalizado')";
+          'Em aprovação','Aguardando Direção','Aprovado com ajustes','Aprovado','Finalizado')";
 
 $stmt = $conn->prepare($sql);
 // há dois placeholders: um no subquery (colaborador_id) e outro no WHERE fi.colaborador_id

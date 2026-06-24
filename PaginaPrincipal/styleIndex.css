@@ -460,6 +460,11 @@ main .kanban .kanban-box {
   background-color: #d5beff;
 }
 
+.list-section .status-aguardando-direcao {
+  color: #036579;
+  background-color: #b7f4ff;
+}
+
 .list-section .status-ajuste {
   color: #dc3545;
   background-color: #ffb3ba;

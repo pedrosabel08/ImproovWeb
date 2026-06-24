@@ -269,13 +269,13 @@ $idcolaborador_session = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idc
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $data = json_decode(file_get_contents('php://input'), true);
-        $idfuncao_imagem = $data['idfuncao_imagem'] ?? null;
+        $idfuncao_imagem = isset($data['idfuncao_imagem']) ? (int)$data['idfuncao_imagem'] : 0;
         $tipoRevisao = $data['tipoRevisao'] ?? null;
         $imagem_nome = $data['imagem_nome'] ?? null;
         $nome_funcao = $data['nome_funcao'] ?? null;
-        $colaborador_id = $data['colaborador_id'] ?? null;
-        $responsavel = $data['responsavel'] ?? null;
-        $imagem_id = $data['imagem_id'] ?? null;
+        $colaborador_id = isset($data['colaborador_id']) ? (int)$data['colaborador_id'] : 0;
+        $responsavel = isset($data['responsavel']) ? (int)$data['responsavel'] : 0;
+        $imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : 0;
         // SFTP conflict resolution params (passed on 2nd call by the frontend)
         $sftp_action      = $data['sftp_action']      ?? null; // 'replace' | 'add' | null
         $sftp_suffix      = $data['sftp_suffix']      ?? null; // suffix string when action='add'
@@ -287,6 +287,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$idfuncao_imagem || !$tipoRevisao) {
             echo json_encode(['success' => false, 'message' => 'Dados incompletos.']);
             exit;
+        }
+
+        if ($responsavel <= 0) {
+            $responsavel = $idcolaborador_session;
         }
 
         $stmt2 = $conn->prepare("SELECT nome_colaborador FROM colaborador WHERE idcolaborador = ?");
@@ -323,7 +327,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $funcao_id_context = null;
         $nome_funcao_db = null;
         $imagem_id_context = $imagem_id ? (int)$imagem_id : null;
-        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id
+        $colaborador_id_context = 0;
+        $status_funcao_context = null;
+        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id, fi.colaborador_id, fi.status
             FROM funcao_imagem fi
             LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
             WHERE fi.idfuncao_imagem = ?
@@ -331,15 +337,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmtFuncaoContext) {
             $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
             $stmtFuncaoContext->execute();
-            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db);
+            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context);
             $stmtFuncaoContext->fetch();
             $stmtFuncaoContext->close();
             if ($imagem_id_context_db) {
                 $imagem_id_context = (int)$imagem_id_context_db;
             }
+            if ($colaborador_id_context) {
+                $colaborador_id = (int)$colaborador_id_context;
+            }
         }
 
         $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
+        $nomeFuncaoKey = normalize_name((string)($nome_funcao_db ?: $nome_funcao));
 
         // ── Aprovação dupla de Pós-produção/Alteração ────────────────────────────
         // Quando o aprovador operacional (colaborador 1) aprova pós-produção ou
@@ -349,15 +359,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $aprovadorDirecaoId = (int)($responsavel ?: $idcolaborador_session);
         $isFuncaoComDirecao = (
             in_array((int)$funcao_id_context, [4, 5, 6], true)
+            || in_array($nomeFuncaoKey, ['finalizacao', 'posproducao', 'pos producao', 'alteracao'], true)
             || in_array($nomeFuncaoLower, ['pós-produção', 'alteração'], true)
         );
         $isTipoAprovacaoComDirecao = in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true);
         $isPrimeiroAprovadorDirecao = ($aprovadorDirecaoId === 1);
-        $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 2], true);
-        $isFinalizadorAprovadorDirecao = false;
+        $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 2, 31], true);
+        $isFinalizadorAprovadorDirecao = (
+            !$isDirecaoAprovador
+            && $aprovadorDirecaoId > 0
+            && (int)$funcao_id_context === 4
+            && (int)$colaborador_id === $aprovadorDirecaoId
+        );
 
         if (
-            !$isDirecaoAprovador
+            !$isFinalizadorAprovadorDirecao
+            && !$isDirecaoAprovador
             && $aprovadorDirecaoId > 0
             && $imagem_id_context
             && in_array((int)$funcao_id_context, [5, 6], true)
@@ -381,29 +398,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($isFuncaoComDirecao && $isTipoAprovacaoComDirecao && ($isPrimeiroAprovadorDirecao || $isFinalizadorAprovadorDirecao) && !$isDirecaoAprovador) {
-            // Verifica se já existe um histórico 'Aguardando Direção' para esta tarefa
-            $stmtChkDir = $conn->prepare(
-                "SELECT id FROM historico_aprovacoes WHERE funcao_imagem_id = ? AND status_novo = 'Aguardando Direção' LIMIT 1"
-            );
-            $stmtChkDir->bind_param("i", $idfuncao_imagem);
-            $stmtChkDir->execute();
-            $stmtChkDir->store_result();
-            $jaAguardandoDirecao = ($stmtChkDir->num_rows > 0);
-            $stmtChkDir->close();
+            $status_dir = "Aguardando Direção";
+            $status_ant_dir = $status_funcao_context ?: "Em aprovação";
+            $novoHistoricoDirecao = false;
+            $historicoDirecaoId = 0;
 
-            if (!$jaAguardandoDirecao) {
-                // 1ª aprovação pelo finalizador: NÃO atualiza funcao_imagem.status
-                // Registra apenas no histórico como intermediário
-                $status_ant_dir = "Em aprovação";
-                $status_dir     = "Aguardando Direção";
-                $stmtDir = $conn->prepare(
-                    "INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)"
+            $conn->begin_transaction();
+            try {
+                $ultimoStatusHistorico = null;
+                $observacoesDirecaoAtual = null;
+                $stmtChkDir = $conn->prepare(
+                    "SELECT id, status_novo, observacoes FROM historico_aprovacoes WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1 FOR UPDATE"
                 );
-                $stmtDir->bind_param("issii", $idfuncao_imagem, $status_ant_dir, $status_dir, $colaborador_id, $responsavel);
-                $stmtDir->execute();
-                $stmtDir->close();
+                if (!$stmtChkDir) {
+                    throw new RuntimeException('Falha ao preparar verificacao de aprovacao da direcao: ' . $conn->error);
+                }
+                $stmtChkDir->bind_param("i", $idfuncao_imagem);
+                $stmtChkDir->execute();
+                $stmtChkDir->bind_result($historicoDirecaoId, $ultimoStatusHistorico, $observacoesDirecaoAtual);
+                $temHistoricoAnterior = $stmtChkDir->fetch();
+                $jaAguardandoDirecao = ($temHistoricoAnterior && $ultimoStatusHistorico === $status_dir);
+                $stmtChkDir->close();
 
-                // Notifica direção via Slack (busca nome_slack dos colaboradores 21 e 2)
+                $observacaoDirecao = json_encode([
+                    'aprovacao_operacional' => $status,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                if (!$jaAguardandoDirecao) {
+                    $stmtDir = $conn->prepare(
+                        "INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel, observacoes) VALUES (?, ?, ?, ?, ?, ?)"
+                    );
+                    if (!$stmtDir) {
+                        throw new RuntimeException('Falha ao preparar historico de aguardando direcao: ' . $conn->error);
+                    }
+                    $stmtDir->bind_param("issiis", $idfuncao_imagem, $status_ant_dir, $status_dir, $colaborador_id, $responsavel, $observacaoDirecao);
+                    if (!$stmtDir->execute()) {
+                        $erroInsertDirecao = $stmtDir->error;
+                        $stmtDir->close();
+                        throw new RuntimeException('Falha ao registrar historico de aguardando direcao: ' . $erroInsertDirecao);
+                    }
+                    $historicoDirecaoId = (int)$conn->insert_id;
+                    $novoHistoricoDirecao = true;
+                    $stmtDir->close();
+                } else {
+                    $obsAtual = json_decode((string)$observacoesDirecaoAtual, true);
+                    if (!is_array($obsAtual) || empty($obsAtual['aprovacao_operacional'])) {
+                        $stmtObsDir = $conn->prepare(
+                            "UPDATE historico_aprovacoes SET observacoes = ? WHERE id = ?"
+                        );
+                        if (!$stmtObsDir) {
+                            throw new RuntimeException('Falha ao preparar complemento da aprovacao operacional: ' . $conn->error);
+                        }
+                        $stmtObsDir->bind_param("si", $observacaoDirecao, $historicoDirecaoId);
+                        if (!$stmtObsDir->execute()) {
+                            $erroObsDirecao = $stmtObsDir->error;
+                            $stmtObsDir->close();
+                            throw new RuntimeException('Falha ao complementar aprovacao operacional: ' . $erroObsDirecao);
+                        }
+                        $stmtObsDir->close();
+                    }
+                }
+
+                $stmtStatusDir = $conn->prepare(
+                    "UPDATE funcao_imagem SET status = ?, prioridade_aprovacao = 0 WHERE idfuncao_imagem = ?"
+                );
+                if (!$stmtStatusDir) {
+                    throw new RuntimeException('Falha ao preparar status de aguardando direcao: ' . $conn->error);
+                }
+                $stmtStatusDir->bind_param("si", $status_dir, $idfuncao_imagem);
+                if (!$stmtStatusDir->execute()) {
+                    $erroStatusDirecao = $stmtStatusDir->error;
+                    $stmtStatusDir->close();
+                    throw new RuntimeException('Falha ao atualizar status para aguardando direcao: ' . $erroStatusDirecao);
+                }
+                $stmtStatusDir->close();
+
+                $stmtVerifyDir = $conn->prepare(
+                    "SELECT h.id
+                     FROM historico_aprovacoes h
+                     JOIN funcao_imagem fi ON fi.idfuncao_imagem = h.funcao_imagem_id
+                     WHERE h.funcao_imagem_id = ?
+                       AND h.status_novo = ?
+                       AND fi.status = ?
+                       AND NOT EXISTS (
+                           SELECT 1
+                           FROM historico_aprovacoes h2
+                           WHERE h2.funcao_imagem_id = h.funcao_imagem_id
+                             AND h2.id > h.id
+                       )
+                     ORDER BY h.id DESC
+                     LIMIT 1"
+                );
+                if (!$stmtVerifyDir) {
+                    throw new RuntimeException('Falha ao preparar verificacao final de aguardando direcao: ' . $conn->error);
+                }
+                $stmtVerifyDir->bind_param("iss", $idfuncao_imagem, $status_dir, $status_dir);
+                $stmtVerifyDir->execute();
+                $stmtVerifyDir->store_result();
+                $gravacaoDirecaoOk = ($stmtVerifyDir->num_rows > 0);
+                $stmtVerifyDir->close();
+
+                if (!$gravacaoDirecaoOk) {
+                    throw new RuntimeException('Aprovacao de direcao nao foi confirmada no banco.');
+                }
+
+                $conn->commit();
+            } catch (Throwable $e) {
+                $conn->rollback();
+                throw $e;
+            }
+
+            if ($novoHistoricoDirecao) {
                 $stmtDirSlack = $conn->prepare(
                     "SELECT u.nome_slack FROM usuario u WHERE u.idcolaborador IN (21, 2) AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
                 );
@@ -420,6 +525,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $resultadoFinal['success']          = true;
             $resultadoFinal['message']          = 'Aprovação registrada. Aguardando validação da direção.';
             $resultadoFinal['aguardando_direcao'] = true;
+            $resultadoFinal['status_aprovacao'] = $status;
+            $resultadoFinal['historico_direcao_id'] = $historicoDirecaoId;
             echo json_encode($resultadoFinal);
             $conn->close();
             exit;
@@ -488,6 +595,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         aprovacao_interna_ensure_schema($conn);
         $conn->begin_transaction();
 
+        if (
+            $isDirecaoAprovador
+            && $tipoRevisao === 'aprovado'
+            && normalize_name((string)$status_funcao_context) === 'aguardando direcao'
+        ) {
+            $stmtOrigemDirecao = $conn->prepare(
+                "SELECT observacoes
+                 FROM historico_aprovacoes
+                 WHERE funcao_imagem_id = ?
+                   AND status_novo = 'Aguardando Direção'
+                 ORDER BY id DESC
+                 LIMIT 1"
+            );
+            if ($stmtOrigemDirecao) {
+                $stmtOrigemDirecao->bind_param("i", $idfuncao_imagem);
+                $stmtOrigemDirecao->execute();
+                $stmtOrigemDirecao->bind_result($observacoesDirecao);
+                if ($stmtOrigemDirecao->fetch()) {
+                    $origemDirecao = json_decode((string)$observacoesDirecao, true);
+                    if (
+                        is_array($origemDirecao)
+                        && ($origemDirecao['aprovacao_operacional'] ?? null) === 'Aprovado com ajustes'
+                    ) {
+                        $status = 'Aprovado com ajustes';
+                    }
+                }
+                $stmtOrigemDirecao->close();
+            }
+        }
+
         $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
         $stmt->bind_param("si", $status, $idfuncao_imagem);
 
@@ -504,7 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtPrio->close();
             }
 
-            $status_anterior = "Em aprovação";
+            $status_anterior = $status_funcao_context ?: "Em aprovação";
             $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
             $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel);
             $stmt->execute();
@@ -621,7 +758,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (
                 in_array($status, ['Aprovado']) &&
                 (
-                    (int)$funcao_id_context === 6 ||
                     $nomeFuncaoLower === 'pós-produção' ||
                     ($nomeFuncaoLower === 'finalização' && stripos((string)$tipo_imagem_nome, 'humanizada') !== false)
                 )
@@ -783,15 +919,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isP00ModelagemReview
             ||
             (
-                (in_array($nomeFuncaoLower, ['pós-produção', 'alteração']) || (int)$funcao_id_context === 6) &&
+                (in_array($nomeFuncaoLower, ['pós-produção'])) &&
                 in_array($status, ['Aprovado'])
             )
             ||
             (
-                // 🔸 Nova condição: finalização de planta humanizada
-                $nomeFuncaoLower === 'finalização' &&
+                // 🔸 Finalização ou Alteração de Planta Humanizada
+                in_array($nomeFuncaoLower, ['finalização', 'alteração'], true) &&
                 stripos((string)$tipo_imagem_nome, 'humanizada') !== false &&
-                in_array($status, ['Aprovado'])
+                $status === 'Aprovado'
             )
         ) {
             if ($isP00ModelagemReview) {

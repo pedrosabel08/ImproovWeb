@@ -240,6 +240,14 @@ $conn->close();
                     <div class="content">
                     </div>
                 </div>
+                <div class="kanban-box" id="aguardando-direcao">
+                    <div class="header" style="background-color: #22d3ee;">
+                        <div class="title"><i class="ri-shield-check-line"></i><span>Aguardando Direção</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
                 <div class="kanban-box" id="ajuste">
                     <div class="header" style="background-color: #fd5353bf;">
                         <div class="title"><i class="ri-tools-line"></i><span>Em ajuste</span></div>

@@ -1145,6 +1145,7 @@ const MODERN_FC_STATUS_CLASSES = [
   "fc-status-finalizado",
   "fc-status-andamento",
   "fc-status-aprovacao",
+  "fc-status-aguardando-direcao",
   "fc-status-aprovado",
   "fc-status-ajuste",
   "fc-status-ajuste-apts",
@@ -1326,6 +1327,8 @@ function updateModernStatusClass(select) {
     select.classList.add("fc-status-nao-iniciado");
   } else if (value.includes("aprovado com ajustes")) {
     select.classList.add("fc-status-ajuste-apts");
+  } else if (value.includes("aguardando direcao")) {
+    select.classList.add("fc-status-aguardando-direcao");
   } else if (value.includes("em aprovacao")) {
     select.classList.add("fc-status-aprovacao");
   } else if (value.includes("aprovado")) {
@@ -6094,6 +6097,7 @@ const _FC_ALL_CLASSES = [
   "fc-status-finalizado",
   "fc-status-andamento",
   "fc-status-aprovacao",
+  "fc-status-aguardando-direcao",
   "fc-status-aprovado",
   "fc-status-ajuste",
   "fc-status-ajuste-apts",
@@ -6116,6 +6120,10 @@ function applyStatusStyle(cell, status, colaborador) {
       break;
     case "Em aprovação":
       cell.classList.add("fc-status-aprovacao");
+      break;
+    case "Aguardando Direção":
+    case "Aguardando Direcao":
+      cell.classList.add("fc-status-aguardando-direcao");
       break;
     case "Aprovado":
       cell.classList.add("fc-status-aprovado");

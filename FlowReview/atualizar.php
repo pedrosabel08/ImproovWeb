@@ -478,7 +478,7 @@ try {
     }
     $stmtDir->close();
 
-    $isDirecao = in_array((int)$idcolaborador, [21, 2, 31], true);
+    $isDirecao = in_array((int)$idcolaborador, [21, 9, 31], true);
 
     foreach ($tarefas as &$t) {
       if (in_array(intval($t['funcao_id']), [4, 5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {

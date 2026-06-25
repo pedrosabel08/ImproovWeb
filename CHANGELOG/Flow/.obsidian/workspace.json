@@ -4,24 +4,24 @@
     "type": "split",
     "children": [
       {
-        "id": "d8b4f64ad040fce1",
+        "id": "2fa073c4c0ade406",
         "type": "tabs",
         "children": [
           {
-            "id": "42011ce7149114b3",
+            "id": "a10e7d50fc44a174",
             "type": "leaf",
             "state": {
               "type": "canvas",
               "state": {
-                "file": "Sem título.canvas",
+                "file": "Alteração/Flow_Tela_Alteracoes_v2_Obsidian.canvas",
                 "viewState": {
-                  "x": 0,
-                  "y": 558,
-                  "zoom": 0
+                  "x": 1612.0787832170276,
+                  "y": 567.90137902483,
+                  "zoom": -2.3333333333333326
                 }
               },
               "icon": "lucide-layout-dashboard",
-              "title": "Sem título"
+              "title": "Flow_Tela_Alteracoes_v2_Obsidian"
             }
           }
         ]
@@ -81,7 +81,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 449.5
   },
   "right": {
     "id": "fe912766f8908b14",
@@ -97,6 +97,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Alteração/Flow_Tela_Alteracoes_v2_Obsidian.canvas",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -106,7 +107,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Links inversos para Flow_Tela_Alteracoes_v2_Obsidian"
             }
           },
           {
@@ -134,7 +135,7 @@
                 "searchQuery": ""
               },
               "icon": "lucide-tags",
-              "title": "Tags"
+              "title": "Etiquetas"
             }
           },
           {
@@ -151,7 +152,8 @@
               "title": "Sumário"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "horizontal",
@@ -169,8 +171,20 @@
       "command-palette:Abrir paleta de comandos": false
     }
   },
-  "active": "42011ce7149114b3",
+  "active": "a10e7d50fc44a174",
   "lastOpenFiles": [
+    "imagens/layout_alteracao.png",
+    "Alteração/Flow_Tela_Alteracoes_v2_Obsidian.canvas",
+    "Alteração/Alterações.md",
+    "2026-06-23.md",
+    "Sem título.md",
+    "Flow_Pre-Alteracao_Alteracao_Obsidian.canvas",
+    "Alteração",
+    "pre_alteracaoV2.md",
+    "Entregas",
+    "modulo_fotografico.md",
+    "Flow_Tela_Alteracoes_Backlog_Obsidian.canvas",
+    "Flow_Pre-Alteracao_Alteracao.canvas",
     "Report_Inteligencia_Operacional.md",
     "render.md",
     "Sem título.canvas",
@@ -182,7 +196,6 @@
     "uploadArquivos.md",
     "uploadArquivos.html",
     "Flow Review.md",
-    "Sem título",
     "changelog.md",
     "GANTT.md",
     "imagens.md",
@@ -198,7 +211,6 @@
     "Pasted image 20250526160539.png",
     "Registro de atualizações Flow.md",
     "videos",
-    "imagens",
     "Bem-vindo.md"
   ]
 }

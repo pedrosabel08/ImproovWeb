@@ -70,7 +70,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&t=' . filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 

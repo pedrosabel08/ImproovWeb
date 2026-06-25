@@ -464,8 +464,43 @@ function atualizarTabela() {
 
           columns: [
             {
-              title: "Status Render",
+              title: "Status",
+              field: "status_pos",
+              hozAlign: "center",
+              width: 120,
+              formatter: (cell) => {
+                let val = cell.getValue();
+                let txt = val == 1 ? "Não começou" : "Finalizado";
+                let cor = val == 1 ? "red" : "green";
+                return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`;
+              },
+            },
+            {
+              title: "Nome imagem",
+              field: "imagem_nome",
+              widthGrow: 3,
+              formatter: function (cell) {
+                return cell.getValue() || "";
+              },
+            },
+            { title: "Nome Obra", field: "nomenclatura" },
+            {
+              title: "Etapa",
+              field: "nome_status",
+              hozAlign: "center",
+              width: 100,
+              formatter: function (cell) {
+                let val = cell.getValue() || "";
+                let cor = val.toLowerCase();
+                return `<span style="background:var(--si-${cor});color:black;padding:4px 6px;border-radius:4px;font-size:12px;font-weight:bold">${val}</span>`;
+              },
+            },
+            { title: "Nome Finalizador", field: "nome_colaborador" },
+            {
+              title: "Render",
               field: "status_render",
+              hozAlign: "center",
+              width: 130,
               formatter: (cell) => {
                 let val = cell.getValue() || "";
                 let cores = {
@@ -476,62 +511,30 @@ function atualizarTabela() {
                   Reprovado: "red",
                   "Em aprovação": "blue",
                 };
-                let cor = cores[val] || "gray"; // fallback caso venha um status inesperado
+                let cor = cores[val] || "gray";
                 return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${val}</span>`;
               },
-            },
-            { title: "Nome Finalizador", field: "nome_colaborador" },
-            { title: "Nome Obra", field: "nomenclatura" },
-            {
-              title: "Data",
-              field: "data_pos",
-              formatter: (cell) => formatarDataHora(cell.getValue()),
             },
             {
               title: "Prazo",
               field: "prazo",
-
               hozAlign: "center",
               width: 120,
               formatter: function (cell) {
                 var row = cell.getRow().getData();
-                // Não mostrar badge quando status_pos == 0
                 if (String(row.status_pos) === "0" || row.status_pos === 0)
                   return "";
-                // Usa o valor da célula (prazo) ou fallback para row.prazo
+
                 var val = cell.getValue() || row.prazo;
                 return formatDeadlineBadge(val);
               },
             },
             {
-              title: "Nome imagem",
-              field: "imagem_nome",
-              widthGrow: 3,
-              formatter: function (cell) {
-                var nome = cell.getValue() || "";
-                return nome;
-              },
+              title: "Data",
+              field: "data_pos",
+              width: 150,
+              formatter: (cell) => formatarDataHora(cell.getValue()),
             },
-            {
-              title: "Status",
-              field: "status_pos",
-              formatter: (cell) => {
-                let val = cell.getValue();
-                let txt = val == 1 ? "Não começou" : "Finalizado";
-                let cor = val == 1 ? "red" : "green";
-                return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`;
-              },
-            },
-            {
-              title: "Revisão",
-              field: "nome_status",
-              formatter: function (cell) {
-                let val = (cell.getValue() || "");
-                let cor = val.toLowerCase();
-                return `<span style="background:var(--si-${cor});color:black;padding:4px 6px;border-radius:4px;font-size:12px;font-weight:bold">${val}</span>`;
-              },
-            },
-            // { title: "Responsável", field: "nome_responsavel", headerFilter: "list", headerFilterParams: { values: listaValores("nome_responsavel") } },
           ],
         });
         // Atualiza total ao filtrar
@@ -712,7 +715,10 @@ document.addEventListener("click", function (event) {
     return;
   }
 
-  if (!posFilterBar?.classList.contains("open") || !isPosFilterModalViewport()) {
+  if (
+    !posFilterBar?.classList.contains("open") ||
+    !isPosFilterModalViewport()
+  ) {
     return;
   }
   if (
@@ -756,53 +762,57 @@ document.getElementById("fb-busca").addEventListener("input", function () {
 });
 
 // Filter bar — Aplicar
-document.getElementById("fb-aplicar").addEventListener("click", function (event) {
-  if (!tabelaGlobal) return;
-  document.querySelectorAll(".metric-card").forEach(function (c) {
-    c.classList.remove("metric-card--active");
+document
+  .getElementById("fb-aplicar")
+  .addEventListener("click", function (event) {
+    if (!tabelaGlobal) return;
+    document.querySelectorAll(".metric-card").forEach(function (c) {
+      c.classList.remove("metric-card--active");
+    });
+    tabelaGlobal.clearFilter();
+    var filtersArr = [];
+    var busca = document.getElementById("fb-busca").value.trim();
+    if (busca)
+      filtersArr.push({ field: "imagem_nome", type: "like", value: busca });
+    var statusRenderVal = document.getElementById("fb-status-render").value;
+    if (statusRenderVal)
+      filtersArr.push({
+        field: "status_render",
+        type: "=",
+        value: statusRenderVal,
+      });
+    var statusPosVal = document.getElementById("fb-status-pos").value;
+    if (statusPosVal !== "")
+      filtersArr.push({
+        field: "status_pos",
+        type: "=",
+        value: parseInt(statusPosVal),
+      });
+    var obraVal = document.getElementById("fb-obra").value;
+    if (obraVal)
+      filtersArr.push({ field: "nomenclatura", type: "=", value: obraVal });
+    var finalizadorVal = document.getElementById("fb-finalizador").value;
+    if (finalizadorVal)
+      filtersArr.push({
+        field: "nome_colaborador",
+        type: "=",
+        value: finalizadorVal,
+      });
+    if (filtersArr.length > 0) tabelaGlobal.setFilter(filtersArr);
+    if (event.isTrusted) closePosFilters();
   });
-  tabelaGlobal.clearFilter();
-  var filtersArr = [];
-  var busca = document.getElementById("fb-busca").value.trim();
-  if (busca)
-    filtersArr.push({ field: "imagem_nome", type: "like", value: busca });
-  var statusRenderVal = document.getElementById("fb-status-render").value;
-  if (statusRenderVal)
-    filtersArr.push({
-      field: "status_render",
-      type: "=",
-      value: statusRenderVal,
-    });
-  var statusPosVal = document.getElementById("fb-status-pos").value;
-  if (statusPosVal !== "")
-    filtersArr.push({
-      field: "status_pos",
-      type: "=",
-      value: parseInt(statusPosVal),
-    });
-  var obraVal = document.getElementById("fb-obra").value;
-  if (obraVal)
-    filtersArr.push({ field: "nomenclatura", type: "=", value: obraVal });
-  var finalizadorVal = document.getElementById("fb-finalizador").value;
-  if (finalizadorVal)
-    filtersArr.push({
-      field: "nome_colaborador",
-      type: "=",
-      value: finalizadorVal,
-    });
-  if (filtersArr.length > 0) tabelaGlobal.setFilter(filtersArr);
-  if (event.isTrusted) closePosFilters();
-});
 
 // Filter bar — Limpar
-document.getElementById("fb-limpar").addEventListener("click", function (event) {
-  resetarFiltrosBar();
-  document.querySelectorAll(".metric-card").forEach(function (c) {
-    c.classList.remove("metric-card--active");
+document
+  .getElementById("fb-limpar")
+  .addEventListener("click", function (event) {
+    resetarFiltrosBar();
+    document.querySelectorAll(".metric-card").forEach(function (c) {
+      c.classList.remove("metric-card--active");
+    });
+    if (tabelaGlobal) tabelaGlobal.clearFilter();
+    if (event.isTrusted) closePosFilters();
   });
-  if (tabelaGlobal) tabelaGlobal.clearFilter();
-  if (event.isTrusted) closePosFilters();
-});
 
 // Metric cards — click para filtrar tabela
 document.querySelectorAll(".metric-card").forEach(function (card) {

@@ -41,7 +41,7 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../Dashboard/styleObra.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&altconf=20260624-ipad5'; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -155,6 +155,16 @@ $conn->close();
                     </div>
                     <div class="kanban-cards" id="kanban-nao-iniciado"></div>
                 </div>
+                <div class="kanban-column" data-status="HOLD">
+                    <div class="kanban-title">
+                        HOLD
+                        <div class="kanban-title-right">
+                            <span class="ef-count" id="ef-count-hold"><i class="fa-solid fa-bolt"></i><span>0</span></span>
+                            <span class="count" id="count-hold">0</span>
+                        </div>
+                    </div>
+                    <div class="kanban-cards" id="kanban-hold"></div>
+                </div>
                 <div class="kanban-column" data-status="Em andamento">
                     <div class="kanban-title">
                         Em andamento
@@ -175,7 +185,27 @@ $conn->close();
                     </div>
                     <div class="kanban-cards" id="kanban-em-aprovacao"></div>
                 </div>
-                <div class="kanban-column" data-status="Finalizado">
+                <div class="kanban-column" data-status="Ajuste">
+                    <div class="kanban-title">
+                        Ajuste
+                        <div class="kanban-title-right">
+                            <span class="ef-count" id="ef-count-ajuste"><i class="fa-solid fa-bolt"></i><span>0</span></span>
+                            <span class="count" id="count-ajuste">0</span>
+                        </div>
+                    </div>
+                    <div class="kanban-cards" id="kanban-ajuste"></div>
+                </div>
+                <div class="kanban-column" data-status="Aprovado com ajustes">
+                    <div class="kanban-title">
+                        Aprovado com ajustes
+                        <div class="kanban-title-right">
+                            <span class="ef-count" id="ef-count-aprovado-ajustes"><i class="fa-solid fa-bolt"></i><span>0</span></span>
+                            <span class="count" id="count-aprovado-ajustes">0</span>
+                        </div>
+                    </div>
+                    <div class="kanban-cards" id="kanban-aprovado-ajustes"></div>
+                </div>
+                <!-- <div class="kanban-column" data-status="Finalizado">
                     <div class="kanban-title">
                         Finalizado
                         <div class="kanban-title-right">
@@ -184,7 +214,7 @@ $conn->close();
                         </div>
                     </div>
                     <div class="kanban-cards" id="kanban-finalizado"></div>
-                </div>
+                </div> -->
             </div>
 
         </div><!-- /.board-area -->

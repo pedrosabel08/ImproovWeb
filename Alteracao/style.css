@@ -42,8 +42,11 @@
   --accent-glow: rgba(79, 128, 225, 0.25);
 
   --status-nao-iniciado: #94a3b8;
+  --status-hold: #b12d2d;
   --status-em-andamento: #f59e0b;
-  --status-em-aprovacao: #8b5cf6;
+  --status-em-aprovacao: #457feb;
+  --status-ajuste: #e72828;
+  --status-aprovado-ajustes: #8b5cf6;
   --status-finalizado: #10b981;
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -92,6 +95,656 @@
   --btn-clear-bg: #fff5f5;
   --btn-clear-color: #c92a2a;
   --btn-clear-bg-hover: #ffe3e3;
+}
+
+/* Conference modal */
+.alt-conference-modal {
+  background: rgba(4, 8, 14, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 10px;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.alt-conference-modal.is-open {
+  display: flex;
+}
+
+.alt-conference-shell {
+  --alt-bg: #080d14;
+  --alt-panel: #0d131d;
+  --alt-border: rgba(255, 255, 255, 0.08);
+  --alt-border-strong: rgba(255, 255, 255, 0.14);
+  --alt-text: #eef4ff;
+  --alt-muted: #8b9bb1;
+  --alt-dim: #5d6b7c;
+  --alt-blue: #1f7ae0;
+  --alt-green: #18c34a;
+  --alt-yellow: #f5b51b;
+  width: 100%;
+  height: calc(100vh - 20px);
+  max-height: calc(100vh - 20px);
+  border-radius: 8px;
+  background: var(--alt-bg);
+  color: var(--alt-text);
+  border: 1px solid var(--alt-border);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  animation: modalSlideUp 0.22s ease;
+}
+
+.alt-conf-header {
+  display: grid;
+  grid-template-columns: minmax(330px, 1.4fr) minmax(520px, 2fr) auto;
+  gap: 24px;
+  align-items: start;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--alt-border);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 24, 35, 0.96),
+    rgba(8, 13, 20, 0.98)
+  );
+}
+
+.alt-conf-identity {
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+}
+
+.alt-conf-thumb {
+  width: 138px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  background: #111923;
+  border: 1px solid var(--alt-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--alt-dim);
+  flex-shrink: 0;
+}
+
+.alt-conf-thumb img,
+.alt-conf-image-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.alt-conf-title-block {
+  min-width: 0;
+}
+
+.alt-conf-title {
+  color: var(--alt-text);
+  font-size: 20px;
+  line-height: 1.18;
+  margin: 8px 0 6px;
+}
+
+.alt-conf-description {
+  color: var(--alt-muted);
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.alt-conf-tags,
+.alt-conf-header-actions,
+.alt-conf-image-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.alt-conf-tags span,
+.alt-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--alt-border);
+  color: var(--alt-text);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.alt-conf-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: 14px 26px;
+  min-width: 0;
+}
+
+.alt-conf-meta span {
+  display: block;
+  color: var(--alt-muted);
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.alt-conf-meta strong {
+  color: var(--alt-text);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+#altConfStatus {
+  background: rgba(31, 122, 224, 0.18);
+  color: #9cc7ff;
+  border-color: rgba(31, 122, 224, 0.35);
+}
+
+#altConfComplexidade:not(:empty)::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--alt-yellow);
+  margin-right: 6px;
+}
+
+.alt-conf-header-actions {
+  justify-content: flex-end;
+}
+
+.alt-conf-btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--alt-border);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--alt-text);
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.alt-conf-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.alt-conf-btn.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.alt-conference-shell .modal-close {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--alt-border);
+  color: var(--alt-muted);
+}
+
+.alt-conf-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(460px, 1fr) minmax(
+      300px,
+      420px
+    );
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.alt-conf-left,
+.alt-conf-main,
+.alt-conf-right {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.alt-conf-left,
+.alt-conf-right,
+.alt-conf-main,
+.alt-conf-summary,
+.alt-conf-file-list,
+.alt-conf-ref-list,
+.alt-conf-history,
+.alt-conf-communication,
+.alt-conf-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alt-conf-nav,
+.alt-conf-card,
+.alt-conf-image-card {
+  background: var(--alt-panel);
+  border: 1px solid var(--alt-border);
+  border-radius: 6px;
+}
+
+.alt-conf-nav {
+  padding: 14px;
+}
+
+.alt-conf-nav strong {
+  color: #96a2ff;
+  font-size: 13px;
+  margin: 2px 2px 8px;
+}
+
+.alt-conf-nav a {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--alt-text);
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 9px 10px;
+  font-size: 12px;
+}
+
+.alt-conf-nav a.active,
+.alt-conf-nav a:hover {
+  background: rgba(31, 122, 224, 0.25);
+}
+
+.alt-conf-nav a span,
+.alt-conf-tabs span {
+  min-width: 20px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--alt-muted);
+  font-size: 10px;
+}
+
+.alt-conf-card,
+.alt-conf-image-card {
+  padding: 14px;
+}
+
+.alt-conf-card-title,
+.alt-conf-section-head,
+.alt-conf-current-version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+}
+
+.alt-conf-card-title h3,
+.alt-conf-section-head h3 {
+  margin: 0;
+  color: var(--alt-text);
+  font-size: 14px;
+}
+
+.alt-conf-card-title button {
+  border: none;
+  background: none;
+  color: #4097ff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.alt-conf-summary-row,
+.alt-conf-summary-block {
+  border-top: 1px solid var(--alt-border);
+  padding: 10px 0;
+}
+
+.alt-conf-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alt-conf-summary span {
+  color: var(--alt-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.alt-conf-summary strong,
+.alt-conf-summary p {
+  color: var(--alt-text);
+  font-size: 12px;
+  margin: 5px 0 0;
+  line-height: 1.5;
+}
+
+.alt-conf-image-tools button {
+  width: 34px;
+  height: 30px;
+  border: 1px solid var(--alt-border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--alt-text);
+  cursor: pointer;
+  text-align: center;
+}
+
+#altConfZoomValue {
+  width: 64px;
+}
+
+.alt-conf-image-stage {
+  height: min(54vh, 620px);
+  min-height: 320px;
+  background: #05080d;
+  border: 1px solid var(--alt-border-strong);
+  border-radius: 6px;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alt-conf-image-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.16s ease;
+}
+
+.alt-conf-image-empty,
+.alt-conf-empty {
+  min-height: 80px;
+  color: var(--alt-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.alt-conf-current-version {
+  padding: 12px 14px 0;
+}
+
+.alt-conf-current-version > div {
+  display: grid;
+  grid-template-columns: 18px auto;
+  gap: 0 10px;
+  align-items: center;
+}
+
+.alt-conf-current-version small {
+  grid-column: 2;
+  color: var(--alt-muted);
+  font-size: 11px;
+}
+
+.alt-conf-live-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--alt-green);
+  box-shadow: 0 0 0 5px rgba(24, 195, 74, 0.12);
+}
+
+.alt-conf-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.alt-conf-tabs {
+  display: flex;
+  gap: 10px;
+  border-bottom: 1px solid var(--alt-border);
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+
+.alt-conf-tabs button {
+  border: none;
+  background: transparent;
+  color: var(--alt-muted);
+  padding: 0 0 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.alt-conf-tabs button.active {
+  color: #4097ff;
+  box-shadow: 0 2px 0 #1f7ae0;
+}
+
+.alt-conf-file-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.alt-conf-file-icon,
+.alt-conf-avatar,
+.alt-conf-history-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(31, 122, 224, 0.16);
+  color: #74b5ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.alt-conf-file-info {
+  min-width: 0;
+}
+
+.alt-conf-file-info strong,
+.alt-conf-message strong,
+.alt-conf-history-item strong {
+  display: block;
+  color: var(--alt-text);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alt-conf-file-info span,
+.alt-conf-file-row small,
+.alt-conf-message p,
+.alt-conf-message small,
+.alt-conf-history-item span,
+.alt-conf-history-item small {
+  color: var(--alt-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.alt-conf-history-item,
+.alt-conf-message,
+.alt-conf-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.alt-conf-message strong span {
+  color: #4097ff;
+  margin-left: 6px;
+  font-size: 10px;
+}
+
+.alt-conf-step {
+  grid-template-columns: 18px 1fr;
+  color: var(--alt-muted);
+  font-size: 12px;
+}
+
+.alt-conf-step span {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--alt-dim);
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+.alt-conf-step.active {
+  color: #4097ff;
+}
+
+.alt-conf-step.active span {
+  border-color: #4097ff;
+  background: #4097ff;
+  box-shadow: 0 0 0 4px rgba(64, 151, 255, 0.15);
+}
+
+.alt-conf-footer {
+  align-items: end;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--alt-bg);
+  border-top: 1px solid var(--alt-border);
+}
+
+.alt-conf-footer-form {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(160px, 0.8fr) 130px minmax(
+      170px,
+      1fr
+    );
+  gap: 8px;
+  min-width: 0;
+}
+
+.alt-conf-footer .modal-field-group {
+  gap: 4px;
+}
+
+.alt-conf-footer .filter-label {
+  color: var(--alt-muted);
+  font-size: 10px;
+}
+
+.alt-conf-footer .filter-select,
+.alt-conf-footer .filter-input {
+  min-height: 34px;
+  font-size: 12px;
+}
+
+@media (min-width: 1900px) {
+  .alt-conf-body {
+    grid-template-columns: minmax(280px, 360px) minmax(720px, 1fr) minmax(
+        360px,
+        500px
+      );
+  }
+}
+
+@media (max-width: 1360px) {
+  .alt-conf-header {
+    grid-template-columns: 1fr;
+  }
+
+  .alt-conf-header-actions {
+    justify-content: flex-start;
+  }
+
+  .alt-conf-body {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .alt-conf-right {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .alt-conf-footer {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 980px) {
+  .alt-conference-modal {
+    padding: 0;
+  }
+
+  .alt-conference-shell {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .alt-conf-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .alt-conf-left,
+  .alt-conf-main,
+  .alt-conf-right {
+    overflow: visible;
+  }
+
+  .alt-conf-right,
+  .alt-conf-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .alt-conf-meta-grid,
+  .alt-conf-footer-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .alt-conf-header {
+    padding: 12px;
+  }
+
+  .alt-conf-identity {
+    flex-direction: column;
+  }
+
+  .alt-conf-thumb {
+    width: 100%;
+  }
+
+  .alt-conf-meta-grid,
+  .alt-conf-footer-form {
+    grid-template-columns: 1fr;
+  }
+
+  .alt-conf-current-version {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .alt-conf-image-stage {
+    min-height: 240px;
+    height: 42vh;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -347,6 +1000,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
+  text-align: center;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -698,11 +1352,20 @@ body {
 .kanban-column[data-status="Não iniciado"] .kanban-title::before {
   background: var(--status-nao-iniciado);
 }
+.kanban-column[data-status="HOLD"] .kanban-title::before {
+  background: var(--status-hold);
+}
 .kanban-column[data-status="Em andamento"] .kanban-title::before {
   background: var(--status-em-andamento);
 }
 .kanban-column[data-status="Em aprovação"] .kanban-title::before {
   background: var(--status-em-aprovacao);
+}
+.kanban-column[data-status="Ajuste"] .kanban-title::before {
+  background: var(--status-ajuste);
+}
+.kanban-column[data-status="Aprovado com ajustes"] .kanban-title::before {
+  background: var(--status-aprovado-ajustes);
 }
 .kanban-column[data-status="Finalizado"] .kanban-title::before {
   background: var(--status-finalizado);
@@ -1303,5 +1966,923 @@ body {
   }
   .container {
     padding: 14px;
+  }
+}
+
+/* Conference modal final overrides */
+.alt-conference-modal .alt-conference-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100dvh - 20px);
+  max-height: calc(100dvh - 20px);
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  background: #080d14;
+  overflow: hidden;
+}
+
+.alt-conference-modal .alt-conf-header {
+  flex: 0 0 auto;
+  grid-template-columns: minmax(330px, 1.1fr) minmax(560px, 1.7fr) auto;
+  gap: 18px;
+  height: auto;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  position: static;
+  top: auto;
+  z-index: auto;
+  box-shadow: none;
+}
+
+.alt-conference-modal .alt-conf-identity,
+.alt-conference-modal .alt-conf-title-block,
+.alt-conference-modal .alt-conf-meta-grid,
+.alt-conference-modal .alt-conf-header-actions {
+  min-width: 0;
+}
+
+.alt-conference-modal .alt-conf-title,
+.alt-conference-modal .alt-conf-description {
+  overflow-wrap: anywhere;
+}
+
+.alt-conference-modal .alt-conf-body {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.alt-conference-modal .alt-conf-left,
+.alt-conference-modal .alt-conf-main,
+.alt-conference-modal .alt-conf-right {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.alt-conference-modal .alt-conf-main {
+  display: grid;
+  grid-template-rows: auto 20vh;
+  grid-template-columns: 1fr;
+}
+
+.alt-conference-modal .alt-conf-image-stage {
+  height: clamp(300px, 48dvh, 620px);
+}
+
+.alt-conference-modal .alt-conf-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #080d14;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.alt-conference-modal .alt-conf-footer-form {
+  flex: 1 1 620px;
+  min-width: 0;
+  grid-template-columns:
+    minmax(135px, 0.9fr) minmax(145px, 0.9fr) minmax(110px, 0.55fr)
+    minmax(150px, 1.1fr);
+}
+
+/* @media (max-width: 1700px) {
+  .alt-conference-modal .alt-conf-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 12px;
+  }
+
+  .alt-conference-modal .alt-conf-identity {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .alt-conference-modal .alt-conf-meta-grid {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px 18px;
+  }
+
+  .alt-conference-modal .alt-conf-thumb {
+    width: 126px;
+  }
+
+  .alt-conference-modal .alt-conf-title {
+    margin-top: 2px;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    overflow-y: auto;
+    align-content: start;
+  }
+
+  .alt-conference-modal .alt-conf-left,
+  .alt-conference-modal .alt-conf-main,
+  .alt-conference-modal .alt-conf-right {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .alt-conference-modal .alt-conf-right {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .alt-conference-modal .alt-conf-footer {
+    flex-wrap: wrap;
+  }
+} */
+
+@media (max-width: 1500px) {
+  .alt-conference-modal .alt-conf-header {
+    padding: 12px 14px;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-image-stage {
+    height: clamp(260px, 42dvh, 520px);
+    min-height: 260px;
+  }
+
+  .alt-conference-modal .alt-conf-footer-form {
+    flex-basis: 100%;
+    order: 3;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .alt-conference-modal .alt-conf-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 820px) {
+  .alt-conference-modal {
+    padding: 6px;
+  }
+
+  .alt-conference-modal .alt-conference-shell {
+    height: calc(100dvh - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  .alt-conference-modal .alt-conf-header {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-thumb {
+    width: 112px;
+  }
+
+  .alt-conference-modal .alt-conf-description {
+    margin-bottom: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-meta-grid {
+    gap: 8px 16px;
+  }
+
+  .alt-conference-modal .alt-conf-image-stage {
+    height: clamp(240px, 38dvh, 480px);
+    min-height: 240px;
+  }
+
+  .alt-conference-modal .alt-conf-footer {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+@media (max-width: 980px) {
+  .alt-conference-modal .alt-conference-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    overflow-y: auto;
+  }
+
+  .alt-conference-modal .alt-conf-left,
+  .alt-conference-modal .alt-conf-main,
+  .alt-conference-modal .alt-conf-right {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Tablet-first conference refinements */
+.alt-conference-modal .alt-conference-shell {
+  position: relative;
+}
+
+.alt-conference-modal .alt-conf-more-panel {
+  position: absolute;
+  top: 74px;
+  right: 14px;
+  z-index: 45;
+  width: min(430px, calc(100% - 28px));
+  padding: 14px;
+  background: #0d131d;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.52);
+}
+
+.alt-conference-modal .alt-conf-more-panel[hidden] {
+  display: none;
+}
+
+.alt-conference-modal .alt-conf-more-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #eef4ff;
+  font-size: 13px;
+}
+
+.alt-conference-modal .alt-conf-more-head button,
+.alt-conference-modal .alt-conf-side-head button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #8b9bb1;
+  cursor: pointer;
+}
+
+.alt-conference-modal .alt-conf-more-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.alt-conference-modal .alt-conf-more-link {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #c9d5e5;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.alt-conference-modal .alt-conf-side-toggle,
+.alt-conference-modal .alt-conf-side-head,
+.alt-conference-modal .alt-conf-side-tabs {
+  display: none;
+}
+
+.alt-conference-modal .alt-conf-side-tabs button {
+  text-align: center;
+}
+
+.alt-conference-modal .alt-conf-side-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .alt-conference-modal {
+    padding: 6px;
+  }
+
+  .alt-conference-modal .alt-conference-shell {
+    height: calc(100dvh - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  .alt-conference-modal .alt-conf-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 14px;
+    padding: 10px 12px;
+  }
+
+  .alt-conference-modal .alt-conf-identity {
+    grid-column: 1;
+    gap: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-thumb {
+    width: 92px;
+  }
+
+  .alt-conference-modal .alt-conf-title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    line-height: 1.22;
+  }
+
+  .alt-conference-modal .alt-conf-description {
+    margin-bottom: 7px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .alt-conference-modal .alt-conf-tags span,
+  .alt-conference-modal .alt-pill {
+    padding: 4px 7px;
+    font-size: 10.5px;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    gap: 6px;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions .alt-conf-btn {
+    min-height: 32px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .alt-conference-modal .alt-conf-meta-grid {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px 12px;
+    padding: 9px 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+  }
+
+  .alt-conference-modal .alt-conf-meta span {
+    margin-bottom: 3px;
+    font-size: 9.5px;
+  }
+
+  .alt-conference-modal .alt-conf-meta strong {
+    font-size: 11px;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    --alt-tablet-panel-width: 286px;
+    position: relative;
+    grid-template-columns: 152px minmax(0, 1fr) var(--alt-tablet-panel-width);
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-body {
+    grid-template-columns: 152px minmax(0, 1fr) 0;
+  }
+
+  .alt-conference-modal .alt-conf-left,
+  .alt-conference-modal .alt-conf-main,
+  .alt-conference-modal .alt-conf-right {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-left {
+    gap: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-left #altSecResumo {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-nav {
+    height: 100%;
+    padding: 10px 8px;
+  }
+
+  .alt-conference-modal .alt-conf-nav strong {
+    font-size: 11px;
+  }
+
+  .alt-conference-modal .alt-conf-nav a {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 8px 7px;
+    font-size: 10.8px;
+  }
+
+  .alt-conference-modal .alt-conf-main {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-image-card {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-image-stage {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+
+  .alt-conference-modal .alt-conf-current-version {
+    padding: 9px 8px 0;
+  }
+
+  .alt-conference-modal .alt-conf-bottom-grid {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-side-toggle {
+    position: absolute;
+    top: 50%;
+    right: calc(var(--alt-tablet-panel-width) + 18px);
+    z-index: 32;
+    min-width: 34px;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(13, 19, 29, 0.92);
+    color: #c9d5e5;
+    font-size: 0;
+    cursor: pointer;
+    transition: right 0.22s ease, background 0.16s ease;
+  }
+
+  .alt-conference-modal .alt-conf-side-toggle i {
+    font-size: 13px;
+  }
+
+  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-side-toggle {
+    right: 12px;
+  }
+
+  .alt-conference-modal .alt-conf-right {
+    position: relative;
+    grid-column: auto;
+    grid-row: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: #0b111a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    transition: opacity 0.2s ease, transform 0.22s ease;
+  }
+
+  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-right {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateX(110%) !important;
+  }
+
+  .alt-conference-modal .alt-conf-side-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #eef4ff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button {
+    min-width: 0;
+    min-height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #8b9bb1;
+    font-size: 10.5px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button.active {
+    color: #7bb6ff;
+    border-color: rgba(64, 151, 255, 0.5);
+    background: rgba(31, 122, 224, 0.18);
+  }
+
+  .alt-conference-modal .alt-conf-side-section {
+    display: none;
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-side-section.active {
+    display: flex;
+  }
+
+  .alt-conference-modal .alt-conf-file-list,
+  .alt-conference-modal .alt-conf-ref-list,
+  .alt-conference-modal .alt-conf-steps {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .alt-conference-modal .alt-conf-file-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .alt-conference-modal .alt-conf-file-row small {
+    grid-column: 2;
+  }
+
+  .alt-conference-modal .alt-conf-footer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-footer .btn-action {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .alt-conference-modal {
+    padding: 0;
+  }
+
+  .alt-conference-modal .alt-conference-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .alt-conference-modal .alt-conf-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px 10px;
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-identity {
+    grid-column: 1;
+    gap: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-thumb {
+    width: 76px;
+  }
+
+  .alt-conference-modal .alt-conf-title {
+    margin: 0 0 4px;
+    font-size: 15px;
+  }
+
+  .alt-conference-modal .alt-conf-description {
+    margin-bottom: 6px;
+    font-size: 11.5px;
+    line-height: 1.32;
+  }
+
+  .alt-conference-modal .alt-conf-tags {
+    gap: 5px;
+  }
+
+  .alt-conference-modal .alt-conf-tags span {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    gap: 5px;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions .alt-conf-btn {
+    min-height: 31px;
+    padding: 0 8px;
+    font-size: 0;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions .alt-conf-btn i {
+    font-size: 12px;
+  }
+
+  .alt-conference-modal #altConfMoreActions {
+    font-size: 11px;
+  }
+
+  .alt-conference-modal .alt-conf-meta-grid {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px 9px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+  }
+
+  .alt-conference-modal .alt-conf-meta span {
+    margin-bottom: 2px;
+    font-size: 9px;
+  }
+
+  .alt-conference-modal .alt-conf-meta strong {
+    font-size: 10.5px;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    position: relative;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 7px;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-left,
+  .alt-conference-modal .alt-conf-main {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-left #altSecResumo {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-nav {
+    height: 100%;
+    padding: 8px 6px;
+  }
+
+  .alt-conference-modal .alt-conf-nav strong {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-nav a {
+    position: relative;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    min-height: 42px;
+    padding: 8px 4px;
+    font-size: 0;
+  }
+
+  .alt-conference-modal .alt-conf-nav a i {
+    font-size: 15px;
+  }
+
+  .alt-conference-modal .alt-conf-nav a span {
+    position: absolute;
+    top: 4px;
+    right: 3px;
+    min-width: 16px;
+    min-height: 16px;
+    font-size: 9px;
+  }
+
+  .alt-conference-modal .alt-conf-main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .alt-conference-modal .alt-conf-image-card {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    padding: 9px;
+  }
+
+  .alt-conference-modal .alt-conf-image-stage {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+
+  .alt-conference-modal .alt-conf-bottom-grid {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-right {
+    position: absolute;
+    grid-column: auto;
+    grid-row: auto;
+    top: 7px;
+    right: 7px;
+    bottom: 7px;
+    z-index: 34;
+    width: min(340px, calc(100vw - 82px));
+    height: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    overflow: hidden;
+    background: #0b111a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    box-shadow: -16px 0 38px rgba(0, 0, 0, 0.38);
+    visibility: visible;
+    transform: translateX(0);
+    transition: transform 0.24s ease, box-shadow 0.24s ease, visibility 0s linear;
+  }
+
+  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-right {
+    visibility: hidden;
+    transform: translateX(calc(100% + 24px)) !important;
+    pointer-events: none;
+  }
+
+  .alt-conference-modal .alt-conf-side-toggle {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    z-index: 36;
+    width: 36px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 8px;
+    background: rgba(13, 19, 29, 0.94);
+    color: #c9d5e5;
+    font-size: 0;
+    cursor: pointer;
+    transition: right 0.24s ease, background 0.16s ease;
+  }
+
+  .alt-conference-modal .alt-conference-shell:not(.is-side-collapsed) .alt-conf-side-toggle {
+    right: calc(min(340px, calc(100vw - 82px)) + 14px);
+  }
+
+  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-side-toggle {
+    right: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-side-toggle i {
+    font-size: 13px;
+  }
+
+  .alt-conference-modal .alt-conf-side-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #eef4ff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button {
+    min-height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #8b9bb1;
+    font-size: 0;
+    cursor: pointer;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button i {
+    font-size: 13px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button.active {
+    color: #7bb6ff;
+    border-color: rgba(64, 151, 255, 0.5);
+    background: rgba(31, 122, 224, 0.18);
+  }
+
+  .alt-conference-modal .alt-conf-side-section {
+    display: none;
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-side-section.active {
+    display: flex;
+  }
+
+  .alt-conference-modal .alt-conf-file-list,
+  .alt-conference-modal .alt-conf-ref-list,
+  .alt-conference-modal .alt-conf-steps {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .alt-conference-modal .alt-conf-file-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .alt-conference-modal .alt-conf-file-row small {
+    grid-column: 2;
+  }
+
+  .alt-conference-modal .alt-conf-current-version {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 9px 6px 0;
+  }
+
+  .alt-conference-modal .alt-conf-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-footer .btn-action {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+
+  .alt-conference-modal .alt-conf-more-panel {
+    top: 66px;
+    right: 8px;
+    width: min(360px, calc(100% - 16px));
+  }
+}
+
+@media (max-width: 767px) {
+  .alt-conference-modal .alt-conf-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-footer .btn-action {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .alt-conference-modal .alt-conf-more-form {
+    grid-template-columns: 1fr;
   }
 }

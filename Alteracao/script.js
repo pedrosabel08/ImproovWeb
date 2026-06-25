@@ -3,13 +3,230 @@ let sortableInstances = [];
 const selectedCards = new Set();
 let _filterDebounceTimer = null;
 let cardsCompactos = false;
+let altConferenciaData = null;
+let altCurrentImageUrl = "";
+let altZoom = 1;
+let altSidePanelCollapsed = false;
+let altSidePanelActive = "files";
 
 const STATUS_COLUMNS = [
   { label: "Não iniciado", key: "nao-iniciado" },
+  { label: "HOLD", key: "hold" },
   { label: "Em andamento", key: "em-andamento" },
   { label: "Em aprovação", key: "em-aprovacao" },
-  { label: "Finalizado", key: "finalizado" },
+  { label: "Ajuste", key: "ajuste" },
+  { label: "Aprovado com ajustes", key: "aprovado-ajustes" },
+  // { label: "Finalizado", key: "finalizado" },
 ];
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  const raw = String(value).slice(0, 10);
+  const parts = raw.split("-");
+  if (parts.length !== 3) return escapeHtml(value);
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const [date, time = ""] = String(value).split(" ");
+  const formattedDate = formatDate(date);
+  return time ? `${formattedDate} ${time.slice(0, 5)}` : formattedDate;
+}
+
+function getInitials(name) {
+  return String(name || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toUpperCase();
+}
+
+function sftpToPublicUrl(rawPath) {
+  if (!rawPath) return "";
+  const p = String(rawPath).replace(/\\/g, "/");
+  const full = p.match(
+    /\/mnt\/clientes\/\d+\/([^/]+)\/05\.Exchange\/01\.Input\/(.*)/i,
+  );
+  if (full && full[1] && full[2]) {
+    return `https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/${full[1]}/${full[2]}`;
+  }
+  const angulo = p.match(/\/Angulo_definido\/(.*)/i);
+  if (angulo && angulo[1]) {
+    return `https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/${angulo[1]}`;
+  }
+  const idx = p.indexOf("/05.Exchange/01.Input/");
+  if (idx >= 0) {
+    return `https://improov.com.br/flow/ImproovWeb/uploads/${p.substring(idx + "/05.Exchange/01.Input/".length)}`;
+  }
+  if (/^https?:\/\//i.test(p)) return p;
+  if (/\.(jpg|jpeg|png|webp|gif)$/i.test(p)) {
+    const path = window.location.pathname;
+    const marker = "/ImproovWeb";
+    const markerIndex = path.indexOf(marker);
+    const base =
+      markerIndex >= 0
+        ? `${window.location.origin}${path.slice(0, markerIndex + marker.length)}`
+        : window.location.origin;
+    return `${base}/${p.replace(/^\/+/, "")}`;
+  }
+  return "";
+}
+
+function improovBaseUrl() {
+  const path = window.location.pathname;
+  const marker = "/ImproovWeb";
+  const markerIndex = path.indexOf(marker);
+  return markerIndex >= 0
+    ? `${window.location.origin}${path.slice(0, markerIndex + marker.length)}`
+    : window.location.origin;
+}
+
+function thumbUrl(rawPath, width = 1200, quality = 82) {
+  if (!rawPath) return "";
+  return `${improovBaseUrl()}/thumb.php?path=${encodeURIComponent(String(rawPath))}&w=${width}&q=${quality}`;
+}
+
+function setText(id, value) {
+  const node = document.getElementById(id);
+  if (node) node.textContent = value || "-";
+}
+
+function setCount(id, value) {
+  const node = document.getElementById(id);
+  if (node) node.textContent = value ? String(value) : "";
+}
+
+function buildConferenceModalShell() {
+  const modal = document.getElementById("myModal");
+  if (!modal || modal.dataset.conferenceReady === "1") return;
+
+  const colaboradorOptions =
+    document.getElementById("opcao_alteracao")?.innerHTML ||
+    '<option value="">Ninguem</option>';
+  const statusOptions =
+    document.getElementById("status_alteracao")?.innerHTML ||
+    '<option value="Nao iniciado">Nao iniciado</option><option value="Em andamento">Em andamento</option><option value="Em aprovacao">Em aprovacao</option><option value="Finalizado">Finalizado</option>';
+
+  modal.classList.add("alt-conference-modal");
+  modal.setAttribute("aria-hidden", "true");
+  modal.innerHTML = `
+    <div class="modal-content alt-conference-shell" role="dialog" aria-modal="true" aria-labelledby="campoNomeImagem">
+      <input type="hidden" id="imagem_id">
+      <header class="alt-conf-header">
+        <div class="alt-conf-identity">
+          <div class="alt-conf-thumb" id="altConfThumb"><i class="fa-regular fa-image"></i></div>
+          <div class="alt-conf-title-block">
+            <h2 class="modal-title alt-conf-title" id="campoNomeImagem">-</h2>
+            <p class="alt-conf-description" id="altConfDescricao">Tela de confer&ecirc;ncia da altera&ccedil;&atilde;o</p>
+            <div class="alt-conf-tags"><span id="altConfObra">-</span><span id="altConfSubtipo">-</span></div>
+          </div>
+        </div>
+        <div class="alt-conf-meta-grid">
+          <div class="alt-conf-meta"><span>Etapa atual</span><strong id="altConfEtapa">-</strong></div>
+          <div class="alt-conf-meta"><span>Tipo de imagem</span><strong id="altConfTipo">-</strong></div>
+          <div class="alt-conf-meta"><span>Status</span><strong id="altConfStatus" class="alt-pill">-</strong></div>
+          <div class="alt-conf-meta"><span>Complexidade</span><strong id="altConfComplexidade">-</strong></div>
+          <div class="alt-conf-meta"><span>Prazo</span><strong id="altConfPrazo">-</strong></div>
+          <div class="alt-conf-meta"><span>Respons&aacute;vel</span><strong id="altConfResponsavel">-</strong></div>
+          <div class="alt-conf-meta"><span>Iniciada em</span><strong id="altConfInicio">-</strong></div>
+          <div class="alt-conf-meta"><span>&Uacute;ltima atualiza&ccedil;&atilde;o</span><strong id="altConfAtualizacao">-</strong></div>
+        </div>
+        <div class="alt-conf-header-actions">
+          <a class="alt-conf-btn alt-conf-btn-review is-disabled" id="altConfReviewTop" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir no Review Studio</a>
+          <button type="button" class="alt-conf-btn" id="altConfMoreActions" aria-expanded="false" aria-controls="altConfMorePanel">Mais a&ccedil;&otilde;es <i class="fa-solid fa-chevron-down"></i></button>
+          <button class="modal-close" id="closeModal" title="Fechar" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </header>
+      <div class="alt-conf-more-panel" id="altConfMorePanel" hidden>
+        <div class="alt-conf-more-head">
+          <strong>Op&ccedil;&otilde;es da altera&ccedil;&atilde;o</strong>
+          <button type="button" id="altConfMoreClose" aria-label="Fechar op&ccedil;&otilde;es"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="alt-conf-more-form">
+          <div class="modal-field-group"><label class="filter-label">Colaborador</label><select class="filter-select modal-select" id="opcao_alteracao">${colaboradorOptions}</select></div>
+          <div class="modal-field-group"><label class="filter-label">Status da Altera&ccedil;&atilde;o</label><select class="filter-select modal-select" id="status_alteracao">${statusOptions}</select></div>
+          <div class="modal-field-group alt-conf-date-field"><label class="filter-label">Prazo</label><input type="date" class="filter-select modal-select" id="prazo_alteracao"></div>
+          <div class="modal-field-group alt-conf-path-field"><label class="filter-label">Caminho do Arquivo</label><input type="text" class="filter-input modal-input" id="obs_alteracao" placeholder="Caminho arquivo"></div>
+        </div>
+        <button type="button" class="alt-conf-more-link" id="altConfHistoryShortcut"><i class="fa-regular fa-clock"></i> Ver hist&oacute;rico da altera&ccedil;&atilde;o</button>
+      </div>
+      <div class="alt-conf-body">
+        <aside class="alt-conf-left">
+          <nav class="alt-conf-nav" aria-label="Conferencia">
+            <strong>1. CONFER&Ecirc;NCIA</strong>
+            <a href="#altSecResumo" class="active"><i class="fa-regular fa-clipboard"></i> Resumo da pr&eacute;-altera&ccedil;&atilde;o <span id="altNavResumoCount"></span></a>
+            <a href="#altSecComentarios"><i class="fa-regular fa-comments"></i> Coment&aacute;rios da imagem <span id="altNavComentariosCount">0</span></a>
+            <a href="#altSecArquivos"><i class="fa-regular fa-folder-open"></i> Arquivos enviados <span id="altNavArquivosCount">0</span></a>
+            <a href="#altSecReferencias"><i class="fa-regular fa-images"></i> Refer&ecirc;ncias por escopo <span id="altNavReferenciasCount">0</span></a>
+            <a href="#altSecHistorico"><i class="fa-regular fa-clock"></i> Hist&oacute;rico da altera&ccedil;&atilde;o <span id="altNavHistoricoCount">0</span></a>
+          </nav>
+          <section class="alt-conf-card" id="altSecResumo">
+            <div class="alt-conf-card-title"><h3>Resumo da Pr&eacute;-Altera&ccedil;&atilde;o</h3><button type="button" id="altConfEditarResumo">Editar</button></div>
+            <div id="altConfResumo" class="alt-conf-summary"></div>
+          </section>
+        </aside>
+        <main class="alt-conf-main">
+          <section class="alt-conf-image-card">
+            <div class="alt-conf-section-head">
+              <h3>Imagem atual</h3>
+              <div class="alt-conf-image-tools">
+                <button type="button" id="altConfZoomOut" title="Reduzir zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <button type="button" id="altConfZoomValue">100%</button>
+                <button type="button" id="altConfZoomIn" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button type="button" id="altConfOpenImage" title="Abrir em tamanho maior"><i class="fa-solid fa-expand"></i></button>
+              </div>
+            </div>
+            <div class="alt-conf-image-stage" id="altConfImageStage"><div class="alt-conf-image-empty"><i class="fa-regular fa-image"></i><span>Sem imagem dispon&iacute;vel</span></div></div>
+            <div class="alt-conf-current-version">
+              <div><span class="alt-conf-live-dot"></span><strong id="altConfVersionTitle">&Uacute;ltima vers&atilde;o dispon&iacute;vel</strong><small id="altConfVersionMeta">-</small></div>
+              <a class="alt-conf-btn alt-conf-btn-review is-disabled" id="altConfReviewImage" href="#" target="_blank" rel="noopener noreferrer">Abrir no Review Studio <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            </div>
+          </section>
+          <div class="alt-conf-bottom-grid">
+            <section class="alt-conf-card" id="altSecHistorico"><div class="alt-conf-card-title"><h3>Hist&oacute;rico da altera&ccedil;&atilde;o</h3></div><div id="altConfHistorico" class="alt-conf-history"></div></section>
+            <section class="alt-conf-card" id="altSecComentarios"><div class="alt-conf-card-title"><h3>Comunica&ccedil;&atilde;o e bloqueios</h3></div><div id="altConfComunicacao" class="alt-conf-communication"></div></section>
+          </div>
+        </main>
+        <button type="button" class="alt-conf-side-toggle" id="altConfSideToggle" aria-expanded="true" aria-controls="altConfRightPanel" title="Mostrar ou ocultar painel">
+          <i class="fa-solid fa-chevron-right"></i>
+          <span>Painel</span>
+        </button>
+        <aside class="alt-conf-right" id="altConfRightPanel" data-active-panel="files">
+          <div class="alt-conf-side-head">
+            <strong>Informa&ccedil;&otilde;es de apoio</strong>
+          </div>
+          <div class="alt-conf-side-tabs" role="tablist" aria-label="Painel de apoio">
+            <button type="button" class="active" data-panel-target="files"><i class="fa-regular fa-folder-open"></i> Arquivos</button>
+            <button type="button" data-panel-target="refs"><i class="fa-regular fa-images"></i> Refer&ecirc;ncias</button>
+            <button type="button" data-panel-target="steps"><i class="fa-regular fa-circle-check"></i> Passos</button>
+          </div>
+          <section class="alt-conf-card alt-conf-side-section active" data-panel="files" id="altSecArquivos"><div class="alt-conf-card-title"><h3>Arquivos enviados na revis&atilde;o</h3><button type="button" id="altConfAllFiles">Ver todos</button></div><div class="alt-conf-tabs" id="altConfFileTabs"></div><div id="altConfArquivos" class="alt-conf-file-list"></div></section>
+          <section class="alt-conf-card alt-conf-side-section" data-panel="refs" id="altSecReferencias"><div class="alt-conf-card-title"><h3>Refer&ecirc;ncias por escopo</h3><button type="button" id="altConfAllRefs">Ver todas</button></div><div class="alt-conf-tabs" id="altConfRefTabs"></div><div id="altConfReferencias" class="alt-conf-ref-list"></div></section>
+          <section class="alt-conf-card alt-conf-side-section alt-conf-steps-card" data-panel="steps"><div class="alt-conf-card-title"><h3>Pr&oacute;ximos passos</h3></div><div id="altConfProximos" class="alt-conf-steps"></div></section>
+        </aside>
+      </div>
+      <footer class="modal-footer alt-conf-footer">
+        <button type="button" class="btn-action btn-secundario" id="closeModalBtn">Voltar para a lista</button>
+        <button type="button" class="btn-action btn-secundario" id="altConfQuestionBtn"><i class="fa-regular fa-comment-dots"></i> Registrar d&uacute;vida / bloqueio</button>
+        <button type="button" class="btn-action btn-primario" id="salvar_funcoes"><i class="fa-solid fa-floppy-disk"></i> Salvar altera&ccedil;&atilde;o</button>
+        <button type="button" class="btn-action btn-primario" id="altConfSendApproval">Enviar para aprova&ccedil;&atilde;o interna</button>
+      </footer>
+    </div>`;
+
+  modal.dataset.conferenceReady = "1";
+}
 
 function normalizarStatus(status) {
   return (status || "")
@@ -22,8 +239,11 @@ function normalizarStatus(status) {
 function getStatusKey(status) {
   const n = normalizarStatus(status);
   if (n === "nao iniciado") return "nao-iniciado";
+  if (n === "hold") return "hold";
   if (n === "em andamento") return "em-andamento";
   if (n === "em aprovacao") return "em-aprovacao";
+  if (n === "ajuste") return "ajuste";
+  if (n === "aprovado com ajustes") return "aprovado-ajustes";
   if (n === "finalizado") return "finalizado";
   return "nao-iniciado";
 }
@@ -151,9 +371,10 @@ function criarCard(item) {
     ? `<div class="ef-label"><i class="fa-solid fa-bolt"></i> Render em Alta</div>`
     : "";
   const nivel = Number(item.nivel_complexidade || 0);
-  const nivelHtml = nivel >= 1 && nivel <= 5
-    ? `<span class="nivel-chip nivel-n${nivel}">N${nivel}</span>`
-    : "";
+  const nivelHtml =
+    nivel >= 1 && nivel <= 5
+      ? `<span class="nivel-chip nivel-n${nivel}">N${nivel}</span>`
+      : "";
 
   card.innerHTML = `
     ${efLabelHtml}
@@ -450,16 +671,435 @@ function recarregarAlteracao() {
 }
 
 // ─── Modal ───
-function abrirModal(idimagem) {
+function complexityLabel(value) {
+  const n = Number(value || 0);
+  if (n <= 0) return "-";
+  if (n <= 2) return "Baixa";
+  if (n === 3) return "Media";
+  if (n === 4) return "Alta";
+  return "Critica";
+}
+
+function fileIcon(type) {
+  const t = String(type || "").toLowerCase();
+  if (t === "pdf") return "fa-file-pdf";
+  if (["jpg", "jpeg", "png", "webp"].includes(t)) return "fa-file-image";
+  if (["dwg", "rvt", "skp"].includes(t)) return "fa-cube";
+  return "fa-file";
+}
+
+function renderReviewLinks(url) {
+  ["altConfReviewTop", "altConfReviewImage"].forEach((id) => {
+    const link = document.getElementById(id);
+    if (!link) return;
+    if (url) {
+      link.href = url;
+      link.classList.remove("is-disabled");
+      link.removeAttribute("aria-disabled");
+    } else {
+      link.href = "#";
+      link.classList.add("is-disabled");
+      link.setAttribute("aria-disabled", "true");
+    }
+  });
+}
+
+function renderMainImage(data) {
+  const stage = document.getElementById("altConfImageStage");
+  const thumb = document.getElementById("altConfThumb");
+  const path = data?.latest_version?.public_path || "";
+  altCurrentImageUrl = thumbUrl(path, 2200, 90);
+  altZoom = 1;
+  const zoomValue = document.getElementById("altConfZoomValue");
+  if (zoomValue) zoomValue.textContent = "100%";
+
+  if (!stage) return;
+  if (!path) {
+    stage.innerHTML = `<div class="alt-conf-image-empty"><i class="fa-regular fa-image"></i><span>Sem imagem disponivel</span></div>`;
+    if (thumb) thumb.innerHTML = '<i class="fa-regular fa-image"></i>';
+    return;
+  }
+
+  const stageUrl = thumbUrl(path, 1600, 84);
+  const thumbSrc = thumbUrl(path, 360, 70);
+  stage.innerHTML = `<img id="altConfMainImage" src="${stageUrl}" alt="Imagem atual">`;
+  if (thumb) thumb.innerHTML = `<img src="${thumbSrc}" alt="">`;
+}
+
+function updateZoom(delta) {
+  const image = document.getElementById("altConfMainImage");
+  if (!image) return;
+  altZoom = Math.min(2, Math.max(0.6, Number((altZoom + delta).toFixed(1))));
+  image.style.transform = `scale(${altZoom})`;
+  document.getElementById("altConfZoomValue").textContent =
+    `${Math.round(altZoom * 100)}%`;
+}
+
+function renderSummary(summary) {
+  const container = document.getElementById("altConfResumo");
+  if (!container) return;
+  const hasRealChange =
+    summary.has_real_change === null
+      ? "-"
+      : summary.has_real_change
+        ? "Sim"
+        : "Nao";
+  const returnRequired =
+    summary.return_required === null
+      ? "-"
+      : summary.return_required
+        ? "Sim"
+        : "Nao";
+
+  container.innerHTML = `
+    <div class="alt-conf-summary-row"><span>Ha alteracao real</span><strong>${escapeHtml(hasRealChange)}</strong></div>
+    <div class="alt-conf-summary-row"><span>Complexidade</span><strong>${escapeHtml(complexityLabel(summary.complexity))}</strong></div>
+    <div class="alt-conf-summary-block"><span>Observacao da triagem</span><p>${escapeHtml(summary.triage_note || "Sem observacao registrada.")}</p></div>
+    <div class="alt-conf-summary-block"><span>Pontos criticos</span><p>${escapeHtml(summary.critical_points || "Sem pontos criticos registrados.")}</p></div>
+    <div class="alt-conf-summary-row"><span>Necessita retorno</span><strong>${escapeHtml(returnRequired)}</strong></div>
+    <div class="alt-conf-summary-row"><span>Responsavel pela triagem</span><strong>${escapeHtml(summary.responsible || "-")}</strong></div>
+  `;
+}
+
+function renderFiles(containerId, tabsId, grouped, labels) {
+  const tabs = document.getElementById(tabsId);
+  const container = document.getElementById(containerId);
+  if (!tabs || !container) return;
+
+  const keys = Object.keys(labels);
+  let active = keys.find((key) => (grouped[key] || []).length > 0) || keys[0];
+
+  function draw(key) {
+    active = key;
+    tabs.querySelectorAll("button").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.key === active);
+    });
+    const list = grouped[active] || [];
+    if (list.length === 0) {
+      container.innerHTML = `<div class="alt-conf-empty">Nenhum item encontrado.</div>`;
+      return;
+    }
+    container.innerHTML = list
+      .slice(0, 5)
+      .map((file) => {
+        const type = escapeHtml(file.type || "ARQ");
+        const date = formatDate(file.date);
+        const name = escapeHtml(file.name);
+        const desc = escapeHtml(file.description || file.category || "");
+        return `
+          <div class="alt-conf-file-row" title="${escapeHtml(file.path || "")}">
+            <div class="alt-conf-file-icon"><i class="fa-solid ${fileIcon(type)}"></i></div>
+            <div class="alt-conf-file-info">
+              <strong>${name}</strong>
+              <span>${type}${desc ? " - " + desc : ""}</span>
+            </div>
+            <small>${date}</small>
+          </div>`;
+      })
+      .join("");
+  }
+
+  tabs.innerHTML = keys
+    .map(
+      (key) =>
+        `<button type="button" class="${key === active ? "active" : ""}" data-key="${key}">${labels[key]} <span>${(grouped[key] || []).length}</span></button>`,
+    )
+    .join("");
+  tabs.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => draw(btn.dataset.key));
+  });
+  draw(active);
+}
+
+function renderHistory(data) {
+  const container = document.getElementById("altConfHistorico");
+  if (!container) return;
+  const logs = data?.history?.logs || [];
+  const approvals = data?.history?.approvals || [];
+  const combined = [
+    ...logs.map((log) => ({
+      date: log.data,
+      title: log.status_novo || "Atualizacao",
+      subtitle: log.status_anterior
+        ? `${log.status_anterior} -> ${log.status_novo}`
+        : "Log da alteracao",
+      actor: log.responsavel || "-",
+    })),
+    ...approvals.map((item) => ({
+      date: item.data_aprovacao,
+      title: item.status_novo || "Aprovacao interna",
+      subtitle: item.observacoes || "Historico de aprovacao interna",
+      actor: item.responsavel_nome || item.colaborador_nome || "-",
+    })),
+  ].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+  if (combined.length === 0) {
+    container.innerHTML = `<div class="alt-conf-empty">Sem historico registrado.</div>`;
+    return;
+  }
+
+  container.innerHTML = combined
+    .slice(0, 6)
+    .map(
+      (item) => `
+        <div class="alt-conf-history-item">
+          <div class="alt-conf-history-dot">${escapeHtml(String(item.title || "R").slice(0, 3))}</div>
+          <div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(item.subtitle)}</span>
+            <small>${escapeHtml(item.actor)} - ${formatDateTime(item.date)}</small>
+          </div>
+        </div>`,
+    )
+    .join("");
+}
+
+function renderCommunication(data) {
+  const container = document.getElementById("altConfComunicacao");
+  if (!container) return;
+  const comments = data?.comments || [];
+  const history = data?.pre_alteracao_history || [];
+  const rows = [
+    ...comments.map((comment) => ({
+      date: comment.data,
+      actor: comment.responsavel || "Cliente",
+      tag:
+        comment.concluido === "1" || comment.concluido === 1
+          ? "Resolvido"
+          : "Pendente",
+      text: comment.texto || "Comentario sem texto.",
+    })),
+    ...history.map((item) => ({
+      date: item.created_at,
+      actor: item.nome_colaborador || "Triagem",
+      tag: item.tipo_evento || "Pre-alteracao",
+      text: item.observacao || item.valor_novo || "Atualizacao registrada.",
+    })),
+  ].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+  if (rows.length === 0) {
+    container.innerHTML = `<div class="alt-conf-empty">Sem comunicacoes ou bloqueios.</div>`;
+    return;
+  }
+
+  container.innerHTML = rows
+    .slice(0, 5)
+    .map(
+      (row) => `
+        <div class="alt-conf-message">
+          <div class="alt-conf-avatar">${escapeHtml(getInitials(row.actor))}</div>
+          <div>
+            <strong>${escapeHtml(row.actor)} <span>${escapeHtml(row.tag)}</span></strong>
+            <p>${escapeHtml(row.text)}</p>
+            <small>${formatDateTime(row.date)}</small>
+          </div>
+        </div>`,
+    )
+    .join("");
+}
+
+function renderNextSteps(data) {
+  const container = document.getElementById("altConfProximos");
+  if (!container) return;
+  const status = normalizarStatus(data?.image?.alteracao_status || "");
+  const steps = [
+    ["Executar alteracao", ["nao iniciado", "em andamento"].includes(status)],
+    ["Aprovacao arquitetura", status === "em aprovacao"],
+    ["Aprovacao direcao", false],
+    ["Render", false],
+    ["Proxima etapa do fluxo", false],
+  ];
+  container.innerHTML = steps
+    .map(
+      ([label, active]) => `
+        <div class="alt-conf-step ${active ? "active" : ""}">
+          <span></span><strong>${escapeHtml(label)}</strong>
+        </div>`,
+    )
+    .join("");
+}
+
+function syncSidePanelState() {
   const modal = document.getElementById("myModal");
-  if (modal) modal.classList.add("is-open");
+  const shell = document.querySelector(".alt-conference-shell");
+  const panel = document.getElementById("altConfRightPanel");
+  const toggle = document.getElementById("altConfSideToggle");
+  if (!panel) return;
+
+  panel.dataset.activePanel = altSidePanelActive;
+  panel.querySelectorAll("[data-panel-target]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.panelTarget === altSidePanelActive);
+  });
+  panel.querySelectorAll("[data-panel]").forEach((section) => {
+    section.classList.toggle("active", section.dataset.panel === altSidePanelActive);
+  });
+
+  [modal, shell].forEach((el) => {
+    if (el) el.classList.toggle("is-side-collapsed", altSidePanelCollapsed);
+  });
+
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", altSidePanelCollapsed ? "false" : "true");
+    toggle.classList.toggle("is-collapsed", altSidePanelCollapsed);
+    const icon = toggle.querySelector("i");
+    if (icon) {
+      icon.className = altSidePanelCollapsed
+        ? "fa-solid fa-chevron-left"
+        : "fa-solid fa-chevron-right";
+    }
+  }
+}
+
+function setSidePanelCollapsed(collapsed) {
+  altSidePanelCollapsed = Boolean(collapsed);
+  syncSidePanelState();
+}
+
+function setSidePanelActive(panelName) {
+  altSidePanelActive = panelName || "files";
+  altSidePanelCollapsed = false;
+  syncSidePanelState();
+}
+
+function closeMoreActionsPanel() {
+  const panel = document.getElementById("altConfMorePanel");
+  const button = document.getElementById("altConfMoreActions");
+  const shell = document.querySelector(".alt-conference-shell");
+  if (panel) panel.hidden = true;
+  if (button) button.setAttribute("aria-expanded", "false");
+  if (shell) shell.classList.remove("is-more-open");
+}
+
+function toggleMoreActionsPanel(forceOpen = null) {
+  const panel = document.getElementById("altConfMorePanel");
+  const button = document.getElementById("altConfMoreActions");
+  const shell = document.querySelector(".alt-conference-shell");
+  if (!panel || !button) return;
+  const open = forceOpen === null ? panel.hidden : Boolean(forceOpen);
+  panel.hidden = !open;
+  button.setAttribute("aria-expanded", open ? "true" : "false");
+  if (shell) shell.classList.toggle("is-more-open", open);
+}
+
+function renderConference(data) {
+  altConferenciaData = data;
+  const image = data.image || {};
+  const metrics = data.metrics || {};
+  const latest = data.latest_version || {};
+  const summary = data.pre_alteracao_summary || {};
+  const files = data.files || {};
+
+  setText("campoNomeImagem", image.imagem_nome);
+  setText(
+    "altConfDescricao",
+    image.alteracao_observacao ||
+      "Conferencia da alteracao antes da execucao ou conclusao.",
+  );
+  setText("altConfObra", image.nomenclatura || image.nome_obra);
+  setText(
+    "altConfSubtipo",
+    image.subtipo_nome || image.subtipo_imagem || "Sem subtipo",
+  );
+  setText("altConfEtapa", image.nome_status);
+  setText("altConfTipo", image.tipo_imagem);
+  setText("altConfStatus", image.alteracao_status);
+  setText(
+    "altConfComplexidade",
+    complexityLabel(image.nivel_complexidade || summary.complexity),
+  );
+  setText(
+    "altConfPrazo",
+    formatDate(image.alteracao_prazo || image.imagem_prazo),
+  );
+  setText("altConfResponsavel", image.nome_colaborador);
+  setText(
+    "altConfInicio",
+    formatDateTime(image.data_recebimento || image.data_inicio),
+  );
+  setText("altConfAtualizacao", formatDateTime(metrics.last_update));
+  setText(
+    "altConfVersionTitle",
+    latest.indice_envio
+      ? `Versao ${latest.indice_envio}`
+      : "Ultima versao disponivel",
+  );
+  setText(
+    "altConfVersionMeta",
+    latest.data_envio
+      ? `Publicada em ${formatDateTime(latest.data_envio)}`
+      : "-",
+  );
+
+  document.getElementById("imagem_id").value = image.imagem_id || "";
+  document.getElementById("opcao_alteracao").value = image.colaborador_id || "";
+  document.getElementById("status_alteracao").value =
+    image.alteracao_status || "NÃ£o iniciado";
+  document.getElementById("prazo_alteracao").value =
+    image.alteracao_prazo || "";
+  document.getElementById("obs_alteracao").value =
+    image.alteracao_observacao || "";
+
+  setCount("altNavResumoCount", summary.has_pre_alt ? 1 : 0);
+  setCount("altNavComentariosCount", metrics.comments_count || 0);
+  setCount("altNavArquivosCount", metrics.files_count || 0);
+  setCount("altNavReferenciasCount", metrics.references_count || 0);
+  setCount(
+    "altNavHistoricoCount",
+    (data?.history?.logs || []).length +
+      (data?.history?.approvals || []).length,
+  );
+
+  renderReviewLinks(data?.links?.review_studio || "");
+  renderMainImage(data);
+  renderSummary(summary);
+  renderFiles(
+    "altConfArquivos",
+    "altConfFileTabs",
+    files.uploaded_by_origin || {},
+    {
+      cliente: "Cliente",
+      interno: "Interno",
+      triagem: "Triagem",
+    },
+  );
+  renderFiles(
+    "altConfReferencias",
+    "altConfRefTabs",
+    files.references_by_scope || {},
+    {
+      projeto: "Projeto",
+      tipo: "Tipo de imagem",
+      imagem: "Imagem",
+    },
+  );
+  renderHistory(data);
+  renderCommunication(data);
+  renderNextSteps(data);
+  syncSidePanelState();
+}
+
+function abrirModal(idimagem) {
+  buildConferenceModalShell();
+  const modal = document.getElementById("myModal");
+  if (modal) {
+    altSidePanelCollapsed = false;
+    altSidePanelActive = "files";
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+    closeMoreActionsPanel();
+    syncSidePanelState();
+  }
   atualizarModal(idimagem);
   idImagemSelecionada = idimagem;
 }
 
 function fecharModal() {
   const modal = document.getElementById("myModal");
-  if (modal) modal.classList.remove("is-open");
+  if (modal) {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+    closeMoreActionsPanel();
+  }
 }
 
 function limparCampos() {
@@ -468,14 +1108,23 @@ function limparCampos() {
   document.getElementById("prazo_alteracao").value = "";
   document.getElementById("obs_alteracao").value = "";
   document.getElementById("opcao_alteracao").value = "";
+  const stage = document.getElementById("altConfImageStage");
+  if (stage) {
+    stage.innerHTML = `<div class="alt-conf-image-empty"><i class="fa-regular fa-image"></i><span>Carregando...</span></div>`;
+  }
 }
 
 function atualizarModal(idImagem) {
   limparCampos();
 
-  fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
+  fetch(`getConferenciaAlteracao.php?imagem_id=${encodeURIComponent(idImagem)}`)
     .then((r) => r.json())
     .then((response) => {
+      if (!response.success) {
+        throw new Error(response.message || "Erro ao carregar conferencia.");
+      }
+      renderConference(response);
+      return;
       if (response.funcoes && response.funcoes.length > 0) {
         document.getElementById("campoNomeImagem").textContent =
           response.funcoes[0].imagem_nome;
@@ -496,6 +1145,8 @@ function atualizarModal(idImagem) {
     })
     .catch((error) => console.error("Erro ao buscar dados da linha:", error));
 }
+
+buildConferenceModalShell();
 
 document
   .getElementById("salvar_funcoes")
@@ -570,6 +1221,93 @@ document.getElementById("myModal").addEventListener("click", function (e) {
   if (e.target === this) fecharModal();
 });
 
+document.getElementById("altConfMoreActions")?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleMoreActionsPanel();
+});
+document.getElementById("altConfMoreClose")?.addEventListener("click", () => {
+  closeMoreActionsPanel();
+});
+document.getElementById("altConfHistoryShortcut")?.addEventListener("click", () => {
+  closeMoreActionsPanel();
+  setSidePanelCollapsed(false);
+  document
+    .querySelector("#altSecHistorico")
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.getElementById("altConfSideToggle")?.addEventListener("click", () => {
+  setSidePanelCollapsed(!altSidePanelCollapsed);
+});
+document.getElementById("altConfSideClose")?.addEventListener("click", () => {
+  setSidePanelCollapsed(true);
+});
+document.querySelectorAll("[data-panel-target]").forEach((button) => {
+  button.addEventListener("click", () => {
+    setSidePanelActive(button.dataset.panelTarget || "files");
+  });
+});
+document.addEventListener("click", (event) => {
+  const panel = document.getElementById("altConfMorePanel");
+  const button = document.getElementById("altConfMoreActions");
+  if (
+    panel &&
+    !panel.hidden &&
+    !panel.contains(event.target) &&
+    !button?.contains(event.target)
+  ) {
+    closeMoreActionsPanel();
+  }
+});
+
+document
+  .getElementById("altConfZoomOut")
+  ?.addEventListener("click", () => updateZoom(-0.1));
+document
+  .getElementById("altConfZoomIn")
+  ?.addEventListener("click", () => updateZoom(0.1));
+document.getElementById("altConfOpenImage")?.addEventListener("click", () => {
+  if (altCurrentImageUrl) window.open(altCurrentImageUrl, "_blank", "noopener");
+});
+document
+  .getElementById("altConfSendApproval")
+  ?.addEventListener("click", () => {
+    const status = document.getElementById("status_alteracao");
+    if (status) {
+      const target = Array.from(status.options).find(
+        (opt) => normalizarStatus(opt.value) === "em aprovacao",
+      );
+      status.value = target ? target.value : "Em aprovaÃ§Ã£o";
+    }
+    document.getElementById("salvar_funcoes")?.click();
+  });
+document.getElementById("altConfQuestionBtn")?.addEventListener("click", () => {
+  const obs = document.getElementById("obs_alteracao");
+  if (obs) {
+    obs.focus();
+    obs.select();
+  }
+});
+document.querySelectorAll(".alt-conf-nav a").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    document
+      .querySelectorAll(".alt-conf-nav a")
+      .forEach((item) => item.classList.remove("active"));
+    link.classList.add("active");
+    const href = link.getAttribute("href");
+    if (href === "#altSecArquivos") setSidePanelActive("files");
+    if (href === "#altSecReferencias") setSidePanelActive("refs");
+    document
+      .querySelector(href)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+document.querySelectorAll(".alt-conf-btn-review").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    if (link.classList.contains("is-disabled")) event.preventDefault();
+  });
+});
+
 // ─── Filtros ───
 document
   .getElementById("btn-aplicar-filtros")
@@ -614,7 +1352,13 @@ if (btnToggleCompact) {
 
 // ESC fecha modal
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") fecharModal();
+  if (e.key === "Escape") {
+    if (!document.getElementById("altConfMorePanel")?.hidden) {
+      closeMoreActionsPanel();
+      return;
+    }
+    fecharModal();
+  }
 });
 
 recarregarAlteracao();

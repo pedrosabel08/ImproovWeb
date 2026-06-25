@@ -112,6 +112,11 @@ while ($row = $res->fetch_assoc()) {
     $row['notification_count'] = (int) ($row['notification_count'] ?? 0);
     $row['total_items'] = (int) ($row['total_items'] ?? 0);
     $row['active_items'] = (int) ($row['active_items'] ?? 0);
+    $row['items'] = entregas_review_fetch_batch_items($conn, $row['id']);
+    $row['total_items'] = count($row['items']);
+    $row['active_items'] = count(array_filter($row['items'], static function ($item) {
+        return !empty($item['is_active']);
+    }));
     $row['allowed_actions'] = entregas_review_allowed_actions($billingStatus);
     $row['severity'] = entregas_review_severity(
         in_array($billingStatus, ['OVERDUE', 'NOTIFIED'], true) ? 1 : 0,

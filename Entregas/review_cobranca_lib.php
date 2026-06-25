@@ -599,6 +599,11 @@ function entregas_review_fetch_batches_for_entrega(mysqli $conn, int $entregaId)
         $row['p00_item_count'] = (int) ($row['p00_item_count'] ?? 0);
         $row['total_items'] = (int) ($row['total_items'] ?? 0);
         $row['active_items'] = (int) ($row['active_items'] ?? 0);
+        $row['items'] = entregas_review_fetch_batch_items($conn, $row['id']);
+        $row['total_items'] = count($row['items']);
+        $row['active_items'] = count(array_filter($row['items'], static function ($item) {
+            return !empty($item['is_active']);
+        }));
         $row['batch_kind'] = $row['p00_item_count'] > 0 ? 'P00' : 'ENTREGA';
         $row['allowed_actions'] = entregas_review_allowed_actions($billingStatus);
         $row['severity'] = entregas_review_severity(
@@ -612,6 +617,84 @@ function entregas_review_fetch_batches_for_entrega(mysqli $conn, int $entregaId)
     $stmt->close();
 
     return $batches;
+}
+
+function entregas_review_fetch_batch_items(mysqli $conn, int $batchId): array
+{
+    if ($batchId <= 0) {
+        return [];
+    }
+
+    $sqlItems = "SELECT
+                    rbi.id,
+                    rbi.review_batch_id,
+                    rbi.entrega_item_id,
+                    rbi.p00_versao_id,
+                    rbi.imagem_id,
+                    rbi.entered_rvw_at,
+                    rbi.left_rvw_at,
+                    COALESCE(ei.status, pv.status) AS entrega_item_status,
+                    COALESCE(ei.data_entregue, pv.data_entregue) AS data_entregue,
+                    ico.imagem_nome,
+                    ico.status_id,
+                    si.nome_status,
+                    ico.substatus_id,
+                    ss.nome_substatus,
+                    CASE
+                        WHEN pv.id IS NOT NULL AND pv.arquivo_principal IS NOT NULL AND TRIM(pv.arquivo_principal) <> ''
+                            THEN CONCAT(pv.versao_label, ' - ', pv.arquivo_principal)
+                        WHEN pv.id IS NOT NULL
+                            THEN CONCAT('Versao ', pv.versao_label)
+                        ELSE ico.imagem_nome
+                    END AS item_nome
+                 FROM review_batch_items rbi
+                 LEFT JOIN entregas_itens ei ON ei.id = rbi.entrega_item_id
+                 LEFT JOIN entregas_p00_versoes pv ON pv.id = rbi.p00_versao_id
+                 INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = rbi.imagem_id
+                 LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
+                 LEFT JOIN substatus_imagem ss ON ss.id = ico.substatus_id
+                 WHERE rbi.review_batch_id = ?
+                 ORDER BY
+                    CASE WHEN rbi.left_rvw_at IS NULL THEN 0 ELSE 1 END ASC,
+                    item_nome ASC,
+                    rbi.id ASC";
+
+    $stmtItems = $conn->prepare($sqlItems);
+    if (!$stmtItems) {
+        return [];
+    }
+
+    $stmtItems->bind_param('i', $batchId);
+    $stmtItems->execute();
+    $resItems = $stmtItems->get_result();
+
+    $items = [];
+    $seenImagemIds = [];
+    while ($row = $resItems->fetch_assoc()) {
+        $imagemId = (int) $row['imagem_id'];
+        if ($imagemId > 0 && isset($seenImagemIds[$imagemId])) {
+            continue;
+        }
+        if ($imagemId > 0) {
+            $seenImagemIds[$imagemId] = true;
+        }
+
+        $row['id'] = (int) $row['id'];
+        $row['review_batch_id'] = (int) $row['review_batch_id'];
+        $row['entrega_item_id'] = isset($row['entrega_item_id']) ? (int) $row['entrega_item_id'] : null;
+        $row['p00_versao_id'] = isset($row['p00_versao_id']) ? (int) $row['p00_versao_id'] : null;
+        $row['imagem_id'] = $imagemId;
+        $row['status_id'] = isset($row['status_id']) ? (int) $row['status_id'] : null;
+        $row['substatus_id'] = isset($row['substatus_id']) ? (int) $row['substatus_id'] : null;
+        $row['item_kind'] = $row['p00_versao_id'] ? 'P00_VERSAO' : 'ENTREGA_ITEM';
+        $row['nome'] = $row['item_nome'] ?? $row['imagem_nome'];
+        $row['is_active'] = $row['left_rvw_at'] === null;
+        $items[] = $row;
+    }
+
+    $stmtItems->close();
+
+    return $items;
 }
 
 function entregas_review_fetch_batch(mysqli $conn, int $batchId): ?array
@@ -684,6 +767,8 @@ function entregas_review_fetch_batch(mysqli $conn, int $batchId): ?array
                     COALESCE(ei.status, pv.status) AS entrega_item_status,
                     COALESCE(ei.data_entregue, pv.data_entregue) AS data_entregue,
                     ico.imagem_nome,
+                    ico.status_id,
+                    si.nome_status,
                     ico.substatus_id,
                     ss.nome_substatus,
                     CASE
@@ -697,6 +782,7 @@ function entregas_review_fetch_batch(mysqli $conn, int $batchId): ?array
                  LEFT JOIN entregas_itens ei ON ei.id = rbi.entrega_item_id
                  LEFT JOIN entregas_p00_versoes pv ON pv.id = rbi.p00_versao_id
                  INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = rbi.imagem_id
+                 LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
                  LEFT JOIN substatus_imagem ss ON ss.id = ico.substatus_id
                  WHERE rbi.review_batch_id = ?
                  ORDER BY
@@ -716,12 +802,22 @@ function entregas_review_fetch_batch(mysqli $conn, int $batchId): ?array
     $resItems = $stmtItems->get_result();
 
     $items = [];
+    $seenImagemIds = [];
     while ($row = $resItems->fetch_assoc()) {
+        $imagemId = (int) $row['imagem_id'];
+        if ($imagemId > 0 && isset($seenImagemIds[$imagemId])) {
+            continue;
+        }
+        if ($imagemId > 0) {
+            $seenImagemIds[$imagemId] = true;
+        }
+
         $row['id'] = (int) $row['id'];
         $row['review_batch_id'] = (int) $row['review_batch_id'];
         $row['entrega_item_id'] = isset($row['entrega_item_id']) ? (int) $row['entrega_item_id'] : null;
         $row['p00_versao_id'] = isset($row['p00_versao_id']) ? (int) $row['p00_versao_id'] : null;
-        $row['imagem_id'] = (int) $row['imagem_id'];
+        $row['imagem_id'] = $imagemId;
+        $row['status_id'] = isset($row['status_id']) ? (int) $row['status_id'] : null;
         $row['substatus_id'] = isset($row['substatus_id']) ? (int) $row['substatus_id'] : null;
         $row['item_kind'] = $row['p00_versao_id'] ? 'P00_VERSAO' : 'ENTREGA_ITEM';
         $row['nome'] = $row['item_nome'] ?? $row['imagem_nome'];

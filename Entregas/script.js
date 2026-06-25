@@ -697,6 +697,92 @@ document.addEventListener("DOMContentLoaded", () => {
     return meta[action] || null;
   }
 
+  function normalizeReviewBatchItems(batch) {
+    const items = Array.isArray(batch?.items) ? batch.items : [];
+    const seen = new Set();
+
+    return items.filter((item) => {
+      const imageId = Number(item?.imagem_id || 0);
+      const key = imageId > 0 ? `img:${imageId}` : `row:${item?.id || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function getReviewBatchImageCount(batch) {
+    const items = normalizeReviewBatchItems(batch);
+    if (items.length > 0) return items.length;
+    return Math.max(parseInt(batch?.total_items || 0, 10) || 0, 0);
+  }
+
+  function getReviewBatchItemState(item) {
+    const statusText = String(
+      item?.nome_substatus ||
+        item?.nome_status ||
+        item?.entrega_item_status ||
+        "",
+    ).trim();
+    const normalized = statusText
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    if (
+      !item?.is_active ||
+      /aprov|finaliz|conclu|entregue|resolvid/.test(normalized)
+    ) {
+      return { label: statusText || "Finalizada", className: "is-done" };
+    }
+
+    if (/andamento|progresso|rvw|drv|review|revis/.test(normalized)) {
+      return { label: statusText || "Em andamento", className: "is-progress" };
+    }
+
+    return {
+      label: statusText || "Em andamento",
+      className: item?.is_active ? "is-progress" : "is-muted",
+    };
+  }
+
+  function renderReviewBatchImagesBlock(batch) {
+    const items = normalizeReviewBatchItems(batch);
+    const batchId = Number(batch?.id || 0);
+    const listHtml = items.length
+      ? items
+          .map((item) => {
+            const state = getReviewBatchItemState(item);
+            const itemName =
+              item?.nome || item?.item_nome || item?.imagem_nome || "Imagem";
+            const imageCode = item?.imagem_id ? `#${item.imagem_id}` : "";
+            const title = imageCode ? `${imageCode} - ${itemName}` : itemName;
+
+            return `
+              <li class="review-batch-image-item">
+                <span class="review-batch-image-name">${escapeHtml(title)}</span>
+                <span class="review-batch-image-state ${state.className}">
+                  <span class="review-batch-image-dot"></span>
+                  ${escapeHtml(state.label)}
+                </span>
+              </li>
+            `;
+          })
+          .join("")
+      : `<li class="review-batch-image-item is-empty">Nenhuma imagem vinculada.</li>`;
+
+    return `
+      <div class="review-batch-images">
+        <button class="btn-review-images-toggle" type="button" data-review-batch-id="${batchId}" aria-expanded="false">
+          <i class="fa-solid fa-chevron-down"></i>
+          <span>Ver imagens</span>
+        </button>
+        <div class="review-batch-images-panel" hidden>
+          <ul class="review-batch-images-list">${listHtml}</ul>
+        </div>
+      </div>
+    `;
+  }
+
   function renderReviewBatchPanel(data) {
     if (!modalReviewBatches) return;
 
@@ -754,6 +840,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const resolvedText = batch.resolved_reason
               ? `<div class="review-batch-note">Motivo: ${escapeHtml(batch.resolved_reason)}</div>`
               : "";
+            const imageCount = getReviewBatchImageCount(batch);
+            const imageLabel = `${imageCount} ${imageCount === 1 ? "imagem" : "imagens"}`;
             const overdueText =
               parseInt(batch.overdue_days || 0, 10) > 0
                 ? `${batch.overdue_days} dia(s) sem resposta`
@@ -767,11 +855,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="review-batch-status status-${status.toLowerCase()}">${statusLabel}</span>
                   </div>
                   <div class="review-batch-meta">
-                    <span><i class="fa-solid fa-images"></i> ${batch.active_items || 0}/${batch.total_items || 0} imagens ativas</span>
+                    <span><i class="fa-solid fa-camera"></i> ${imageLabel}</span>
                     <span><i class="fa-solid fa-hourglass-half"></i> ${overdueText}</span>
                     <span><i class="fa-solid fa-bell"></i> ${batch.notification_count || 0} cobrança(s)</span>
                     <span><i class="fa-solid fa-calendar-day"></i> Entregue em ${formatarData(batch.data_entrega_lote)}</span>
                   </div>
+                  ${renderReviewBatchImagesBlock(batch)}
                   ${batch.snooze_until ? `<div class="review-batch-note">Snooze até ${formatarDataHora(batch.snooze_until)}</div>` : ""}
                   ${batch.last_notification_at ? `<div class="review-batch-note">Última cobrança em ${formatarDataHora(batch.last_notification_at)}</div>` : ""}
                   ${noteText}
@@ -1204,6 +1293,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (modalReviewBatches) {
     modalReviewBatches.addEventListener("click", async (e) => {
+      const toggleBtn = e.target.closest(".btn-review-images-toggle");
+      if (toggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const card = toggleBtn.closest(".review-batch-card");
+        const panel = card?.querySelector(".review-batch-images-panel");
+        const isOpening = panel?.hasAttribute("hidden");
+        if (!card || !panel) return;
+
+        modalReviewBatches
+          .querySelectorAll(".review-batch-card.is-images-open")
+          .forEach((openCard) => {
+            if (openCard === card) return;
+            const openPanel = openCard.querySelector(
+              ".review-batch-images-panel",
+            );
+            const openBtn = openCard.querySelector(".btn-review-images-toggle");
+            openPanel?.setAttribute("hidden", "");
+            openCard.classList.remove("is-images-open");
+            openBtn?.setAttribute("aria-expanded", "false");
+            const label = openBtn?.querySelector("span");
+            if (label) label.textContent = "Ver imagens";
+          });
+
+        if (isOpening) {
+          panel.removeAttribute("hidden");
+          card.classList.add("is-images-open");
+          toggleBtn.setAttribute("aria-expanded", "true");
+          const label = toggleBtn.querySelector("span");
+          if (label) label.textContent = "Ocultar imagens";
+        } else {
+          panel.setAttribute("hidden", "");
+          card.classList.remove("is-images-open");
+          toggleBtn.setAttribute("aria-expanded", "false");
+          const label = toggleBtn.querySelector("span");
+          if (label) label.textContent = "Ver imagens";
+        }
+
+        return;
+      }
+
       const actionBtn = e.target.closest(".btn-review-action");
       if (!actionBtn || reviewActionBusy) return;
 

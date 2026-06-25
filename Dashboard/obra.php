@@ -152,7 +152,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes da Obra</title>
-    <link rel="stylesheet" href="<?php echo asset_url('styleObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('styleObra.css') . '&t=' . filemtime(__DIR__ . '/styleObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('onboardingObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('popoverAcomp.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -2747,6 +2747,12 @@ $conn->close();
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';
         })();
+        document.addEventListener('DOMContentLoaded', () => {
+            const entregaModal = document.getElementById('entregaModal');
+            if (entregaModal && entregaModal.parentElement !== document.body) {
+                document.body.appendChild(entregaModal);
+            }
+        });
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Select2 JS -->

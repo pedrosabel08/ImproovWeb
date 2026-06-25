@@ -1920,6 +1920,112 @@ option.colab-busy {
   gap: 6px;
 }
 
+.review-batch-images {
+  margin-top: 10px;
+}
+
+.btn-review-images-toggle {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-review-images-toggle:hover {
+  background: var(--bg-count);
+  color: var(--text-primary);
+}
+
+.btn-review-images-toggle i {
+  font-size: 10px;
+  transition: transform var(--transition-fast);
+}
+
+.review-batch-card.is-images-open .btn-review-images-toggle i {
+  transform: rotate(180deg);
+}
+
+.review-batch-images-panel {
+  margin-top: 8px;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+
+.review-batch-images-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.review-batch-image-item {
+  min-height: 34px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+
+.review-batch-image-item + .review-batch-image-item {
+  border-top: 1px solid var(--border-card);
+}
+
+.review-batch-image-item.is-empty {
+  justify-content: flex-start;
+  color: var(--text-tertiary);
+}
+
+.review-batch-image-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.review-batch-image-state {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.review-batch-image-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.review-batch-image-state.is-done {
+  color: #059669;
+}
+
+.review-batch-image-state.is-progress {
+  color: #b45309;
+}
+
+.review-batch-image-state.is-muted {
+  color: var(--text-tertiary);
+}
+
 .review-batch-note {
   margin-top: 6px;
   font-size: 11px;
@@ -2108,6 +2214,21 @@ option.colab-busy {
   .review-batch-actions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .review-batch-main {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .review-batch-image-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .review-batch-image-state {
+    white-space: normal;
   }
 }
 
@@ -2587,5 +2708,80 @@ option.colab-busy {
 @media (prefers-color-scheme: dark) {
   .modal-relatorio {
     background: var(--bg-modal);
+  }
+}
+
+@media (max-width: 1024px) {
+  .kpi-panel {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .kpi-grid {
+    display: flex;
+    grid-template-columns: none;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 2px 4px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kpi-card {
+    flex: 0 0 154px;
+    min-height: 0;
+    padding: 8px 10px;
+    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    scroll-snap-align: start;
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .kpi-card-top {
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .kpi-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .kpi-label {
+    min-width: 0;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .kpi-value {
+    font-size: 22px;
+    margin-top: 0;
+  }
+
+  .kpi-delta {
+    gap: 4px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .kpi-delta small,
+  .kpi-sparkline {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-card {
+    flex-basis: 142px;
+    padding: 8px 9px;
+  }
+
+  .kpi-value {
+    font-size: 21px;
   }
 }

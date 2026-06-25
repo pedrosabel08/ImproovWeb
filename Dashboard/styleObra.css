@@ -1871,6 +1871,113 @@ option.colab-busy {
   align-items: center;
   gap: 6px;
 }
+
+.review-batch-images {
+  margin-top: 10px;
+}
+
+.btn-review-images-toggle {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-review-images-toggle:hover {
+  background: var(--bg-count);
+  color: var(--text-primary);
+}
+
+.btn-review-images-toggle i {
+  font-size: 10px;
+  transition: transform var(--transition-fast);
+}
+
+.review-batch-card.is-images-open .btn-review-images-toggle i {
+  transform: rotate(180deg);
+}
+
+.review-batch-images-panel {
+  margin-top: 8px;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+}
+
+.review-batch-images-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.review-batch-image-item {
+  min-height: 34px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+
+.review-batch-image-item + .review-batch-image-item {
+  border-top: 1px solid var(--border);
+}
+
+.review-batch-image-item.is-empty {
+  justify-content: flex-start;
+  color: var(--text-tertiary);
+}
+
+.review-batch-image-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.review-batch-image-state {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.review-batch-image-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.review-batch-image-state.is-done {
+  color: #059669;
+}
+
+.review-batch-image-state.is-progress {
+  color: #b45309;
+}
+
+.review-batch-image-state.is-muted {
+  color: var(--text-tertiary);
+}
+
 .review-batch-note {
   margin-top: 6px;
   font-size: 11px;
@@ -1948,6 +2055,21 @@ option.colab-busy {
   .review-batch-actions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .review-batch-main {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .review-batch-image-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .review-batch-image-state {
+    white-space: normal;
   }
 }
 
@@ -2302,6 +2424,39 @@ option.colab-busy {
 #modalAdicionarEntrega.is-open,
 #modalSelecionarImagens.is-open {
   display: flex;
+}
+
+#entregaModal {
+  left: 60px;
+  width: calc(100vw - 60px);
+}
+
+@media (max-width: 640px) {
+  #entregaModal {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 60px;
+    width: calc(100vw - 60px);
+    height: 100dvh;
+  }
+
+  #entregaModal .modal-content.modal-wide {
+    width: min(700px, calc(100vw - 68px));
+  }
+
+  #entregaModal .modal-footer {
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+
+  #entregaModal .modal-footer .btn-action {
+    flex: 1 1 120px;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
 }
 
 /* Animação de entrada */

@@ -44,6 +44,11 @@ $sql = "SELECT
     CASE
         WHEN fi.funcao_id IN (4, 6)
          AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
+         AND (
+             fi.funcao_id <> 6
+             OR ico.tipo_imagem IS NULL
+             OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
+         )
          AND EXISTS (
              SELECT 1
              FROM historico_aprovacoes ha

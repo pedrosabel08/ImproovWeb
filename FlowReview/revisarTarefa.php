@@ -364,7 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $isTipoAprovacaoComDirecao = in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true);
         $isPrimeiroAprovadorDirecao = ($aprovadorDirecaoId === 1);
-        $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 2, 31], true);
+        $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 9, 31], true);
         $isFinalizadorAprovadorDirecao = (
             !$isDirecaoAprovador
             && $aprovadorDirecaoId > 0
@@ -685,11 +685,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
+            $isAlteracaoHumanizadaRender = (
+                (int)$funcao_id_context === 6
+                && stripos((string)$tipo_imagem_nome, 'humanizada') !== false
+            );
 
             if (
                 in_array($status, ['Aprovado', 'Aprovado com ajustes'], true)
                 && $isDirecaoAprovador
                 && (int)$funcao_id_context === 6
+                && !$isAlteracaoHumanizadaRender
             ) {
                 $alteracaoAprovacao = aprovacao_interna_resolver_alteracao_por_funcao($conn, (int)$idfuncao_imagem);
                 if (
@@ -755,12 +760,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ao aprovar uma função, atualizar vínculos de entrega
             // - Para P00 + Finalização: vincular TODOS os ângulos (historico_aprovacoes_imagens) ao item de entrega via angulos_imagens.entrega_item_id
             // - Para demais (R00..EF): atualizar entregas_itens.historico_id com o id correspondente (último)
-            if (
-                in_array($status, ['Aprovado']) &&
-                (
-                    $nomeFuncaoLower === 'pós-produção' ||
-                    ($nomeFuncaoLower === 'finalização' && stripos((string)$tipo_imagem_nome, 'humanizada') !== false)
+            $isImagemHumanizadaEntrega = stripos((string)$tipo_imagem_nome, 'humanizada') !== false;
+            $deveAtualizarEntregaAprovada = (
+                $nomeFuncaoLower === 'pós-produção'
+                || ($nomeFuncaoLower === 'finalização' && $isImagemHumanizadaEntrega)
+                || ($nomeFuncaoLower === 'alteração' && $isImagemHumanizadaEntrega && $isDirecaoAprovador)
+            );
+            $statusPermiteAtualizarEntrega = (
+                in_array($status, ['Aprovado'], true)
+                || (
+                    $status === 'Aprovado com ajustes'
+                    && $nomeFuncaoLower === 'alteração'
+                    && $isImagemHumanizadaEntrega
+                    && $isDirecaoAprovador
                 )
+            );
+
+            if (
+                $statusPermiteAtualizarEntrega &&
+                $deveAtualizarEntregaAprovada
             ) {
                 if ($imagem_id) {
                     // obtém status_id e obra_id da imagem

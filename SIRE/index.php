@@ -193,6 +193,21 @@ $conn->close();
         </div>
 
         <!-- ── Reference Grid (scrollable) ── -->
+        <section class="sire-event-queue" id="sireEventQueue" aria-labelledby="sireEventQueueTitle">
+            <div class="sire-event-queue-head">
+                <div>
+                    <h2 id="sireEventQueueTitle">Referências de Eventos</h2>
+                    <span id="sireEventQueueCount">Fila pendente</span>
+                </div>
+                <button type="button" class="sire-event-refresh" id="btnReloadEventRefs" title="Atualizar fila">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+            <div class="sire-event-refs-list" id="sireEventRefsList">
+                <div class="sire-event-empty">Carregando referências...</div>
+            </div>
+        </section>
+
         <div class="grid-scroll-area">
             <div id="refGrid" class="ref-grid">
                 <?php for ($i = 0; $i < 12; $i++): ?>

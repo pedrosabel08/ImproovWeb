@@ -245,6 +245,12 @@ $conn->close();
                     <span class="qa-label">Briefing</span>
                 </a>
 
+                <a id="quick_eventos_obra" class="quick-link" href="#secao-eventos-obra" title="Eventos da Obra"
+                    aria-hidden="false">
+                    <i class="fa-solid fa-calendar-plus"></i>
+                    <span class="qa-label">Eventos</span>
+                </a>
+
                 <!-- External quick links -->
                 <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
                     title="Fotográfico" aria-hidden="true">
@@ -294,6 +300,9 @@ $conn->close();
                         <a class="mobile-link" id="mobile_briefing_arquivos" href="#"><i
                                 class="fa-solid fa-clipboard-list"></i>
                             <span>Briefing</span></a>
+                        <a class="mobile-link" id="mobile_eventos_obra" href="#secao-eventos-obra"><i
+                                class="fa-solid fa-calendar-plus"></i>
+                            <span>Eventos</span></a>
                         <hr>
                         <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank"
                             rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
@@ -961,6 +970,23 @@ $conn->close();
                 <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
+
+        <section id="secao-eventos-obra" class="infos-obra eventos-obra-section"
+            style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+            <div class="infos-obra-header eventos-obra-header">
+                <div>
+                    <h1>Eventos da Obra</h1>
+                    <span class="eventos-obra-subtitle">Kickoffs, reuni&otilde;es, visitas e decis&otilde;es importantes do projeto.</span>
+                </div>
+                <button id="btnNovoEventoObra" type="button" class="btnAcompObs eventos-obra-new-btn">
+                    <i class="fa-solid fa-plus"></i> Novo Evento
+                </button>
+            </div>
+            <div id="eventosObraList" class="eventos-obra-list" aria-live="polite">
+                <div class="eventos-obra-empty">Carregando eventos...</div>
+            </div>
+        </section>
+
         <div id="secao-infos-obra" class="infos-obra"
             style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
@@ -2542,6 +2568,104 @@ $conn->close();
                     <button type="button" id="cancelHandoffComercial"
                         style="background: var(--danger);">Cancelar</button>
                     <button type="submit" id="saveHandoffComercial" style="background: var(--success);">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal eventos-obra-modal" id="eventoObraModal" style="display:none;">
+        <div class="modal-content modal-wide eventos-obra-modal-content">
+            <div class="modal-header eventos-obra-modal-header">
+                <div>
+                    <h2 class="modal-title" id="eventoObraModalTitle">
+                        <i class="fa-solid fa-calendar-plus"></i> Novo Evento
+                    </h2>
+                    <p class="eventos-obra-modal-subtitle">Registre a ata e as refer&ecirc;ncias sem classificar durante a reuni&atilde;o.</p>
+                </div>
+                <button type="button" class="modal-close" id="eventoObraClose" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="eventoObraForm" enctype="multipart/form-data" autocomplete="off">
+                <input type="hidden" name="evento_id" id="evento_obra_id" value="">
+                <input type="hidden" name="obra_id" id="evento_obra_obra_id" value="">
+
+                <div class="eventos-obra-top-grid">
+                    <label class="eventos-obra-field">
+                        <span>Tipo do Evento</span>
+                        <select name="tipo_evento" id="evento_tipo" required>
+                            <option value="Kickoff">Kickoff</option>
+                            <option value="Reuni&atilde;o com cliente">Reuni&atilde;o com cliente</option>
+                            <option value="Reuni&atilde;o interna">Reuni&atilde;o interna</option>
+                            <option value="Visita t&eacute;cnica">Visita t&eacute;cnica</option>
+                            <option value="Defini&ccedil;&atilde;o de materiais">Defini&ccedil;&atilde;o de materiais</option>
+                            <option value="Aprova&ccedil;&atilde;o presencial">Aprova&ccedil;&atilde;o presencial</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </label>
+                    <label class="eventos-obra-field">
+                        <span>Data</span>
+                        <input type="date" name="data_evento" id="evento_data" required>
+                    </label>
+                    <label class="eventos-obra-field">
+                        <span>Hora</span>
+                        <input type="time" name="hora_evento" id="evento_hora">
+                    </label>
+                    <label class="eventos-obra-field eventos-obra-field-wide">
+                        <span>Participantes</span>
+                        <input type="text" name="participantes" id="evento_participantes"
+                            placeholder="Cliente, arquitetura, interno...">
+                    </label>
+                    <div class="eventos-obra-responsavel">
+                        <span>Respons&aacute;vel pelo registro</span>
+                        <strong id="evento_responsavel_label"><?php echo htmlspecialchars($nome_usuario ?? 'Sessao atual'); ?></strong>
+                    </div>
+                </div>
+
+                <nav class="eventos-obra-tabs" role="tablist" aria-label="Dados do evento">
+                    <button type="button" class="eventos-obra-tab is-active" data-event-tab="referencias">
+                        <i class="fa-solid fa-images"></i> Refer&ecirc;ncias
+                    </button>
+                    <button type="button" class="eventos-obra-tab" data-event-tab="ata">
+                        <i class="fa-solid fa-align-left"></i> Informa&ccedil;&otilde;es Escritas
+                    </button>
+                </nav>
+
+                <div class="eventos-obra-tab-panel is-active" id="evento_tab_referencias">
+                    <div class="eventos-obra-reference-grid">
+                        <label class="eventos-obra-field eventos-obra-field-stack">
+                            <span>Links</span>
+                            <textarea name="referencias_urls" id="evento_referencias_urls" rows="7"
+                                placeholder="Cole um link por linha"></textarea>
+                        </label>
+                        <label class="eventos-obra-upload-drop">
+                            <span><i class="fa-solid fa-cloud-arrow-up"></i> Upload de imagens</span>
+                            <input type="file" name="referencias_uploads[]" id="evento_referencias_uploads"
+                                accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" multiple>
+                            <small id="evento_uploads_label">JPG, PNG, WEBP ou GIF. Pode selecionar v&aacute;rios arquivos.</small>
+                        </label>
+                    </div>
+                    <div id="eventoReferenciasExistentes" class="eventos-obra-existing-refs" style="display:none;"></div>
+                </div>
+
+                <div class="eventos-obra-tab-panel" id="evento_tab_ata">
+                    <label class="eventos-obra-field eventos-obra-field-stack">
+                        <span>Ata livre</span>
+                        <textarea name="ata" id="evento_ata" class="eventos-obra-ata" rows="14"
+                            placeholder="Objetivos, decis&otilde;es, restri&ccedil;&otilde;es, prefer&ecirc;ncias, observa&ccedil;&otilde;es, expectativas, hist&oacute;rico e pend&ecirc;ncias..."></textarea>
+                    </label>
+                </div>
+
+                <div class="modal-footer eventos-obra-footer">
+                    <button type="button" class="btn-action btn-secondary" id="eventoObraArchiveBtn" style="display:none;">
+                        <i class="fa-solid fa-box-archive"></i> Arquivar
+                    </button>
+                    <div class="eventos-obra-footer-spacer"></div>
+                    <button type="button" class="btn-action btn-secondary" id="eventoObraCancel">Cancelar</button>
+                    <button type="submit" class="btn-action btn-primary" id="eventoObraSaveBtn">
+                        <i class="fa-solid fa-floppy-disk"></i> Salvar Evento
+                    </button>
                 </div>
             </form>
         </div>

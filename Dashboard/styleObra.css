@@ -9125,3 +9125,436 @@ tr#linha-porcentagem {
   -webkit-line-clamp: 2;
   overflow-wrap: anywhere;
 }
+
+/* Eventos da Obra */
+.eventos-obra-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.eventos-obra-header {
+  gap: 12px;
+}
+
+.eventos-obra-subtitle,
+.eventos-obra-modal-subtitle {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted, #6b7280);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.eventos-obra-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm, 8px);
+  white-space: nowrap;
+}
+
+.eventos-obra-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.eventos-obra-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 132px;
+  padding: 14px;
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-card, var(--card-bg));
+  box-shadow: var(--shadow-card, 0 1px 4px rgba(0, 0, 0, 0.16));
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast, 0.15s ease),
+    background var(--transition-fast, 0.15s ease),
+    transform var(--transition-fast, 0.15s ease);
+}
+
+.eventos-obra-card:hover {
+  border-color: var(--border-card-hover, var(--accent));
+  background: var(--bg-card-hover, var(--surface));
+  transform: translateY(-1px);
+}
+
+.eventos-obra-card-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.eventos-obra-card-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.eventos-obra-card-title-row strong {
+  color: var(--text-primary, var(--text));
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.eventos-obra-card-title-row span,
+.eventos-obra-card-participants,
+.eventos-obra-card-summary,
+.eventos-obra-ref-meta,
+.eventos-obra-responsavel span {
+  color: var(--text-tertiary, var(--muted));
+  font-size: 12px;
+}
+
+.eventos-obra-card-participants,
+.eventos-obra-card-summary {
+  margin: 0 0 7px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.eventos-obra-card-summary {
+  display: -webkit-box;
+  color: var(--text-secondary, var(--muted));
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.eventos-obra-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.eventos-obra-ref-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--accent-subtle, rgba(79, 128, 225, 0.14));
+  color: var(--accent, #4f80e1);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.eventos-obra-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-primary, var(--text));
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--bg-input, var(--surface));
+}
+
+.eventos-obra-empty {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border: 1px dashed var(--border-card, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-tertiary, var(--muted));
+  background: var(--bg-surface-alt, var(--surface));
+  font-size: 13px;
+  text-align: center;
+}
+
+.eventos-obra-empty-error {
+  color: var(--danger, #ef4444);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+#eventoObraModal .eventos-obra-modal-content {
+  width: min(980px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#eventoObraForm {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.eventos-obra-top-grid {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.1fr) minmax(140px, 0.8fr) minmax(110px, 0.6fr) minmax(220px, 1.4fr);
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+
+.eventos-obra-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.eventos-obra-field span,
+.eventos-obra-responsavel strong {
+  color: var(--text-muted, #6b7280);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eventos-obra-field input,
+.eventos-obra-field select,
+.eventos-obra-field textarea {
+  width: 100%;
+  border: 1px solid var(--border-input, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-input, var(--surface));
+  color: var(--text-primary, var(--text));
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition:
+    border-color var(--transition-fast, 0.15s ease),
+    box-shadow var(--transition-fast, 0.15s ease);
+}
+
+.eventos-obra-field input,
+.eventos-obra-field select {
+  height: 38px;
+  padding: 0 10px;
+}
+
+.eventos-obra-field textarea {
+  min-height: 116px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.eventos-obra-field input:focus,
+.eventos-obra-field select:focus,
+.eventos-obra-field textarea:focus {
+  border-color: var(--accent, #4f80e1);
+  box-shadow: 0 0 0 3px var(--accent-subtle, rgba(79, 128, 225, 0.14));
+}
+
+.eventos-obra-field-wide {
+  grid-column: span 1;
+}
+
+.eventos-obra-field-stack {
+  height: 100%;
+}
+
+.eventos-obra-responsavel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-surface-alt, var(--surface));
+}
+
+.eventos-obra-responsavel span {
+  color: var(--text-primary, var(--text));
+  font-weight: 700;
+}
+
+.eventos-obra-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--border-card, var(--border));
+}
+
+.eventos-obra-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-secondary, var(--muted));
+  background: var(--bg-surface-alt, var(--surface));
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eventos-obra-tab.is-active {
+  color: var(--accent, #4f80e1);
+  border-color: var(--accent, #4f80e1);
+  background: var(--accent-subtle, rgba(79, 128, 225, 0.14));
+}
+
+.eventos-obra-tab-panel {
+  display: none;
+  min-height: 0;
+  padding: 16px 20px 18px;
+  overflow: auto;
+}
+
+.eventos-obra-tab-panel.is-active {
+  display: block;
+}
+
+.eventos-obra-reference-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.65fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.eventos-obra-upload-drop {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 116px;
+  gap: 8px;
+  padding: 16px;
+  border: 1.5px dashed var(--border-card-hover, var(--accent));
+  border-radius: var(--radius-sm, 8px);
+  background: var(--accent-subtle, rgba(79, 128, 225, 0.14));
+  color: var(--text-primary, var(--text));
+  cursor: pointer;
+}
+
+.eventos-obra-upload-drop input {
+  display: none;
+}
+
+.eventos-obra-upload-drop i {
+  color: var(--accent, #4f80e1);
+  font-size: 20px;
+}
+
+.eventos-obra-upload-drop span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.eventos-obra-upload-drop small,
+.eventos-obra-upload-count {
+  color: var(--text-tertiary, var(--muted));
+  font-size: 12px;
+}
+
+.eventos-obra-existing-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.eventos-obra-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border-card, var(--border));
+  border-radius: var(--radius-full, 999px);
+  color: var(--text-primary, var(--text));
+  background: var(--bg-input, var(--surface));
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.eventos-obra-ref-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventos-obra-ata {
+  min-height: min(42vh, 390px) !important;
+}
+
+.eventos-obra-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-card, var(--border));
+}
+
+.eventos-obra-footer-spacer {
+  flex: 1;
+}
+
+#eventoObraArchiveBtn {
+  color: var(--danger, #ef4444);
+}
+
+.swal2-container {
+  z-index: 10000 !important;
+}
+
+@media (max-width: 900px) {
+  .eventos-obra-top-grid,
+  .eventos-obra-reference-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .eventos-obra-field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .eventos-obra-responsavel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .eventos-obra-header,
+  .eventos-obra-card,
+  .eventos-obra-card-side,
+  .eventos-obra-footer {
+    align-items: stretch;
+  }
+
+  .eventos-obra-card,
+  .eventos-obra-footer {
+    flex-direction: column;
+  }
+
+  .eventos-obra-card-side {
+    flex-direction: row;
+  }
+
+  .eventos-obra-top-grid,
+  .eventos-obra-reference-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .eventos-obra-tabs {
+    overflow-x: auto;
+  }
+
+  #eventoObraModal .eventos-obra-modal-content {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 20px);
+  }
+}

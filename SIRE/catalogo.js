@@ -8,6 +8,7 @@
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const API_URL = "catalogo_ajax.php";
+const EVENT_REFS_API = "evento_referencias_ajax.php";
 const PAGE_LIMIT = 48;
 const THUMB_W = 360;
 const THUMB_Q = 75;
@@ -374,6 +375,109 @@ function showError(msg) {
 
 // ── Filtros dinâmicos: estilo e tipo ─────────────────────────────────────────
 
+function eventRefHref(ref) {
+  if (ref.tipo === "url") return ref.url || "#";
+  if (ref.caminho) return "../" + String(ref.caminho).replace(/^\/+/, "");
+  return "#";
+}
+
+function eventRefTitle(ref) {
+  if (ref.tipo === "url") return ref.url || "URL";
+  return ref.nome_original || ref.nome_arquivo || "Upload";
+}
+
+function formatEventRefDate(str) {
+  if (!str) return "Data nao informada";
+  const dateOnly = String(str).slice(0, 10);
+  const parts = dateOnly.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return formatDate(str);
+}
+
+function renderEventRefs(refs) {
+  const list = document.getElementById("sireEventRefsList");
+  const count = document.getElementById("sireEventQueueCount");
+  if (!list) return;
+
+  const total = refs.length;
+  if (count) {
+    count.textContent = total === 1 ? "1 referência pendente" : `${total} referências pendentes`;
+  }
+
+  if (!total) {
+    list.innerHTML = '<div class="sire-event-empty">Nenhuma referência de evento pendente.</div>';
+    return;
+  }
+
+  list.innerHTML = refs
+    .map((ref) => {
+      const href = eventRefHref(ref);
+      const title = eventRefTitle(ref);
+      const isUpload = ref.tipo === "upload";
+      const preview = isUpload
+        ? `<img src="${escAttr(href)}" alt="${escAttr(title)}" loading="lazy">`
+        : '<i class="fa-solid fa-link"></i>';
+      const evento = ref.tipo_evento || "Evento";
+      const obra = ref.obra_nome || ref.obra_nomenclatura || "Obra";
+      const data = ref.data_evento_formatada || formatEventRefDate(ref.data_evento || ref.criado_em);
+      const participantes = ref.participantes || "Participantes nao informados";
+
+      return `
+        <article class="sire-event-ref-card">
+          <a class="sire-event-ref-preview ${isUpload ? "is-upload" : "is-url"}"
+             href="${escAttr(href)}"
+             target="_blank"
+             rel="noopener">
+            ${preview}
+          </a>
+          <div class="sire-event-ref-body">
+            <div class="sire-event-ref-title-row">
+              <strong title="${escAttr(title)}">${esc(title)}</strong>
+              <span>${esc(ref.origem || "Evento")}</span>
+            </div>
+            <div class="sire-event-ref-meta">
+              <span><i class="fa-solid fa-building"></i>${esc(obra)}</span>
+              <span><i class="fa-regular fa-calendar"></i>${esc(evento)} · ${esc(data)}</span>
+              <span><i class="fa-solid fa-users"></i>${esc(participantes)}</span>
+            </div>
+            <div class="sire-event-ref-status">
+              <span>${esc(ref.status || "Pendente")}</span>
+              <span>${esc(ref.observacao || "Reunião")}</span>
+            </div>
+          </div>
+        </article>`;
+    })
+    .join("");
+}
+
+function loadEventRefs() {
+  const list = document.getElementById("sireEventRefsList");
+  const btn = document.getElementById("btnReloadEventRefs");
+  if (!list) return;
+
+  if (btn) btn.classList.add("is-loading");
+  $.ajax({
+    url: EVENT_REFS_API,
+    method: "GET",
+    dataType: "json",
+    success: function (res) {
+      if (res && res.success) {
+        renderEventRefs(res.referencias || res.data || []);
+      } else {
+        list.innerHTML = '<div class="sire-event-empty sire-event-error">Erro ao carregar referências de eventos.</div>';
+      }
+    },
+    error: function () {
+      list.innerHTML = '<div class="sire-event-empty sire-event-error">Erro de comunicação com o servidor.</div>';
+    },
+    complete: function () {
+      if (btn) btn.classList.remove("is-loading");
+    },
+  });
+}
+
 function populateDynamicFilters() {
   const estilos = [
     ...new Set(allRefs.map((r) => r.estilo).filter(Boolean)),
@@ -666,7 +770,10 @@ $("#btnLoadMore").on("click", function () {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+$("#btnReloadEventRefs").on("click", loadEventRefs);
+
 $(function () {
   $("#btnLimpar").hide();
+  loadEventRefs();
   loadRefs();
 });

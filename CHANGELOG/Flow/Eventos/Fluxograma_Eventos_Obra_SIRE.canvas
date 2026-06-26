@@ -1,0 +1,25 @@
+{
+	"nodes":[
+		{"id":"1","type":"text","text":"Entrar na Obra\nClique em 'Novo Evento'","x":0,"y":0,"width":260,"height":80},
+		{"id":"2","type":"text","text":"Cadastrar Evento\n• Tipo\n• Data/Hora\n• Participantes\n• Responsável","x":320,"y":0,"width":300,"height":140},
+		{"id":"3","type":"text","text":"Referências\n• Link Pinterest\n• URL\n• Upload de imagem","x":700,"y":-120,"width":320,"height":180},
+		{"id":"4","type":"text","text":"Informações Escritas\n• Ata livre\n• Decisões\n• Restrições\n• Observações","x":700,"y":140,"width":320,"height":180},
+		{"id":"5","type":"text","text":"Salvar Referências\nOrigem: Evento\nStatus: Pendente\nObservação: Reunião","x":1100,"y":-120,"width":300,"height":140},
+		{"id":"6","type":"text","text":"Salvar Ata\nVincular à obra\nAutor\nData/Hora","x":1100,"y":140,"width":300,"height":120},
+		{"id":"7","type":"text","text":"Integração com SIRE\nFila de Referências Pendentes","x":1480,"y":0,"width":320,"height":140},
+		{"id":"8","type":"text","text":"Análise no SIRE\n• Classificar\n• Aprovar/Rejeitar\n• Manter rastreabilidade","x":1880,"y":0,"width":340,"height":180},
+		{"id":"9","type":"text","text":"Consulta pela Equipe\nHistórico da Obra\nReferências\nConhecimento do Projeto","x":2320,"y":0,"width":340,"height":160},
+		{"id":"c1b49407f3a92302","x":1000,"y":360,"width":680,"height":1020,"type":"file","file":"fluxograma_evento-SIRE.png"}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"1","fromSide":"right","toNode":"2","toSide":"left"},
+		{"id":"e2","fromNode":"2","fromSide":"right","toNode":"3","toSide":"left"},
+		{"id":"e3","fromNode":"2","fromSide":"right","toNode":"4","toSide":"left"},
+		{"id":"e4","fromNode":"3","fromSide":"right","toNode":"5","toSide":"left"},
+		{"id":"e5","fromNode":"4","fromSide":"right","toNode":"6","toSide":"left"},
+		{"id":"e6","fromNode":"5","fromSide":"right","toNode":"7","toSide":"left"},
+		{"id":"e7","fromNode":"6","fromSide":"right","toNode":"7","toSide":"left"},
+		{"id":"e8","fromNode":"7","fromSide":"right","toNode":"8","toSide":"left"},
+		{"id":"e9","fromNode":"8","fromSide":"right","toNode":"9","toSide":"left"}
+	]
+}

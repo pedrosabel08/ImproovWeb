@@ -13877,6 +13877,391 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   applyConditionals();
 })();
 
+// ===== EVENTOS DA OBRA =====
+(function initEventosObra() {
+  const section = document.getElementById("secao-eventos-obra");
+  const list = document.getElementById("eventosObraList");
+  const modal = document.getElementById("eventoObraModal");
+  const form = document.getElementById("eventoObraForm");
+  const btnNew = document.getElementById("btnNovoEventoObra");
+  const quickBtn = document.getElementById("quick_eventos_obra");
+  const mobileBtn = document.getElementById("mobile_eventos_obra");
+  const closeBtn = document.getElementById("eventoObraClose");
+  const cancelBtn = document.getElementById("eventoObraCancel");
+  const archiveBtn = document.getElementById("eventoObraArchiveBtn");
+  const saveBtn = document.getElementById("eventoObraSaveBtn");
+  const title = document.getElementById("eventoObraModalTitle");
+  const existingRefs = document.getElementById("eventoReferenciasExistentes");
+  const fileInput = document.getElementById("evento_referencias_uploads");
+  const uploadLabel = document.getElementById("evento_uploads_label");
+
+  if (!section || !list || !modal || !form) return;
+
+  let canEdit = false;
+  let currentEvent = null;
+  let cache = [];
+
+  function currentObraId() {
+    return typeof obraId !== "undefined" && obraId
+      ? obraId
+      : localStorage.getItem("obraId") || localStorage.getItem("idObra") || "";
+  }
+
+  function todayDate() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  function nowTime() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function escEvent(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function formatEventDate(date, time) {
+    if (!date) return "Data nao informada";
+    const parts = String(date).split("-");
+    const formatted =
+      parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : date;
+    const hour = time ? String(time).slice(0, 5) : "";
+    return hour ? `${formatted} ${hour}` : formatted;
+  }
+
+  function notifyEvent(message, type) {
+    if (typeof Toastify === "function") {
+      Toastify({
+        text: message,
+        duration: 3200,
+        gravity: "top",
+        position: "right",
+        backgroundColor: type === "error" ? "#ef4444" : "#0f9f6e",
+      }).showToast();
+      return;
+    }
+    alert(message);
+  }
+
+  function refPublicUrl(ref) {
+    const raw = String(ref?.caminho || ref?.url || "").trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.indexOf("uploads/") === 0) return "../" + raw;
+    return raw;
+  }
+
+  function renderExistingRefs(refs) {
+    if (!existingRefs) return;
+    if (!refs || refs.length === 0) {
+      existingRefs.style.display = "none";
+      existingRefs.innerHTML = "";
+      return;
+    }
+
+    existingRefs.style.display = "";
+    existingRefs.innerHTML = refs
+      .map((ref) => {
+        const href = refPublicUrl(ref);
+        const label =
+          ref.tipo === "url"
+            ? ref.url
+            : ref.nome_original || ref.nome_arquivo || "Imagem enviada";
+        const icon = ref.tipo === "url" ? "fa-link" : "fa-image";
+        return `
+          <a class="eventos-obra-ref-chip" href="${escEvent(href)}" target="_blank" rel="noopener">
+            <i class="fa-solid ${icon}"></i>
+            <span>${escEvent(label)}</span>
+            <em>${escEvent(ref.status || "Pendente")}</em>
+          </a>`;
+      })
+      .join("");
+  }
+
+  function setEditorState(editable) {
+    form.querySelectorAll("input, select, textarea").forEach((el) => {
+      el.disabled = !editable;
+    });
+    if (saveBtn) saveBtn.style.display = editable ? "" : "none";
+    if (archiveBtn) archiveBtn.style.display = editable && currentEvent ? "" : "none";
+  }
+
+  function resetForm() {
+    currentEvent = null;
+    form.reset();
+    document.getElementById("evento_obra_id").value = "";
+    document.getElementById("evento_obra_obra_id").value = currentObraId();
+    document.getElementById("evento_data").value = todayDate();
+    document.getElementById("evento_hora").value = nowTime();
+    document.getElementById("evento_referencias_urls").value = "";
+    if (fileInput) fileInput.value = "";
+    if (uploadLabel) {
+      uploadLabel.textContent =
+        "JPG, PNG, WEBP ou GIF. Pode selecionar varios arquivos.";
+    }
+    if (title) title.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Novo Evento';
+    renderExistingRefs([]);
+    setActiveTab("referencias");
+    setEditorState(canEdit);
+  }
+
+  function populateForm(evento) {
+    currentEvent = evento;
+    document.getElementById("evento_obra_id").value = evento.id || "";
+    document.getElementById("evento_obra_obra_id").value = evento.obra_id || currentObraId();
+    document.getElementById("evento_tipo").value = evento.tipo_evento || "Outros";
+    document.getElementById("evento_data").value = evento.data_evento || todayDate();
+    document.getElementById("evento_hora").value = evento.hora_evento
+      ? String(evento.hora_evento).slice(0, 5)
+      : "";
+    document.getElementById("evento_participantes").value =
+      evento.participantes || "";
+    document.getElementById("evento_ata").value = evento.ata || "";
+    document.getElementById("evento_referencias_urls").value = "";
+    if (fileInput) fileInput.value = "";
+    if (uploadLabel) {
+      uploadLabel.textContent =
+        "JPG, PNG, WEBP ou GIF. Pode selecionar varios arquivos.";
+    }
+    if (title) title.innerHTML = '<i class="fa-solid fa-calendar-check"></i> Editar Evento';
+    renderExistingRefs(evento.referencias || []);
+    setActiveTab("referencias");
+    setEditorState(canEdit);
+  }
+
+  function openModal() {
+    modal.style.display = "flex";
+    modal.style.alignItems = "center";
+    modal.style.justifyContent = "center";
+    modal.classList.add("is-open");
+  }
+
+  function closeModal() {
+    modal.style.display = "none";
+    modal.classList.remove("is-open");
+  }
+
+  function setActiveTab(tab) {
+    modal.querySelectorAll(".eventos-obra-tab").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.eventTab === tab);
+    });
+    modal.querySelectorAll(".eventos-obra-tab-panel").forEach((panel) => {
+      panel.classList.toggle(
+        "is-active",
+        panel.id === `evento_tab_${tab}`,
+      );
+    });
+  }
+
+  function renderList(items) {
+    cache = items || [];
+    if (!cache.length) {
+      list.innerHTML =
+        '<div class="eventos-obra-empty">Nenhum evento registrado para esta obra.</div>';
+      return;
+    }
+
+    list.innerHTML = cache
+      .map((evento) => {
+        const resumo = evento.resumo || "Sem informacoes escritas.";
+        const participantes = evento.participantes || "Participantes nao informados";
+        const refs = Number(evento.referencias_qtd || 0);
+        return `
+          <article class="eventos-obra-card" data-evento-id="${evento.id}">
+            <div class="eventos-obra-card-main">
+              <div class="eventos-obra-card-title-row">
+                <strong>${escEvent(evento.tipo_evento || "Evento")}</strong>
+                <span>${escEvent(formatEventDate(evento.data_evento, evento.hora_evento))}</span>
+              </div>
+              <p class="eventos-obra-card-participants">
+                <i class="fa-solid fa-users"></i> ${escEvent(participantes)}
+              </p>
+              <p class="eventos-obra-card-summary">${escEvent(resumo)}</p>
+            </div>
+            <div class="eventos-obra-card-side">
+              <span class="eventos-obra-ref-count"><i class="fa-solid fa-images"></i> ${refs}</span>
+              <button type="button" class="eventos-obra-open" data-evento-id="${evento.id}">
+                Abrir
+              </button>
+            </div>
+          </article>`;
+      })
+      .join("");
+  }
+
+  async function loadEventos() {
+    const id = currentObraId();
+    if (!id) {
+      list.innerHTML =
+        '<div class="eventos-obra-empty">Obra nao identificada.</div>';
+      return;
+    }
+    try {
+      const res = await fetch(
+        `eventos_obra_list.php?obra_id=${encodeURIComponent(id)}`,
+      );
+      const json = await res.json();
+      if (!json || !json.success) {
+        throw new Error(json && json.error ? json.error : "Erro ao carregar eventos.");
+      }
+      canEdit = !!json.can_edit;
+      if (btnNew) btnNew.style.display = canEdit ? "" : "none";
+      renderList(json.data || []);
+    } catch (err) {
+      console.error(err);
+      list.innerHTML =
+        '<div class="eventos-obra-empty eventos-obra-empty-error">Erro ao carregar eventos.</div>';
+    }
+  }
+
+  async function openDetail(eventoId) {
+    try {
+      const res = await fetch(
+        `eventos_obra_get.php?evento_id=${encodeURIComponent(eventoId)}`,
+      );
+      const json = await res.json();
+      if (!json || !json.success) {
+        throw new Error(json && json.error ? json.error : "Erro ao abrir evento.");
+      }
+      canEdit = !!json.can_edit;
+      populateForm(json.data);
+      openModal();
+    } catch (err) {
+      console.error(err);
+      notifyEvent(err.message || "Erro ao abrir evento.", "error");
+    }
+  }
+
+  async function saveEvento(ev) {
+    ev.preventDefault();
+    if (!canEdit) {
+      notifyEvent("Sem permissao para salvar eventos.", "error");
+      return;
+    }
+
+    const fd = new FormData(form);
+    const id = currentObraId();
+    if (id) fd.set("obra_id", id);
+    if (saveBtn) saveBtn.disabled = true;
+
+    try {
+      const res = await fetch("eventos_obra_save.php", {
+        method: "POST",
+        body: fd,
+      });
+      const json = await res.json();
+      if (!json || !json.success) {
+        throw new Error(json && (json.error || json.details) ? json.error || json.details : "Erro ao salvar evento.");
+      }
+      notifyEvent("Evento salvo com sucesso.");
+      closeModal();
+      await loadEventos();
+    } catch (err) {
+      console.error(err);
+      notifyEvent(err.message || "Erro ao salvar evento.", "error");
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
+    }
+  }
+
+  async function archiveEvento() {
+    if (!currentEvent || !canEdit) return;
+    const confirmed =
+      typeof Swal !== "undefined"
+        ? await Swal.fire({
+            icon: "question",
+            title: "Arquivar evento?",
+            text: "O evento saira do historico visivel, mas continuara preservado para auditoria.",
+            showCancelButton: true,
+            confirmButtonText: "Arquivar",
+            cancelButtonText: "Cancelar",
+          })
+        : { isConfirmed: confirm("Arquivar este evento?") };
+    if (!confirmed.isConfirmed) return;
+
+    try {
+      const res = await fetch("eventos_obra_archive.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evento_id: currentEvent.id,
+          obra_id: currentEvent.obra_id || currentObraId(),
+        }),
+      });
+      const json = await res.json();
+      if (!json || !json.success) {
+        throw new Error(json && json.error ? json.error : "Erro ao arquivar evento.");
+      }
+      notifyEvent("Evento arquivado.");
+      closeModal();
+      await loadEventos();
+    } catch (err) {
+      console.error(err);
+      notifyEvent(err.message || "Erro ao arquivar evento.", "error");
+    }
+  }
+
+  if (btnNew) {
+    btnNew.addEventListener("click", () => {
+      resetForm();
+      openModal();
+    });
+  }
+
+  if (quickBtn) {
+    quickBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  if (mobileBtn) {
+    mobileBtn.addEventListener("click", () => {
+      const mm = document.getElementById("quickMobileMenu");
+      const hb = document.getElementById("quickHamburger");
+      if (mm) mm.setAttribute("aria-hidden", "true");
+      if (hb) hb.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  list.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-evento-id]");
+    if (!btn) return;
+    const eventoId = btn.getAttribute("data-evento-id");
+    if (eventoId) openDetail(eventoId);
+  });
+
+  modal.querySelectorAll(".eventos-obra-tab").forEach((btn) => {
+    btn.addEventListener("click", () => setActiveTab(btn.dataset.eventTab));
+  });
+
+  if (fileInput && uploadLabel) {
+    fileInput.addEventListener("change", () => {
+      const count = fileInput.files ? fileInput.files.length : 0;
+      uploadLabel.textContent = count
+        ? `${count} arquivo(s) selecionado(s)`
+        : "JPG, PNG, WEBP ou GIF. Pode selecionar varios arquivos.";
+    });
+  }
+
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+  if (archiveBtn) archiveBtn.addEventListener("click", archiveEvento);
+  form.addEventListener("submit", saveEvento);
+  modal.addEventListener("click", (ev) => {
+    if (ev.target === modal) closeModal();
+  });
+
+  loadEventos();
+})();
+
 // ===== MÓDULO NOTIFICAR EQUIPE =====
 (function initNotificarEquipe() {
   const btnOpen = document.getElementById("btnNotificarObra");

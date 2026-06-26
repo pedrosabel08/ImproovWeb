@@ -13,15 +13,15 @@
             "state": {
               "type": "canvas",
               "state": {
-                "file": "Alteração/Flow_Tela_Alteracoes_v2_Obsidian.canvas",
+                "file": "Eventos/Fluxograma_Eventos_Obra_SIRE.canvas",
                 "viewState": {
-                  "x": 1612.0787832170276,
-                  "y": 567.90137902483,
-                  "zoom": -2.3333333333333326
+                  "x": 1462.7978079807824,
+                  "y": 883.0444184193457,
+                  "zoom": -0.03594443466272368
                 }
               },
               "icon": "lucide-layout-dashboard",
-              "title": "Flow_Tela_Alteracoes_v2_Obsidian"
+              "title": "Fluxograma_Eventos_Obra_SIRE"
             }
           }
         ]
@@ -173,8 +173,12 @@
   },
   "active": "a10e7d50fc44a174",
   "lastOpenFiles": [
-    "imagens/layout_alteracao.png",
+    "fluxograma_evento-SIRE.png",
     "Alteração/Flow_Tela_Alteracoes_v2_Obsidian.canvas",
+    "Eventos/Fluxograma_Eventos_Obra_SIRE.canvas",
+    "Eventos",
+    "Nova pasta",
+    "imagens/layout_alteracao.png",
     "Alteração/Alterações.md",
     "2026-06-23.md",
     "Sem título.md",
@@ -206,11 +210,9 @@
     "image.png",
     "imagens/copiar_caminho.png",
     "imagens.html",
-    "changelog.html",
     "imagens/caminho_arquivo.png",
     "Pasted image 20250526160539.png",
     "Registro de atualizações Flow.md",
-    "videos",
     "Bem-vindo.md"
   ]
 }

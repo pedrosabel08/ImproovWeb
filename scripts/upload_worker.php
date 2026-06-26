@@ -382,6 +382,7 @@ function mapFuncaoParaPasta($nome_funcao)
         'modelagem' => '03.Models',
         'composição' => '03.Models',
         'finalização' => '03.Models',
+        'escolha de ângulos' => '03.Models',
         'pré-finalização' => '03.Models',
         'alteração' => '03.Models',
         'Pós-Produção' => '04.Finalizacao',
@@ -1155,6 +1156,7 @@ do {
                         'composicao' => 'Comp',
                         'finalização' => 'Final',
                         'finalizacao' => 'Final',
+                        'escolha de ângulos' => 'Final',
                         'pré-finalização' => 'Final',
                         'pre-finalizacao' => 'Final'
                     ];

@@ -851,7 +851,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="review-batch-card severity-${severity}" data-review-batch-id="${batch.id}">
                 <div class="review-batch-main">
                   <div class="review-batch-title-row">
-                    <div class="review-batch-title">Lote ${formatarData(batch.data_entrega_lote)} · R${String(batch.review_round || 1).padStart(2, "0")}</div>
+                    <div class="review-batch-title">${escapeHtml(formatarData(batch.data_entrega_lote))}</div>
                     <span class="review-batch-status status-${status.toLowerCase()}">${statusLabel}</span>
                   </div>
                   <div class="review-batch-meta">

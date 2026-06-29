@@ -19,8 +19,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background var(--transition-fast), border-color var(--transition-fast),
-              color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 .btn-relatorio:hover {
   background: var(--accent-subtle);
@@ -137,6 +139,7 @@
 .relatorio-summary {
   display: flex;
   gap: 10px;
+  margin: 8px 0;
   flex-wrap: wrap;
 }
 .relatorio-card {
@@ -162,10 +165,18 @@
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
-.relatorio-card-value.is-green  { color: #10b981; }
-.relatorio-card-value.is-red    { color: #ef4444; }
-.relatorio-card-value.is-yellow { color: #f59e0b; }
-.relatorio-card-value.is-blue   { color: var(--accent); }
+.relatorio-card-value.is-green {
+  color: #10b981;
+}
+.relatorio-card-value.is-red {
+  color: #ef4444;
+}
+.relatorio-card-value.is-yellow {
+  color: #f59e0b;
+}
+.relatorio-card-value.is-blue {
+  color: var(--accent);
+}
 
 /* ── Etapas list ───────────────────────────────────────────────────────── */
 .relatorio-etapas {
@@ -308,9 +319,15 @@
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
-.rel-stat-value.is-green  { color: #10b981; }
-.rel-stat-value.is-red    { color: #ef4444; }
-.rel-stat-value.is-yellow { color: #f59e0b; }
+.rel-stat-value.is-green {
+  color: #10b981;
+}
+.rel-stat-value.is-red {
+  color: #ef4444;
+}
+.rel-stat-value.is-yellow {
+  color: #f59e0b;
+}
 
 /* ── Progress bar ──────────────────────────────────────────────────────── */
 .rel-progress-bar-wrap {
@@ -392,11 +409,30 @@
   letter-spacing: 0.2px;
   white-space: nowrap;
 }
-.rel-status-badge.antecipada   { background: rgba(16,185,129,0.14); color: #059669; }
-.rel-status-badge.no-prazo     { background: rgba(79,128,225,0.12); color: var(--accent); }
-.rel-status-badge.com-atraso   { background: rgba(239,68,68,0.12);  color: #dc2626; }
-.rel-status-badge.pendente     { background: rgba(245,158,11,0.12); color: #d97706; }
-.rel-status-badge.nao-iniciada { background: var(--bg-count);       color: var(--text-muted); }
+.rel-status-badge.antecipada {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+.rel-status-badge.no-prazo {
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--accent);
+}
+.rel-status-badge.com-atraso {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+.rel-status-badge.tea {
+  background: rgba(245, 158, 11, 0.12);
+  color: #ebac26;
+}
+.rel-status-badge.pendente {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.rel-status-badge.nao-iniciada {
+  background: var(--bg-count);
+  color: var(--text-muted);
+}
 
 /* ── btn-apply helper (if not present in styleObra.css) ───────────────── */
 #modalRelatorioProducao .btn-apply {

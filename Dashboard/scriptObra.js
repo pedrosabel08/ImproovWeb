@@ -1220,7 +1220,9 @@ function fileNameFromPath(path) {
 
 function getInfoNomenclatura(info) {
   const funcoes = Array.isArray(info?.funcoes) ? info.funcoes : [];
-  const fromFuncao = funcoes.find((funcao) => funcao?.nomenclatura)?.nomenclatura;
+  const fromFuncao = funcoes.find(
+    (funcao) => funcao?.nomenclatura,
+  )?.nomenclatura;
   return String(info?.nomenclatura || fromFuncao || "").trim();
 }
 
@@ -1252,15 +1254,14 @@ function publicUrlFromArquivo(item, context = {}) {
     );
     const pathAfterAngulo =
       alreadyNormalized?.[2] || (anguloMatch && anguloMatch[1]) || "";
-    const nomenclatura =
-      String(
-        context?.nomenclatura ||
-          item?.nomenclatura ||
-          alreadyNormalized?.[1] ||
-          nomenclaturaFromPath(p) ||
-          nomenclaturaFromPath(pathAfterAngulo) ||
-          "",
-      ).trim();
+    const nomenclatura = String(
+      context?.nomenclatura ||
+        item?.nomenclatura ||
+        alreadyNormalized?.[1] ||
+        nomenclaturaFromPath(p) ||
+        nomenclaturaFromPath(pathAfterAngulo) ||
+        "",
+    ).trim();
 
     if (nomenclatura && pathAfterAngulo) {
       return (
@@ -1298,7 +1299,9 @@ function publicUrlFromArquivo(item, context = {}) {
 
 function isImageArquivo(item) {
   const name = `${item?.nome_interno || item?.nome_arquivo || ""} ${item?.caminho || ""}`;
-  return /\.(png|jpe?g|webp|gif)$/i.test(name) || Number(item?.categoria_id) === 7;
+  return (
+    /\.(png|jpe?g|webp|gif)$/i.test(name) || Number(item?.categoria_id) === 7
+  );
 }
 
 function firstThumbnailFromInfo(info) {
@@ -1315,9 +1318,7 @@ function updateModernStatusClass(select) {
   if (!select) return;
   const row = select.closest(".alloc-task-row");
   const value = normalizeModernText(select.value);
-  select.classList.remove(
-    ...MODERN_FC_STATUS_CLASSES,
-  );
+  select.classList.remove(...MODERN_FC_STATUS_CLASSES);
 
   if (value.includes("hold") || value.includes("atrasado")) {
     select.classList.add("fc-status-hold");
@@ -1383,7 +1384,9 @@ function updateModernObservationState(row, source, textarea) {
   const hasText = !!String(source?.value || textarea?.value || "").trim();
   if (button) {
     button.classList.toggle("has-note", hasText);
-    button.title = hasText ? "Observa\u00e7\u00e3o preenchida" : "Adicionar observa\u00e7\u00e3o";
+    button.title = hasText
+      ? "Observa\u00e7\u00e3o preenchida"
+      : "Adicionar observa\u00e7\u00e3o";
   }
 }
 
@@ -1434,8 +1437,9 @@ function syncModernTaskRows() {
   const addMenu = document.getElementById("allocationAddMenu");
   if (addMenu) {
     addMenu.innerHTML = "";
-    modernVisibleFuncoesConfig().filter((cfg) => !modernFuncoesState.activeKeys.has(cfg.key)).forEach(
-      (cfg) => {
+    modernVisibleFuncoesConfig()
+      .filter((cfg) => !modernFuncoesState.activeKeys.has(cfg.key))
+      .forEach((cfg) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "alloc-add-option";
@@ -1447,12 +1451,12 @@ function syncModernTaskRows() {
           document.getElementById(cfg.selectId)?.focus();
         });
         addMenu.appendChild(btn);
-      },
-    );
+      });
     if (!addMenu.children.length) {
       const emptyOption = document.createElement("span");
       emptyOption.className = "alloc-add-empty";
-      emptyOption.textContent = "Todas as fun\u00e7\u00f5es j\u00e1 est\u00e3o vis\u00edveis.";
+      emptyOption.textContent =
+        "Todas as fun\u00e7\u00f5es j\u00e1 est\u00e3o vis\u00edveis.";
       addMenu.appendChild(emptyOption);
     }
   }
@@ -1548,7 +1552,8 @@ function setupModernFuncoesModal() {
   addBtn.type = "button";
   addBtn.id = "allocationAddFunctionBtn";
   addBtn.className = "allocation-add-btn";
-  addBtn.innerHTML = '<i class="fa-solid fa-plus"></i><span>Adicionar fun\u00e7\u00e3o</span>';
+  addBtn.innerHTML =
+    '<i class="fa-solid fa-plus"></i><span>Adicionar fun\u00e7\u00e3o</span>';
   const addMenu = document.createElement("div");
   addMenu.id = "allocationAddMenu";
   addMenu.className = "allocation-add-menu";
@@ -1758,8 +1763,11 @@ function renderModernAllocationModal(response, idImagem) {
     selectedRow?.getAttribute("data-tipo-imagem") ||
     "Tipo n\u00e3o informado";
   const etapa =
-    selectedRow?.querySelector('[data-field="status_etapa"]')?.textContent?.trim() ||
-    document.getElementById("opcao_status")?.selectedOptions?.[0]?.textContent ||
+    selectedRow
+      ?.querySelector('[data-field="status_etapa"]')
+      ?.textContent?.trim() ||
+    document.getElementById("opcao_status")?.selectedOptions?.[0]
+      ?.textContent ||
     "Etapa n\u00e3o informada";
 
   const tipoBadge = document.getElementById("allocationTipoBadge");
@@ -1775,7 +1783,8 @@ function renderModernAllocationModal(response, idImagem) {
   const quickFlow = document.getElementById("quick_flow_review");
   const flow = document.getElementById("allocationFlowReview");
   if (flow) {
-    const href = quickFlow && quickFlow.style.display !== "none" ? quickFlow.href : "";
+    const href =
+      quickFlow && quickFlow.style.display !== "none" ? quickFlow.href : "";
     if (href) {
       flow.href = href;
       flow.classList.remove("is-disabled");
@@ -1871,7 +1880,8 @@ function renderModernAllocationInfo(info, response, idImagem) {
       thumb.innerHTML = "";
       const img = document.createElement("img");
       img.src = encodeURI(thumbUrl);
-      img.alt = document.getElementById("campoNomeImagem")?.textContent || "Imagem";
+      img.alt =
+        document.getElementById("campoNomeImagem")?.textContent || "Imagem";
       thumb.appendChild(img);
       thumb.classList.add("has-image");
     } else {
@@ -1890,7 +1900,9 @@ function renderModernAllocationInfo(info, response, idImagem) {
   const referencias = Array.isArray(info?.arquivos_anteriores)
     ? info.arquivos_anteriores
     : [];
-  const arquivosTipo = Array.isArray(info?.arquivos_tipo) ? info.arquivos_tipo : [];
+  const arquivosTipo = Array.isArray(info?.arquivos_tipo)
+    ? info.arquivos_tipo
+    : [];
   const tabs = [
     { key: "imagem", label: "Arquivos da imagem", items: arquivosImagem },
     { key: "referencias", label: "Refer\u00eancias", items: referencias },
@@ -4431,7 +4443,9 @@ function infosObra(obraId) {
             ? item.planned_unlinked_funcoes.map(Number)
             : [],
         );
-        const isTodo = item.imagem_sub_status === "TO-DO";
+        const isPendenteProducao = ["TO-DO", "TEA", "APR"].includes(
+          item.imagem_sub_status,
+        );
 
         let ci = 0;
         while (ci < colunas.length) {
@@ -4468,7 +4482,7 @@ function infosObra(obraId) {
               tooltip.style.top = event.clientY - 30 + "px";
             });
             row.appendChild(cellUnif);
-            if (isTodo && (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))) {
+            if (isPendenteProducao && (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))) {
               cellUnif.classList.add("func-cell--unallocated");
               const badge = document.createElement("span");
               badge.className = "func-unallocated-badge";
@@ -4531,7 +4545,7 @@ function infosObra(obraId) {
           row.appendChild(cellColaborador);
 
           if (
-            isTodo &&
+            isPendenteProducao &&
             coluna.funcaoId &&
             unlinkedFuncoes.has(coluna.funcaoId)
           ) {
@@ -8557,10 +8571,9 @@ const EDIT_IMAGES_MODAL = (() => {
 
   function updateGlobalSummary() {
     const changedImages = state.changedFieldsByImage.size;
-    const pendingChanges = Array.from(state.changedFieldsByImage.values()).reduce(
-      (total, count) => total + count,
-      0,
-    );
+    const pendingChanges = Array.from(
+      state.changedFieldsByImage.values(),
+    ).reduce((total, count) => total + count, 0);
 
     const changedImagesCount = el("changedImagesCount");
     const pendingChangesCount = el("pendingChangesCount");
@@ -8616,10 +8629,12 @@ const EDIT_IMAGES_MODAL = (() => {
   function setAccordionOpen(imageId) {
     const imageList = el("imageList");
     if (!imageList) return;
-    const nextOpenId = imageId === null || imageId === undefined ? null : String(imageId);
+    const nextOpenId =
+      imageId === null || imageId === undefined ? null : String(imageId);
 
     imageList.querySelectorAll(".image-item").forEach((card) => {
-      const isOpen = nextOpenId !== null && String(card.dataset.imageId) === nextOpenId;
+      const isOpen =
+        nextOpenId !== null && String(card.dataset.imageId) === nextOpenId;
       const content = card.querySelector(".conteudo_imagens");
       const icon = card.querySelector(".toggle-options");
       const title = card.querySelector(".titulo_imagem");
@@ -8754,7 +8769,9 @@ const EDIT_IMAGES_MODAL = (() => {
     resetState();
     state.images = Array.isArray(images) ? images : [];
     imageList.innerHTML = state.images
-      .map((image) => buildImageCard(image, Array.isArray(subtipos) ? subtipos : []))
+      .map((image) =>
+        buildImageCard(image, Array.isArray(subtipos) ? subtipos : []),
+      )
       .join("");
 
     if (state.images.length > 0) setAccordionOpen(state.images[0].idimagem);
@@ -12916,7 +12933,9 @@ if (markInactiveBtn) {
         return getPackage(packages, tipo);
       })
       .find(function (pkg) {
-        return String(pkg && pkg.status ? pkg.status : "").toUpperCase() === "ATIVO";
+        return (
+          String(pkg && pkg.status ? pkg.status : "").toUpperCase() === "ATIVO"
+        );
       });
   }
 
@@ -13990,7 +14009,8 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       el.disabled = !editable;
     });
     if (saveBtn) saveBtn.style.display = editable ? "" : "none";
-    if (archiveBtn) archiveBtn.style.display = editable && currentEvent ? "" : "none";
+    if (archiveBtn)
+      archiveBtn.style.display = editable && currentEvent ? "" : "none";
   }
 
   function resetForm() {
@@ -14006,7 +14026,8 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       uploadLabel.textContent =
         "JPG, PNG, WEBP ou GIF. Pode selecionar varios arquivos.";
     }
-    if (title) title.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Novo Evento';
+    if (title)
+      title.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Novo Evento';
     renderExistingRefs([]);
     setActiveTab("referencias");
     setEditorState(canEdit);
@@ -14015,9 +14036,12 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   function populateForm(evento) {
     currentEvent = evento;
     document.getElementById("evento_obra_id").value = evento.id || "";
-    document.getElementById("evento_obra_obra_id").value = evento.obra_id || currentObraId();
-    document.getElementById("evento_tipo").value = evento.tipo_evento || "Outros";
-    document.getElementById("evento_data").value = evento.data_evento || todayDate();
+    document.getElementById("evento_obra_obra_id").value =
+      evento.obra_id || currentObraId();
+    document.getElementById("evento_tipo").value =
+      evento.tipo_evento || "Outros";
+    document.getElementById("evento_data").value =
+      evento.data_evento || todayDate();
     document.getElementById("evento_hora").value = evento.hora_evento
       ? String(evento.hora_evento).slice(0, 5)
       : "";
@@ -14030,7 +14054,9 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       uploadLabel.textContent =
         "JPG, PNG, WEBP ou GIF. Pode selecionar varios arquivos.";
     }
-    if (title) title.innerHTML = '<i class="fa-solid fa-calendar-check"></i> Editar Evento';
+    if (title)
+      title.innerHTML =
+        '<i class="fa-solid fa-calendar-check"></i> Editar Evento';
     renderExistingRefs(evento.referencias || []);
     setActiveTab("referencias");
     setEditorState(canEdit);
@@ -14053,10 +14079,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       btn.classList.toggle("is-active", btn.dataset.eventTab === tab);
     });
     modal.querySelectorAll(".eventos-obra-tab-panel").forEach((panel) => {
-      panel.classList.toggle(
-        "is-active",
-        panel.id === `evento_tab_${tab}`,
-      );
+      panel.classList.toggle("is-active", panel.id === `evento_tab_${tab}`);
     });
   }
 
@@ -14071,7 +14094,8 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
     list.innerHTML = cache
       .map((evento) => {
         const resumo = evento.resumo || "Sem informacoes escritas.";
-        const participantes = evento.participantes || "Participantes nao informados";
+        const participantes =
+          evento.participantes || "Participantes nao informados";
         const refs = Number(evento.referencias_qtd || 0);
         return `
           <article class="eventos-obra-card" data-evento-id="${evento.id}">
@@ -14109,7 +14133,9 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       );
       const json = await res.json();
       if (!json || !json.success) {
-        throw new Error(json && json.error ? json.error : "Erro ao carregar eventos.");
+        throw new Error(
+          json && json.error ? json.error : "Erro ao carregar eventos.",
+        );
       }
       canEdit = !!json.can_edit;
       if (btnNew) btnNew.style.display = canEdit ? "" : "none";
@@ -14128,7 +14154,9 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       );
       const json = await res.json();
       if (!json || !json.success) {
-        throw new Error(json && json.error ? json.error : "Erro ao abrir evento.");
+        throw new Error(
+          json && json.error ? json.error : "Erro ao abrir evento.",
+        );
       }
       canEdit = !!json.can_edit;
       populateForm(json.data);
@@ -14158,7 +14186,11 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       });
       const json = await res.json();
       if (!json || !json.success) {
-        throw new Error(json && (json.error || json.details) ? json.error || json.details : "Erro ao salvar evento.");
+        throw new Error(
+          json && (json.error || json.details)
+            ? json.error || json.details
+            : "Erro ao salvar evento.",
+        );
       }
       notifyEvent("Evento salvo com sucesso.");
       closeModal();
@@ -14197,7 +14229,9 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       });
       const json = await res.json();
       if (!json || !json.success) {
-        throw new Error(json && json.error ? json.error : "Erro ao arquivar evento.");
+        throw new Error(
+          json && json.error ? json.error : "Erro ao arquivar evento.",
+        );
       }
       notifyEvent("Evento arquivado.");
       closeModal();

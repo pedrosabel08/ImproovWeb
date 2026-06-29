@@ -6266,11 +6266,6 @@ th .resize-handle {
   background-color: #0056b3;
 }
 
-i.fa-circle-info,
-i.fa-info {
-  font-size: 1.5rem;
-}
-
 /* Quick access bar (top of page, near buttons-nav) */
 .quick-access {
   display: flex;
@@ -9298,7 +9293,9 @@ tr#linha-porcentagem {
 
 .eventos-obra-top-grid {
   display: grid;
-  grid-template-columns: minmax(170px, 1.1fr) minmax(140px, 0.8fr) minmax(110px, 0.6fr) minmax(220px, 1.4fr);
+  grid-template-columns:
+    minmax(170px, 1.1fr) minmax(140px, 0.8fr) minmax(110px, 0.6fr)
+    minmax(220px, 1.4fr);
   gap: 12px;
   padding: 18px 20px 12px;
 }
@@ -9557,4 +9554,41 @@ tr#linha-porcentagem {
     width: calc(100vw - 16px);
     max-height: calc(100vh - 20px);
   }
+}
+
+.modal-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-modal);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-action {
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.btn-secondary {
+  background: var(--bg-count);
+  color: var(--text-secondary);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
 }

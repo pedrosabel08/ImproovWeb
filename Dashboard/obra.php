@@ -2897,7 +2897,7 @@ $conn->close();
     <script src="<?php echo asset_url('scriptObra.js'); ?>"></script>
     <script src="<?php echo asset_url('onboardingObra.js'); ?>"></script>
     <script src="<?php echo asset_url('obraContacts.js'); ?>"></script>
-    <script src="<?php echo asset_url('../Entregas/script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../Entregas/script.js') . '&t=' . filemtime(__DIR__ . '/../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
@@ -3115,7 +3115,7 @@ $conn->close();
             <div class="modal-footer">
                 <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
                 <button type="button" class="btn-action btn-primary" id="btnExportarRelatorio" style="display:none;">
-                    <i class="fa-solid fa-download"></i> Exportar relatório
+                    <i class="fa-solid fa-file-pdf"></i> Exportar PDF
                 </button>
             </div>
         </div>

@@ -32,7 +32,7 @@ if (!$row) {
 
 $newStatus = intval($row['status_pos']) === 0 ? 1 : 0;
 
-$stmt = $conn->prepare("UPDATE pos_producao SET status_pos = ? WHERE idpos_producao = ?");
+$stmt = $conn->prepare("UPDATE pos_producao SET status_pos = ?, data_pos = NOW() WHERE idpos_producao = ?");
 $stmt->bind_param('ii', $newStatus, $idPos);
 $success = $stmt->execute();
 $stmt->close();

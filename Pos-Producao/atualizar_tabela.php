@@ -31,7 +31,6 @@ LEFT JOIN render_alta r ON p.render_id = r.idrender_alta
 LEFT JOIN pos_prioridade_obra ppo ON o.idobra = ppo.obra_id
 WHERE r.status IN ('Em Aprovação', 'Aprovado')
 ORDER BY
-    r.status DESC,
     CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,
     CASE WHEN p.status_pos != 0 THEN p.flag_urgente END DESC,
     CASE WHEN p.status_pos != 0 THEN (ppo.prioridade IS NULL) END ASC,

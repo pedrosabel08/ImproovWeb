@@ -24,6 +24,7 @@ EXCLUDE_KEYWORD = "ANIMA"
 DEADLINE_COMMAND = "deadlinecommand"
 DEADLINE_COMMAND_TIMEOUT = int(os.getenv("DEADLINE_COMMAND_TIMEOUT", "60"))
 DEADLINE_DELETE_STATUSES = ("Aprovado", "Finalizado", "Reprovado")
+DEADLINE_REWORK_STATUS = "Refazendo"
 
 # Filtros opcionais (por ambiente) para evitar varredura completa
 FILTER_IMAGES = [s.strip() for s in os.getenv("FILTER_IMAGES", "").split(",") if s.strip()]
@@ -742,6 +743,7 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
     ultimo_status = existing_status[1] if existing_status else None
     existing_preview = existing_status[2] if existing_status else None
     existing_deadline_job_id = existing_status[3] if existing_status else None
+    is_existing_deadline_job = bool(existing_deadline_job_id and existing_deadline_job_id == deadline_job_id)
 
     if is_deadline_job and existing_status:
         if existing_deadline_job_id and existing_deadline_job_id != deadline_job_id:
@@ -751,13 +753,6 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
                 "warning"
             )
             return
-        cursor.execute("""
-            UPDATE render_alta
-            SET deadline_job_id = %s
-            WHERE idrender_alta = %s
-              AND (deadline_job_id IS NULL OR deadline_job_id = "" OR deadline_job_id = %s)
-        """, (deadline_job_id, render_id, deadline_job_id))
-        log_and_print(f"Deadline Job vinculado ao render_alta {render_id}: {deadline_job_id}")
 
     # Determinar status customizado
     active = is_truthy(xml_data.get("Active"))
@@ -771,6 +766,30 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
         status_custom = "Em andamento"
     else:
         status_custom = (xml_data.get("Complete") or "Desconhecido")
+
+    should_delete_linked_job = (
+        ultimo_status in DEADLINE_DELETE_STATUSES
+        or (ultimo_status == DEADLINE_REWORK_STATUS and is_existing_deadline_job)
+    )
+
+    if should_delete_linked_job:
+        if is_existing_deadline_job:
+            log_and_print(f"Status '{ultimo_status}' detectado - deletando Job Deadline: {deadline_job_id}")
+            if delete_deadline_job(deadline_job_id):
+                cursor.execute("""
+                    UPDATE render_alta
+                    SET deadline_job_id = NULL
+                    WHERE idrender_alta = %s
+                      AND deadline_job_id = %s
+                """, (render_id, deadline_job_id))
+                log_and_print(f"Vinculo Deadline limpo no render_alta {render_id}: {deadline_job_id}")
+        else:
+            log_and_print(
+                f"Status '{ultimo_status}' detectado, mas o job {deadline_job_id} nao esta vinculado ao render {render_id}; "
+                "ignorado para evitar deletar um novo envio.",
+                "warning"
+            )
+        return
 
     # Acumular status do P00 por imagem (para notificação única)
     if status_id == 1 and p00_rollup is not None:
@@ -831,19 +850,10 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
                     log_and_print(f"⚠ Upload falhou — nenhuma alteração foi feita no banco para {preview_name}", "warning")
         return  # não faz mais nada
 
-    # 2. Se status atual fecha o ciclo no Flow, deletar o job no Deadline
-    # Se status = Refazendo: o job foi refeito e um NOVO job foi submetido.
+    # 2. Se status = Refazendo: o job foi refeito e um NOVO job foi submetido.
     # So tratamos Refazendo como novo ciclo quando o novo render COMPLETAR (complete=True).
     # Enquanto o novo job está rodando (active=True, complete=False), deixamos ele finalizar.
-    if ultimo_status in DEADLINE_DELETE_STATUSES:
-        if is_deadline_job:
-            log_and_print(f"Status '{ultimo_status}' detectado - deletando Job Deadline: {deadline_job_id}")
-            delete_deadline_job(deadline_job_id)
-        else:
-            log_and_print(f"Status '{ultimo_status}' detectado - job legado ignorado: {job_folder}")
-        return
-
-    if ultimo_status == "Refazendo":
+    if ultimo_status == DEADLINE_REWORK_STATUS:
         if complete:
             # Novo render completou após refazimento → tratar como "Em aprovação" (novo ciclo)
             log_and_print(f"🔄 Job completou após reprovação — promovendo para 'Em aprovação': {job_folder}")
@@ -864,6 +874,15 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
         status_custom = "Em aprovação"
         log_and_print("🔄 Status alterado de 'Erro' para 'Em aprovação' pois Complete=Yes")
 
+
+    if is_deadline_job and existing_status:
+        cursor.execute("""
+            UPDATE render_alta
+            SET deadline_job_id = %s
+            WHERE idrender_alta = %s
+              AND (deadline_job_id IS NULL OR deadline_job_id = "" OR deadline_job_id = %s)
+        """, (deadline_job_id, render_id, deadline_job_id))
+        log_and_print(f"Deadline Job vinculado ao render_alta {render_id}: {deadline_job_id}")
 
     log_and_print(f"Procurando JPGs em: {caminho_pasta}")
 

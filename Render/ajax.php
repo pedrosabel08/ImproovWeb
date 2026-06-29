@@ -650,8 +650,9 @@ if (isset($_POST['action'])) {
                     }
                 }
 
-                // Ao reprovar, limpar job_folder e previa_jpg para que o script
-                // possa registrar o novo job corretamente quando rodar (a cada 5 min)
+                // Ao reprovar/refazer, limpar dados do ciclo atual. Mantemos
+                // deadline_job_id para o monitor conseguir deletar o job antigo
+                // no Deadline; ele limpa esse vinculo apos DeleteJob com sucesso.
                 if ($manualApprovalData) {
                     $conn->begin_transaction();
                     $transactionStarted = true;
@@ -681,7 +682,7 @@ if (isset($_POST['action'])) {
 
                 if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
                     $stmtUpd = $conn->prepare(
-                        "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL, deadline_job_id = NULL WHERE idrender_alta = ?"
+                        "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL WHERE idrender_alta = ?"
                     );
                 } else {
                     $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");

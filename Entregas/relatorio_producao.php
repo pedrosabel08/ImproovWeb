@@ -250,27 +250,39 @@ foreach ($etapa_seq as $codigo) {
         $eid = intval($erow['id']);
 
         $sql_itens = "SELECT
-                ei.id,
-                ei.status,
-                ei.data_prevista    AS prazo_ajustado,
-                ei.data_entregue,
-                ico.imagem_nome,
-                e.data_recebimento          AS recebimento_arquivos,
-                ico.prazo           AS prazo_contratual,
-                ico.tipo_imagem     AS funcao,
-                CASE
-                  WHEN ei.data_entregue IS NOT NULL AND ei.data_prevista IS NOT NULL
-                       THEN DATEDIFF(DATE(ei.data_entregue), DATE(ei.data_prevista))
-                  WHEN ei.data_entregue IS NULL AND ei.data_prevista IS NOT NULL
-                       AND DATE(ei.data_prevista) < CURDATE()
-                       THEN DATEDIFF(CURDATE(), DATE(ei.data_prevista))
-                  ELSE 0
-                END AS dias_atraso
-            FROM entregas_itens ei
-            LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = ei.imagem_id
-            LEFT JOIN entregas e ON e.id = ei.entrega_id
-            WHERE ei.entrega_id = ?
-            ORDER BY ico.imagem_nome ASC";
+                        ei.id,
+                        ei.status,
+                        e.data_prevista AS prazo_ajustado,
+                        ei.data_entregue,
+                        ico.imagem_nome,
+                        e.data_recebimento AS recebimento_arquivos,
+                        ico.prazo AS prazo_contratual,
+                        ico.tipo_imagem AS funcao,
+                        CASE
+                            WHEN ei.data_entregue IS NOT NULL
+                                AND ei.data_prevista IS NOT NULL
+                            THEN DATEDIFF(DATE(ei.data_entregue), DATE(ei.data_prevista))
+                            WHEN ei.data_entregue IS NULL
+                                AND ei.data_prevista IS NOT NULL
+                                AND DATE(ei.data_prevista) < CURDATE()
+                            THEN DATEDIFF(CURDATE(), DATE(ei.data_prevista))
+                            ELSE 0
+                        END AS dias_atraso
+                    FROM entregas_itens ei
+                    LEFT JOIN imagens_cliente_obra ico
+                        ON ico.idimagens_cliente_obra = ei.imagem_id
+                    LEFT JOIN entregas e
+                        ON e.id = ei.entrega_id
+                    WHERE ei.entrega_id = ?
+                    ORDER BY
+                        CASE ei.status
+                            WHEN 'Pendente'            THEN 1
+                            WHEN 'Entrega pendente'    THEN 2
+                            WHEN 'Entregue com atraso' THEN 3
+                            WHEN 'Entregue no prazo'   THEN 4
+                            ELSE 5
+                        END,
+                        ico.idimagens_cliente_obra ASC;";
 
         $stmt2 = $conn->prepare($sql_itens);
         $stmt2->bind_param('i', $eid);

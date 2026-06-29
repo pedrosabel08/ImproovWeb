@@ -473,7 +473,7 @@ $conn->close();
             <div class="modal-footer">
                 <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
                 <button type="button" class="btn-action btn-primary" id="btnExportarRelatorio" style="display:none;">
-                    <i class="fa-solid fa-download"></i> Exportar relatório
+                    <i class="fa-solid fa-file-pdf"></i> Exportar PDF
                 </button>
             </div>
         </div>
@@ -496,6 +496,8 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

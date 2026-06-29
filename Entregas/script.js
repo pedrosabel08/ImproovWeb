@@ -1284,7 +1284,7 @@ document.addEventListener("DOMContentLoaded", () => {
         modalReviewBatches.innerHTML = "";
         modalReviewBatches.style.display = "none";
       }
-      carregarKanban()
+      carregarKanban();
       // remover painel lateral se existir
       const mini = document.getElementById("miniImagePanel");
       if (mini) mini.remove();
@@ -4000,7 +4000,33 @@ if (btnAdicionarImagem) {
   const etapasEl = document.getElementById("relatorioEtapas");
   const btnExport = document.getElementById("btnExportarRelatorio");
 
-  if (!btnOpen || !modal) return;
+  const requiredEls = [
+    btnOpen,
+    modal,
+    btnLoad,
+    obraSelect,
+    empty,
+    content,
+    loading,
+    infoBar,
+    summary,
+    etapasEl,
+    btnExport,
+  ];
+
+  if (requiredEls.some((el) => !el)) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initRelatorioProducao, {
+        once: true,
+      });
+    }
+    return;
+  }
+
+  if (modal.dataset.relatorioProducaoInitialized === "1") return;
+  modal.dataset.relatorioProducaoInitialized = "1";
+
+  let currentRelatorioData = null;
 
   /* ── open / close ─────────────────────────────────────────────────────── */
   btnOpen.addEventListener("click", () => {
@@ -4055,6 +4081,7 @@ if (btnAdicionarImagem) {
     content.style.display = "none";
     loading.style.display = "flex";
     btnExport.style.display = "none";
+    currentRelatorioData = null;
 
     try {
       const res = await fetch(
@@ -4070,6 +4097,7 @@ if (btnAdicionarImagem) {
         return;
       }
 
+      currentRelatorioData = data;
       renderRelatorio(data);
       content.style.display = "block";
       btnExport.style.display = "inline-flex";
@@ -4124,7 +4152,10 @@ if (btnAdicionarImagem) {
     if (obra.prazo_contratual_data) return obra.prazo_contratual_data;
 
     const recebimento = parseDateOnly(obra.recebimento_arquivos);
-    const prazo = parseInt(obra.prazo_contratual ?? obra.prazo_contratual_dias, 10);
+    const prazo = parseInt(
+      obra.prazo_contratual ?? obra.prazo_contratual_dias,
+      10,
+    );
     if (!recebimento || !prazo) return null;
 
     return obra.prazo_contratual_dias_corridos
@@ -4139,19 +4170,30 @@ if (btnAdicionarImagem) {
   }
 
   function statusBadge(status) {
-    const s = String(status || "").toLowerCase();
+    const s = String(status || "")
+      .toLowerCase()
+      .trim();
+
     if (s.includes("antecipada") || s === "aprovada") {
       return `<span class="rel-status-badge antecipada">Antecipada</span>`;
     }
-    if (s.includes("no prazo")) {
-      return `<span class="rel-status-badge no-prazo">No prazo</span>`;
+
+    if (s === "entregue no prazo" || s.includes("no prazo")) {
+      return `<span class="rel-status-badge no-prazo">Entregue no prazo</span>`;
     }
-    if (s.includes("atraso")) {
-      return `<span class="rel-status-badge com-atraso">Com atraso</span>`;
+
+    if (s === "entregue com atraso" || s.includes("atraso")) {
+      return `<span class="rel-status-badge com-atraso">Entregue com atraso</span>`;
     }
-    if (s === "pendente" || s.includes("pendente")) {
+
+    if (s === "entrega pendente") {
       return `<span class="rel-status-badge pendente">Pendente</span>`;
     }
+
+    if (s === "pendente") {
+      return `<span class="rel-status-badge tea">Em andamento</span>`;
+    }
+
     return `<span class="rel-status-badge nao-iniciada">${status || "—"}</span>`;
   }
 
@@ -4304,7 +4346,7 @@ if (btnAdicionarImagem) {
             <th>Versão</th>
             <th>Imagem</th>
             <th>Recebimento</th>
-            <th>Prazo ajustado</th>
+            <th>Prazo de entrega</th>
             <th>Data entrega</th>
             <th>Dias atraso</th>
             <th>Status</th>
@@ -4452,15 +4494,253 @@ if (btnAdicionarImagem) {
   }
 
   /* ── Export (simple CSV) ────────────────────────────────────────────────── */
-  btnExport.addEventListener("click", () => {
-    const obraId = obraSelect.value;
-    if (!obraId) return;
-    window.open(
-      BASE +
-        "relatorio_producao.php?obra_id=" +
-        encodeURIComponent(obraId) +
-        "&export=csv",
-      "_blank",
-    );
+  function textValue(value) {
+    if (value === null || value === undefined || value === "") return "-";
+    return String(value).replace(/\s+/g, " ").trim();
+  }
+
+  function shortText(value, maxLength) {
+    const text = textValue(value);
+    if (text.length <= maxLength) return text;
+    return text.slice(0, Math.max(0, maxLength - 3)) + "...";
+  }
+
+  function safeFileName(value) {
+    return textValue(value)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80);
+  }
+
+  function todayFileStamp() {
+    const now = new Date();
+    return [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+  }
+
+  function relatorioPdfRows(etapa) {
+    const isP00 = etapa.tipo === "p00";
+    if (isP00) {
+      return (etapa.versoes || []).map((versao) => [
+        shortText(versao.versao_label || "V1", 18),
+        shortText(versao.imagem_nome, 44),
+        formatarDataHora(versao.recebimento),
+        fmtDate(versao.prazo_ajustado),
+        fmtDate(versao.data_entregue),
+        fmtDias(versao.dias_atraso),
+        shortText(versao.status, 28),
+      ]);
+    }
+
+    const rows = [];
+    (etapa.entregas || []).forEach((entrega) => {
+      (entrega.itens || []).forEach((item) => {
+        rows.push([
+          shortText(entrega.label, 18),
+          shortText(item.imagem_nome, 44),
+          formatarDataHora(item.recebimento),
+          fmtDate(item.prazo_ajustado),
+          fmtDate(item.data_entregue),
+          fmtDias(item.dias_atraso),
+          shortText(item.status, 28),
+        ]);
+      });
+    });
+    return rows;
+  }
+
+  function generateRelatorioPdf(data) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      alert("Biblioteca de PDF nao carregada. Atualize a pagina e tente novamente.");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a3",
+    });
+
+    if (typeof doc.autoTable !== "function") {
+      alert("Biblioteca de tabelas do PDF nao carregada. Atualize a pagina e tente novamente.");
+      return;
+    }
+
+    const obra = data.obra || {};
+    const sum = data.summary || {};
+    const etapas = Array.isArray(data.etapas) ? data.etapas : [];
+    const prazoContratualData = getPrazoContratualData(obra);
+    const margin = 12;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const generatedAt = new Date().toLocaleString("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+
+    doc.setProperties({
+      title: `Relatorio de Producao - ${textValue(obra.nomenclatura)}`,
+      subject: "Relatorio de entregas",
+    });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Relatorio de Producao", margin, 16);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Gerado em ${generatedAt}`, pageWidth - margin, 16, {
+      align: "right",
+    });
+
+    doc.autoTable({
+      startY: 23,
+      margin: { left: margin, right: margin },
+      theme: "grid",
+      styles: { font: "helvetica", fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [34, 93, 150], textColor: 255 },
+      head: [["Projeto", "Recebimento", "Prazo contratual", "Status"]],
+      body: [
+        [
+          textValue(obra.nomenclatura),
+          fmtDate(obra.recebimento_arquivos),
+          fmtDate(prazoContratualData),
+          "Em andamento",
+        ],
+      ],
+    });
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 4,
+      margin: { left: margin, right: margin },
+      theme: "grid",
+      styles: { font: "helvetica", fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [67, 77, 92], textColor: 255 },
+      head: [["Etapas", "Entregas", "Imagens", "Concluidas", "Pendentes", "% concluido"]],
+      body: [
+        [
+          textValue(sum.total_etapas ?? 0),
+          textValue(sum.total_entregas ?? 0),
+          textValue(sum.total_imagens ?? 0),
+          textValue(sum.entregues ?? 0),
+          textValue(sum.pendentes ?? 0),
+          `${sum.pct ?? 0}%`,
+        ],
+      ],
+    });
+
+    let nextY = doc.lastAutoTable.finalY + 8;
+    etapas.forEach((etapa) => {
+      const rows = relatorioPdfRows(etapa);
+      const isP00 = etapa.tipo === "p00";
+      const count = isP00 ? etapa.versoes_count || 0 : etapa.entregas_count || 0;
+      const sectionTitle = `${textValue(etapa.codigo)} - ${textValue(etapa.label || etapa.codigo)} (${count} ${isP00 ? "versoes" : "entregas"}, ${etapa.pct ?? 0}%)`;
+
+      if (nextY > pageHeight - 30) {
+        doc.addPage();
+        nextY = margin;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(sectionTitle, margin, nextY);
+      nextY += 4;
+
+      const headers = [
+        isP00 ? "Versao" : "Entrega",
+        "Imagem",
+        "Recebimento",
+        "Prazo",
+        "Data entrega",
+        "Atraso",
+        "Status",
+      ];
+      const widths = [28, 128, 34, 24, 28, 18, 62];
+      const rowHeight = 5.5;
+      const tableRows = rows.length
+        ? rows
+        : [["-", "Nenhum item encontrado", "-", "-", "-", "-", "-"]];
+
+      const drawHeader = () => {
+        doc.setFillColor(34, 93, 150);
+        doc.rect(margin, nextY, widths.reduce((acc, width) => acc + width, 0), rowHeight, "F");
+        doc.setTextColor(255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.8);
+        let x = margin;
+        headers.forEach((label, index) => {
+          doc.text(label, x + 1.2, nextY + 3.8);
+          x += widths[index];
+        });
+        nextY += rowHeight;
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+      };
+
+      drawHeader();
+      tableRows.forEach((row, rowIndex) => {
+        if (nextY > pageHeight - 14) {
+          doc.addPage();
+          nextY = margin;
+          drawHeader();
+        }
+
+        if (rowIndex % 2 === 1) {
+          doc.setFillColor(246, 248, 251);
+          doc.rect(margin, nextY - 0.5, widths.reduce((acc, width) => acc + width, 0), rowHeight, "F");
+        }
+
+        let x = margin;
+        row.forEach((cell, index) => {
+          const alignRight = index === 5;
+          doc.text(textValue(cell), alignRight ? x + widths[index] - 1.2 : x + 1.2, nextY + 3.8, {
+            align: alignRight ? "right" : "left",
+            maxWidth: widths[index] - 2.4,
+          });
+          x += widths[index];
+        });
+        nextY += rowHeight;
+      });
+
+      nextY += 8;
+    });
+
+    const pages = doc.internal.getNumberOfPages();
+    for (let page = 1; page <= pages; page++) {
+      doc.setPage(page);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Pagina ${page} de ${pages}`, pageWidth - margin, pageHeight - 7, {
+        align: "right",
+      });
+    }
+
+    const filename = `relatorio-producao-${safeFileName(obra.nomenclatura) || "obra"}-${todayFileStamp()}.pdf`;
+    doc.save(filename);
+  }
+
+  btnExport.addEventListener("click", async () => {
+    if (!currentRelatorioData) {
+      const obraId = obraSelect.value;
+      if (!obraId) return;
+      await loadRelatorio(obraId);
+    }
+
+    if (!currentRelatorioData) return;
+
+    btnExport.disabled = true;
+    try {
+      generateRelatorioPdf(currentRelatorioData);
+    } finally {
+      btnExport.disabled = false;
+    }
   });
 })();

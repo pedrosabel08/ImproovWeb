@@ -2695,6 +2695,10 @@ option.colab-busy {
   background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
 }
+.rel-status-badge.tea {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d9d506;
+}
 .rel-status-badge.pendente {
   background: rgba(245, 158, 11, 0.12);
   color: #d97706;

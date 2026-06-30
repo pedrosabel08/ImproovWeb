@@ -359,6 +359,7 @@ $conn->close();
         <div class="filtro-tabela">
             <div class="filtro">
                 <div class="filtros-select">
+                    <input type="search" id="imagem_busca_filtro" class="imagem-busca-filtro" placeholder="Buscar imagem">
                     <select name="tipo_imagem" id="tipo_imagem" multiple>
                         <option value="0">Todos</option>
                     </select>
@@ -880,10 +881,10 @@ $conn->close();
                     <thead>
                         <tr id="linha-porcentagem"></tr>
                         <tr>
-                            <th>Etapa</th>
+                            <th data-table-filter="status_etapa">Etapa</th>
                             <th class="resizable">Imagem<div class="resize-handle"></div>
                             </th>
-                            <th>Status</th>
+                            <th data-table-filter="status_imagem">Status</th>
                             <th style="max-width: 15px;">Prazo</th>
                             <th onclick="mostrarFiltroColaborador('caderno')">Caderno</th>
                             <th onclick="mostrarFiltroColaborador('filtro')">Filtro de assets</th>

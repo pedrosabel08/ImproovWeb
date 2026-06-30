@@ -4308,6 +4308,17 @@ function infosObra(obraId) {
         row.setAttribute("data-id", item.imagem_id);
         row.setAttribute("data-status-id", item.status_id ?? "");
         row.setAttribute("tipo-imagem", item.tipo_imagem);
+        row.setAttribute(
+          "data-imagem-busca",
+          [
+            item.imagem_id,
+            item.imagem_nome,
+            displayImageName(item.imagem_nome),
+            item.tipo_imagem,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
         row.classList.add(tipoClassName(item.tipo_imagem));
         row.setAttribute("status", item.imagem_status);
         const holdMotivo =
@@ -5194,10 +5205,12 @@ var colunas = [
 var colaboradorFilters = {};
 // guarda filtros de status ativos por função: { finalizacao: ['em andamento', 'hold'], ... }
 var statusFilters = {};
+var tableColumnFilters = {};
 
 const __funcFilterUI = {
   menuEl: null,
   activeFunc: null,
+  activeColumn: null,
   activeHeader: null,
   initialized: false,
 };
@@ -5231,6 +5244,21 @@ function getFunctionHeaderByFunc(funcao) {
   );
 }
 
+function getTableFilterHeaders() {
+  const headerRow = document.querySelector(
+    "#tabela-obra thead tr:nth-child(2)",
+  );
+  if (!headerRow) return [];
+  return Array.from(headerRow.querySelectorAll("th[data-table-filter]"));
+}
+
+function getTableFilterHeaderByField(field) {
+  return (
+    getTableFilterHeaders().find((th) => th.dataset.tableFilter === field) ||
+    null
+  );
+}
+
 function getFunctionRows() {
   return Array.from(document.querySelectorAll("#tabela-obra tbody tr"));
 }
@@ -5241,11 +5269,13 @@ function getFunctionCell(row, funcao) {
 }
 
 function readGlobalFilters() {
+  const imagemBuscaEl = document.getElementById("imagem_busca_filtro");
   const tipoImagemEl = document.getElementById("tipo_imagem");
   const antecipadaEl = document.getElementById("antecipada_obra");
   const statusEtapaEl = document.getElementById("imagem_status_etapa_filtro");
   const statusEl = document.getElementById("imagem_status_filtro");
   const subtipoEl = document.getElementById("subtipo_filtro");
+  const imagemBuscaFiltro = normalizeFilterValue(imagemBuscaEl?.value || "");
 
   const tipoImagemFiltro = tipoImagemEl
     ? tipoImagemEl.multiple
@@ -5298,6 +5328,7 @@ function readGlobalFilters() {
     : [];
 
   return {
+    imagemBuscaFiltro,
     tipoImagemFiltro,
     antecipadaFiltro,
     statusEtapaImagemFiltro,
@@ -5306,7 +5337,7 @@ function readGlobalFilters() {
   };
 }
 
-function rowMatchesGlobalFilters(row, globals) {
+function rowMatchesGlobalFilters(row, globals, opts = {}) {
   const tipoImagemColuna = normalizeFilterValue(
     row.getAttribute("tipo-imagem") || "",
   );
@@ -5321,6 +5352,18 @@ function rowMatchesGlobalFilters(row, globals) {
     row.querySelector('td[data-field="status_imagem"]')?.textContent.trim() ||
     "";
   const subtipoIdColuna = row.getAttribute("data-subtipo-id") || "";
+  const imagemBuscaColuna = normalizeFilterValue(
+    row.getAttribute("data-imagem-busca") ||
+      row.querySelector('td[data-field="nome_imagem"]')?.textContent ||
+      "",
+  );
+
+  if (
+    globals.imagemBuscaFiltro &&
+    !imagemBuscaColuna.includes(globals.imagemBuscaFiltro)
+  ) {
+    return false;
+  }
 
   if (
     globals.tipoImagemFiltro.length > 0 &&
@@ -5346,6 +5389,7 @@ function rowMatchesGlobalFilters(row, globals) {
   }
 
   if (
+    opts.ignoreTableColumnFilter !== "status_imagem" &&
     globals.statusImagemFiltro.length > 0 &&
     !globals.statusImagemFiltro.includes("0")
   ) {
@@ -5354,6 +5398,7 @@ function rowMatchesGlobalFilters(row, globals) {
   }
 
   if (
+    opts.ignoreTableColumnFilter !== "status_etapa" &&
     globals.statusEtapaImagemFiltro.length > 0 &&
     !globals.statusEtapaImagemFiltro.includes("0")
   ) {
@@ -5363,6 +5408,19 @@ function rowMatchesGlobalFilters(row, globals) {
 
   if (globals.subtipoFiltro && globals.subtipoFiltro.length > 0) {
     if (!globals.subtipoFiltro.includes(subtipoIdColuna)) return false;
+  }
+
+  for (const field of Object.keys(tableColumnFilters)) {
+    if (opts.ignoreTableColumnFilter && field === opts.ignoreTableColumnFilter)
+      continue;
+    const selected = Array.isArray(tableColumnFilters[field])
+      ? tableColumnFilters[field]
+      : [];
+    if (!selected.length) continue;
+    const value = normalizeFilterValue(
+      row.querySelector(`td[data-field="${field}"]`)?.textContent || "",
+    );
+    if (!value || !selected.includes(value)) return false;
   }
 
   return true;
@@ -5398,7 +5456,7 @@ function rowMatchesFunctionFilters(row, opts = {}) {
 
 function rowMatchesAllFilters(row, globals, opts = {}) {
   return (
-    rowMatchesGlobalFilters(row, globals) &&
+    rowMatchesGlobalFilters(row, globals, opts) &&
     rowMatchesFunctionFilters(row, opts)
   );
 }
@@ -5450,6 +5508,43 @@ function getStatusCountsForFunction(funcao) {
   return counts;
 }
 
+function getTableColumnLabel(field) {
+  const header = getTableFilterHeaderByField(field);
+  return header ? header.textContent.trim() : field;
+}
+
+function getTableColumnOptions(field) {
+  const map = new Map();
+  getFunctionRows().forEach((row) => {
+    const raw = String(
+      row.querySelector(`td[data-field="${field}"]`)?.textContent || "",
+    ).trim();
+    const key = normalizeFilterValue(raw);
+    if (!key || key === "-" || key === "nÃ£o se aplica") return;
+    if (!map.has(key)) map.set(key, raw);
+  });
+  return Array.from(map.entries())
+    .map(([key, label]) => ({ key, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+}
+
+function getTableColumnCounts(field) {
+  const counts = {};
+  const globals = readGlobalFilters();
+
+  getFunctionRows().forEach((row) => {
+    if (!rowMatchesAllFilters(row, globals, { ignoreTableColumnFilter: field }))
+      return;
+    const key = normalizeFilterValue(
+      row.querySelector(`td[data-field="${field}"]`)?.textContent || "",
+    );
+    if (!key || key === "-" || key === "nÃ£o se aplica") return;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  return counts;
+}
+
 function updateFunctionHeaderIndicators() {
   getFunctionHeaders().forEach((th) => {
     const func = th.dataset.funcao;
@@ -5457,6 +5552,14 @@ function updateFunctionHeaderIndicators() {
     const hasStatus =
       Array.isArray(statusFilters[func]) && statusFilters[func].length > 0;
     th.classList.toggle("func-filter-active", hasColab || hasStatus);
+  });
+
+  getTableFilterHeaders().forEach((th) => {
+    const field = th.dataset.tableFilter;
+    const hasColumnFilter =
+      Array.isArray(tableColumnFilters[field]) &&
+      tableColumnFilters[field].length > 0;
+    th.classList.toggle("func-filter-active", hasColumnFilter);
   });
 }
 
@@ -5507,6 +5610,107 @@ function closeFunctionFilterMenu() {
   }
   __funcFilterUI.activeHeader = null;
   __funcFilterUI.activeFunc = null;
+  __funcFilterUI.activeColumn = null;
+}
+
+function renderTableColumnFilterMenu(field) {
+  const menu = ensureFunctionFilterMenu();
+  menu.innerHTML = "";
+
+  const title = getTableColumnLabel(field);
+  const options = getTableColumnOptions(field);
+  const counts = getTableColumnCounts(field);
+  const selected = new Set(
+    Array.isArray(tableColumnFilters[field]) ? tableColumnFilters[field] : [],
+  );
+
+  const top = document.createElement("div");
+  top.className = "func-filter-menu-top";
+  top.textContent = title;
+  menu.appendChild(top);
+
+  const body = document.createElement("div");
+  body.className = "func-filter-menu-body func-filter-menu-body--single";
+
+  const col = document.createElement("div");
+  col.className = "func-filter-col";
+
+  const allItem = document.createElement("label");
+  allItem.className = "func-filter-item";
+  allItem.innerHTML = `<input type="checkbox" value="__all__" ${selected.size === 0 ? "checked" : ""}> <span>Todos</span>`;
+  col.appendChild(allItem);
+
+  options.forEach((option) => {
+    const item = document.createElement("label");
+    item.className = "func-filter-item";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = option.key;
+    input.checked = selected.has(option.key);
+
+    const text = document.createElement("span");
+    text.className = "func-filter-label";
+    text.textContent = option.label;
+
+    const count = document.createElement("span");
+    count.className = "func-filter-count";
+    count.textContent = String(counts[option.key] || 0);
+
+    item.appendChild(input);
+    item.appendChild(text);
+    item.appendChild(count);
+    col.appendChild(item);
+  });
+
+  body.appendChild(col);
+  menu.appendChild(body);
+
+  const footer = document.createElement("div");
+  footer.className = "func-filter-menu-footer";
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "func-filter-clear";
+  clearBtn.textContent = "Limpar";
+  clearBtn.addEventListener("click", () => {
+    delete tableColumnFilters[field];
+    __centerTableAfterFilter = true;
+    filtrarTabela();
+    __centerTableAfterFilter = false;
+    renderTableColumnFilterMenu(field);
+    updateFunctionHeaderIndicators();
+    positionFunctionFilterMenu();
+  });
+  footer.appendChild(clearBtn);
+  menu.appendChild(footer);
+
+  col.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.value === "__all__") {
+        delete tableColumnFilters[field];
+      } else {
+        const nextSelected = new Set(
+          Array.isArray(tableColumnFilters[field])
+            ? tableColumnFilters[field]
+            : [],
+        );
+        if (input.checked) nextSelected.add(input.value);
+        else nextSelected.delete(input.value);
+        if (nextSelected.size > 0) {
+          tableColumnFilters[field] = Array.from(nextSelected);
+        } else {
+          delete tableColumnFilters[field];
+        }
+      }
+
+      __centerTableAfterFilter = true;
+      filtrarTabela();
+      __centerTableAfterFilter = false;
+      renderTableColumnFilterMenu(field);
+      updateFunctionHeaderIndicators();
+      positionFunctionFilterMenu();
+    });
+  });
 }
 
 function renderFunctionFilterMenu(funcao) {
@@ -5676,10 +5880,39 @@ function openFunctionFilterMenu(funcao, anchorHeader = null) {
   }
 
   __funcFilterUI.activeFunc = funcao;
+  __funcFilterUI.activeColumn = null;
   __funcFilterUI.activeHeader = header;
   header.classList.add("func-filter-open");
 
   renderFunctionFilterMenu(funcao);
+  __funcFilterUI.menuEl.style.display = "block";
+  positionFunctionFilterMenu();
+}
+
+function openTableColumnFilterMenu(field, anchorHeader = null) {
+  const header = anchorHeader || getTableFilterHeaderByField(field);
+  if (!header) return;
+
+  ensureFunctionFilterMenu();
+
+  if (
+    __funcFilterUI.activeColumn === field &&
+    __funcFilterUI.menuEl.style.display !== "none"
+  ) {
+    closeFunctionFilterMenu();
+    return;
+  }
+
+  if (__funcFilterUI.activeHeader) {
+    __funcFilterUI.activeHeader.classList.remove("func-filter-open");
+  }
+
+  __funcFilterUI.activeFunc = null;
+  __funcFilterUI.activeColumn = field;
+  __funcFilterUI.activeHeader = header;
+  header.classList.add("func-filter-open");
+
+  renderTableColumnFilterMenu(field);
   __funcFilterUI.menuEl.style.display = "block";
   positionFunctionFilterMenu();
 }
@@ -5705,6 +5938,19 @@ function initFunctionHeaderFilters() {
       const func = th.dataset.funcao;
       if (!func) return;
       openFunctionFilterMenu(func, th);
+    });
+  });
+
+  getTableFilterHeaders().forEach((th) => {
+    if (th.dataset.filterBound === "1") return;
+    th.dataset.filterBound = "1";
+    th.classList.add("func-filter-header");
+    th.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const field = th.dataset.tableFilter;
+      if (!field) return;
+      openTableColumnFilterMenu(field, th);
     });
   });
 
@@ -5901,6 +6147,13 @@ function filtrarTabela() {
   ) {
     renderFunctionFilterMenu(__funcFilterUI.activeFunc);
     positionFunctionFilterMenu();
+  } else if (
+    __funcFilterUI.activeColumn &&
+    __funcFilterUI.menuEl &&
+    __funcFilterUI.menuEl.style.display !== "none"
+  ) {
+    renderTableColumnFilterMenu(__funcFilterUI.activeColumn);
+    positionFunctionFilterMenu();
   }
 
   // Centraliza a tabela na tela após aplicar o filtro (somente quando usuário muda filtro)
@@ -5945,18 +6198,15 @@ function handleFilterChange(e) {
   __centerTableAfterFilter = false;
 }
 
-document
-  .getElementById("tipo_imagem")
-  .addEventListener("change", handleFilterChange);
-document
-  .getElementById("antecipada_obra")
-  .addEventListener("change", handleFilterChange);
-document
-  .getElementById("imagem_status_filtro")
-  .addEventListener("change", handleFilterChange);
-document
-  .getElementById("imagem_status_etapa_filtro")
-  .addEventListener("change", handleFilterChange);
+[
+  ["imagem_busca_filtro", "input"],
+  ["tipo_imagem", "change"],
+  ["antecipada_obra", "change"],
+  ["imagem_status_filtro", "change"],
+  ["imagem_status_etapa_filtro", "change"],
+].forEach(([id, eventName]) => {
+  document.getElementById(id)?.addEventListener(eventName, handleFilterChange);
+});
 
 // Inicializa Select2 para uma melhor UX com múltiplas seleções (aguarda jQuery + Select2 carregados)
 function initSelect2Filters() {
@@ -6007,6 +6257,10 @@ function clearFilters() {
   try {
     // limpa também filtros por colaborador
     colaboradorFilters = {};
+    statusFilters = {};
+    tableColumnFilters = {};
+    const imagemBuscaEl = document.getElementById("imagem_busca_filtro");
+    if (imagemBuscaEl) imagemBuscaEl.value = "";
     if (window.jQuery && jQuery().select2) {
       $("#tipo_imagem").val(null).trigger("change");
       $("#antecipada_obra").val(null).trigger("change");

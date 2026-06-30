@@ -995,6 +995,9 @@ function filtrarTarefasPorObra(obraSelecionada) {
   let funcaoSelecionada = document.getElementById("nome_funcao").value;
   const statusSelecionado =
     document.getElementById("filtro_status")?.value || "";
+  const buscaImagem = (document.getElementById("fr-search-funcao")?.value || "")
+    .toLowerCase()
+    .trim();
 
   // Se houver filtro global ativo, aplica e reflete visualmente (apenas na entrada)
   if (funcaoGlobalSelecionada) {
@@ -1054,7 +1057,18 @@ function filtrarTarefasPorObra(obraSelecionada) {
     const matchFuncao =
       funcaoSelecionada === "Todos" || t.nome_funcao === funcaoSelecionada;
     const matchStatus = !statusSelecionado || t.status === statusSelecionado;
-    return matchColaborador && matchFuncao && matchStatus;
+    const imagemBuscaBase = [
+      t.imagem_nome,
+      t.nome_obra,
+      t.nomenclatura,
+      t.imagem_id,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const matchBuscaImagem =
+      !buscaImagem || imagemBuscaBase.includes(buscaImagem);
+    return matchColaborador && matchFuncao && matchStatus && matchBuscaImagem;
   });
 
   // Exibe as tarefas filtradas
@@ -3478,15 +3492,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const frSearchFuncao = document.getElementById("fr-search-funcao");
   if (frSearchFuncao) {
     frSearchFuncao.addEventListener("input", () => {
-      const val = frSearchFuncao.value.toLowerCase().trim();
-      document
-        .querySelectorAll(".tarefasImagensObra .task-item")
-        .forEach((item) => {
-          const nomeImagem = (
-            item.querySelector(".imagem_nome")?.textContent || ""
-          ).toLowerCase();
-          item.style.display = !val || nomeImagem.includes(val) ? "" : "none";
-        });
+      const obraSelecionada = document.getElementById("filtro_obra")?.value;
+      if (obraSelecionada) filtrarTarefasPorObra(obraSelecionada);
     });
   }
 

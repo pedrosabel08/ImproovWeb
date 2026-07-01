@@ -25,6 +25,8 @@ DEADLINE_COMMAND = "deadlinecommand"
 DEADLINE_COMMAND_TIMEOUT = int(os.getenv("DEADLINE_COMMAND_TIMEOUT", "60"))
 DEADLINE_DELETE_STATUSES = ("Aprovado", "Finalizado", "Reprovado")
 DEADLINE_REWORK_STATUS = "Refazendo"
+DEADLINE_REOPEN_STATUSES = ("Reprovado", DEADLINE_REWORK_STATUS)
+DEADLINE_CLOSED_STATUSES = DEADLINE_DELETE_STATUSES + (DEADLINE_REWORK_STATUS,)
 
 # Filtros opcionais (por ambiente) para evitar varredura completa
 FILTER_IMAGES = [s.strip() for s in os.getenv("FILTER_IMAGES", "").split(",") if s.strip()]
@@ -742,7 +744,11 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
     render_id = existing_status[0] if existing_status else None
     ultimo_status = existing_status[1] if existing_status else None
     existing_preview = existing_status[2] if existing_status else None
-    existing_deadline_job_id = existing_status[3] if existing_status else None
+    existing_deadline_job_id = (
+        str(existing_status[3]).strip()
+        if existing_status and existing_status[3] is not None
+        else None
+    )
     is_existing_deadline_job = bool(existing_deadline_job_id and existing_deadline_job_id == deadline_job_id)
 
     if is_deadline_job and existing_status:
@@ -767,29 +773,48 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
     else:
         status_custom = (xml_data.get("Complete") or "Desconhecido")
 
-    should_delete_linked_job = (
+    should_delete_linked_job = is_existing_deadline_job and (
         ultimo_status in DEADLINE_DELETE_STATUSES
-        or (ultimo_status == DEADLINE_REWORK_STATUS and is_existing_deadline_job)
+        or ultimo_status == DEADLINE_REWORK_STATUS
+    )
+    should_reopen_unlinked_job = (
+        existing_status
+        and not existing_deadline_job_id
+        and ultimo_status in DEADLINE_REOPEN_STATUSES
+    )
+    should_ignore_closed_unlinked_job = (
+        existing_status
+        and not should_reopen_unlinked_job
+        and not is_existing_deadline_job
+        and ultimo_status in DEADLINE_DELETE_STATUSES
     )
 
     if should_delete_linked_job:
-        if is_existing_deadline_job:
-            log_and_print(f"Status '{ultimo_status}' detectado - deletando Job Deadline: {deadline_job_id}")
-            if delete_deadline_job(deadline_job_id):
-                cursor.execute("""
-                    UPDATE render_alta
-                    SET deadline_job_id = NULL
-                    WHERE idrender_alta = %s
-                      AND deadline_job_id = %s
-                """, (render_id, deadline_job_id))
-                log_and_print(f"Vinculo Deadline limpo no render_alta {render_id}: {deadline_job_id}")
-        else:
-            log_and_print(
-                f"Status '{ultimo_status}' detectado, mas o job {deadline_job_id} nao esta vinculado ao render {render_id}; "
-                "ignorado para evitar deletar um novo envio.",
-                "warning"
-            )
+        log_and_print(f"Status '{ultimo_status}' detectado - deletando Job Deadline: {deadline_job_id}")
+        if delete_deadline_job(deadline_job_id):
+            cursor.execute("""
+                UPDATE render_alta
+                SET deadline_job_id = NULL
+                WHERE idrender_alta = %s
+                  AND deadline_job_id = %s
+            """, (render_id, deadline_job_id))
+            log_and_print(f"Vinculo Deadline limpo no render_alta {render_id}: {deadline_job_id}")
         return
+
+    if should_ignore_closed_unlinked_job:
+        log_and_print(
+            f"Status '{ultimo_status}' detectado, mas o job {deadline_job_id} nao esta vinculado ao render {render_id}; "
+            "ignorado para evitar reabrir um ciclo fechado.",
+            "warning"
+        )
+        return
+
+    if should_reopen_unlinked_job:
+        log_and_print(
+            f"Status '{ultimo_status}' sem Deadline vinculado; job {deadline_job_id} assumido como novo envio "
+            f"para o render {render_id} com status '{status_custom}'."
+        )
+        ultimo_status = None
 
     # Acumular status do P00 por imagem (para notificação única)
     if status_id == 1 and p00_rollup is not None:
@@ -880,7 +905,7 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
             UPDATE render_alta
             SET deadline_job_id = %s
             WHERE idrender_alta = %s
-              AND (deadline_job_id IS NULL OR deadline_job_id = "" OR deadline_job_id = %s)
+              AND (deadline_job_id IS NULL OR TRIM(deadline_job_id) = "" OR deadline_job_id = %s)
         """, (deadline_job_id, render_id, deadline_job_id))
         log_and_print(f"Deadline Job vinculado ao render_alta {render_id}: {deadline_job_id}")
 
@@ -939,7 +964,7 @@ def process_deadline_job(cursor, p00_rollup=None, deadline_job_id=None, job_data
             job_folder=VALUES(job_folder),
             previa_jpg=IFNULL(VALUES(previa_jpg), previa_jpg),
             deadline_job_id=IF(
-                deadline_job_id IS NULL OR deadline_job_id = '' OR deadline_job_id = VALUES(deadline_job_id),
+                deadline_job_id IS NULL OR TRIM(deadline_job_id) = '' OR deadline_job_id = VALUES(deadline_job_id),
                 VALUES(deadline_job_id),
                 deadline_job_id
             )
@@ -1182,7 +1207,7 @@ def main():
 
                 # Atualiza status agregado no render_alta (mantém estado único por imagem)
                 # Não sobrescreve status que fecha o ciclo no Deadline.
-                if render_id and ultimo_status not in DEADLINE_DELETE_STATUSES:
+                if render_id and ultimo_status not in DEADLINE_CLOSED_STATUSES:
                     cursor.execute(
                         "UPDATE render_alta SET status = %s WHERE idrender_alta = %s",
                         (status_agg, render_id)
@@ -1193,7 +1218,7 @@ def main():
 
                 # Enviar notificação apenas quando houver mudança real no status agregado
                 # e não houve status fechado anteriormente
-                if resp_id and status_agg != ultimo_status and ultimo_status not in DEADLINE_DELETE_STATUSES:
+                if resp_id and status_agg != ultimo_status and ultimo_status not in DEADLINE_CLOSED_STATUSES:
                     if status_agg == "Erro":
                         msg = f"O render da imagem: {image_name_db} deu erro, favor verificar!"
                     elif status_agg == "Em aprovação":

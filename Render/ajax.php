@@ -682,7 +682,7 @@ if (isset($_POST['action'])) {
 
                 if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
                     $stmtUpd = $conn->prepare(
-                        "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL WHERE idrender_alta = ?"
+                        "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL, deadline_job_id = NULL WHERE idrender_alta = ?"
                     );
                 } else {
                     $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");

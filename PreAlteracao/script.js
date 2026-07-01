@@ -120,6 +120,18 @@
     conclusaoResumo: null,
   };
 
+  const FLOWDRIVE_BASE = BASE.replace(/PreAlteracao\/$/, "FlowDrive/");
+  const TRIAGEM_CATEGORIAS = [
+    [1, "Arquitetonico"],
+    [2, "Referencias"],
+    [3, "Paisagismo"],
+    [4, "Luminotecnico"],
+    [5, "Estrutural"],
+    [6, "Alteracoes"],
+    [7, "Angulo definido"],
+  ];
+  const TRIAGEM_TIPOS_ARQUIVO = ["DWG", "PDF", "SKP", "IMG", "IFC", "Outros"];
+
   async function carregarLotes() {
     renderLoading();
     try {
@@ -307,7 +319,7 @@
       </div>
 
       <div class="card-badges">
-        <span class="badge badge-round">${escHtml(formatRounds(lote.review_rounds))}</span>
+        <span class="badge badge-stage">${escHtml(lote.nome_etapa || "Etapa")}</span>
         <span class="badge ${priority.cls}">${escHtml(priority.label)}</span>
         <span class="badge badge-date">Resolvido: ${escHtml(formatDate(lote.lote_resolvido_em) || "Sem registro")}</span>
       </div>
@@ -442,10 +454,16 @@
       <span>${escHtml(lote.nome_cliente || "Cliente nao informado")}</span>
     `;
     refs.paModalActions.innerHTML = `
+      <button type="button" class="modal-review-btn" id="modalUploadProjetoBtn">
+        <i class="fa-solid fa-upload"></i> Upload projeto
+      </button>
       <button type="button" class="modal-review-btn" ${lote.link_review ? "" : "disabled"} id="modalReviewBtn">
         <i class="fa-solid fa-arrow-up-right-from-square"></i> Review Studio
       </button>
     `;
+    refs.paModalActions.querySelector("#modalUploadProjetoBtn")?.addEventListener("click", () => {
+      openTriagemUploadModal("projeto");
+    });
     refs.paModalActions.querySelector("#modalReviewBtn")?.addEventListener("click", () => {
       if (lote.link_review) window.open(lote.link_review, "_blank", "noopener");
     });
@@ -483,6 +501,9 @@
           <strong title="${escHtml(item.nome)}">${escHtml(item.nome)}</strong>
           <span>${Number(item.comment_count || item.quantidade_comentarios || 0)} comentario${Number(item.comment_count || item.quantidade_comentarios || 0) === 1 ? "" : "s"}${Number(item.critical_count || 0) ? `, ${item.critical_count} critico(s)` : ""}</span>
         </div>
+        <button type="button" class="item-upload-btn" data-upload-image title="Enviar arquivos para esta imagem">
+          <i class="fa-solid fa-upload"></i>
+        </button>
         <span class="item-status">${escHtml(resultadoLabel(resultado))}</span>
         ${item.nivel_complexidade ? `<span class="item-status item-level">${item.nivel_complexidade}</span>` : ""}
       </header>
@@ -490,6 +511,9 @@
     `;
 
     wireItem(div, item);
+    div.querySelector("[data-upload-image]")?.addEventListener("click", () => {
+      openTriagemUploadModal("imagem", item);
+    });
     return div;
   }
 
@@ -619,6 +643,229 @@
     }
     if (refs.btnSalvarAlteracoes) {
       refs.btnSalvarAlteracoes.disabled = total === 0;
+    }
+  }
+
+  function normalizeSufixo(value) {
+    return String(value || "").trim().toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, "");
+  }
+
+  function validSufixo(value) {
+    if (!value) return true;
+    const normalized = normalizeSufixo(value);
+    return normalized !== "" && normalized.split("_").length <= 2;
+  }
+
+  async function fetchTriagemSufixos(tipoArquivo) {
+    if (!tipoArquivo) return [];
+    try {
+      const response = await fetch(`${FLOWDRIVE_BASE}getSufixos.php?tipo_arquivo=${encodeURIComponent(tipoArquivo)}`);
+      const json = await response.json();
+      return Array.isArray(json) ? json : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  async function saveTriagemSufixo(tipoArquivo, value) {
+    const normalized = normalizeSufixo(value);
+    if (!tipoArquivo || !normalized || !validSufixo(normalized)) return;
+    await fetch(`${FLOWDRIVE_BASE}getSufixos.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo_arquivo: tipoArquivo, valor: normalized }),
+    }).catch(() => {});
+  }
+
+  function currentUploadTipos(scope, item) {
+    const tiposLote = Array.from(new Set(state.itensAbertos.map((row) => row.tipo_imagem).filter(Boolean)));
+    if (scope === "imagem") {
+      return [item?.tipo_imagem].filter(Boolean).length ? [item.tipo_imagem] : tiposLote;
+    }
+    return tiposLote;
+  }
+
+  function openTriagemUploadModal(scope, item = null) {
+    const lote = state.loteAberto || {};
+    if (!lote.obra_id) {
+      toast("Lote sem obra vinculada.", "#EF4444");
+      return;
+    }
+
+    const existing = document.getElementById("triagemUploadModal");
+    if (existing) existing.remove();
+
+    const tipos = currentUploadTipos(scope, item);
+    const tipoOptions = TRIAGEM_TIPOS_ARQUIVO.map((tipo) => `<option value="${tipo}">${tipo}</option>`).join("");
+    const categoriaOptions = TRIAGEM_CATEGORIAS.map(([id, label]) => `<option value="${id}" ${id === 6 ? "selected" : ""}>${label}</option>`).join("");
+    const title = scope === "imagem" ? "Upload da imagem" : "Upload do projeto";
+    const subtitle = scope === "imagem" ? item?.nome || "Imagem" : lote.nomenclatura || "Projeto";
+    const modal = document.createElement("div");
+    modal.id = "triagemUploadModal";
+    modal.className = "triagem-upload-modal is-open";
+    modal.innerHTML = `
+      <form class="triagem-upload-card" id="triagemUploadForm">
+        <header>
+          <div>
+            <span>${escHtml(title)}</span>
+            <strong>${escHtml(subtitle)}</strong>
+          </div>
+          <button type="button" data-close-upload title="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </header>
+        <div class="triagem-upload-body">
+          <div class="triagem-upload-grid">
+            <label>
+              <span>Categoria</span>
+              <select name="tipo_categoria">${categoriaOptions}</select>
+            </label>
+            <label>
+              <span>Tipo de arquivo</span>
+              <select name="tipo_arquivo" required>
+                <option value="">Selecione</option>
+                ${tipoOptions}
+              </select>
+            </label>
+            <label>
+              <span>Data de recebimento</span>
+              <input type="date" name="data_recebido" value="${escHtml(dateOnly(new Date().toISOString()))}" required>
+            </label>
+          </div>
+          <label class="triagem-upload-field">
+            <span>Sufixo</span>
+            <input name="sufixo" list="triagemSufixosList" placeholder="Selecione ou digite">
+            <datalist id="triagemSufixosList"></datalist>
+          </label>
+          <div class="triagem-upload-types">
+            <span>Tipo de imagem</span>
+            <strong>${escHtml(tipos.join(", ") || "Nao identificado")}</strong>
+          </div>
+          <label class="triagem-upload-field">
+            <span>Observacao de triagem</span>
+            <textarea name="descricao" rows="3" placeholder="Resumo para identificar o envio"></textarea>
+          </label>
+          <label class="triagem-upload-files">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <strong>Selecionar arquivos</strong>
+            <span>Envio multiplo permitido</span>
+            <input type="file" name="files" multiple required>
+          </label>
+          <div class="triagem-upload-file-list" id="triagemUploadFileList"></div>
+          <label class="triagem-upload-check">
+            <input type="checkbox" name="flag_substituicao" value="1">
+            <span>Substituir arquivos existentes do mesmo contexto</span>
+          </label>
+        </div>
+        <footer>
+          <button type="button" class="btn" data-close-upload>Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-upload"></i> Enviar arquivos</button>
+        </footer>
+      </form>
+    `;
+    document.body.appendChild(modal);
+
+    const form = modal.querySelector("#triagemUploadForm");
+    const tipoSelect = form.querySelector("[name='tipo_arquivo']");
+    const fileInput = form.querySelector("[name='files']");
+    const suffixList = form.querySelector("#triagemSufixosList");
+    const close = () => modal.remove();
+
+    modal.querySelectorAll("[data-close-upload]").forEach((btn) => btn.addEventListener("click", close));
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) close();
+    });
+
+    tipoSelect.addEventListener("change", async () => {
+      const sufixos = await fetchTriagemSufixos(tipoSelect.value);
+      suffixList.innerHTML = sufixos.map((sufixo) => `<option value="${escHtml(sufixo)}"></option>`).join("");
+    });
+
+    fileInput.addEventListener("change", () => renderTriagemUploadFiles(form, scope));
+    form.addEventListener("submit", (event) => submitTriagemUpload(event, scope, item, tipos, close));
+  }
+
+  function renderTriagemUploadFiles(form, scope) {
+    const list = form.querySelector("#triagemUploadFileList");
+    const files = Array.from(form.querySelector("[name='files']")?.files || []);
+    if (!files.length) {
+      list.innerHTML = "";
+      return;
+    }
+    if (scope === "imagem" || files.length === 1) {
+      list.innerHTML = files.map((file) => `<div><span>${escHtml(file.name)}</span><small>${Math.ceil(file.size / 1024)} KB</small></div>`).join("");
+      return;
+    }
+    list.innerHTML = files
+      .map((file, index) => `
+        <label class="triagem-upload-file-row">
+          <span>${escHtml(file.name)}</span>
+          <input name="sufixo_por_arquivo_${index}" placeholder="Sufixo deste arquivo">
+        </label>`)
+      .join("");
+  }
+
+  async function submitTriagemUpload(event, scope, item, tipos, close) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const lote = state.loteAberto || {};
+    const files = Array.from(form.querySelector("[name='files']")?.files || []).filter((file) => file.size > 0);
+    const tipoArquivo = form.querySelector("[name='tipo_arquivo']")?.value || "";
+    const sufixo = normalizeSufixo(form.querySelector("[name='sufixo']")?.value || "");
+    const descricaoLivre = form.querySelector("[name='descricao']")?.value.trim() || "";
+
+    if (!tipoArquivo || !files.length || !tipos.length) {
+      toast("Informe o tipo de arquivo, o tipo de imagem e selecione ao menos um arquivo.", "#F59E0B");
+      return;
+    }
+    if (sufixo && !validSufixo(sufixo)) {
+      toast("Sufixo invalido. Use no maximo duas palavras separadas por _.", "#F59E0B");
+      return;
+    }
+
+    const button = form.querySelector("button[type='submit']");
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando';
+
+    try {
+      if (sufixo) await saveTriagemSufixo(tipoArquivo, sufixo);
+      const fd = new FormData();
+      fd.append("obra_id", lote.obra_id);
+      fd.append("tipo_categoria", form.querySelector("[name='tipo_categoria']")?.value || "6");
+      fd.append("tipo_arquivo", tipoArquivo);
+      fd.append("data_recebido", form.querySelector("[name='data_recebido']")?.value || dateOnly(new Date().toISOString()));
+      fd.append("descricao", `Triagem${lote.lote_id ? " lote " + lote.lote_id : ""}${descricaoLivre ? " - " + descricaoLivre : ""}`);
+      if (form.querySelector("[name='flag_substituicao']")?.checked) fd.append("flag_substituicao", "1");
+      tipos.forEach((tipo) => fd.append("tipo_imagem[]", tipo));
+
+      if (scope === "imagem") {
+        fd.append("refsSkpModo", "porImagem");
+        if (sufixo) fd.append("sufixo", sufixo);
+        fd.append(`observacoes_por_imagem[${item.imagem_id}]`, `Triagem${descricaoLivre ? " - " + descricaoLivre : ""}`);
+        files.forEach((file) => fd.append(`arquivos_por_imagem[${item.imagem_id}][]`, file));
+      } else {
+        fd.append("refsSkpModo", "geral");
+        for (const [index, file] of files.entries()) {
+          fd.append("arquivos[]", file);
+          const perFile = normalizeSufixo(form.querySelector(`[name='sufixo_por_arquivo_${index}']`)?.value || "");
+          if (perFile) await saveTriagemSufixo(tipoArquivo, perFile);
+          fd.append("sufixo_por_arquivo[]", perFile || sufixo);
+        }
+        if (sufixo) fd.append("sufixo", sufixo);
+      }
+
+      const response = await fetch(`${FLOWDRIVE_BASE}upload.php`, { method: "POST", body: fd });
+      const json = await response.json();
+      const success = Array.isArray(json.success) ? json.success.length : 0;
+      const errors = Array.isArray(json.errors) ? json.errors.filter(Boolean) : [];
+      if (!response.ok || (success === 0 && errors.length)) {
+        throw new Error(errors[0] || "Upload nao concluido.");
+      }
+      toast(`${plural(success, "arquivo enviado", "arquivos enviados")}.`, "#22C55E");
+      close();
+    } catch (err) {
+      toast("Erro no upload: " + err.message, "#EF4444", 6000);
+      button.disabled = false;
+    } finally {
+      button.innerHTML = '<i class="fa-solid fa-upload"></i> Enviar arquivos';
     }
   }
 
@@ -986,17 +1233,6 @@
     return "Alteracao";
   }
 
-  function formatRounds(rounds) {
-    if (!rounds) return "R00";
-    const values = String(rounds)
-      .split(",")
-      .map((v) => Number(v.trim()))
-      .filter((v) => Number.isFinite(v));
-    if (!values.length) return "R00";
-    if (values.length === 1) return `R${String(values[0]).padStart(2, "0")}`;
-    return `${values.map((v) => `R${String(v).padStart(2, "0")}`).join(", ")}`;
-  }
-
   function formatDate(str) {
     if (!str) return "";
     const [datePart] = String(str).split(" ");
@@ -1020,7 +1256,7 @@
   }
 
   function dateOnly(str) {
-    return str ? String(str).split(" ")[0] : "";
+    return str ? String(str).split(/[ T]/)[0] : "";
   }
 
   function plural(value, singular, pluralLabel) {

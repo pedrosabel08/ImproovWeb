@@ -126,12 +126,13 @@ try {
         $stmtEvento->close();
     }
 
-    $stmtUpdateLote = $conn->prepare("UPDATE pre_alt_lote SET status = 'PLANEJADO', prazo = ?, updated_at = NOW() WHERE id = ?");
+    $statusLoteFinal = $totalAlteracao > 0 ? $statusAlteracao : $statusEf;
+    $stmtUpdateLote = $conn->prepare("UPDATE pre_alt_lote SET status_id = ?, status = 'PLANEJADO', prazo = ?, updated_at = NOW() WHERE id = ?");
     if (!$stmtUpdateLote) {
         throw new RuntimeException('Nao foi possivel atualizar o lote.');
     }
     $prazoLote = $totalAlteracao > 0 ? $prazoAlteracao : $prazoEf;
-    $stmtUpdateLote->bind_param('si', $prazoLote, $loteId);
+    $stmtUpdateLote->bind_param('isi', $statusLoteFinal, $prazoLote, $loteId);
     $stmtUpdateLote->execute();
     $stmtUpdateLote->close();
 
@@ -149,6 +150,8 @@ try {
             'data_triagem' => $dataTriagem,
             'entrega_ef_id' => $entregaEfId,
             'entrega_alteracao_id' => $entregaAlteracaoId,
+            'status_id_anterior' => (int) $summary['lote']['status_id'],
+            'status_id_final' => $statusLoteFinal,
             'totais' => $summary['totais'],
         ]
     );

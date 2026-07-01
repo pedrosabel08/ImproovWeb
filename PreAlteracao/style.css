@@ -612,7 +612,7 @@ button {
   border-color: rgba(239, 68, 68, 0.28);
 }
 
-.badge-round {
+.badge-stage {
   color: var(--triagem);
 }
 
@@ -813,7 +813,8 @@ button {
 
 .modal-pa,
 .batch-modal,
-.conclusao-modal {
+.conclusao-modal,
+.triagem-upload-modal {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -826,7 +827,8 @@ button {
 
 .modal-pa.is-open,
 .batch-modal.is-open,
-.conclusao-modal.is-open {
+.conclusao-modal.is-open,
+.triagem-upload-modal.is-open {
   display: flex;
 }
 
@@ -961,11 +963,22 @@ button {
 
 .modal-item-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
   padding: 12px;
   border-bottom: 1px solid var(--border-soft);
+}
+
+.item-upload-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--triagem);
+  cursor: pointer;
+  text-align: center;
 }
 
 .modal-item-header strong {
@@ -1106,7 +1119,8 @@ button {
   color: var(--prioridade);
 }
 
-.batch-modal-card {
+.batch-modal-card,
+.triagem-upload-card {
   width: min(440px, 94vw);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1115,7 +1129,9 @@ button {
 }
 
 .batch-modal-card header,
-.batch-modal-card footer {
+.batch-modal-card footer,
+.triagem-upload-card header,
+.triagem-upload-card footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1128,6 +1144,145 @@ button {
   border-top: 1px solid var(--border);
   border-bottom: 0;
   justify-content: flex-end;
+}
+
+.triagem-upload-card {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.triagem-upload-card header button,
+.triagem-upload-card footer button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.triagem-upload-card header span,
+.triagem-upload-types span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.triagem-upload-card header strong {
+  display: block;
+  margin-top: 3px;
+}
+
+.triagem-upload-body {
+  padding: 16px;
+}
+
+.triagem-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.triagem-upload-field,
+.triagem-upload-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.triagem-upload-field,
+.triagem-upload-types,
+.triagem-upload-files,
+.triagem-upload-file-list,
+.triagem-upload-check {
+  margin-top: 12px;
+}
+
+.triagem-upload-field span,
+.triagem-upload-grid label span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.triagem-upload-card input,
+.triagem-upload-card select,
+.triagem-upload-card textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  padding: 10px;
+}
+
+.triagem-upload-types {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  padding: 10px;
+}
+
+.triagem-upload-types strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.triagem-upload-files {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  border: 1px dashed rgba(59, 130, 246, 0.5);
+  border-radius: var(--radius);
+  background: rgba(59, 130, 246, 0.06);
+  padding: 18px;
+  cursor: pointer;
+}
+
+.triagem-upload-files input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.triagem-upload-file-list {
+  display: grid;
+  gap: 8px;
+}
+
+.triagem-upload-file-list > div,
+.triagem-upload-file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.42fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  padding: 8px;
+}
+
+.triagem-upload-file-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triagem-upload-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.triagem-upload-check input {
+  width: auto;
 }
 
 .batch-modal-card h3 {
@@ -1211,7 +1366,10 @@ button {
 
 .conclusao-headline {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) minmax(170px, 190px);
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) minmax(
+      170px,
+      190px
+    );
   gap: 12px;
   margin-bottom: 14px;
 }

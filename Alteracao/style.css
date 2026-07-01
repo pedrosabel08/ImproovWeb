@@ -122,6 +122,8 @@
   --alt-blue: #1f7ae0;
   --alt-green: #18c34a;
   --alt-yellow: #f5b51b;
+  --alt-orange: #f97316;
+  --alt-red: #ef4444;
   width: 100%;
   height: calc(100vh - 20px);
   max-height: calc(100vh - 20px);
@@ -237,7 +239,104 @@
   border-color: rgba(31, 122, 224, 0.35);
 }
 
-#altConfComplexidade:not(:empty)::before {
+#altConfEtapa {
+  --alt-status-bg: var(--si-default);
+  --alt-status-color: #fff;
+  background: var(--alt-status-bg);
+  color: var(--alt-status-color);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+#altConfEtapa.si-p00,
+#altConfEtapa.si-r00,
+#altConfEtapa.si-ef,
+#altConfEtapa.si-tea,
+#altConfEtapa.si-drv {
+  --alt-status-color: #000;
+}
+
+#altConfEtapa.si-p00 {
+  --alt-status-bg: var(--si-p00);
+}
+
+#altConfEtapa.si-r00 {
+  --alt-status-bg: var(--si-r00);
+}
+
+#altConfEtapa.si-r01 {
+  --alt-status-bg: var(--si-r01);
+}
+
+#altConfEtapa.si-r02 {
+  --alt-status-bg: var(--si-r02);
+}
+
+#altConfEtapa.si-r03 {
+  --alt-status-bg: var(--si-r03);
+}
+
+#altConfEtapa.si-r04 {
+  --alt-status-bg: var(--si-r04);
+}
+
+#altConfEtapa.si-r05 {
+  --alt-status-bg: var(--si-r05);
+}
+
+#altConfEtapa.si-ef {
+  --alt-status-bg: var(--si-ef);
+}
+
+#altConfEtapa.si-hold {
+  --alt-status-bg: var(--si-hold);
+}
+
+#altConfEtapa.si-tea {
+  --alt-status-bg: var(--si-tea);
+}
+
+#altConfEtapa.si-ren {
+  --alt-status-bg: var(--si-ren);
+}
+
+#altConfEtapa.si-apr {
+  --alt-status-bg: var(--si-apr);
+}
+
+#altConfEtapa.si-app {
+  --alt-status-bg: var(--si-app);
+}
+
+#altConfEtapa.si-rvw {
+  --alt-status-bg: var(--si-rvw);
+}
+
+#altConfEtapa.si-ok,
+#altConfEtapa.si-to-do {
+  --alt-status-bg: var(--si-ok);
+}
+
+#altConfEtapa.si-fin {
+  --alt-status-bg: var(--si-fin);
+}
+
+#altConfEtapa.si-drv {
+  --alt-status-bg: var(--si-drv);
+}
+
+#altConfEtapa.si-rvw-done {
+  --alt-status-bg: var(--si-rvw-done);
+}
+
+#altConfEtapa.si-pre-alt {
+  --alt-status-bg: var(--si-pre-alt);
+}
+
+#altConfEtapa.si-ready-for-planning {
+  --alt-status-bg: var(--si-ready-for-planning);
+}
+
+/* #altConfComplexidade:not(:empty)::before {
   content: "";
   display: inline-block;
   width: 9px;
@@ -245,6 +344,37 @@
   border-radius: 50%;
   background: var(--alt-yellow);
   margin-right: 6px;
+} */
+
+.complexity-badge::before,
+#altConfComplexidade:not(:empty)::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.complexity-badge.baixa::before,
+#altConfComplexidade.baixa:not(:empty)::before {
+  background: var(--alt-green);
+}
+
+.complexity-badge.media::before,
+#altConfComplexidade.media:not(:empty)::before {
+  background: var(--alt-yellow);
+}
+
+.complexity-badge.alta::before,
+#altConfComplexidade.alta:not(:empty)::before {
+  background: var(--alt-orange);
+}
+
+.complexity-badge.critica::before,
+#altConfComplexidade.critica:not(:empty)::before {
+  background: var(--alt-red);
 }
 
 .alt-conf-header-actions {
@@ -405,10 +535,17 @@
   padding: 10px 0;
 }
 
+.alt-conf-summary-row span i,
+.alt-conf-summary-block span i {
+  width: 16px;
+  margin-right: 6px;
+  color: var(--primary-color);
+  text-align: center;
+}
+
 .alt-conf-summary-row {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
 }
 
 .alt-conf-summary span {
@@ -421,8 +558,8 @@
 .alt-conf-summary p {
   color: var(--alt-text);
   font-size: 12px;
-  margin: 5px 0 0;
   line-height: 1.5;
+  margin: 2px 0 3px 0;
 }
 
 .alt-conf-image-tools button {
@@ -536,6 +673,14 @@
   padding: 8px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.alt-conf-file-row:hover {
+  background: rgba(64, 151, 255, 0.12);
 }
 
 .alt-conf-file-icon,
@@ -577,6 +722,131 @@
   color: var(--alt-muted);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.alt-files-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.alt-files-modal.is-open {
+  display: flex;
+}
+
+.alt-files-modal-content {
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-modal);
+  border-radius: 10px;
+  background: var(--bg-modal);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+
+.alt-files-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-modal);
+}
+
+.alt-files-modal-header h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.alt-files-modal-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-modal);
+  border-radius: 8px;
+  background: var(--bg-section);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.alt-files-modal-body {
+  overflow: auto;
+  padding: 16px;
+}
+
+.alt-files-category {
+  border: 1px solid var(--border-modal);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.alt-files-category + .alt-files-category {
+  margin-top: 12px;
+}
+
+.alt-files-category-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-section);
+}
+
+.alt-files-category-head span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.alt-files-type {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-modal);
+}
+
+.alt-files-type h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.alt-files-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.alt-files-row:hover {
+  background: rgba(64, 151, 255, 0.08);
+}
+
+.alt-files-row + .alt-files-row {
+  border-top: 1px solid var(--border-modal);
+}
+
+.alt-files-row strong,
+.alt-files-row span,
+.alt-files-row small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alt-files-row span,
+.alt-files-row small,
+.alt-files-row time {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .alt-conf-history-item,
@@ -649,6 +919,198 @@
 .alt-conf-footer .filter-input {
   min-height: 34px;
   font-size: 12px;
+}
+
+.alt-approval-upload-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(4, 8, 14, 0.58);
+}
+
+.alt-approval-upload-modal.is-open {
+  display: flex;
+}
+
+.alt-approval-upload-card {
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 36px));
+  display: flex;
+  flex-direction: column;
+  background: #0d131d;
+  color: var(--alt-text, #eef4ff);
+  border: 1px solid var(--alt-border-strong, rgba(255, 255, 255, 0.14));
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.alt-approval-upload-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--alt-border, rgba(255, 255, 255, 0.08));
+  background: rgba(16, 24, 35, 0.96);
+}
+
+.alt-approval-upload-head span {
+  display: block;
+  color: var(--alt-muted, #8b9bb1);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.alt-approval-upload-head h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.alt-approval-upload-head button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--alt-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--alt-text, #eef4ff);
+  cursor: pointer;
+  text-align: center;
+}
+
+.alt-approval-upload-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+  overflow: auto;
+}
+
+.alt-upload-section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--alt-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.alt-upload-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--alt-text, #eef4ff);
+}
+
+.alt-upload-section-title i {
+  color: #4097ff;
+}
+
+.alt-drop-area {
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed rgba(139, 155, 177, 0.75);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--alt-muted, #8b9bb1);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.alt-drop-area i {
+  font-size: 24px;
+  color: #4097ff;
+}
+
+.alt-drop-area:hover,
+.alt-drop-area.highlight {
+  border-color: #4097ff;
+  background: rgba(64, 151, 255, 0.1);
+  color: var(--alt-text, #eef4ff);
+}
+
+.alt-file-list {
+  min-height: 42px;
+  max-height: 130px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.alt-file-list li {
+  margin-top: 6px;
+  border: 1px solid var(--alt-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.alt-file-list .file-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+}
+
+.alt-file-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--alt-text, #eef4ff);
+}
+
+.alt-file-list button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fda4af;
+  cursor: pointer;
+}
+
+.alt-upload-send {
+  justify-content: center;
+  min-height: 38px;
+}
+
+@media (max-width: 700px) {
+  .alt-approval-upload-modal {
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .alt-approval-upload-card {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .alt-approval-upload-body {
+    grid-template-columns: 1fr;
+  }
+
+  .alt-drop-area {
+    min-height: 112px;
+  }
 }
 
 @media (min-width: 1900px) {
@@ -1900,6 +2362,15 @@ body {
   background: var(--border-input);
 }
 
+button#altConfQuestionBtn {
+  background: #ab2d07 !important;
+  color: #000 !important;
+}
+button#altConfStart {
+  background: #209d20 !important;
+  color: white !important;
+}
+
 /* ─── Skeleton Loaders ─── */
 .skeleton-card {
   height: 80px;
@@ -2027,10 +2498,8 @@ body {
   overflow-y: auto;
 }
 
-.alt-conference-modal .alt-conf-main {
-  display: grid;
-  grid-template-rows: auto 20vh;
-  grid-template-columns: 1fr;
+.alt-conf-main .alt-conf-image-card {
+  height: 100%;
 }
 
 .alt-conference-modal .alt-conf-image-stage {
@@ -2239,6 +2708,7 @@ body {
   background: rgba(255, 255, 255, 0.055);
   color: #8b9bb1;
   cursor: pointer;
+  text-align: center;
 }
 
 .alt-conference-modal .alt-conf-more-form {
@@ -2257,8 +2727,6 @@ body {
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.045);
-  color: #c9d5e5;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -2282,6 +2750,15 @@ body {
   min-width: 0;
 }
 
+section#altSecResumoApoio {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  section#altSecResumoApoio.active {
+    display: flex;
+  }
+}
 
 @media (min-width: 901px) and (max-width: 1180px) {
   .alt-conference-modal {
@@ -2448,14 +2925,18 @@ body {
     color: #c9d5e5;
     font-size: 0;
     cursor: pointer;
-    transition: right 0.22s ease, background 0.16s ease;
+    transition:
+      right 0.22s ease,
+      background 0.16s ease;
   }
 
   .alt-conference-modal .alt-conf-side-toggle i {
     font-size: 13px;
   }
 
-  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-side-toggle {
+  .alt-conference-modal
+    .alt-conference-shell.is-side-collapsed
+    .alt-conf-side-toggle {
     right: 12px;
   }
 
@@ -2473,10 +2954,14 @@ body {
     opacity: 1;
     visibility: visible;
     transform: translateX(0);
-    transition: opacity 0.2s ease, transform 0.22s ease;
+    transition:
+      opacity 0.2s ease,
+      transform 0.22s ease;
   }
 
-  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-right {
+  .alt-conference-modal
+    .alt-conference-shell.is-side-collapsed
+    .alt-conf-right {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -2495,7 +2980,7 @@ body {
 
   .alt-conference-modal .alt-conf-side-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -2530,6 +3015,7 @@ body {
 
   .alt-conference-modal .alt-conf-file-list,
   .alt-conference-modal .alt-conf-ref-list,
+  .alt-conference-modal .alt-conf-side-section .alt-conf-summary,
   .alt-conference-modal .alt-conf-steps {
     min-height: 0;
     overflow-y: auto;
@@ -2740,10 +3226,15 @@ body {
     box-shadow: -16px 0 38px rgba(0, 0, 0, 0.38);
     visibility: visible;
     transform: translateX(0);
-    transition: transform 0.24s ease, box-shadow 0.24s ease, visibility 0s linear;
+    transition:
+      transform 0.24s ease,
+      box-shadow 0.24s ease,
+      visibility 0s linear;
   }
 
-  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-right {
+  .alt-conference-modal
+    .alt-conference-shell.is-side-collapsed
+    .alt-conf-right {
     visibility: hidden;
     transform: translateX(calc(100% + 24px)) !important;
     pointer-events: none;
@@ -2765,14 +3256,20 @@ body {
     color: #c9d5e5;
     font-size: 0;
     cursor: pointer;
-    transition: right 0.24s ease, background 0.16s ease;
+    transition:
+      right 0.24s ease,
+      background 0.16s ease;
   }
 
-  .alt-conference-modal .alt-conference-shell:not(.is-side-collapsed) .alt-conf-side-toggle {
+  .alt-conference-modal
+    .alt-conference-shell:not(.is-side-collapsed)
+    .alt-conf-side-toggle {
     right: calc(min(340px, calc(100vw - 82px)) + 14px);
   }
 
-  .alt-conference-modal .alt-conference-shell.is-side-collapsed .alt-conf-side-toggle {
+  .alt-conference-modal
+    .alt-conference-shell.is-side-collapsed
+    .alt-conf-side-toggle {
     right: 8px;
   }
 
@@ -2791,7 +3288,7 @@ body {
 
   .alt-conference-modal .alt-conf-side-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -2828,6 +3325,7 @@ body {
 
   .alt-conference-modal .alt-conf-file-list,
   .alt-conference-modal .alt-conf-ref-list,
+  .alt-conference-modal .alt-conf-side-section .alt-conf-summary,
   .alt-conference-modal .alt-conf-steps {
     min-height: 0;
     overflow-y: auto;
@@ -2870,19 +3368,638 @@ body {
 }
 
 @media (max-width: 767px) {
-  .alt-conference-modal .alt-conf-footer {
+  .alt-conference-modal {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .alt-conference-modal .alt-conference-shell {
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .alt-conference-modal .alt-conf-header {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px;
+    overflow: visible;
+  }
+
+  .alt-conference-modal .alt-conf-identity {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-thumb {
+    width: 100%;
+    max-height: 160px;
+    aspect-ratio: 16 / 9;
+  }
+
+  .alt-conference-modal .alt-conf-title {
+    margin: 0 0 6px;
+    font-size: 17px;
+    line-height: 1.2;
+  }
+
+  .alt-conference-modal .alt-conf-description {
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr 36px;
+    gap: 6px;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions .alt-conf-btn {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 8px;
+    font-size: 10.5px;
+  }
+
+  .alt-conference-modal .modal-close {
+    width: 36px;
+    height: 34px;
+  }
+
+  .alt-conference-modal .alt-conf-meta-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(118px, 42%);
+    grid-template-columns: none;
+    gap: 7px;
+    padding: 9px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+  }
+
+  .alt-conference-modal .alt-conf-meta span {
+    margin-bottom: 3px;
+    font-size: 9.5px;
+  }
+
+  .alt-conference-modal .alt-conf-meta strong {
+    display: inline-flex;
+    max-width: 100%;
+    font-size: 11px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .alt-conference-modal .alt-conf-left,
+  .alt-conference-modal .alt-conf-main,
+  .alt-conference-modal .alt-conf-right {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .alt-conference-modal .alt-conf-left {
+    order: 1;
+  }
+
+  .alt-conference-modal .alt-conf-main {
+    order: 2;
+  }
+
+  .alt-conference-modal .alt-conf-right {
+    order: 3;
+  }
+
+  .alt-conference-modal .alt-conf-left #altSecResumo {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-nav {
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-nav strong {
+    display: block;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-nav a {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    min-height: 36px;
+    padding: 8px;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .alt-conference-modal .alt-conf-nav a span {
+    position: static;
+    min-width: 18px;
+    min-height: 18px;
+    font-size: 9px;
+  }
+
+  .alt-conference-modal .alt-conf-image-card {
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-section-head {
+    align-items: center;
+    padding-bottom: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-image-tools {
+    gap: 5px;
+  }
+
+  .alt-conference-modal .alt-conf-image-tools button {
+    width: 32px;
+    height: 30px;
+  }
+
+  .alt-conference-modal #altConfZoomValue {
+    width: 56px;
+  }
+
+  .alt-conference-modal .alt-conf-image-stage {
+    height: clamp(190px, 54vw, 320px);
+    min-height: 190px;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-current-version {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 9px 0 0;
+  }
+
+  .alt-conference-modal .alt-conf-current-version .alt-conf-btn {
+    width: 100%;
+  }
+
+  .alt-conference-modal .alt-conf-side-toggle {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-right {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: #0b111a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    box-shadow: none;
+    visibility: visible;
+    transform: none !important;
+  }
+
+  .alt-conference-modal .alt-conf-side-head {
+    display: flex;
+    color: #eef4ff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #8b9bb1;
+    font-size: 0;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button i {
+    font-size: 13px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button.active {
+    color: #7bb6ff;
+    border-color: rgba(64, 151, 255, 0.5);
+    background: rgba(31, 122, 224, 0.18);
+  }
+
+  .alt-conference-modal .alt-conf-side-section {
+    display: none;
+    max-height: none;
+    padding: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-side-section.active {
+    display: flex;
+  }
+
+  .alt-conference-modal .alt-conf-file-list,
+  .alt-conference-modal .alt-conf-ref-list,
+  .alt-conference-modal .alt-conf-side-section .alt-conf-summary,
+  .alt-conference-modal .alt-conf-steps {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .alt-conference-modal .alt-conf-file-row {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
     gap: 8px;
   }
 
+  .alt-conference-modal .alt-conf-file-row small {
+    grid-column: 3;
+    white-space: nowrap;
+  }
+
+  .alt-conference-modal .alt-conf-footer {
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: #080d14;
+  }
+
   .alt-conference-modal .alt-conf-footer .btn-action {
+    height: auto;
+    min-height: 38px;
     min-width: 0;
     width: 100%;
     justify-content: center;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
   }
 
   .alt-conference-modal .alt-conf-more-form {
     grid-template-columns: 1fr;
+  }
+
+  .alt-conference-modal .alt-conf-more-panel {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
+  .alt-conference-modal {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .alt-conference-modal .alt-conference-shell {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 8px;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-identity {
+    grid-column: 1;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .alt-conference-modal .alt-conf-thumb {
+    width: 76px;
+    max-height: 48px;
+    aspect-ratio: 16 / 9;
+  }
+
+  .alt-conference-modal .alt-conf-title {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .alt-conference-modal .alt-conf-description,
+  .alt-conference-modal .alt-conf-tags {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: auto auto 30px;
+    gap: 5px;
+    align-self: start;
+  }
+
+  .alt-conference-modal .alt-conf-header-actions .alt-conf-btn {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .alt-conference-modal .modal-close {
+    width: 30px;
+    height: 30px;
+  }
+
+  .alt-conference-modal .alt-conf-meta-grid {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-meta span {
+    margin-bottom: 2px;
+    font-size: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-meta strong {
+    display: inline-flex;
+    max-width: 100%;
+    font-size: 9.5px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .alt-conference-modal .alt-conf-meta .alt-pill,
+  .alt-conference-modal #altConfComplexidade {
+    padding: 3px 6px;
+  }
+
+  .alt-conference-modal .alt-conf-body {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(218px, 260px);
+    gap: 6px;
+    min-height: 0;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-left,
+  .alt-conference-modal .alt-conf-main,
+  .alt-conference-modal .alt-conf-right {
+    width: auto;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-left {
+    grid-column: 1;
+    grid-row: 1;
+    order: 0;
+  }
+
+  .alt-conference-modal .alt-conf-main {
+    grid-column: 2;
+    grid-row: 1;
+    order: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .alt-conference-modal .alt-conf-right {
+    grid-column: 3;
+    grid-row: 1;
+    order: 0;
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background: #0b111a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    box-shadow: none;
+    visibility: visible;
+    transform: none !important;
+  }
+
+  .alt-conference-modal .alt-conf-left #altSecResumo {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-nav {
+    height: 100%;
+    padding: 6px 4px;
+  }
+
+  .alt-conference-modal .alt-conf-nav strong {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-nav a {
+    position: relative;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    min-height: 34px;
+    padding: 6px 4px;
+    font-size: 0;
+  }
+
+  .alt-conference-modal .alt-conf-nav a i {
+    font-size: 13px;
+  }
+
+  .alt-conference-modal .alt-conf-nav a span {
+    position: absolute;
+    top: 2px;
+    right: 1px;
+    min-width: 15px;
+    min-height: 15px;
+    font-size: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-image-card {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .alt-conference-modal .alt-conf-section-head {
+    padding-bottom: 6px;
+  }
+
+  .alt-conference-modal .alt-conf-section-head h3,
+  .alt-conference-modal .alt-conf-card-title h3 {
+    font-size: 12px;
+  }
+
+  .alt-conference-modal .alt-conf-image-tools {
+    gap: 4px;
+  }
+
+  .alt-conference-modal .alt-conf-image-tools button {
+    width: 28px;
+    height: 27px;
+  }
+
+  .alt-conference-modal #altConfZoomValue {
+    width: 48px;
+  }
+
+  .alt-conference-modal .alt-conf-image-stage {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-current-version {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 0;
+  }
+
+  .alt-conference-modal .alt-conf-current-version strong {
+    font-size: 12px;
+  }
+
+  .alt-conference-modal .alt-conf-current-version small {
+    font-size: 9px;
+  }
+
+  .alt-conference-modal .alt-conf-current-version .alt-conf-btn {
+    width: auto;
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .alt-conference-modal .alt-conf-side-toggle {
+    display: none;
+  }
+
+  .alt-conference-modal .alt-conf-side-head {
+    display: flex;
+    font-size: 11px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button {
+    min-height: 28px;
+    padding: 0 3px;
+    font-size: 0;
+  }
+
+  .alt-conference-modal .alt-conf-side-tabs button i {
+    font-size: 12px;
+  }
+
+  .alt-conference-modal .alt-conf-side-section {
+    display: none;
+    min-height: 0;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .alt-conference-modal .alt-conf-side-section.active {
+    display: flex;
+  }
+
+  .alt-conference-modal .alt-conf-side-section .alt-conf-summary,
+  .alt-conference-modal .alt-conf-file-list,
+  .alt-conference-modal .alt-conf-ref-list,
+  .alt-conference-modal .alt-conf-steps {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .alt-conference-modal .alt-conf-summary-row,
+  .alt-conference-modal .alt-conf-summary-block {
+    padding: 7px 0;
+  }
+
+  .alt-conference-modal .alt-conf-summary span,
+  .alt-conference-modal .alt-conf-summary strong,
+  .alt-conference-modal .alt-conf-summary p {
+    font-size: 10.5px;
+  }
+
+  .alt-conference-modal .alt-conf-footer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+    background: #080d14;
+  }
+
+  .alt-conference-modal .alt-conf-footer .btn-action {
+    min-height: 30px;
+    height: 30px;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .alt-conference-modal .alt-conf-more-panel {
+    top: 6px;
+    right: 6px;
+    width: min(390px, calc(100% - 12px));
+    max-height: calc(100dvh - 12px);
+    overflow-y: auto;
   }
 }

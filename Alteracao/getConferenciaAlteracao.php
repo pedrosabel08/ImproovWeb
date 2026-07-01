@@ -49,6 +49,11 @@ function alt_file_origin(array $row): string
     return 'cliente';
 }
 
+function alt_is_triage_file(array $row): bool
+{
+    return alt_file_origin($row) === 'triagem';
+}
+
 function alt_prepare_file(array $row, string $scope, ?string $origin = null): array
 {
     $name = (string)($row['nome_interno'] ?? $row['nome_arquivo'] ?? $row['nome_original'] ?? '');
@@ -174,6 +179,7 @@ if ($stmt = $conn->prepare(
 }
 
 $filesImage = [];
+$filesTriage = [];
 if ($stmt = $conn->prepare(
     "SELECT a.*, cat.nome_categoria AS categoria_nome
        FROM arquivos a
@@ -183,7 +189,9 @@ if ($stmt = $conn->prepare(
 )) {
     $stmt->bind_param('i', $imagemId);
     foreach (alt_fetch_all($stmt) as $row) {
-        $filesImage[] = alt_prepare_file($row, 'imagem');
+        if (!alt_is_triage_file($row)) {
+            $filesImage[] = alt_prepare_file($row, 'imagem');
+        }
     }
 }
 
@@ -200,6 +208,7 @@ if ($tipoImagem !== '' && $stmt = $conn->prepare(
         AND a.obra_id = ?
         AND (a.imagem_id IS NULL OR a.imagem_id = 0)
         AND (a.tipo_imagem_id = ? OR ti.nome = ?)
+        AND LOWER(COALESCE(a.descricao, '')) NOT LIKE '%triagem%'
       ORDER BY a.recebido_em DESC, a.idarquivo DESC"
 )) {
     $stmt->bind_param('iss', $obraId, $tipoImagem, $tipoImagem);
@@ -216,12 +225,42 @@ if ($stmt = $conn->prepare(
       WHERE a.status = 'atualizado'
         AND a.obra_id = ?
         AND (a.imagem_id IS NULL OR a.imagem_id = 0)
-        AND (a.tipo_imagem_id IS NULL OR a.tipo_imagem_id = '' OR a.tipo_imagem_id = '0')
+        AND LOWER(COALESCE(a.descricao, '')) NOT LIKE '%triagem%'
       ORDER BY a.recebido_em DESC, a.idarquivo DESC"
 )) {
     $stmt->bind_param('i', $obraId);
     foreach (alt_fetch_all($stmt) as $row) {
         $filesProject[] = alt_prepare_file($row, 'projeto');
+    }
+}
+
+if ($stmt = $conn->prepare(
+    "SELECT a.*, cat.nome_categoria AS categoria_nome
+       FROM arquivos a
+       LEFT JOIN tipo_imagem ti ON (ti.id_tipo_imagem = a.tipo_imagem_id OR ti.nome = a.tipo_imagem_id)
+       LEFT JOIN categorias cat ON cat.idcategoria = a.categoria_id
+      WHERE a.status = 'atualizado'
+        AND a.obra_id = ?
+        AND LOWER(COALESCE(a.descricao, '')) LIKE '%triagem%'
+        AND (
+            a.imagem_id = ?
+            OR (
+                (a.imagem_id IS NULL OR a.imagem_id = 0)
+                AND (
+                    ? = ''
+                    OR a.tipo_imagem_id = ?
+                    OR ti.nome = ?
+                    OR a.tipo_imagem_id IS NULL
+                    OR a.tipo_imagem_id = ''
+                    OR a.tipo_imagem_id = '0'
+                )
+            )
+        )
+      ORDER BY a.recebido_em DESC, a.idarquivo DESC"
+)) {
+    $stmt->bind_param('iisss', $obraId, $imagemId, $tipoImagem, $tipoImagem, $tipoImagem);
+    foreach (alt_fetch_all($stmt) as $row) {
+        $filesTriage[] = alt_prepare_file($row, 'triagem', 'triagem');
     }
 }
 
@@ -242,7 +281,7 @@ if ($stmt = $conn->prepare(
     }
 }
 
-$allUploaded = array_merge($filesImage, $filesInternal);
+$allUploaded = array_merge($filesTriage, $filesInternal);
 $uploadedByOrigin = ['cliente' => [], 'interno' => [], 'triagem' => []];
 foreach ($allUploaded as $file) {
     $origin = $file['origin'] ?? 'cliente';
@@ -256,6 +295,7 @@ $preAlt = null;
 if ($stmt = $conn->prepare(
     "SELECT
         pai.*,
+        pal.status_id AS lote_status_id,
         pal.status AS lote_status,
         pal.prioridade AS lote_prioridade,
         pal.prazo AS lote_prazo,
@@ -266,8 +306,8 @@ if ($stmt = $conn->prepare(
      JOIN pre_alt_lote pal ON pal.id = pai.pre_alt_lote_id
      LEFT JOIN colaborador resp ON resp.idcolaborador = pai.responsavel_id
      LEFT JOIN colaborador creator ON creator.idcolaborador = pal.created_by
-     WHERE pai.imagem_id = ? AND pal.obra_id = ? AND pal.status_id = ?
-     ORDER BY pai.updated_at DESC, pai.id DESC
+     WHERE pai.imagem_id = ? AND pal.obra_id = ? AND pal.status <> 'CANCELADO'
+     ORDER BY CASE WHEN pal.status_id = ? THEN 0 ELSE 1 END, pai.updated_at DESC, pai.id DESC
      LIMIT 1"
 )) {
     $statusId = (int)$image['status_id'];
@@ -339,12 +379,14 @@ if ($latestPath === '' || str_contains($latestPath, 'imagem_')) {
 }
 
 $lastUpdate = null;
-foreach ([
-    $logs[0]['data'] ?? null,
-    $latest['data_envio'] ?? null,
-    $preAlt['updated_at'] ?? null,
-    $image['data_recebimento'] ?? null,
-] as $candidate) {
+foreach (
+    [
+        $logs[0]['data'] ?? null,
+        $latest['data_envio'] ?? null,
+        $preAlt['updated_at'] ?? null,
+        $image['data_recebimento'] ?? null,
+    ] as $candidate
+) {
     if ($candidate) {
         $lastUpdate = $candidate;
         break;
@@ -356,10 +398,10 @@ $summary = [
     'has_real_change' => $preAlt ? ((string)$preAlt['resultado'] !== 'sem_alteracao') : null,
     'complexity' => $preAlt['nivel_complexidade'] ?? $image['nivel_complexidade'] ?? null,
     'triage_note' => $preAlt['acao'] ?? $image['alteracao_observacao'] ?? '',
-    'critical_points' => $preAlt['tipo_alteracao'] ?? '',
+    'type' => $preAlt['tipo_alteracao'] ?? '',
     'return_required' => $preAlt ? (bool)$preAlt['necessita_retorno'] : null,
     'comments_count' => $preAlt['quantidade_comentarios'] ?? ($latest['comentarios_total'] ?? 0),
-    'responsible' => $preAlt['responsavel_nome'] ?? $image['nome_colaborador'] ?? '',
+    'responsible' => $preAlt['responsavel_nome'] ?? '',
     'date' => $preAlt['updated_at'] ?? $preAlt['created_at'] ?? null,
 ];
 

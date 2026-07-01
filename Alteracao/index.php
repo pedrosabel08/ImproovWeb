@@ -41,7 +41,7 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../Dashboard/styleObra.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&altconf=20260624-ipad5'; ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&altconf=20260629-approval-upload'; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -321,7 +321,7 @@ $conn->close();
         </div>
     </div>
 
-    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('script.js') . '&altconf=20260629-approval-upload'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

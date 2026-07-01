@@ -100,6 +100,7 @@ $stmtItens = $conn->prepare(
         pai.entrega_item_id,
         pai.imagem_id,
         ico.imagem_nome AS nome,
+        ico.tipo_imagem,
         pai.resultado,
         pai.nivel_complexidade,
         pai.tipo_alteracao,
@@ -158,6 +159,7 @@ while ($row = $resItens->fetch_assoc()) {
     $row['entrega_id'] = (int) $row['entrega_id'];
     $row['entrega_item_id'] = isset($row['entrega_item_id']) ? (int) $row['entrega_item_id'] : null;
     $row['imagem_id'] = (int) $row['imagem_id'];
+    $row['tipo_imagem'] = (string) ($row['tipo_imagem'] ?? '');
     $row['nivel_complexidade'] = isset($row['nivel_complexidade']) ? (int) $row['nivel_complexidade'] : null;
     $row['necessita_retorno'] = (int) ($row['necessita_retorno'] ?? 0);
     $row['quantidade_comentarios'] = isset($row['quantidade_comentarios']) ? (int) $row['quantidade_comentarios'] : null;

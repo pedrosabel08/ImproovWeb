@@ -8,6 +8,20 @@ let altCurrentImageUrl = "";
 let altZoom = 1;
 let altSidePanelCollapsed = false;
 let altSidePanelActive = "files";
+var idfuncao_imagem = null;
+var titulo = null;
+var subtitulo = null;
+var obra = null;
+var idimagem = null;
+var nome_status = null;
+var cardSelecionado = null;
+let arquivosFinais = [];
+let imagensSelecionadas = [];
+let altApprovalColaboradorId = window.ALTERACAO_LOGGED_COLAB_ID || null;
+
+function isCompactConferenceLayout() {
+  return window.matchMedia("(max-width: 1180px)").matches;
+}
 
 const STATUS_COLUMNS = [
   { label: "Não iniciado", key: "nao-iniciado" },
@@ -134,7 +148,7 @@ function buildConferenceModalShell() {
           </div>
         </div>
         <div class="alt-conf-meta-grid">
-          <div class="alt-conf-meta"><span>Etapa atual</span><strong id="altConfEtapa">-</strong></div>
+          <div class="alt-conf-meta"><span>Etapa atual</span><strong id="altConfEtapa" class="alt-pill">-</strong></div>
           <div class="alt-conf-meta"><span>Tipo de imagem</span><strong id="altConfTipo">-</strong></div>
           <div class="alt-conf-meta"><span>Status</span><strong id="altConfStatus" class="alt-pill">-</strong></div>
           <div class="alt-conf-meta"><span>Complexidade</span><strong id="altConfComplexidade">-</strong></div>
@@ -158,9 +172,9 @@ function buildConferenceModalShell() {
           <div class="modal-field-group"><label class="filter-label">Colaborador</label><select class="filter-select modal-select" id="opcao_alteracao">${colaboradorOptions}</select></div>
           <div class="modal-field-group"><label class="filter-label">Status da Altera&ccedil;&atilde;o</label><select class="filter-select modal-select" id="status_alteracao">${statusOptions}</select></div>
           <div class="modal-field-group alt-conf-date-field"><label class="filter-label">Prazo</label><input type="date" class="filter-select modal-select" id="prazo_alteracao"></div>
-          <div class="modal-field-group alt-conf-path-field"><label class="filter-label">Caminho do Arquivo</label><input type="text" class="filter-input modal-input" id="obs_alteracao" placeholder="Caminho arquivo"></div>
+          <div class="modal-field-group alt-conf-path-field"><label class="filter-label">Observação</label><input type="text" class="filter-input modal-input" id="obs_alteracao" placeholder="Caminho arquivo"></div>
         </div>
-        <button type="button" class="alt-conf-more-link" id="altConfHistoryShortcut"><i class="fa-regular fa-clock"></i> Ver hist&oacute;rico da altera&ccedil;&atilde;o</button>
+        <button type="button" class="alt-conf-more-link btn-action btn-primario" id="salvar_funcoes"><i class="fa-solid fa-floppy-disk"></i> Salvar altera&ccedil;&atilde;o</button>
       </div>
       <div class="alt-conf-body">
         <aside class="alt-conf-left">
@@ -194,10 +208,6 @@ function buildConferenceModalShell() {
               <a class="alt-conf-btn alt-conf-btn-review is-disabled" id="altConfReviewImage" href="#" target="_blank" rel="noopener noreferrer">Abrir no Review Studio <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
             </div>
           </section>
-          <div class="alt-conf-bottom-grid">
-            <section class="alt-conf-card" id="altSecHistorico"><div class="alt-conf-card-title"><h3>Hist&oacute;rico da altera&ccedil;&atilde;o</h3></div><div id="altConfHistorico" class="alt-conf-history"></div></section>
-            <section class="alt-conf-card" id="altSecComentarios"><div class="alt-conf-card-title"><h3>Comunica&ccedil;&atilde;o e bloqueios</h3></div><div id="altConfComunicacao" class="alt-conf-communication"></div></section>
-          </div>
         </main>
         <button type="button" class="alt-conf-side-toggle" id="altConfSideToggle" aria-expanded="true" aria-controls="altConfRightPanel" title="Mostrar ou ocultar painel">
           <i class="fa-solid fa-chevron-right"></i>
@@ -208,10 +218,12 @@ function buildConferenceModalShell() {
             <strong>Informa&ccedil;&otilde;es de apoio</strong>
           </div>
           <div class="alt-conf-side-tabs" role="tablist" aria-label="Painel de apoio">
+            <button type="button" data-panel-target="summary"><i class="fa-regular fa-clipboard"></i> Resumo</button>
             <button type="button" class="active" data-panel-target="files"><i class="fa-regular fa-folder-open"></i> Arquivos</button>
             <button type="button" data-panel-target="refs"><i class="fa-regular fa-images"></i> Refer&ecirc;ncias</button>
             <button type="button" data-panel-target="steps"><i class="fa-regular fa-circle-check"></i> Passos</button>
           </div>
+          <section class="alt-conf-card alt-conf-side-section" data-panel="summary" id="altSecResumoApoio"><div class="alt-conf-card-title"><h3>Resumo da pr&eacute;-altera&ccedil;&atilde;o</h3></div><div id="altConfResumoApoio" class="alt-conf-summary"></div></section>
           <section class="alt-conf-card alt-conf-side-section active" data-panel="files" id="altSecArquivos"><div class="alt-conf-card-title"><h3>Arquivos enviados na revis&atilde;o</h3><button type="button" id="altConfAllFiles">Ver todos</button></div><div class="alt-conf-tabs" id="altConfFileTabs"></div><div id="altConfArquivos" class="alt-conf-file-list"></div></section>
           <section class="alt-conf-card alt-conf-side-section" data-panel="refs" id="altSecReferencias"><div class="alt-conf-card-title"><h3>Refer&ecirc;ncias por escopo</h3><button type="button" id="altConfAllRefs">Ver todas</button></div><div class="alt-conf-tabs" id="altConfRefTabs"></div><div id="altConfReferencias" class="alt-conf-ref-list"></div></section>
           <section class="alt-conf-card alt-conf-side-section alt-conf-steps-card" data-panel="steps"><div class="alt-conf-card-title"><h3>Pr&oacute;ximos passos</h3></div><div id="altConfProximos" class="alt-conf-steps"></div></section>
@@ -219,10 +231,49 @@ function buildConferenceModalShell() {
       </div>
       <footer class="modal-footer alt-conf-footer">
         <button type="button" class="btn-action btn-secundario" id="closeModalBtn">Voltar para a lista</button>
+        <button type="button" class="btn-action btn-secundario" id="altConfStart"><i class="fa-solid fa-play"></i> iniciar</button>
         <button type="button" class="btn-action btn-secundario" id="altConfQuestionBtn"><i class="fa-regular fa-comment-dots"></i> Registrar d&uacute;vida / bloqueio</button>
-        <button type="button" class="btn-action btn-primario" id="salvar_funcoes"><i class="fa-solid fa-floppy-disk"></i> Salvar altera&ccedil;&atilde;o</button>
         <button type="button" class="btn-action btn-primario" id="altConfSendApproval">Enviar para aprova&ccedil;&atilde;o interna</button>
       </footer>
+      <div class="alt-approval-upload-modal" id="altApprovalUploadModal" aria-hidden="true">
+        <div class="alt-approval-upload-card" role="dialog" aria-modal="true" aria-labelledby="altApprovalUploadTitle">
+          <div class="alt-approval-upload-head">
+            <div>
+              <span>Enviar para aprova&ccedil;&atilde;o</span>
+              <h3 id="altApprovalUploadTitle">Pr&eacute;via e arquivo</h3>
+            </div>
+            <button type="button" id="altApprovalUploadClose" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="alt-approval-upload-body">
+            <section class="alt-upload-section" id="etapaPrevia">
+              <div class="alt-upload-section-title">
+                <i class="fa-regular fa-images"></i>
+                <strong>Pr&eacute;via</strong>
+              </div>
+              <div class="drop-area alt-drop-area" id="drop-area-previa">
+                <input type="file" id="fileElemPrevia" accept="image/*" multiple hidden>
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Solte as pr&eacute;vias aqui ou clique para selecionar</span>
+              </div>
+              <ul class="file-list alt-file-list" id="fileListPrevia"></ul>
+              <button type="button" class="btn-action btn-primario alt-upload-send" id="altSendPrevia"><i class="fa-solid fa-paper-plane"></i> Enviar pr&eacute;via</button>
+            </section>
+            <section class="alt-upload-section" id="etapaFinal">
+              <div class="alt-upload-section-title">
+                <i class="fa-regular fa-file-lines"></i>
+                <strong>Arquivo</strong>
+              </div>
+              <div class="drop-area alt-drop-area" id="drop-area-final">
+                <input type="file" id="fileElemFinal" hidden>
+                <i class="fa-solid fa-file-arrow-up"></i>
+                <span>Solte o arquivo aqui ou clique para selecionar</span>
+              </div>
+              <ul class="file-list alt-file-list" id="fileListFinal"></ul>
+              <button type="button" class="btn-action btn-primario alt-upload-send" id="altSendArquivo"><i class="fa-solid fa-paper-plane"></i> Enviar arquivo</button>
+            </section>
+          </div>
+        </div>
+      </div>
     </div>`;
 
   modal.dataset.conferenceReady = "1";
@@ -254,6 +305,51 @@ function getEFKanbanStatusClass(status) {
   if (n === "em andamento") return "ef-ks-wip";
   if (n === "em aprovacao") return "ef-ks-review";
   return "ef-ks-todo";
+}
+
+const STATUS_IMAGEM_CLASS_MAP = {
+  P00: "si-p00",
+  R00: "si-r00",
+  R01: "si-r01",
+  R02: "si-r02",
+  R03: "si-r03",
+  R04: "si-r04",
+  R05: "si-r05",
+  EF: "si-ef",
+  HOLD: "si-hold",
+  TEA: "si-tea",
+  REN: "si-ren",
+  APR: "si-apr",
+  APP: "si-app",
+  RVW: "si-rvw",
+  OK: "si-ok",
+  TO_DO: "si-to-do",
+  FIN: "si-fin",
+  DRV: "si-drv",
+  RVW_DONE: "si-rvw-done",
+  PRE_ALT: "si-pre-alt",
+  READY_FOR_PLANNING: "si-ready-for-planning",
+};
+
+const STATUS_IMAGEM_CLASSES = Object.values(STATUS_IMAGEM_CLASS_MAP);
+
+function getStatusImagemClass(status) {
+  const key = String(status || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+  return STATUS_IMAGEM_CLASS_MAP[key] || "";
+}
+
+function applyStatusImagemClass(element, status) {
+  if (!element) return;
+  element.classList.remove(...STATUS_IMAGEM_CLASSES);
+  const cls = getStatusImagemClass(status);
+  if (cls) {
+    element.classList.add(cls);
+  }
 }
 
 function getFilters() {
@@ -330,31 +426,7 @@ function agruparPorObra(items) {
 }
 
 function applyStatusImagem(cell, status) {
-  const classMap = {
-    P00: "si-p00",
-    R00: "si-r00",
-    R01: "si-r01",
-    R02: "si-r02",
-    R03: "si-r03",
-    R04: "si-r04",
-    R05: "si-r05",
-    EF: "si-ef",
-    HOLD: "si-hold",
-    TEA: "si-tea",
-    REN: "si-ren",
-    APR: "si-apr",
-    APP: "si-app",
-    RVW: "si-rvw",
-    OK: "si-ok",
-    "TO-DO": "si-to-do",
-    FIN: "si-fin",
-    DRV: "si-drv",
-    RVW_DONE: "si-rvw-done",
-    PRE_ALT: "si-pre-alt",
-    READY_FOR_PLANNING: "si-ready-for-planning",
-  };
-  const cls = classMap[status];
-  if (cls) cell.classList.add(cls);
+  applyStatusImagemClass(cell, status);
 }
 
 function criarCard(item) {
@@ -680,6 +752,27 @@ function complexityLabel(value) {
   return "Critica";
 }
 
+function normalizeLabel(text) {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function complexityClass(value) {
+  return normalizeLabel(complexityLabel(value));
+}
+
+function applyComplexityClass(element, value) {
+  if (!element) return;
+  element.classList.remove("baixa", "media", "alta", "critica");
+  const cls = complexityClass(value);
+  if (cls && cls !== "-") {
+    element.classList.add(cls);
+  }
+}
+
 function fileIcon(type) {
   const t = String(type || "").toLowerCase();
   if (t === "pdf") return "fa-file-pdf";
@@ -735,8 +828,8 @@ function updateZoom(delta) {
     `${Math.round(altZoom * 100)}%`;
 }
 
-function renderSummary(summary) {
-  const container = document.getElementById("altConfResumo");
+function renderSummary(summary, containerId = "altConfResumo") {
+  const container = document.getElementById(containerId);
   if (!container) return;
   const hasRealChange =
     summary.has_real_change === null
@@ -752,12 +845,32 @@ function renderSummary(summary) {
         : "Nao";
 
   container.innerHTML = `
-    <div class="alt-conf-summary-row"><span>Ha alteracao real</span><strong>${escapeHtml(hasRealChange)}</strong></div>
-    <div class="alt-conf-summary-row"><span>Complexidade</span><strong>${escapeHtml(complexityLabel(summary.complexity))}</strong></div>
-    <div class="alt-conf-summary-block"><span>Observacao da triagem</span><p>${escapeHtml(summary.triage_note || "Sem observacao registrada.")}</p></div>
-    <div class="alt-conf-summary-block"><span>Pontos criticos</span><p>${escapeHtml(summary.critical_points || "Sem pontos criticos registrados.")}</p></div>
-    <div class="alt-conf-summary-row"><span>Necessita retorno</span><strong>${escapeHtml(returnRequired)}</strong></div>
-    <div class="alt-conf-summary-row"><span>Responsavel pela triagem</span><strong>${escapeHtml(summary.responsible || "-")}</strong></div>
+    <div class="alt-conf-summary-row">
+      <span><i class="fa-solid fa-circle-check"></i> Há alteração real</span>
+      <strong>${escapeHtml(hasRealChange)}</strong>
+    </div>
+
+    <div class="alt-conf-summary-row ${escapeHtml(complexityClass(summary.complexity))}">
+      <span><i class="fa-solid fa-layer-group"></i> Complexidade</span>
+      <strong class="complexity-badge ${escapeHtml(complexityClass(summary.complexity))}">
+        ${escapeHtml(complexityLabel(summary.complexity))}
+      </strong>
+    </div>
+
+    <div class="alt-conf-summary-block">
+      <span><i class="fa-solid fa-clipboard-list"></i> Observação da triagem</span>
+      <p>${escapeHtml(summary.triage_note || "Sem observação registrada.")}</p>
+    </div>
+
+    <div class="alt-conf-summary-block">
+      <span><i class="fa-solid fa-tags"></i> Tipo de alteração</span>
+      <p>${escapeHtml(summary.type || "Sem tipo de alteração registrado.")}</p>
+    </div>
+
+    <div class="alt-conf-summary-row">
+      <span><i class="fa-solid fa-user-check"></i> Responsável pela triagem</span>
+      <strong>${escapeHtml(summary.responsible || "-")}</strong>
+    </div>
   `;
 }
 
@@ -786,8 +899,9 @@ function renderFiles(containerId, tabsId, grouped, labels) {
         const date = formatDate(file.date);
         const name = escapeHtml(file.name);
         const desc = escapeHtml(file.description || file.category || "");
+        const copyPath = normalizeFileCopyPath(file.path || "");
         return `
-          <div class="alt-conf-file-row" title="${escapeHtml(file.path || "")}">
+          <div class="alt-conf-file-row" title="${escapeHtml(copyPath || file.path || "")}" data-copy-path="${escapeHtml(copyPath)}">
             <div class="alt-conf-file-icon"><i class="fa-solid ${fileIcon(type)}"></i></div>
             <div class="alt-conf-file-info">
               <strong>${name}</strong>
@@ -797,6 +911,7 @@ function renderFiles(containerId, tabsId, grouped, labels) {
           </div>`;
       })
       .join("");
+    bindFileCopyRows(container);
   }
 
   tabs.innerHTML = keys
@@ -809,6 +924,641 @@ function renderFiles(containerId, tabsId, grouped, labels) {
     btn.addEventListener("click", () => draw(btn.dataset.key));
   });
   draw(active);
+}
+
+function flattenFileGroups(grouped, labels) {
+  return Object.entries(labels).flatMap(([key, label]) =>
+    (grouped?.[key] || []).map((file) => ({
+      ...file,
+      group_key: key,
+      group_label: label,
+    })),
+  );
+}
+
+function groupFilesByCategory(files) {
+  return files.reduce((acc, file) => {
+    const category = file.category || "Sem categoria";
+    const type = file.type || "Outros";
+    if (!acc[category]) acc[category] = {};
+    if (!acc[category][type]) acc[category][type] = [];
+    acc[category][type].push(file);
+    return acc;
+  }, {});
+}
+
+function normalizeFileCopyPath(rawPath) {
+  let path = String(rawPath || "").trim();
+  if (!path) return "";
+
+  path = path.replace(/^\/mnt\/clientes\/?/i, "Z:/");
+  path = path.replace(/^Z:\/*/i, "Z:/");
+  path = path.replace(/[\\/]+/g, "/");
+  path = path.replace(/^Z:\/?/i, "Z:/");
+  path = path.replace(/\/+$/, "");
+
+  const lastSlash = path.lastIndexOf("/");
+  if (lastSlash > "Z:/".length) {
+    path = path.slice(0, lastSlash);
+  }
+
+  return path;
+}
+
+function showAltToast(text, type = "success") {
+  if (typeof Toastify !== "function") return;
+  Toastify({
+    text,
+    duration: 2500,
+    gravity: "top",
+    position: "right",
+    style: {
+      background: type === "error" ? "#ef4444" : "#10b981",
+      borderRadius: "8px",
+      fontFamily: '"Inter",sans-serif',
+      fontSize: "13px",
+    },
+  }).showToast();
+}
+
+function getImproovBaseUrl() {
+  const path = window.location.pathname;
+  const marker = "/ImproovWeb";
+  const markerIndex = path.indexOf(marker);
+  if (markerIndex >= 0) {
+    return `${window.location.origin}${path.slice(0, markerIndex + marker.length)}`;
+  }
+  return window.location.origin;
+}
+
+function getApprovalStatusValue() {
+  const status = document.getElementById("status_alteracao");
+  const fallback = "Em aprova\u00e7\u00e3o";
+  if (!status) return fallback;
+  const target = Array.from(status.options).find(
+    (opt) => normalizarStatus(opt.value) === "em aprovacao",
+  );
+  return target ? target.value : fallback;
+}
+
+function setApprovalUploadContext(data = altConferenciaData) {
+  const image = data?.image || {};
+  idfuncao_imagem = image.alteracao_funcao_id || idfuncao_imagem || null;
+  idimagem = image.imagem_id || idImagemSelecionada || idimagem || null;
+  titulo = image.imagem_nome || titulo || "";
+  subtitulo = "Altera\u00e7\u00e3o";
+  obra = image.nomenclatura || image.nome_obra || obra || "";
+  nome_status = image.alteracao_status || nome_status || "";
+  altApprovalColaboradorId =
+    window.ALTERACAO_LOGGED_COLAB_ID ||
+    image.colaborador_id ||
+    altApprovalColaboradorId ||
+    "";
+  cardSelecionado = null;
+}
+
+async function refreshApprovalContext() {
+  if (!idimagem && !idImagemSelecionada) return;
+  const response = await fetch(
+    `getConferenciaAlteracao.php?imagem_id=${encodeURIComponent(idimagem || idImagemSelecionada)}`,
+  );
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(
+      data.message || "Erro ao atualizar dados da altera\u00e7\u00e3o.",
+    );
+  }
+  renderConference(data);
+  setApprovalUploadContext(data);
+}
+
+async function salvarStatusAprovacaoInterna() {
+  setApprovalUploadContext();
+  if (!idimagem) {
+    throw new Error("Nenhuma imagem selecionada.");
+  }
+
+  const statusValue = getApprovalStatusValue();
+  const status = document.getElementById("status_alteracao");
+  if (status) status.value = statusValue;
+
+  const formData = new FormData();
+  formData.append("imagem_id", idimagem);
+  formData.append("funcao_id", "6");
+  formData.append(
+    "colaborador_id",
+    document.getElementById("opcao_alteracao")?.value ||
+      altApprovalColaboradorId ||
+      "",
+  );
+  formData.append("status", statusValue);
+  formData.append(
+    "prazo",
+    document.getElementById("prazo_alteracao")?.value || "",
+  );
+  formData.append(
+    "observacao",
+    document.getElementById("obs_alteracao")?.value || "",
+  );
+
+  const response = await fetch("../insereFuncao.php", {
+    method: "POST",
+    body: formData,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    throw new Error(
+      data.error || "Erro ao salvar status de aprova\u00e7\u00e3o.",
+    );
+  }
+
+  await refreshApprovalContext();
+  if (!idfuncao_imagem) {
+    throw new Error(
+      "N\u00e3o foi poss\u00edvel localizar a fun\u00e7\u00e3o de altera\u00e7\u00e3o.",
+    );
+  }
+}
+
+function configurarDropzone(dropId, inputId, listaId, destino) {
+  const dropArea = document.getElementById(dropId);
+  const fileInput = document.getElementById(inputId);
+  if (!dropArea || !fileInput) return;
+
+  if (dropArea._altDropHandlers) {
+    dropArea.removeEventListener("click", dropArea._altDropHandlers.click);
+    dropArea.removeEventListener(
+      "dragover",
+      dropArea._altDropHandlers.dragover,
+    );
+    dropArea.removeEventListener(
+      "dragleave",
+      dropArea._altDropHandlers.dragleave,
+    );
+    dropArea.removeEventListener("drop", dropArea._altDropHandlers.drop);
+    fileInput.removeEventListener("change", dropArea._altDropHandlers.change);
+  }
+
+  const addFiles = (files) => {
+    Array.from(files || []).forEach((file) => destino.push(file));
+    renderizarLista(destino, listaId);
+  };
+  const handlers = {
+    click: () => fileInput.click(),
+    dragover: (event) => {
+      event.preventDefault();
+      dropArea.classList.add("highlight");
+    },
+    dragleave: () => dropArea.classList.remove("highlight"),
+    drop: (event) => {
+      event.preventDefault();
+      dropArea.classList.remove("highlight");
+      addFiles(event.dataTransfer?.files);
+    },
+    change: () => {
+      addFiles(fileInput.files);
+      fileInput.value = "";
+    },
+  };
+
+  dropArea.addEventListener("click", handlers.click);
+  dropArea.addEventListener("dragover", handlers.dragover);
+  dropArea.addEventListener("dragleave", handlers.dragleave);
+  dropArea.addEventListener("drop", handlers.drop);
+  fileInput.addEventListener("change", handlers.change);
+  dropArea._altDropHandlers = handlers;
+}
+
+function renderizarLista(array, listaId) {
+  const lista = document.getElementById(listaId);
+  if (!lista) return;
+  lista.innerHTML = "";
+  array.forEach((file, i) => {
+    let tamanho = file.size;
+    let tamanhoStr = "";
+    if (tamanho < 1024) {
+      tamanhoStr = `${tamanho} B`;
+    } else if (tamanho < 1024 * 1024) {
+      tamanhoStr = `${(tamanho / 1024).toFixed(1)} KB`;
+    } else if (tamanho < 1024 * 1024 * 1024) {
+      tamanhoStr = `${(tamanho / (1024 * 1024)).toFixed(2)} MB`;
+    } else {
+      tamanhoStr = `${(tamanho / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    }
+
+    const li = document.createElement("li");
+    const info = document.createElement("div");
+    info.className = "file-info";
+
+    const name = document.createElement("span");
+    name.textContent = `${file.name} (${tamanhoStr})`;
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Remover arquivo");
+    remove.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    remove.addEventListener("click", () => removerArquivo(i, listaId));
+
+    info.append(name, remove);
+    li.appendChild(info);
+    lista.appendChild(li);
+  });
+}
+
+function removerArquivo(index, listaId) {
+  if (listaId === "fileListPrevia") {
+    imagensSelecionadas.splice(index, 1);
+    renderizarLista(imagensSelecionadas, listaId);
+  } else {
+    arquivosFinais.splice(index, 1);
+    renderizarLista(arquivosFinais, listaId);
+  }
+}
+
+function abrirModalEnvioAprovacao() {
+  setApprovalUploadContext();
+  imagensSelecionadas = [];
+  arquivosFinais = [];
+  renderizarLista(imagensSelecionadas, "fileListPrevia");
+  renderizarLista(arquivosFinais, "fileListFinal");
+  configurarDropzone(
+    "drop-area-previa",
+    "fileElemPrevia",
+    "fileListPrevia",
+    imagensSelecionadas,
+  );
+  configurarDropzone(
+    "drop-area-final",
+    "fileElemFinal",
+    "fileListFinal",
+    arquivosFinais,
+  );
+
+  const title = document.getElementById("altApprovalUploadTitle");
+  if (title) title.textContent = titulo || "Pr\u00e9via e arquivo";
+
+  const modal = document.getElementById("altApprovalUploadModal");
+  if (modal) {
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+}
+
+function fecharModalEnvioAprovacao() {
+  const modal = document.getElementById("altApprovalUploadModal");
+  if (modal) {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+}
+
+async function enviarImagens() {
+  if (imagensSelecionadas.length === 0) {
+    showAltToast(
+      "Selecione pelo menos uma imagem para enviar a pr\u00e9via.",
+      "error",
+    );
+    return;
+  }
+
+  const _doEnviar = async () => {
+    try {
+      await salvarStatusAprovacaoInterna();
+    } catch (error) {
+      showAltToast(error.message || "Erro ao preparar envio.", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    imagensSelecionadas.forEach((file) => formData.append("imagens[]", file));
+    formData.append("dataIdFuncoes", idfuncao_imagem);
+    formData.append("idimagem", idimagem);
+    formData.append("nome_funcao", subtitulo);
+    formData.append("nome_imagem", titulo);
+
+    const numeroImagem = String(titulo || "").match(/^\d+/)?.[0] || "";
+    formData.append("numeroImagem", numeroImagem);
+    formData.append("nomenclatura", obra);
+
+    const descricaoMatch = String(titulo || "").match(
+      /^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i,
+    );
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : "";
+    formData.append("primeiraPalavra", primeiraPalavra);
+
+    const badgeId = "prev_" + Date.now();
+    const _totalBytes = imagensSelecionadas.reduce((acc, f) => acc + f.size, 0);
+    const _displayName =
+      imagensSelecionadas.length === 1
+        ? imagensSelecionadas[0].name
+        : imagensSelecionadas.length + " imagens";
+
+    const xhr = new XMLHttpRequest();
+    let uploadCancelado = false;
+
+    if (window.UploadBadge)
+      window.UploadBadge.add(badgeId, _displayName, _totalBytes, xhr);
+
+    xhr.open("POST", `${getImproovBaseUrl()}/uploadArquivos.php`);
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && window.UploadBadge) {
+        const percent = (e.loaded / e.total) * 100;
+        window.UploadBadge.phase1Progress(badgeId, percent, e.loaded, e.total);
+      }
+    });
+
+    xhr.onabort = () => {
+      uploadCancelado = true;
+    };
+
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 4 && !uploadCancelado) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+
+          if (res.error) {
+            if (window.UploadBadge)
+              window.UploadBadge.error(badgeId, "Erro: " + res.error);
+            showAltToast("Erro: " + res.error, "error");
+          } else {
+            if (window.UploadBadge) window.UploadBadge.complete(badgeId);
+            showAltToast("Pr\u00e9via enviada com sucesso!");
+            recarregarAlteracao();
+          }
+        } catch (err) {
+          if (window.UploadBadge)
+            window.UploadBadge.error(badgeId, "Erro ao processar resposta");
+          showAltToast("Erro ao processar resposta do servidor", "error");
+          console.error(err);
+        }
+      }
+    };
+
+    xhr.onerror = () => {
+      if (!uploadCancelado) {
+        if (window.UploadBadge)
+          window.UploadBadge.error(badgeId, "Erro ao enviar pr\u00e9via");
+        showAltToast("Erro ao enviar pr\u00e9via", "error");
+      }
+    };
+
+    xhr.send(formData);
+  };
+
+  if (idfuncao_imagem && normalizarStatus(nome_status) === "ajuste") {
+    fetch(
+      `${getImproovBaseUrl()}/FlowReview/verificar_comentarios_pendentes.php?funcao_imagem_id=${encodeURIComponent(idfuncao_imagem)}`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.tem_pendentes && window.Swal) {
+          Swal.fire({
+            icon: "warning",
+            title: "Coment\u00e1rios pendentes",
+            html: `Existem <strong>${data.pendentes}</strong> coment\u00e1rio(s) n\u00e3o conclu\u00eddo(s).<br>
+                   Acesse o <strong>Flow Review</strong> e marque todos os ajustes como conclu\u00eddos antes de enviar uma nova vers\u00e3o.`,
+            showCancelButton: true,
+            confirmButtonText: "Ir para o Flow Review",
+            cancelButtonText: "Entendido",
+            confirmButtonColor: "#2563eb",
+            cancelButtonColor: "#f59e0b",
+          }).then((result) => {
+            if (!result.isConfirmed) return;
+            const base = `${getImproovBaseUrl()}/FlowReview/index.php`;
+            const url = obra
+              ? `${base}?obra_nome=${encodeURIComponent(obra)}`
+              : base;
+            window.open(url, "_blank");
+          });
+        } else {
+          _doEnviar();
+        }
+      })
+      .catch(() => _doEnviar());
+  } else {
+    _doEnviar();
+  }
+}
+
+async function enviarArquivo() {
+  if (arquivosFinais.length === 0) {
+    showAltToast(
+      "Selecione pelo menos um arquivo para enviar o final.",
+      "error",
+    );
+    return;
+  }
+
+  try {
+    await salvarStatusAprovacaoInterna();
+  } catch (error) {
+    showAltToast(error.message || "Erro ao preparar envio.", "error");
+    return;
+  }
+
+  const file = arquivosFinais[0];
+  const formData = new FormData();
+  formData.append("arquivo_final", file);
+  formData.append("tipo_tarefa", "imagem");
+  formData.append("dataIdFuncoes", JSON.stringify([idfuncao_imagem]));
+  formData.append("idimagem", idimagem);
+  formData.append("nome_funcao", subtitulo);
+  const campoNomeImagem = titulo;
+  formData.append("nome_imagem", campoNomeImagem);
+  formData.append("nome_imagem_original", campoNomeImagem);
+
+  const numeroImagem = String(campoNomeImagem || "").match(/^\d+/)?.[0] || "";
+  formData.append("numeroImagem", numeroImagem);
+  const nomenclatura = obra;
+  formData.append("nomenclatura", nomenclatura);
+  const descricaoMatch = String(campoNomeImagem || "").match(
+    /^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i,
+  );
+  const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : "";
+  formData.append("primeiraPalavra", primeiraPalavra);
+  formData.append("idcolaborador", altApprovalColaboradorId);
+
+  const clientId =
+    "upl_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+  try {
+    localStorage.setItem("improov_client_id", clientId);
+  } catch (e) {}
+  if (window.improovUploadWS) window.improovUploadWS.subscribe(clientId);
+  formData.append("client_id", clientId);
+
+  const xhr = new XMLHttpRequest();
+  let uploadCancelado = false;
+
+  if (window.UploadBadge)
+    window.UploadBadge.add(clientId, file.name, file.size, xhr);
+
+  const _enqueueUrl = window.IMPROOV_APP_BASE
+    ? window.location.origin + window.IMPROOV_APP_BASE + "/upload_enqueue.php"
+    : `${getImproovBaseUrl()}/upload_enqueue.php`;
+  xhr.open("POST", _enqueueUrl);
+
+  xhr.upload.addEventListener("progress", (e) => {
+    if (e.lengthComputable && window.UploadBadge) {
+      const percent = (e.loaded / e.total) * 100;
+      window.UploadBadge.phase1Progress(clientId, percent, e.loaded, e.total);
+    }
+  });
+
+  xhr.onabort = () => {
+    uploadCancelado = true;
+  };
+
+  xhr.onload = () => {
+    if (uploadCancelado) return;
+    let res = null;
+    try {
+      res = JSON.parse(xhr.responseText || "null");
+    } catch (err) {
+      console.error("Resposta nao-JSON do servidor:", xhr.responseText);
+    }
+
+    if (xhr.status >= 200 && xhr.status < 300 && !(res && res.error)) {
+      if (window.UploadBadge)
+        window.UploadBadge.phase2Progress(
+          clientId,
+          0,
+          "Na fila - aguardando transferencia...",
+        );
+      fecharModalEnvioAprovacao();
+      recarregarAlteracao();
+    } else {
+      const serverMsg =
+        res?.error || xhr.responseText || `Status ${xhr.status}`;
+      if (window.UploadBadge)
+        window.UploadBadge.error(clientId, "Erro no servidor");
+      showAltToast("Erro no servidor: " + serverMsg, "error");
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!uploadCancelado) {
+      if (window.UploadBadge)
+        window.UploadBadge.error(clientId, "Erro ao enfileirar arquivo");
+      showAltToast("Erro ao enfileirar arquivo", "error");
+    }
+  };
+
+  xhr.send(formData);
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (err) {
+      // Some embedded browsers expose the Clipboard API but block it at runtime.
+    }
+  }
+
+  const tempInput = document.createElement("textarea");
+  tempInput.value = text;
+  tempInput.setAttribute("readonly", "readonly");
+  tempInput.style.position = "fixed";
+  tempInput.style.left = "-9999px";
+  tempInput.style.top = "0";
+  tempInput.style.opacity = "0";
+  document.body.appendChild(tempInput);
+  tempInput.focus();
+  tempInput.select();
+  tempInput.setSelectionRange(0, tempInput.value.length);
+  const copied = document.execCommand("copy");
+  document.body.removeChild(tempInput);
+  if (!copied) throw new Error("copy_failed");
+}
+
+function bindFileCopyRows(root) {
+  root.querySelectorAll("[data-copy-path]").forEach((row) => {
+    if (row.dataset.copyBound === "1") return;
+    row.dataset.copyBound = "1";
+    row.addEventListener("click", async () => {
+      const path = row.dataset.copyPath || "";
+      if (!path) return;
+
+      try {
+        await copyTextToClipboard(path);
+        showAltToast("Caminho da pasta copiado.");
+      } catch (err) {
+        showAltToast("Nao foi possivel copiar o caminho.", "error");
+      }
+    });
+  });
+}
+
+function openAltFilesModal(title, files) {
+  const existing = document.getElementById("alt-files-modal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "alt-files-modal";
+  modal.className = "alt-files-modal is-open";
+  modal.innerHTML = `
+    <div class="alt-files-modal-content" role="dialog" aria-modal="true">
+      <header class="alt-files-modal-header">
+        <h3>${escapeHtml(title)}</h3>
+        <button type="button" class="alt-files-modal-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+      </header>
+      <div class="alt-files-modal-body"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal
+    .querySelector(".alt-files-modal-close")
+    ?.addEventListener("click", close);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) close();
+  });
+
+  const body = modal.querySelector(".alt-files-modal-body");
+  if (!files.length) {
+    body.innerHTML = `<div class="alt-conf-empty">Sem arquivos disponiveis.</div>`;
+    return;
+  }
+
+  const grouped = groupFilesByCategory(files);
+  body.innerHTML = Object.entries(grouped)
+    .map(
+      ([category, byType]) => `
+      <section class="alt-files-category">
+        <div class="alt-files-category-head">
+          <strong>${escapeHtml(category)}</strong>
+          <span>${Object.values(byType).reduce((sum, arr) => sum + arr.length, 0)} arquivo(s)</span>
+        </div>
+        ${Object.entries(byType)
+          .map(
+            ([type, rows]) => `
+            <div class="alt-files-type">
+              <h4>${escapeHtml(type)}</h4>
+              ${rows
+                .map((file) => {
+                  const copyPath = normalizeFileCopyPath(file.path || "");
+                  return `
+                  <article class="alt-files-row" title="${escapeHtml(copyPath || file.path || "")}" data-copy-path="${escapeHtml(copyPath)}">
+                    <div class="alt-conf-file-icon"><i class="fa-solid ${fileIcon(type)}"></i></div>
+                    <div>
+                      <strong>${escapeHtml(file.name || "Arquivo")}</strong>
+                      <span>${escapeHtml(file.group_label || file.scope || "")}${file.suffix ? " - " + escapeHtml(file.suffix) : ""}</span>
+                      ${file.description ? `<small>${escapeHtml(file.description)}</small>` : ""}
+                    </div>
+                    <time>${escapeHtml(formatDate(file.date) || "")}</time>
+                  </article>`;
+                })
+                .join("")}
+            </div>`,
+          )
+          .join("")}
+      </section>`,
+    )
+    .join("");
+  bindFileCopyRows(body);
 }
 
 function renderHistory(data) {
@@ -928,10 +1678,16 @@ function syncSidePanelState() {
 
   panel.dataset.activePanel = altSidePanelActive;
   panel.querySelectorAll("[data-panel-target]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.panelTarget === altSidePanelActive);
+    btn.classList.toggle(
+      "active",
+      btn.dataset.panelTarget === altSidePanelActive,
+    );
   });
   panel.querySelectorAll("[data-panel]").forEach((section) => {
-    section.classList.toggle("active", section.dataset.panel === altSidePanelActive);
+    section.classList.toggle(
+      "active",
+      section.dataset.panel === altSidePanelActive,
+    );
   });
 
   [modal, shell].forEach((el) => {
@@ -939,7 +1695,10 @@ function syncSidePanelState() {
   });
 
   if (toggle) {
-    toggle.setAttribute("aria-expanded", altSidePanelCollapsed ? "false" : "true");
+    toggle.setAttribute(
+      "aria-expanded",
+      altSidePanelCollapsed ? "false" : "true",
+    );
     toggle.classList.toggle("is-collapsed", altSidePanelCollapsed);
     const icon = toggle.querySelector("i");
     if (icon) {
@@ -1001,11 +1760,17 @@ function renderConference(data) {
     image.subtipo_nome || image.subtipo_imagem || "Sem subtipo",
   );
   setText("altConfEtapa", image.nome_status);
+  applyStatusImagemClass(
+    document.getElementById("altConfEtapa"),
+    image.nome_status,
+  );
   setText("altConfTipo", image.tipo_imagem);
   setText("altConfStatus", image.alteracao_status);
-  setText(
-    "altConfComplexidade",
-    complexityLabel(image.nivel_complexidade || summary.complexity),
+  const complexidade = image.nivel_complexidade || summary.complexity;
+  setText("altConfComplexidade", complexityLabel(complexidade));
+  applyComplexityClass(
+    document.getElementById("altConfComplexidade"),
+    complexidade,
   );
   setText(
     "altConfPrazo",
@@ -1052,6 +1817,7 @@ function renderConference(data) {
   renderReviewLinks(data?.links?.review_studio || "");
   renderMainImage(data);
   renderSummary(summary);
+  renderSummary(summary, "altConfResumoApoio");
   renderFiles(
     "altConfArquivos",
     "altConfFileTabs",
@@ -1072,6 +1838,26 @@ function renderConference(data) {
       imagem: "Imagem",
     },
   );
+  document.getElementById("altConfAllFiles")?.addEventListener("click", () => {
+    openAltFilesModal(
+      "Arquivos enviados na revisao",
+      flattenFileGroups(files.uploaded_by_origin || {}, {
+        cliente: "Cliente",
+        interno: "Interno",
+        triagem: "Triagem",
+      }),
+    );
+  });
+  document.getElementById("altConfAllRefs")?.addEventListener("click", () => {
+    openAltFilesModal(
+      "Referencias por escopo",
+      flattenFileGroups(files.references_by_scope || {}, {
+        projeto: "Projeto",
+        tipo: "Tipo de imagem",
+        imagem: "Imagem",
+      }),
+    );
+  });
   renderHistory(data);
   renderCommunication(data);
   renderNextSteps(data);
@@ -1083,7 +1869,7 @@ function abrirModal(idimagem) {
   const modal = document.getElementById("myModal");
   if (modal) {
     altSidePanelCollapsed = false;
-    altSidePanelActive = "files";
+    altSidePanelActive = isCompactConferenceLayout() ? "summary" : "files";
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
     closeMoreActionsPanel();
@@ -1104,6 +1890,8 @@ function fecharModal() {
 
 function limparCampos() {
   document.getElementById("campoNomeImagem").textContent = "—";
+  applyStatusImagemClass(document.getElementById("altConfEtapa"), "");
+  applyComplexityClass(document.getElementById("altConfComplexidade"), "");
   document.getElementById("status_alteracao").value = "";
   document.getElementById("prazo_alteracao").value = "";
   document.getElementById("obs_alteracao").value = "";
@@ -1221,20 +2009,24 @@ document.getElementById("myModal").addEventListener("click", function (e) {
   if (e.target === this) fecharModal();
 });
 
-document.getElementById("altConfMoreActions")?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  toggleMoreActionsPanel();
-});
+document
+  .getElementById("altConfMoreActions")
+  ?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleMoreActionsPanel();
+  });
 document.getElementById("altConfMoreClose")?.addEventListener("click", () => {
   closeMoreActionsPanel();
 });
-document.getElementById("altConfHistoryShortcut")?.addEventListener("click", () => {
-  closeMoreActionsPanel();
-  setSidePanelCollapsed(false);
-  document
-    .querySelector("#altSecHistorico")
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
+document
+  .getElementById("altConfHistoryShortcut")
+  ?.addEventListener("click", () => {
+    closeMoreActionsPanel();
+    setSidePanelCollapsed(false);
+    document
+      .querySelector("#altSecHistorico")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 document.getElementById("altConfSideToggle")?.addEventListener("click", () => {
   setSidePanelCollapsed(!altSidePanelCollapsed);
 });
@@ -1271,21 +2063,80 @@ document.getElementById("altConfOpenImage")?.addEventListener("click", () => {
 document
   .getElementById("altConfSendApproval")
   ?.addEventListener("click", () => {
+    abrirModalEnvioAprovacao();
+  });
+document
+  .getElementById("altApprovalUploadClose")
+  ?.addEventListener("click", fecharModalEnvioAprovacao);
+document
+  .getElementById("altApprovalUploadModal")
+  ?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) fecharModalEnvioAprovacao();
+  });
+document
+  .getElementById("altSendPrevia")
+  ?.addEventListener("click", enviarImagens);
+document
+  .getElementById("altSendArquivo")
+  ?.addEventListener("click", enviarArquivo);
+document
+  .getElementById("altConfQuestionBtn")
+  ?.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    const panel = document.getElementById("altConfMorePanel");
+
+    // Abre o modal/painel
+    if (panel) {
+      panel.hidden = false;
+    }
+
+    // Seleciona HOLD
     const status = document.getElementById("status_alteracao");
     if (status) {
-      const target = Array.from(status.options).find(
-        (opt) => normalizarStatus(opt.value) === "em aprovacao",
-      );
-      status.value = target ? target.value : "Em aprovaÃ§Ã£o";
+      status.value = "HOLD";
+      status.dispatchEvent(new Event("change", { bubbles: true }));
     }
-    document.getElementById("salvar_funcoes")?.click();
+
+    // Foca no obs_alteracao depois do painel abrir
+    setTimeout(() => {
+      const obs = document.getElementById("obs_alteracao");
+      if (obs) {
+        obs.focus();
+        obs.select();
+      }
+    }, 0);
   });
-document.getElementById("altConfQuestionBtn")?.addEventListener("click", () => {
-  const obs = document.getElementById("obs_alteracao");
-  if (obs) {
-    obs.focus();
-    obs.select();
+
+document.getElementById("altConfStart")?.addEventListener("click", (event) => {
+  event.stopPropagation();
+
+  const panel = document.getElementById("altConfMorePanel");
+
+  if (panel) {
+    panel.hidden = false;
   }
+
+  const status = document.getElementById("status_alteracao");
+  if (status) {
+    status.value = "Em andamento";
+    status.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  setTimeout(() => {
+    const prazo = document.getElementById("prazo_alteracao");
+
+    if (prazo) {
+      prazo.focus();
+
+      // Abre o seletor de data
+      if (typeof prazo.showPicker === "function") {
+        prazo.showPicker();
+      } else {
+        prazo.click(); // fallback
+      }
+    }
+  }, 50);
 });
 document.querySelectorAll(".alt-conf-nav a").forEach((link) => {
   link.addEventListener("click", (event) => {
@@ -1295,6 +2146,13 @@ document.querySelectorAll(".alt-conf-nav a").forEach((link) => {
       .forEach((item) => item.classList.remove("active"));
     link.classList.add("active");
     const href = link.getAttribute("href");
+    if (href === "#altSecResumo" && isCompactConferenceLayout()) {
+      setSidePanelActive("summary");
+      document
+        .querySelector("#altConfRightPanel")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
     if (href === "#altSecArquivos") setSidePanelActive("files");
     if (href === "#altSecReferencias") setSidePanelActive("refs");
     document

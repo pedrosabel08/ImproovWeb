@@ -71,6 +71,33 @@ class Clausula17Service
                 'funcoes' => [],
             ];
         }
+        if ($colaboradorId === 44) {
+            $trechos = [];
+            $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
+
+            $finalizacaoInfo = $this->getFinalizacaoInfo($this->getNivelFinalizacao($funcoes));
+            $valor = $finalizacaoInfo['valor'] ?? 'valor a definir';
+            $titulo = $finalizacaoInfo['titulo'] ?? '';
+
+            $linhas = [];
+            $linhas[] = '<p>';
+            $linhas[] = '<span class="titulo-funcao">Animação:</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Até 9 cenas: R$ 250,00 por cena</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">A partir de 10 cenas: R$ 260,00 por cena</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">A partir de 20 cenas: R$ 280,00 por cena</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">A partir de 30 cenas: R$ 300,00 por cena</span>';
+            $linhas[] = '</p>';
+
+            $trechos[] = implode("\n", $linhas);
+            $trechos[] = $this->buildParagrafos(false);
+            $texto = implode("\n", $trechos);
+
+            return [
+                'texto' => $texto,
+                'funcoes' => [],
+            ];
+        }
 
         $funcoesNomes = array_map(function ($f) {
             return mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');

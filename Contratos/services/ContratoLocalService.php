@@ -73,7 +73,7 @@ class ContratoLocalService
         // CONTRATANTE (default) + exceção colaborador_id=13
         $contratanteNome = 'IMPROOV LTDA.';
         $contratanteCnpj = '37.066.879/0001-84';
-        if ($colaboradorId === 13 || $colaboradorId === 39) {
+        if ($colaboradorId === 13 || $colaboradorId === 39 || $colaboradorId = 44) {
             $contratanteNome = 'STELLAR ANIMA LTDA.';
             $contratanteCnpj = '45.284.934/0001-30';
         }
@@ -88,7 +88,8 @@ class ContratoLocalService
             'termino_vigencia' => $datas['fim']->format('d/m/Y'),
             'clausula_dezessete' => nl2br($clausula['texto']),
             'dia_atual' => $this->dateService->formatDataPtBr(new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'))),
-            'colaborador_contratado' => $this->escapeHtml((string)($colab['nome_empresarial'] ?: $colab['nome_colaborador'] ?: '')),
+            'colaborador_nome_empresarial' => $this->escapeHtml((string)($colab['nome_empresarial'])),
+            'colaborador_nome' => $this->escapeHtml((string)($colab['nome_colaborador'])),
             'cnpj_contratado' => $this->escapeHtml((string)($colab['cnpj'] ?? '')),
             'cpf_contratado' => $this->escapeHtml((string)($colab['cpf'] ?? '')),
             'lista_imagens' => $listaImagens,

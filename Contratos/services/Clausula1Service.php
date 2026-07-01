@@ -89,13 +89,27 @@ class Clausula1Service
         // Texto padrão da cláusula
         $texto = $this->buildTextoPadrao($funcoesTexto);
 
-        // Lista de imagens sempre padrão (exceto id=16)
-        $listaImagens = $this->buildLista('LISTA DE IMAGENS:', $this->defaultImagens());
+        if ($hasAnimacao) {
+            $listaImagens = '';
 
-        // Extra animação: lista de cenas (3 itens padrão)
-        $listaCenas = $hasAnimacao
-            ? $this->buildLista('LISTA DE CENAS DE ANIMAÇÕES 3D:', $this->defaultCenas())
-            : '';
+            if ($colaboradorId === 44) {
+                $listaCenas = $this->buildListaDuasColunas(
+                    'LISTA DE CENAS DE ANIMAÇÕES 3D:',
+                    $this->defaultCenas24()
+                );
+            } else {
+                $listaCenas = $this->buildLista(
+                    'LISTA DE CENAS DE ANIMAÇÕES 3D:',
+                    $this->defaultCenas()
+                );
+            }
+        } else {
+            $listaImagens = $this->buildLista(
+                'LISTA DE IMAGENS:',
+                $this->defaultImagens()
+            );
+            $listaCenas = '';
+        }
 
         // Etapas
         // Pós-produção muda somente a etapa; finalização "tudo padrão" (não altera aqui)
@@ -122,15 +136,42 @@ class Clausula1Service
 de imagens, separação de assets para a produção, pela parte CONTRATADA conforme termos e condições estipuladas no presente instrumento.</p>';
     }
 
-    private function buildLista(string $titulo, array $itens): string
+    private function buildLista(string $titulo, array $itens, int $colunas = 1): string
     {
         $li = [];
         foreach ($itens as $item) {
             $li[] = '<li>' . $this->h($item) . '</li>';
         }
 
+        $classe = $colunas > 1 ? 'list cols-' . $colunas : 'list';
+
         return '<p><strong>' . $this->h($titulo) . '</strong></p>' .
-            '<ul class="list">' . implode('', $li) . '</ul>';
+            '<ul class="' . $classe . '">' . implode('', $li) . '</ul>';
+    }
+
+    private function buildListaDuasColunas(string $titulo, array $itens): string
+    {
+        $metade = (int) ceil(count($itens) / 2);
+
+        $coluna1 = array_slice($itens, 0, $metade);
+        $coluna2 = array_slice($itens, $metade);
+
+        $rows = [];
+
+        for ($i = 0; $i < $metade; $i++) {
+            $item1 = isset($coluna1[$i]) ? '• ' . $this->h($coluna1[$i]) : '';
+            $item2 = isset($coluna2[$i]) ? '• ' . $this->h($coluna2[$i]) : '';
+
+            $rows[] = '<tr>' .
+                '<td>' . $item1 . '</td>' .
+                '<td>' . $item2 . '</td>' .
+                '</tr>';
+        }
+
+        return '<p><strong>' . $this->h($titulo) . '</strong></p>' .
+            '<table class="lista-duas-colunas">' .
+            implode('', $rows) .
+            '</table>';
     }
 
     private function buildEtapasPadrao(): string
@@ -185,6 +226,17 @@ de imagens, separação de assets para a produção, pela parte CONTRATADA confo
     private function defaultCenas(): array
     {
         return ['Cena 1', 'Cena 2', 'Cena 3'];
+    }
+
+    private function defaultCenas24(): array
+    {
+        $cenas = [];
+
+        for ($i = 1; $i <= 24; $i++) {
+            $cenas[] = "Cena {$i}";
+        }
+
+        return $cenas;
     }
 
     private function defaultProjetos(): array

@@ -37,7 +37,6 @@ function sftpToPublicUrl(rawPath) {
       rest
     );
   }
-
   // Segunda tentativa: localizar Angulo_definido no caminho e usar o que vem depois
   const m = p.match(/\/Angulo_definido\/(.*)/i);
   if (m && m[1]) {
@@ -111,6 +110,332 @@ function carregarDados(colaborador_id) {
 }
 
 let ultimoResumoPendencia = "";
+
+function escapeKanbanText(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatarDataHoraKanban(value) {
+  if (!value) return "-";
+  const normalized = String(value).replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatarDuracaoPendencia(minutos) {
+  const total = Number(minutos || 0);
+  if (!total || total < 0) return "-";
+  const dias = Math.floor(total / 1440);
+  const horas = Math.floor((total % 1440) / 60);
+  const mins = total % 60;
+  const partes = [];
+  if (dias > 0) partes.push(`${dias}d`);
+  if (horas > 0) partes.push(`${horas}h`);
+  if (mins > 0 || partes.length === 0) partes.push(`${mins}min`);
+  return partes.join(" ");
+}
+
+function abrirPendenciaFlowReview(item) {
+  const idFuncao = item?.idfuncao_imagem;
+  const nomeObra = item?.nomenclatura || "";
+  if (!idFuncao) return;
+
+  localStorage.setItem(
+    "fr_goto",
+    JSON.stringify({
+      idfuncao_imagem: idFuncao,
+      nome_obra: nomeObra,
+    }),
+  );
+
+  const path = window.location.pathname;
+  const idx = path.indexOf("/ImproovWeb");
+  const base =
+    idx !== -1
+      ? window.location.origin + path.slice(0, idx + "/ImproovWeb".length)
+      : "https://improov.com.br/flow/ImproovWeb";
+  const url = nomeObra
+    ? `${base}/FlowReview/index.php?obra_nome=${encodeURIComponent(nomeObra)}`
+    : `${base}/FlowReview/index.php`;
+  window.open(url, "_blank");
+}
+
+function obterGrupoPendenciaAtencao(item) {
+  const funcaoId = Number(item?.funcao_id || 0);
+  const grupos = {
+    1: {
+      key: "caderno-assets",
+      nome: "Caderno + Filtro de Assets",
+      icon: "ri-book-open-line",
+    },
+    8: {
+      key: "caderno-assets",
+      nome: "Caderno + Filtro de Assets",
+      icon: "ri-book-open-line",
+    },
+    2: { key: "modelagem", nome: "Modelagem", icon: "ri-box-3-line" },
+    3: {
+      key: "composicao",
+      nome: "Composição",
+      icon: "ri-layout-masonry-line",
+    },
+    4: {
+      key: "finalizacao",
+      nome: "Finalização",
+      icon: "ri-checkbox-circle-line",
+    },
+    5: { key: "pos-producao", nome: "Pós-produção", icon: "ri-magic-line" },
+    6: { key: "alteracao", nome: "Alteração", icon: "ri-edit-box-line" },
+  };
+
+  if (grupos[funcaoId]) return grupos[funcaoId];
+
+  const nome = item?.nome_funcao || item?.tipo_pendencia || "Pendências";
+  return {
+    key: `funcao-${funcaoId || nome.toString().toLowerCase().replace(/\s+/g, "-")}`,
+    nome,
+    icon: "ri-inbox-archive-line",
+  };
+}
+
+function obterCriticidadePendenciaAtencao(item) {
+  const slaHoras = Number(item?.sla_limite_horas || 0);
+  const minutosDecorridos = Number(item?.tempo_decorrido_minutos || 0);
+  const slaMinutos = slaHoras * 60;
+
+  if (!slaMinutos || minutosDecorridos <= slaMinutos) {
+    return { nivel: "dentro", label: "Dentro do SLA", ratio: 0 };
+  }
+
+  const ratio = minutosDecorridos / slaMinutos;
+  if (minutosDecorridos > slaMinutos * 2) {
+    return { nivel: "critico", label: "SLA Crítico", ratio };
+  }
+
+  return { nivel: "estourado", label: "SLA Estourado", ratio };
+}
+
+function destacarPendenciasAtencao(key) {
+  const colunaPendencias = document.getElementById("pendencias-flowreview");
+  if (!colunaPendencias) return;
+
+  const content = colunaPendencias.querySelector(".content");
+  if (!content) return;
+
+  const cards = Array.from(
+    colunaPendencias.querySelectorAll(".pendencia-flowreview-card"),
+  );
+
+  cards.forEach((card) => {
+    card.classList.remove(
+      "pendencia-central-match",
+      "pendencia-central-dimmed",
+    );
+  });
+
+  const matches = cards.filter((card) => {
+    if (key === "todas-criticas") {
+      return ["estourado", "critico"].includes(card.dataset.slaCriticidade);
+    }
+    return card.dataset.attentionKey === key;
+  });
+
+  if (matches.length) {
+    cards.forEach((card) => card.classList.add("pendencia-central-dimmed"));
+
+    matches.forEach((card) => {
+      card.classList.remove("pendencia-central-dimmed");
+      card.classList.add("pendencia-central-match");
+    });
+
+    const primeiroMatch = matches[0];
+
+    content.scrollTo({
+      top: primeiroMatch.offsetTop - content.offsetTop - 12,
+      behavior: "smooth",
+    });
+  }
+}
+function renderizarCentralAtencao(data) {
+  const central = document.getElementById("central-atencao");
+  const lista = document.getElementById("central-atencao-list");
+  if (!central || !lista) return;
+
+  const usuarioLogado = Number(
+    typeof idColaborador !== "undefined" ? idColaborador : 0,
+  );
+  if (usuarioLogado !== 21) {
+    central.hidden = true;
+    lista.innerHTML = "";
+    return;
+  }
+
+  const pendencias = Array.isArray(data?.pendencias_flowreview)
+    ? data.pendencias_flowreview
+    : [];
+  const grupos = new Map();
+
+  pendencias.forEach((item) => {
+    const criticidade = obterCriticidadePendenciaAtencao(item);
+    if (!["estourado", "critico"].includes(criticidade.nivel)) return;
+
+    const grupo = obterGrupoPendenciaAtencao(item);
+    if (!grupos.has(grupo.key)) {
+      grupos.set(grupo.key, {
+        ...grupo,
+        total: 0,
+        criticas: 0,
+        estouradas: 0,
+        maxRatio: 0,
+      });
+    }
+
+    const atual = grupos.get(grupo.key);
+    atual.total += 1;
+    atual.maxRatio = Math.max(atual.maxRatio, criticidade.ratio);
+    if (criticidade.nivel === "critico") atual.criticas += 1;
+    else atual.estouradas += 1;
+  });
+
+  const itens = Array.from(grupos.values()).sort((a, b) => {
+    const critA = a.criticas > 0 ? 1 : 0;
+    const critB = b.criticas > 0 ? 1 : 0;
+    if (critA !== critB) return critB - critA;
+    if (b.total !== a.total) return b.total - a.total;
+    return a.nome.localeCompare(b.nome, "pt-BR");
+  });
+
+  lista.innerHTML = "";
+  central.hidden = itens.length === 0;
+  if (!itens.length) return;
+
+  itens.forEach((item) => {
+    const nivel = item.criticas > 0 ? "critico" : "estourado";
+    const textoQuantidade =
+      item.total === 1
+        ? "1 aprovação vencida"
+        : `${item.total} aprovações vencidas`;
+
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `central-atencao-card central-atencao-card-${nivel}`;
+    card.dataset.attentionKey = item.key;
+    card.innerHTML = `
+      <span class="central-atencao-icon"><i class="${item.icon}"></i></span>
+      <span class="central-atencao-info">
+        <strong>${escapeKanbanText(item.nome)}</strong>
+        <span>${escapeKanbanText(textoQuantidade)}</span>
+      </span>
+      <span class="central-atencao-status">${nivel === "critico" ? "Crítico" : "Estourado"}</span>
+    `;
+    card.addEventListener("click", () => destacarPendenciasAtencao(item.key));
+    lista.appendChild(card);
+  });
+
+  const totalVencidas = itens.reduce((acc, item) => acc + item.total, 0);
+  const verTodas = document.createElement("button");
+  verTodas.type = "button";
+  verTodas.className = "central-atencao-card central-atencao-card-todas";
+  verTodas.dataset.attentionKey = "todas-criticas";
+  verTodas.innerHTML = `
+    <span class="central-atencao-icon"><i class="ri-focus-3-line"></i></span>
+    <span class="central-atencao-info">
+      <strong>Ver todas as críticas</strong>
+      <span>${totalVencidas === 1 ? "1 aprovação vencida" : `${totalVencidas} aprovações vencidas`}</span>
+    </span>
+    <span class="central-atencao-status">Todas</span>
+  `;
+  verTodas.addEventListener("click", () =>
+    destacarPendenciasAtencao("todas-criticas"),
+  );
+  lista.appendChild(verTodas);
+}
+
+function criarCardPendenciaFlowReview(item) {
+  const coluna = document
+    .getElementById("pendencias-flowreview")
+    ?.querySelector(".content");
+  if (!coluna || !item) return;
+
+  const card = document.createElement("div");
+  card.className = "kanban-card pendencia-flowreview-card";
+  card.setAttribute("role", "button");
+  card.setAttribute("tabindex", "0");
+  card.dataset.pendenciaId = String(item.idfuncao_imagem || "");
+  card.dataset.obra_nome = item.nomenclatura || "";
+  card.dataset.funcao_nome = item.nome_funcao || "";
+  card.dataset.funcaoId = String(item.funcao_id || "");
+  card.dataset.attentionKey = obterGrupoPendenciaAtencao(item).key;
+  card.dataset.slaCriticidade = obterCriticidadePendenciaAtencao(item).nivel;
+  card.dataset.status = "Pendências";
+  card.dataset.prazo = (item.prazo_sla || item.data_postagem_flowreview || "")
+    .toString()
+    .slice(0, 10);
+
+  const tipo =
+    item.tipo_pendencia === "Aprovação"
+      ? item.nome_funcao
+      : item.tipo_pendencia || "Aprovação";
+  const titulo = item.imagem_nome || "Tarefa sem nome";
+  const obraNome = item.nomenclatura || item.nome_obra || "-";
+  const responsavel = item.responsavel_nome || "-";
+  const dataPostagem = formatarDataHoraKanban(item.data_postagem_flowreview);
+  const tempo = formatarDuracaoPendencia(item.tempo_decorrido_minutos);
+  const slaHoras = Number(item.sla_limite_horas || 0);
+  const atrasada = Number(item.atrasada || 0) === 1;
+  const prazoSla = item.prazo_sla
+    ? formatarDataHoraKanban(item.prazo_sla)
+    : "-";
+  const comentarios = Number(item.comentarios_ultima_versao || 0);
+
+  card.innerHTML = `
+    <div class="header-kanban">
+      <span class="funcao-badge pendencia-badge">${escapeKanbanText(tipo)}</span>
+      <span class="pendencia-review-indicator" title="Abrir no Flow Review"><i class="ri-external-link-line"></i></span>
+    </div>
+    <h5>${escapeKanbanText(titulo)}</h5>
+    <p class="pendencia-card-line"><i class="ri-building-2-line"></i>${escapeKanbanText(obraNome)}</p>
+    <p class="pendencia-card-line"><i class="ri-user-3-line"></i>${escapeKanbanText(responsavel)}</p>
+    <div class="card-footer pendencia-card-footer">
+      <span class="date ${atrasada ? "atrasada" : ""}">
+        <i class="fa-regular fa-calendar"></i>
+        ${escapeKanbanText(prazoSla)}
+      </span>
+    </div>
+    <div class="card-log pendencia-card-log">
+      <span class="date ${atrasada ? "tempo-ruim" : ""}" title="Postada em ${escapeKanbanText(dataPostagem)}">
+        <i class="ri-time-line"></i>
+        ${escapeKanbanText(slaHoras ? `${tempo} / ${slaHoras}h` : tempo)}
+      </span>
+      <div class="comments">
+        <span class="indice_envio"><i class="ri-file-line"></i> ${escapeKanbanText(item.indice_envio_atual || "-")} |</span>
+        <span class="numero_comments"><i class="ri-chat-3-line"></i> ${comentarios}</span>
+      </div>
+    </div>
+  `;
+
+  card.addEventListener("click", () => abrirPendenciaFlowReview(item));
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      abrirPendenciaFlowReview(item);
+    }
+  });
+
+  coluna.appendChild(card);
+}
 
 function abrirModalUploadFinalPendente(card) {
   if (!card || !cardModal) return;
@@ -225,6 +550,21 @@ function processarDados(data) {
       col.querySelector(".content").innerHTML = "";
     }
   });
+
+  const pendenciasCol = document.getElementById("pendencias-flowreview");
+  const deveMostrarPendencias = data.mostrar_coluna_pendencias === true;
+  if (pendenciasCol) {
+    pendenciasCol.style.display = deveMostrarPendencias ? "" : "none";
+    pendenciasCol.querySelector(".content").innerHTML = "";
+  }
+
+  if (deveMostrarPendencias && Array.isArray(data.pendencias_flowreview)) {
+    data.pendencias_flowreview.forEach((item) =>
+      criarCardPendenciaFlowReview(item),
+    );
+  }
+  renderizarCentralAtencao(data);
+
   // Função auxiliar para criar cards
   function criarCard(item, tipo, media) {
     // Define status real (mantemos 'Aprovado com ajustes' separado)
@@ -726,6 +1066,18 @@ function processarDados(data) {
       criarCard(item, "imagem", data.media_tempo_em_andamento),
     );
   }
+
+  document.querySelectorAll(".kanban-box .content").forEach((container) => {
+    if (!container.querySelector(".kanban-card")) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state no-drag";
+      empty.innerHTML = `
+      <i class="fa-solid fa-inbox"></i>
+      <span>Nenhum item</span>
+    `;
+      container.appendChild(empty);
+    }
+  });
 
   atualizarTaskCount();
 
@@ -2181,9 +2533,13 @@ function atualizarTaskCount() {
 
     // Esconder colunas vazias (ajuste, aprovado, aprovado-ajustes)
     if (
-      ["ajuste", "aprovado", "aprovado-ajustes", "aguardando-direcao"].includes(
-        box.id,
-      )
+      [
+        "ajuste",
+        "aprovado",
+        "aprovado-ajustes",
+        "aguardando-direcao",
+        "pendencias-flowreview",
+      ].includes(box.id)
     ) {
       box.style.display = count === 0 ? "none" : "";
     }
@@ -4332,17 +4688,28 @@ let dataIdFuncoes = [];
 let imagensSelecionadas = [];
 
 // Inicializa Sortable nas colunas
-const colunas = document.querySelectorAll(".kanban-box .content");
+const colunas = document.querySelectorAll(
+  ".kanban-box:not(.kanban-box-pendencias) .content",
+);
 colunas.forEach((col) => {
   new Sortable(col, {
     group: "kanban",
     animation: 150,
     ghostClass: "sortable-ghost",
+    filter: ".no-drag",
+    preventOnFilter: false,
     touchStartThreshold: 10, // move 10px antes de iniciar o drag
     onMove: function (evt) {
       const fromId = evt.from.closest(".kanban-box")?.id;
       const toId = evt.to.closest(".kanban-box")?.id;
       const dragged = evt.dragged;
+      if (
+        fromId === "pendencias-flowreview" ||
+        toId === "pendencias-flowreview" ||
+        dragged?.classList?.contains("pendencia-flowreview-card")
+      ) {
+        return false;
+      }
       const imagemEmHold = dragged?.dataset?.imagemEmHold === "1";
       const requiresFileUpload = dragged?.dataset?.requiresFileUpload === "1";
       const holdMovel = fromId === "hold" && !imagemEmHold;

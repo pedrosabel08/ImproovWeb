@@ -213,6 +213,352 @@ $tarefas = $resultTarefas->fetch_all(MYSQLI_ASSOC);
 $stmtTarefas->close();
 
 // ====================
+// PENDENCIAS FLOW REVIEW
+// ====================
+$pendenciasFlowReview = [];
+$mostrarColunaPendencias = false;
+$isNicollePendencias = ($colaboradorId === 1);
+$isPedroPendencias = ($colaboradorId === 21);
+$isDirecaoPendencias = in_array($colaboradorId, [9, 31], true);
+$isFinalizadorPendencias = false;
+
+if (!$isPedroPendencias && !$isNicollePendencias && !$isDirecaoPendencias) {
+    $sqlFinalizadorPendencias = "SELECT 1
+        FROM funcao_imagem fi_final
+        JOIN imagens_cliente_obra ico_final ON ico_final.idimagens_cliente_obra = fi_final.imagem_id
+        JOIN obra o_final ON o_final.idobra = ico_final.obra_id
+        WHERE fi_final.colaborador_id = ?
+          AND fi_final.funcao_id = 4
+          AND o_final.status_obra = 0
+        LIMIT 1";
+
+    if ($stmtFinalizadorPendencias = $conn->prepare($sqlFinalizadorPendencias)) {
+        $stmtFinalizadorPendencias->bind_param('i', $colaboradorId);
+        $stmtFinalizadorPendencias->execute();
+        $stmtFinalizadorPendencias->store_result();
+        $isFinalizadorPendencias = $stmtFinalizadorPendencias->num_rows > 0;
+        $stmtFinalizadorPendencias->close();
+    }
+}
+
+$mostrarColunaPendencias = $isPedroPendencias || $isNicollePendencias || $isDirecaoPendencias || $isFinalizadorPendencias;
+$hasSlaFuncao = false;
+$resSla = $conn->query("SHOW TABLES LIKE 'sla_funcao'");
+if ($resSla && $resSla->num_rows > 0) {
+    $hasSlaFuncao = true;
+}
+if ($resSla) {
+    $resSla->close();
+}
+
+$slaSelect = $hasSlaFuncao ? 'sf.limite_horas' : 'NULL';
+$slaJoin = $hasSlaFuncao ? 'LEFT JOIN sla_funcao sf ON sf.funcao_id = fi.funcao_id' : '';
+
+if (!function_exists('pendenciasFlowReviewInicioSlaUtil')) {
+    function pendenciasFlowReviewInicioSlaUtil(DateTime $data): DateTime
+    {
+        $inicioDia = (clone $data)->setTime(8, 0, 0);
+        $fimDia = (clone $data)->setTime(18, 0, 0);
+
+        if ($data < $inicioDia) {
+            return $inicioDia;
+        }
+
+        if ($data >= $fimDia) {
+            return (clone $data)->modify('+1 day')->setTime(8, 0, 0);
+        }
+
+        return clone $data;
+    }
+}
+
+if (!function_exists('pendenciasFlowReviewSomarMinutosUteis')) {
+    function pendenciasFlowReviewSomarMinutosUteis(?string $dataBase, int $minutos): ?string
+    {
+        if (empty($dataBase) || $minutos <= 0) {
+            return $dataBase ?: null;
+        }
+
+        try {
+            $cursor = pendenciasFlowReviewInicioSlaUtil(new DateTime($dataBase));
+        } catch (Exception $e) {
+            return null;
+        }
+
+        $restante = $minutos;
+        while ($restante > 0) {
+            $fimDia = (clone $cursor)->setTime(18, 0, 0);
+            $disponivel = max(0, (int) floor(($fimDia->getTimestamp() - $cursor->getTimestamp()) / 60));
+
+            if ($restante <= $disponivel) {
+                $cursor->modify('+' . $restante . ' minutes');
+                return $cursor->format('Y-m-d H:i:s');
+            }
+
+            $restante -= $disponivel;
+            $cursor = (clone $cursor)->modify('+1 day')->setTime(8, 0, 0);
+        }
+
+        return $cursor->format('Y-m-d H:i:s');
+    }
+}
+
+if (!function_exists('pendenciasFlowReviewMinutosUteisDecorridos')) {
+    function pendenciasFlowReviewMinutosUteisDecorridos(?string $dataBase, ?string $dataFim = null): ?int
+    {
+        if (empty($dataBase)) {
+            return null;
+        }
+
+        try {
+            $cursor = pendenciasFlowReviewInicioSlaUtil(new DateTime($dataBase));
+            $fim = $dataFim ? new DateTime($dataFim) : new DateTime();
+        } catch (Exception $e) {
+            return null;
+        }
+
+        if ($fim <= $cursor) {
+            return 0;
+        }
+
+        $total = 0;
+        while ($cursor < $fim) {
+            $fimDia = (clone $cursor)->setTime(18, 0, 0);
+            $fimTrecho = ($fim < $fimDia) ? clone $fim : $fimDia;
+
+            if ($fimTrecho > $cursor) {
+                $total += (int) floor(($fimTrecho->getTimestamp() - $cursor->getTimestamp()) / 60);
+            }
+
+            $cursor = (clone $cursor)->modify('+1 day')->setTime(8, 0, 0);
+        }
+
+        return $total;
+    }
+}
+
+if ($mostrarColunaPendencias) {
+    $pendenciasExtraJoin = '';
+    $pendenciasWhere = '';
+    $pendenciasTipo = "'Aprovação'";
+    $pendenciasBindTypes = '';
+    $pendenciasBindValues = [];
+
+    if ($isPedroPendencias) {
+        $pendenciasWhere = "(
+              (fi.funcao_id IN (1, 2, 3, 8) AND fi.status = 'Em aprovação')
+              OR (fi.funcao_id = 4 AND fi.status IN ('Em aprovação', 'Aguardando Direção'))
+              OR (fi.funcao_id = 6 AND fi.status IN ('Em aprovação', 'Aguardando Direção'))
+              OR (fi.funcao_id = 5 AND fi.status = 'Em aprovação')
+          )";
+        $pendenciasTipo = "CASE
+            WHEN fi.funcao_id = 5 THEN 'Pós-produção'
+            WHEN fi.status = 'Aguardando Direção' THEN 'Direção'
+            WHEN fi.funcao_id = 6 THEN 'Revisão'
+            ELSE 'Aprovação'
+        END";
+    } elseif ($isNicollePendencias) {
+        $pendenciasWhere = "(
+              (fi.funcao_id IN (8, 1, 2, 3) AND fi.status = 'Em aprovação')
+              OR (fi.funcao_id = 4 AND fi.status = 'Em aprovação' AND ico.status_id <> 1)
+              OR (fi.funcao_id = 6 AND fi.status = 'Em aprovação')
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM historico_aprovacoes ha_nicolle
+              WHERE ha_nicolle.funcao_imagem_id = fi.idfuncao_imagem
+                AND ha_nicolle.responsavel = 1
+                AND ha_nicolle.data_aprovacao >= COALESCE(hi_latest.data_envio, al_latest.criado_em)
+                AND ha_nicolle.status_novo IN ('Aprovado', 'Aprovado com ajustes', 'Ajuste', 'Finalizado', 'Reprovado')
+              LIMIT 1
+          )";
+        $pendenciasTipo = "CASE WHEN fi.funcao_id = 6 THEN 'Revisão' ELSE 'Aprovação' END";
+    } elseif ($isDirecaoPendencias) {
+        $pendenciasWhere = "(
+              (fi.funcao_id = 4 AND ico.status_id = 1 AND fi.status = 'Em aprovação')
+              OR (fi.funcao_id = 4 AND fi.status = 'Aguardando Direção')
+              OR (fi.funcao_id = 6 AND fi.status = 'Aguardando Direção')
+              OR (fi.funcao_id = 5 AND fi.status = 'Em aprovação')
+          )";
+        $pendenciasTipo = "CASE
+            WHEN fi.funcao_id = 5 THEN 'Pós-produção'
+            WHEN fi.status = 'Aguardando Direção' THEN 'Direção'
+            ELSE 'Aprovação'
+        END";
+    } else {
+        $pendenciasExtraJoin = "JOIN funcao_imagem fi_finalizacao
+  ON fi_finalizacao.imagem_id = fi.imagem_id
+ AND fi_finalizacao.funcao_id = 4
+ AND fi_finalizacao.colaborador_id = ?";
+        $pendenciasWhere = "fi.funcao_id = 5
+          AND fi.status = 'Em aprovação'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM historico_aprovacoes ha_finalizador
+              WHERE ha_finalizador.funcao_imagem_id = fi.idfuncao_imagem
+                AND ha_finalizador.responsavel = ?
+                AND ha_finalizador.data_aprovacao >= COALESCE(hi_latest.data_envio, al_latest.criado_em)
+                AND ha_finalizador.status_novo IN ('Aprovado', 'Aprovado com ajustes', 'Ajuste', 'Finalizado', 'Reprovado')
+              LIMIT 1
+          )";
+        $pendenciasTipo = "'Pós-produção'";
+        $pendenciasBindTypes = 'ii';
+        $pendenciasBindValues[] = $colaboradorId;
+        $pendenciasBindValues[] = $colaboradorId;
+    }
+
+    $sqlPendencias = "SELECT DISTINCT
+    fi.idfuncao_imagem,
+    fi.imagem_id,
+    fi.funcao_id,
+    fi.status,
+    fi.prazo,
+    CASE
+        WHEN fi.funcao_id = 4 AND si.nome_status = 'P00'
+            THEN 'Escolha de Ângulos'
+        ELSE f.nome_funcao
+    END AS nome_funcao,
+    ico.imagem_nome,
+    ico.obra_id,
+    ico.status_id AS imagem_status_id,
+    o.nomenclatura,
+    o.nome_obra,
+    c.idcolaborador AS responsavel_id,
+    c.nome_colaborador AS responsavel_nome,
+    hi_latest.id AS historico_imagem_id,
+    al_latest.id AS arquivo_log_id,
+    CASE
+        WHEN hi_latest.id IS NULL AND al_latest.id IS NOT NULL THEN 'PDF'
+        ELSE hi_latest.indice_envio
+    END AS indice_envio_atual,
+    COALESCE(hi_latest.data_envio, al_latest.criado_em) AS data_postagem_flowreview,
+    TIMESTAMPDIFF(MINUTE, COALESCE(hi_latest.data_envio, al_latest.criado_em), NOW()) AS tempo_decorrido_minutos,
+    $slaSelect AS sla_limite_horas,
+    CASE
+        WHEN $slaSelect IS NULL THEN NULL
+        ELSE DATE_ADD(COALESCE(hi_latest.data_envio, al_latest.criado_em), INTERVAL $slaSelect HOUR)
+    END AS prazo_sla,
+    CASE
+        WHEN $slaSelect IS NOT NULL
+         AND TIMESTAMPDIFF(HOUR, COALESCE(hi_latest.data_envio, al_latest.criado_em), NOW()) >= $slaSelect
+            THEN 1
+        ELSE 0
+    END AS atrasada,
+    (
+        CASE
+            WHEN hi_latest.id IS NULL AND al_latest.id IS NOT NULL THEN (
+                SELECT COUNT(*)
+                FROM comentarios_imagem ci_pdf
+                WHERE ci_pdf.arquivo_log_id = al_latest.id
+            )
+            ELSE (
+                SELECT COUNT(*)
+                FROM comentarios_imagem ci
+                JOIN historico_aprovacoes_imagens hi_comments ON hi_comments.id = ci.ap_imagem_id
+                WHERE hi_comments.funcao_imagem_id = fi.idfuncao_imagem
+                  AND hi_comments.indice_envio = hi_latest.indice_envio
+            )
+        END
+    ) AS comentarios_ultima_versao,
+    (
+        CASE
+            WHEN hi_latest.id IS NULL AND al_latest.id IS NOT NULL THEN al_latest.caminho
+            ELSE (
+                SELECT MAX(hi_img.caminho_imagem)
+                FROM historico_aprovacoes_imagens hi_img
+                WHERE hi_img.funcao_imagem_id = fi.idfuncao_imagem
+                  AND hi_img.caminho_imagem NOT LIKE '%imagem_%'
+            )
+        END
+    ) AS ultima_imagem,
+    $pendenciasTipo AS tipo_pendencia
+FROM funcao_imagem fi
+$pendenciasExtraJoin
+JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+LEFT JOIN status_imagem si ON ico.status_id = si.idstatus
+JOIN obra o ON o.idobra = ico.obra_id
+JOIN funcao f ON fi.funcao_id = f.idfuncao
+LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+$slaJoin
+LEFT JOIN historico_aprovacoes_imagens hi_latest
+  ON hi_latest.id = (
+      SELECT hi2.id
+      FROM historico_aprovacoes_imagens hi2
+      WHERE hi2.funcao_imagem_id = fi.idfuncao_imagem
+      ORDER BY hi2.data_envio DESC, hi2.id DESC
+      LIMIT 1
+  )
+LEFT JOIN arquivo_log al_latest
+  ON al_latest.id = (
+      SELECT al2.id
+      FROM arquivo_log al2
+      WHERE al2.funcao_imagem_id = fi.idfuncao_imagem
+        AND UPPER(al2.tipo) = 'PDF'
+      ORDER BY al2.criado_em DESC, al2.id DESC
+      LIMIT 1
+  )
+WHERE o.status_obra = 0
+  AND (
+      (fi.funcao_id IN (1, 8) AND al_latest.id IS NOT NULL)
+      OR (fi.funcao_id NOT IN (1, 8) AND hi_latest.id IS NOT NULL)
+  )
+  AND $pendenciasWhere
+ORDER BY atrasada DESC, COALESCE(hi_latest.data_envio, al_latest.criado_em) ASC, fi.prazo ASC";
+
+    $stmtPendencias = $conn->prepare($sqlPendencias);
+    if ($stmtPendencias) {
+        if ($pendenciasBindTypes !== '') {
+            $stmtPendencias->bind_param($pendenciasBindTypes, ...$pendenciasBindValues);
+        }
+        $stmtPendencias->execute();
+        $pendenciasFlowReview = $stmtPendencias->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtPendencias->close();
+
+        foreach ($pendenciasFlowReview as &$pendenciaFlowReview) {
+            $slaHoras = isset($pendenciaFlowReview['sla_limite_horas']) && is_numeric($pendenciaFlowReview['sla_limite_horas'])
+                ? (float) $pendenciaFlowReview['sla_limite_horas']
+                : 0.0;
+            $dataPostagemFlowReview = $pendenciaFlowReview['data_postagem_flowreview'] ?? null;
+
+            if ($slaHoras > 0 && $dataPostagemFlowReview) {
+                $slaMinutos = (int) round($slaHoras * 60);
+                $prazoSlaUtil = pendenciasFlowReviewSomarMinutosUteis($dataPostagemFlowReview, $slaMinutos);
+                $tempoUtilDecorrido = pendenciasFlowReviewMinutosUteisDecorridos($dataPostagemFlowReview);
+
+                $pendenciaFlowReview['prazo_sla'] = $prazoSlaUtil;
+                $pendenciaFlowReview['tempo_decorrido_minutos'] = $tempoUtilDecorrido;
+                $pendenciaFlowReview['atrasada'] = 0;
+
+                if ($prazoSlaUtil) {
+                    try {
+                        $pendenciaFlowReview['atrasada'] = (new DateTime() > new DateTime($prazoSlaUtil)) ? 1 : 0;
+                    } catch (Exception $e) {
+                        $pendenciaFlowReview['atrasada'] = 0;
+                    }
+                }
+            }
+        }
+        unset($pendenciaFlowReview);
+
+        usort($pendenciasFlowReview, function ($a, $b) {
+            $atrasadaA = (int) ($a['atrasada'] ?? 0);
+            $atrasadaB = (int) ($b['atrasada'] ?? 0);
+            if ($atrasadaA !== $atrasadaB) {
+                return $atrasadaB <=> $atrasadaA;
+            }
+
+            $prazoA = strtotime((string) ($a['prazo_sla'] ?? '')) ?: PHP_INT_MAX;
+            $prazoB = strtotime((string) ($b['prazo_sla'] ?? '')) ?: PHP_INT_MAX;
+            if ($prazoA !== $prazoB) {
+                return $prazoA <=> $prazoB;
+            }
+
+            return strcmp((string) ($a['data_postagem_flowreview'] ?? ''), (string) ($b['data_postagem_flowreview'] ?? ''));
+        });
+    }
+}
+
+// ====================
 // MÉDIA TEMPO EM ANDAMENTO
 // ====================
 $sqlMedia = "SELECT 
@@ -678,6 +1024,8 @@ if (!empty($suppressedIndexes)) {
 $response = [
     "funcoes"                 => $funcoesFinal,
     "tarefas"                 => $tarefas,
+    "mostrar_coluna_pendencias" => $mostrarColunaPendencias,
+    "pendencias_flowreview"   => $pendenciasFlowReview,
     "media_tempo_em_andamento" => $mediaTemposPorFuncao
 ];
 

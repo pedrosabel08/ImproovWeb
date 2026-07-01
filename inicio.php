@@ -207,7 +207,27 @@ $conn->close();
                 </nav>
             </header>
             <div id="filtros-ativos-bar"></div>
+            <?php if ((int)($idcolaborador ?? 0) === 21): ?>
+                <section class="central-atencao" id="central-atencao" aria-label="Necessita sua atenção" hidden>
+                    <div class="central-atencao-header">
+                        <div class="central-atencao-title">
+                            <i class="ri-alarm-warning-line"></i>
+                            <span>Necessita sua atenção</span>
+                        </div>
+                        <span class="central-atencao-subtitle">Aprovações com SLA vencido</span>
+                    </div>
+                    <div class="central-atencao-list" id="central-atencao-list"></div>
+                </section>
+            <?php endif; ?>
             <div class="kanban" id="kanban-section">
+                <div class="kanban-box kanban-box-pendencias" id="pendencias-flowreview" aria-label="Pendências de aprovação do Flow Review">
+                    <div class="header">
+                        <div class="title"><i class="ri-inbox-archive-line"></i><span>Pendências</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
                 <div class="kanban-box" id="to-do">
                     <div class="header" style="background-color: #b9b9b9;">
                         <div class="title"><i class="ri-circle-line"></i><span>Não iniciado</span></div>

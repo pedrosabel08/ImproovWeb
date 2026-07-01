@@ -11,6 +11,7 @@
   --cor-principal: #3f3f3f;
   --cor-secundaria: #0050ab;
   --cor-referencias: #ff9b00;
+  --text-muted: #9ca3af;
 
   /* Status imagem (si-*) — cores sólidas para células de tabela */
   --si-p00: #ffc21c;
@@ -131,7 +132,14 @@
   color: #fff !important;
 }
 
+html,
 body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-height: 100vh;
   transition:
     background-color 0.3s,
     color 0.3s;
@@ -141,6 +149,7 @@ body {
 
 .container {
   height: 100vh;
+  min-height: 100vh;
   width: 100%;
   grid-column: 2;
   display: flex;
@@ -157,6 +166,7 @@ body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -168,21 +178,17 @@ body {
 .container > main.main_inicio > #list-section,
 .container > main.main_inicio > #overview-section {
   flex: 1 1 auto;
+  min-height: 0;
+}
+
+.container > main.main_inicio > .kanban {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.container > main.main_inicio > #list-section,
+.container > main.main_inicio > #overview-section {
   overflow: auto;
-  min-height: 0;
-}
-
-/* Prevent kanban columns from using viewport-based max-heights which
-   caused the whole page to grow and scroll. Let internal column content
-   scroll instead. */
-main .kanban .kanban-box {
-  max-height: none;
-  height: auto;
-}
-
-main .kanban .kanban-box .content {
-  max-height: none;
-  min-height: 0;
 }
 
 .hidden {
@@ -318,11 +324,17 @@ main nav .nav-right button:last-child {
 
 main .kanban {
   display: flex;
+  align-items: stretch;
   gap: 20px;
   justify-content: space-evenly;
-  margin-top: 20px;
-  padding: 0 20px;
+  margin-top: 14px;
+  padding: 6px 20px;
+  min-height: 0;
   scroll-behavior: smooth;
+}
+
+.central-atencao:not([hidden]) + .kanban {
+  margin-top: 0;
 }
 
 /* Esconde barra de rolagem no Safari/Chrome */
@@ -339,6 +351,7 @@ main .kanban {
 
   main .kanban .kanban-box {
     min-width: 23%;
+    flex-basis: 23%;
     flex-shrink: 0;
   }
 }
@@ -347,15 +360,192 @@ main .kanban {
 @media (max-width: 600px) {
   main .kanban .kanban-box {
     min-width: 45%;
+    flex-basis: 45%;
   }
 }
 
 main .kanban .kanban-box {
   border-radius: 8px;
   width: 23%;
-  height: max-content;
-  padding-right: 6px;
-  max-height: 70vh;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.central-atencao {
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(185, 28, 28, 0.16);
+  border-left: 4px solid #dc2626;
+  border-radius: 8px;
+  background: #fff7ed;
+  box-shadow: 0 6px 18px rgba(127, 29, 29, 0.08);
+}
+
+.central-atencao[hidden] {
+  display: none !important;
+}
+
+.central-atencao-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.central-atencao-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7f1d1d;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.central-atencao-title i {
+  font-size: 1.12rem;
+}
+
+.central-atencao-subtitle {
+  color: #9a3412;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.central-atencao-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.central-atencao-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid rgba(154, 52, 18, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #2b2b2b;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.central-atencao-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(127, 29, 29, 0.12);
+}
+
+.central-atencao-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 1rem;
+}
+
+.central-atencao-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.central-atencao-info strong,
+.central-atencao-info span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.central-atencao-info strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.central-atencao-info span {
+  color: #6b7280;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.central-atencao-status {
+  padding: 4px 6px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.central-atencao-card-estourado .central-atencao-status {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.central-atencao-card-critico {
+  border-color: rgba(220, 38, 38, 0.26);
+}
+
+.central-atencao-card-critico .central-atencao-icon,
+.central-atencao-card-critico .central-atencao-status {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.central-atencao-card-todas {
+  border-style: dashed;
+  background: #fffdf8;
+}
+
+.pendencia-flowreview-card.pendencia-central-dimmed {
+  opacity: 0.38;
+}
+
+.pendencia-flowreview-card.pendencia-central-match {
+  box-shadow:
+    0 0 0 2px rgba(220, 38, 38, 0.32),
+    0 8px 18px rgba(127, 29, 29, 0.16);
+}
+
+main .kanban .kanban-box-pendencias {
+  background: #f7f2ff;
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.12);
+}
+
+main .kanban .kanban-box-pendencias .header {
+  background: #7c3aed;
+  color: #fff !important;
+}
+
+main .kanban .kanban-box-pendencias .header .task-count {
+  background-color: #fff;
+  color: #5b21b6;
+}
+
+main .kanban .kanban-box-pendencias .content:empty::before {
+  content: "Sem decisões pendentes";
+  display: block;
+  padding: 14px 10px;
+  border: 1px dashed rgba(124, 58, 237, 0.35);
+  border-top: none;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  color: #6d28d9;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 /* =====================
@@ -496,8 +686,11 @@ main .kanban .kanban-box {
 }
 
 main .kanban .kanban-box .content {
-  max-height: 70vh;
-  overflow: auto;
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
   transition: background 0.3s;
   border-top: none;
@@ -507,13 +700,34 @@ main .kanban .kanban-box .content {
 main .kanban-box .content:empty::before {
   content: "";
   display: block;
-  /* min-height: 70vh; */
-  background: transparent;
+  height: 100%;
+  background-color: #181818;
+  outline-offset: -2px;
+  outline: 2px dashed rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 16px;
+  color: var(--text-muted);
+  gap: 6px;
+}
+
+.empty-state i {
+  font-size: 28px;
+  opacity: 0.4;
+}
+.empty-state span {
+  font-size: 12px;
 }
 
 /* Quando tiver card dentro, o espaço se ajusta normal */
 main .kanban-box .content:not(:empty) {
-  min-height: auto;
+  min-height: 0;
   border: 1px solid #dcdcdc;
   border-top: none;
   border-bottom-left-radius: 5px;
@@ -521,6 +735,7 @@ main .kanban-box .content:not(:empty) {
 }
 
 main .kanban div .header {
+  flex: 0 0 auto;
   font-weight: 700;
   font-size: 0.7rem;
   color: black !important;
@@ -606,6 +821,61 @@ main .kanban div .header .task-count {
 
 .kanban-card .pending-render-ribbon.below-file-ribbon {
   top: 34px;
+}
+
+.kanban-card.pendencia-flowreview-card {
+  border-left: 4px solid #7c3aed;
+  cursor: pointer;
+  background: #fff;
+}
+
+.kanban-card.pendencia-flowreview-card:hover {
+  box-shadow: 0 4px 14px rgba(91, 33, 182, 0.18);
+  transform: translateY(-1px);
+}
+
+.kanban-card .pending-review-ribbon {
+  position: absolute;
+  left: -1px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(91, 33, 182, 0.2);
+  z-index: 2;
+}
+
+.kanban-card .header-kanban .pendencia-badge {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.pendencia-review-indicator {
+  color: #7c3aed;
+  font-size: 0.9rem;
+}
+
+.pendencia-card-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pendencia-card-footer {
+  margin-top: 8px;
+}
+
+.pendencia-card-log {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .kanban-card.tarefa-criada {
@@ -3669,6 +3939,29 @@ span.aprovadaComAjustes {
 }
 
 @media (max-width: 600px) {
+  .central-atencao {
+    padding: 10px;
+  }
+
+  .central-atencao-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .central-atencao-list {
+    grid-template-columns: 1fr;
+  }
+
+  .central-atencao-card {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .central-atencao-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
   .perfil-colaborador {
     padding: 6px 8px;
     border-radius: 10px;
@@ -4050,6 +4343,58 @@ img.thumb {
 
   .kanban-card.tarefa-criada {
     background-color: #1a2633;
+  }
+
+  main .kanban .kanban-box-pendencias {
+    background: #201a2f;
+    border-color: #8b5cf6;
+  }
+
+  main .kanban .kanban-box-pendencias .header {
+    background: #6d28d9;
+  }
+
+  .kanban-card.pendencia-flowreview-card {
+    background-color: #241f32;
+    border-left-color: #8b5cf6;
+  }
+
+  .central-atencao {
+    background: #251b18;
+    border-color: rgba(248, 113, 113, 0.3);
+    border-left-color: #ef4444;
+    box-shadow: none;
+  }
+
+  .central-atencao-title {
+    color: #fecaca;
+  }
+
+  .central-atencao-subtitle {
+    color: #fdba74;
+  }
+
+  .central-atencao-card {
+    background: #1f1f1f;
+    border-color: rgba(251, 146, 60, 0.18);
+    color: #f3f4f6;
+  }
+
+  .central-atencao-info span {
+    color: #d1d5db;
+  }
+
+  .central-atencao-card-todas {
+    background: #211f1b;
+  }
+
+  .kanban-card .header-kanban .pendencia-badge {
+    background: #35265d;
+    color: #ddd6fe;
+  }
+
+  .pendencia-review-indicator {
+    color: #c4b5fd;
   }
 
   .kanban-card .header-kanban .priority.alta {

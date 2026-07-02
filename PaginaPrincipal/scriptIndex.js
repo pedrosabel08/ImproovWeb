@@ -120,6 +120,14 @@ function escapeKanbanText(value) {
     .replace(/'/g, "&#039;");
 }
 
+function escapeCssIdentifier(value) {
+  const text = String(value ?? "");
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(text);
+  }
+  return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 function formatarDataHoraKanban(value) {
   if (!value) return "-";
   const normalized = String(value).replace(" ", "T");
@@ -170,6 +178,14 @@ function abrirPendenciaFlowReview(item) {
     ? `${base}/FlowReview/index.php?obra_nome=${encodeURIComponent(nomeObra)}`
     : `${base}/FlowReview/index.php`;
   window.open(url, "_blank");
+}
+
+function getImproovBaseUrl() {
+  const path = window.location.pathname;
+  const idx = path.indexOf("/ImproovWeb");
+  return idx !== -1
+    ? window.location.origin + path.slice(0, idx + "/ImproovWeb".length)
+    : `${window.location.origin}/ImproovWeb`;
 }
 
 function obterGrupoPendenciaAtencao(item) {
@@ -231,11 +247,34 @@ function destacarPendenciasAtencao(key) {
   const colunaPendencias = document.getElementById("pendencias-flowreview");
   if (!colunaPendencias) return;
 
+  colunaPendencias.style.display = "";
   const content = colunaPendencias.querySelector(".content");
   if (!content) return;
 
+  let targetGroup = null;
+  if (key !== "todas-criticas") {
+    targetGroup = colunaPendencias.querySelector(
+      `.pendencia-op-group[data-module="${escapeCssIdentifier(key)}"]`,
+    );
+    if (targetGroup) {
+      targetGroup.parentElement
+        ?.querySelectorAll(".pendencia-op-group")
+        .forEach((sibling) => {
+          const siblingSummary = sibling.querySelector(".pendencia-op-summary");
+          const siblingList = sibling.querySelector(".pendencia-op-list");
+          const shouldOpen = sibling === targetGroup;
+          if (siblingSummary) {
+            siblingSummary.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+          }
+          if (siblingList) siblingList.hidden = !shouldOpen;
+        });
+    }
+  }
+
   const cards = Array.from(
-    colunaPendencias.querySelectorAll(".pendencia-flowreview-card"),
+    colunaPendencias.querySelectorAll(
+      ".pendencia-flowreview-card, .pendencia-op-item",
+    ),
   );
 
   cards.forEach((card) => {
@@ -249,7 +288,10 @@ function destacarPendenciasAtencao(key) {
     if (key === "todas-criticas") {
       return ["estourado", "critico"].includes(card.dataset.slaCriticidade);
     }
-    return card.dataset.attentionKey === key;
+    return (
+      card.dataset.attentionKey === key ||
+      card.closest("[data-module]")?.dataset.module === key
+    );
   });
 
   if (matches.length) {
@@ -261,53 +303,67 @@ function destacarPendenciasAtencao(key) {
     });
 
     const primeiroMatch = matches[0];
+    const scrollTarget = targetGroup || primeiroMatch;
 
     content.scrollTo({
-      top: primeiroMatch.offsetTop - content.offsetTop - 12,
+      top: scrollTarget.offsetTop - content.offsetTop - 12,
       behavior: "smooth",
     });
   }
 }
+
 function renderizarCentralAtencao(data) {
   const central = document.getElementById("central-atencao");
   const lista = document.getElementById("central-atencao-list");
   if (!central || !lista) return;
 
-  const usuarioLogado = Number(
-    typeof idColaborador !== "undefined" ? idColaborador : 0,
-  );
-  if (usuarioLogado !== 21) {
-    central.hidden = true;
-    lista.innerHTML = "";
-    return;
-  }
-
-  const pendencias = Array.isArray(data?.pendencias_flowreview)
-    ? data.pendencias_flowreview
-    : [];
   const grupos = new Map();
+  const modules = Array.isArray(data?.pendencias_operacionais)
+    ? data.pendencias_operacionais
+    : [];
 
-  pendencias.forEach((item) => {
-    const criticidade = obterCriticidadePendenciaAtencao(item);
-    if (!["estourado", "critico"].includes(criticidade.nivel)) return;
-
-    const grupo = obterGrupoPendenciaAtencao(item);
-    if (!grupos.has(grupo.key)) {
-      grupos.set(grupo.key, {
-        ...grupo,
-        total: 0,
-        criticas: 0,
-        estouradas: 0,
+  if (modules.length) {
+    modules.forEach((module) => {
+      const total =
+        Number(module.critical_count || 0) + Number(module.overdue_count || 0);
+      if (total <= 0) return;
+      grupos.set(module.key, {
+        key: module.key,
+        nome: module.name,
+        icon: module.icon || "ri-inbox-archive-line",
+        total,
+        criticas: Number(module.critical_count || 0),
+        estouradas: Number(module.overdue_count || 0),
         maxRatio: 0,
       });
-    }
+    });
+  } else {
+    const pendencias = Array.isArray(data?.pendencias_flowreview)
+      ? data.pendencias_flowreview
+      : [];
 
-    const atual = grupos.get(grupo.key);
-    atual.total += 1;
-    atual.maxRatio = Math.max(atual.maxRatio, criticidade.ratio);
-    if (criticidade.nivel === "critico") atual.criticas += 1;
-    else atual.estouradas += 1;
-  });
+    pendencias.forEach((item) => {
+      const criticidade = obterCriticidadePendenciaAtencao(item);
+      if (!["estourado", "critico"].includes(criticidade.nivel)) return;
+
+      const grupo = obterGrupoPendenciaAtencao(item);
+      if (!grupos.has(grupo.key)) {
+        grupos.set(grupo.key, {
+          ...grupo,
+          total: 0,
+          criticas: 0,
+          estouradas: 0,
+          maxRatio: 0,
+        });
+      }
+
+      const atual = grupos.get(grupo.key);
+      atual.total += 1;
+      atual.maxRatio = Math.max(atual.maxRatio, criticidade.ratio);
+      if (criticidade.nivel === "critico") atual.criticas += 1;
+      else atual.estouradas += 1;
+    });
+  }
 
   const itens = Array.from(grupos.values()).sort((a, b) => {
     const critA = a.criticas > 0 ? 1 : 0;
@@ -437,6 +493,479 @@ function criarCardPendenciaFlowReview(item) {
   coluna.appendChild(card);
 }
 
+function obterResumoPendenciasOperacionais(data) {
+  const modules = Array.isArray(data?.pendencias_operacionais)
+    ? data.pendencias_operacionais
+    : [];
+  return modules.reduce(
+    (acc, module) => {
+      acc.total += Number(module.total || 0);
+      acc.criticas += Number(module.critical_count || 0);
+      acc.atrasadas +=
+        Number(module.critical_count || 0) + Number(module.overdue_count || 0);
+      acc.dentro += Number(module.within_sla_count || 0);
+      return acc;
+    },
+    { total: 0, criticas: 0, atrasadas: 0, dentro: 0 },
+  );
+}
+
+function criarPendenciaOperacionalItem(item, module) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = `pendencia-op-item sla-${item.sla_status || "dentro"}`;
+  row.dataset.sourceType = item.source_type || module.key || "";
+  row.dataset.sourceId = String(item.source_id || "");
+  row.dataset.slaCriticidade = item.sla_status || "dentro";
+  row.dataset.attentionKey = module.key || "";
+
+  const due = item.due_at ? formatarDataHoraKanban(item.due_at) : "-";
+  const tempo = formatarDuracaoPendencia(item.tempo_decorrido_minutos);
+  const slaMinutos = Number(item.sla_minutos || 0);
+  const slaLabel = slaMinutos
+    ? `${tempo} / ${Math.round(slaMinutos / 60)}h`
+    : tempo;
+  const meta = item.metadata || {};
+  const countText =
+    Number(item.comments_count || 0) > 0
+      ? `<span><i class="ri-chat-3-line"></i>${Number(item.comments_count || 0)}</span>`
+      : "";
+  const extraText =
+    Number(meta.total_itens || meta.total_items || 0) > 0
+      ? `<span><i class="ri-file-list-3-line"></i>${Number(meta.total_itens || meta.total_items || 0)}</span>`
+      : "";
+
+  row.innerHTML = `
+    <span class="pendencia-op-severity"></span>
+    <span class="pendencia-op-main">
+      <strong>${escapeKanbanText(item.title || "Pendencia")}</strong>
+      <small>${escapeKanbanText(item.subtitle || module.description || "")}</small>
+      <span class="pendencia-op-meta">
+        <span><i class="ri-user-3-line"></i>${escapeKanbanText(item.responsavel_nome || "-")}</span>
+        <span><i class="ri-calendar-line"></i>${escapeKanbanText(due)}</span>
+        <span><i class="ri-time-line"></i>${escapeKanbanText(slaLabel)}</span>
+        ${extraText}
+        ${countText}
+      </span>
+    </span>
+    <i class="ri-external-link-line pendencia-op-open"></i>
+  `;
+
+  row.addEventListener("click", () => abrirPendenciaOperacional(item, module));
+  return row;
+}
+
+function criarGrupoPendenciaOperacional(module, index) {
+  const group = document.createElement("article");
+  group.className = "pendencia-op-group";
+  group.dataset.module = module.key || "";
+  group.style.setProperty("--module-color", module.color || "#7c3aed");
+
+  const isOpen = index === 0;
+  const items = Array.isArray(module.items) ? module.items : [];
+  const previewLimit = 4;
+  const hiddenCount = Math.max(0, items.length - previewLimit);
+
+  group.innerHTML = `
+    <button type="button" class="pendencia-op-summary" aria-expanded="${isOpen ? "true" : "false"}">
+      <span class="pendencia-op-icon"><i class="${escapeKanbanText(module.icon || "ri-inbox-archive-line")}"></i></span>
+      <span class="pendencia-op-title">
+        <strong>${escapeKanbanText(module.name || "Pendencias")}</strong>
+        <small>${escapeKanbanText(module.description || "")}</small>
+      </span>
+      <span class="pendencia-op-badges">
+        ${Number(module.critical_count || 0) > 0 ? `<span class="badge-critical">${Number(module.critical_count || 0)}</span>` : ""}
+        <span>${Number(module.total || 0)}</span>
+      </span>
+      <i class="ri-arrow-down-s-line pendencia-op-chevron"></i>
+    </button>
+    <div class="pendencia-op-list" ${isOpen ? "" : "hidden"}></div>
+  `;
+
+  const summary = group.querySelector(".pendencia-op-summary");
+  const list = group.querySelector(".pendencia-op-list");
+  items.slice(0, previewLimit).forEach((item) => {
+    list.appendChild(criarPendenciaOperacionalItem(item, module));
+  });
+
+  if (hiddenCount > 0) {
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "pendencia-op-more";
+    more.innerHTML = `<span>+${hiddenCount} pendencias</span><strong>Ver todas <i class="ri-arrow-right-line"></i></strong>`;
+    more.addEventListener("click", () => abrirModuloPendencias(module));
+    list.appendChild(more);
+  }
+
+  summary.addEventListener("click", () => {
+    const expanded = summary.getAttribute("aria-expanded") === "true";
+    if (!expanded) {
+      group.parentElement
+        ?.querySelectorAll(".pendencia-op-group")
+        .forEach((sibling) => {
+          if (sibling === group) return;
+          const siblingSummary = sibling.querySelector(".pendencia-op-summary");
+          const siblingList = sibling.querySelector(".pendencia-op-list");
+          if (siblingSummary) {
+            siblingSummary.setAttribute("aria-expanded", "false");
+          }
+          if (siblingList) siblingList.hidden = true;
+        });
+    }
+    summary.setAttribute("aria-expanded", expanded ? "false" : "true");
+    list.hidden = expanded;
+  });
+
+  return group;
+}
+
+function renderizarPendenciasOperacionais(data) {
+  const coluna = document
+    .getElementById("pendencias-flowreview")
+    ?.querySelector(".content");
+  const box = document.getElementById("pendencias-flowreview");
+  if (!coluna || !box) return;
+
+  const modules = Array.isArray(data?.pendencias_operacionais)
+    ? data.pendencias_operacionais
+    : [];
+  const resumo = obterResumoPendenciasOperacionais(data);
+  box.dataset.totalPendencias = String(resumo.total);
+  coluna.innerHTML = "";
+
+  if (resumo.total <= 0) {
+    return;
+  }
+
+  const header = document.createElement("div");
+  header.className = "pendencia-op-overview";
+  header.innerHTML = `
+    <div><strong>${resumo.criticas}</strong><span>Criticas</span></div>
+    <div><strong>${resumo.atrasadas}</strong><span>Em atraso</span></div>
+    <div><strong>${resumo.dentro}</strong><span>Dentro do SLA</span></div>
+  `;
+  coluna.appendChild(header);
+
+  modules.forEach((module, index) => {
+    coluna.appendChild(criarGrupoPendenciaOperacional(module, index));
+  });
+}
+
+function obterLabelCriticidadePendencia(nivel) {
+  const labels = {
+    critico: "SLA Critico",
+    estourado: "SLA Estourado",
+    dentro: "Dentro do SLA",
+  };
+  return labels[nivel] || nivel || "-";
+}
+
+function obterCampoFiltroPendencia(item, module, campo) {
+  const meta = item.metadata || {};
+  switch (campo) {
+    case "obra":
+      return item.obra_nome || "";
+    case "responsavel":
+      return item.responsavel_nome || "";
+    case "criticidade":
+      return item.sla_status || "dentro";
+    case "status":
+      return meta.status || item.subtitle || item.sla_label || "";
+    case "lote":
+      return module.key === "cobranca_cliente" ? String(item.source_id || "") : "";
+    case "prazo":
+      return item.due_at ? String(item.due_at).slice(0, 10) : "";
+    default:
+      return "";
+  }
+}
+
+function obterFiltrosModuloPendencias(module) {
+  const common = [
+    { key: "criticidade", label: "Criticidade" },
+    { key: "obra", label: "Obra" },
+  ];
+
+  const byModule = {
+    flow_review: [
+      { key: "status", label: "Status" },
+      { key: "responsavel", label: "Responsavel" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ],
+    cobranca_cliente: [
+      { key: "status", label: "Status cobrança" },
+      { key: "lote", label: "Lote" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ],
+    render: [
+      { key: "status", label: "Status" },
+      { key: "responsavel", label: "Responsavel" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ],
+    pre_alteracao: [
+      { key: "status", label: "Status" },
+      { key: "responsavel", label: "Responsavel" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ],
+    projeto: [
+      { key: "responsavel", label: "Responsavel" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ],
+    imagem: [
+      { key: "responsavel", label: "Responsavel" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ],
+  };
+
+  return byModule[module.key] || [
+    { key: "status", label: "Status" },
+    { key: "responsavel", label: "Responsavel" },
+    ...common,
+    { key: "prazo", label: "Prazo" },
+  ];
+}
+
+function obterOpcoesFiltroPendencias(items, module, filtro) {
+  const values = new Map();
+  items.forEach((item) => {
+    const raw = obterCampoFiltroPendencia(item, module, filtro.key);
+    if (!raw) return;
+    const value = String(raw);
+    const label =
+      filtro.key === "criticidade"
+        ? obterLabelCriticidadePendencia(value)
+        : value;
+    values.set(value, label);
+  });
+
+  return Array.from(values.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+}
+
+function itemPassaFiltrosPendencias(item, module, filtrosAtivos) {
+  const busca = filtrosAtivos.busca.trim().toLowerCase();
+  if (busca) {
+    const meta = item.metadata || {};
+    const haystack = [
+      item.title,
+      item.subtitle,
+      item.obra_nome,
+      item.responsavel_nome,
+      item.sla_label,
+      item.source_id,
+      meta.status,
+      meta.overdue_days,
+      meta.total_items,
+      meta.total_itens,
+    ]
+      .filter((value) => value !== undefined && value !== null)
+      .join(" ")
+      .toLowerCase();
+    if (!haystack.includes(busca)) return false;
+  }
+
+  return filtrosAtivos.selects.every((filtro) => {
+    if (!filtro.value) return true;
+    return obterCampoFiltroPendencia(item, module, filtro.key) === filtro.value;
+  });
+}
+
+function calcularContagensPendencias(items) {
+  return items.reduce(
+    (acc, item) => {
+      acc.total += 1;
+      const nivel = item.sla_status || "dentro";
+      if (nivel === "critico") acc.criticas += 1;
+      else if (nivel === "estourado") acc.atrasadas += 1;
+      else acc.dentro += 1;
+      return acc;
+    },
+    { total: 0, criticas: 0, atrasadas: 0, dentro: 0 },
+  );
+}
+
+function abrirModuloPendencias(module) {
+  Swal.fire({
+    title: module.name || "Pendencias",
+    html: `
+      <div class="pendencia-op-modal" style="--module-color:${escapeKanbanText(module.color || "#7c3aed")}">
+        <div class="pendencia-op-modal-counts"></div>
+        <div class="pendencia-op-modal-filters"></div>
+        <div class="pendencia-op-modal-list"></div>
+      </div>
+    `,
+    width: 860,
+    showConfirmButton: false,
+    showCloseButton: true,
+    customClass: {
+      popup: "pendencia-op-modal-popup",
+    },
+    didOpen: (popup) => {
+      const items = Array.isArray(module.items) ? module.items : [];
+      const countsEl = popup.querySelector(".pendencia-op-modal-counts");
+      const filtersEl = popup.querySelector(".pendencia-op-modal-filters");
+      const listEl = popup.querySelector(".pendencia-op-modal-list");
+      const filterConfigs = obterFiltrosModuloPendencias(module)
+        .map((filtro) => ({
+          ...filtro,
+          options: obterOpcoesFiltroPendencias(items, module, filtro),
+        }))
+        .filter((filtro) => filtro.options.length > 1);
+
+      filtersEl.innerHTML = `
+        <label class="pendencia-op-filter pendencia-op-filter-search">
+          <span>Buscar</span>
+          <input type="search" data-filter-key="busca" placeholder="Obra, responsável, status...">
+        </label>
+        ${filterConfigs
+          .map(
+            (filtro) => `
+              <label class="pendencia-op-filter">
+                <span>${escapeKanbanText(filtro.label)}</span>
+                <select data-filter-key="${escapeKanbanText(filtro.key)}">
+                  <option value="">Todos</option>
+                  ${filtro.options
+                    .map(
+                      (option) =>
+                        `<option value="${escapeKanbanText(option.value)}">${escapeKanbanText(option.label)}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+            `,
+          )
+          .join("")}
+      `;
+
+      const render = () => {
+        const busca =
+          filtersEl.querySelector('[data-filter-key="busca"]')?.value || "";
+        const selects = filterConfigs.map((filtro) => ({
+          key: filtro.key,
+          value:
+            filtersEl.querySelector(`select[data-filter-key="${filtro.key}"]`)
+              ?.value || "",
+        }));
+        const filtrados = items.filter((item) =>
+          itemPassaFiltrosPendencias(item, module, { busca, selects }),
+        );
+        const contagens = calcularContagensPendencias(filtrados);
+
+        countsEl.innerHTML = `
+          <div><strong>${contagens.total}</strong><span>Total</span></div>
+          <div><strong>${contagens.criticas}</strong><span>Críticas</span></div>
+          <div><strong>${contagens.atrasadas}</strong><span>Em atraso</span></div>
+          <div><strong>${contagens.dentro}</strong><span>Dentro do SLA</span></div>
+        `;
+
+        listEl.innerHTML = "";
+        if (!filtrados.length) {
+          const empty = document.createElement("div");
+          empty.className = "pendencia-op-modal-empty";
+          empty.innerHTML = `
+            <i class="fa-solid fa-inbox"></i>
+            <strong>Nenhuma pendência encontrada</strong>
+            <span>Ajuste os filtros para ver outros itens.</span>
+          `;
+          listEl.appendChild(empty);
+          return;
+        }
+
+        filtrados.forEach((item) => {
+          listEl.appendChild(criarPendenciaOperacionalItem(item, module));
+        });
+      };
+
+      filtersEl.addEventListener("input", render);
+      filtersEl.addEventListener("change", render);
+      render();
+    },
+  });
+}
+
+function abrirPendenciaOperacional(item, module) {
+  if (item.checklist_id) {
+    abrirChecklistOperacionalModal(item);
+    return;
+  }
+
+  if (item.source_type === "flow_review" && item.metadata) {
+    abrirPendenciaFlowReview(item.metadata);
+    return;
+  }
+
+  const base = getImproovBaseUrl();
+  const action = item.action_url || "";
+  if (!action || action === "PaginaPrincipal") return;
+  window.open(`${base}/${action.replace(/^\/+/, "")}`, "_blank");
+}
+
+async function salvarChecklistOperacional(checklistId, values) {
+  const response = await fetch(
+    "PaginaPrincipal/update_checklist_operacional.php",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checklist_id: checklistId, items: values }),
+    },
+  );
+  const json = await response.json();
+  if (!response.ok || !json.success) {
+    throw new Error(json.message || "Nao foi possivel atualizar o checklist.");
+  }
+  return json;
+}
+
+function abrirChecklistOperacionalModal(item) {
+  const checklistId = Number(item.checklist_id || item.imagem_checklist_id || 0);
+  const checklistItems = item.checklist_items || item.imagem_checklist_items || [];
+  if (!checklistId || !Array.isArray(checklistItems)) return;
+
+  const rows = checklistItems
+    .map(
+      (check) => `
+        <label class="pendencia-check-row">
+          <input type="checkbox" data-check-key="${escapeKanbanText(check.item_key || "")}" ${Number(check.done || 0) === 1 ? "checked" : ""}>
+          <span>${escapeKanbanText(check.label || check.item_key || "")}</span>
+        </label>
+      `,
+    )
+    .join("");
+
+  Swal.fire({
+    title: item.title || "Checklist operacional",
+    html: `<div class="pendencia-check-list">${rows}</div>`,
+    confirmButtonText: "Salvar",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    preConfirm: async () => {
+      const values = {};
+      document
+        .querySelectorAll(".pendencia-check-row input[type='checkbox']")
+        .forEach((input) => {
+          values[input.dataset.checkKey] = input.checked ? 1 : 0;
+        });
+      try {
+        return await salvarChecklistOperacional(checklistId, values);
+      } catch (error) {
+        Swal.showValidationMessage(error.message);
+        return false;
+      }
+    },
+  }).then((result) => {
+    if (result.isConfirmed) {
+      carregarDados();
+    }
+  });
+}
+
 function abrirModalUploadFinalPendente(card) {
   if (!card || !cardModal) return;
 
@@ -552,16 +1081,18 @@ function processarDados(data) {
   });
 
   const pendenciasCol = document.getElementById("pendencias-flowreview");
-  const deveMostrarPendencias = data.mostrar_coluna_pendencias === true;
+  const temPendenciasOperacionais =
+    Array.isArray(data.pendencias_operacionais) &&
+    data.pendencias_operacionais.length > 0;
+  const deveMostrarPendencias = true;
   if (pendenciasCol) {
     pendenciasCol.style.display = deveMostrarPendencias ? "" : "none";
     pendenciasCol.querySelector(".content").innerHTML = "";
+    pendenciasCol.dataset.totalPendencias = "0";
   }
 
-  if (deveMostrarPendencias && Array.isArray(data.pendencias_flowreview)) {
-    data.pendencias_flowreview.forEach((item) =>
-      criarCardPendenciaFlowReview(item),
-    );
+  if (deveMostrarPendencias) {
+    renderizarPendenciasOperacionais(data);
   }
   renderizarCentralAtencao(data);
 
@@ -710,6 +1241,8 @@ function processarDados(data) {
       tipo === "imagem" && Number(item.requires_file_upload || 0) === 1;
     const hasPendingRender =
       tipo === "imagem" && Number(item.requires_render_send || 0) === 1;
+    const hasImageChecklist =
+      tipo === "imagem" && Number(item.imagem_checklist_pendente || 0) === 1;
     let cardEmHold = false;
     let imagemEmHold = false;
 
@@ -718,6 +1251,9 @@ function processarDados(data) {
     }
     if (hasPendingRender) {
       card.classList.add("render-pendente");
+    }
+    if (hasImageChecklist) {
+      card.classList.add("checklist-pendente");
     }
 
     if (tipo === "imagem") {
@@ -772,6 +1308,10 @@ function processarDados(data) {
       card.dataset.requiresRenderSend = String(
         Number(item.requires_render_send || 0),
       );
+      card.dataset.imagemChecklistPendente = String(
+        Number(item.imagem_checklist_pendente || 0),
+      );
+      card.dataset.imagemChecklistId = item.imagem_checklist_id || "";
       card.dataset.nomeObraReal = item.nome_obra || "";
 
       // Unified pair attributes
@@ -947,6 +1487,7 @@ function processarDados(data) {
     card.innerHTML = `
                     ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ""}
                     ${hasPendingRender ? `<div class="pending-render-ribbon${hasPendingFile ? " below-file-ribbon" : ""}"><i class="ri-send-plane-line"></i> Enviar render</div>` : ""}
+                    ${hasImageChecklist ? `<div class="pending-checklist-ribbon${hasPendingFile || hasPendingRender ? " below-file-ribbon" : ""}"><i class="ri-checkbox-line"></i> Checklist</div>` : ""}
                     <div class="header-kanban">
                         ${funcaoBadgeHTML}
                         ${bolinhaHTML}
@@ -1012,6 +1553,14 @@ function processarDados(data) {
         const idImagem = card.dataset.idImagem;
         abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "", true);
       } else if (card.classList.contains("tarefa-imagem")) {
+        if (Number(item.imagem_checklist_pendente || 0) === 1) {
+          abrirChecklistOperacionalModal({
+            title: titulo || "Checklist da imagem",
+            checklist_id: item.imagem_checklist_id,
+            checklist_items: item.imagem_checklist_items || [],
+          });
+          return;
+        }
         if (card.dataset.requiresFileUpload === "1") {
           Swal.fire({
             icon: "warning",
@@ -1068,6 +1617,9 @@ function processarDados(data) {
   }
 
   document.querySelectorAll(".kanban-box .content").forEach((container) => {
+    if (container.closest("#pendencias-flowreview")) {
+      return;
+    }
     if (!container.querySelector(".kanban-card")) {
       const empty = document.createElement("div");
       empty.className = "empty-state no-drag";
@@ -2527,7 +3079,10 @@ function atualizarTaskCount() {
       },
     );
 
-    const count = cards.length;
+    let count = cards.length;
+    if (box.id === "pendencias-flowreview" && box.dataset.totalPendencias) {
+      count = Number(box.dataset.totalPendencias || 0);
+    }
     const badge = box.querySelector(".task-count");
     if (badge) badge.textContent = count;
 
@@ -2538,7 +3093,6 @@ function atualizarTaskCount() {
         "aprovado",
         "aprovado-ajustes",
         "aguardando-direcao",
-        "pendencias-flowreview",
       ].includes(box.id)
     ) {
       box.style.display = count === 0 ? "none" : "";

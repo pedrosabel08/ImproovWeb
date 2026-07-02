@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 function dashboard_table_has_column(mysqli $conn, string $table, string $column): bool
 {
@@ -288,6 +289,8 @@ function dashboard_finalize_onboarding_if_ready(mysqli $conn, int $obraId, ?int 
             $updateStmt->close();
         }
     }
+
+    pendencias_operacionais_ensure_project_checklist($conn, $obraId, $colaboradorId);
 
     return ['completed' => true, 'pending_items' => 0];
 }

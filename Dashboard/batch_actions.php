@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/review_cobranca_lib.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 // Recebe os dados enviados via AJAX
 $data = json_decode(file_get_contents('php://input'), true);
@@ -81,6 +82,12 @@ try {
         $novoSubstatusId = (int) $campos['substatus_id'];
         foreach ($ids as $imagemId) {
             entregas_review_sync_p00_batch_state($conn, (int) $imagemId, null, $novoSubstatusId);
+        }
+    }
+
+    if (isset($campos['substatus_id']) || isset($campos['subtipo_id']) || isset($campos['tipo_imagem'])) {
+        foreach ($ids as $imagemId) {
+            pendencias_operacionais_sync_image_checklist($conn, (int) $imagemId);
         }
     }
 

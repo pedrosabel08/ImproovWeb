@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -122,6 +123,7 @@ try {
             }
         }
 
+        pendencias_operacionais_sync_image_checklist($conn, $imageId);
         $updatedImages[] = $imageId;
     }
 

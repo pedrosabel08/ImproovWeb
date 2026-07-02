@@ -8,6 +8,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 // Verifica conexão
 if (!isset($conn) || !$conn) {
@@ -114,6 +115,8 @@ foreach ($data as $idx => $image) {
         $success = false;
         continue;
     }
+
+    pendencias_operacionais_sync_image_checklist($conn, $idimagem);
 
     $conn->commit();
 }

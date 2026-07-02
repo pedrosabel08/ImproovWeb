@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 header('Content-Type: application/json');
 
@@ -305,7 +306,8 @@ foreach (($queueDataset['groups'] ?? []) as $queueGroup) {
 }
 
 foreach ($response['imagens'] as &$imageRow) {
-    $queueRow = $queueByImage[(int) ($imageRow['imagem_id'] ?? 0)] ?? null;
+    $imagemId = (int) ($imageRow['imagem_id'] ?? 0);
+    $queueRow = $queueByImage[$imagemId] ?? null;
     $imageRow['fila_planejada_todo'] = (int) ($queueRow['fila_planejada'] ?? 0);
     $imageRow['fila_execucao_pendente'] = (int) ($queueRow['fila_execucao'] ?? 0);
     $imageRow['fila_total_operacional'] = $imageRow['fila_planejada_todo'] + $imageRow['fila_execucao_pendente'];
@@ -321,6 +323,14 @@ foreach ($response['imagens'] as &$imageRow) {
         }
     }
     $imageRow['planned_unlinked_funcoes'] = array_keys($unlinked);
+
+    pendencias_operacionais_sync_image_checklist($conn, $imagemId);
+    $checklistRow = pendencias_operacionais_find_checklist($conn, 'imagem', 'imagem', $imagemId);
+    $checklistCard = pendencias_operacionais_image_checklist_for_card($conn, $imagemId);
+    $imageRow['imagem_checklist_pendente'] = $checklistCard ? 1 : 0;
+    $imageRow['imagem_checklist_id'] = $checklistCard['id'] ?? null;
+    $imageRow['imagem_checklist_items'] = $checklistCard['items'] ?? [];
+    $imageRow['imagem_checklist_status'] = $checklistRow['status'] ?? null;
 }
 unset($imageRow);
 

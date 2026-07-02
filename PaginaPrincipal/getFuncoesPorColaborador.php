@@ -1,10 +1,15 @@
 <?php
 header('Content-Type: application/json');
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 // Conectar ao banco de dados
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
+$nivelAcesso = isset($_SESSION['nivel_acesso']) ? (int) $_SESSION['nivel_acesso'] : 0;
 date_default_timezone_set('America/Sao_Paulo');
 
 // ====================
@@ -54,7 +59,7 @@ $sql = "SELECT
              FROM historico_aprovacoes ha
              WHERE ha.funcao_imagem_id = fi.idfuncao_imagem
                AND ha.status_novo IN ('Aprovado', 'Aprovado com ajustes')
-               AND ha.responsavel IN (21, 2, 31)
+               AND ha.responsavel IN (21, 2, 9, 31)
                AND NOT EXISTS (
                    SELECT 1
                    FROM historico_aprovacoes ha2
@@ -241,7 +246,8 @@ if (!$isPedroPendencias && !$isNicollePendencias && !$isDirecaoPendencias) {
     }
 }
 
-$mostrarColunaPendencias = $isPedroPendencias || $isNicollePendencias || $isDirecaoPendencias || $isFinalizadorPendencias;
+$mostrarPendenciasFlowReview = $isPedroPendencias || $isNicollePendencias || $isDirecaoPendencias || $isFinalizadorPendencias;
+$mostrarColunaPendencias = true;
 $hasSlaFuncao = false;
 $resSla = $conn->query("SHOW TABLES LIKE 'sla_funcao'");
 if ($resSla && $resSla->num_rows > 0) {
@@ -337,7 +343,7 @@ if (!function_exists('pendenciasFlowReviewMinutosUteisDecorridos')) {
     }
 }
 
-if ($mostrarColunaPendencias) {
+if ($mostrarPendenciasFlowReview) {
     $pendenciasExtraJoin = '';
     $pendenciasWhere = '';
     $pendenciasTipo = "'Aprovação'";
@@ -1021,11 +1027,32 @@ if (!empty($suppressedIndexes)) {
 // ====================
 // RESPONSE FINAL ÚNICO
 // ====================
+$pendenciasOperacionais = pendencias_operacionais_fetch($conn, $colaboradorId, $nivelAcesso, $pendenciasFlowReview);
+
+// foreach ($funcoesFinal as &$funcaoFinal) {
+//     $imagemIdChecklist = isset($funcaoFinal['imagem_id']) ? (int) $funcaoFinal['imagem_id'] : 0;
+//     $checklistImagem = $imagemIdChecklist > 0
+//         ? pendencias_operacionais_image_checklist_for_card($conn, $imagemIdChecklist)
+//         : null;
+
+//     if ($checklistImagem) {
+//         $funcaoFinal['imagem_checklist_pendente'] = 1;
+//         $funcaoFinal['imagem_checklist_id'] = (int) $checklistImagem['checklist_id'];
+//         $funcaoFinal['imagem_checklist_items'] = $checklistImagem['items'];
+//     } else {
+//         $funcaoFinal['imagem_checklist_pendente'] = 0;
+//         $funcaoFinal['imagem_checklist_id'] = null;
+//         $funcaoFinal['imagem_checklist_items'] = [];
+//     }
+// }
+unset($funcaoFinal);
+
 $response = [
     "funcoes"                 => $funcoesFinal,
     "tarefas"                 => $tarefas,
     "mostrar_coluna_pendencias" => $mostrarColunaPendencias,
     "pendencias_flowreview"   => $pendenciasFlowReview,
+    "pendencias_operacionais" => $pendenciasOperacionais,
     "media_tempo_em_andamento" => $mediaTemposPorFuncao
 ];
 

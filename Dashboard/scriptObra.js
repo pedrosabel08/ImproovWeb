@@ -674,6 +674,180 @@ let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
 let linhasTabela = [];
 // Guarda os dados de imagens carregados para uso nos filtros
 let dadosImagens = [];
+const imagemChecklistsOperacionais = new Map();
+
+function checklistImagemEscapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function checklistImagemPossuiPendencias(items) {
+  return (items || []).some(
+    (item) => Number(item.required || 0) === 1 && Number(item.done || 0) !== 1,
+  );
+}
+
+function normalizarChecklistImagem(item) {
+  const checklistId = Number(item?.imagem_checklist_id || 0);
+  const items = Array.isArray(item?.imagem_checklist_items)
+    ? item.imagem_checklist_items
+    : [];
+  const pendente =
+    Number(item?.imagem_checklist_pendente || 0) === 1 ||
+    checklistImagemPossuiPendencias(items);
+
+  if (!checklistId || !pendente) {
+    return null;
+  }
+
+  return {
+    imagem_id: Number(item.imagem_id || 0),
+    imagem_nome: item.imagem_nome || "Imagem",
+    checklist_id: checklistId,
+    status: item.imagem_checklist_status || "aberto",
+    items,
+  };
+}
+
+function atualizarChecklistImagemCache(imagens) {
+  imagemChecklistsOperacionais.clear();
+  (imagens || []).forEach((item) => {
+    const checklist = normalizarChecklistImagem(item);
+    if (checklist && checklist.imagem_id) {
+      imagemChecklistsOperacionais.set(String(checklist.imagem_id), checklist);
+    }
+  });
+}
+
+function obterChecklistImagemPendente(imagemId) {
+  return imagemChecklistsOperacionais.get(String(imagemId)) || null;
+}
+
+async function salvarChecklistImagemOperacional(checklistId, items) {
+  const response = await fetch("../PaginaPrincipal/update_checklist_operacional.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      checklist_id: checklistId,
+      items,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Nao foi possivel atualizar o checklist.");
+  }
+  return data;
+}
+
+async function abrirChecklistImagemOperacional(checklist, options = {}) {
+  if (!checklist || !checklist.checklist_id) {
+    return { resolved: false };
+  }
+
+  const itemsHtml = (checklist.items || [])
+    .map((item) => {
+      const itemKey = String(item.item_key || "");
+      const isAutomatico = itemKey === "subtipo_definido";
+      const isObrigatorio = Number(item.required || 0) === 1;
+      const checked = Number(item.done || 0) === 1 ? "checked" : "";
+      const disabled = isAutomatico ? "disabled" : "";
+      const meta = isAutomatico
+        ? "Automático"
+        : isObrigatorio
+          ? "Obrigatório"
+          : "Opcional";
+
+      return `
+        <label class="imagem-checklist-row ${disabled ? "imagem-checklist-row--locked" : ""}">
+          <input
+            type="checkbox"
+            data-item-key="${checklistImagemEscapeHtml(itemKey)}"
+            data-manual="${isAutomatico ? "0" : "1"}"
+            ${checked}
+            ${disabled}
+          >
+          <span class="imagem-checklist-row__text">
+            <strong>${checklistImagemEscapeHtml(item.label || itemKey)}</strong>
+            <small>${checklistImagemEscapeHtml(meta)}</small>
+          </span>
+        </label>`;
+    })
+    .join("");
+
+  if (typeof Swal === "undefined" || !Swal.fire) {
+    alert("Conclua o checklist operacional da imagem antes de continuar.");
+    return { resolved: false };
+  }
+
+  const result = await Swal.fire({
+    title: "Checklist da imagem",
+    html: `
+      <div class="imagem-checklist-modal">
+        <p>${checklistImagemEscapeHtml(checklist.imagem_nome)}</p>
+        <div class="imagem-checklist-list">${itemsHtml}</div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Salvar",
+    cancelButtonText: "Cancelar",
+    focusConfirm: false,
+    width: 520,
+    customClass: {
+      popup: "imagem-checklist-swal",
+    },
+    preConfirm: async () => {
+      const values = {};
+      document
+        .querySelectorAll('.imagem-checklist-modal input[data-manual="1"]')
+        .forEach((input) => {
+          values[input.dataset.itemKey] = input.checked ? 1 : 0;
+        });
+
+      try {
+        return await salvarChecklistImagemOperacional(
+          checklist.checklist_id,
+          values,
+        );
+      } catch (error) {
+        Swal.showValidationMessage(error.message || "Erro ao salvar checklist.");
+        return false;
+      }
+    },
+  });
+
+  if (!result.isConfirmed || !result.value) {
+    return { resolved: false };
+  }
+
+  const aindaPendente =
+    result.value.status !== "concluido" ||
+    checklistImagemPossuiPendencias(result.value.items || []);
+
+  if (aindaPendente) {
+    Toastify({
+      text: "Ainda existem itens pendentes no checklist da imagem.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "linear-gradient(to right, #b00000ff, #e97171ff)",
+    }).showToast();
+    return { resolved: false };
+  }
+
+  imagemChecklistsOperacionais.delete(String(checklist.imagem_id));
+  infosObra(obraId);
+  if (typeof options.onResolved === "function") {
+    options.onResolved();
+  }
+
+  return { resolved: true };
+}
 
 function addEventListenersToRows() {
   linhasTabela = document.querySelectorAll(".linha-tabela");
@@ -845,6 +1019,14 @@ function addEventListenersToRows() {
       indiceImagemAtual = idsImagensObra.indexOf(parseInt(idImagemSelecionada));
 
       console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+
+      const checklistPendente = obterChecklistImagemPendente(idImagemSelecionada);
+      if (checklistPendente) {
+        abrirChecklistImagemOperacional(checklistPendente, {
+          onResolved: () => atualizarModal(idImagemSelecionada),
+        });
+        return;
+      }
 
       atualizarModal(idImagemSelecionada);
     });
@@ -4148,6 +4330,7 @@ function infosObra(obraId) {
       }
       // Guarda os dados carregados globalmente para filtros
       dadosImagens = data.imagens || [];
+      atualizarChecklistImagemCache(dadosImagens);
 
       // Briefing (Arquivos): renderiza baseado nos tipos presentes na obra
       try {
@@ -4307,6 +4490,14 @@ function infosObra(obraId) {
         row.classList.add("linha-tabela");
         row.setAttribute("data-id", item.imagem_id);
         row.setAttribute("data-status-id", item.status_id ?? "");
+        row.setAttribute(
+          "data-imagem-checklist-pendente",
+          item.imagem_checklist_pendente ? "1" : "0",
+        );
+        row.setAttribute("data-imagem-checklist-id", item.imagem_checklist_id ?? "");
+        if (item.imagem_checklist_pendente) {
+          row.classList.add("linha-checklist-pendente");
+        }
         row.setAttribute("tipo-imagem", item.tipo_imagem);
         row.setAttribute(
           "data-imagem-busca",
@@ -4348,6 +4539,12 @@ function infosObra(obraId) {
           }
           subtipoBadge.textContent = item.subtipo_nome;
           cellNomeImagem.appendChild(subtipoBadge);
+        }
+        if (item.imagem_checklist_pendente) {
+          const checklistBadge = document.createElement("span");
+          checklistBadge.className = "subtipo-badge imagem-checklist-badge";
+          checklistBadge.textContent = "Checklist";
+          cellNomeImagem.appendChild(checklistBadge);
         }
         cellNomeImagem.setAttribute("antecipada", item.antecipada);
         cellNomeImagem.setAttribute("data-field", "nome_imagem");

@@ -4,6 +4,7 @@
 include 'conexao.php';
 require_once __DIR__ . '/Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/Entregas/review_cobranca_lib.php';
+require_once __DIR__ . '/helpers/pendencias_operacionais_helper.php';
 
 header('Content-Type: application/json');
 
@@ -69,6 +70,7 @@ if (isset($_POST['imagem_id']) && isset($_POST['status_id'])) {
     }
 
     entregas_review_sync_p00_batch_state($conn, $imagem_id, null, $status_id);
+    pendencias_operacionais_sync_image_checklist($conn, $imagem_id);
 
     $conn->commit();
     echo json_encode(['success' => true]);

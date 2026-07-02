@@ -3093,6 +3093,7 @@ function atualizarTaskCount() {
         "aprovado",
         "aprovado-ajustes",
         "aguardando-direcao",
+        "pendencias-flowreview",
       ].includes(box.id)
     ) {
       box.style.display = count === 0 ? "none" : "";

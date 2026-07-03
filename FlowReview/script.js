@@ -2601,20 +2601,25 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
                 .replace(/[\u0300-\u036f]/g, "")
                 .toLowerCase()
                 .trim();
+            const currentApprovalStatus = normalizeApprovalStatus(
+              tarefaAtual?.status || item?.status || item?.status_novo,
+            );
             const approver =
-              [...historico]
-                .filter((h) => h.responsavel && h.responsavel !== "0")
-                .sort(
-                  (a, b) =>
-                    new Date(b.data_aprovacao || b.data || 0) -
-                    new Date(a.data_aprovacao || a.data || 0),
-                )
-                .find(
-                  (h) =>
-                    !normalizeApprovalStatus(
-                      h.status_novo || h.status,
-                    ).startsWith("em aprova"),
-                ) || null;
+              currentApprovalStatus.startsWith("em aprova")
+                ? null
+                : [...historico]
+                    .filter((h) => h.responsavel && h.responsavel !== "0")
+                    .sort(
+                      (a, b) =>
+                        new Date(b.data_aprovacao || b.data || 0) -
+                        new Date(a.data_aprovacao || a.data || 0),
+                    )
+                    .find(
+                      (h) =>
+                        !normalizeApprovalStatus(
+                          h.status_novo || h.status,
+                        ).startsWith("em aprova"),
+                    ) || null;
             if (approver) {
               const name = approver.responsavel_nome || "—";
               const status = approver.status_novo || approver.status || "—";

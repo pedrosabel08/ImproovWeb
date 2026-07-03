@@ -22,6 +22,32 @@ function canViewFrKpiScope(scope) {
   return Boolean(frKpiPermissions[scope]);
 }
 
+function getTaskTipo(tarefa) {
+  return tarefa?.tipo_tarefa || (tarefa?.funcao_animacao_id ? "animacao" : "imagem");
+}
+
+function getTaskRefId(tarefa) {
+  return tarefa?.funcao_ref_id || tarefa?.idfuncao_imagem || tarefa?.funcao_animacao_id;
+}
+
+function isVideoMedia(media) {
+  const tipo = String(media?.media_tipo || "").toLowerCase();
+  const mime = String(media?.mime_type || "").toLowerCase();
+  const path = String(media?.imagem || "");
+  return (
+    tipo === "video" ||
+    mime.startsWith("video/") ||
+    /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(path)
+  );
+}
+
+function formatVideoTime(ms) {
+  const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const params = new URLSearchParams(window.location.search);
   const obraNome = params.get("obra_nome");
@@ -111,6 +137,8 @@ async function revisarTarefa(
   colaborador_id,
   imagem_id,
   tipoRevisao,
+  tipo_tarefa = "imagem",
+  funcao_animacao_id = null,
 ) {
   event.stopPropagation();
 
@@ -207,6 +235,8 @@ async function revisarTarefa(
         responsavel: idcolaborador,
         imagem_id,
         tipoRevisao,
+        tipo_tarefa,
+        funcao_animacao_id,
         historico_id: ap_imagem_id ?? null,
       }),
     });
@@ -1412,12 +1442,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       const taskItem = document.createElement("div");
       taskItem.classList.add("task-item");
       taskItem.addEventListener("click", () => {
-        historyAJAX(
-          tarefa.idfuncao_imagem,
-          tarefa.nome_funcao,
-          tarefa.imagem_nome,
-          tarefa.nome_colaborador,
-        );
+        historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa));
       });
 
       const imagemPreview = tarefa.imagem
@@ -2452,8 +2477,12 @@ async function enviarFuncaoParaAjustes() {
   }
 }
 
-function historyAJAX(idfuncao_imagem) {
+function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
   funcaoImagemId = idfuncao_imagem;
+  const tarefaAtualPre = dadosTarefas.find(
+    (t) => String(t.idfuncao_imagem) === String(idfuncao_imagem),
+  );
+  const tipoTarefaAtual = tipo_tarefa || getTaskTipo(tarefaAtualPre);
 
   // Marca menções desta tarefa como vistas e atualiza badges
   fetch("marcar_mencoes_visto.php", {
@@ -2476,7 +2505,9 @@ function historyAJAX(idfuncao_imagem) {
     }
   });
 
-  fetch(`historico.php?ajid=${idfuncao_imagem}`)
+  fetch(
+    `historico.php?ajid=${encodeURIComponent(String(idfuncao_imagem))}&tipo_tarefa=${encodeURIComponent(tipoTarefaAtual)}`,
+  )
     .then((response) => response.json())
     .then((response) => {
       // console.log("Funcao Imagem:", idfuncao_imagem);
@@ -2529,8 +2560,13 @@ function historyAJAX(idfuncao_imagem) {
 
       // Sincroniza sidebarTabulator com a função da tarefa aberta
       const tarefaAtual = dadosTarefas.find(
-        (t) => t.idfuncao_imagem == idfuncao_imagem,
+        (t) => String(t.idfuncao_imagem) === String(idfuncao_imagem),
       );
+      if (currentFuncaoContext) {
+        currentFuncaoContext.tipo_tarefa = tipoTarefaAtual;
+        currentFuncaoContext.funcao_animacao_id =
+          tarefaAtual?.funcao_animacao_id || item?.funcao_animacao_id || null;
+      }
       if (tarefaAtual && window._stabSetFuncao) {
         window._stabSetFuncao(tarefaAtual.nome_funcao, idfuncao_imagem);
       } else if (window._stabSetActive) {
@@ -2553,10 +2589,32 @@ function historyAJAX(idfuncao_imagem) {
           approvalContainer.style.display = "none";
           if (Array.isArray(historico) && historico.length > 0) {
             // procura o último registro com 'responsavel' preenchido
-            const reversed = [...historico].slice().reverse();
+            const normalizeApprovalStatus = (value) =>
+              String(value || "")
+                .replace(/Ã§/g, "c")
+                .replace(/Ã£/g, "a")
+                .replace(/Ã¡/g, "a")
+                .replace(/Ã©/g, "e")
+                .replace(/Ãª/g, "e")
+                .replace(/Ã³/g, "o")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .trim();
             const approver =
-              reversed.find((h) => h.responsavel && h.responsavel !== "0") ||
-              null;
+              [...historico]
+                .filter((h) => h.responsavel && h.responsavel !== "0")
+                .sort(
+                  (a, b) =>
+                    new Date(b.data_aprovacao || b.data || 0) -
+                    new Date(a.data_aprovacao || a.data || 0),
+                )
+                .find(
+                  (h) =>
+                    !normalizeApprovalStatus(
+                      h.status_novo || h.status,
+                    ).startsWith("em aprova"),
+                ) || null;
             if (approver) {
               const name = approver.responsavel_nome || "—";
               const status = approver.status_novo || approver.status || "—";
@@ -2721,15 +2779,23 @@ function historyAJAX(idfuncao_imagem) {
               (r) => r.checked,
             )?.value;
             if (!selected) return;
+            const tipoRevisaoTarefa = getTaskTipo(tarefaAtual);
+            const tarefaRefId =
+              getTaskRefId(tarefaAtual) ||
+              item.funcao_animacao_id ||
+              item.idfuncao_imagem ||
+              item.funcao_imagem_id;
 
             revisarTarefa(
-              item.funcao_imagem_id,
+              tarefaRefId,
               item.colaborador_nome,
               item.imagem_nome,
               item.nome_funcao,
               item.colaborador_id,
               item.imagem_id,
               selected,
+              tipoRevisaoTarefa,
+              tipoRevisaoTarefa === "animacao" ? tarefaRefId : null,
             );
 
             modal.classList.add("hidden");
@@ -2875,10 +2941,12 @@ function historyAJAX(idfuncao_imagem) {
               mostrarPdfCompleto(pdfRawUrl, pdfDownloadUrl, nome, pdf.id);
               pdfShownOnce = true;
             } else {
-              mostrarImagemCompleta(
-                `https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`,
-                maisRecente.id,
-              );
+              const mediaUrl = `https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`;
+              if (isVideoMedia(maisRecente)) {
+                mostrarVideoCompleto(mediaUrl, maisRecente.id, maisRecente);
+              } else {
+                mostrarImagemCompleta(mediaUrl, maisRecente.id);
+              }
             }
           }
 
@@ -2902,17 +2970,40 @@ function historyAJAX(idfuncao_imagem) {
               wrapper.style.outline = "2px solid transparent";
             }
 
-            const imgElement = document.createElement("img");
             // thumbnail for gallery thumbnails; clicking opens full image via mostrarImagemCompleta
             const fullImageUrl = `https://improov.com.br/flow/ImproovWeb/${encodeURI(img.imagem)}`;
-            imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.imagem)}&w=200&q=85`;
-            imgElement.alt = img.imagem;
-            imgElement.className = "image";
-            imgElement.setAttribute("data-id", img.id);
-
-            imgElement.addEventListener("click", () => {
-              mostrarImagemCompleta(fullImageUrl, img.id);
-            });
+            let imgElement;
+            if (isVideoMedia(img)) {
+              if (img.poster_path) {
+                imgElement = document.createElement("button");
+                imgElement.type = "button";
+                imgElement.className = "image video-thumb video-thumb--poster";
+                imgElement.setAttribute("data-id", img.id);
+                const posterThumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.poster_path)}&w=200&q=85`;
+                imgElement.innerHTML = `<img src="${posterThumb}" alt="${escapeHtml(img.imagem || "Vídeo")}"><span class="video-thumb-play"><i class="fa-solid fa-play"></i></span>`;
+                imgElement.addEventListener("click", () => {
+                  mostrarVideoCompleto(fullImageUrl, img.id, img);
+                });
+              } else {
+                imgElement = document.createElement("button");
+                imgElement.type = "button";
+                imgElement.className = "image video-thumb";
+                imgElement.setAttribute("data-id", img.id);
+                imgElement.innerHTML = '<i class="fa-solid fa-play"></i><span>Vídeo</span>';
+                imgElement.addEventListener("click", () => {
+                  mostrarVideoCompleto(fullImageUrl, img.id, img);
+                });
+              }
+            } else {
+              imgElement = document.createElement("img");
+              imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.imagem)}&w=200&q=85`;
+              imgElement.alt = img.imagem;
+              imgElement.className = "image";
+              imgElement.setAttribute("data-id", img.id);
+              imgElement.addEventListener("click", () => {
+                mostrarImagemCompleta(fullImageUrl, img.id);
+              });
+            }
 
             // imgElement.addEventListener("contextmenu", (event) => {
             //   event.preventDefault();
@@ -3091,7 +3182,7 @@ function exibirSidebarTabulator(tarefas) {
           .querySelectorAll(".tarefa-item")
           .forEach((el) => el.classList.remove("active"));
         item.classList.add("active");
-        historyAJAX(t.idfuncao_imagem);
+        historyAJAX(t.idfuncao_imagem, getTaskTipo(t));
       });
       itemsDiv.appendChild(item);
     });
@@ -3696,6 +3787,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
+let currentMediaMode = "image";
+let currentVideoTimeMs = null;
 
 // Estado do PDF (arquivo_log) quando em modo PDF
 const pdfViewerState = {
@@ -3838,6 +3931,8 @@ function mostrarPdfCompleto(
   arquivoLogId = null,
 ) {
   ap_imagem_id = null;
+  currentMediaMode = "pdf";
+  currentVideoTimeMs = null;
   currentDownloadUrl = downloadUrl || rawUrl || null;
 
   pdfViewerState.logId = arquivoLogId ? String(arquivoLogId) : null;
@@ -3868,6 +3963,7 @@ function mostrarPdfCompleto(
 
     imagem_completa.style.width = "90%";
 
+    imageWrapper.classList.remove("video-mode");
     imageWrapper.classList.add("pdf-mode");
 
     const toolbar = document.createElement("div");
@@ -4036,6 +4132,8 @@ function mostrarPdfCompleto(
 function mostrarImagemCompleta(src, id) {
   closeCommentPopup();
   ap_imagem_id = id;
+  currentMediaMode = "image";
+  currentVideoTimeMs = null;
   currentDownloadUrl = src || null;
 
   // Sai do modo PDF
@@ -4062,7 +4160,7 @@ function mostrarImagemCompleta(src, id) {
     if (leftIcon) leftIcon.className = "fa-solid fa-chevron-left";
   }
 
-  imageWrapper.classList.remove("pdf-mode");
+  imageWrapper.classList.remove("pdf-mode", "video-mode");
 
   while (imageWrapper.firstChild) {
     imageWrapper.removeChild(imageWrapper.firstChild);
@@ -4176,6 +4274,155 @@ function mostrarImagemCompleta(src, id) {
       preview.style.height = "0";
       imageWrapper.appendChild(preview);
     }
+  });
+}
+
+function startDrawingOnReviewElement(event, refElement, containerElement) {
+  if (event.button !== undefined && event.button !== 0) return;
+  if (event.ctrlKey) return;
+  if (drawingTool === "ponto") return;
+  event.stopPropagation();
+
+  isDrawing = true;
+  dragMoved = false;
+  const rect = refElement.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+  drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+  drawStartClientX = event.clientX;
+  drawStartClientY = event.clientY;
+  shapeX2 = drawStartX;
+  shapeY2 = drawStartY;
+  currentDrawRef = refElement;
+
+  if (currentMediaMode === "video" && refElement.currentTime !== undefined) {
+    currentVideoTimeMs = Math.max(0, Math.round((refElement.currentTime || 0) * 1000));
+  }
+
+  if (drawingTool === "freehand") {
+    freehandPoints = [[drawStartX, drawStartY]];
+    const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+    containerElement.appendChild(svg);
+    freehandSvgPreview = svg;
+    freehandPolylineEl = svg.querySelector("polyline");
+    freehandDrawContainer = containerElement;
+  } else {
+    const preview = document.createElement("div");
+    preview.id = "drawing-preview";
+    preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+    preview.style.left = `${drawStartX}%`;
+    preview.style.top = `${drawStartY}%`;
+    preview.style.width = "0";
+    preview.style.height = "0";
+    containerElement.appendChild(preview);
+  }
+}
+
+function mostrarVideoCompleto(src, id, media = {}) {
+  closeCommentPopup();
+  ap_imagem_id = id;
+  currentMediaMode = "video";
+  currentVideoTimeMs = null;
+  currentDownloadUrl = src || null;
+
+  pdfViewerState.logId = null;
+  pdfViewerState.rawUrl = null;
+  pdfViewerState.doc = null;
+  pdfViewerState.page = 1;
+  pdfViewerState.pages = 0;
+
+  const imageWrapper = document.getElementById("image_wrapper");
+
+  const sidebar = document.querySelector(".sidebar-direita");
+  if (sidebar) {
+    sidebar.classList.remove("collapsed");
+    sidebar.style.display = "flex";
+    const rightIcon = document.querySelector("#right-collapse-btn i");
+    if (rightIcon) rightIcon.className = "fa-solid fa-chevron-right";
+  }
+  const wrapperSb = document.querySelector(".wrapper-sidebar");
+  if (wrapperSb) {
+    wrapperSb.classList.remove("collapsed");
+    const leftIcon = document.querySelector("#left-collapse-btn i");
+    if (leftIcon) leftIcon.className = "fa-solid fa-chevron-left";
+  }
+
+  imageWrapper.classList.remove("pdf-mode");
+  imageWrapper.classList.add("video-mode");
+  while (imageWrapper.firstChild) {
+    imageWrapper.removeChild(imageWrapper.firstChild);
+  }
+
+  const generalBtn = document.createElement("button");
+  generalBtn.type = "button";
+  generalBtn.className = "video-general-comment-btn";
+  generalBtn.textContent = "Comentário geral";
+  generalBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    relativeX = null;
+    relativeY = null;
+    currentVideoTimeMs = null;
+    _editingCommentId = null;
+    if (quillComentario) quillComentario.setContents([]);
+    const modalTitle = document.querySelector("#comentarioModal h3");
+    if (modalTitle) modalTitle.textContent = "Novo Comentário";
+    document.getElementById("imagemComentario").value = "";
+    openCommentModalAtPoint(event.clientX, event.clientY);
+    mencionadosIds = [];
+  });
+
+  const videoElement = document.createElement("video");
+  videoElement.id = "video_atual";
+  videoElement.className = "approval-video";
+  videoElement.src = src;
+  videoElement.controls = true;
+  videoElement.playsInline = true;
+  videoElement.preload = "metadata";
+  if (media.poster_path) {
+    videoElement.poster = `https://improov.com.br/flow/ImproovWeb/${media.poster_path}`;
+  }
+
+  imageWrapper.appendChild(generalBtn);
+  imageWrapper.appendChild(videoElement);
+
+  renderComments(id);
+  ajustarNavSelectAoTamanhoDaImagem();
+
+  videoElement.addEventListener("click", function (event) {
+    if (dragMoved) return;
+    if (drawingTool !== "ponto") return;
+    if (_replyingToCommentId !== null) return;
+
+    const rect = videoElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+    relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+    currentVideoTimeMs = Math.max(
+      0,
+      Math.round((videoElement.currentTime || 0) * 1000),
+    );
+
+    _editingCommentId = null;
+    if (quillComentario) quillComentario.setContents([]);
+    const modalTitle = document.querySelector("#comentarioModal h3");
+    if (modalTitle)
+      modalTitle.textContent = `Novo Comentário (${formatVideoTime(currentVideoTimeMs)})`;
+    document.getElementById("imagemComentario").value = "";
+
+    showCommentPreview();
+    openCommentModalAtPoint(event.clientX, event.clientY);
+    mencionadosIds = [];
+  });
+
+  videoElement.addEventListener("mousedown", function (event) {
+    startDrawingOnReviewElement(event, videoElement, imageWrapper);
+  });
+
+  videoElement.addEventListener("pointerdown", function (event) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    startDrawingOnReviewElement(event, videoElement, imageWrapper);
   });
 }
 
@@ -4418,8 +4665,15 @@ document.getElementById("enviarComentario").onclick = async () => {
   } else {
     formData.append("ap_imagem_id", ap_imagem_id);
   }
-  formData.append("x", relativeX);
-  formData.append("y", relativeY);
+  if (relativeX !== null && relativeX !== undefined && relativeX !== "") {
+    formData.append("x", relativeX);
+  }
+  if (relativeY !== null && relativeY !== undefined && relativeY !== "") {
+    formData.append("y", relativeY);
+  }
+  if (currentMediaMode === "video" && currentVideoTimeMs !== null) {
+    formData.append("video_time_ms", String(currentVideoTimeMs));
+  }
   formData.append("tipo", drawingTool);
   formData.append("cor", drawingColor);
   if (drawingTool === "freehand") {
@@ -4560,7 +4814,7 @@ function createFreehandPreviewSvg(startX, startY) {
 // ---- Atualiza badge de comentários na thumbnail da nav lateral --------------
 function _atualizarBadgeImagem(apImagemId, total, pendentes) {
   const imgEl = document.querySelector(
-    `#imagens .imageWrapper img[data-id="${apImagemId}"]`,
+    `#imagens .imageWrapper [data-id="${apImagemId}"]`,
   );
   if (!imgEl) return;
   const wrapper = imgEl.closest(".imageWrapper");
@@ -4763,6 +5017,7 @@ async function renderComments(id) {
   const imagemCompletaDiv = document.getElementById("image_wrapper");
 
   const isPdf = typeof id === "object" && id && id.arquivo_log_id;
+  const isVideo = !isPdf && currentMediaMode === "video";
   const markerContainer = isPdf
     ? document.getElementById("pdf_comment_layer") || imagemCompletaDiv
     : imagemCompletaDiv;
@@ -4833,11 +5088,30 @@ async function renderComments(id) {
       isPdf && comentario.pagina
         ? `<div class="comment-page">Pág. ${comentario.pagina}</div>`
         : "";
+    const videoTimeInfo =
+      isVideo &&
+      comentario.video_time_ms !== null &&
+      comentario.video_time_ms !== undefined &&
+      comentario.video_time_ms !== ""
+        ? `<button type="button" class="comment-video-time" data-video-time="${Number(comentario.video_time_ms) || 0}">${formatVideoTime(comentario.video_time_ms)}</button>`
+        : "";
     header.innerHTML = `
             <div class="comment-number">${comentario.numero_comentario}</div>
             <div class="comment-user">${comentario.nome_responsavel}</div>
             ${pageInfo}
+            ${videoTimeInfo}
         `;
+    const videoTimeButton = header.querySelector(".comment-video-time");
+    if (videoTimeButton) {
+      videoTimeButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const video = document.getElementById("video_atual");
+        if (!video) return;
+        const ms = Number(videoTimeButton.dataset.videoTime || 0);
+        video.currentTime = Math.max(0, ms / 1000);
+        video.focus();
+      });
+    }
 
     // Botão de checklist (marcar/desmarcar como concluído)
     const checkBtn = document.createElement("button");
@@ -4964,7 +5238,14 @@ async function renderComments(id) {
       mencionadosIds = [];
     });
 
-    let commentDiv = document.createElement("div");
+    let commentDiv = null;
+    const hasPointCoordinates =
+      comentario.x !== null &&
+      comentario.x !== undefined &&
+      comentario.x !== "" &&
+      comentario.y !== null &&
+      comentario.y !== undefined &&
+      comentario.y !== "";
     const isShape = comentario.tipo === "rect" || comentario.tipo === "circle";
     const isFreehand = comentario.tipo === "freehand";
     const cor = comentario.cor || "#000000";
@@ -5044,7 +5325,8 @@ async function renderComments(id) {
 
         commentDiv = wrapper;
       }
-    } else if (isShape) {
+    } else if (isShape && hasPointCoordinates) {
+      commentDiv = document.createElement("div");
       commentDiv.classList.add("comment-shape");
       commentDiv.classList.add(
         comentario.tipo === "rect"
@@ -5068,7 +5350,8 @@ async function renderComments(id) {
       badge.style.borderColor = cor;
       badge.style.color = "#fff";
       commentDiv.appendChild(badge);
-    } else {
+    } else if (hasPointCoordinates) {
+      commentDiv = document.createElement("div");
       commentDiv.classList.add("comment");
       commentDiv.innerText = comentario.numero_comentario;
       commentDiv.style.left = `${comentario.x}%`;
@@ -5078,14 +5361,16 @@ async function renderComments(id) {
     }
 
     // Marca visualmente o marker como concluído
-    if (isConcluido) {
+    if (commentDiv && isConcluido) {
       commentDiv.classList.add("comment-marker-concluido");
     }
 
-    commentDiv.setAttribute("data-id", comentario.id);
+    if (commentDiv) {
+      commentDiv.setAttribute("data-id", comentario.id);
+    }
 
     // Generic marker click (ponto + shapes; freehand uses SVG hit handler above)
-    if (!isFreehand) {
+    if (commentDiv && !isFreehand) {
       commentDiv.addEventListener("click", (e) => {
         // No PDF, a bolinha fica em cima do canvas; evita abrir um novo comentário ao clicar nela.
         if (e && typeof e.stopPropagation === "function") e.stopPropagation();
@@ -5111,6 +5396,21 @@ async function renderComments(id) {
     }
 
     commentCard.addEventListener("click", async () => {
+      if (
+        isVideo &&
+        comentario.video_time_ms !== null &&
+        comentario.video_time_ms !== undefined &&
+        comentario.video_time_ms !== ""
+      ) {
+        const video = document.getElementById("video_atual");
+        if (video) {
+          video.currentTime = Math.max(
+            0,
+            (Number(comentario.video_time_ms) || 0) / 1000,
+          );
+        }
+      }
+
       // No PDF, ao clicar em um comentário: ir para a página correspondente
       if (isPdf && comentario.pagina) {
         const targetPage = parseInt(String(comentario.pagina), 10);
@@ -5154,6 +5454,10 @@ async function renderComments(id) {
 
       if (markerEl) {
         markerEl.classList.add("highlight");
+
+        if (currentZoom <= 1) {
+          return;
+        }
 
         // Pan to the marker, accounting for the CSS zoom transform.
         // scrollIntoView() uses layout positions and ignores CSS transforms,
@@ -5225,7 +5529,9 @@ async function renderComments(id) {
     });
 
     // Marcadores: no PDF, só da página atual
-    if (!isPdf) {
+    if (!commentDiv) {
+      // Comentario geral sem coordenadas: aparece somente no sidebar.
+    } else if (!isPdf) {
       markerContainer.appendChild(commentDiv);
     } else {
       const paginaDoComentario = parseInt(String(comentario.pagina || ""), 10);
@@ -5828,7 +6134,12 @@ function handlePointerUp(e) {
       _editingCommentId = null;
       if (quillComentario) quillComentario.setContents([]);
       const _mtFh = document.querySelector("#comentarioModal h3");
-      if (_mtFh) _mtFh.textContent = "Novo Comentário";
+      if (_mtFh) {
+        _mtFh.textContent =
+          currentMediaMode === "video" && currentVideoTimeMs !== null
+            ? `Novo Comentário (${formatVideoTime(currentVideoTimeMs)})`
+            : "Novo Comentário";
+      }
       document.getElementById("imagemComentario").value = "";
       openCommentModalAtPoint(
         drawStartClientX || window.innerWidth / 2,

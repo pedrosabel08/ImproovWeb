@@ -16,6 +16,7 @@ include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
+require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use phpseclib3\Net\SFTP;
@@ -268,8 +269,15 @@ $idcolaborador_session = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idc
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        fr_approval_media_ensure_schema($conn);
         $data = json_decode(file_get_contents('php://input'), true);
         $idfuncao_imagem = isset($data['idfuncao_imagem']) ? (int)$data['idfuncao_imagem'] : 0;
+        $tipo_tarefa = strtolower((string)($data['tipo_tarefa'] ?? 'imagem'));
+        $funcao_animacao_id = isset($data['funcao_animacao_id']) ? (int)$data['funcao_animacao_id'] : 0;
+        $is_animacao_review = $tipo_tarefa === 'animacao' || $funcao_animacao_id > 0;
+        if ($is_animacao_review && $funcao_animacao_id <= 0) {
+            $funcao_animacao_id = $idfuncao_imagem;
+        }
         $tipoRevisao = $data['tipoRevisao'] ?? null;
         $imagem_nome = $data['imagem_nome'] ?? null;
         $nome_funcao = $data['nome_funcao'] ?? null;
@@ -322,6 +330,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             default:
                 echo json_encode(['success' => false, 'message' => 'Tipo de revisão inválido.']);
                 exit;
+        }
+
+        if ($is_animacao_review) {
+            $stmtAnimContext = $conn->prepare(
+                "SELECT fa.status, fa.colaborador_id, fa.funcao_id, fun.nome_funcao, i.imagem_nome, u.nome_slack
+                 FROM funcao_animacao fa
+                 LEFT JOIN funcao fun ON fun.idfuncao = fa.funcao_id
+                 LEFT JOIN animacao a ON a.idanimacao = fa.animacao_id
+                 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = a.imagem_id
+                 LEFT JOIN colaborador c ON c.idcolaborador = fa.colaborador_id
+                 LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+                 WHERE fa.id = ?
+                 LIMIT 1"
+            );
+            if (!$stmtAnimContext) {
+                echo json_encode(['success' => false, 'message' => 'Erro ao preparar consulta da animacao.']);
+                exit;
+            }
+
+            $stmtAnimContext->bind_param("i", $funcao_animacao_id);
+            $stmtAnimContext->execute();
+            $animContext = $stmtAnimContext->get_result()->fetch_assoc();
+            $stmtAnimContext->close();
+
+            if (!$animContext) {
+                echo json_encode(['success' => false, 'message' => 'Funcao de animacao nao encontrada.']);
+                exit;
+            }
+
+            $status_anterior = (string)($animContext['status'] ?? '');
+            $colaborador_id = (int)($animContext['colaborador_id'] ?? $colaborador_id);
+            $nome_funcao_animacao = (string)($animContext['nome_funcao'] ?? ($nome_funcao ?: 'Animacao'));
+            $imagem_nome_animacao = (string)($animContext['imagem_nome'] ?? ($imagem_nome ?: ''));
+
+            $stmtAnimUpdate = $conn->prepare("UPDATE funcao_animacao SET status = ? WHERE id = ?");
+            if (!$stmtAnimUpdate) {
+                echo json_encode(['success' => false, 'message' => 'Erro ao preparar atualizacao da animacao.']);
+                exit;
+            }
+            $stmtAnimUpdate->bind_param("si", $status, $funcao_animacao_id);
+            if (!$stmtAnimUpdate->execute()) {
+                echo json_encode(['success' => false, 'message' => 'Erro ao atualizar animacao: ' . $stmtAnimUpdate->error]);
+                $stmtAnimUpdate->close();
+                exit;
+            }
+            $stmtAnimUpdate->close();
+
+            $stmtAnimHist = $conn->prepare(
+                "INSERT INTO historico_aprovacoes
+                    (funcao_imagem_id, funcao_animacao_id, status_anterior, status_novo, colaborador_id, responsavel)
+                 VALUES (NULL, ?, ?, ?, ?, ?)"
+            );
+            if (!$stmtAnimHist) {
+                echo json_encode(['success' => false, 'message' => 'Erro ao preparar historico da animacao.']);
+                exit;
+            }
+            $stmtAnimHist->bind_param("issii", $funcao_animacao_id, $status_anterior, $status, $colaborador_id, $responsavel);
+            if (!$stmtAnimHist->execute()) {
+                echo json_encode(['success' => false, 'message' => 'Erro ao registrar historico da animacao: ' . $stmtAnimHist->error]);
+                $stmtAnimHist->close();
+                exit;
+            }
+            $stmtAnimHist->close();
+
+            if (!empty($animContext['nome_slack'])) {
+                $slackLog = [];
+                $mensagemAnimacao = "A {$nome_funcao_animacao} da imagem {$imagem_nome_animacao} foi revisada por {$nome_responsavel}. Status: {$status}.";
+                enviarNotificacaoSlack($animContext['nome_slack'], $mensagemAnimacao, $slackLog);
+                $resultadoFinal['logs'] = array_merge($resultadoFinal['logs'], $slackLog);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Revisao de animacao registrada com sucesso.',
+                'status' => $status,
+                'tipo_tarefa' => 'animacao',
+                'funcao_animacao_id' => $funcao_animacao_id,
+                'logs' => $resultadoFinal['logs'],
+            ]);
+            exit;
         }
 
         $funcao_id_context = null;

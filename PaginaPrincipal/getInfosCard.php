@@ -30,11 +30,13 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 a.idanimacao AS animacao_id,
                 a.tipo_animacao,
                 a.duracao,
+                o.nomenclatura,
                 CONCAT('Animação - ', UCASE(SUBSTRING(a.tipo_animacao, 1, 1)), LOWER(SUBSTRING(a.tipo_animacao, 2))) AS nome_animacao,
                 1 AS is_animacao
             FROM funcao_animacao fa
             JOIN animacao a ON a.idanimacao = fa.animacao_id
             JOIN imagens_cliente_obra img ON img.idimagens_cliente_obra = a.imagem_id
+            LEFT JOIN obra o ON img.obra_id = o.idobra
             LEFT JOIN colaborador col ON fa.colaborador_id = col.idcolaborador
             LEFT JOIN funcao f ON fa.funcao_id = f.idfuncao
             WHERE fa.id = $idFuncaoImagem

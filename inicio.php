@@ -572,7 +572,7 @@ $conn->close();
                     <h4>Prévias</h4>
                     <div id="drop-area-previa" class="drop-area">
                         Arraste suas imagens aqui ou clique para selecionar
-                        <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;" required>
+                        <input type="file" id="fileElemPrevia" accept="image/*,video/*" multiple style="display:none;" required>
                     </div>
                     <ul class="file-list" id="fileListPrevia"></ul>
                     <div class="buttons-upload" id="addEnviarPrevia">

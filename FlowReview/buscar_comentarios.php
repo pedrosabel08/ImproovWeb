@@ -2,6 +2,7 @@
 // Conexão com o banco de dados
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/approval_media_schema.php';
 
 function tableHasColumn(mysqli $conn, string $table, string $column): bool
 {
@@ -14,6 +15,7 @@ function tableHasColumn(mysqli $conn, string $table, string $column): bool
 }
 
 // Pega o ID (imagem JPG) ou arquivo_log (PDF)
+fr_approval_media_ensure_schema($conn);
 $id = isset($_GET['id']) ? intval($_GET['id']) : null;
 $arquivo_log_id = isset($_GET['arquivo_log_id']) ? intval($_GET['arquivo_log_id']) : null;
 $pagina = isset($_GET['pagina']) ? intval($_GET['pagina']) : null;

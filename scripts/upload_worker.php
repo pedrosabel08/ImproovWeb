@@ -683,6 +683,48 @@ function mark_funcao_upload_quitado(array $meta): void
         return;
     }
 
+    $chkRenderSend = $conn->prepare(
+        "SELECT CASE
+            WHEN fi.funcao_id IN (4, 6)
+             AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
+             AND (
+                 fi.funcao_id <> 6
+                 OR ico.tipo_imagem IS NULL
+                 OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
+             )
+             AND EXISTS (
+                 SELECT 1
+                   FROM historico_aprovacoes ha
+                  WHERE ha.funcao_imagem_id = fi.idfuncao_imagem
+                    AND ha.status_novo IN ('Aprovado', 'Aprovado com ajustes')
+                    AND ha.responsavel IN (21, 2, 9, 31)
+                    AND NOT EXISTS (
+                        SELECT 1
+                          FROM historico_aprovacoes ha2
+                         WHERE ha2.funcao_imagem_id = ha.funcao_imagem_id
+                           AND ha2.id > ha.id
+                    )
+                  LIMIT 1
+             )
+             AND NOT EXISTS (
+                 SELECT 1
+                   FROM render_alta ra
+                  WHERE ra.imagem_id = ico.idimagens_cliente_obra
+                    AND ra.status_id = ico.status_id
+                  LIMIT 1
+             )
+            THEN 1
+            ELSE 0
+         END AS requires_render_send
+           FROM funcao_imagem fi
+           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+          WHERE fi.idfuncao_imagem = ?
+          LIMIT 1"
+    );
+    if (!$chkRenderSend) {
+        error_log('[upload_worker] mark_funcao_upload_quitado: falha ao preparar SELECT requires_render_send: ' . ($conn->error ?? 'sem detalhe'));
+    }
+
     $updFinal = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado' WHERE idfuncao_imagem = ? AND status = 'Aprovado'");
     if (!$updFinal) {
         error_log('[upload_worker] mark_funcao_upload_quitado: falha ao preparar UPDATE status Finalizado: ' . ($conn->error ?? 'sem detalhe'));
@@ -702,7 +744,24 @@ function mark_funcao_upload_quitado(array $meta): void
             error_log("[upload_worker] mark_funcao_upload_quitado: requires_file_upload=0 aplicado para id={$fidInt}, affected_rows={$upd->affected_rows}");
         }
 
-        if ($updFinal) {
+        $requiresRenderSend = false;
+        if ($chkRenderSend) {
+            $chkRenderSend->bind_param('i', $fidInt);
+            if (!$chkRenderSend->execute()) {
+                error_log("[upload_worker] mark_funcao_upload_quitado: erro ao consultar requires_render_send para id={$fidInt}: " . ($chkRenderSend->error ?? 'sem detalhe'));
+            } else {
+                $resRenderSend = $chkRenderSend->get_result();
+                $rowRenderSend = $resRenderSend ? $resRenderSend->fetch_assoc() : null;
+                $requiresRenderSend = (int)($rowRenderSend['requires_render_send'] ?? 0) === 1;
+                if ($resRenderSend) {
+                    $resRenderSend->free();
+                }
+            }
+        }
+
+        if ($requiresRenderSend) {
+            error_log("[upload_worker] mark_funcao_upload_quitado: mantendo status Aprovado para id={$fidInt}; requer envio de render.");
+        } elseif ($updFinal) {
             $updFinal->bind_param('i', $fidInt);
             if (!$updFinal->execute()) {
                 error_log("[upload_worker] mark_funcao_upload_quitado: erro ao executar UPDATE status Finalizado para id={$fidInt}: " . ($updFinal->error ?? 'sem detalhe'));
@@ -713,6 +772,9 @@ function mark_funcao_upload_quitado(array $meta): void
     }
 
     $upd->close();
+    if ($chkRenderSend) {
+        $chkRenderSend->close();
+    }
     if ($updFinal) {
         $updFinal->close();
     }

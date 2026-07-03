@@ -123,9 +123,11 @@ register_shutdown_function(function () {
 
 require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/config/secure_env.php';
+require_once __DIR__ . '/FlowReview/approval_media_schema.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
+fr_approval_media_ensure_schema($conn);
 
 $vendorAutoload = __DIR__ . '/vendor/autoload.php';
 if (!is_file($vendorAutoload)) {
@@ -209,6 +211,114 @@ function getProcesso($nomeFuncao)
     return substr($semAcento, 0, 3);
 }
 
+function uploadMediaMimeType(string $tmpName): string
+{
+    if (function_exists('mime_content_type')) {
+        $mime = @mime_content_type($tmpName);
+        if (is_string($mime) && $mime !== '') {
+            return $mime;
+        }
+    }
+    return 'application/octet-stream';
+}
+
+function uploadMediaType(string $filename, string $mimeType): string
+{
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    if (strpos($mimeType, 'video/') === 0 || in_array($ext, ['mp4', 'webm', 'mov', 'm4v'], true)) {
+        return 'video';
+    }
+    return 'imagem';
+}
+
+function uploadResolveFfmpegCommand(?string &$debug = null): ?string
+{
+    $ffmpeg = trim((string)improov_env('FFMPEG_PATH', 'ffmpeg'), " \t\n\r\0\x0B\"'");
+    $candidates = [];
+    if ($ffmpeg !== '') {
+        $candidates[] = $ffmpeg;
+    }
+
+    $whereCmd = stripos(PHP_OS_FAMILY, 'Windows') !== false ? 'where ffmpeg 2>&1' : 'command -v ffmpeg 2>&1';
+    $whereOut = [];
+    $whereCode = 1;
+    @exec($whereCmd, $whereOut, $whereCode);
+    if ($whereCode === 0 && !empty($whereOut[0])) {
+        $candidates[] = trim((string)$whereOut[0]);
+    }
+
+    $candidates = array_merge($candidates, [
+        'C:\\ffmpeg\\bin\\ffmpeg.exe',
+        'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe',
+        'C:\\Program Files (x86)\\ffmpeg\\bin\\ffmpeg.exe',
+        'C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe',
+        getenv('USERPROFILE') ? rtrim((string)getenv('USERPROFILE'), '\\/') . '\\scoop\\shims\\ffmpeg.exe' : '',
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        '/bin/ffmpeg',
+    ]);
+
+    $seen = [];
+    foreach ($candidates as $candidate) {
+        $candidate = trim((string)$candidate);
+        if ($candidate === '' || isset($seen[strtolower($candidate)])) {
+            continue;
+        }
+        $seen[strtolower($candidate)] = true;
+
+        if ($candidate === 'ffmpeg') {
+            $versionOut = [];
+            $versionCode = 1;
+            @exec('ffmpeg -version 2>&1', $versionOut, $versionCode);
+            if ($versionCode === 0) {
+                return 'ffmpeg';
+            }
+            continue;
+        }
+
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+
+    $debug = 'ffmpeg não encontrado. Configure FFMPEG_PATH com o caminho completo do executável.';
+    return null;
+}
+
+function uploadVideoPosterPath(string $videoLocalPath, string $posterBaseName, ?string &$debug = null): ?string
+{
+    $ffmpeg = uploadResolveFfmpegCommand($debug);
+    if (!$ffmpeg) {
+        error_log('[uploadArquivos.php] poster video: ' . ($debug ?: 'ffmpeg indisponível'));
+        return null;
+    }
+
+    $posterLocal = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $posterBaseName . '.jpg';
+    if (is_file($posterLocal)) {
+        @unlink($posterLocal);
+    }
+
+    $ffmpegCmd = preg_match('/[\\\\\/\s]/', $ffmpeg) ? escapeshellarg($ffmpeg) : $ffmpeg;
+    $cmd = $ffmpegCmd
+        . ' -y -ss 00:00:01 -i ' . escapeshellarg($videoLocalPath)
+        . ' -frames:v 1 -q:v 3 ' . escapeshellarg($posterLocal) . ' 2>&1';
+    $output = [];
+    $code = 1;
+    @exec($cmd, $output, $code);
+
+    if ($code !== 0 || !is_file($posterLocal) || filesize($posterLocal) <= 0) {
+        $debug = 'ffmpeg falhou ao gerar poster: ' . trim(implode(' ', array_slice($output, -6)));
+        error_log('[uploadArquivos.php] poster video: ' . $debug);
+        if (is_file($posterLocal)) {
+            @unlink($posterLocal);
+        }
+        return null;
+    }
+
+    $debug = 'poster gerado com ' . $ffmpeg;
+    return $posterLocal;
+}
+
 function ensureSftpDirRecursive(SFTP $sftp, string $path): bool
 {
     $path = trim(str_replace('\\', '/', $path));
@@ -258,6 +368,21 @@ $nomenclatura  = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_POST['nomenclatura'] ??
 $nomeFuncao    = $_POST['nome_funcao'] ?? '';
 $nome_imagem   = $_POST['nome_imagem'] ?? '';
 $idimagem      = (int)($_POST['idimagem'] ?? 0);
+$tipoTarefaRaw = trim((string)($_POST['tipo_tarefa'] ?? 'imagem'));
+$tipoTarefa    = strtolower(removerTodosAcentos($tipoTarefaRaw));
+$funcaoAnimacaoId = (int)($_POST['funcao_animacao_id'] ?? 0);
+$nomeFuncaoSemAcento = strtolower(removerTodosAcentos((string)$nomeFuncao));
+$isAnimacaoUpload = $tipoTarefa === 'animacao'
+    || strpos($nomeFuncaoSemAcento, 'animacao') !== false
+    || stripos((string)$nomeFuncao, 'Anima') !== false;
+if ($isAnimacaoUpload) {
+    if ($funcaoAnimacaoId <= 0) {
+        $funcaoAnimacaoId = $dataIdFuncoes;
+    }
+    if ($funcaoAnimacaoId > 0) {
+        $dataIdFuncoes = $funcaoAnimacaoId;
+    }
+}
 // Se informado, usa o índice de envio forçado (adiciona ângulos ao envio atual)
 $indice_envio_forcado = isset($_POST['indice_envio_forcado']) ? (int)$_POST['indice_envio_forcado'] : 0;
 
@@ -301,7 +426,11 @@ if ($indice_envio_forcado > 0) {
     // Mantém o índice atual (adicionar ângulos ao mesmo envio)
     $indice_envio = $indice_envio_forcado;
 } else {
-    $stmt = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?");
+    if ($isAnimacaoUpload) {
+        $stmt = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_animacao_id = ?");
+    } else {
+        $stmt = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?");
+    }
     $stmt->bind_param("i", $idFuncaoImagem);
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
@@ -321,8 +450,13 @@ $status_nome_sanitizado = sanitizeFilename((string)($status_nome ?? ''));
 $stmt2->close();
 
 // ---------- Status nome ----------
-$stmt2 = $conn->prepare("SELECT fi.status AS funcao_status, fi.prazo AS funcao_prazo FROM funcao_imagem fi
-                         WHERE fi.idfuncao_imagem = ?");
+if ($isAnimacaoUpload) {
+    $stmt2 = $conn->prepare("SELECT fa.status AS funcao_status, fa.prazo AS funcao_prazo FROM funcao_animacao fa
+                             WHERE fa.id = ?");
+} else {
+    $stmt2 = $conn->prepare("SELECT fi.status AS funcao_status, fi.prazo AS funcao_prazo FROM funcao_imagem fi
+                             WHERE fi.idfuncao_imagem = ?");
+}
 $stmt2->bind_param("i", $idFuncaoImagem);
 $stmt2->execute();
 $result2 = $stmt2->get_result()->fetch_assoc();
@@ -330,6 +464,17 @@ $funcao_status = $result2 ? $result2['funcao_status'] : null; // evita erro se n
 $funcao_prazo  = $result2 ? $result2['funcao_prazo']  : null; // prazo planejado no momento (SLA)
 $funcao_status_sanitizado = sanitizeFilename((string)($funcao_status ?? ''));
 $stmt2->close();
+if (!$result2) {
+    json_error(
+        $isAnimacaoUpload ? 'Função de animação não encontrada.' : 'Função de imagem não encontrada.',
+        404,
+        [
+            'tipo_tarefa' => $isAnimacaoUpload ? 'animacao' : 'imagem',
+            'funcao_id' => $idFuncaoImagem,
+            'nome_funcao' => $nomeFuncao,
+        ]
+    );
+}
 
 // ---------- Conexão SFTP ----------
 try {
@@ -349,12 +494,17 @@ if (!isset($_FILES['imagens'])) {
 $imagens = $_FILES['imagens'];
 $totalImagens = count($imagens['name']);
 $imagensEnviadas = [];
+$postersEnviados = [];
 $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 
 // Quando adicionando ao índice existente, começa a numeração após as imagens já presentes
 $previaOffset = 0;
 if ($indice_envio_forcado > 0) {
-    $stCount = $conn->prepare("SELECT COUNT(*) AS qtd FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? AND indice_envio = ?");
+    if ($isAnimacaoUpload) {
+        $stCount = $conn->prepare("SELECT COUNT(*) AS qtd FROM historico_aprovacoes_imagens WHERE funcao_animacao_id = ? AND indice_envio = ?");
+    } else {
+        $stCount = $conn->prepare("SELECT COUNT(*) AS qtd FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? AND indice_envio = ?");
+    }
     if ($stCount) {
         $stCount->bind_param("ii", $idFuncaoImagem, $indice_envio);
         $stCount->execute();
@@ -379,7 +529,7 @@ $nomeFuncaoKeyGlobal = strtolower(removerTodosAcentos($nomeFuncao));
 $tipoImagemKeyGlobal = strtolower(removerTodosAcentos($tipoImagem));
 $funcao_status_norm  = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
 
-$isNasDirectBypass = (
+$isNasDirectBypass = !$isAnimacaoUpload && (
     ($nomeFuncaoKeyGlobal === 'pos-producao' && $funcao_status_norm === 'aprovado com ajustes')
     || ($nomeFuncaoKeyGlobal === 'finalizacao' && $tipoImagemKeyGlobal === 'planta humanizada' && $funcao_status_norm === 'aprovado com ajustes')
 );
@@ -391,7 +541,8 @@ for ($i = 0; $i < $totalImagens; $i++) {
     $imagemAtual = [
         'name'     => $imagens['name'][$i],
         'tmp_name' => $imagens['tmp_name'][$i],
-        'error'    => $imagens['error'][$i]
+        'error'    => $imagens['error'][$i],
+        'size'     => $imagens['size'][$i] ?? null,
     ];
 
     if ($imagemAtual['error'] !== UPLOAD_ERR_OK) {
@@ -409,6 +560,9 @@ for ($i = 0; $i < $totalImagens; $i++) {
     }
 
     $extensao = pathinfo($imagemAtual['name'], PATHINFO_EXTENSION);
+    $mimeType = uploadMediaMimeType($imagemAtual['tmp_name']);
+    $mediaTipo = uploadMediaType($imagemAtual['name'], $mimeType);
+    $tamanhoArquivo = isset($imagemAtual['size']) ? (int)$imagemAtual['size'] : (int)@filesize($imagemAtual['tmp_name']);
     $arquivoRemoto = $ftp_base . $nomeFinalSemExt . "." . $extensao;
 
     list($ok, $msg) = enviarArquivoSFTP($conn_ftp, $imagemAtual['tmp_name'], $arquivoRemoto);
@@ -417,12 +571,51 @@ for ($i = 0; $i < $totalImagens; $i++) {
     }
 
     $caminhoBanco = 'uploads/' . $nomeFinalSemExt . "." . $extensao;
+    $posterPathBanco = null;
+    if ($mediaTipo === 'video') {
+        $posterDebug = null;
+        $posterLocal = uploadVideoPosterPath($imagemAtual['tmp_name'], $nomeFinalSemExt . '_poster', $posterDebug);
+        if ($posterLocal) {
+            $posterRemoto = $ftp_base . $nomeFinalSemExt . '_poster.jpg';
+            [$okPoster, $msgPoster] = enviarArquivoSFTP($conn_ftp, $posterLocal, $posterRemoto);
+            @unlink($posterLocal);
+            if ($okPoster) {
+                $posterPathBanco = 'uploads/' . $nomeFinalSemExt . '_poster.jpg';
+                $postersEnviados[] = [
+                    'video' => $caminhoBanco,
+                    'poster_path' => $posterPathBanco,
+                    'status' => 'ok',
+                ];
+            } else {
+                $postersEnviados[] = [
+                    'video' => $caminhoBanco,
+                    'poster_path' => null,
+                    'status' => 'sftp_error',
+                    'detail' => (string)$msgPoster,
+                ];
+            }
+        } else {
+            $postersEnviados[] = [
+                'video' => $caminhoBanco,
+                'poster_path' => null,
+                'status' => 'not_generated',
+                'detail' => $posterDebug ?: 'poster não gerado',
+            ];
+        }
+    }
 
 
     // Salva no banco o caminho remoto
-    $stmt = $conn->prepare("INSERT INTO historico_aprovacoes_imagens (funcao_imagem_id, imagem, indice_envio, nome_arquivo) 
-                            VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("isis", $idFuncaoImagem, $caminhoBanco, $indice_envio, $nomeFinalSemExt);
+    if ($isAnimacaoUpload) {
+        $stmt = $conn->prepare("INSERT INTO historico_aprovacoes_imagens
+            (funcao_imagem_id, funcao_animacao_id, imagem, indice_envio, nome_arquivo, media_tipo, mime_type, tamanho, poster_path)
+            VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)");
+    } else {
+        $stmt = $conn->prepare("INSERT INTO historico_aprovacoes_imagens
+            (funcao_imagem_id, funcao_animacao_id, imagem, indice_envio, nome_arquivo, media_tipo, mime_type, tamanho, poster_path)
+            VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)");
+    }
+    $stmt->bind_param("isisssis", $idFuncaoImagem, $caminhoBanco, $indice_envio, $nomeFinalSemExt, $mediaTipo, $mimeType, $tamanhoArquivo, $posterPathBanco);
     if ($stmt->execute()) {
         $imagensEnviadas[] = $caminhoBanco;
         if ($isNasDirectBypass) {
@@ -692,7 +885,7 @@ if ($isNasDirectBypass) {
 // Aplica-se apenas quando a função estava em "Ajuste" (reenvio após revisão).
 // No primeiro envio ($funcao_status_norm não é 'ajuste') o bloqueio não ocorre.
 $funcao_status_norm_pre = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
-if ($funcao_status_norm_pre === 'ajuste') {
+if (!$isAnimacaoUpload && $funcao_status_norm_pre === 'ajuste') {
     // Verifica se a coluna 'concluido' existe
     $chkCol = $conn->prepare(
         "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comentarios_imagem' AND COLUMN_NAME = 'concluido' LIMIT 1"
@@ -736,17 +929,61 @@ if ($funcao_status_norm_pre === 'ajuste') {
 // ---------- Fim bloqueio comentários pendentes ------------------------------
 
 // ---------- Atualiza status para Em aprovação sem alterar o prazo corrente ----------
-$stmt = $conn->prepare("UPDATE funcao_imagem 
-                        SET prazo = NOW(), status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL 
+if ($isAnimacaoUpload) {
+    $stmt = $conn->prepare("UPDATE funcao_animacao
+                            SET status = 'Em aprovação'
+                            WHERE id = ?");
+} else {
+    $stmt = $conn->prepare("UPDATE funcao_imagem
+                        SET prazo = NOW(), status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL
                         WHERE idfuncao_imagem = ?");
+}
 $stmt->bind_param("i", $idFuncaoImagem);
 if (!$stmt->execute()) {
     json_error('Erro ao atualizar status da função: ' . $stmt->error, 500);
 }
+$statusUpdateAffectedRows = $stmt->affected_rows;
 $stmt->close();
+if ($statusUpdateAffectedRows === 0) {
+    $checkSql = $isAnimacaoUpload
+        ? "SELECT 1 FROM funcao_animacao WHERE id = ? LIMIT 1"
+        : "SELECT 1 FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1";
+    $stmtCheckStatusTarget = $conn->prepare($checkSql);
+    if ($stmtCheckStatusTarget) {
+        $stmtCheckStatusTarget->bind_param("i", $idFuncaoImagem);
+        $stmtCheckStatusTarget->execute();
+        $statusTargetExists = $stmtCheckStatusTarget->get_result()->num_rows > 0;
+        $stmtCheckStatusTarget->close();
+        if (!$statusTargetExists) {
+            json_error(
+                $isAnimacaoUpload ? 'Função de animação não encontrada ao atualizar status.' : 'Função de imagem não encontrada ao atualizar status.',
+                404,
+                [
+                    'tipo_tarefa' => $isAnimacaoUpload ? 'animacao' : 'imagem',
+                    'funcao_id' => $idFuncaoImagem,
+                ]
+            );
+        }
+    }
+}
+
+if ($isAnimacaoUpload) {
+    $_reviewResponsavel = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
+    $_reviewColaborador = $_reviewResponsavel ?: null;
+    $stmtAnimHist = $conn->prepare(
+        "INSERT INTO historico_aprovacoes
+            (funcao_imagem_id, funcao_animacao_id, status_anterior, status_novo, colaborador_id, responsavel)
+         VALUES (NULL, ?, ?, 'Em aprovação', ?, ?)"
+    );
+    if ($stmtAnimHist) {
+        $stmtAnimHist->bind_param("isii", $idFuncaoImagem, $funcao_status, $_reviewColaborador, $_reviewResponsavel);
+        $stmtAnimHist->execute();
+        $stmtAnimHist->close();
+    }
+}
 
 // ---------- Registra evento de entrega no histórico SLA ----------
-{
+if (!$isAnimacaoUpload) {
     $_slaColabId   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
     $_slaUsuarioId = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
     $_slaOrigem    = 'upload_previa';
@@ -773,7 +1010,7 @@ $stmt->close();
 // ---------- Notificação Slack: função refeita ----------
 // Disparada quando o colaborador re-envia arquivos após um Ajuste
 // ou quando a função estava em "Em aprovação" (opção B solicitada).
-if (in_array($funcao_status_norm, ['ajuste', 'em aprovacao'], true)) {
+if (!$isAnimacaoUpload && in_array($funcao_status_norm, ['ajuste', 'em aprovacao'], true)) {
     $slackWebhookPos = improov_env('SLACK_WEBHOOK_POS_URL', null);
     if ($slackWebhookPos) {
         $nomeImagemNotif = $nome_imagem ?: $nomeImagemSanitizado ?: 'Imagem';
@@ -808,5 +1045,6 @@ if (in_array($funcao_status_norm, ['ajuste', 'em aprovacao'], true)) {
 echo json_encode([
     "success"      => "Imagens enviadas com sucesso via SFTP!",
     "indice_envio" => $indice_envio,
-    "imagens"      => $imagensEnviadas
+    "imagens"      => $imagensEnviadas,
+    "posters"      => $postersEnviados
 ]);

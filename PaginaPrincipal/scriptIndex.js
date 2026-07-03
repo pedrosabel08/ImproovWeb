@@ -3319,7 +3319,7 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
       }
 
       // ===== Task Panel =====
-      const nomeObraFinal = nomeObra || (funcao && funcao.nomenclatura) || "";
+      const nomeObraFinal = (funcao && funcao.nomenclatura) || nomeObra || "";
       const isAnimacaoCard =
         String(funcao.is_animacao || "0") === "1" ||
         String(funcao.is_animacao || "").toLowerCase() === "true";
@@ -5521,8 +5521,17 @@ function enviarImagens() {
   // Verifica de forma assíncrona; se houver pendentes exibe alerta e aborta.
   const _doEnviar = () => {
     const formData = new FormData();
+    const isAnimacaoCard = cardSelecionado?.dataset?.isAnimacao === "1";
+    const tipoAnimacaoCard = cardSelecionado?.dataset?.tipoAnimacao || "";
+
     imagensSelecionadas.forEach((file) => formData.append("imagens[]", file));
+    formData.append("tipo_tarefa", isAnimacaoCard ? "animacao" : "imagem");
     formData.append("dataIdFuncoes", idfuncao_imagem);
+    if (isAnimacaoCard) {
+      formData.append("funcao_animacao_id", idfuncao_imagem || "");
+      formData.append("animacao_id", cardSelecionado?.dataset?.animacaoId || "");
+      formData.append("tipo_animacao", tipoAnimacaoCard);
+    }
     formData.append("idimagem", idimagem);
     formData.append("nome_funcao", subtitulo);
     formData.append("nome_imagem", titulo);

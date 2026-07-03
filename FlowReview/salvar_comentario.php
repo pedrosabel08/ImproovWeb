@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/approval_media_schema.php';
 
 function tableHasColumn(mysqli $conn, string $table, string $column): bool
 {
@@ -47,8 +48,9 @@ $ap_imagem_id = (isset($_POST['ap_imagem_id']) && $_POST['ap_imagem_id'] !== '')
 $arquivo_log_id = (isset($_POST['arquivo_log_id']) && $_POST['arquivo_log_id'] !== '') ? intval($_POST['arquivo_log_id']) : null;
 $pagina = (isset($_POST['pagina']) && $_POST['pagina'] !== '') ? intval($_POST['pagina']) : 1;
 
-$x = isset($_POST['x']) ? floatval($_POST['x']) : 0.0;
-$y = isset($_POST['y']) ? floatval($_POST['y']) : 0.0;
+$x = (isset($_POST['x']) && $_POST['x'] !== '') ? floatval($_POST['x']) : null;
+$y = (isset($_POST['y']) && $_POST['y'] !== '') ? floatval($_POST['y']) : null;
+$video_time_ms = (isset($_POST['video_time_ms']) && $_POST['video_time_ms'] !== '') ? max(0, intval($_POST['video_time_ms'])) : null;
 $x2 = (isset($_POST['x2']) && $_POST['x2'] !== '') ? floatval($_POST['x2']) : null;
 $y2 = (isset($_POST['y2']) && $_POST['y2'] !== '') ? floatval($_POST['y2']) : null;
 $texto = $_POST['texto'] ?? '';
@@ -60,6 +62,7 @@ $cor = (isset($_POST['cor']) && preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['cor'])
 
 // Garante colunas de forma geométrica
 ensureShapeColumns($conn);
+fr_approval_media_ensure_schema($conn);
 
 if (!$ap_imagem_id && !$arquivo_log_id) {
     http_response_code(400);
@@ -112,17 +115,17 @@ $numero_comentario = $result->fetch_assoc()['proximo_numero'];
 // 2. Inserir comentário
 if ($arquivo_log_id) {
     $stmt = $conn->prepare(
-        "INSERT INTO comentarios_imagem (arquivo_log_id, pagina, numero_comentario, x, y, x2, y2, texto, imagem, tipo, responsavel_id, path_data, cor, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        "INSERT INTO comentarios_imagem (arquivo_log_id, pagina, numero_comentario, x, y, video_time_ms, x2, y2, texto, imagem, tipo, responsavel_id, path_data, cor, data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
     );
-    $stmt->bind_param('iiiddddsssiss', $arquivo_log_id, $pagina, $numero_comentario, $x, $y, $x2, $y2, $texto, $imagem_path, $tipo, $responsavel, $path_data, $cor);
+    $stmt->bind_param('iiiddiddsssiss', $arquivo_log_id, $pagina, $numero_comentario, $x, $y, $video_time_ms, $x2, $y2, $texto, $imagem_path, $tipo, $responsavel, $path_data, $cor);
     $stmt->execute();
 } else {
     $stmt = $conn->prepare(
-        "INSERT INTO comentarios_imagem (ap_imagem_id, numero_comentario, x, y, x2, y2, texto, imagem, tipo, responsavel_id, path_data, cor, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        "INSERT INTO comentarios_imagem (ap_imagem_id, numero_comentario, x, y, video_time_ms, x2, y2, texto, imagem, tipo, responsavel_id, path_data, cor, data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
     );
-    $stmt->bind_param('iiddddsssiss', $ap_imagem_id, $numero_comentario, $x, $y, $x2, $y2, $texto, $imagem_path, $tipo, $responsavel, $path_data, $cor);
+    $stmt->bind_param('iiddiddsssiss', $ap_imagem_id, $numero_comentario, $x, $y, $video_time_ms, $x2, $y2, $texto, $imagem_path, $tipo, $responsavel, $path_data, $cor);
     $stmt->execute();
 }
 
@@ -130,7 +133,10 @@ $comentario_id = $conn->insert_id; // ID do comentário recém-inserido
 
 // 3. Procurar por menções (@Nome)
 // Recebe os IDs mencionados do front-end
-$mencionados = json_decode($_POST['mencionados'], true);
+$mencionados = json_decode($_POST['mencionados'] ?? '[]', true);
+if (!is_array($mencionados)) {
+    $mencionados = [];
+}
 
 if (!empty($mencionados)) {
     $stmtInsert = $conn->prepare("INSERT INTO mencoes (comentario_id, mencionado_id) VALUES (?, ?)");
@@ -147,11 +153,14 @@ if (!empty($mencionados)) {
     $ctxMencao = null;
     if ($ap_imagem_id) {
         $stmtCtx = $conn->prepare(
-            "SELECT fun.nome_funcao, ico.imagem_nome, o.nome_obra
+            "SELECT COALESCE(fun.nome_funcao, funa.nome_funcao) AS nome_funcao, ico.imagem_nome, o.nome_obra
              FROM historico_aprovacoes_imagens hai
-             INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
-             INNER JOIN funcao fun ON fun.idfuncao = fi.funcao_id
-             INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+             LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+             LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
+             LEFT JOIN funcao_animacao fa ON fa.id = hai.funcao_animacao_id
+             LEFT JOIN funcao funa ON funa.idfuncao = fa.funcao_id
+             LEFT JOIN animacao a ON a.idanimacao = fa.animacao_id
+             INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = COALESCE(fi.imagem_id, a.imagem_id)
              INNER JOIN obra o ON o.idobra = ico.obra_id
              WHERE hai.id = ? LIMIT 1"
         );

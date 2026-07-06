@@ -111,6 +111,7 @@ FROM (
                   AND fi_pi.colaborador_id = fi.colaborador_id
                   AND DATE(pi.criado_em) <= ?
                   AND fi_pi.imagem_id = fi.imagem_id
+                  AND fi_pi.funcao_id = 4
                   AND TRIM(pi.observacao) = 'Pago Completa'
               ) THEN 1 ELSE 0
             END
@@ -144,6 +145,7 @@ FROM (
                   AND fi_pi.colaborador_id = fi.colaborador_id
                   AND DATE(pi.criado_em) <= ?
                   AND fi_pi.imagem_id = fi.imagem_id
+                  AND fi_pi.funcao_id = 4
                   AND (
                     pi.observacao IS NULL
                     OR TRIM(pi.observacao) = ''

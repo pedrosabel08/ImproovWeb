@@ -307,31 +307,59 @@ foreach (($queueDataset['groups'] ?? []) as $queueGroup) {
 
 foreach ($response['imagens'] as &$imageRow) {
     $imagemId = (int) ($imageRow['imagem_id'] ?? 0);
+    $statusId = (int) ($imageRow['status_id'] ?? 0);
+
     $queueRow = $queueByImage[$imagemId] ?? null;
+
     $imageRow['fila_planejada_todo'] = (int) ($queueRow['fila_planejada'] ?? 0);
     $imageRow['fila_execucao_pendente'] = (int) ($queueRow['fila_execucao'] ?? 0);
-    $imageRow['fila_total_operacional'] = $imageRow['fila_planejada_todo'] + $imageRow['fila_execucao_pendente'];
+    $imageRow['fila_total_operacional'] =
+        $imageRow['fila_planejada_todo']
+        + $imageRow['fila_execucao_pendente'];
 
-    // Funcao_ids planejadas mas sem funcao_imagem criada (para badge de alerta na tabela)
+    // Funcao_ids planejadas mas sem funcao_imagem criada
     $unlinked = [];
+
     foreach (($queueRow['planned'] ?? []) as $plannedRow) {
         if (empty($plannedRow['funcao_imagem_id'])) {
             $fid = (int) ($plannedRow['funcao_id'] ?? 0);
+
             if ($fid > 0) {
                 $unlinked[$fid] = true;
             }
         }
     }
+
     $imageRow['planned_unlinked_funcoes'] = array_keys($unlinked);
 
-    pendencias_operacionais_sync_image_checklist($conn, $imagemId);
-    $checklistRow = pendencias_operacionais_find_checklist($conn, 'imagem', 'imagem', $imagemId);
-    $checklistCard = pendencias_operacionais_image_checklist_for_card($conn, $imagemId);
-    $imageRow['imagem_checklist_pendente'] = $checklistCard ? 1 : 0;
-    $imageRow['imagem_checklist_id'] = $checklistCard['id'] ?? null;
-    $imageRow['imagem_checklist_items'] = $checklistCard['items'] ?? [];
-    $imageRow['imagem_checklist_status'] = $checklistRow['status'] ?? null;
+    // Checklist somente para imagens com status_id 1 ou 2
+    if (in_array($statusId, [1, 2], true)) {
+        pendencias_operacionais_sync_image_checklist($conn, $imagemId);
+
+        $checklistRow = pendencias_operacionais_find_checklist(
+            $conn,
+            'imagem',
+            'imagem',
+            $imagemId
+        );
+
+        $checklistCard = pendencias_operacionais_image_checklist_for_card(
+            $conn,
+            $imagemId
+        );
+
+        $imageRow['imagem_checklist_pendente'] = $checklistCard ? 1 : 0;
+        $imageRow['imagem_checklist_id'] = $checklistCard['checklist_id'] ?? null;
+        $imageRow['imagem_checklist_items'] = $checklistCard['items'] ?? [];
+        $imageRow['imagem_checklist_status'] = $checklistRow['status'] ?? null;
+    } else {
+        $imageRow['imagem_checklist_pendente'] = 0;
+        $imageRow['imagem_checklist_id'] = null;
+        $imageRow['imagem_checklist_items'] = [];
+        $imageRow['imagem_checklist_status'] = null;
+    }
 }
+
 unset($imageRow);
 
 $response['fila_operacional'] = $queueDataset['summary'] ?? [

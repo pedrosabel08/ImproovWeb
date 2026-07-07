@@ -728,16 +728,19 @@ function obterChecklistImagemPendente(imagemId) {
 }
 
 async function salvarChecklistImagemOperacional(checklistId, items) {
-  const response = await fetch("../PaginaPrincipal/update_checklist_operacional.php", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    "../PaginaPrincipal/update_checklist_operacional.php",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        checklist_id: checklistId,
+        items,
+      }),
     },
-    body: JSON.stringify({
-      checklist_id: checklistId,
-      items,
-    }),
-  });
+  );
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.success) {
     throw new Error(data.message || "Nao foi possivel atualizar o checklist.");
@@ -745,7 +748,10 @@ async function salvarChecklistImagemOperacional(checklistId, items) {
   return data;
 }
 
-async function abrirChecklistImagemOperacional(checklist, options = {}) {
+async function abrirChecklistImagemOperacionalLegacySwal(
+  checklist,
+  options = {},
+) {
   if (!checklist || !checklist.checklist_id) {
     return { resolved: false };
   }
@@ -815,7 +821,9 @@ async function abrirChecklistImagemOperacional(checklist, options = {}) {
           values,
         );
       } catch (error) {
-        Swal.showValidationMessage(error.message || "Erro ao salvar checklist.");
+        Swal.showValidationMessage(
+          error.message || "Erro ao salvar checklist.",
+        );
         return false;
       }
     },
@@ -847,6 +855,282 @@ async function abrirChecklistImagemOperacional(checklist, options = {}) {
   }
 
   return { resolved: true };
+}
+
+async function abrirChecklistImagemOperacional(checklist, options = {}) {
+  return abrirPendenciasImagemModal([checklist], {
+    openImageId: checklist?.imagem_id,
+    onResolved: options.onResolved,
+  });
+}
+
+function garantirModalPendenciasImagem() {
+  let modal = document.getElementById("imagemChecklistModal");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "imagemChecklistModal";
+  modal.className = "imagem-checklist-overlay";
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="imagem-checklist-dialog" role="dialog" aria-modal="true" aria-labelledby="imagemChecklistTitle">
+      <div class="imagem-checklist-header">
+        <div>
+          <span class="imagem-checklist-kicker">Pendencias operacionais</span>
+          <h2 id="imagemChecklistTitle">Imagem</h2>
+        </div>
+        <button type="button" class="imagem-checklist-close" aria-label="Fechar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="imagem-checklist-list" data-checklist-list></div>
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) fecharModalPendenciasImagem();
+  });
+  modal
+    .querySelector(".imagem-checklist-close")
+    ?.addEventListener("click", fecharModalPendenciasImagem);
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function fecharModalPendenciasImagem() {
+  const modal = document.getElementById("imagemChecklistModal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove("imagem-checklist-modal-open");
+}
+
+function renderizarItemChecklistImagem(item) {
+  const itemKey = String(item.item_key || "");
+  const isAutomatico = itemKey === "subtipo_definido";
+  const isObrigatorio = Number(item.required || 0) === 1;
+  const checked = Number(item.done || 0) === 1 ? "checked" : "";
+  const disabled = isAutomatico ? "disabled" : "";
+  const meta = isAutomatico
+    ? "Automatico"
+    : isObrigatorio
+      ? "Obrigatorio"
+      : "Opcional";
+
+  return `
+    <label class="imagem-checklist-row ${disabled ? "imagem-checklist-row--locked" : ""}">
+      <input
+        type="checkbox"
+        data-item-key="${checklistImagemEscapeHtml(itemKey)}"
+        data-manual="${isAutomatico ? "0" : "1"}"
+        ${checked}
+        ${disabled}
+      >
+      <span class="imagem-checklist-row__text">
+        <strong>${checklistImagemEscapeHtml(item.label || itemKey)}</strong>
+        <small>${checklistImagemEscapeHtml(meta)}</small>
+      </span>
+    </label>`;
+}
+
+function renderizarCardChecklistImagem(checklist, options = {}) {
+  const article = document.createElement("article");
+  article.className = "imagem-checklist-card";
+  article.dataset.imagemId = String(checklist.imagem_id || "");
+  article.dataset.checklistId = String(checklist.checklist_id || "");
+
+  const requiredItems = (checklist.items || []).filter(
+    (item) => Number(item.required || 0) === 1,
+  );
+  const pendingItems = requiredItems.filter(
+    (item) => Number(item.done || 0) !== 1,
+  );
+  const isOpen =
+    String(options.openImageId || "") === String(checklist.imagem_id || "") ||
+    options.forceOpen;
+
+  article.classList.toggle("is-open", !!isOpen);
+  article.innerHTML = `
+    <div class="imagem-checklist-card-main" role="button" tabindex="0" aria-expanded="${isOpen ? "true" : "false"}">
+      <span class="imagem-checklist-severity"></span>
+      <span class="imagem-checklist-card-text">
+        <strong>${checklistImagemEscapeHtml(displayImageName(checklist.imagem_nome || "Imagem"))}</strong>
+        <small>${pendingItems.map((item) => checklistImagemEscapeHtml(item.label || item.item_key)).join(", ")}</small>
+      </span>
+      <span class="imagem-checklist-count">${Math.max(0, requiredItems.length - pendingItems.length)}/${requiredItems.length}</span>
+      <button type="button" class="imagem-checklist-open" title="Abrir detalhes da imagem" aria-label="Abrir detalhes da imagem">
+        <i class="fa-solid fa-up-right-from-square"></i>
+      </button>
+      <i class="fa-solid fa-chevron-down imagem-checklist-chevron"></i>
+    </div>
+    <div class="imagem-checklist-accordion" ${isOpen ? "" : "hidden"}>
+      ${(checklist.items || []).map(renderizarItemChecklistImagem).join("")}
+      <div class="imagem-checklist-actions">
+        <button type="button" class="imagem-checklist-save">Salvar checklist</button>
+      </div>
+    </div>
+  `;
+
+  const toggle = article.querySelector(".imagem-checklist-card-main");
+  const accordion = article.querySelector(".imagem-checklist-accordion");
+  toggle?.addEventListener("click", () => {
+    const expanded = article.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (accordion) accordion.hidden = !expanded;
+  });
+  toggle?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggle.click();
+  });
+
+  article
+    .querySelector(".imagem-checklist-open")
+    ?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      fecharModalPendenciasImagem();
+      if (checklist.imagem_id) atualizarModal(checklist.imagem_id);
+    });
+
+  article
+    .querySelector(".imagem-checklist-save")
+    ?.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const values = {};
+      article
+        .querySelectorAll('.imagem-checklist-row input[data-manual="1"]')
+        .forEach((input) => {
+          values[input.dataset.itemKey] = input.checked ? 1 : 0;
+        });
+
+      const saveBtn = event.currentTarget;
+      saveBtn.disabled = true;
+      try {
+        const result = await salvarChecklistImagemOperacional(
+          checklist.checklist_id,
+          values,
+        );
+        checklist.items = result.items || [];
+        const resolved =
+          result.status === "concluido" &&
+          !checklistImagemPossuiPendencias(checklist.items);
+
+        Toastify({
+          text: resolved
+            ? "Checklist concluido com sucesso."
+            : "Checklist atualizado.",
+          duration: 2400,
+          gravity: "top",
+          position: "right",
+          backgroundColor: resolved ? "#16a34a" : "#2563eb",
+        }).showToast();
+
+        if (resolved) {
+          imagemChecklistsOperacionais.delete(String(checklist.imagem_id));
+          marcarLinhaChecklistResolvida(checklist.imagem_id);
+          article.remove();
+          if (typeof options.onResolved === "function") options.onResolved();
+          if (
+            !document.querySelector(
+              "#imagemChecklistModal .imagem-checklist-card",
+            )
+          ) {
+            fecharModalPendenciasImagem();
+          }
+          return;
+        }
+
+        imagemChecklistsOperacionais.set(
+          String(checklist.imagem_id),
+          checklist,
+        );
+        article.replaceWith(
+          renderizarCardChecklistImagem(checklist, {
+            ...options,
+            openImageId: checklist.imagem_id,
+          }),
+        );
+      } catch (error) {
+        Toastify({
+          text: error.message || "Erro ao salvar checklist.",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#dc2626",
+        }).showToast();
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+  return article;
+}
+
+function marcarLinhaChecklistResolvida(imagemId) {
+  const row = document.querySelector(`.linha-tabela[data-id="${imagemId}"]`);
+  if (!row) return;
+  row.classList.remove("linha-checklist-pendente");
+  row.setAttribute("data-imagem-checklist-pendente", "0");
+  row.setAttribute("data-imagem-checklist-id", "");
+  row.querySelector(".imagem-checklist-badge")?.remove();
+}
+
+function abrirPendenciasImagemModal(checklists, options = {}) {
+  const validos = (checklists || []).filter(
+    (checklist) => checklist && checklist.checklist_id,
+  );
+  if (!validos.length) return { resolved: false };
+
+  const modal = garantirModalPendenciasImagem();
+  const list = modal.querySelector("[data-checklist-list]");
+  if (!list) return { resolved: false };
+
+  list.innerHTML = "";
+  validos.forEach((checklist) => {
+    list.appendChild(
+      renderizarCardChecklistImagem(checklist, {
+        ...options,
+        forceOpen: validos.length === 1,
+      }),
+    );
+  });
+  modal.hidden = false;
+  document.body.classList.add("imagem-checklist-modal-open");
+  return { resolved: false };
+}
+
+function sincronizarImagemSelecionada(imagemId = null) {
+  const selectedRow = document.querySelector(".linha-tabela.selecionada");
+  const hiddenImagemId = document.getElementById("imagem_id");
+  const botaoAlterar = document.getElementById("alterar_status");
+  const resolvedId =
+    imagemId ||
+    hiddenImagemId?.value ||
+    botaoAlterar?.getAttribute("data-imagemid") ||
+    window.__ctxMenuImagemId ||
+    selectedRow?.getAttribute("data-id") ||
+    "";
+
+  if (!resolvedId) return null;
+
+  const escapedId =
+    typeof CSS !== "undefined" && typeof CSS.escape === "function"
+      ? CSS.escape(String(resolvedId))
+      : String(resolvedId).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const linhaSelecionada = document.querySelector(
+    `.linha-tabela[data-id="${escapedId}"]`,
+  );
+
+  if (linhaSelecionada) {
+    linhasTabela = document.querySelectorAll(".linha-tabela");
+    linhasTabela.forEach((linha) => linha.classList.remove("selecionada"));
+    linhaSelecionada.classList.add("selecionada");
+  }
+
+  if (hiddenImagemId) hiddenImagemId.value = resolvedId;
+  if (botaoAlterar) botaoAlterar.setAttribute("data-imagemid", resolvedId);
+  window.__ctxMenuImagemId = resolvedId;
+
+  return linhaSelecionada || null;
 }
 
 function addEventListenersToRows() {
@@ -1006,25 +1290,18 @@ function addEventListenersToRows() {
         return;
       }
 
-      linhasTabela.forEach(function (outraLinha) {
-        outraLinha.classList.remove("selecionada");
-      });
-
-      linha.classList.add("selecionada");
-
       const idImagemSelecionada = linha.getAttribute("data-id");
-      document.getElementById("imagem_id").value = idImagemSelecionada;
+      sincronizarImagemSelecionada(idImagemSelecionada);
 
       // Encontrar o índice da imagem clicada no array de IDs
       indiceImagemAtual = idsImagensObra.indexOf(parseInt(idImagemSelecionada));
 
       console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
 
-      const checklistPendente = obterChecklistImagemPendente(idImagemSelecionada);
+      const checklistPendente =
+        obterChecklistImagemPendente(idImagemSelecionada);
       if (checklistPendente) {
-        abrirChecklistImagemOperacional(checklistPendente, {
-          onResolved: () => atualizarModal(idImagemSelecionada),
-        });
+        abrirChecklistImagemOperacional(checklistPendente);
         return;
       }
 
@@ -1036,7 +1313,7 @@ function addEventListenersToRows() {
       e.preventDefault();
 
       const idImagemSelecionada = linha.getAttribute("data-id");
-      document.getElementById("imagem_id").value = idImagemSelecionada;
+      sincronizarImagemSelecionada(idImagemSelecionada);
 
       // Atualiza o atributo data-imagemid do botão alterar_status
       const botaoAlterar = document.getElementById("alterar_status");
@@ -1076,7 +1353,7 @@ function addEventListenersToRows() {
       pressTimer = setTimeout(() => {
         // Simula o clique com botão direito
         const idImagemSelecionada = linha.getAttribute("data-id");
-        document.getElementById("imagem_id").value = idImagemSelecionada;
+        sincronizarImagemSelecionada(idImagemSelecionada);
 
         const botaoAlterar = document.getElementById("alterar_status");
         botaoAlterar.setAttribute("data-imagemid", idImagemSelecionada);
@@ -1279,7 +1556,7 @@ const MODERN_FUNCOES_CONFIG = [
     prazoId: "prazo_finalizacao",
     obsId: "obs_finalizacao",
     reviewId: "revisao_imagem_final",
-    aliases: ["finalizacao", "final"],
+    aliases: ["finalizacao", "final", "animacao"],
   },
   {
     key: "pos",
@@ -1321,6 +1598,9 @@ const modernFuncoesState = {
   initialized: false,
   activeKeys: new Set(),
   info: null,
+  mode: "imagem",
+  currentAnimacaoId: null,
+  visibleKeysOverride: null,
 };
 
 const MODERN_FC_STATUS_CLASSES = [
@@ -1376,7 +1656,22 @@ function modernConfigFromFunctionName(name) {
 }
 
 function modernVisibleFuncoesConfig() {
+  const base = MODERN_FUNCOES_CONFIG.filter((cfg) => !cfg.discarded);
+  if (!modernFuncoesState.visibleKeysOverride) return base;
+  return base.filter((cfg) =>
+    modernFuncoesState.visibleKeysOverride.has(cfg.key),
+  );
+}
+
+function modernAllVisibleFuncoesConfig() {
   return MODERN_FUNCOES_CONFIG.filter((cfg) => !cfg.discarded);
+}
+
+function resetModernFunctionLabels() {
+  modernAllVisibleFuncoesConfig().forEach((cfg) => {
+    const title = document.getElementById(cfg.titleId);
+    if (title) title.textContent = cfg.label;
+  });
 }
 
 function modernCanEditFuncoes() {
@@ -1392,6 +1687,10 @@ function closeModernFuncoesModal() {
   } catch (e) {
     console.warn("Erro ao atualizar obra ao fechar modal:", e);
   }
+  modernFuncoesState.mode = "imagem";
+  modernFuncoesState.currentAnimacaoId = null;
+  modernFuncoesState.visibleKeysOverride = null;
+  resetModernFunctionLabels();
 }
 
 function fileNameFromPath(path) {
@@ -1601,10 +1900,14 @@ function syncModernTaskRows() {
   if (!section) return;
 
   let count = 0;
-  modernVisibleFuncoesConfig().forEach((cfg) => {
+  const visibleKeys = new Set(
+    modernVisibleFuncoesConfig().map((cfg) => cfg.key),
+  );
+  modernAllVisibleFuncoesConfig().forEach((cfg) => {
     const row = section.querySelector(`[data-task-key="${cfg.key}"]`);
     const noteRow = section.querySelector(`[data-note-key="${cfg.key}"]`);
-    const active = modernFuncoesState.activeKeys.has(cfg.key);
+    const active =
+      visibleKeys.has(cfg.key) && modernFuncoesState.activeKeys.has(cfg.key);
     if (row) row.hidden = !active;
     if (noteRow && !active) noteRow.hidden = true;
     if (active) count++;
@@ -1617,7 +1920,10 @@ function syncModernTaskRows() {
   if (empty) empty.hidden = count > 0;
 
   const addMenu = document.getElementById("allocationAddMenu");
+  const addWrap = section.querySelector(".allocation-add-wrap");
+  if (addWrap) addWrap.hidden = !!modernFuncoesState.visibleKeysOverride;
   if (addMenu) {
+    if (modernFuncoesState.visibleKeysOverride) addMenu.hidden = true;
     addMenu.innerHTML = "";
     modernVisibleFuncoesConfig()
       .filter((cfg) => !modernFuncoesState.activeKeys.has(cfg.key))
@@ -1662,7 +1968,7 @@ function setupModernFuncoesModal() {
   body.classList.add("allocation-tasks-shell");
   if (right) right.classList.add("allocation-related-shell");
 
-  const refs = modernVisibleFuncoesConfig().map((cfg) => ({
+  const refs = modernAllVisibleFuncoesConfig().map((cfg) => ({
     cfg,
     title: document.getElementById(cfg.titleId),
     select: document.getElementById(cfg.selectId),
@@ -1861,9 +2167,12 @@ function setupModernFuncoesModal() {
       updateModernObservationState(row, obs, textarea);
       updateModernStatusClass(status);
       const disabled = !modernCanEditFuncoes();
-      [select, status, prazo, editBtn, noteBtn, deleteBtn].forEach((el) => {
+      [select, status, prazo, editBtn, noteBtn].forEach((el) => {
         if (el) el.disabled = disabled;
       });
+      if (deleteBtn) {
+        deleteBtn.disabled = disabled || modernFuncoesState.mode === "animacao";
+      }
     };
 
     table.appendChild(row);
@@ -1937,14 +2246,24 @@ function setupModernFuncoesModal() {
 function renderModernAllocationModal(response, idImagem) {
   setupModernFuncoesModal();
 
-  const selectedRow =
-    document.querySelector(`.linha-tabela[data-id="${idImagem}"]`) ||
-    document.querySelector(".linha-tabela.selecionada");
+  const isAnimacaoMode = response?.contexto === "animacao";
+  const selectedRow = isAnimacaoMode
+    ? document.querySelector(
+        `#tabela-animacoes tbody tr[data-animacao-id="${response?.animacao?.idanimacao}"]`,
+      )
+    : document.querySelector(`.linha-tabela[data-id="${idImagem}"]`) ||
+      document.querySelector(".linha-tabela.selecionada");
   const tipo =
+    (isAnimacaoMode
+      ? response?.animacao?.tipo_animacao || "Anima\u00e7\u00e3o"
+      : "") ||
     selectedRow?.getAttribute("tipo-imagem") ||
     selectedRow?.getAttribute("data-tipo-imagem") ||
     "Tipo n\u00e3o informado";
   const etapa =
+    (isAnimacaoMode
+      ? response?.animacao?.substatus || "Substatus n\u00e3o informado"
+      : "") ||
     selectedRow
       ?.querySelector('[data-field="status_etapa"]')
       ?.textContent?.trim() ||
@@ -1967,7 +2286,7 @@ function renderModernAllocationModal(response, idImagem) {
   if (flow) {
     const href =
       quickFlow && quickFlow.style.display !== "none" ? quickFlow.href : "";
-    if (href) {
+    if (!isAnimacaoMode && href) {
       flow.href = href;
       flow.classList.remove("is-disabled");
       flow.removeAttribute("aria-disabled");
@@ -1978,13 +2297,29 @@ function renderModernAllocationModal(response, idImagem) {
     }
   }
 
+  const subtitle = document.querySelector(".allocation-subtitle");
+  if (subtitle) {
+    subtitle.textContent = isAnimacaoMode
+      ? "Gerencie respons\u00e1veis, prazos e status da anima\u00e7\u00e3o e da p\u00f3s-produ\u00e7\u00e3o."
+      : "Gerencie respons\u00e1veis, prazos e status das fun\u00e7\u00f5es desta imagem.";
+  }
+
+  const thumb = document.getElementById("allocationImageThumb");
+  if (thumb && isAnimacaoMode) {
+    thumb.classList.remove("has-image");
+    thumb.innerHTML = '<i class="fa-solid fa-film"></i>';
+  } else if (thumb && !isAnimacaoMode) {
+    thumb.classList.remove("has-image");
+    thumb.innerHTML = '<i class="fa-solid fa-image"></i>';
+  }
+
   modernFuncoesState.activeKeys = new Set();
   (response?.funcoes || []).forEach((funcao) => {
     const cfg = modernConfigFromFunctionName(funcao.nome_funcao);
     if (cfg && !cfg.discarded) modernFuncoesState.activeKeys.add(cfg.key);
   });
 
-  modernVisibleFuncoesConfig().forEach((cfg) => {
+  modernAllVisibleFuncoesConfig().forEach((cfg) => {
     const row = document.querySelector(`[data-task-key="${cfg.key}"]`);
     if (row && typeof row.__syncModern === "function") row.__syncModern();
   });
@@ -2146,8 +2481,12 @@ function renderModernAllocationInfo(info, response, idImagem) {
 
 function atualizarModal(idImagem) {
   let nomePdf = "";
-  // Limpar campos do formulário de edição
+  sincronizarImagemSelecionada(idImagem);
   limparCampos();
+  resetModernFunctionLabels();
+  modernFuncoesState.mode = "imagem";
+  modernFuncoesState.currentAnimacaoId = null;
+  modernFuncoesState.visibleKeysOverride = null;
   const _modal_status_el = document.getElementById("modal_status");
   if (_modal_status_el) {
     _modal_status_el.style.display = "none"; // Esconder modal de status
@@ -2791,6 +3130,125 @@ function atualizarModal(idImagem) {
       }
     })
     .catch((error) => console.error("Erro ao buscar dados da linha:", error));
+}
+
+function renderAnimacaoAllocationInfo(response) {
+  const container = document.getElementById("modalFuncoesInfo");
+  if (!container) return;
+
+  const animacao = response?.animacao || {};
+  const section = document.createElement("section");
+  section.className = "allocation-section allocation-related";
+
+  const head = document.createElement("div");
+  head.className = "allocation-section-head";
+  head.innerHTML = "<div><h3>Detalhes da anima\u00e7\u00e3o</h3></div>";
+
+  const details = document.createElement("div");
+  details.className = "allocation-tab-panels";
+  const items = [
+    ["Imagem", animacao.imagem_nome || "-"],
+    ["Tipo", animacao.tipo_animacao || "-"],
+    ["Dura\u00e7\u00e3o", animacao.duracao ? `${animacao.duracao}s` : "-"],
+    ["Substatus", animacao.substatus || "-"],
+    ["Etapa da imagem", animacao.imagem_status_nome || "-"],
+    ["Data", animacao.data_anima || "-"],
+  ];
+
+  items.forEach(([label, value]) => {
+    const row = document.createElement("div");
+    row.className = "allocation-file-card animacao-detail-row";
+    row.innerHTML =
+      '<div class="allocation-file-icon"><i class="fa-solid fa-circle-info"></i></div>';
+    const content = document.createElement("div");
+    content.className = "allocation-file-content";
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+    const span = document.createElement("span");
+    span.textContent = value;
+    content.appendChild(strong);
+    content.appendChild(span);
+    row.appendChild(content);
+    details.appendChild(row);
+  });
+
+  section.appendChild(head);
+  section.appendChild(details);
+  container.innerHTML = "";
+  container.appendChild(section);
+}
+
+function aplicarFuncoesAnimacaoNoModal(response) {
+  resetModernFunctionLabels();
+  const finalTitle = document.getElementById("final");
+  if (finalTitle) finalTitle.textContent = "Anima\u00e7\u00e3o";
+
+  (response?.funcoes || []).forEach((funcao) => {
+    const nome = normalizeModernText(funcao.nome_funcao);
+    const cfg =
+      nome === "animacao"
+        ? MODERN_FUNCOES_CONFIG.find((item) => item.key === "finalizacao")
+        : modernConfigFromFunctionName(funcao.nome_funcao);
+    if (!cfg) return;
+
+    const title = document.getElementById(cfg.titleId);
+    const select = document.getElementById(cfg.selectId);
+    const status = document.getElementById(cfg.statusId);
+    const prazo = document.getElementById(cfg.prazoId);
+    const obs = document.getElementById(cfg.obsId);
+
+    if (title && funcao.id) title.setAttribute("data-id-funcao", funcao.id);
+    if (select) select.value = funcao.colaborador_id || "";
+    if (status) status.value = funcao.status || "N\u00e3o iniciado";
+    if (prazo) prazo.value = funcao.prazo || "";
+    if (obs) obs.value = funcao.observacao || "";
+  });
+}
+
+function atualizarModalAnimacao(animacaoId) {
+  limparCampos();
+  resetModernFunctionLabels();
+  modernFuncoesState.mode = "animacao";
+  modernFuncoesState.currentAnimacaoId = Number(animacaoId || 0);
+  modernFuncoesState.visibleKeysOverride = new Set(["finalizacao", "pos"]);
+
+  const modalStatus = document.getElementById("modal_status");
+  if (modalStatus) {
+    modalStatus.style.display = "none";
+    statusModalAnchor = null;
+  }
+
+  fetch(`buscaAnimacaoAJAX.php?ajid=${encodeURIComponent(animacaoId)}`)
+    .then((response) => response.json())
+    .then((response) => {
+      if (response.error) throw new Error(response.error);
+
+      document.getElementById("form-edicao").style.display = "flex";
+      const nome = response?.funcoes?.[0]?.imagem_nome || "Anima\u00e7\u00e3o";
+      document.getElementById("campoNomeImagem").textContent =
+        displayImageName(nome);
+      document.getElementById("imagem_id").value =
+        response?.animacao?.imagem_id || "";
+
+      aplicarFuncoesAnimacaoNoModal(response);
+      renderModernAllocationModal(
+        response,
+        response?.animacao?.imagem_id || animacaoId,
+      );
+      renderAnimacaoAllocationInfo(response);
+    })
+    .catch((err) => {
+      console.error("Erro ao carregar anima\u00e7\u00e3o:", err);
+      Toastify({
+        text: "Erro ao carregar anima\u00e7\u00e3o.",
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "red",
+        stopOnFocus: true,
+      }).showToast();
+    });
 }
 
 const modalLogs = document.getElementById("modalLogs");
@@ -4494,7 +4952,10 @@ function infosObra(obraId) {
           "data-imagem-checklist-pendente",
           item.imagem_checklist_pendente ? "1" : "0",
         );
-        row.setAttribute("data-imagem-checklist-id", item.imagem_checklist_id ?? "");
+        row.setAttribute(
+          "data-imagem-checklist-id",
+          item.imagem_checklist_id ?? "",
+        );
         if (item.imagem_checklist_pendente) {
           row.classList.add("linha-checklist-pendente");
         }
@@ -4690,7 +5151,10 @@ function infosObra(obraId) {
               tooltip.style.top = event.clientY - 30 + "px";
             });
             row.appendChild(cellUnif);
-            if (isPendenteProducao && (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))) {
+            if (
+              isPendenteProducao &&
+              (unlinkedFuncoes.has(1) || unlinkedFuncoes.has(8))
+            ) {
               cellUnif.classList.add("func-cell--unallocated");
               const badge = document.createElement("span");
               badge.className = "func-unallocated-badge";
@@ -6244,14 +6708,9 @@ function navegar(direcao) {
   // Obtém o ID da imagem atual
   const idImagem = idsImagensObra[indiceImagemAtual];
   atualizarModal(idImagem);
-  document.getElementById("imagem_id").value = idImagem;
+  sincronizarImagemSelecionada(idImagem);
 
   // Atualiza a seleção na tabela
-  linhasTabela.forEach((linha) => linha.classList.remove("selecionada"));
-  let linhaSelecionada = document.querySelector(`tr[data-id="${idImagem}"]`);
-  if (linhaSelecionada) {
-    linhaSelecionada.classList.add("selecionada");
-  }
 }
 
 const tooltip = document.getElementById("tooltip");
@@ -6702,8 +7161,20 @@ document
   .addEventListener("click", function (event) {
     event.preventDefault();
 
-    var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
-    if (!linhaSelecionada) {
+    if (modernFuncoesState.mode === "animacao") {
+      salvarFuncoesAnimacao();
+      return;
+    }
+
+    var linhaSelecionada = sincronizarImagemSelecionada();
+    var idImagemSelecionada =
+      linhaSelecionada?.getAttribute("data-id") ||
+      document.getElementById("imagem_id")?.value ||
+      document.getElementById("alterar_status")?.getAttribute("data-imagemid") ||
+      window.__ctxMenuImagemId ||
+      "";
+
+    if (!idImagemSelecionada) {
       Toastify({
         text: "Nenhuma imagem selecionada",
         duration: 3000,
@@ -6715,8 +7186,6 @@ document
       }).showToast();
       return;
     }
-
-    var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
     // Verifica se há algum botão de revisão visível (display: block)
     const revisoesVisiveis = Array.from(
@@ -15266,6 +15735,90 @@ if (document.readyState === "loading") {
 })();
 
 // Carregar tabela de animações da obra
+function salvarFuncoesAnimacao() {
+  const animacaoId = modernFuncoesState.currentAnimacaoId;
+  if (!animacaoId) {
+    Toastify({
+      text: "Nenhuma anima\u00e7\u00e3o selecionada",
+      duration: 3000,
+      close: true,
+      gravity: "top",
+      position: "left",
+      backgroundColor: "red",
+      stopOnFocus: true,
+    }).showToast();
+    return;
+  }
+
+  const dados = {
+    animacao_id: animacaoId,
+    animacao_colaborador_id: document.getElementById("opcao_final").value || "",
+    status_animacao: document.getElementById("status_finalizacao").value || "",
+    prazo_animacao: document.getElementById("prazo_finalizacao").value || "",
+    obs_animacao: document.getElementById("obs_finalizacao").value || "",
+    pos_colaborador_id: document.getElementById("opcao_pos").value || "",
+    status_pos: document.getElementById("status_pos").value || "",
+    prazo_pos: document.getElementById("prazo_pos").value || "",
+    obs_pos: document.getElementById("obs_pos").value || "",
+  };
+
+  const loadingBar = document.getElementById("loadingBar");
+  if (loadingBar) loadingBar.style.display = "block";
+
+  $.ajax({
+    type: "POST",
+    url: "salvarFuncoesAnimacao.php",
+    data: dados,
+    dataType: "json",
+    success: function (response) {
+      if (!response || response.success !== true) {
+        Toastify({
+          text: response?.error || "Erro ao salvar anima\u00e7\u00e3o.",
+          duration: 3000,
+          close: true,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "red",
+          stopOnFocus: true,
+        }).showToast();
+        return;
+      }
+
+      Toastify({
+        text: "Anima\u00e7\u00e3o salva com sucesso!",
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "green",
+        stopOnFocus: true,
+      }).showToast();
+
+      const obraIdAtual = localStorage.getItem("obraId");
+      if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
+    },
+    error: function (jqXHR, textStatus, errorThrown) {
+      console.error(
+        "Erro ao salvar anima\u00e7\u00e3o:",
+        textStatus,
+        errorThrown,
+      );
+      Toastify({
+        text: "Erro ao salvar anima\u00e7\u00e3o.",
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "red",
+        stopOnFocus: true,
+      }).showToast();
+    },
+    complete: function () {
+      if (loadingBar) loadingBar.style.display = "none";
+    },
+  });
+}
+
 function carregarAnimacoesObra(obraIdParam) {
   fetch(
     "../Animacao/getAnimacoesObra.php?obra_id=" +
@@ -15289,7 +15842,10 @@ function carregarAnimacoesObra(obraIdParam) {
       secao.style.display = "block";
       animacoes.forEach(function (a) {
         const tr = document.createElement("tr");
+        tr.classList.add("linha-animacao");
         tr.setAttribute("data-animacao-id", a.idanimacao);
+        tr.setAttribute("data-imagem-id", a.imagem_id || "");
+        tr.setAttribute("data-tipo-animacao", a.tipo_animacao || "");
 
         const nomeImagem = document.createElement("td");
         nomeImagem.textContent = String(a.imagem_nome || "");
@@ -15334,7 +15890,7 @@ function carregarAnimacoesObra(obraIdParam) {
 
         tr.appendChild(nomeImagem);
         tr.appendChild(statusImagem);
-        tr.appendChild(nomeAnimacao);
+        // tr.appendChild(nomeAnimacao);
         tr.appendChild(substatusTd);
         tr.appendChild(tipoAnimacao);
         tr.appendChild(duracao);
@@ -15372,6 +15928,16 @@ function carregarAnimacoesObra(obraIdParam) {
           });
 
           tr.appendChild(cellColaborador);
+        });
+
+        tr.addEventListener("click", function (event) {
+          if (event.target.closest("button, a, input, select, textarea"))
+            return;
+          tbody.querySelectorAll("tr.selecionada").forEach((row) => {
+            row.classList.remove("selecionada");
+          });
+          tr.classList.add("selecionada");
+          atualizarModalAnimacao(a.idanimacao);
         });
 
         tbody.appendChild(tr);

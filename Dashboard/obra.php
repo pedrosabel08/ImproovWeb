@@ -913,7 +913,7 @@ $conn->close();
                         <tr>
                             <th>Nome da imagem</th>
                             <th>Status Imagem</th>
-                            <th>Nome da animação</th>
+                            <!-- <th>Nome da animação</th> -->
                             <th>Substatus</th>
                             <th>Tipo de animação</th>
                             <th>Duração (s)</th>

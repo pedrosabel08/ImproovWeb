@@ -696,9 +696,9 @@ tr.bate-recorde td:last-child {
 }
 
 @media screen and (max-width: 760px) {
-  body {
+  /* body {
     grid-template-columns: 1fr;
-  }
+  } */
 
   .container {
     grid-column: 1;

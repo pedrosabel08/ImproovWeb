@@ -72,21 +72,30 @@ try {
         }
     } else {
         // buscar itens da entrega
-        $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status, ss.nome_substatus, i.substatus_id
-                 FROM entregas_itens ei
-                 INNER JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
-                 INNER JOIN substatus_imagem ss ON ss.id = i.substatus_id
-                 WHERE ei.entrega_id = ?
-                 ORDER BY
-                 CASE
-                     WHEN LOWER(TRIM(ei.status)) IN ('entrega pendente', 'pendente')
-                          OR UPPER(TRIM(ss.nome_substatus)) IN ('RVW', 'DRV') THEN 1
-                     WHEN LOWER(TRIM(ei.status)) LIKE 'entregue%'
-                          OR LOWER(TRIM(ei.status)) = 'entrega antecipada' THEN 3
-                     ELSE 2
-                 END ASC,
-                 ei.imagem_id ASC,
-                 ei.id ASC";
+        $sql2 = "SELECT
+                    ei.id,
+                    ei.imagem_id,
+                    i.imagem_nome AS nome,
+                    ei.status,
+                    ss.nome_substatus,
+                    i.substatus_id
+                FROM entregas_itens ei
+                INNER JOIN imagens_cliente_obra i
+                    ON ei.imagem_id = i.idimagens_cliente_obra
+                INNER JOIN substatus_imagem ss
+                    ON ss.id = i.substatus_id
+                WHERE ei.entrega_id = ?
+                ORDER BY
+                    CASE
+                        WHEN LOWER(TRIM(ei.status)) = 'entrega pendente'
+                            THEN 1
+
+                WHEN LOWER(TRIM(ei.status)) = 'pendente' THEN 2
+
+                WHEN LOWER(TRIM(ei.status)) LIKE 'entregue%'
+                OR LOWER(TRIM(ei.status)) = 'entrega antecipada' THEN 3
+
+                ELSE 4 END ASC, ei.imagem_id ASC, ei.id ASC;";
         $stmt2 = $conn->prepare($sql2);
         $stmt2->bind_param("i", $entrega_id);
         $stmt2->execute();

@@ -1531,6 +1531,7 @@ document.addEventListener("DOMContentLoaded", () => {
       modalTitle.textContent = `${data.nomenclatura || "Entrega"} - ${data.nome_etapa || data.id}`;
       // salvar dados para uso por outros handlers (ex: adicionar imagem por id)
       entregaDados = data;
+      modalRecebimento.textContent = formatarData(data.data_recebimento) || "-";
       modalPrazo.textContent = formatarData(data.data_prevista) || "-";
       // Contabiliza somente itens realmente entregues conforme regras solicitadas
       const finalizedCount = data.itens.filter((i) => {

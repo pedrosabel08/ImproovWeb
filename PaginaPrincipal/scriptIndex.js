@@ -273,7 +273,7 @@ function destacarPendenciasAtencao(key) {
 
   const cards = Array.from(
     colunaPendencias.querySelectorAll(
-      ".pendencia-flowreview-card, .pendencia-op-item",
+      ".pendencia-flowreview-card, .pendencia-op-item, .pendencia-op-card",
     ),
   );
 
@@ -511,6 +511,10 @@ function obterResumoPendenciasOperacionais(data) {
 }
 
 function criarPendenciaOperacionalItem(item, module) {
+  if (item.checklist_id && pendenciaOperacionalUsaChecklistAccordion(module)) {
+    return criarPendenciaOperacionalChecklistCard(item, module);
+  }
+
   const row = document.createElement("button");
   row.type = "button";
   row.className = `pendencia-op-item sla-${item.sla_status || "dentro"}`;
@@ -896,6 +900,10 @@ function abrirPendenciaOperacional(item, module) {
     return;
   }
 
+  abrirLinkPendenciaOperacional(item, module);
+}
+
+function abrirLinkPendenciaOperacional(item, module) {
   if (item.source_type === "flow_review" && item.metadata) {
     abrirPendenciaFlowReview(item.metadata);
     return;
@@ -923,7 +931,174 @@ async function salvarChecklistOperacional(checklistId, values) {
   return json;
 }
 
-function abrirChecklistOperacionalModal(item) {
+function pendenciaOperacionalUsaChecklistAccordion(module) {
+  return ["imagem", "projeto"].includes(String(module?.key || ""));
+}
+
+function pendenciaChecklistPossuiPendencias(items) {
+  return (items || []).some(
+    (item) => Number(item.required || 0) === 1 && Number(item.done || 0) !== 1,
+  );
+}
+
+function criarPendenciaOperacionalChecklistCard(item, module) {
+  const card = document.createElement("article");
+  card.className = `pendencia-op-card sla-${item.sla_status || "dentro"}`;
+  card.dataset.sourceType = item.source_type || module.key || "";
+  card.dataset.sourceId = String(item.source_id || "");
+  card.dataset.checklistId = String(item.checklist_id || "");
+  card.dataset.slaCriticidade = item.sla_status || "dentro";
+  card.dataset.attentionKey = module.key || "";
+
+  const due = item.due_at ? formatarDataHoraKanban(item.due_at) : "-";
+  const tempo = formatarDuracaoPendencia(item.tempo_decorrido_minutos);
+  const slaMinutos = Number(item.sla_minutos || 0);
+  const slaLabel = slaMinutos
+    ? `${tempo} / ${Math.round(slaMinutos / 60)}h`
+    : tempo;
+  const checklistItems = Array.isArray(item.checklist_items)
+    ? item.checklist_items
+    : [];
+  const requiredItems = checklistItems.filter(
+    (check) => Number(check.required || 0) === 1,
+  );
+  const pendingItems = requiredItems.filter(
+    (check) => Number(check.done || 0) !== 1,
+  );
+
+  card.innerHTML = `
+    <div class="pendencia-op-card-main" role="button" tabindex="0" aria-expanded="false">
+      <span class="pendencia-op-severity"></span>
+      <span class="pendencia-op-main">
+        <strong>${escapeKanbanText(item.title || "Pendencia")}</strong>
+        <small>${escapeKanbanText(item.subtitle || module.description || "")}</small>
+        <span class="pendencia-op-meta">
+          <span><i class="ri-user-3-line"></i>${escapeKanbanText(item.responsavel_nome || "-")}</span>
+          <span><i class="ri-calendar-line"></i>${escapeKanbanText(due)}</span>
+          <span><i class="ri-time-line"></i>${escapeKanbanText(slaLabel)}</span>
+        </span>
+      </span>
+      <span class="pendencia-op-check-count">${Math.max(0, requiredItems.length - pendingItems.length)}/${requiredItems.length}</span>
+      <button type="button" class="pendencia-op-open" title="Abrir origem" aria-label="Abrir origem">
+        <i class="ri-external-link-line"></i>
+      </button>
+      <i class="ri-arrow-down-s-line pendencia-op-chevron"></i>
+    </div>
+    <div class="pendencia-op-check-accordion" hidden>
+      <div class="pendencia-check-list">
+        ${checklistItems
+          .map((check) => {
+            const itemKey = String(check.item_key || "");
+            const isAutomatico =
+              module.key === "imagem" && itemKey === "subtipo_definido";
+            const meta = isAutomatico
+              ? "Automatico"
+              : Number(check.required || 0) === 1
+                ? "Obrigatorio"
+                : "Opcional";
+            return `
+              <label class="pendencia-check-row ${isAutomatico ? "pendencia-check-row--locked" : ""}">
+                <input
+                  type="checkbox"
+                  data-check-key="${escapeKanbanText(itemKey)}"
+                  data-manual="${isAutomatico ? "0" : "1"}"
+                  ${Number(check.done || 0) === 1 ? "checked" : ""}
+                  ${isAutomatico ? "disabled" : ""}
+                >
+                <span>
+                  <strong>${escapeKanbanText(check.label || itemKey)}</strong>
+                  <small>${escapeKanbanText(meta)}</small>
+                </span>
+              </label>`;
+          })
+          .join("")}
+      </div>
+      <div class="pendencia-op-check-actions">
+        <button type="button" class="pendencia-op-check-save">Salvar checklist</button>
+      </div>
+    </div>
+  `;
+
+  const main = card.querySelector(".pendencia-op-card-main");
+  const accordion = card.querySelector(".pendencia-op-check-accordion");
+  const toggleAccordion = () => {
+    const expanded = card.classList.toggle("is-open");
+    main?.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (accordion) accordion.hidden = !expanded;
+  };
+
+  main?.addEventListener("click", toggleAccordion);
+  main?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleAccordion();
+  });
+
+  card.querySelector(".pendencia-op-open")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    abrirLinkPendenciaOperacional(item, module);
+  });
+
+  card.querySelector(".pendencia-op-check-save")?.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    const button = event.currentTarget;
+    const values = {};
+    card
+      .querySelectorAll('.pendencia-check-row input[data-manual="1"]')
+      .forEach((input) => {
+        values[input.dataset.checkKey] = input.checked ? 1 : 0;
+      });
+
+    button.disabled = true;
+    try {
+      const result = await salvarChecklistOperacional(item.checklist_id, values);
+      item.checklist_items = result.items || [];
+      const resolved =
+        result.status === "concluido" &&
+        !pendenciaChecklistPossuiPendencias(item.checklist_items);
+
+      if (typeof Toastify === "function") {
+        Toastify({
+          text: resolved ? "Checklist concluido com sucesso." : "Checklist atualizado.",
+          duration: 2400,
+          gravity: "top",
+          position: "right",
+          backgroundColor: resolved ? "#16a34a" : "#2563eb",
+        }).showToast();
+      }
+
+      if (resolved) {
+        card.remove();
+        if (!document.querySelector("#pendenciaChecklistOverlay .pendencia-op-card")) {
+          fecharChecklistOperacionalOverlay();
+        }
+        setTimeout(() => carregarDados(colaborador_id), 250);
+        return;
+      }
+
+      const nextCard = criarPendenciaOperacionalChecklistCard(item, module);
+      nextCard.classList.add("is-open");
+      nextCard.querySelector(".pendencia-op-card-main")?.setAttribute("aria-expanded", "true");
+      const nextAccordion = nextCard.querySelector(".pendencia-op-check-accordion");
+      if (nextAccordion) nextAccordion.hidden = false;
+      card.replaceWith(nextCard);
+    } catch (error) {
+      if (typeof Swal !== "undefined" && Swal.fire) {
+        Swal.fire({
+          icon: "error",
+          title: "Erro ao salvar",
+          text: error.message || "Nao foi possivel atualizar o checklist.",
+        });
+      }
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  return card;
+}
+
+function abrirChecklistOperacionalModalLegacySwal(item) {
   const checklistId = Number(item.checklist_id || item.imagem_checklist_id || 0);
   const checklistItems = item.checklist_items || item.imagem_checklist_items || [];
   if (!checklistId || !Array.isArray(checklistItems)) return;
@@ -964,6 +1139,78 @@ function abrirChecklistOperacionalModal(item) {
       carregarDados();
     }
   });
+}
+
+function garantirChecklistOperacionalOverlay() {
+  let overlay = document.getElementById("pendenciaChecklistOverlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "pendenciaChecklistOverlay";
+  overlay.className = "pendencia-check-overlay";
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <div class="pendencia-check-dialog" role="dialog" aria-modal="true" aria-labelledby="pendenciaChecklistTitle">
+      <div class="pendencia-check-dialog-header">
+        <h2 id="pendenciaChecklistTitle">Checklist operacional</h2>
+        <button type="button" class="pendencia-check-dialog-close" aria-label="Fechar">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="pendencia-check-dialog-body"></div>
+    </div>
+  `;
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) fecharChecklistOperacionalOverlay();
+  });
+  overlay
+    .querySelector(".pendencia-check-dialog-close")
+    ?.addEventListener("click", fecharChecklistOperacionalOverlay);
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function fecharChecklistOperacionalOverlay() {
+  const overlay = document.getElementById("pendenciaChecklistOverlay");
+  if (overlay) overlay.hidden = true;
+}
+
+function abrirChecklistOperacionalModal(item) {
+  const checklistId = Number(item.checklist_id || item.imagem_checklist_id || 0);
+  const checklistItems = item.checklist_items || item.imagem_checklist_items || [];
+  if (!checklistId || !Array.isArray(checklistItems)) return;
+
+  const overlay = garantirChecklistOperacionalOverlay();
+  const body = overlay.querySelector(".pendencia-check-dialog-body");
+  if (!body) return;
+
+  const moduleKey = item.source_type || (item.imagem_checklist_id ? "imagem" : "projeto");
+  const module = {
+    key: moduleKey,
+    description: "Checklist operacional",
+    color: moduleKey === "imagem" ? "#16a34a" : "#f59e0b",
+  };
+  body.innerHTML = "";
+  body.appendChild(
+    criarPendenciaOperacionalChecklistCard(
+      {
+        ...item,
+        checklist_id: checklistId,
+        checklist_items: checklistItems,
+        title: item.title || "Checklist operacional",
+        subtitle: item.subtitle || "",
+      },
+      module,
+    ),
+  );
+  const card = body.querySelector(".pendencia-op-card");
+  card?.classList.add("is-open");
+  card
+    ?.querySelector(".pendencia-op-card-main")
+    ?.setAttribute("aria-expanded", "true");
+  const accordion = card?.querySelector(".pendencia-op-check-accordion");
+  if (accordion) accordion.hidden = false;
+  overlay.hidden = false;
 }
 
 function abrirModalUploadFinalPendente(card) {

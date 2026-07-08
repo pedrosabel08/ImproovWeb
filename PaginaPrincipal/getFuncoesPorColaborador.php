@@ -35,8 +35,35 @@ $sql = "SELECT
     o.nome_obra,
     ico.prazo AS imagem_prazo,
     ico.substatus_id AS imagem_status_id,
+    ico.tipo_imagem,
+    ico.subtipo_id,
     ico.idimagens_cliente_obra AS idimagem,
     si.nome_status,
+    CASE
+        WHEN fi.funcao_id IN (4, 7)
+         AND ico.subtipo_id IS NOT NULL
+         AND ico.subtipo_id <> 0
+         AND LOWER(COALESCE(ico.tipo_imagem, '')) LIKE '%humanizada%'
+         AND NOT EXISTS (
+             SELECT 1
+             FROM imagens_cliente_obra ico_sub
+             JOIN funcao_imagem fi_comp
+               ON fi_comp.imagem_id = ico_sub.idimagens_cliente_obra
+              AND fi_comp.funcao_id = 3
+             WHERE ico_sub.obra_id = ico.obra_id
+               AND ico_sub.subtipo_id = ico.subtipo_id
+               AND ico_sub.idimagens_cliente_obra <> ico.idimagens_cliente_obra
+               AND fi_comp.status NOT IN ('Finalizado', 'Aprovado', 'Aprovado com ajustes')
+             LIMIT 1
+         )
+            THEN 1
+        WHEN fi.funcao_id IN (4, 7)
+         AND ico.subtipo_id IS NOT NULL
+         AND ico.subtipo_id <> 0
+         AND LOWER(COALESCE(ico.tipo_imagem, '')) LIKE '%humanizada%'
+            THEN 0
+        ELSE 1
+    END AS planta_humanizada_subtipo_composicoes_ok,
     (
         SELECT sh.justificativa
         FROM status_hold sh
@@ -392,26 +419,64 @@ if ($mostrarPendenciasFlowReview) {
             ELSE 'Aprovação'
         END";
     } else {
-        $pendenciasExtraJoin = "JOIN funcao_imagem fi_finalizacao
-  ON fi_finalizacao.imagem_id = fi.imagem_id
- AND fi_finalizacao.funcao_id = 4
- AND fi_finalizacao.colaborador_id = ?";
-        $pendenciasWhere = "fi.funcao_id = 5
-          AND fi.status = 'Em aprovação'
-          AND NOT EXISTS (
+$pendenciasWhere = "fi.funcao_id = 5
+  AND fi.status = 'Em aprovação'
+  AND (
+      (
+          EXISTS (
               SELECT 1
-              FROM historico_aprovacoes ha_finalizador
-              WHERE ha_finalizador.funcao_imagem_id = fi.idfuncao_imagem
-                AND ha_finalizador.responsavel = ?
-                AND ha_finalizador.data_aprovacao >= COALESCE(hi_latest.data_envio, al_latest.criado_em)
-                AND ha_finalizador.status_novo IN ('Aprovado', 'Aprovado com ajustes', 'Ajuste', 'Finalizado', 'Reprovado')
-              LIMIT 1
-          )";
-        $pendenciasTipo = "'Pós-produção'";
-        $pendenciasBindTypes = 'ii';
-        $pendenciasBindValues[] = $colaboradorId;
-        $pendenciasBindValues[] = $colaboradorId;
-    }
+              FROM funcao_imagem fi_rev
+              WHERE fi_rev.imagem_id = fi.imagem_id
+                AND fi_rev.funcao_id = 6
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM funcao_imagem fi_rev_user
+              WHERE fi_rev_user.imagem_id = fi.imagem_id
+                AND fi_rev_user.funcao_id = 6
+                AND fi_rev_user.colaborador_id = ?
+          )
+      )
+      OR
+      (
+          NOT EXISTS (
+              SELECT 1
+              FROM funcao_imagem fi_rev_exists
+              WHERE fi_rev_exists.imagem_id = fi.imagem_id
+                AND fi_rev_exists.funcao_id = 6
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM funcao_imagem fi_fin_user
+              WHERE fi_fin_user.imagem_id = fi.imagem_id
+                AND fi_fin_user.funcao_id = 4
+                AND fi_fin_user.colaborador_id = ?
+          )
+      )
+  )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM historico_aprovacoes ha_finalizador
+      WHERE ha_finalizador.responsavel = ?
+        AND ha_finalizador.data_aprovacao >= COALESCE(hi_latest.data_envio, al_latest.criado_em)
+        AND ha_finalizador.status_novo IN ('Aprovado', 'Aprovado com ajustes', 'Ajuste', 'Finalizado', 'Reprovado')
+        AND ha_finalizador.funcao_imagem_id IN (
+            SELECT fi_resp.idfuncao_imagem
+            FROM funcao_imagem fi_resp
+            WHERE fi_resp.imagem_id = fi.imagem_id
+              AND fi_resp.colaborador_id = ?
+              AND fi_resp.funcao_id IN (4, 6)
+        )
+      LIMIT 1
+  )";
+
+$pendenciasTipo = "'Pós-produção'";
+$pendenciasBindTypes = 'iiii';
+$pendenciasBindValues[] = $colaboradorId; // função 6
+$pendenciasBindValues[] = $colaboradorId; // função 4 fallback
+$pendenciasBindValues[] = $colaboradorId; // histórico responsável
+$pendenciasBindValues[] = $colaboradorId; // função do histórico
+}
 
     $sqlPendencias = "SELECT DISTINCT
     fi.idfuncao_imagem,
@@ -790,6 +855,11 @@ foreach ($funcoes as $funcao) {
     $nomeStatusImagemLower = function_exists('mb_strtolower') ? mb_strtolower($nomeStatusImagem) : strtolower($nomeStatusImagem);
     $imagemStatusId = isset($funcao['imagem_status_id']) ? intval($funcao['imagem_status_id']) : null;
     $imagemEmHold = ($nomeStatusImagemLower === 'hold') || ($imagemStatusId === 7);
+    $tipoImagem = isset($funcao['tipo_imagem']) ? (string)$funcao['tipo_imagem'] : '';
+    $tipoImagemLower = function_exists('mb_strtolower') ? mb_strtolower($tipoImagem) : strtolower($tipoImagem);
+    $subtipoId = isset($funcao['subtipo_id']) ? intval($funcao['subtipo_id']) : 0;
+    $isPlantaHumanizadaAtual = in_array((int)$funcaoAtualId, [4, 7], true)
+        && strpos($tipoImagemLower, 'humanizada') !== false;
 
     $statusAnterior   = null;
     $liberada         = false;
@@ -859,6 +929,15 @@ foreach ($funcoes as $funcao) {
         }
     }
 
+    if (
+        $liberada
+        && $isPlantaHumanizadaAtual
+        && $subtipoId > 0
+        && empty($funcao['planta_humanizada_subtipo_composicoes_ok'])
+    ) {
+        $liberada = false;
+    }
+
     // Calcular tempo por status usando logs já consultados
     $funcaoId       = $funcao['idfuncao_imagem'];
     $logs           = isset($logsPorFuncao[$funcaoId]) ? $logsPorFuncao[$funcaoId] : [];
@@ -872,6 +951,8 @@ foreach ($funcoes as $funcao) {
         'nome_funcao'                => $funcao['nome_funcao'],
         'prioridade'                 => $funcao['prioridade'],
         'funcao_id'                  => $funcao['funcao_id'],
+        'tipo_imagem'                => $funcao['tipo_imagem'],
+        'subtipo_id'                 => $subtipoId > 0 ? $subtipoId : null,
         'nome_status'                  => $funcao['nome_status'],
         'hold_justificativa_recente' => $funcao['hold_justificativa_recente'] ?? null,
         'justificativa'              => $funcao['hold_justificativa_recente'] ?? null,

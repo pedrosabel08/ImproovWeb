@@ -7,16 +7,27 @@ class Clausula17Service
 
     public function buildClausula17(array $funcoes, ?int $colaboradorId = null): array
     {
-        // Exceção: colaborador 16 tem preço fixo e ignora demais funções
+        // Exceção: colaborador 16 possui valores específicos para modelagem de fachada
         if ($colaboradorId === 16) {
             $trechos = [];
+
             $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
-            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
+
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor correspondente à complexidade de cada modelagem de fachada de ambiente virtual desenvolvida, conforme exposto abaixo:<br>';
+
             $linhas = [];
+
             $linhas[] = '<span class="titulo-funcao">Modelagem de fachada:</span>';
-            $linhas[] = '<span>Valor fixo de R$ 1.000,00 (Mil reais) por modelagem de fachada de ambiente virtual desenvolvido.</span><br>';
+
+            $linhas[] = '<span>Valor fixo por modelagem de fachada de ambiente virtual desenvolvido conforme a complexidade:</span><br>';
+
+            $linhas[] = '<span>R$ 700,00 - Complexidade baixa;</span>';
+            $linhas[] = '<span>R$ 1.000,00 - Complexidade moderada;</span>';
+            $linhas[] = '<span>R$ 1.300,00 - Complexidade alta.</span><br>';
+
             $trechos[] = implode("\n", $linhas);
             $trechos[] = $this->buildParagrafos(false);
+
             $texto = implode("\n", $trechos);
 
             return [

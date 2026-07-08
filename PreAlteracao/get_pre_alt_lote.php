@@ -137,9 +137,9 @@ $stmtItens = $conn->prepare(
      LEFT JOIN colaborador c ON c.idcolaborador = pai.responsavel_id
      WHERE pai.pre_alt_lote_id = ?
      ORDER BY
+        ico.imagem_nome ASC,
         pai.entrega_id ASC,
         CAST(SUBSTRING_INDEX(ico.imagem_nome, '.', 1) AS UNSIGNED) ASC,
-        ico.imagem_nome ASC,
         pai.id ASC"
 );
 if (!$stmtItens) {

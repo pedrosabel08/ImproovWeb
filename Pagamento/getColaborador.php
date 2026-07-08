@@ -314,7 +314,7 @@ WHERE
     } else {
         $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
-} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39, 40])) {
+} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39, 40, 44])) {
     $sql = "SELECT 
     fi.colaborador_id,
     'funcao_imagem' AS origem,
@@ -354,7 +354,9 @@ WHERE
         JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
         WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
     ) ELSE 0 END AS pago_completa_count,
-    o.idobra AS obra_id   
+    o.idobra AS obra_id,
+NULL AS animacao_id_ordem,
+1 AS tem_par_animacao_pos
 FROM 
     funcao_imagem fi
 JOIN 
@@ -408,7 +410,21 @@ SELECT
     fa.data_pagamento,
     NULL AS pago_parcial_count,
     NULL AS pago_completa_count,
-    an.obra_id  
+    an.obra_id,
+    fa.animacao_id AS animacao_id_ordem,
+    CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM funcao_animacao fa_pair
+        WHERE fa_pair.animacao_id = fa.animacao_id
+          AND fa_pair.colaborador_id = fa.colaborador_id
+          AND fa_pair.funcao_id IN (5, 10)
+        GROUP BY fa_pair.animacao_id, fa_pair.colaborador_id
+        HAVING COUNT(DISTINCT fa_pair.funcao_id) = 2
+    )
+    THEN 0
+    ELSE 1
+END AS tem_par_animacao_pos
 FROM 
     funcao_animacao fa
 JOIN
@@ -425,7 +441,18 @@ WHERE
     }
 
     // ORDER BY usa alias de coluna, não de tabela
-    $sql .= " ORDER BY obra_id, funcao_id DESC, imagem_nome";
+$sql .= "
+ORDER BY
+    obra_id,
+    tem_par_animacao_pos ASC,
+    animacao_id_ordem,
+    CASE
+        WHEN funcao_id = 10 THEN 1
+        WHEN funcao_id = 5 THEN 2
+        ELSE 3
+    END,
+    funcao_id DESC,
+    imagem_nome";
 } else {
     // Consulta padrão para outros colaboradores
     $sql = "SELECT 
@@ -518,7 +545,7 @@ if ($colaboradorId == 1) {
     } else {
         $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
     }
-} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39, 40])) {
+} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39, 40, 44])) {
     if ($mesNumero && $ano) {
         // funcao_imagem: s(snap), i(colab), i(ano), i(mes), i(mes_log), i(ano_log) + animacao: i(colab), i(ano), i(mes)
         $stmt->bind_param('siiiiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $colaboradorId, $ano, $mesNumero);

@@ -264,7 +264,10 @@ function destacarPendenciasAtencao(key) {
           const siblingList = sibling.querySelector(".pendencia-op-list");
           const shouldOpen = sibling === targetGroup;
           if (siblingSummary) {
-            siblingSummary.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+            siblingSummary.setAttribute(
+              "aria-expanded",
+              shouldOpen ? "true" : "false",
+            );
           }
           if (siblingList) siblingList.hidden = !shouldOpen;
         });
@@ -676,7 +679,9 @@ function obterCampoFiltroPendencia(item, module, campo) {
     case "status":
       return meta.status || item.subtitle || item.sla_label || "";
     case "lote":
-      return module.key === "cobranca_cliente" ? String(item.source_id || "") : "";
+      return module.key === "cobranca_cliente"
+        ? String(item.source_id || "")
+        : "";
     case "prazo":
       return item.due_at ? String(item.due_at).slice(0, 10) : "";
     default:
@@ -727,12 +732,14 @@ function obterFiltrosModuloPendencias(module) {
     ],
   };
 
-  return byModule[module.key] || [
-    { key: "status", label: "Status" },
-    { key: "responsavel", label: "Responsavel" },
-    ...common,
-    { key: "prazo", label: "Prazo" },
-  ];
+  return (
+    byModule[module.key] || [
+      { key: "status", label: "Status" },
+      { key: "responsavel", label: "Responsavel" },
+      ...common,
+      { key: "prazo", label: "Prazo" },
+    ]
+  );
 }
 
 function obterOpcoesFiltroPendencias(items, module, filtro) {
@@ -1034,73 +1041,93 @@ function criarPendenciaOperacionalChecklistCard(item, module) {
     toggleAccordion();
   });
 
-  card.querySelector(".pendencia-op-open")?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    abrirLinkPendenciaOperacional(item, module);
-  });
+  card
+    .querySelector(".pendencia-op-open")
+    ?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      abrirLinkPendenciaOperacional(item, module);
+    });
 
-  card.querySelector(".pendencia-op-check-save")?.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    const button = event.currentTarget;
-    const values = {};
-    card
-      .querySelectorAll('.pendencia-check-row input[data-manual="1"]')
-      .forEach((input) => {
-        values[input.dataset.checkKey] = input.checked ? 1 : 0;
-      });
-
-    button.disabled = true;
-    try {
-      const result = await salvarChecklistOperacional(item.checklist_id, values);
-      item.checklist_items = result.items || [];
-      const resolved =
-        result.status === "concluido" &&
-        !pendenciaChecklistPossuiPendencias(item.checklist_items);
-
-      if (typeof Toastify === "function") {
-        Toastify({
-          text: resolved ? "Checklist concluido com sucesso." : "Checklist atualizado.",
-          duration: 2400,
-          gravity: "top",
-          position: "right",
-          backgroundColor: resolved ? "#16a34a" : "#2563eb",
-        }).showToast();
-      }
-
-      if (resolved) {
-        card.remove();
-        if (!document.querySelector("#pendenciaChecklistOverlay .pendencia-op-card")) {
-          fecharChecklistOperacionalOverlay();
-        }
-        setTimeout(() => carregarDados(colaborador_id), 250);
-        return;
-      }
-
-      const nextCard = criarPendenciaOperacionalChecklistCard(item, module);
-      nextCard.classList.add("is-open");
-      nextCard.querySelector(".pendencia-op-card-main")?.setAttribute("aria-expanded", "true");
-      const nextAccordion = nextCard.querySelector(".pendencia-op-check-accordion");
-      if (nextAccordion) nextAccordion.hidden = false;
-      card.replaceWith(nextCard);
-    } catch (error) {
-      if (typeof Swal !== "undefined" && Swal.fire) {
-        Swal.fire({
-          icon: "error",
-          title: "Erro ao salvar",
-          text: error.message || "Nao foi possivel atualizar o checklist.",
+  card
+    .querySelector(".pendencia-op-check-save")
+    ?.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const button = event.currentTarget;
+      const values = {};
+      card
+        .querySelectorAll('.pendencia-check-row input[data-manual="1"]')
+        .forEach((input) => {
+          values[input.dataset.checkKey] = input.checked ? 1 : 0;
         });
+
+      button.disabled = true;
+      try {
+        const result = await salvarChecklistOperacional(
+          item.checklist_id,
+          values,
+        );
+        item.checklist_items = result.items || [];
+        const resolved =
+          result.status === "concluido" &&
+          !pendenciaChecklistPossuiPendencias(item.checklist_items);
+
+        if (typeof Toastify === "function") {
+          Toastify({
+            text: resolved
+              ? "Checklist concluido com sucesso."
+              : "Checklist atualizado.",
+            duration: 2400,
+            gravity: "top",
+            position: "right",
+            backgroundColor: resolved ? "#16a34a" : "#2563eb",
+          }).showToast();
+        }
+
+        if (resolved) {
+          card.remove();
+          if (
+            !document.querySelector(
+              "#pendenciaChecklistOverlay .pendencia-op-card",
+            )
+          ) {
+            fecharChecklistOperacionalOverlay();
+          }
+          setTimeout(() => carregarDados(colaborador_id), 250);
+          return;
+        }
+
+        const nextCard = criarPendenciaOperacionalChecklistCard(item, module);
+        nextCard.classList.add("is-open");
+        nextCard
+          .querySelector(".pendencia-op-card-main")
+          ?.setAttribute("aria-expanded", "true");
+        const nextAccordion = nextCard.querySelector(
+          ".pendencia-op-check-accordion",
+        );
+        if (nextAccordion) nextAccordion.hidden = false;
+        card.replaceWith(nextCard);
+      } catch (error) {
+        if (typeof Swal !== "undefined" && Swal.fire) {
+          Swal.fire({
+            icon: "error",
+            title: "Erro ao salvar",
+            text: error.message || "Nao foi possivel atualizar o checklist.",
+          });
+        }
+      } finally {
+        button.disabled = false;
       }
-    } finally {
-      button.disabled = false;
-    }
-  });
+    });
 
   return card;
 }
 
 function abrirChecklistOperacionalModalLegacySwal(item) {
-  const checklistId = Number(item.checklist_id || item.imagem_checklist_id || 0);
-  const checklistItems = item.checklist_items || item.imagem_checklist_items || [];
+  const checklistId = Number(
+    item.checklist_id || item.imagem_checklist_id || 0,
+  );
+  const checklistItems =
+    item.checklist_items || item.imagem_checklist_items || [];
   if (!checklistId || !Array.isArray(checklistItems)) return;
 
   const rows = checklistItems
@@ -1176,15 +1203,19 @@ function fecharChecklistOperacionalOverlay() {
 }
 
 function abrirChecklistOperacionalModal(item) {
-  const checklistId = Number(item.checklist_id || item.imagem_checklist_id || 0);
-  const checklistItems = item.checklist_items || item.imagem_checklist_items || [];
+  const checklistId = Number(
+    item.checklist_id || item.imagem_checklist_id || 0,
+  );
+  const checklistItems =
+    item.checklist_items || item.imagem_checklist_items || [];
   if (!checklistId || !Array.isArray(checklistItems)) return;
 
   const overlay = garantirChecklistOperacionalOverlay();
   const body = overlay.querySelector(".pendencia-check-dialog-body");
   if (!body) return;
 
-  const moduleKey = item.source_type || (item.imagem_checklist_id ? "imagem" : "projeto");
+  const moduleKey =
+    item.source_type || (item.imagem_checklist_id ? "imagem" : "projeto");
   const module = {
     key: moduleKey,
     description: "Checklist operacional",
@@ -5776,7 +5807,10 @@ function enviarImagens() {
     formData.append("dataIdFuncoes", idfuncao_imagem);
     if (isAnimacaoCard) {
       formData.append("funcao_animacao_id", idfuncao_imagem || "");
-      formData.append("animacao_id", cardSelecionado?.dataset?.animacaoId || "");
+      formData.append(
+        "animacao_id",
+        cardSelecionado?.dataset?.animacaoId || "",
+      );
       formData.append("tipo_animacao", tipoAnimacaoCard);
     }
     formData.append("idimagem", idimagem);

@@ -419,7 +419,7 @@ if ($mostrarPendenciasFlowReview) {
             ELSE 'Aprovação'
         END";
     } else {
-$pendenciasWhere = "fi.funcao_id = 5
+        $pendenciasWhere = "fi.funcao_id = 5
   AND fi.status = 'Em aprovação'
   AND (
       (
@@ -470,13 +470,13 @@ $pendenciasWhere = "fi.funcao_id = 5
       LIMIT 1
   )";
 
-$pendenciasTipo = "'Pós-produção'";
-$pendenciasBindTypes = 'iiii';
-$pendenciasBindValues[] = $colaboradorId; // função 6
-$pendenciasBindValues[] = $colaboradorId; // função 4 fallback
-$pendenciasBindValues[] = $colaboradorId; // histórico responsável
-$pendenciasBindValues[] = $colaboradorId; // função do histórico
-}
+        $pendenciasTipo = "'Pós-produção'";
+        $pendenciasBindTypes = 'iiii';
+        $pendenciasBindValues[] = $colaboradorId; // função 6
+        $pendenciasBindValues[] = $colaboradorId; // função 4 fallback
+        $pendenciasBindValues[] = $colaboradorId; // histórico responsável
+        $pendenciasBindValues[] = $colaboradorId; // função do histórico
+    }
 
     $sqlPendencias = "SELECT DISTINCT
     fi.idfuncao_imagem,

@@ -53,12 +53,12 @@ if (!$checklist || ($checklist['status'] ?? '') === 'cancelado') {
 
 $moduleKey = (string) ($checklist['module_key'] ?? '');
 $responsavelId = isset($checklist['responsavel_id']) ? (int) $checklist['responsavel_id'] : 0;
-if ($moduleKey === 'projeto' && !in_array($nivelAcesso, [1, 2], true)) {
+if ($moduleKey === 'projeto' && !in_array($nivelAcesso, [1, 2, 3], true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Sem permissao para atualizar este checklist.']);
     exit;
 }
-if ($moduleKey === 'imagem' && !in_array($nivelAcesso, [1, 2, 5], true) && $responsavelId !== (int) $actor) {
+if ($moduleKey === 'imagem' && !in_array($nivelAcesso, [1, 2, 3, 5], true) && $responsavelId !== (int) $actor) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Sem permissao para atualizar este checklist.']);
     exit;

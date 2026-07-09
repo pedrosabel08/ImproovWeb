@@ -4,7 +4,7 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/session_bootstrap.php';
-require_once __DIR__ . '/pre_alt_helpers.php';
+require_once __DIR__ . '/planejamento_helpers.php';
 require_once __DIR__ . '/../Entregas/prazo_entrega_helper.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -16,7 +16,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-pre_alt_ensure_schema($conn);
+pre_alt_planejamento_ensure_schema($conn);
 
 $sql = "
     SELECT
@@ -31,6 +31,10 @@ $sql = "
         l.created_by,
         l.created_at,
         l.updated_at,
+        d.id AS planejamento_id,
+        d.status AS planejamento_status,
+        d.published_at AS planejamento_published_at,
+        d.updated_at AS planejamento_updated_at,
         o.nomenclatura,
         o.link_review,
         cli.idcliente AS cliente_id,
@@ -60,6 +64,7 @@ $sql = "
     LEFT JOIN cliente cli ON cli.idcliente = o.cliente
     JOIN status_imagem si ON si.idstatus = l.status_id
     LEFT JOIN pre_alt_itens i ON i.pre_alt_lote_id = l.id
+    LEFT JOIN pre_alt_diagramas d ON d.pre_alt_lote_id = l.id
     LEFT JOIN review_batch_items rbi ON rbi.id = i.review_batch_item_id
     LEFT JOIN review_batch rb ON rb.id = rbi.review_batch_id
     LEFT JOIN cobranca_review cr ON cr.review_batch_id = rb.id
@@ -94,6 +99,10 @@ $sql = "
         l.created_by,
         l.created_at,
         l.updated_at,
+        d.id,
+        d.status,
+        d.published_at,
+        d.updated_at,
         o.nomenclatura,
         o.link_review,
         cli.idcliente,
@@ -123,6 +132,7 @@ while ($row = $res->fetch_assoc()) {
     $row['status_id'] = (int) $row['status_id'];
     $row['cliente_id'] = isset($row['cliente_id']) ? (int) $row['cliente_id'] : null;
     $row['responsavel_id'] = isset($row['responsavel_id']) ? (int) $row['responsavel_id'] : null;
+    $row['planejamento_id'] = isset($row['planejamento_id']) ? (int) $row['planejamento_id'] : null;
     $row['batch_count'] = (int) ($row['batch_count'] ?? 0);
     $row['total_itens'] = (int) ($row['total_itens'] ?? 0);
     $row['count_alteracao'] = (int) ($row['count_alteracao'] ?? 0);

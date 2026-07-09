@@ -3,7 +3,7 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/session_bootstrap.php';
-require_once __DIR__ . '/pre_alt_helpers.php';
+require_once __DIR__ . '/planejamento_helpers.php';
 require_once __DIR__ . '/../Entregas/prazo_entrega_helper.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -22,7 +22,7 @@ if ($loteId <= 0) {
     exit;
 }
 
-pre_alt_ensure_schema($conn);
+pre_alt_planejamento_ensure_schema($conn);
 
 $stmtLote = $conn->prepare(
     "SELECT
@@ -37,6 +37,10 @@ $stmtLote = $conn->prepare(
         l.created_by,
         l.created_at,
         l.updated_at,
+        d.id AS planejamento_id,
+        d.status AS planejamento_status,
+        d.published_at AS planejamento_published_at,
+        d.updated_at AS planejamento_updated_at,
         o.nomenclatura,
         o.link_review,
         cli.idcliente AS cliente_id,
@@ -52,6 +56,7 @@ $stmtLote = $conn->prepare(
      LEFT JOIN colaborador c ON c.idcolaborador = COALESCE(l.responsavel_id, l.created_by)
      LEFT JOIN pre_alt_lote_historico h ON h.pre_alt_lote_id = l.id
      LEFT JOIN pre_alt_lote_batches plb ON plb.pre_alt_lote_id = l.id
+     LEFT JOIN pre_alt_diagramas d ON d.pre_alt_lote_id = l.id
      LEFT JOIN review_batch rb ON rb.id = plb.review_batch_id
      LEFT JOIN cobranca_review cr ON cr.review_batch_id = rb.id
      WHERE l.id = ?
@@ -67,6 +72,10 @@ $stmtLote = $conn->prepare(
         l.created_by,
         l.created_at,
         l.updated_at,
+        d.id,
+        d.status,
+        d.published_at,
+        d.updated_at,
         o.nomenclatura,
         o.link_review,
         cli.idcliente,
@@ -180,6 +189,7 @@ $lote['obra_id'] = (int) $lote['obra_id'];
 $lote['status_id'] = (int) $lote['status_id'];
 $lote['cliente_id'] = isset($lote['cliente_id']) ? (int) $lote['cliente_id'] : null;
 $lote['responsavel_id'] = isset($lote['responsavel_id']) ? (int) $lote['responsavel_id'] : null;
+$lote['planejamento_id'] = isset($lote['planejamento_id']) ? (int) $lote['planejamento_id'] : null;
 $resolvidoData = substr((string) ($lote['lote_resolvido_em'] ?? ''), 0, 10);
 $lote['prazo_operacional'] = entregas_valid_date($resolvidoData)
     ? entregas_adicionar_dias_uteis($resolvidoData, 1)

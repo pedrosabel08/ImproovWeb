@@ -3,6 +3,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/alteracoes_helper.php';
+require_once __DIR__ . '/../PreAlteracao/planejamento_helpers.php';
 
 function alt_json_error(string $message, int $statusCode = 400): void
 {
@@ -87,6 +88,7 @@ if ($imagemId <= 0) {
 }
 
 alteracoes_ensure_schema($conn);
+pre_alt_planejamento_ensure_schema($conn);
 
 $stmt = $conn->prepare(
     "SELECT
@@ -300,10 +302,15 @@ if ($stmt = $conn->prepare(
         pal.prioridade AS lote_prioridade,
         pal.prazo AS lote_prazo,
         pal.data_finalizacao_cliente,
+        d.id AS planejamento_id,
+        d.status AS planejamento_status,
+        d.published_at AS planejamento_published_at,
+        d.updated_at AS planejamento_updated_at,
         resp.nome_colaborador AS responsavel_nome,
         creator.nome_colaborador AS criado_por_nome
      FROM pre_alt_itens pai
      JOIN pre_alt_lote pal ON pal.id = pai.pre_alt_lote_id
+     LEFT JOIN pre_alt_diagramas d ON d.pre_alt_lote_id = pal.id
      LEFT JOIN colaborador resp ON resp.idcolaborador = pai.responsavel_id
      LEFT JOIN colaborador creator ON creator.idcolaborador = pal.created_by
      WHERE pai.imagem_id = ? AND pal.obra_id = ? AND pal.status <> 'CANCELADO'
@@ -403,6 +410,13 @@ $summary = [
     'comments_count' => $preAlt['quantidade_comentarios'] ?? ($latest['comentarios_total'] ?? 0),
     'responsible' => $preAlt['responsavel_nome'] ?? '',
     'date' => $preAlt['updated_at'] ?? $preAlt['created_at'] ?? null,
+    'planning' => $preAlt && !empty($preAlt['planejamento_id']) ? [
+        'id' => (int) $preAlt['planejamento_id'],
+        'status' => (string) ($preAlt['planejamento_status'] ?? ''),
+        'published_at' => $preAlt['planejamento_published_at'] ?? null,
+        'updated_at' => $preAlt['planejamento_updated_at'] ?? null,
+        'url' => '../PreAlteracao/planejamento.php?lote_id=' . (int) $preAlt['pre_alt_lote_id'],
+    ] : null,
 ];
 
 echo json_encode([
@@ -411,6 +425,7 @@ echo json_encode([
     'latest_version' => $latest ? array_merge($latest, ['public_path' => $latestPath]) : ['public_path' => $latestPath],
     'pre_alteracao' => $preAlt,
     'pre_alteracao_summary' => $summary,
+    'planejamento' => $summary['planning'],
     'pre_alteracao_history' => $preAltHistory,
     'comments' => $comments,
     'files' => [

@@ -843,6 +843,14 @@ function renderSummary(summary, containerId = "altConfResumo") {
       : summary.return_required
         ? "Sim"
         : "Nao";
+  const planning = summary.planning || null;
+  const planningHtml = planning
+    ? `
+    <a class="alt-conf-summary-row alt-conf-planning-link" href="${escapeHtml(planning.url || "#")}" target="_blank" rel="noopener noreferrer">
+      <span><i class="fa-solid fa-diagram-project"></i> Planejamento visual</span>
+      <strong>${escapeHtml(planning.status || "RASCUNHO")}</strong>
+    </a>`
+    : "";
 
   container.innerHTML = `
     <div class="alt-conf-summary-row">
@@ -871,6 +879,7 @@ function renderSummary(summary, containerId = "altConfResumo") {
       <span><i class="fa-solid fa-user-check"></i> Responsável pela triagem</span>
       <strong>${escapeHtml(summary.responsible || "-")}</strong>
     </div>
+    ${planningHtml}
   `;
 }
 

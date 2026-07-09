@@ -616,6 +616,12 @@ button {
   color: var(--triagem);
 }
 
+.badge-plan-status {
+  color: var(--planejamento);
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(34, 197, 94, 0.1);
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

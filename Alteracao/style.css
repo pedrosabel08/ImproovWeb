@@ -548,6 +548,20 @@
   flex-direction: column;
 }
 
+.alt-conf-planning-link {
+  color: inherit;
+  text-decoration: none;
+  margin-top: 2px;
+  padding: 10px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.alt-conf-planning-link:hover {
+  border-color: #0f766e;
+}
+
 .alt-conf-summary span {
   color: var(--alt-muted);
   font-size: 11px;

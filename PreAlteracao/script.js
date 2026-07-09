@@ -303,6 +303,10 @@
     const n4 = Number(lote.nivel_4 || 0);
     const n5 = Number(lote.nivel_5 || 0);
     const comments = lote.comentarios_por_imagem || [];
+    const planStatus = lote.planejamento_status || "";
+    const planBadge = planStatus
+      ? `<span class="badge badge-plan-status">${escHtml(planStatus)}</span>`
+      : "";
 
     card.innerHTML = `
       <div class="card-topline">
@@ -322,6 +326,7 @@
         <span class="badge badge-stage">${escHtml(lote.nome_etapa || "Etapa")}</span>
         <span class="badge ${priority.cls}">${escHtml(priority.label)}</span>
         <span class="badge badge-date">Resolvido: ${escHtml(formatDate(lote.lote_resolvido_em) || "Sem registro")}</span>
+        ${planBadge}
       </div>
 
       <div class="metric-grid">
@@ -357,6 +362,7 @@
       <div class="card-actions">
         <button type="button" data-card-action="detalhes">Ver detalhes</button>
         <button type="button" data-card-action="triagem">Abrir triagem</button>
+        <button type="button" data-card-action="planejar">Planejar</button>
         <button type="button" data-card-action="concluir">Concluir triagem</button>
         <button type="button" data-card-action="review" ${lote.link_review ? "" : "disabled"}>Review Studio</button>
       </div>
@@ -410,6 +416,10 @@
   }
 
   function handleCardAction(action, lote) {
+    if (action === "planejar") {
+      window.location.href = `${BASE}planejamento.php?lote_id=${encodeURIComponent(lote.lote_id)}`;
+      return;
+    }
     if (action === "review") {
       if (lote.link_review) window.open(lote.link_review, "_blank", "noopener");
       return;
@@ -454,6 +464,9 @@
       <span>${escHtml(lote.nome_cliente || "Cliente nao informado")}</span>
     `;
     refs.paModalActions.innerHTML = `
+      <button type="button" class="modal-review-btn" id="modalPlanejamentoBtn">
+        <i class="fa-solid fa-diagram-project"></i> Planejar
+      </button>
       <button type="button" class="modal-review-btn" id="modalUploadProjetoBtn">
         <i class="fa-solid fa-upload"></i> Upload projeto
       </button>
@@ -463,6 +476,9 @@
     `;
     refs.paModalActions.querySelector("#modalUploadProjetoBtn")?.addEventListener("click", () => {
       openTriagemUploadModal("projeto");
+    });
+    refs.paModalActions.querySelector("#modalPlanejamentoBtn")?.addEventListener("click", () => {
+      window.location.href = `${BASE}planejamento.php?lote_id=${encodeURIComponent(lote.lote_id)}`;
     });
     refs.paModalActions.querySelector("#modalReviewBtn")?.addEventListener("click", () => {
       if (lote.link_review) window.open(lote.link_review, "_blank", "noopener");

@@ -74,7 +74,7 @@ $stmtFuncoes = $conn->prepare(
         SELECT 5 AS funcao_id, 2 AS ordem
      ) req
      JOIN funcao f ON f.idfuncao = req.funcao_id
-     LEFT JOIN funcao_animacao fa
+     JOIN funcao_animacao fa
         ON fa.funcao_id = req.funcao_id
        AND fa.animacao_id = ?
      LEFT JOIN colaborador col ON col.idcolaborador = fa.colaborador_id

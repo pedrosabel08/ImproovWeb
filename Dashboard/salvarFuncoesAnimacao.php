@@ -54,6 +54,7 @@ if (!$exists) {
 $funcoes = [
     [
         'funcao_id' => 10,
+        'ativo' => ($_POST['animacao_ativa'] ?? '1') !== '0',
         'colaborador_id' => anim_int_to_null($_POST['animacao_colaborador_id'] ?? null),
         'status' => anim_empty_to_null($_POST['status_animacao'] ?? null) ?: 'Não iniciado',
         'prazo' => anim_empty_to_null($_POST['prazo_animacao'] ?? null),
@@ -61,6 +62,7 @@ $funcoes = [
     ],
     [
         'funcao_id' => 5,
+        'ativo' => ($_POST['pos_ativa'] ?? '1') !== '0',
         'colaborador_id' => anim_int_to_null($_POST['pos_colaborador_id'] ?? null),
         'status' => anim_empty_to_null($_POST['status_pos'] ?? null) ?: 'Não iniciado',
         'prazo' => anim_empty_to_null($_POST['prazo_pos'] ?? null),
@@ -93,6 +95,10 @@ $conn->begin_transaction();
 
 try {
     foreach ($funcoes as $funcao) {
+        if (!$funcao['ativo']) {
+            continue;
+        }
+
         $valor = 0.0;
         if ($funcao['colaborador_id'] !== null) {
             $stmtValor->bind_param('ii', $funcao['colaborador_id'], $funcao['funcao_id']);

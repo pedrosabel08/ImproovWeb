@@ -1895,6 +1895,23 @@ function clearModernTaskFields(cfg) {
   if (title) title.removeAttribute("data-id-funcao");
 }
 
+function showModernFuncoesToast(message, success = true) {
+  if (typeof Toastify !== "undefined") {
+    Toastify({
+      text: message,
+      duration: 3000,
+      close: true,
+      gravity: "top",
+      position: "left",
+      backgroundColor: success ? "green" : "red",
+      stopOnFocus: true,
+    }).showToast();
+    return;
+  }
+
+  alert(message);
+}
+
 function syncModernTaskRows() {
   const section = document.getElementById("allocationTasksSection");
   if (!section) return;
@@ -1921,25 +1938,39 @@ function syncModernTaskRows() {
 
   const addMenu = document.getElementById("allocationAddMenu");
   const addWrap = section.querySelector(".allocation-add-wrap");
-  if (addWrap) addWrap.hidden = !!modernFuncoesState.visibleKeysOverride;
+  const missingConfigs = modernVisibleFuncoesConfig().filter(
+    (cfg) => !modernFuncoesState.activeKeys.has(cfg.key),
+  );
+  if (addWrap) {
+    addWrap.hidden =
+      (!!modernFuncoesState.visibleKeysOverride &&
+        modernFuncoesState.mode !== "animacao") ||
+      missingConfigs.length === 0;
+  }
   if (addMenu) {
-    if (modernFuncoesState.visibleKeysOverride) addMenu.hidden = true;
+    if (
+      modernFuncoesState.visibleKeysOverride &&
+      modernFuncoesState.mode !== "animacao"
+    ) {
+      addMenu.hidden = true;
+    }
     addMenu.innerHTML = "";
-    modernVisibleFuncoesConfig()
-      .filter((cfg) => !modernFuncoesState.activeKeys.has(cfg.key))
-      .forEach((cfg) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "alloc-add-option";
-        btn.textContent = cfg.label;
-        btn.addEventListener("click", () => {
-          modernFuncoesState.activeKeys.add(cfg.key);
-          addMenu.hidden = true;
-          syncModernTaskRows();
-          document.getElementById(cfg.selectId)?.focus();
-        });
-        addMenu.appendChild(btn);
+    missingConfigs.forEach((cfg) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "alloc-add-option";
+      btn.textContent =
+        modernFuncoesState.mode === "animacao" && cfg.key === "finalizacao"
+          ? "Anima\u00e7\u00e3o"
+          : cfg.label;
+      btn.addEventListener("click", () => {
+        modernFuncoesState.activeKeys.add(cfg.key);
+        addMenu.hidden = true;
+        syncModernTaskRows();
+        document.getElementById(cfg.selectId)?.focus();
       });
+      addMenu.appendChild(btn);
+    });
     if (!addMenu.children.length) {
       const emptyOption = document.createElement("span");
       emptyOption.className = "alloc-add-empty";
@@ -2115,9 +2146,15 @@ function setupModernFuncoesModal() {
     deleteBtn.className = "alloc-icon-btn alloc-icon-danger";
     deleteBtn.title = "Excluir fun\u00e7\u00e3o";
     deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-    deleteBtn.addEventListener("click", () => {
+    deleteBtn.addEventListener("click", async () => {
       const funcaoId = title.getAttribute("data-id-funcao");
-      if (funcaoId) excluirFuncao(funcaoId, select);
+      if (modernFuncoesState.mode === "animacao") {
+        const removed = await excluirFuncaoAnimacao(funcaoId, cfg);
+        if (!removed) return;
+      } else if (funcaoId) {
+        excluirFuncao(funcaoId, select);
+      }
+
       clearModernTaskFields(cfg);
       setModernTaskActive(cfg.key, false);
     });
@@ -2171,7 +2208,7 @@ function setupModernFuncoesModal() {
         if (el) el.disabled = disabled;
       });
       if (deleteBtn) {
-        deleteBtn.disabled = disabled || modernFuncoesState.mode === "animacao";
+        deleteBtn.disabled = disabled;
       }
     };
 
@@ -15752,10 +15789,12 @@ function salvarFuncoesAnimacao() {
 
   const dados = {
     animacao_id: animacaoId,
+    animacao_ativa: modernFuncoesState.activeKeys.has("finalizacao") ? "1" : "0",
     animacao_colaborador_id: document.getElementById("opcao_final").value || "",
     status_animacao: document.getElementById("status_finalizacao").value || "",
     prazo_animacao: document.getElementById("prazo_finalizacao").value || "",
     obs_animacao: document.getElementById("obs_finalizacao").value || "",
+    pos_ativa: modernFuncoesState.activeKeys.has("pos") ? "1" : "0",
     pos_colaborador_id: document.getElementById("opcao_pos").value || "",
     status_pos: document.getElementById("status_pos").value || "",
     prazo_pos: document.getElementById("prazo_pos").value || "",
@@ -15817,6 +15856,53 @@ function salvarFuncoesAnimacao() {
       if (loadingBar) loadingBar.style.display = "none";
     },
   });
+}
+
+async function excluirFuncaoAnimacao(funcaoId, cfg) {
+  const animacaoId = modernFuncoesState.currentAnimacaoId;
+  if (!animacaoId) {
+    showModernFuncoesToast("Nenhuma anima\u00e7\u00e3o selecionada.", false);
+    return false;
+  }
+
+  if (!funcaoId) {
+    return true;
+  }
+
+  try {
+    const response = await fetch("excluirFuncaoAnimacao.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      body: new URLSearchParams({
+        id: funcaoId,
+        animacao_id: animacaoId,
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok || data.success !== true) {
+      showModernFuncoesToast(
+        data.error || "Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o.",
+        false,
+      );
+      return false;
+    }
+
+    showModernFuncoesToast(
+      `${cfg?.label || "Fun\u00e7\u00e3o"} exclu\u00edda da anima\u00e7\u00e3o.`,
+      true,
+    );
+
+    const obraIdAtual = localStorage.getItem("obraId");
+    if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
+    return true;
+  } catch (error) {
+    console.error("Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o:", error);
+    showModernFuncoesToast("Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o.", false);
+    return false;
+  }
 }
 
 function carregarAnimacoesObra(obraIdParam) {

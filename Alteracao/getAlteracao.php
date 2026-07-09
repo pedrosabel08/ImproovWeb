@@ -34,6 +34,7 @@ $sql = "SELECT
     i.imagem_nome,
     i.obra_id,
     o.nomenclatura,
+    o.nome_obra,
     c.nome_colaborador,
     s.nome_status,
     a.status_id AS imagem_status_id,
@@ -115,6 +116,7 @@ while ($row = $result->fetch_assoc()) {
         'imagem_nome' => (string)$row['imagem_nome'],
         'obra_id' => (int)$row['obra_id'],
         'obra_nome' => (string)$row['nomenclatura'],
+        'obra_nome_comercial' => $row['nome_obra'] !== null ? (string)$row['nome_obra'] : null,
         'colaborador_id' => $row['colaborador_id'] !== null ? (int)$row['colaborador_id'] : null,
         'colaborador_nome' => $row['nome_colaborador'] !== null ? (string)$row['nome_colaborador'] : null,
         'status_funcao' => (string)$row['status_funcao'],
@@ -137,6 +139,52 @@ while ($row = $result->fetch_assoc()) {
         $statusImagemMap[$item['idstatus']] = $item['status_nome'];
     }
 }
+
+$filterSql = "SELECT DISTINCT
+    i.obra_id,
+    o.nomenclatura,
+    f.colaborador_id,
+    c.nome_colaborador,
+    s.idstatus,
+    s.nome_status
+FROM alteracoes a
+JOIN funcao_imagem f ON f.idfuncao_imagem = a.funcao_id
+JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+JOIN obra o ON o.idobra = i.obra_id
+JOIN status_imagem s ON s.idstatus = a.status_id
+LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id
+AND (f.status != 'Finalizado' OR (f.status = 'Finalizado' AND i.prazo = CURDATE()))
+ORDER BY o.nomenclatura ASC, c.nome_colaborador ASC, s.idstatus ASC";
+
+$filterStmt = $conn->prepare($filterSql);
+if ($filterStmt) {
+    $obrasMap = [];
+    $colabMap = [];
+    $statusImagemMap = [];
+
+    $filterStmt->execute();
+    $filterResult = $filterStmt->get_result();
+
+    while ($filterRow = $filterResult->fetch_assoc()) {
+        $obraIdFiltro = (int)$filterRow['obra_id'];
+        $obrasMap[$obraIdFiltro] = (string)$filterRow['nomenclatura'];
+
+        if ($filterRow['colaborador_id'] !== null) {
+            $colabMap[(int)$filterRow['colaborador_id']] = (string)$filterRow['nome_colaborador'];
+        }
+
+        if ($filterRow['idstatus'] !== null) {
+            $statusImagemMap[(int)$filterRow['idstatus']] = (string)$filterRow['nome_status'];
+        }
+    }
+
+    $filterStmt->close();
+}
+
+asort($obrasMap, SORT_NATURAL | SORT_FLAG_CASE);
+asort($colabMap, SORT_NATURAL | SORT_FLAG_CASE);
+ksort($statusImagemMap, SORT_NUMERIC);
 
 $obras = [];
 foreach ($obrasMap as $id => $nome) {

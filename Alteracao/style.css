@@ -1756,11 +1756,11 @@ body {
   gap: 3px;
   font-size: 10px;
   font-weight: 700;
-  background: rgba(13, 255, 0, 0.12);
+  background: rgb(13, 255, 0);
   border: 1px solid rgba(29, 146, 14, 0.45);
   border-radius: var(--radius-full);
   padding: 2px 7px;
-  color: #16a303;
+  color: #000000;
 }
 
 .ef-count i {
@@ -1769,8 +1769,8 @@ body {
 
 @media (prefers-color-scheme: dark) {
   .ef-count {
-    color: #0dff00;
-    background: rgba(13, 255, 0, 0.08);
+    color: #000000;
+    background: rgb(13, 255, 0);
   }
 }
 
@@ -1806,11 +1806,11 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 12px 14px 10px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   position: relative;
   flex-shrink: 0;
 }
@@ -1825,26 +1825,43 @@ body {
   border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
-.kanban-column[data-status="Não iniciado"] .kanban-title::before {
+.kanban-column[data-status="Não iniciado"] .kanban-title {
   background: var(--status-nao-iniciado);
+  color: #000;
 }
-.kanban-column[data-status="HOLD"] .kanban-title::before {
+.kanban-column[data-status="HOLD"] .kanban-title {
   background: var(--status-hold);
 }
-.kanban-column[data-status="Em andamento"] .kanban-title::before {
+.kanban-column[data-status="Em andamento"] .kanban-title {
   background: var(--status-em-andamento);
+  color: #000;
 }
-.kanban-column[data-status="Em aprovação"] .kanban-title::before {
+.kanban-column[data-status="Em aprovação"] .kanban-title {
   background: var(--status-em-aprovacao);
 }
-.kanban-column[data-status="Ajuste"] .kanban-title::before {
+.kanban-column[data-status="Ajuste"] .kanban-title {
   background: var(--status-ajuste);
 }
-.kanban-column[data-status="Aprovado com ajustes"] .kanban-title::before {
+.kanban-column[data-status="Aprovado com ajustes"] .kanban-title {
   background: var(--status-aprovado-ajustes);
 }
-.kanban-column[data-status="Finalizado"] .kanban-title::before {
+.kanban-column[data-status="Finalizado"] .kanban-title {
   background: var(--status-finalizado);
+}
+
+.card-meta.prazo-atrasado {
+  color: #f94b16;
+  font-weight: 600;
+}
+
+.card-meta.prazo-hoje {
+  color: #f97316;
+  font-weight: 600;
+}
+
+.card-meta.prazo-proximo {
+  color: #f59e0b;
+  font-weight: 600;
 }
 
 .count {
@@ -1853,13 +1870,13 @@ body {
   background: var(--bg-count);
   border-radius: var(--radius-full);
   padding: 2px 10px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* ─── Kanban Cards Container ─── */
 .kanban-cards {
   overflow-y: auto;
-  padding: 0 8px 8px;
+  padding: 8px;
   flex: 1;
 }
 
@@ -2019,6 +2036,7 @@ body {
   right: 8px;
   display: flex;
   align-items: center;
+  flex-direction: column;
   gap: 5px;
   pointer-events: none;
 }
@@ -2057,11 +2075,34 @@ body {
   line-height: 1.2;
 }
 
-.nivel-chip.nivel-n4,
+.nivel-chip.nivel-n1 {
+  border-color: rgba(34, 197, 94, 0.65) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #4ade80 !important;
+}
+
+.nivel-chip.nivel-n2 {
+  border-color: rgba(132, 204, 22, 0.65) !important;
+  background: rgba(132, 204, 22, 0.12) !important;
+  color: #a3e635 !important;
+}
+
+.nivel-chip.nivel-n3 {
+  border-color: rgba(234, 179, 8, 0.65) !important;
+  background: rgba(234, 179, 8, 0.12) !important;
+  color: #facc15 !important;
+}
+
+.nivel-chip.nivel-n4 {
+  border-color: rgba(249, 115, 22, 0.65) !important;
+  background: rgba(249, 115, 22, 0.12) !important;
+  color: #fb923c !important;
+}
+
 .nivel-chip.nivel-n5 {
-  border-color: rgba(239, 68, 68, 0.38);
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.65) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
 }
 
 /* Status imagem badge colors */
@@ -2158,6 +2199,12 @@ body {
   color: var(--text-primary);
   line-height: 1.3;
   padding-right: 76px;
+
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .card-sub {

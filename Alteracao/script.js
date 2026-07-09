@@ -429,6 +429,39 @@ function applyStatusImagem(cell, status) {
   applyStatusImagemClass(cell, status);
 }
 
+function getPrazoClass(prazo) {
+  if (!prazo || prazo === "—") {
+    return "";
+  }
+
+  // Considerando prazo no formato DD/MM/YYYY
+  const [dia, mes, ano] = prazo.split("/").map(Number);
+
+  const dataPrazo = new Date(ano, mes - 1, dia);
+  const hoje = new Date();
+
+  // Normaliza os horários
+  hoje.setHours(0, 0, 0, 0);
+  dataPrazo.setHours(0, 0, 0, 0);
+
+  const diferencaMs = dataPrazo - hoje;
+  const diferencaDias = Math.round(diferencaMs / (1000 * 60 * 60 * 24));
+
+  if (diferencaDias < 0) {
+    return "prazo-atrasado";
+  }
+
+  if (diferencaDias === 0) {
+    return "prazo-hoje";
+  }
+
+  if (diferencaDias <= 5) {
+    return "prazo-proximo";
+  }
+
+  return "";
+}
+
 function criarCard(item) {
   const card = document.createElement("div");
   card.className = "imagem-card";
@@ -458,7 +491,10 @@ function criarCard(item) {
     <div class="card-sub"><i class="fa-solid fa-building"></i> ${item.obra_nome}</div>
     <div class="card-footer">
       <div class="card-meta"><i class="fa-solid fa-user"></i> ${item.colaborador_nome || "—"}</div>
-      <div class="card-meta"><i class="fa-solid fa-calendar"></i> ${item.prazo || "—"}</div>
+      <div class="card-meta ${getPrazoClass(item.prazo)}">
+          <i class="fa-solid fa-calendar"></i>
+          ${item.prazo || "—"}
+      </div>
     </div>
   `;
 

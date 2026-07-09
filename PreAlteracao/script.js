@@ -15,21 +15,24 @@
       col: "triagem",
       label: "Em triagem",
       emptyTitle: "Nenhum lote em triagem",
-      emptyText: "Quando um retorno do cliente entrar para analise, ele aparece aqui.",
+      emptyText:
+        "Quando um retorno do cliente entrar para análise, ele aparece aqui.",
       icon: "fa-magnifying-glass-chart",
     },
     AGUARDANDO_CLIENTE: {
       col: "aguardando",
       label: "Aguardando cliente",
       emptyTitle: "Nada aguardando cliente",
-      emptyText: "Lotes com duvidas ou retorno pendente serao listados nesta coluna.",
+      emptyText:
+        "Lotes com dúvidas ou retorno pendente serão listados nesta coluna.",
       icon: "fa-clock-rotate-left",
     },
     PRONTO_PLANEJAMENTO: {
       col: "planejamento",
       label: "Para planejamento",
       emptyTitle: "Nenhum lote para planejamento",
-      emptyText: "Triagens concluidas e liberadas para o proximo passo aparecem aqui.",
+      emptyText:
+        "Triagens concluídas e liberadas para o próximo passo aparecem aqui.",
       icon: "fa-calendar-check",
     },
   };
@@ -38,13 +41,13 @@
     BAIXA: { label: "Baixa", cls: "priority-low" },
     NORMAL: { label: "Normal", cls: "priority-normal" },
     ALTA: { label: "Alta", cls: "priority-high" },
-    CRITICA: { label: "Critica", cls: "priority-critical" },
+    CRITICA: { label: "Crítica", cls: "priority-critical" },
   };
 
   const NIVEL_LABELS = {
     1: "Muito baixa",
     2: "Baixa",
-    3: "Media",
+    3: "Média",
     4: "Alta",
     5: "Muito alta",
   };
@@ -53,7 +56,7 @@
     kpiGrid: document.getElementById("kpiGrid"),
     btnAtualizar: document.getElementById("btnAtualizar"),
     btnBatchMode: document.getElementById("btnBatchMode"),
-    btnNovoLote: document.getElementById("btnNovoLote"),
+    // btnNovoLote: document.getElementById("btnNovoLote"),
     btnMaisFiltros: document.getElementById("btnMaisFiltros"),
     filtroBusca: document.getElementById("filtroBusca"),
     filtroObra: document.getElementById("filtroObra"),
@@ -118,17 +121,18 @@
     loteAberto: null,
     itensAbertos: [],
     conclusaoResumo: null,
+    restoringDraft: false,
   };
 
   const FLOWDRIVE_BASE = BASE.replace(/PreAlteracao\/$/, "FlowDrive/");
   const TRIAGEM_CATEGORIAS = [
-    [1, "Arquitetonico"],
-    [2, "Referencias"],
+    [1, "Arquitetônico"],
+    [2, "Referências"],
     [3, "Paisagismo"],
-    [4, "Luminotecnico"],
+    [4, "Luminotécnico"],
     [5, "Estrutural"],
-    [6, "Alteracoes"],
-    [7, "Angulo definido"],
+    [6, "Alterações"],
+    [7, "Ângulo definido"],
   ];
   const TRIAGEM_TIPOS_ARQUIVO = ["DWG", "PDF", "SKP", "IMG", "IFC", "Outros"];
 
@@ -137,7 +141,8 @@
     try {
       const res = await fetch(BASE + "get_pre_alt_entregas.php");
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Erro ao carregar lotes");
+      if (!json.success)
+        throw new Error(json.error || "Erro ao carregar lotes");
 
       state.lotes = json.lotes || [];
       state.obras = json.obras || [];
@@ -158,14 +163,33 @@
       .map(() => '<div class="kpi-card is-loading"></div>')
       .join("");
     Object.values(columns).forEach((col) => {
-      col.innerHTML = '<div class="column-loading"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+      col.innerHTML =
+        '<div class="column-loading"><i class="fa-solid fa-spinner fa-spin"></i></div>';
     });
   }
 
   function populateFilters() {
-    replaceOptions(refs.filtroObra, "Todas", state.obras, "idobra", "nomenclatura");
-    replaceOptions(refs.filtroCliente, "Todos", state.clientes, "idcliente", "nome_cliente");
-    replaceOptions(refs.filtroResponsavel, "Todos", state.responsaveis, "idcolaborador", "nome_colaborador");
+    replaceOptions(
+      refs.filtroObra,
+      "Todas",
+      state.obras,
+      "idobra",
+      "nomenclatura",
+    );
+    replaceOptions(
+      refs.filtroCliente,
+      "Todos",
+      state.clientes,
+      "idcliente",
+      "nome_cliente",
+    );
+    replaceOptions(
+      refs.filtroResponsavel,
+      "Todos",
+      state.responsaveis,
+      "idcolaborador",
+      "nome_colaborador",
+    );
   }
 
   function replaceOptions(select, allLabel, rows, valueKey, labelKey) {
@@ -180,17 +204,273 @@
     select.value = current;
   }
 
+  function getPreAltDraftKey(obraId, cardId) {
+    if (!obraId || !cardId) return "";
+    return `prealt_draft_${obraId}_${cardId}`;
+  }
+
+  function getCurrentPreAltDraftContext() {
+    const lote = state.loteAberto || {};
+    return {
+      obraId: lote.obra_id || lote.idobra || "",
+      cardId: lote.lote_id || lote.id || "",
+    };
+  }
+
+  function readPreAltDraft(obraId, cardId) {
+    const draftKey = getPreAltDraftKey(obraId, cardId);
+    if (!draftKey) return null;
+
+    let raw = null;
+    try {
+      raw = localStorage.getItem(draftKey);
+    } catch (_) {
+      return null;
+    }
+    if (!raw) return null;
+
+    try {
+      const draft = JSON.parse(raw);
+      return draft && typeof draft === "object" ? draft : null;
+    } catch (_) {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch (__) {}
+      return null;
+    }
+  }
+
+  function hasPreAltDraft(obraId, cardId) {
+    return Boolean(readPreAltDraft(obraId, cardId));
+  }
+
+  function escapeCssValue(value) {
+    if (window.CSS?.escape) return CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, "\\$&");
+  }
+
+  function atualizarIconeRascunhoPreAlt(obraId, cardId, possuiRascunho) {
+    const card = document.querySelector(
+      `[data-card-id="${escapeCssValue(cardId)}"][data-obra-id="${escapeCssValue(obraId)}"]`,
+    );
+    const modalIcon = document.getElementById("paModalDraftIndicator");
+
+    card
+      ?.querySelector(".draft-indicator")
+      ?.classList.toggle("is-hidden", !possuiRascunho);
+    if (modalIcon) modalIcon.classList.toggle("is-hidden", !possuiRascunho);
+  }
+
+  function marcarCardsComRascunhoPreAlt() {
+    document
+      .querySelectorAll("[data-card-id][data-obra-id]")
+      .forEach((card) => {
+        const obraId = card.dataset.obraId;
+        const cardId = card.dataset.cardId;
+        const possuiRascunho = hasPreAltDraft(obraId, cardId);
+        card
+          .querySelector(".draft-indicator")
+          ?.classList.toggle("is-hidden", !possuiRascunho);
+      });
+  }
+
+  function limparRascunhoPreAlt(obraId, cardId) {
+    const draftKey = getPreAltDraftKey(obraId, cardId);
+    if (!draftKey) return;
+
+    try {
+      localStorage.removeItem(draftKey);
+    } catch (_) {}
+    atualizarIconeRascunhoPreAlt(obraId, cardId, false);
+  }
+
+  function salvarRascunhoPreAlt(obraId, cardId) {
+    const draftKey = getPreAltDraftKey(obraId, cardId);
+    if (!draftKey) return;
+
+    const itens = Array.from(
+      refs.paModalBody?.querySelectorAll(".prealt-item") || [],
+    );
+    const hasChanges = itens.some((item) =>
+      item.classList.contains("is-dirty"),
+    );
+
+    if (!hasChanges) {
+      limparRascunhoPreAlt(obraId, cardId);
+      return;
+    }
+
+    const draft = {
+      obraId,
+      cardId,
+      updatedAt: new Date().toISOString(),
+      itens: {},
+    };
+
+    itens.forEach((container) => {
+      const imagemId = container.dataset.imagemId || container.dataset.itemId;
+      if (!imagemId) return;
+
+      const itemId = Number(container.dataset.itemId);
+      const item = state.itensAbertos.find(
+        (row) => Number(row.item_id) === itemId,
+      ) || { item_id: itemId };
+      const payload = getItemFormPayload(container, item);
+
+      draft.itens[imagemId] = {
+        imagemId,
+        itemId: payload.item_id,
+        resultado: payload.resultado,
+        tipo: payload.tipo_alteracao,
+        qtdComentarios: payload.quantidade_comentarios,
+        complexidade: payload.nivel_complexidade
+          ? `N${payload.nivel_complexidade}`
+          : "",
+        retornoCliente: Boolean(payload.necessita_retorno),
+        observacao: payload.acao,
+      };
+    });
+
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+      atualizarIconeRascunhoPreAlt(obraId, cardId, true);
+    } catch (_) {
+      toast("Não foi possível salvar o rascunho local.", "#F59E0B", 3600);
+    }
+  }
+
+  function salvarRascunhoAtualPreAlt() {
+    if (state.restoringDraft) return;
+    const { obraId, cardId } = getCurrentPreAltDraftContext();
+    salvarRascunhoPreAlt(obraId, cardId);
+  }
+
+  function normalizeDraftResultado(value) {
+    const normalized = String(value || "")
+      .trim()
+      .toUpperCase();
+    if (
+      normalized === "SEM_ALTERACAO" ||
+      normalized === "APROVADA" ||
+      normalized === "APROVADO"
+    )
+      return "SEM_ALTERACAO";
+    if (
+      normalized === "AGUARDANDO_CLIENTE" ||
+      normalized.includes("AGUARDANDO")
+    )
+      return "AGUARDANDO_CLIENTE";
+    return "ALTERACAO";
+  }
+
+  function normalizeDraftNivel(value) {
+    const match = String(value || "").match(/[1-5]/);
+    return match ? Number(match[0]) : null;
+  }
+
+  function setItemComplexidade(container, nivel) {
+    const btns = container.querySelectorAll(".complexidade-btn");
+    if (nivel) {
+      container.dataset.nivel = String(nivel);
+    } else {
+      delete container.dataset.nivel;
+    }
+
+    btns.forEach((btn) => {
+      const active = Number(btn.dataset.valor) === Number(nivel);
+      btn.className = "complexidade-btn";
+      if (active) btn.classList.add("active", `active-n${btn.dataset.valor}`);
+    });
+  }
+
+  function syncItemVisualState(container) {
+    const resultadoSelect = container.querySelector(".resultado-select");
+    const nivelRow = container.querySelector(".nivel-row");
+    const tipoRow = container.querySelector(".tipo-row");
+    const retornoCheck = container.querySelector(".necessita-retorno-check");
+    const resultadoBadge = container.querySelector("[data-resultado-badge]");
+    const resultado = resultadoSelect?.value || "ALTERACAO";
+    const isAlteracao = resultado === "ALTERACAO";
+
+    if (nivelRow) nivelRow.style.display = isAlteracao ? "" : "none";
+    if (tipoRow) tipoRow.style.display = isAlteracao ? "" : "none";
+    if (retornoCheck && resultado === "AGUARDANDO_CLIENTE")
+      retornoCheck.checked = true;
+
+    container.dataset.resultado = resultadoFilterValue(resultado);
+    if (resultadoBadge) {
+      resultadoBadge.className = `badge-resultado ${resultadoBadgeClass(resultado)}`;
+      resultadoBadge.textContent = resultadoLabel(resultado);
+    }
+  }
+
+  function restaurarRascunhoPreAlt(obraId, cardId) {
+    const draft = readPreAltDraft(obraId, cardId);
+    if (!draft?.itens) return false;
+
+    state.restoringDraft = true;
+    try {
+      refs.paModalBody.querySelectorAll(".prealt-item").forEach((container) => {
+        const imagemId = container.dataset.imagemId || container.dataset.itemId;
+        const dados = draft.itens?.[imagemId];
+        if (!dados) return;
+
+        const resultadoSelect = container.querySelector(".resultado-select");
+        const tipoInput = container.querySelector(".tipo-input");
+        const comentariosInput = container.querySelector(".comentarios-input");
+        const retornoCheck = container.querySelector(
+          ".necessita-retorno-check",
+        );
+        const observacaoTextarea = container.querySelector(".acao-textarea");
+
+        if (resultadoSelect)
+          resultadoSelect.value = normalizeDraftResultado(dados.resultado);
+        if (tipoInput) tipoInput.value = dados.tipo || "";
+        if (comentariosInput)
+          comentariosInput.value = dados.qtdComentarios ?? "";
+        if (retornoCheck) retornoCheck.checked = Boolean(dados.retornoCliente);
+        if (observacaoTextarea)
+          observacaoTextarea.value = dados.observacao || "";
+
+        setItemComplexidade(container, normalizeDraftNivel(dados.complexidade));
+        syncItemVisualState(container);
+        container._preAltUpdateDirty?.();
+      });
+    } finally {
+      state.restoringDraft = false;
+    }
+
+    updateModalDirtyState();
+    aplicarFiltrosPreAlt();
+    atualizarIconeRascunhoPreAlt(obraId, cardId, true);
+    return true;
+  }
+
   function renderKpis(kpis) {
     const total = Number(kpis.total_imagens || 0);
     const progresso = Number(kpis.progresso_geral || 0);
     const items = [
       ["fa-images", total, "Total de imagens", "blue"],
       ["fa-layer-group", kpis.total_lotes || 0, "Total de lotes", "purple"],
-      ["fa-clock-rotate-left", kpis.aguardando_cliente || 0, "Aguardando cliente", "orange"],
-      ["fa-comments", kpis.comentarios || 0, "Comentarios", "blue"],
-      ["fa-circle-exclamation", kpis.comentarios_criticos || 0, "Comentarios criticos", "red"],
-      ["fa-calendar-check", kpis.em_planejamento || 0, "Em planejamento", "green"],
-      ["fa-chart-simple", `${progresso}%`, "Progresso geral da triagem", "purple"],
+      ["fa-comments", kpis.comentarios || 0, "Comentários", "blue"],
+      [
+        "fa-clock-rotate-left",
+        kpis.aguardando_cliente || 0,
+        "Aguardando cliente",
+        "orange",
+      ],
+      [
+        "fa-calendar-check",
+        kpis.em_planejamento || 0,
+        "Em planejamento",
+        "green",
+      ],
+      [
+        "fa-chart-simple",
+        `${progresso}%`,
+        "Progresso geral da triagem",
+        "purple",
+      ],
     ];
 
     refs.kpiGrid.innerHTML = items
@@ -232,7 +512,8 @@
       if (cliente && Number(lote.cliente_id) !== cliente) return false;
       if (status && lote.lote_status !== status) return false;
       if (prioridade && lote.prioridade !== prioridade) return false;
-      if (responsavel && Number(lote.responsavel_id || 0) !== responsavel) return false;
+      if (responsavel && Number(lote.responsavel_id || 0) !== responsavel)
+        return false;
       if (data && dateOnly(lote.lote_resolvido_em) !== data) return false;
       if (prazo && !matchPrazo(lote.prazo_operacional, prazo)) return false;
       return true;
@@ -257,17 +538,25 @@
     const grouped = {
       triagem: lista.filter((l) => l.lote_status === "EM_TRIAGEM"),
       aguardando: lista.filter((l) => l.lote_status === "AGUARDANDO_CLIENTE"),
-      planejamento: lista.filter((l) => l.lote_status === "PRONTO_PLANEJAMENTO"),
+      planejamento: lista.filter(
+        (l) => l.lote_status === "PRONTO_PLANEJAMENTO",
+      ),
     };
 
     Object.entries(grouped).forEach(([key, lotes]) => {
-      const totalImages = lotes.reduce((sum, lote) => sum + Number(lote.total_itens || 0), 0);
-      counts[key].textContent = `${lotes.length} lote${lotes.length === 1 ? "" : "s"}`;
+      const totalImages = lotes.reduce(
+        (sum, lote) => sum + Number(lote.total_itens || 0),
+        0,
+      );
+      counts[key].textContent =
+        `${lotes.length} lote${lotes.length === 1 ? "" : "s"}`;
       imageCounts[key].textContent = plural(totalImages, "imagem", "imagens");
       columns[key].innerHTML = "";
 
       if (!lotes.length) {
-        const statusKey = Object.keys(STATUS_META).find((s) => STATUS_META[s].col === key);
+        const statusKey = Object.keys(STATUS_META).find(
+          (s) => STATUS_META[s].col === key,
+        );
         columns[key].innerHTML = emptyColumn(STATUS_META[statusKey]);
         return;
       }
@@ -275,6 +564,7 @@
       lotes.forEach((lote) => columns[key].appendChild(createCard(lote)));
     });
     syncSelectionUi();
+    marcarCardsComRascunhoPreAlt();
   }
 
   function emptyColumn(meta) {
@@ -292,10 +582,14 @@
     const priority = PRIORIDADE_META[lote.prioridade] || PRIORIDADE_META.NORMAL;
     const statusCol = STATUS_META[lote.lote_status]?.col || "triagem";
     const loteId = Number(lote.lote_id);
+    const obraId = lote.obra_id || "";
     const selected = state.selected.has(loteId);
+    const possuiRascunho = hasPreAltDraft(obraId, loteId);
 
     card.className = `triage-card card-${statusCol} ${selected ? "is-selected" : ""}`;
     card.dataset.loteId = loteId;
+    card.dataset.cardId = loteId;
+    card.dataset.obraId = obraId;
 
     const n1 = Number(lote.nivel_1 || 0);
     const n2 = Number(lote.nivel_2 || 0);
@@ -315,11 +609,13 @@
           <span></span>
         </label>
         <div class="card-title-group">
-          <h3>${escHtml(lote.nomenclatura || "Obra")}</h3>
+          <h3>
+            <span>${escHtml(lote.nomenclatura || "Obra")}</span>
+            <span class="draft-indicator ${possuiRascunho ? "" : "is-hidden"}" title="Existe rascunho salvo localmente">
+              <i class="fa-solid fa-file-pen"></i>
+            </span>
+          </h3>
         </div>
-        <button type="button" class="card-menu" title="Acoes">
-          <i class="fa-solid fa-ellipsis"></i>
-        </button>
       </div>
 
       <div class="card-badges">
@@ -332,8 +628,8 @@
       <div class="metric-grid">
         ${metric("fa-images", lote.total_itens || 0, "imagens")}
         ${metric("fa-layer-group", lote.batch_count || 0, "lotes")}
-        ${metric("fa-comments", lote.total_comentarios || 0, "comentarios")}
-        ${metric("fa-circle-exclamation", lote.comentarios_criticos || 0, "criticos")}
+        ${metric("fa-comments", lote.total_comentarios || 0, "comentários")}
+        ${metric("fa-circle-exclamation", lote.comentarios_criticos || 0, "críticos")}
       </div>
 
       <div class="complexity-row">
@@ -354,9 +650,9 @@
 
       <div class="operational-info">
         <span><i class="fa-solid fa-flag-checkered"></i> Resolvido: ${escHtml(formatDateTime(lote.lote_resolvido_em))}</span>
-        <span><i class="fa-solid fa-calendar-day"></i> Analise ate: ${escHtml(formatDate(lote.prazo_operacional) || "Sem prazo")}</span>
-        <span><i class="fa-solid fa-clock"></i> Atualizacao: ${escHtml(formatDateTime(lote.ultima_atualizacao))}</span>
-        <span><i class="fa-solid fa-user"></i> ${escHtml(lote.responsavel_nome || "Sem responsavel")}</span>
+        <span><i class="fa-solid fa-calendar-day"></i> Análise até: ${escHtml(formatDate(lote.prazo_operacional) || "Sem prazo")}</span>
+        <span><i class="fa-solid fa-clock"></i> Atualização: ${escHtml(formatDateTime(lote.ultima_atualizacao))}</span>
+        <span><i class="fa-solid fa-user"></i> ${escHtml(lote.responsavel_nome || "Sem responsável")}</span>
       </div>
 
       <div class="card-actions">
@@ -393,7 +689,8 @@
       });
     });
     card.addEventListener("click", (event) => {
-      if (event.target.closest(".select-card, .card-actions, .card-menu")) return;
+      if (event.target.closest(".select-card, .card-actions, .card-menu"))
+        return;
       abrirModal(loteId);
     });
     return card;
@@ -405,7 +702,10 @@
 
   function commentRow(item) {
     const count = Number(item.comment_count || 0);
-    const label = count === 0 ? "sem comentarios" : `${count} comentario${count === 1 ? "" : "s"}`;
+    const label =
+      count === 0
+        ? "sem comentários"
+        : `${count} comentário${count === 1 ? "" : "s"}`;
     return `
       <div class="comment-image-row ${Number(item.critical_count || 0) > 0 ? "has-critical" : ""}">
         <span>${escHtml(item.nome || "Imagem")}</span>
@@ -439,7 +739,8 @@
     refs.paModalActions.innerHTML = "";
     state.itensAbertos = [];
     updateModalDirtyState();
-    refs.paModalBody.innerHTML = '<div class="modal-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando lote</div>';
+    refs.paModalBody.innerHTML =
+      '<div class="modal-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando lote</div>';
 
     try {
       const res = await fetch(BASE + `get_pre_alt_lote.php?lote_id=${loteId}`);
@@ -460,8 +761,12 @@
       <span>${escHtml(lote.nome_etapa || "Etapa")}</span>
       <span>${escHtml(STATUS_META[lote.lote_status]?.label || lote.lote_status)}</span>
       <span>Resolvido: ${escHtml(formatDate(lote.lote_resolvido_em) || "Sem registro")}</span>
-      <span>Analise ate: ${escHtml(formatDate(lote.prazo_operacional) || "Sem prazo")}</span>
-      <span>${escHtml(lote.nome_cliente || "Cliente nao informado")}</span>
+      <span>Análise até: ${escHtml(formatDate(lote.prazo_operacional) || "Sem prazo")}</span>
+      <span>${escHtml(lote.nome_cliente || "Cliente não informado")}</span>
+      <span class="draft-indicator modal-draft-indicator ${hasPreAltDraft(lote.obra_id, lote.lote_id) ? "" : "is-hidden"}" id="paModalDraftIndicator" title="Existe rascunho salvo localmente">
+        <i class="fa-solid fa-file-pen"></i>
+        Rascunho local
+      </span>
     `;
     refs.paModalActions.innerHTML = `
       <button type="button" class="modal-review-btn" id="modalPlanejamentoBtn">
@@ -474,53 +779,79 @@
         <i class="fa-solid fa-arrow-up-right-from-square"></i> Review Studio
       </button>
     `;
-    refs.paModalActions.querySelector("#modalUploadProjetoBtn")?.addEventListener("click", () => {
-      openTriagemUploadModal("projeto");
-    });
-    refs.paModalActions.querySelector("#modalPlanejamentoBtn")?.addEventListener("click", () => {
-      window.location.href = `${BASE}planejamento.php?lote_id=${encodeURIComponent(lote.lote_id)}`;
-    });
-    refs.paModalActions.querySelector("#modalReviewBtn")?.addEventListener("click", () => {
-      if (lote.link_review) window.open(lote.link_review, "_blank", "noopener");
-    });
+    refs.paModalActions
+      .querySelector("#modalUploadProjetoBtn")
+      ?.addEventListener("click", () => {
+        openTriagemUploadModal("projeto");
+      });
+    refs.paModalActions
+      .querySelector("#modalPlanejamentoBtn")
+      ?.addEventListener("click", () => {
+        window.location.href = `${BASE}planejamento.php?lote_id=${encodeURIComponent(lote.lote_id)}`;
+      });
+    refs.paModalActions
+      .querySelector("#modalReviewBtn")
+      ?.addEventListener("click", () => {
+        if (lote.link_review)
+          window.open(lote.link_review, "_blank", "noopener");
+      });
 
     refs.paModalBody.innerHTML = `
       <div class="modal-summary">
         ${summaryTile(resumo.total, "Imagens")}
-        ${summaryTile(resumo.comentarios, "Comentarios")}
-        ${summaryTile(resumo.criticos, "Criticos")}
-        ${summaryTile(resumo.alteracao, "Com alteracao")}
+        ${summaryTile(resumo.comentarios, "Comentários")}
+        ${summaryTile(resumo.criticos, "Críticos")}
+        ${summaryTile(resumo.alteracao, "Com alteração")}
         ${summaryTile(resumo.aguardando, "Aguardando cliente")}
-        ${summaryTile(`${resumo.progresso}%`, "Classificacao")}
+        ${summaryTile(`${resumo.progresso}%`, "Classificação")}
+      </div>
+      <div class="prealt-filters" aria-label="Filtros das imagens">
+        <input type="search" id="filtroImagem" placeholder="Buscar imagem..." autocomplete="off">
+        <select id="filtroResultado">
+          <option value="">Todos os resultados</option>
+          <option value="alteracao">Alteração</option>
+          <option value="aguardando_cliente">Aguardando cliente</option>
+          <option value="aprovada">Aprovada</option>
+        </select>
       </div>
       <div class="modal-items-list"></div>
+      <div class="modal-empty-filter" id="prealtFiltroVazio" hidden>
+        <strong>Nenhuma imagem encontrada</strong>
+        <span>Ajuste a busca ou o resultado selecionado.</span>
+      </div>
     `;
 
     const list = refs.paModalBody.querySelector(".modal-items-list");
     if (!itens.length) {
-      list.innerHTML = '<div class="empty-state-card"><strong>Nenhuma imagem neste lote</strong><span>O lote nao possui itens vinculados.</span></div>';
+      list.innerHTML =
+        '<div class="empty-state-card"><strong>Nenhuma imagem neste lote</strong><span>O lote não possui itens vinculados.</span></div>';
       return;
     }
     itens.forEach((item) => list.appendChild(createItem(item)));
+    restaurarRascunhoPreAlt(lote.obra_id, lote.lote_id);
+    wireModalFilters();
     updateModalDirtyState();
   }
 
   function createItem(item) {
     const div = document.createElement("article");
-    div.className = "modal-imagem-item is-expanded";
-    div.dataset.itemId = item.item_id;
     const resultado = item.resultado || "ALTERACAO";
+    div.className = "modal-imagem-item prealt-item is-expanded";
+    div.dataset.itemId = item.item_id;
+    div.dataset.imagemId = item.imagem_id || item.item_id;
+    div.dataset.nome = item.nome || "";
+    div.dataset.resultado = resultadoFilterValue(resultado);
 
     div.innerHTML = `
       <header class="modal-item-header">
         <div>
           <strong title="${escHtml(item.nome)}">${escHtml(item.nome)}</strong>
-          <span>${Number(item.comment_count || item.quantidade_comentarios || 0)} comentario${Number(item.comment_count || item.quantidade_comentarios || 0) === 1 ? "" : "s"}${Number(item.critical_count || 0) ? `, ${item.critical_count} critico(s)` : ""}</span>
+          <span>${Number(item.comment_count || item.quantidade_comentarios || 0)} comentário${Number(item.comment_count || item.quantidade_comentarios || 0) === 1 ? "" : "s"}${Number(item.critical_count || 0) ? `, ${item.critical_count} crítico(s)` : ""}</span>
         </div>
         <button type="button" class="item-upload-btn" data-upload-image title="Enviar arquivos para esta imagem">
           <i class="fa-solid fa-upload"></i>
         </button>
-        <span class="item-status">${escHtml(resultadoLabel(resultado))}</span>
+        <span class="badge-resultado ${resultadoBadgeClass(resultado)}" data-resultado-badge>${escHtml(resultadoLabel(resultado))}</span>
         ${item.nivel_complexidade ? `<span class="item-status item-level">${item.nivel_complexidade}</span>` : ""}
       </header>
       <div class="modal-item-body">${createForm(item)}</div>
@@ -539,24 +870,26 @@
     const tipo = escHtml(item.tipo_alteracao || "");
     const acao = escHtml(item.acao || "");
     const nr = item.necessita_retorno == 1;
-    const qtdComentarios = Number(item.comment_count || item.quantidade_comentarios || 0);
+    const qtdComentarios = Number(
+      item.comment_count || item.quantidade_comentarios || 0,
+    );
 
     return `
       <div class="form-grid">
         <label>
           <span>Resultado</span>
           <select class="resultado-select">
-            <option value="ALTERACAO" ${resultado === "ALTERACAO" ? "selected" : ""}>Alteracao</option>
-            <option value="SEM_ALTERACAO" ${resultado === "SEM_ALTERACAO" ? "selected" : ""}>Sem alteracao / aprovada</option>
+            <option value="ALTERACAO" ${resultado === "ALTERACAO" ? "selected" : ""}>Alteração</option>
+            <option value="SEM_ALTERACAO" ${resultado === "SEM_ALTERACAO" ? "selected" : ""}>Aprovada</option>
             <option value="AGUARDANDO_CLIENTE" ${resultado === "AGUARDANDO_CLIENTE" ? "selected" : ""}>Aguardando cliente</option>
           </select>
         </label>
         <label class="tipo-row">
           <span>Tipo</span>
-          <input class="tipo-input" type="text" placeholder="Acabamento, composicao, projeto" value="${tipo}">
+          <input class="tipo-input" type="text" placeholder="Acabamento, composição, projeto" value="${tipo}">
         </label>
         <label>
-          <span>Quantidade de comentarios</span>
+          <span>Quantidade de comentários</span>
           <input class="comentarios-input" type="number" min="0" step="1" value="${qtdComentarios}">
         </label>
       </div>
@@ -564,7 +897,10 @@
         <span>Complexidade</span>
         <div class="complexidade-options">
           ${[1, 2, 3, 4, 5]
-            .map((n) => `<button type="button" class="complexidade-btn ${Number(nivel) === n ? `active-n${n}` : ""}" data-valor="${n}" title="${escHtml(NIVEL_LABELS[n])}">N${n}</button>`)
+            .map(
+              (n) =>
+                `<button type="button" class="complexidade-btn ${Number(nivel) === n ? `active active-n${n}` : ""}" data-valor="${n}" title="${escHtml(NIVEL_LABELS[n])}">N${n}</button>`,
+            )
             .join("")}
         </div>
       </div>
@@ -573,89 +909,149 @@
         <span><i class="fa-solid fa-clock-rotate-left"></i> Necessita retorno do cliente</span>
       </label>
       <label class="textarea-row">
-        <span>Acao / Observacoes</span>
-        <textarea class="acao-textarea" placeholder="Resumo objetivo para orientar planejamento e execucao">${acao}</textarea>
+        <span>Ação / Observações</span>
+        <textarea class="acao-textarea" placeholder="Resumo objetivo para orientar planejamento e execução">${acao}</textarea>
       </label>
     `;
   }
 
   function wireItem(container, item) {
     const resultadoSelect = container.querySelector(".resultado-select");
-    const nivelRow = container.querySelector(".nivel-row");
-    const tipoRow = container.querySelector(".tipo-row");
-    const retornoCheck = container.querySelector(".necessita-retorno-check");
     const btns = container.querySelectorAll(".complexidade-btn");
 
     const syncVisibility = () => {
-      const isAlteracao = resultadoSelect.value === "ALTERACAO";
-      nivelRow.style.display = isAlteracao ? "" : "none";
-      tipoRow.style.display = isAlteracao ? "" : "none";
-      if (resultadoSelect.value === "AGUARDANDO_CLIENTE") retornoCheck.checked = true;
+      syncItemVisualState(container);
     };
 
     btns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        btns.forEach((b) => {
-          b.className = "complexidade-btn";
-        });
-        btn.classList.add(`active-n${btn.dataset.valor}`);
-        container.dataset.nivel = btn.dataset.valor;
+        setItemComplexidade(container, Number(btn.dataset.valor));
         updateDirty();
+        salvarRascunhoAtualPreAlt();
       });
     });
 
-    if (item.nivel_complexidade) container.dataset.nivel = item.nivel_complexidade;
+    if (item.nivel_complexidade)
+      container.dataset.nivel = item.nivel_complexidade;
     const updateDirty = () => {
       container.classList.toggle("is-dirty", isItemDirty(container, item));
       updateModalDirtyState();
     };
+    container._preAltUpdateDirty = updateDirty;
+    const syncResultadoState = () => {
+      syncItemVisualState(container);
+      aplicarFiltrosPreAlt();
+    };
 
     resultadoSelect.addEventListener("change", () => {
       syncVisibility();
+      syncResultadoState();
       updateDirty();
+      salvarRascunhoAtualPreAlt();
     });
     container.querySelectorAll("input, select, textarea").forEach((field) => {
       if (field === resultadoSelect) return;
-      field.addEventListener("input", updateDirty);
-      field.addEventListener("change", updateDirty);
+      field.addEventListener("input", () => {
+        updateDirty();
+        salvarRascunhoAtualPreAlt();
+      });
+      field.addEventListener("change", () => {
+        updateDirty();
+        salvarRascunhoAtualPreAlt();
+      });
     });
     syncVisibility();
-    container.dataset.initialPayload = JSON.stringify(getItemFormPayload(container, item));
+    syncResultadoState();
+    container.dataset.initialPayload = JSON.stringify(
+      getItemFormPayload(container, item),
+    );
     updateDirty();
+  }
+
+  function wireModalFilters() {
+    const filtroImagem = refs.paModalBody.querySelector("#filtroImagem");
+    const filtroResultado = refs.paModalBody.querySelector("#filtroResultado");
+    filtroImagem?.addEventListener("input", aplicarFiltrosPreAlt);
+    filtroResultado?.addEventListener("change", aplicarFiltrosPreAlt);
+    aplicarFiltrosPreAlt();
+  }
+
+  function aplicarFiltrosPreAlt() {
+    if (!refs.paModalBody) return;
+    const filtroImagem = refs.paModalBody.querySelector("#filtroImagem");
+    const filtroResultado = refs.paModalBody.querySelector("#filtroResultado");
+    const emptyFilter = refs.paModalBody.querySelector("#prealtFiltroVazio");
+    const busca = filtroImagem?.value.trim().toLowerCase() || "";
+    const resultado = filtroResultado?.value || "";
+    let visiveis = 0;
+
+    refs.paModalBody.querySelectorAll(".prealt-item").forEach((item) => {
+      const nome = item.dataset.nome?.toLowerCase() || "";
+      const itemResultado = item.dataset.resultado || "";
+      const passaBusca = !busca || nome.includes(busca);
+      const passaResultado = !resultado || itemResultado === resultado;
+      const visivel = passaBusca && passaResultado;
+
+      item.style.display = visivel ? "" : "none";
+      if (visivel) visiveis += 1;
+    });
+
+    if (emptyFilter) emptyFilter.hidden = visiveis > 0;
   }
 
   function getItemFormPayload(container, item) {
     const resultado = container.querySelector(".resultado-select").value;
     const nivel = parseInt(container.dataset.nivel || "0", 10) || null;
-    const quantidadeComentarios = Math.max(0, parseInt(container.querySelector(".comentarios-input")?.value || "0", 10) || 0);
+    const quantidadeComentarios = Math.max(
+      0,
+      parseInt(
+        container.querySelector(".comentarios-input")?.value || "0",
+        10,
+      ) || 0,
+    );
 
     return {
       item_id: item.item_id,
       resultado,
       nivel_complexidade: resultado === "ALTERACAO" ? nivel : null,
-      tipo_alteracao: resultado === "ALTERACAO" ? container.querySelector(".tipo-input")?.value.trim() || "" : "",
+      tipo_alteracao:
+        resultado === "ALTERACAO"
+          ? container.querySelector(".tipo-input")?.value.trim() || ""
+          : "",
       acao: container.querySelector(".acao-textarea")?.value.trim() || "",
-      necessita_retorno: container.querySelector(".necessita-retorno-check")?.checked ? 1 : 0,
+      necessita_retorno: container.querySelector(".necessita-retorno-check")
+        ?.checked
+        ? 1
+        : 0,
       quantidade_comentarios: quantidadeComentarios,
     };
   }
 
   function isItemDirty(container, item) {
-    return JSON.stringify(getItemFormPayload(container, item)) !== container.dataset.initialPayload;
+    return (
+      JSON.stringify(getItemFormPayload(container, item)) !==
+      container.dataset.initialPayload
+    );
   }
 
   function getDirtyItemPayloads() {
-    return Array.from(refs.paModalBody.querySelectorAll(".modal-imagem-item.is-dirty")).map((container) => {
+    return Array.from(
+      refs.paModalBody.querySelectorAll(".modal-imagem-item.is-dirty"),
+    ).map((container) => {
       const itemId = Number(container.dataset.itemId);
-      const item = state.itensAbertos.find((row) => Number(row.item_id) === itemId) || { item_id: itemId };
+      const item = state.itensAbertos.find(
+        (row) => Number(row.item_id) === itemId,
+      ) || { item_id: itemId };
       return getItemFormPayload(container, item);
     });
   }
 
   function updateModalDirtyState() {
-    const total = refs.paModalBody ? refs.paModalBody.querySelectorAll(".modal-imagem-item.is-dirty").length : 0;
+    const total = refs.paModalBody
+      ? refs.paModalBody.querySelectorAll(".modal-imagem-item.is-dirty").length
+      : 0;
     if (refs.paPendingCount) {
-      refs.paPendingCount.textContent = `${plural(total, "imagem", "imagens")} com alteracoes pendentes`;
+      refs.paPendingCount.textContent = `${plural(total, "imagem", "imagens")} com alterações pendentes`;
     }
     if (refs.btnSalvarAlteracoes) {
       refs.btnSalvarAlteracoes.disabled = total === 0;
@@ -663,7 +1059,11 @@
   }
 
   function normalizeSufixo(value) {
-    return String(value || "").trim().toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, "");
+    return String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^A-Z0-9_]/g, "");
   }
 
   function validSufixo(value) {
@@ -675,7 +1075,9 @@
   async function fetchTriagemSufixos(tipoArquivo) {
     if (!tipoArquivo) return [];
     try {
-      const response = await fetch(`${FLOWDRIVE_BASE}getSufixos.php?tipo_arquivo=${encodeURIComponent(tipoArquivo)}`);
+      const response = await fetch(
+        `${FLOWDRIVE_BASE}getSufixos.php?tipo_arquivo=${encodeURIComponent(tipoArquivo)}`,
+      );
       const json = await response.json();
       return Array.isArray(json) ? json : [];
     } catch (_) {
@@ -694,9 +1096,13 @@
   }
 
   function currentUploadTipos(scope, item) {
-    const tiposLote = Array.from(new Set(state.itensAbertos.map((row) => row.tipo_imagem).filter(Boolean)));
+    const tiposLote = Array.from(
+      new Set(state.itensAbertos.map((row) => row.tipo_imagem).filter(Boolean)),
+    );
     if (scope === "imagem") {
-      return [item?.tipo_imagem].filter(Boolean).length ? [item.tipo_imagem] : tiposLote;
+      return [item?.tipo_imagem].filter(Boolean).length
+        ? [item.tipo_imagem]
+        : tiposLote;
     }
     return tiposLote;
   }
@@ -712,10 +1118,18 @@
     if (existing) existing.remove();
 
     const tipos = currentUploadTipos(scope, item);
-    const tipoOptions = TRIAGEM_TIPOS_ARQUIVO.map((tipo) => `<option value="${tipo}">${tipo}</option>`).join("");
-    const categoriaOptions = TRIAGEM_CATEGORIAS.map(([id, label]) => `<option value="${id}" ${id === 6 ? "selected" : ""}>${label}</option>`).join("");
+    const tipoOptions = TRIAGEM_TIPOS_ARQUIVO.map(
+      (tipo) => `<option value="${tipo}">${tipo}</option>`,
+    ).join("");
+    const categoriaOptions = TRIAGEM_CATEGORIAS.map(
+      ([id, label]) =>
+        `<option value="${id}" ${id === 6 ? "selected" : ""}>${label}</option>`,
+    ).join("");
     const title = scope === "imagem" ? "Upload da imagem" : "Upload do projeto";
-    const subtitle = scope === "imagem" ? item?.nome || "Imagem" : lote.nomenclatura || "Projeto";
+    const subtitle =
+      scope === "imagem"
+        ? item?.nome || "Imagem"
+        : lote.nomenclatura || "Projeto";
     const modal = document.createElement("div");
     modal.id = "triagemUploadModal";
     modal.className = "triagem-upload-modal is-open";
@@ -753,16 +1167,16 @@
           </label>
           <div class="triagem-upload-types">
             <span>Tipo de imagem</span>
-            <strong>${escHtml(tipos.join(", ") || "Nao identificado")}</strong>
+            <strong>${escHtml(tipos.join(", ") || "Não identificado")}</strong>
           </div>
           <label class="triagem-upload-field">
-            <span>Observacao de triagem</span>
+            <span>Observação de triagem</span>
             <textarea name="descricao" rows="3" placeholder="Resumo para identificar o envio"></textarea>
           </label>
           <label class="triagem-upload-files">
             <i class="fa-solid fa-cloud-arrow-up"></i>
             <strong>Selecionar arquivos</strong>
-            <span>Envio multiplo permitido</span>
+            <span>Envio múltiplo permitido</span>
             <input type="file" name="files" multiple required>
           </label>
           <div class="triagem-upload-file-list" id="triagemUploadFileList"></div>
@@ -785,18 +1199,26 @@
     const suffixList = form.querySelector("#triagemSufixosList");
     const close = () => modal.remove();
 
-    modal.querySelectorAll("[data-close-upload]").forEach((btn) => btn.addEventListener("click", close));
+    modal
+      .querySelectorAll("[data-close-upload]")
+      .forEach((btn) => btn.addEventListener("click", close));
     modal.addEventListener("click", (event) => {
       if (event.target === modal) close();
     });
 
     tipoSelect.addEventListener("change", async () => {
       const sufixos = await fetchTriagemSufixos(tipoSelect.value);
-      suffixList.innerHTML = sufixos.map((sufixo) => `<option value="${escHtml(sufixo)}"></option>`).join("");
+      suffixList.innerHTML = sufixos
+        .map((sufixo) => `<option value="${escHtml(sufixo)}"></option>`)
+        .join("");
     });
 
-    fileInput.addEventListener("change", () => renderTriagemUploadFiles(form, scope));
-    form.addEventListener("submit", (event) => submitTriagemUpload(event, scope, item, tipos, close));
+    fileInput.addEventListener("change", () =>
+      renderTriagemUploadFiles(form, scope),
+    );
+    form.addEventListener("submit", (event) =>
+      submitTriagemUpload(event, scope, item, tipos, close),
+    );
   }
 
   function renderTriagemUploadFiles(form, scope) {
@@ -807,15 +1229,22 @@
       return;
     }
     if (scope === "imagem" || files.length === 1) {
-      list.innerHTML = files.map((file) => `<div><span>${escHtml(file.name)}</span><small>${Math.ceil(file.size / 1024)} KB</small></div>`).join("");
+      list.innerHTML = files
+        .map(
+          (file) =>
+            `<div><span>${escHtml(file.name)}</span><small>${Math.ceil(file.size / 1024)} KB</small></div>`,
+        )
+        .join("");
       return;
     }
     list.innerHTML = files
-      .map((file, index) => `
+      .map(
+        (file, index) => `
         <label class="triagem-upload-file-row">
           <span>${escHtml(file.name)}</span>
           <input name="sufixo_por_arquivo_${index}" placeholder="Sufixo deste arquivo">
-        </label>`)
+        </label>`,
+      )
       .join("");
   }
 
@@ -823,17 +1252,29 @@
     event.preventDefault();
     const form = event.currentTarget;
     const lote = state.loteAberto || {};
-    const files = Array.from(form.querySelector("[name='files']")?.files || []).filter((file) => file.size > 0);
-    const tipoArquivo = form.querySelector("[name='tipo_arquivo']")?.value || "";
-    const sufixo = normalizeSufixo(form.querySelector("[name='sufixo']")?.value || "");
-    const descricaoLivre = form.querySelector("[name='descricao']")?.value.trim() || "";
+    const files = Array.from(
+      form.querySelector("[name='files']")?.files || [],
+    ).filter((file) => file.size > 0);
+    const tipoArquivo =
+      form.querySelector("[name='tipo_arquivo']")?.value || "";
+    const sufixo = normalizeSufixo(
+      form.querySelector("[name='sufixo']")?.value || "",
+    );
+    const descricaoLivre =
+      form.querySelector("[name='descricao']")?.value.trim() || "";
 
     if (!tipoArquivo || !files.length || !tipos.length) {
-      toast("Informe o tipo de arquivo, o tipo de imagem e selecione ao menos um arquivo.", "#F59E0B");
+      toast(
+        "Informe o tipo de arquivo, o tipo de imagem e selecione ao menos um arquivo.",
+        "#F59E0B",
+      );
       return;
     }
     if (sufixo && !validSufixo(sufixo)) {
-      toast("Sufixo invalido. Use no maximo duas palavras separadas por _.", "#F59E0B");
+      toast(
+        "Sufixo inválido. Use no máximo duas palavras separadas por _.",
+        "#F59E0B",
+      );
       return;
     }
 
@@ -845,37 +1286,64 @@
       if (sufixo) await saveTriagemSufixo(tipoArquivo, sufixo);
       const fd = new FormData();
       fd.append("obra_id", lote.obra_id);
-      fd.append("tipo_categoria", form.querySelector("[name='tipo_categoria']")?.value || "6");
+      fd.append(
+        "tipo_categoria",
+        form.querySelector("[name='tipo_categoria']")?.value || "6",
+      );
       fd.append("tipo_arquivo", tipoArquivo);
-      fd.append("data_recebido", form.querySelector("[name='data_recebido']")?.value || dateOnly(new Date().toISOString()));
-      fd.append("descricao", `Triagem${lote.lote_id ? " lote " + lote.lote_id : ""}${descricaoLivre ? " - " + descricaoLivre : ""}`);
-      if (form.querySelector("[name='flag_substituicao']")?.checked) fd.append("flag_substituicao", "1");
+      fd.append(
+        "data_recebido",
+        form.querySelector("[name='data_recebido']")?.value ||
+          dateOnly(new Date().toISOString()),
+      );
+      fd.append(
+        "descricao",
+        `Triagem${lote.lote_id ? " lote " + lote.lote_id : ""}${descricaoLivre ? " - " + descricaoLivre : ""}`,
+      );
+      if (form.querySelector("[name='flag_substituicao']")?.checked)
+        fd.append("flag_substituicao", "1");
       tipos.forEach((tipo) => fd.append("tipo_imagem[]", tipo));
 
       if (scope === "imagem") {
         fd.append("refsSkpModo", "porImagem");
         if (sufixo) fd.append("sufixo", sufixo);
-        fd.append(`observacoes_por_imagem[${item.imagem_id}]`, `Triagem${descricaoLivre ? " - " + descricaoLivre : ""}`);
-        files.forEach((file) => fd.append(`arquivos_por_imagem[${item.imagem_id}][]`, file));
+        fd.append(
+          `observacoes_por_imagem[${item.imagem_id}]`,
+          `Triagem${descricaoLivre ? " - " + descricaoLivre : ""}`,
+        );
+        files.forEach((file) =>
+          fd.append(`arquivos_por_imagem[${item.imagem_id}][]`, file),
+        );
       } else {
         fd.append("refsSkpModo", "geral");
         for (const [index, file] of files.entries()) {
           fd.append("arquivos[]", file);
-          const perFile = normalizeSufixo(form.querySelector(`[name='sufixo_por_arquivo_${index}']`)?.value || "");
+          const perFile = normalizeSufixo(
+            form.querySelector(`[name='sufixo_por_arquivo_${index}']`)?.value ||
+              "",
+          );
           if (perFile) await saveTriagemSufixo(tipoArquivo, perFile);
           fd.append("sufixo_por_arquivo[]", perFile || sufixo);
         }
         if (sufixo) fd.append("sufixo", sufixo);
       }
 
-      const response = await fetch(`${FLOWDRIVE_BASE}upload.php`, { method: "POST", body: fd });
+      const response = await fetch(`${FLOWDRIVE_BASE}upload.php`, {
+        method: "POST",
+        body: fd,
+      });
       const json = await response.json();
       const success = Array.isArray(json.success) ? json.success.length : 0;
-      const errors = Array.isArray(json.errors) ? json.errors.filter(Boolean) : [];
+      const errors = Array.isArray(json.errors)
+        ? json.errors.filter(Boolean)
+        : [];
       if (!response.ok || (success === 0 && errors.length)) {
-        throw new Error(errors[0] || "Upload nao concluido.");
+        throw new Error(errors[0] || "Upload não concluído.");
       }
-      toast(`${plural(success, "arquivo enviado", "arquivos enviados")}.`, "#22C55E");
+      toast(
+        `${plural(success, "arquivo enviado", "arquivos enviados")}.`,
+        "#22C55E",
+      );
       close();
     } catch (err) {
       toast("Erro no upload: " + err.message, "#EF4444", 6000);
@@ -888,15 +1356,24 @@
   async function salvarAlteracoesModal() {
     const itens = getDirtyItemPayloads();
     if (!itens.length) return;
+    const { obraId, cardId } = getCurrentPreAltDraftContext();
 
-    if (itens.some((item) => item.resultado === "ALTERACAO" && !item.nivel_complexidade)) {
-      toast("Selecione o nivel de complexidade das imagens com alteracao.", "#F59E0B");
+    if (
+      itens.some(
+        (item) => item.resultado === "ALTERACAO" && !item.nivel_complexidade,
+      )
+    ) {
+      toast(
+        "Selecione o nível de complexidade das imagens com alteração.",
+        "#F59E0B",
+      );
       return;
     }
 
     const btn = refs.btnSalvarAlteracoes;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando</span>';
+    btn.innerHTML =
+      '<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando</span>';
 
     try {
       const res = await fetch(BASE + "save_pre_analise_batch.php", {
@@ -906,13 +1383,20 @@
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error || "Erro ao salvar");
-      toast(json.ready_for_planning ? "Lote pronto para planejamento." : `${plural(json.updated_items || 0, "imagem atualizada", "imagens atualizadas")}.`, "#22C55E");
+      toast(
+        json.ready_for_planning
+          ? "Lote pronto para planejamento."
+          : `${plural(json.updated_items || 0, "imagem atualizada", "imagens atualizadas")}.`,
+        "#22C55E",
+      );
+      limparRascunhoPreAlt(obraId, cardId);
       await abrirModal(state.loteAberto?.lote_id);
       await carregarLotes();
     } catch (err) {
       toast("Erro: " + err.message, "#EF4444");
     } finally {
-      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>Salvar alteracoes</span>';
+      btn.innerHTML =
+        '<i class="fa-solid fa-floppy-disk"></i><span>Salvar alterações</span>';
       updateModalDirtyState();
     }
   }
@@ -928,13 +1412,25 @@
       progresso: 0,
     };
     itens.forEach((item) => {
-      resumo.comentarios += Number(item.comment_count || item.quantidade_comentarios || 0);
+      resumo.comentarios += Number(
+        item.comment_count || item.quantidade_comentarios || 0,
+      );
       resumo.criticos += Number(item.critical_count || 0);
       if (item.resultado === "ALTERACAO") resumo.alteracao += 1;
-      if (item.resultado === "AGUARDANDO_CLIENTE" || item.necessita_retorno == 1) resumo.aguardando += 1;
-      if (item.resultado && (item.resultado !== "ALTERACAO" || item.nivel_complexidade)) resumo.classificados += 1;
+      if (
+        item.resultado === "AGUARDANDO_CLIENTE" ||
+        item.necessita_retorno == 1
+      )
+        resumo.aguardando += 1;
+      if (
+        item.resultado &&
+        (item.resultado !== "ALTERACAO" || item.nivel_complexidade)
+      )
+        resumo.classificados += 1;
     });
-    resumo.progresso = resumo.total ? Math.round((resumo.classificados / resumo.total) * 100) : 0;
+    resumo.progresso = resumo.total
+      ? Math.round((resumo.classificados / resumo.total) * 100)
+      : 0;
     return resumo;
   }
 
@@ -973,7 +1469,11 @@
     }
     if (action === "concluir") {
       if (loteIds.length !== 1) {
-        toast("Selecione um lote por vez para concluir a triagem.", "#F59E0B", 3600);
+        toast(
+          "Selecione um lote por vez para concluir a triagem.",
+          "#F59E0B",
+          3600,
+        );
         return;
       }
       abrirConclusaoLote(loteIds[0]);
@@ -989,7 +1489,7 @@
 
   function batchTitle(action) {
     return {
-      responsavel: "Alterar responsavel",
+      responsavel: "Alterar responsável",
       prazo: "Alterar prazo",
       prioridade: "Alterar prioridade",
       status: "Mover etapa",
@@ -1000,7 +1500,7 @@
   function batchBody(action, totalLotes) {
     if (action === "responsavel") {
       return `
-        <label><span>Responsavel</span><select name="value" required>
+        <label><span>Responsável</span><select name="value" required>
           <option value="">Selecione</option>
           ${state.responsaveis.map((r) => `<option value="${r.idcolaborador}">${escHtml(r.nome_colaborador)}</option>`).join("")}
         </select></label>
@@ -1015,7 +1515,7 @@
           <option value="BAIXA">Baixa</option>
           <option value="NORMAL">Normal</option>
           <option value="ALTA">Alta</option>
-          <option value="CRITICA">Critica</option>
+          <option value="CRITICA">Crítica</option>
         </select></label>
       `;
     }
@@ -1039,7 +1539,7 @@
       lote_ids: state.currentBatchLoteIds || Array.from(state.selected),
       action,
       value: field ? field.value : null,
-      observacao: "Atualizacao em lote pela tela de Pre-Alteracao.",
+      observacao: "Atualização em lote pela tela de Pré-Alteração.",
     };
 
     try {
@@ -1049,7 +1549,7 @@
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Erro na atualizacao");
+      if (!json.success) throw new Error(json.error || "Erro na atualização");
       toast(`${json.updated || 0} lote(s) atualizados.`, "#22C55E");
       closeBatchModal();
       clearSelection();
@@ -1067,19 +1567,24 @@
     refs.conclusaoFooterInfo.textContent = "Revise os prazos antes de liberar.";
     refs.conclusaoSubmit.disabled = true;
     state.conclusaoResumo = null;
-    refs.conclusaoBody.innerHTML = '<div class="modal-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando resumo</div>';
+    refs.conclusaoBody.innerHTML =
+      '<div class="modal-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando resumo</div>';
 
     try {
-      const url = new URL(BASE + "get_conclusao_lote.php", window.location.origin);
+      const url = new URL(
+        BASE + "get_conclusao_lote.php",
+        window.location.origin,
+      );
       url.searchParams.set("lote_id", loteId);
       if (dataTriagem) url.searchParams.set("data_triagem", dataTriagem);
       const res = await fetch(url.toString());
       const json = await res.json();
-      if (!json.success) throw new Error(json.message || "Erro ao carregar resumo");
+      if (!json.success)
+        throw new Error(json.message || "Erro ao carregar resumo");
       state.conclusaoResumo = json;
       renderConclusaoResumo(json);
     } catch (err) {
-      refs.conclusaoTitle.textContent = "Resumo indisponivel";
+      refs.conclusaoTitle.textContent = "Resumo indisponível";
       refs.conclusaoBody.innerHTML = `<div class="modal-loading is-error">${escHtml(err.message)}</div>`;
       refs.conclusaoSubmit.disabled = true;
     }
@@ -1096,30 +1601,32 @@
     refs.conclusaoTitle.textContent = lote.obra_nome || "Resumo do lote";
     refs.conclusaoSubmit.disabled = !canSubmit;
     refs.conclusaoFooterInfo.textContent = canSubmit
-      ? `${plural(totais.imagens || 0, "imagem pronta", "imagens prontas")} para liberacao.`
-      : "Resolva as pendencias antes de liberar o lote.";
+      ? `${plural(totais.imagens || 0, "imagem pronta", "imagens prontas")} para liberação.`
+      : "Resolva as pendências antes de liberar o lote.";
 
     const pendenciasHtml = canSubmit
       ? ""
       : `
         <section class="conclusao-pendencias">
-          <strong>Conclusao bloqueada</strong>
+          <strong>Conclusão bloqueada</strong>
           ${(resumo.pendencias || []).map((item) => `<span>${escHtml(item)}</span>`).join("")}
         </section>
       `;
 
-    const efHtml = Number(grupoEf.total || 0) > 0
-      ? entregaResumo("Entrega EF", grupoEf, "prazo_ef")
-      : "";
-    const altHtml = Number(grupoAlt.total || 0) > 0
-      ? entregaResumo("Entrega Alteracao", grupoAlt, "prazo_alteracao")
-      : "";
+    const efHtml =
+      Number(grupoEf.total || 0) > 0
+        ? entregaResumo("Entrega EF", grupoEf, "prazo_ef")
+        : "";
+    const altHtml =
+      Number(grupoAlt.total || 0) > 0
+        ? entregaResumo("Entrega Alteração", grupoAlt, "prazo_alteracao")
+        : "";
 
     refs.conclusaoBody.innerHTML = `
       <section class="conclusao-headline">
         <div>
           <span>Cliente</span>
-          <strong>${escHtml(lote.cliente_nome || "Cliente nao informado")}</strong>
+          <strong>${escHtml(lote.cliente_nome || "Cliente não informado")}</strong>
         </div>
         <div>
           <span>Resolvido pelo cliente</span>
@@ -1134,7 +1641,7 @@
       <section class="conclusao-totals">
         ${summaryTile(totais.imagens || 0, "Total de imagens")}
         ${summaryTile(totais.aprovadas || 0, "Aprovadas")}
-        ${summaryTile(totais.alteracoes || 0, "Com alteracao")}
+        ${summaryTile(totais.alteracoes || 0, "Com alteração")}
         ${summaryTile(`N1 ${niveis[1] || 0}`, "Complexidade")}
         ${summaryTile(`N2 ${niveis[2] || 0}`, "Complexidade")}
         ${summaryTile(`N3 ${niveis[3] || 0}`, "Complexidade")}
@@ -1150,24 +1657,27 @@
       </section>
 
       <label class="conclusao-observacao">
-        <span>Observacao</span>
-        <textarea name="observacao" rows="3" placeholder="Observacao opcional para historico e entregas"></textarea>
+        <span>Observação</span>
+        <textarea name="observacao" rows="3" placeholder="Observação opcional para histórico e entregas"></textarea>
       </label>
     `;
 
-    refs.conclusaoBody.querySelector("[name='data_triagem']")?.addEventListener("change", (event) => {
-      const loteId = state.conclusaoResumo?.lote?.id;
-      if (loteId && event.currentTarget.value) {
-        abrirConclusaoLote(loteId, event.currentTarget.value);
-      }
-    });
+    refs.conclusaoBody
+      .querySelector("[name='data_triagem']")
+      ?.addEventListener("change", (event) => {
+        const loteId = state.conclusaoResumo?.lote?.id;
+        if (loteId && event.currentTarget.value) {
+          abrirConclusaoLote(loteId, event.currentTarget.value);
+        }
+      });
   }
 
   function entregaResumo(titulo, grupo, inputName) {
     const niveis = grupo.niveis || {};
-    const nivelHtml = inputName === "prazo_alteracao"
-      ? `<div class="conclusao-niveis">${[1, 2, 3, 4, 5].map((n) => `<span>N${n} <strong>${niveis[n] || 0}</strong></span>`).join("")}</div>`
-      : "";
+    const nivelHtml =
+      inputName === "prazo_alteracao"
+        ? `<div class="conclusao-niveis">${[1, 2, 3, 4, 5].map((n) => `<span>N${n} <strong>${niveis[n] || 0}</strong></span>`).join("")}</div>`
+        : "";
     return `
       <article class="conclusao-entrega-card">
         <div>
@@ -1187,21 +1697,25 @@
     event.preventDefault();
     const resumo = state.conclusaoResumo;
     if (!resumo || !resumo.eligible) {
-      toast("Este lote ainda possui pendencias.", "#F59E0B");
+      toast("Este lote ainda possui pendências.", "#F59E0B");
       return;
     }
 
     const form = refs.conclusaoForm;
     const payload = {
       lote_id: resumo.lote.id,
-      data_triagem: form.querySelector("[name='data_triagem']")?.value || resumo.data_triagem,
+      data_triagem:
+        form.querySelector("[name='data_triagem']")?.value ||
+        resumo.data_triagem,
       prazo_ef: form.querySelector("[name='prazo_ef']")?.value || "",
-      prazo_alteracao: form.querySelector("[name='prazo_alteracao']")?.value || "",
+      prazo_alteracao:
+        form.querySelector("[name='prazo_alteracao']")?.value || "",
       observacao: form.querySelector("[name='observacao']")?.value || "",
     };
 
     refs.conclusaoSubmit.disabled = true;
-    refs.conclusaoSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Liberando';
+    refs.conclusaoSubmit.innerHTML =
+      '<i class="fa-solid fa-spinner fa-spin"></i> Liberando';
     try {
       const res = await fetch(BASE + "concluir_triagem.php", {
         method: "POST",
@@ -1209,8 +1723,9 @@
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.message || "Erro ao concluir triagem");
-      toast("Triagem concluida e lote liberado.", "#22C55E");
+      if (!json.success)
+        throw new Error(json.message || "Erro ao concluir triagem");
+      toast("Triagem concluída e lote liberado.", "#22C55E");
       closeConclusaoModal();
       closePaModal();
       clearSelection();
@@ -1219,7 +1734,8 @@
       toast("Erro: " + err.message, "#EF4444", 5200);
       refs.conclusaoSubmit.disabled = false;
     } finally {
-      refs.conclusaoSubmit.innerHTML = '<i class="fa-solid fa-circle-check"></i> Concluir e liberar lote';
+      refs.conclusaoSubmit.innerHTML =
+        '<i class="fa-solid fa-circle-check"></i> Concluir e liberar lote';
     }
   }
 
@@ -1237,6 +1753,7 @@
   }
 
   function closePaModal() {
+    salvarRascunhoAtualPreAlt();
     refs.paModal.classList.remove("is-open");
     refs.paModal.setAttribute("aria-hidden", "true");
     state.itensAbertos = [];
@@ -1244,9 +1761,21 @@
   }
 
   function resultadoLabel(resultado) {
-    if (resultado === "SEM_ALTERACAO") return "Sem alteracao";
+    if (resultado === "SEM_ALTERACAO") return "Aprovada";
     if (resultado === "AGUARDANDO_CLIENTE") return "Aguardando cliente";
-    return "Alteracao";
+    return "Alteração";
+  }
+
+  function resultadoFilterValue(resultado) {
+    if (resultado === "SEM_ALTERACAO") return "aprovada";
+    if (resultado === "AGUARDANDO_CLIENTE") return "aguardando_cliente";
+    return "alteracao";
+  }
+
+  function resultadoBadgeClass(resultado) {
+    if (resultado === "SEM_ALTERACAO") return "aprovada";
+    if (resultado === "AGUARDANDO_CLIENTE") return "aguardando-cliente";
+    return "alteracao";
   }
 
   function formatDate(str) {
@@ -1310,21 +1839,28 @@
   ].forEach((el) => el.addEventListener("input", renderLotes));
 
   refs.btnAtualizar.addEventListener("click", carregarLotes);
-  refs.btnBatchMode.addEventListener("click", () => toast("Selecione os checkboxes dos lotes para atualizar em lote.", "#3B82F6"));
-  refs.btnNovoLote.addEventListener("click", () => toast("Novos lotes sao criados ao enviar um lote concluido do Review para Pre-Alteracao.", "#8B5CF6", 4200));
-  refs.btnMaisFiltros.addEventListener("click", () => {
-    document.body.classList.toggle("show-advanced-filters");
-  });
+  refs.btnBatchMode.addEventListener("click", () =>
+    toast(
+      "Selecione os checkboxes dos lotes para atualizar em lote.",
+      "#3B82F6",
+    ),
+  );
+  // refs.btnNovoLote.addEventListener("click", () => toast("Novos lotes são criados ao enviar um lote concluído do Review para Pré-Alteração.", "#8B5CF6", 4200));
+  // refs.btnMaisFiltros.addEventListener("click", () => {
+  //   document.body.classList.toggle("show-advanced-filters");
+  // });
   refs.btnLimparSelecao.addEventListener("click", clearSelection);
   refs.batchActionBar.querySelectorAll("[data-batch-action]").forEach((btn) => {
-    btn.addEventListener("click", () => openBatchModal(btn.dataset.batchAction));
+    btn.addEventListener("click", () =>
+      openBatchModal(btn.dataset.batchAction),
+    );
   });
   refs.paModalClose.addEventListener("click", closePaModal);
   refs.paFooterClose.addEventListener("click", closePaModal);
   refs.btnSalvarAlteracoes.addEventListener("click", salvarAlteracoesModal);
-  refs.paModal.addEventListener("click", (event) => {
-    if (event.target === refs.paModal) closePaModal();
-  });
+  // refs.paModal.addEventListener("click", (event) => {
+  //   if (event.target === refs.paModal) closePaModal();
+  // });
   refs.batchModalClose.addEventListener("click", closeBatchModal);
   refs.batchCancel.addEventListener("click", closeBatchModal);
   refs.batchModal.addEventListener("click", (event) => {

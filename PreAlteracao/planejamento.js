@@ -127,7 +127,7 @@
   }
 
   function collaboratorOptions(selected) {
-    const options = ['<option value="">Herdar/sem responsavel</option>'];
+    const options = ['<option value="">Herdar/sem responsável</option>'];
     state.colaboradores.forEach((col) => {
       const id = Number(col.idcolaborador);
       options.push(
@@ -154,7 +154,7 @@
     const response = await fetch(url, options);
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json.success) {
-      throw new Error(json.error || json.message || "Erro na requisicao.");
+      throw new Error(json.error || json.message || "Erro na requisição.");
     }
     return json;
   }
@@ -192,7 +192,7 @@
     const diagram = state.diagram || {};
     refs.title.textContent =
       diagram.name || lote.nomenclatura || "Planejamento";
-    refs.subtitle.textContent = `${lote.nomenclatura || "Obra"} - ${lote.nome_cliente || "Cliente nao informado"} - ${lote.nome_status || "Etapa"}`;
+    refs.subtitle.textContent = `${lote.nomenclatura || "Obra"} - ${lote.nome_cliente || "Cliente não informado"} - ${lote.nome_status || "Etapa"}`;
   }
 
   function renderStatus() {
@@ -203,8 +203,8 @@
       <span>${state.groups.length} grupo(s)</span>
       <span>${state.items.length} imagem(ns)</span>
       <span>${state.gates.length} gate(s)</span>
-      <span>${state.dependencies.length} dependencia(s)</span>
-      ${state.dirty ? '<strong class="dirty-dot">Alteracoes nao salvas</strong>' : "<span>Sem alteracoes pendentes</span>"}
+      <span>${state.dependencies.length} dependência(s)</span>
+      ${state.dirty ? '<strong class="dirty-dot">Alterações não salvas</strong>' : "<span>Sem alterações pendentes</span>"}
     `;
   }
 
@@ -212,7 +212,7 @@
     refs.imageCount.textContent = `${state.items.length} imagem${state.items.length === 1 ? "" : "s"}`;
     if (!state.items.length) {
       refs.imageList.innerHTML =
-        '<div class="empty-card">Nenhuma imagem com alteracao neste lote.</div>';
+        '<div class="empty-card">Nenhuma imagem com alteração neste lote.</div>';
       return;
     }
     refs.imageList.innerHTML = state.items
@@ -248,7 +248,7 @@
   function renderCanvas() {
     if (!window.cytoscape) {
       refs.canvas.innerHTML =
-        '<div class="canvas-error">Biblioteca Cytoscape nao carregada.</div>';
+        '<div class="canvas-error">Biblioteca Cytoscape não carregada.</div>';
       return;
     }
 
@@ -468,7 +468,7 @@
       refs.propertyTitle.textContent = "Nada selecionado";
       refs.propertyPanel.innerHTML = `
         <div class="empty-card">
-          Selecione uma imagem, grupo, gate ou conexao no canvas para editar as propriedades.
+          Selecione uma imagem, grupo, gate ou conexão no canvas para editar as propriedades.
         </div>
       `;
       return;
@@ -492,7 +492,7 @@
     refs.propertyTitle.textContent = `Grupo: ${group.name}`;
     refs.propertyPanel.innerHTML = `
       <label><span>Nome</span><input id="propGroupName" value="${esc(group.name)}"></label>
-      <label><span>Responsavel padrao</span><select id="propGroupResp">${collaboratorOptions(group.responsavel_id)}</select></label>
+      <label><span>Responsável padrão</span><select id="propGroupResp">${collaboratorOptions(group.responsavel_id)}</select></label>
       <label><span>Ordem</span><input id="propGroupOrder" type="number" min="0" value="${esc(group.order || 0)}"></label>
       <button type="button" class="btn btn-danger" id="propDeleteGroup"><i class="fa-solid fa-trash"></i> Remover grupo</button>
     `;
@@ -533,14 +533,14 @@
         <option value="">Sem grupo</option>
         ${state.groups.map((group) => `<option value="${esc(group.ref)}" ${item.group_ref === group.ref ? "selected" : ""}>${esc(group.name)}</option>`).join("")}
       </select></label>
-      <label><span>Responsavel da imagem</span><select id="propItemResp">${collaboratorOptions(item.responsavel_id)}</select></label>
+      <label><span>Responsável da imagem</span><select id="propItemResp">${collaboratorOptions(item.responsavel_id)}</select></label>
       <label><span>Ordem</span><input id="propItemOrder" type="number" min="0" value="${esc(item.order || 0)}"></label>
       <div class="readonly-grid">
         <span>ID imagem<strong>${esc(source.imagem_id || "-")}</strong></span>
         <span>Complexidade<strong>N${esc(source.nivel_complexidade || "-")}</strong></span>
         <span>Tipo<strong>${esc(source.tipo_imagem || "-")}</strong></span>
       </div>
-      <div class="prop-note"><span>Orientacao da triagem</span><p>${esc(source.acao || "Sem observacao.")}</p></div>
+      <div class="prop-note"><span>Orientação da triagem</span><p>${esc(source.acao || "Sem observação.")}</p></div>
     `;
     document
       .getElementById("propItemGroup")
@@ -571,10 +571,10 @@
     if (!gate) return;
     refs.propertyTitle.textContent = `Gate: ${gate.title}`;
     refs.propertyPanel.innerHTML = `
-      <label><span>Titulo</span><input id="propGateTitle" value="${esc(gate.title)}"></label>
+      <label><span>Título</span><input id="propGateTitle" value="${esc(gate.title)}"></label>
       <label><span>Tipo</span><select id="propGateType">
-        <option value="APROVACAO" ${gate.gate_type === "APROVACAO" ? "selected" : ""}>Aprovacao</option>
-        <option value="FINALIZACAO" ${gate.gate_type === "FINALIZACAO" ? "selected" : ""}>Finalizacao</option>
+        <option value="APROVACAO" ${gate.gate_type === "APROVACAO" ? "selected" : ""}>Aprovação</option>
+        <option value="FINALIZACAO" ${gate.gate_type === "FINALIZACAO" ? "selected" : ""}>Finalização</option>
         <option value="MANUAL" ${gate.gate_type === "MANUAL" ? "selected" : ""}>Manual</option>
       </select></label>
       <button type="button" class="btn btn-danger" id="propDeleteGate"><i class="fa-solid fa-trash"></i> Remover gate</button>
@@ -600,18 +600,18 @@
 
   function renderDependencyProperties(dep) {
     if (!dep) return;
-    refs.propertyTitle.textContent = "Dependencia";
+    refs.propertyTitle.textContent = "Dependência";
     refs.propertyPanel.innerHTML = `
       <div class="readonly-grid dep-readonly">
         <span>Origem<strong>${esc(labelForNode(dep.origin_type, dep.origin_ref))}</strong></span>
         <span>Destino<strong>${esc(labelForNode(dep.target_type, dep.target_ref))}</strong></span>
       </div>
-      <label><span>Condicao</span><select id="propDepCondition">
+      <label><span>Condição</span><select id="propDepCondition">
         <option value="APROVADA" ${dep.condition === "APROVADA" ? "selected" : ""}>Aprovada</option>
         <option value="FINALIZADA" ${dep.condition === "FINALIZADA" ? "selected" : ""}>Finalizada</option>
       </select></label>
-      <label><span>Observacao</span><textarea id="propDepNote" rows="3">${esc(dep.note || "")}</textarea></label>
-      <button type="button" class="btn btn-danger" id="propDeleteDep"><i class="fa-solid fa-trash"></i> Remover dependencia</button>
+      <label><span>Observação</span><textarea id="propDepNote" rows="3">${esc(dep.note || "")}</textarea></label>
+      <button type="button" class="btn btn-danger" id="propDeleteDep"><i class="fa-solid fa-trash"></i> Remover dependência</button>
     `;
     document
       .getElementById("propDepCondition")
@@ -683,7 +683,7 @@
   }
 
   function createGate() {
-    const title = window.prompt("Titulo do gate", "Aprovacao do grupo");
+    const title = window.prompt("Título do gate", "Aprovação do grupo");
     if (!title || !title.trim()) return;
     const ref = `gate-new-${Date.now()}`;
     state.gates.push({
@@ -716,7 +716,7 @@
         dep.condition === condition,
     );
     if (exists) {
-      toast("Esta dependencia ja existe.", "#f59e0b");
+      toast("Esta dependência já existe.", "#f59e0b");
       return;
     }
     state.dependencies.push({
@@ -775,7 +775,7 @@
   function regenerateBase() {
     if (
       !window.confirm(
-        "Gerar a base novamente vai remover grupos, gates e dependencias ainda nao salvos. Continuar?",
+        "Gerar a base novamente vai remover grupos, gates e dependências ainda não salvos. Continuar?",
       )
     ) {
       return;
@@ -832,7 +832,7 @@
     renderValidation(json.validation);
     if (showToast) {
       toast(
-        json.validation.valid ? "Diagrama valido." : "Diagrama possui erros.",
+        json.validation.valid ? "Diagrama válido." : "Diagrama possui erros.",
         json.validation.valid ? "#16a34a" : "#dc2626",
       );
     }
@@ -842,7 +842,7 @@
   function renderValidation(validation) {
     if (!validation) {
       refs.validationPanel.innerHTML =
-        '<div class="empty-card">A validacao estrutural ainda nao foi executada.</div>';
+        '<div class="empty-card">A validação estrutural ainda não foi executada.</div>';
       return;
     }
     const block = (title, rows, cls) =>
@@ -852,8 +852,8 @@
     refs.validationPanel.innerHTML = `
       ${block("Erros", validation.errors || [], "errors")}
       ${block("Avisos", validation.warnings || [], "warnings")}
-      ${block("Informacoes", validation.infos || [], "infos")}
-      ${validation.valid ? '<div class="validation-block ok"><strong>Estrutura valida</strong><span>O diagrama pode ser publicado.</span></div>' : ""}
+      ${block("Informações", validation.infos || [], "infos")}
+      ${validation.valid ? '<div class="validation-block ok"><strong>Estrutura válida</strong><span>O diagrama pode ser publicado.</span></div>' : ""}
     `;
   }
 
@@ -880,7 +880,7 @@
     if (
       state.dirty &&
       !window.confirm(
-        "Existem alteracoes nao salvas. Publicar a ultima versao salva mesmo assim?",
+        "Existem alterações não salvas. Publicar a última versão salva mesmo assim?",
       )
     ) {
       return;
@@ -912,7 +912,7 @@
   async function load() {
     if (!loteId) {
       refs.canvas.innerHTML =
-        '<div class="canvas-error">lote_id nao informado.</div>';
+        '<div class="canvas-error">lote_id não informado.</div>';
       return;
     }
     try {

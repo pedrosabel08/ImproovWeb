@@ -44,7 +44,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <link href="https://unpkg.com/tabulator-tables@6.2.0/dist/css/tabulator.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-    <title>Pre-Alteracao</title>
+    <title>Pré-Alteração</title>
 </head>
 
 <body>
@@ -57,9 +57,8 @@ $conn->close();
     <main class="prealt-shell">
         <header class="prealt-header">
             <div class="prealt-title-block">
-                <span class="prealt-eyebrow">Flow</span>
-                <h1>Pre-Alteracao</h1>
-                <p>Central de triagem das imagens antes do processo de alteracoes.</p>
+                <h1>Pré-Alteração</h1>
+                <p>Central de triagem das imagens antes do processo de alterações.</p>
             </div>
             <div class="prealt-header-actions">
                 <button type="button" class="btn btn-secondary" id="btnAtualizar">
@@ -68,23 +67,23 @@ $conn->close();
                 </button>
                 <button type="button" class="btn btn-secondary" id="btnBatchMode">
                     <i class="fa-solid fa-list-check"></i>
-                    <span>Atualizacao em lote</span>
+                    <span>Atualização em lote</span>
                 </button>
-                <button type="button" class="btn btn-primary" id="btnNovoLote">
+                <!-- <button type="button" class="btn btn-primary" id="btnNovoLote">
                     <i class="fa-solid fa-plus"></i>
                     <span>Novo lote</span>
-                </button>
+                </button> -->
             </div>
         </header>
 
-        <section class="kpi-grid" id="kpiGrid" aria-label="Indicadores de pre-alteracao"></section>
+        <section class="kpi-grid" id="kpiGrid" aria-label="Indicadores de pré-alteração"></section>
 
         <section class="filter-bar" aria-label="Filtros">
             <label class="filter-control filter-search">
                 <span>Busca</span>
                 <div class="filter-input-wrap">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input id="filtroBusca" type="search" placeholder="Obra, cliente, responsavel ou etapa">
+                    <input id="filtroBusca" type="search" placeholder="Obra, cliente, responsável ou etapa">
                 </div>
             </label>
 
@@ -119,12 +118,12 @@ $conn->close();
                     <option value="BAIXA">Baixa</option>
                     <option value="NORMAL">Normal</option>
                     <option value="ALTA">Alta</option>
-                    <option value="CRITICA">Critica</option>
+                    <option value="CRITICA">Crítica</option>
                 </select>
             </label>
 
             <label class="filter-control filter-advanced">
-                <span>Responsavel</span>
+                <span>Responsável</span>
                 <select id="filtroResponsavel">
                     <option value="">Todos</option>
                 </select>
@@ -136,7 +135,7 @@ $conn->close();
                     <option value="">Todos</option>
                     <option value="ATRASADO">Atrasado</option>
                     <option value="HOJE">Hoje</option>
-                    <option value="7_DIAS">Proximos 7 dias</option>
+                    <option value="7_DIAS">Próximos 7 dias</option>
                     <option value="SEM_PRAZO">Sem prazo</option>
                 </select>
             </label>
@@ -154,15 +153,15 @@ $conn->close();
 
         <section class="batch-action-bar" id="batchActionBar" aria-live="polite">
             <strong><span id="selectedCount">0</span> lotes selecionados</strong>
-            <button type="button" data-batch-action="responsavel"><i class="fa-solid fa-user-pen"></i> Alterar responsavel</button>
+            <button type="button" data-batch-action="responsavel"><i class="fa-solid fa-user-pen"></i> Alterar responsável</button>
             <button type="button" data-batch-action="prazo"><i class="fa-solid fa-calendar-days"></i> Alterar prazo</button>
             <button type="button" data-batch-action="prioridade"><i class="fa-solid fa-flag"></i> Alterar prioridade</button>
             <button type="button" data-batch-action="status"><i class="fa-solid fa-arrow-right-arrow-left"></i> Mover etapa</button>
             <button type="button" data-batch-action="concluir"><i class="fa-solid fa-circle-check"></i> Concluir triagem</button>
-            <button type="button" class="batch-clear" id="btnLimparSelecao"><i class="fa-solid fa-xmark"></i> Remover selecao</button>
+            <button type="button" class="batch-clear" id="btnLimparSelecao"><i class="fa-solid fa-xmark"></i> Remover seleção</button>
         </section>
 
-        <section class="kanban-board" id="kanbanBoard" aria-label="Kanban de pre-alteracao">
+        <section class="kanban-board" id="kanbanBoard" aria-label="Kanban de pré-alteração">
             <article class="kanban-column" data-column="triagem">
                 <header class="kanban-column-header">
                     <div>
@@ -171,9 +170,6 @@ $conn->close();
                     </div>
                     <span class="column-badge" id="countTriagem">0 lotes</span>
                     <small id="imagesTriagem">0 imagens</small>
-                    <button type="button" class="column-menu" title="Acoes da coluna">
-                        <i class="fa-solid fa-ellipsis"></i>
-                    </button>
                 </header>
                 <div class="kanban-column-body" id="colTriagem"></div>
             </article>
@@ -186,9 +182,6 @@ $conn->close();
                     </div>
                     <span class="column-badge column-badge-client" id="countAguardando">0 lotes</span>
                     <small id="imagesAguardando">0 imagens</small>
-                    <button type="button" class="column-menu" title="Acoes da coluna">
-                        <i class="fa-solid fa-ellipsis"></i>
-                    </button>
                 </header>
                 <div class="kanban-column-body" id="colAguardando"></div>
             </article>
@@ -201,9 +194,6 @@ $conn->close();
                     </div>
                     <span class="column-badge column-badge-plan" id="countPlanejamento">0 lotes</span>
                     <small id="imagesPlanejamento">0 imagens</small>
-                    <button type="button" class="column-menu" title="Acoes da coluna">
-                        <i class="fa-solid fa-ellipsis"></i>
-                    </button>
                 </header>
                 <div class="kanban-column-body" id="colPlanejamento"></div>
             </article>
@@ -224,12 +214,12 @@ $conn->close();
             </div>
             <div class="modal-pa-body" id="paModalBody"></div>
             <div class="modal-pa-footer" id="paModalFooter">
-                <span id="paPendingCount">0 imagem(ns) com alteracoes pendentes</span>
+                <span id="paPendingCount">0 imagem(ns) com alterações pendentes</span>
                 <div>
                     <button type="button" class="btn btn-secondary" id="paFooterClose">Fechar</button>
                     <button type="button" class="btn btn-primary" id="btnSalvarAlteracoes" disabled>
                         <i class="fa-solid fa-floppy-disk"></i>
-                        <span>Salvar alteracoes</span>
+                        <span>Salvar alterações</span>
                     </button>
                 </div>
             </div>
@@ -239,7 +229,7 @@ $conn->close();
     <div class="batch-modal" id="batchModal" aria-hidden="true">
         <form class="batch-modal-card" id="batchForm">
             <header>
-                <h3 id="batchModalTitle">Atualizacao em lote</h3>
+                <h3 id="batchModalTitle">Atualização em lote</h3>
                 <button type="button" id="batchModalClose" title="Fechar">
                     <i class="fa-solid fa-xmark"></i>
                 </button>

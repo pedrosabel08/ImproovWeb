@@ -28,7 +28,7 @@ $loteId = isset($_GET['lote_id']) && is_numeric($_GET['lote_id']) ? (int) $_GET[
     <link rel="stylesheet" href="<?php echo asset_url('planejamento.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <title>Planejamento da Pre-Alteracao</title>
+    <title>Planejamento da Pré-Alteração</title>
 </head>
 
 <body data-lote-id="<?php echo htmlspecialchars((string) $loteId, ENT_QUOTES, 'UTF-8'); ?>">
@@ -37,10 +37,10 @@ $loteId = isset($_GET['lote_id']) && is_numeric($_GET['lote_id']) ? (int) $_GET[
     <main class="pa-plan-shell">
         <header class="pa-plan-header">
             <div>
-                <a class="pa-plan-back" href="index.php"><i class="fa-solid fa-arrow-left"></i> Pre-Alteracao</a>
+                <a class="pa-plan-back" href="index.php"><i class="fa-solid fa-arrow-left"></i> Pré-Alteração</a>
                 <span class="pa-plan-eyebrow">Planejamento visual</span>
                 <h1 id="planTitle">Carregando lote</h1>
-                <p id="planSubtitle">Organize grupos, responsaveis e dependencias antes da execucao da Alteracao.</p>
+                <p id="planSubtitle">Organize grupos, responsáveis e dependências antes da execução da Alteração.</p>
             </div>
             <div class="pa-plan-actions">
                 <button type="button" class="btn btn-secondary" id="btnAutoGenerate"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar base</button>
@@ -86,13 +86,13 @@ $loteId = isset($_GET['lote_id']) && is_numeric($_GET['lote_id']) ? (int) $_GET[
                 <div id="propertyPanel" class="pa-property-panel"></div>
 
                 <form id="dependencyForm" class="pa-dependency-form">
-                    <h3>Nova dependencia</h3>
+                    <h3>Nova dependência</h3>
                     <label>
                         <span>Origem</span>
                         <select id="depOrigin"></select>
                     </label>
                     <label>
-                        <span>Condicao</span>
+                        <span>Condição</span>
                         <select id="depCondition">
                             <option value="APROVADA">Aprovada</option>
                             <option value="FINALIZADA">Finalizada</option>
@@ -103,10 +103,10 @@ $loteId = isset($_GET['lote_id']) && is_numeric($_GET['lote_id']) ? (int) $_GET[
                         <select id="depTarget"></select>
                     </label>
                     <label>
-                        <span>Observacao</span>
+                        <span>Observação</span>
                         <textarea id="depNote" rows="2" placeholder="Opcional"></textarea>
                     </label>
-                    <button type="submit" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Criar dependencia</button>
+                    <button type="submit" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Criar dependência</button>
                 </form>
 
                 <div id="validationPanel" class="pa-validation-panel"></div>

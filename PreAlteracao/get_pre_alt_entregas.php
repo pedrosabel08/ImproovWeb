@@ -222,7 +222,7 @@ foreach ($lotes as $lote) {
     $kpis['comentarios'] += $lote['total_comentarios'];
     $kpis['comentarios_criticos'] += $lote['comentarios_criticos'];
     $kpis['classificados'] += $lote['classificados'];
-    if ($lote['lote_status'] === 'PRONTO_PLANEJAMENTO' || $lote['lote_status'] === 'PLANEJADO') {
+    if ($lote['lote_status'] === 'PRONTO_PLANEJAMENTO') {
         $kpis['em_planejamento'] += 1;
     }
     if (!empty($lote['cliente_id'])) {

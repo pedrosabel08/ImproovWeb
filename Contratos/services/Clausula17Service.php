@@ -36,6 +36,23 @@ class Clausula17Service
             ];
         }
         // Exceção: colaborador 13 tem preço fixo e ignora demais funções
+        if ($colaboradorId === 45) {
+            $funcoesNomes = $this->getFuncoesNomes($funcoes);
+            $trechos = [];
+            $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor correspondente à complexidade de cada modelagem de fachada de ambiente virtual desenvolvida, conforme exposto abaixo:<br>';
+            $linhas = [
+                '<span class="titulo-funcao">Modelagem de fachada:</span>',
+                '<span>Valor fixo por modelagem de fachada de ambiente virtual desenvolvido conforme a complexidade:</span><br>',
+                '<span>R$ 700,00 - Complexidade baixa;</span>',
+                '<span>R$ 1.000,00 - Complexidade moderada;</span>',
+                '<span>R$ 1.300,00 - Complexidade alta.</span><br>',
+            ];
+            $linhas = array_merge($linhas, $this->buildModelagemComposicaoLines($funcoesNomes, true));
+            $trechos[] = implode("\n", $linhas);
+            $trechos[] = $this->buildParagrafos(false);
+            return ['texto' => implode("\n", $trechos), 'funcoes' => $funcoesNomes];
+        }
         if ($colaboradorId === 13) {
             $trechos = [];
             $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
@@ -110,16 +127,11 @@ class Clausula17Service
             ];
         }
 
-        $funcoesNomes = array_map(function ($f) {
-            return mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
-        }, $funcoes);
+        $funcoesNomes = $this->getFuncoesNomes($funcoes);
 
         $temFinalizacao = $this->temFinalizacao($funcoesNomes);
         $temPlantaHumanizada = $this->hasFuncao($funcoesNomes, ['planta humanizada', 'planta-humanizada']);
         $temPosProducao = $this->hasFuncao($funcoesNomes, ['pós-produção', 'pos-producao', 'pos producao', 'pos-produção']);
-        $temModelagem = $this->hasFuncao($funcoesNomes, ['modelagem']);
-        $temComposicao = $this->hasFuncao($funcoesNomes, ['composição', 'composicao']);
-        $temAlteracao = $this->hasFuncao($funcoesNomes, ['alteração', 'alteracao']);
         $temCaderno = $this->hasFuncao($funcoesNomes, ['caderno']);
         $nivelFinalizacao = $this->getNivelFinalizacao($funcoes);
         $finalizacaoInfo = $this->getFinalizacaoInfo($nivelFinalizacao);
@@ -141,19 +153,7 @@ class Clausula17Service
             $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por desenvolvimento de caderno de interiores e R$ 20,00 (vinte reais) pela separação de assets para a produção dos interiores dos ambientes virtuais.</span>';
         }
 
-        if (($temModelagem && $temComposicao) || $temAlteracao) {
-            $linhas[] = '<span class="titulo-funcao">Modelagem e composição:</span>';
-            $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por modelagem e R$ 50,00 (Cinquenta reais) por composição por ambiente.</span>';
-        } else {
-            if ($temModelagem) {
-                $linhas[] = '<span class="titulo-funcao">Modelagem:</span>';
-                $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por modelagem por ambiente.</span>';
-            }
-            if ($temComposicao) {
-                $linhas[] = '<span class="titulo-funcao">Composição:</span>';
-                $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por composição por ambiente.</span>';
-            }
-        }
+        $linhas = array_merge($linhas, $this->buildModelagemComposicaoLines($funcoesNomes));
 
         if ($temPlantaHumanizada) {
             $linhas[] = $this->buildPlantaHumanizadaBlock($finalizacaoInfo);
@@ -177,6 +177,52 @@ class Clausula17Service
             'texto' => $texto,
             'funcoes' => $funcoesNomes,
         ];
+    }
+
+    private function getFuncoesNomes(array $funcoes): array
+    {
+        return array_map(function ($f) {
+            return mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
+        }, $funcoes);
+    }
+
+    private function buildModelagemComposicaoLines(
+        array $funcoesNomes,
+        bool $interiores = false
+    ): array {
+        $temModelagem = $this->hasFuncao($funcoesNomes, ['modelagem']);
+        $temComposicao = $this->hasFuncao(
+            $funcoesNomes,
+            ['composição', 'composicao']
+        );
+        $temAlteracao = $this->hasFuncao(
+            $funcoesNomes,
+            ['alteração', 'alteracao']
+        );
+
+        $sufixo = $interiores ? ' de interiores' : '';
+        $linhas = [];
+
+        if (($temModelagem && $temComposicao) || $temAlteracao) {
+            $linhas[] = '<span class="titulo-funcao">Modelagem e composição' . $sufixo . ':</span>';
+            $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por modelagem e R$ 50,00 (Cinquenta reais) por composição por ambiente.</span>';
+        } else {
+            if ($temModelagem) {
+                $linhas[] = '<span class="titulo-funcao">Modelagem' . $sufixo . ':</span>';
+                $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por modelagem por ambiente.</span>';
+            }
+
+            if ($temComposicao) {
+                $linhas[] = '<span class="titulo-funcao">Composição' . $sufixo . ':</span>';
+                $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por composição por ambiente.</span>';
+            }
+        }
+
+        if (!empty($linhas)) {
+            $linhas[] = '<br>';
+        }
+
+        return $linhas;
     }
 
     private function temFinalizacao(array $funcoesNomes): bool

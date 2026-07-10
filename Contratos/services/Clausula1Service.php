@@ -22,6 +22,26 @@ class Clausula1Service
                 $this->buildEtapasPadrao()
             );
         }
+        if ($colaboradorId === 45) {
+            $funcoesTexto = 'modelagem de fachada e modelagem e composição de interiores';
+
+            $listaProjetos = $this->buildLista(
+                'LISTA DE PROJETOS:',
+                $this->defaultProjetos()
+            );
+
+            $listaImagens = $this->buildLista(
+                'LISTA DE IMAGENS:',
+                $this->defaultImagens()
+            );
+
+            return $this->render(
+                $this->buildTextoPadrao($funcoesTexto),
+                $listaProjetos,
+                $listaImagens,
+                $this->buildEtapasPadrao()
+            );
+        }
 
         $funcoesNomesNorm = array_map(fn($n) => $this->normalize($n), $funcoesOriginais);
 

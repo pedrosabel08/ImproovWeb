@@ -18,7 +18,7 @@ function eventos_obra_require_auth(): void
 function eventos_obra_can_edit(): bool
 {
     $nivel = isset($_SESSION['nivel_acesso']) ? (int) $_SESSION['nivel_acesso'] : 0;
-    return in_array($nivel, [1, 2], true);
+    return in_array($nivel, [1, 3], true);
 }
 
 function eventos_obra_require_editor(): void

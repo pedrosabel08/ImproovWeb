@@ -21,8 +21,8 @@ $fimMesData = sprintf('%04d-%02d-%02d', $ano, $mes, $fimMesDia);
 $fimMesDataTime = $fimMesData . ' 23:59:59';
 
 // ── Colaboradores por seção ───────────────────────────────────────────────────
-$perspIds = [6, 8, 33, 23, 37, 40];
-$perspNames = [6 => 'Bruna', 8 => 'Marcio', 33 => 'José', 23 => 'Vitor', 37 => 'Rafael', 40 => 'Heverton'];
+$perspIds = [6, 8, 33, 37, 40];
+$perspNames = [6 => 'Bruna', 8 => 'Marcio', 33 => 'José', 37 => 'Rafael', 40 => 'Heverton'];
 
 $plantasIds = [12, 24];
 $plantasNames = [12 => 'Andressa', 24 => 'Jiulia'];

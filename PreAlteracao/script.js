@@ -120,6 +120,8 @@
     currentBatchLoteIds: null,
     loteAberto: null,
     itensAbertos: [],
+    interacoesCliente: [],
+    clientItemSelection: new Set(),
     conclusaoResumo: null,
     restoringDraft: false,
   };
@@ -601,6 +603,24 @@
     const planBadge = planStatus
       ? `<span class="badge badge-plan-status">${escHtml(planStatus)}</span>`
       : "";
+    const ultimaInteracaoTipo = String(
+      lote.ultima_interacao_tipo || "",
+    ).toUpperCase();
+    const ultimaInteracaoLabel =
+      ultimaInteracaoTipo === "SOLICITACAO"
+        ? "Solicitação ao cliente"
+        : ultimaInteracaoTipo === "RETORNO"
+          ? `Retorno: ${lote.ultima_interacao_resultado === "APROVADA" ? "aprovada" : "alteração"}`
+          : "Nenhuma interação registrada";
+    const clientSummary =
+      Number(lote.count_aguardando || 0) || ultimaInteracaoTipo
+        ? `<div class="card-client-summary">
+          <span><i class="fa-solid fa-comments"></i> ${escHtml(ultimaInteracaoLabel)}</span>
+          ${lote.ultima_interacao_em ? `<small>${escHtml(formatDateTime(lote.ultima_interacao_em))}</small>` : ""}
+          ${Number(lote.count_aguardando || 0) ? `<strong>${plural(lote.count_aguardando, "imagem aguardando", "imagens aguardando")}</strong>` : ""}
+          ${Number(lote.count_reanalise_pos_retorno || 0) ? `<em><i class="fa-solid fa-triangle-exclamation"></i> ${plural(lote.count_reanalise_pos_retorno, "reanálise pendente", "reanálises pendentes")}</em>` : ""}
+        </div>`
+        : "";
 
     card.innerHTML = `
       <div class="card-topline">
@@ -624,6 +644,7 @@
         <span class="badge badge-date">Resolvido: ${escHtml(formatDate(lote.lote_resolvido_em) || "Sem registro")}</span>
         ${planBadge}
       </div>
+      ${clientSummary}
 
       <div class="metric-grid">
         ${metric("fa-images", lote.total_itens || 0, "imagens")}
@@ -748,6 +769,8 @@
       if (!json.success) throw new Error(json.error || "Erro ao carregar lote");
       state.loteAberto = json.lote;
       state.itensAbertos = json.itens || [];
+      state.interacoesCliente = json.interacoes_cliente || [];
+      state.clientItemSelection = new Set();
       renderModal(json.lote, json.itens || []);
     } catch (err) {
       refs.paModalBody.innerHTML = `<div class="modal-loading is-error">${escHtml(err.message)}</div>`;
@@ -805,6 +828,23 @@
         ${summaryTile(resumo.aguardando, "Aguardando cliente")}
         ${summaryTile(`${resumo.progresso}%`, "Classificação")}
       </div>
+      <section class="client-interaction-panel" aria-label="Contato com o cliente">
+        <div class="client-interaction-panel-head">
+          <div>
+            <span>Contato com o cliente</span>
+            <strong id="clientInteractionSelectionCount">Nenhuma imagem selecionada</strong>
+          </div>
+          <button type="button" class="btn-client-link" id="btnSelecionarPendentesCliente">Selecionar pendentes</button>
+        </div>
+        <div class="client-interaction-actions">
+          <button type="button" class="btn-client-action is-request" id="btnSolicitarCliente" disabled>
+            <i class="fa-solid fa-paper-plane"></i> Solicitar ao cliente
+          </button>
+          <button type="button" class="btn-client-action is-return" id="btnRegistrarRetorno" disabled>
+            <i class="fa-solid fa-reply"></i> Registrar retorno
+          </button>
+        </div>
+      </section>
       <div class="prealt-filters" aria-label="Filtros das imagens">
         <input type="search" id="filtroImagem" placeholder="Buscar imagem..." autocomplete="off">
         <select id="filtroResultado">
@@ -828,9 +868,237 @@
       return;
     }
     itens.forEach((item) => list.appendChild(createItem(item)));
+    wireClientInteractionActions();
     restaurarRascunhoPreAlt(lote.obra_id, lote.lote_id);
     wireModalFilters();
     updateModalDirtyState();
+  }
+
+  function isClientPending(item) {
+    return (
+      item?.resultado === "AGUARDANDO_CLIENTE" ||
+      Number(item?.necessita_retorno || 0) === 1
+    );
+  }
+
+  function getClientInteractionsForItem(itemId) {
+    return (state.interacoesCliente || []).filter((interacao) =>
+      (interacao.itens || []).some(
+        (item) => Number(item.item_id) === Number(itemId),
+      ),
+    );
+  }
+
+  function getClientInteractionItem(interacao, itemId) {
+    return (interacao?.itens || []).find(
+      (item) => Number(item.item_id) === Number(itemId),
+    );
+  }
+
+  function renderClientInteractionTimeline(item) {
+    const interacoes = getClientInteractionsForItem(item.item_id);
+    const hasSolicitacao = interacoes.some(
+      (interacao) => interacao.tipo === "SOLICITACAO",
+    );
+    const legacyPending = isClientPending(item) && !hasSolicitacao;
+    const stateBadge =
+      item.reanalise_pos_retorno == 1
+        ? '<span class="client-item-state is-attention"><i class="fa-solid fa-triangle-exclamation"></i> Reanalisar após retorno do cliente</span>'
+        : legacyPending
+          ? '<span class="client-item-state is-legacy"><i class="fa-solid fa-circle-info"></i> Solicitação não registrada</span>'
+          : "";
+
+    const timeline = interacoes.length
+      ? interacoes
+          .map((interacao) => {
+            const vinculo = getClientInteractionItem(interacao, item.item_id);
+            const isReturn = interacao.tipo === "RETORNO";
+            const label = isReturn
+              ? `Retorno: ${interacao.resultado_retorno === "APROVADA" ? "aprovada" : "alteração"}`
+              : "Solicitação ao cliente";
+            const snapshot = vinculo?.estado_anterior;
+            const snapshotLabel = snapshot
+              ? `Antes do retorno: ${snapshot.resultado || "Sem resultado"}${snapshot.nivel_complexidade ? `, N${snapshot.nivel_complexidade}` : ""}`
+              : "";
+            return `
+              <li class="client-timeline-entry ${isReturn ? "is-return" : "is-request"}">
+                <strong>${escHtml(label)}</strong>
+                <span>${escHtml(formatDateTime(interacao.ocorrido_em))}${interacao.colaborador_nome ? ` · ${escHtml(interacao.colaborador_nome)}` : ""}</span>
+                ${interacao.observacao ? `<small>${escHtml(interacao.observacao)}</small>` : ""}
+                ${snapshotLabel ? `<small class="client-timeline-snapshot">${escHtml(snapshotLabel)}</small>` : ""}
+              </li>
+            `;
+          })
+          .join("")
+      : '<li class="client-timeline-entry is-empty">Nenhuma interação registrada.</li>';
+
+    return `
+      <section class="client-item-history">
+        <div class="client-item-history-head">
+          <span>Histórico do cliente</span>
+          ${stateBadge}
+        </div>
+        <ul>${timeline}</ul>
+      </section>
+    `;
+  }
+
+  function syncClientInteractionSelectionUi() {
+    const selectedIds = Array.from(state.clientItemSelection || []);
+    const selectedItems = state.itensAbertos.filter((item) =>
+      state.clientItemSelection.has(Number(item.item_id)),
+    );
+    const counter = refs.paModalBody?.querySelector(
+      "#clientInteractionSelectionCount",
+    );
+    const requestButton = refs.paModalBody?.querySelector(
+      "#btnSolicitarCliente",
+    );
+    const returnButton = refs.paModalBody?.querySelector(
+      "#btnRegistrarRetorno",
+    );
+    if (counter) {
+      counter.textContent = selectedIds.length
+        ? plural(
+            selectedIds.length,
+            "imagem selecionada",
+            "imagens selecionadas",
+          )
+        : "Nenhuma imagem selecionada";
+    }
+    if (requestButton) requestButton.disabled = selectedIds.length === 0;
+    if (returnButton) {
+      returnButton.disabled =
+        selectedIds.length === 0 || !selectedItems.every(isClientPending);
+    }
+    refs.paModalBody
+      ?.querySelectorAll(".client-item-select")
+      .forEach((input) => {
+        input.checked = state.clientItemSelection.has(Number(input.value));
+      });
+  }
+
+  function getDateTimeLocalNow() {
+    const now = new Date();
+    const timezoneOffset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 16);
+  }
+
+  async function promptClientInteraction(tipo, total) {
+    const isReturn = tipo === "RETORNO";
+    const result = await Swal.fire({
+      title: isReturn ? "Registrar retorno do cliente" : "Solicitar ao cliente",
+      html: `
+        ${
+          isReturn
+            ? `
+          <select id="swal-client-return-result" class="swal2-input">
+            <option value="">Selecione o resultado</option>
+            <option value="APROVADA">Aprovada / sem alteração</option>
+            <option value="ALTERACAO">Solicitou alteração</option>
+          </select>
+        `
+            : ""
+        }
+        <label class="swal-client-label" for="swal-client-occurred-at">Data e hora</label>
+        <input id="swal-client-occurred-at" class="swal2-input" type="datetime-local" value="${getDateTimeLocalNow()}">
+        <textarea id="swal-client-note" class="swal2-textarea" placeholder="Observação opcional para ${total} imagem(ns)"></textarea>
+      `,
+      showCancelButton: true,
+      confirmButtonText: isReturn
+        ? "Registrar retorno"
+        : "Registrar solicitação",
+      cancelButtonText: "Cancelar",
+      focusConfirm: false,
+      preConfirm: () => {
+        const ocorridoEm =
+          document.getElementById("swal-client-occurred-at")?.value || "";
+        const resultadoRetorno =
+          document.getElementById("swal-client-return-result")?.value || "";
+        const observacao =
+          document.getElementById("swal-client-note")?.value || "";
+        if (!ocorridoEm) {
+          Swal.showValidationMessage("Informe a data e hora da interação.");
+          return false;
+        }
+        if (isReturn && !resultadoRetorno) {
+          Swal.showValidationMessage("Selecione o resultado do retorno.");
+          return false;
+        }
+        return {
+          ocorrido_em: ocorridoEm,
+          resultado_retorno: resultadoRetorno,
+          observacao: observacao.trim(),
+        };
+      },
+    });
+    return result.isConfirmed ? result.value : null;
+  }
+
+  async function registrarClientInteraction(tipo) {
+    const itemIds = Array.from(state.clientItemSelection || []);
+    if (!itemIds.length || !state.loteAberto?.lote_id) return;
+    const selectedItems = state.itensAbertos.filter((item) =>
+      itemIds.includes(Number(item.item_id)),
+    );
+    if (tipo === "RETORNO" && !selectedItems.every(isClientPending)) {
+      toast(
+        "Selecione somente imagens aguardando cliente para registrar o retorno.",
+        "#F59E0B",
+      );
+      return;
+    }
+    const payload = await promptClientInteraction(tipo, itemIds.length);
+    if (!payload) return;
+
+    try {
+      const res = await fetch(BASE + "registrar_interacao_cliente.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lote_id: state.loteAberto.lote_id,
+          item_ids: itemIds,
+          tipo,
+          ...payload,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success)
+        throw new Error(
+          json.error || "Nao foi possivel registrar a interação.",
+        );
+      toast(
+        tipo === "RETORNO"
+          ? "Retorno do cliente registrado."
+          : "Solicitação ao cliente registrada.",
+        "#22C55E",
+      );
+      await abrirModal(state.loteAberto.lote_id);
+      await carregarLotes();
+    } catch (error) {
+      toast("Erro: " + error.message, "#EF4444", 5200);
+    }
+  }
+
+  function wireClientInteractionActions() {
+    const selectPending = refs.paModalBody?.querySelector(
+      "#btnSelecionarPendentesCliente",
+    );
+    selectPending?.addEventListener("click", () => {
+      state.itensAbertos.filter(isClientPending).forEach((item) => {
+        state.clientItemSelection.add(Number(item.item_id));
+      });
+      syncClientInteractionSelectionUi();
+    });
+    refs.paModalBody
+      ?.querySelector("#btnSolicitarCliente")
+      ?.addEventListener("click", () =>
+        registrarClientInteraction("SOLICITACAO"),
+      );
+    refs.paModalBody
+      ?.querySelector("#btnRegistrarRetorno")
+      ?.addEventListener("click", () => registrarClientInteraction("RETORNO"));
+    syncClientInteractionSelectionUi();
   }
 
   function createItem(item) {
@@ -848,19 +1116,31 @@
           <strong title="${escHtml(item.nome)}">${escHtml(item.nome)}</strong>
           <span>${Number(item.comment_count || item.quantidade_comentarios || 0)} comentário${Number(item.comment_count || item.quantidade_comentarios || 0) === 1 ? "" : "s"}${Number(item.critical_count || 0) ? `, ${item.critical_count} crítico(s)` : ""}</span>
         </div>
+        <label class="client-item-selector" title="Selecionar para contato com o cliente">
+          <input type="checkbox" class="client-item-select" value="${item.item_id}">
+          <span>Cliente</span>
+        </label>
         <button type="button" class="item-upload-btn" data-upload-image title="Enviar arquivos para esta imagem">
           <i class="fa-solid fa-upload"></i>
         </button>
         <span class="badge-resultado ${resultadoBadgeClass(resultado)}" data-resultado-badge>${escHtml(resultadoLabel(resultado))}</span>
         ${item.nivel_complexidade ? `<span class="item-status item-level">${item.nivel_complexidade}</span>` : ""}
       </header>
-      <div class="modal-item-body">${createForm(item)}</div>
+      <div class="modal-item-body">${createForm(item)}${renderClientInteractionTimeline(item)}</div>
     `;
 
     wireItem(div, item);
     div.querySelector("[data-upload-image]")?.addEventListener("click", () => {
       openTriagemUploadModal("imagem", item);
     });
+    div
+      .querySelector(".client-item-select")
+      ?.addEventListener("change", (event) => {
+        const itemId = Number(event.currentTarget.value);
+        if (event.currentTarget.checked) state.clientItemSelection.add(itemId);
+        else state.clientItemSelection.delete(itemId);
+        syncClientInteractionSelectionUi();
+      });
     return div;
   }
 
@@ -950,7 +1230,11 @@
       salvarRascunhoAtualPreAlt();
     });
     container.querySelectorAll("input, select, textarea").forEach((field) => {
-      if (field === resultadoSelect) return;
+      if (
+        field === resultadoSelect ||
+        field.classList.contains("client-item-select")
+      )
+        return;
       field.addEventListener("input", () => {
         updateDirty();
         salvarRascunhoAtualPreAlt();
@@ -1757,6 +2041,8 @@
     refs.paModal.classList.remove("is-open");
     refs.paModal.setAttribute("aria-hidden", "true");
     state.itensAbertos = [];
+    state.interacoesCliente = [];
+    state.clientItemSelection.clear();
     updateModalDirtyState();
   }
 

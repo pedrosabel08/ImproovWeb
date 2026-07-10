@@ -39,6 +39,7 @@ $stmtFetch = $conn->prepare(
         acao,
         necessita_retorno,
         quantidade_comentarios,
+        reanalise_pos_retorno,
         responsavel_id
      FROM pre_alt_itens
      WHERE id = ?
@@ -52,6 +53,7 @@ $stmtUpdate = $conn->prepare(
          acao = NULLIF(?, ''),
          necessita_retorno = ?,
          quantidade_comentarios = ?,
+         reanalise_pos_retorno = ?,
          responsavel_id = ?,
          updated_at = NOW()
      WHERE id = ?"
@@ -111,6 +113,10 @@ foreach ($data['itens'] as $item) {
 
     $loteId = (int) $current['pre_alt_lote_id'];
     $loteIds[$loteId] = true;
+    $reanalisePosRetorno = (int) ($current['reanalise_pos_retorno'] ?? 0);
+    if ($reanalisePosRetorno === 1 && ($resultado === 'SEM_ALTERACAO' || ($resultado === 'ALTERACAO' && $nivel !== null))) {
+        $reanalisePosRetorno = 0;
+    }
 
     $changes = [
         'resultado' => [$current['resultado'] ?? null, $resultado],
@@ -119,6 +125,7 @@ foreach ($data['itens'] as $item) {
         'acao' => [$current['acao'] ?? null, $acao !== '' ? $acao : null],
         'necessita_retorno' => [(int) ($current['necessita_retorno'] ?? 0), $necessitaRetorno],
         'quantidade_comentarios' => [$current['quantidade_comentarios'] ?? null, $quantidadeComentarios],
+        'reanalise_pos_retorno' => [(int) ($current['reanalise_pos_retorno'] ?? 0), $reanalisePosRetorno],
         'responsavel_id' => [$current['responsavel_id'] ?? null, $responsavelId],
     ];
 
@@ -134,13 +141,14 @@ foreach ($data['itens'] as $item) {
     }
 
     $stmtUpdate->bind_param(
-        'sissiiii',
+        'sissiiiii',
         $resultado,
         $nivel,
         $tipoAlteracao,
         $acao,
         $necessitaRetorno,
         $quantidadeComentarios,
+        $reanalisePosRetorno,
         $responsavelId,
         $itemId
     );

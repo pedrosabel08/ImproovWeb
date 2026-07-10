@@ -35,6 +35,9 @@ $sql = "
         d.status AS planejamento_status,
         d.published_at AS planejamento_published_at,
         d.updated_at AS planejamento_updated_at,
+        ultci.tipo AS ultima_interacao_tipo,
+        ultci.ocorrido_em AS ultima_interacao_em,
+        ultci.resultado_retorno AS ultima_interacao_resultado,
         o.nomenclatura,
         o.link_review,
         cli.idcliente AS cliente_id,
@@ -46,6 +49,7 @@ $sql = "
         SUM(CASE WHEN i.resultado = 'ALTERACAO' THEN 1 ELSE 0 END) AS count_alteracao,
         SUM(CASE WHEN i.resultado = 'SEM_ALTERACAO' THEN 1 ELSE 0 END) AS count_sem_alteracao,
         SUM(CASE WHEN i.resultado = 'AGUARDANDO_CLIENTE' OR i.necessita_retorno = 1 THEN 1 ELSE 0 END) AS count_aguardando,
+        SUM(CASE WHEN i.reanalise_pos_retorno = 1 THEN 1 ELSE 0 END) AS count_reanalise_pos_retorno,
         SUM(CASE WHEN i.resultado IS NULL OR (i.resultado = 'ALTERACAO' AND i.nivel_complexidade IS NULL) THEN 1 ELSE 0 END) AS count_incompleto,
         SUM(COALESCE(i.quantidade_comentarios, cm.comment_count, 0)) AS total_comentarios,
         SUM(COALESCE(cm.critical_count, 0)) AS comentarios_criticos,
@@ -65,6 +69,13 @@ $sql = "
     JOIN status_imagem si ON si.idstatus = l.status_id
     LEFT JOIN pre_alt_itens i ON i.pre_alt_lote_id = l.id
     LEFT JOIN pre_alt_diagramas d ON d.pre_alt_lote_id = l.id
+    LEFT JOIN pre_alt_cliente_interacoes ultci ON ultci.id = (
+        SELECT ci2.id
+        FROM pre_alt_cliente_interacoes ci2
+        WHERE ci2.pre_alt_lote_id = l.id
+        ORDER BY ci2.ocorrido_em DESC, ci2.id DESC
+        LIMIT 1
+    )
     LEFT JOIN review_batch_items rbi ON rbi.id = i.review_batch_item_id
     LEFT JOIN review_batch rb ON rb.id = rbi.review_batch_id
     LEFT JOIN cobranca_review cr ON cr.review_batch_id = rb.id
@@ -103,6 +114,9 @@ $sql = "
         d.status,
         d.published_at,
         d.updated_at,
+        ultci.tipo,
+        ultci.ocorrido_em,
+        ultci.resultado_retorno,
         o.nomenclatura,
         o.link_review,
         cli.idcliente,
@@ -138,6 +152,7 @@ while ($row = $res->fetch_assoc()) {
     $row['count_alteracao'] = (int) ($row['count_alteracao'] ?? 0);
     $row['count_sem_alteracao'] = (int) ($row['count_sem_alteracao'] ?? 0);
     $row['count_aguardando'] = (int) ($row['count_aguardando'] ?? 0);
+    $row['count_reanalise_pos_retorno'] = (int) ($row['count_reanalise_pos_retorno'] ?? 0);
     $row['count_incompleto'] = (int) ($row['count_incompleto'] ?? 0);
     $row['total_comentarios'] = (int) ($row['total_comentarios'] ?? 0);
     $row['comentarios_criticos'] = (int) ($row['comentarios_criticos'] ?? 0);

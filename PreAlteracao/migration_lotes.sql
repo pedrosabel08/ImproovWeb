@@ -110,3 +110,41 @@ CREATE TABLE IF NOT EXISTS `pre_alt_lote_historico` (
 
 ALTER TABLE `alteracoes`
     ADD COLUMN IF NOT EXISTS `nivel_complexidade` TINYINT UNSIGNED NULL AFTER `status_id`;
+
+-- Registro auditavel de contato e retorno do cliente na triagem.
+ALTER TABLE `pre_alt_itens`
+    ADD COLUMN IF NOT EXISTS `reanalise_pos_retorno` TINYINT(1) NOT NULL DEFAULT 0 AFTER `quantidade_comentarios`;
+
+CREATE TABLE IF NOT EXISTS `pre_alt_cliente_interacoes` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `pre_alt_lote_id` INT UNSIGNED NOT NULL,
+    `tipo` ENUM('SOLICITACAO', 'RETORNO') NOT NULL,
+    `ocorrido_em` DATETIME NOT NULL,
+    `resultado_retorno` ENUM('APROVADA', 'ALTERACAO') NULL,
+    `observacao` TEXT NULL,
+    `usuario_id` INT UNSIGNED NULL,
+    `colaborador_id` INT UNSIGNED NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_pre_alt_cliente_interacao_lote_data` (`pre_alt_lote_id`, `ocorrido_em`),
+    KEY `idx_pre_alt_cliente_interacao_tipo_data` (`tipo`, `ocorrido_em`),
+    CONSTRAINT `fk_pre_alt_cliente_interacao_lote`
+        FOREIGN KEY (`pre_alt_lote_id`) REFERENCES `pre_alt_lote` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pre_alt_cliente_interacao_itens` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `interacao_id` INT UNSIGNED NOT NULL,
+    `pre_alt_item_id` INT UNSIGNED NOT NULL,
+    `estado_anterior_json` LONGTEXT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `ux_pre_alt_cliente_interacao_item` (`interacao_id`, `pre_alt_item_id`),
+    KEY `idx_pre_alt_cliente_interacao_itens_item` (`pre_alt_item_id`),
+    CONSTRAINT `fk_pre_alt_cliente_interacao_item_interacao`
+        FOREIGN KEY (`interacao_id`) REFERENCES `pre_alt_cliente_interacoes` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_pre_alt_cliente_interacao_item_pre_alt_item`
+        FOREIGN KEY (`pre_alt_item_id`) REFERENCES `pre_alt_itens` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -77,6 +77,9 @@ function pre_alt_ensure_schema(mysqli $conn): void
     if (!pre_alt_column_exists($conn, 'pre_alt_itens', 'quantidade_comentarios')) {
         $conn->query("ALTER TABLE pre_alt_itens ADD COLUMN quantidade_comentarios INT UNSIGNED NULL AFTER necessita_retorno");
     }
+    if (!pre_alt_column_exists($conn, 'pre_alt_itens', 'reanalise_pos_retorno')) {
+        $conn->query("ALTER TABLE pre_alt_itens ADD COLUMN reanalise_pos_retorno TINYINT(1) NOT NULL DEFAULT 0 AFTER quantidade_comentarios");
+    }
     if (pre_alt_table_exists($conn, 'alteracoes') && !pre_alt_column_exists($conn, 'alteracoes', 'nivel_complexidade')) {
         $conn->query("ALTER TABLE alteracoes ADD COLUMN nivel_complexidade TINYINT UNSIGNED NULL AFTER status_id");
     }
@@ -100,6 +103,34 @@ function pre_alt_ensure_schema(mysqli $conn): void
         KEY idx_pre_alt_hist_batch (batch_id),
         KEY idx_pre_alt_hist_evento (tipo_evento),
         CONSTRAINT fk_pre_alt_hist_lote FOREIGN KEY (pre_alt_lote_id) REFERENCES pre_alt_lote (id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $conn->query("CREATE TABLE IF NOT EXISTS pre_alt_cliente_interacoes (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        pre_alt_lote_id INT UNSIGNED NOT NULL,
+        tipo ENUM('SOLICITACAO','RETORNO') NOT NULL,
+        ocorrido_em DATETIME NOT NULL,
+        resultado_retorno ENUM('APROVADA','ALTERACAO') NULL,
+        observacao TEXT NULL,
+        usuario_id INT UNSIGNED NULL,
+        colaborador_id INT UNSIGNED NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_pre_alt_cliente_interacao_lote_data (pre_alt_lote_id, ocorrido_em),
+        KEY idx_pre_alt_cliente_interacao_tipo_data (tipo, ocorrido_em),
+        CONSTRAINT fk_pre_alt_cliente_interacao_lote FOREIGN KEY (pre_alt_lote_id) REFERENCES pre_alt_lote (id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $conn->query("CREATE TABLE IF NOT EXISTS pre_alt_cliente_interacao_itens (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        interacao_id INT UNSIGNED NOT NULL,
+        pre_alt_item_id INT UNSIGNED NOT NULL,
+        estado_anterior_json LONGTEXT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY ux_pre_alt_cliente_interacao_item (interacao_id, pre_alt_item_id),
+        KEY idx_pre_alt_cliente_interacao_itens_item (pre_alt_item_id),
+        CONSTRAINT fk_pre_alt_cliente_interacao_item_interacao FOREIGN KEY (interacao_id) REFERENCES pre_alt_cliente_interacoes (id) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT fk_pre_alt_cliente_interacao_item_pre_alt_item FOREIGN KEY (pre_alt_item_id) REFERENCES pre_alt_itens (id) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
@@ -227,6 +258,84 @@ function pre_alt_registrar_historico(
     );
     @$stmt->execute();
     $stmt->close();
+}
+
+function pre_alt_buscar_interacoes_cliente(mysqli $conn, int $loteId): array
+{
+    if ($loteId <= 0 || !pre_alt_table_exists($conn, 'pre_alt_cliente_interacoes')) {
+        return [];
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT
+            ci.id,
+            ci.tipo,
+            ci.ocorrido_em,
+            ci.resultado_retorno,
+            ci.observacao,
+            ci.usuario_id,
+            ci.colaborador_id,
+            ci.created_at,
+            c.nome_colaborador AS colaborador_nome
+         FROM pre_alt_cliente_interacoes ci
+         LEFT JOIN colaborador c ON c.idcolaborador = ci.colaborador_id
+         WHERE ci.pre_alt_lote_id = ?
+         ORDER BY ci.ocorrido_em DESC, ci.id DESC"
+    );
+    if (!$stmt) {
+        return [];
+    }
+    $stmt->bind_param('i', $loteId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    $interacoes = [];
+    while ($row = $res->fetch_assoc()) {
+        $id = (int) $row['id'];
+        $row['id'] = $id;
+        $row['usuario_id'] = isset($row['usuario_id']) ? (int) $row['usuario_id'] : null;
+        $row['colaborador_id'] = isset($row['colaborador_id']) ? (int) $row['colaborador_id'] : null;
+        $row['itens'] = [];
+        $interacoes[$id] = $row;
+    }
+    $stmt->close();
+
+    if (!$interacoes) {
+        return [];
+    }
+
+    $ids = implode(',', array_map('intval', array_keys($interacoes)));
+    $resItens = $conn->query(
+        "SELECT
+            cii.interacao_id,
+            pai.id AS item_id,
+            pai.imagem_id,
+            ico.imagem_nome AS nome_imagem,
+            cii.estado_anterior_json
+         FROM pre_alt_cliente_interacao_itens cii
+         INNER JOIN pre_alt_itens pai ON pai.id = cii.pre_alt_item_id
+         LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = pai.imagem_id
+         WHERE cii.interacao_id IN ($ids)
+         ORDER BY cii.id ASC"
+    );
+    if ($resItens) {
+        while ($item = $resItens->fetch_assoc()) {
+            $interacaoId = (int) $item['interacao_id'];
+            $snapshot = null;
+            if (!empty($item['estado_anterior_json'])) {
+                $decoded = json_decode($item['estado_anterior_json'], true);
+                $snapshot = is_array($decoded) ? $decoded : null;
+            }
+            $interacoes[$interacaoId]['itens'][] = [
+                'item_id' => (int) $item['item_id'],
+                'imagem_id' => (int) $item['imagem_id'],
+                'nome_imagem' => (string) ($item['nome_imagem'] ?? ''),
+                'estado_anterior' => $snapshot,
+            ];
+        }
+    }
+
+    return array_values($interacoes);
 }
 
 function pre_alt_recalcular_status_lote(mysqli $conn, int $loteId, ?string $batchId = null, ?string $observacao = null): string

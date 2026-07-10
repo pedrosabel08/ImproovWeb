@@ -116,6 +116,7 @@ $stmtItens = $conn->prepare(
         pai.acao,
         pai.necessita_retorno,
         pai.quantidade_comentarios,
+        pai.reanalise_pos_retorno,
         pai.responsavel_id,
         c.nome_colaborador AS responsavel_nome,
         rb.data_entrega_lote,
@@ -172,6 +173,7 @@ while ($row = $resItens->fetch_assoc()) {
     $row['nivel_complexidade'] = isset($row['nivel_complexidade']) ? (int) $row['nivel_complexidade'] : null;
     $row['necessita_retorno'] = (int) ($row['necessita_retorno'] ?? 0);
     $row['quantidade_comentarios'] = isset($row['quantidade_comentarios']) ? (int) $row['quantidade_comentarios'] : null;
+    $row['reanalise_pos_retorno'] = (int) ($row['reanalise_pos_retorno'] ?? 0);
     $row['responsavel_id'] = isset($row['responsavel_id']) ? (int) $row['responsavel_id'] : null;
     $row['substatus_id'] = isset($row['substatus_id']) ? (int) $row['substatus_id'] : null;
     $row['review_round'] = (int) ($row['review_round'] ?? 1);
@@ -195,5 +197,11 @@ $lote['prazo_operacional'] = entregas_valid_date($resolvidoData)
     ? entregas_adicionar_dias_uteis($resolvidoData, 1)
     : null;
 $lote['ultima_atualizacao'] = $lote['ultima_movimentacao'] ?: $lote['updated_at'];
+$interacoesCliente = pre_alt_buscar_interacoes_cliente($conn, $loteId);
 
-echo json_encode(['success' => true, 'lote' => $lote, 'itens' => $itens]);
+echo json_encode([
+    'success' => true,
+    'lote' => $lote,
+    'itens' => $itens,
+    'interacoes_cliente' => $interacoesCliente,
+]);

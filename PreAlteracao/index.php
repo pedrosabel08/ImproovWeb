@@ -33,7 +33,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&m=' . rawurlencode((string) filemtime(__DIR__ . '/style.css')); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
@@ -274,7 +274,7 @@ $conn->close();
     <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.2.0/dist/js/tabulator.min.js"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
-    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('script.js') . '&m=' . rawurlencode((string) filemtime(__DIR__ . '/script.js')); ?>"></script>
 </body>
 
 </html>

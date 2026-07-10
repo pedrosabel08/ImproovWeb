@@ -68,6 +68,7 @@ $stmtLote = $conn->prepare(
         acao,
         necessita_retorno,
         quantidade_comentarios,
+        reanalise_pos_retorno,
         responsavel_id
      FROM pre_alt_itens
      WHERE id = ?
@@ -90,6 +91,10 @@ if (!$rowLote) {
 }
 
 $loteId = (int) $rowLote['pre_alt_lote_id'];
+$reanalisePosRetorno = (int) ($rowLote['reanalise_pos_retorno'] ?? 0);
+if ($reanalisePosRetorno === 1 && ($resultado === 'SEM_ALTERACAO' || ($resultado === 'ALTERACAO' && $nivel !== null))) {
+    $reanalisePosRetorno = 0;
+}
 
 $stmt = $conn->prepare(
     "UPDATE pre_alt_itens
@@ -99,6 +104,7 @@ $stmt = $conn->prepare(
          acao = NULLIF(?, ''),
          necessita_retorno = ?,
          quantidade_comentarios = ?,
+         reanalise_pos_retorno = ?,
          responsavel_id = ?,
          updated_at = NOW()
      WHERE id = ?"
@@ -109,7 +115,7 @@ if (!$stmt) {
     exit;
 }
 
-$stmt->bind_param('sissiiii', $resultado, $nivel, $tipoAlteracao, $acao, $necessitaRetorno, $quantidadeComentarios, $responsavelId, $itemId);
+$stmt->bind_param('sissiiiii', $resultado, $nivel, $tipoAlteracao, $acao, $necessitaRetorno, $quantidadeComentarios, $reanalisePosRetorno, $responsavelId, $itemId);
 if (!$stmt->execute()) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $stmt->error]);
@@ -125,6 +131,7 @@ $changes = [
     'acao' => [$rowLote['acao'] ?? null, $acao !== '' ? $acao : null],
     'necessita_retorno' => [(int) ($rowLote['necessita_retorno'] ?? 0), $necessitaRetorno],
     'quantidade_comentarios' => [$rowLote['quantidade_comentarios'] ?? null, $quantidadeComentarios],
+    'reanalise_pos_retorno' => [(int) ($rowLote['reanalise_pos_retorno'] ?? 0), $reanalisePosRetorno],
     'responsavel_id' => [$rowLote['responsavel_id'] ?? null, $responsavelId],
 ];
 

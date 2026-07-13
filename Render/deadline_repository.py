@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from deadline_domain import (
     AGUARDANDO_JOB,
     ENCERRADA,
+    EM_ANDAMENTO,
+    EM_APROVACAO,
     EXCLUSAO_PENDENTE,
     OPERATIONAL_STATES,
     transition_allowed,
@@ -432,6 +434,234 @@ class DeadlineRepository:
                 (*image_ids, AGUARDANDO_JOB),
             )
             return list(cursor.fetchall())
+
+    def discovery_target(self, job_id: str, job_name: str) -> dict:
+        """Classifica um job desconhecido sem escolher imagem ambigua.
+
+        O primeiro envio nasce no Deadline. Portanto, a ausencia de tentativa
+        aguardando so impede um *reenvio*; ela nao impede a criacao do primeiro
+        render para a etapa atual da imagem.
+        """
+        if not valid_job_id(job_id) or not job_name:
+            return {"outcome": "NO_IMAGE_MATCH"}
+        with self.database.transaction() as cursor:
+            cursor.execute(
+                """
+                SELECT rt.id AS tentativa_id
+                FROM render_tentativas rt
+                WHERE rt.deadline_job_id = %s
+                LIMIT 1
+                """,
+                (job_id,),
+            )
+            if cursor.fetchone():
+                return {"outcome": "JOB_ALREADY_KNOWN"}
+
+            cursor.execute(
+                """
+                SELECT i.idimagens_cliente_obra AS imagem_id,
+                       i.imagem_nome AS imagem_nome,
+                       i.status_id AS status_id
+                FROM imagens_cliente_obra i
+                WHERE i.imagem_nome = %s
+                """,
+                (job_name,),
+            )
+            images = list(cursor.fetchall())
+            if not images:
+                prefix = self._name_prefix(job_name)
+                if prefix:
+                    cursor.execute(
+                        """
+                        SELECT i.idimagens_cliente_obra AS imagem_id,
+                               i.imagem_nome AS imagem_nome,
+                               i.status_id AS status_id
+                        FROM imagens_cliente_obra i
+                        WHERE REPLACE(i.imagem_nome, ' ', '') LIKE %s
+                        """,
+                        (prefix + "%",),
+                    )
+                    images = list(cursor.fetchall())
+            if not images:
+                return {"outcome": "NO_IMAGE_MATCH"}
+            if len(images) != 1:
+                return {
+                    "outcome": "AMBIGUOUS_IMAGE",
+                    "image_ids": [row["imagem_id"] for row in images],
+                }
+
+            image = dict(images[0])
+            cursor.execute(
+                """
+                SELECT r.idrender_alta AS render_id,
+                       r.status AS flow_status,
+                       r.deadline_job_id AS cache_job_id
+                FROM render_alta r
+                WHERE r.imagem_id = %s AND r.status_id = %s
+                LIMIT 1
+                """,
+                (image["imagem_id"], image["status_id"]),
+            )
+            render = cursor.fetchone()
+            if not render:
+                return {"outcome": "FIRST_RENDER", **image}
+
+            cursor.execute(
+                """
+                SELECT rt.id AS tentativa_id,
+                       rt.render_id AS render_id,
+                       rt.imagem_id AS imagem_id,
+                       rt.status_id AS status_id,
+                       rt.numero_tentativa AS numero_tentativa,
+                       rt.criado_em AS tentativa_criada_em
+                FROM render_tentativas rt
+                WHERE rt.render_id = %s
+                  AND rt.ativa = 1
+                  AND rt.status = %s
+                  AND rt.deadline_job_id IS NULL
+                ORDER BY rt.id
+                """,
+                (render["render_id"], AGUARDANDO_JOB),
+            )
+            waiting = list(cursor.fetchall())
+            if len(waiting) != 1:
+                return {
+                    "outcome": "NO_WAITING_ATTEMPT",
+                    **image,
+                    "render_id": render["render_id"],
+                }
+            return {"outcome": "RESEND", **dict(waiting[0])}
+
+    def create_first_render(
+        self, candidate: dict, job_id: str, job_name: str, initial_state: str
+    ) -> dict:
+        """Cria atomica e exclusivamente o primeiro render de uma etapa.
+
+        A imagem e bloqueada antes da leitura de render_alta. Isso serializa
+        descobertas concorrentes para a mesma imagem; a UNIQUE(imagem_id,
+        status_id) continua sendo a ultima protecao contra escritores externos.
+        """
+        if not valid_job_id(job_id):
+            return {"outcome": "NO_IMAGE_MATCH"}
+        image_id = int(candidate["imagem_id"])
+        expected_status_id = int(candidate["status_id"])
+        with self.database.transaction() as cursor:
+            cursor.execute(
+                """
+                SELECT rt.id AS tentativa_id
+                FROM render_tentativas rt
+                WHERE rt.deadline_job_id = %s
+                LIMIT 1
+                FOR UPDATE
+                """,
+                (job_id,),
+            )
+            if cursor.fetchone():
+                return {"outcome": "JOB_ALREADY_KNOWN"}
+
+            cursor.execute(
+                """
+                SELECT i.idimagens_cliente_obra AS imagem_id,
+                       i.imagem_nome AS imagem_nome,
+                       i.status_id AS status_id
+                FROM imagens_cliente_obra i
+                WHERE i.idimagens_cliente_obra = %s
+                FOR UPDATE
+                """,
+                (image_id,),
+            )
+            image = cursor.fetchone()
+            if not image or int(image["status_id"]) != expected_status_id:
+                return {"outcome": "NO_IMAGE_MATCH"}
+
+            cursor.execute(
+                """
+                SELECT r.idrender_alta AS render_id
+                FROM render_alta r
+                WHERE r.imagem_id = %s AND r.status_id = %s
+                LIMIT 1
+                FOR UPDATE
+                """,
+                (image_id, expected_status_id),
+            )
+            if cursor.fetchone():
+                # Outro processo criou o render entre a leitura da descoberta
+                # e este insert. O worker deve reclassificar como reenvio.
+                return {"outcome": "RACE_RENDER_EXISTS"}
+
+            cursor.execute(
+                """
+                SELECT fi.colaborador_id AS responsavel_id
+                FROM funcao_imagem fi
+                WHERE fi.imagem_id = %s AND fi.funcao_id IN (4, 6)
+                ORDER BY fi.funcao_id DESC
+                LIMIT 1
+                """,
+                (image_id,),
+            )
+            responsible = cursor.fetchone()
+            responsible_id = responsible["responsavel_id"] if responsible else None
+
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO render_alta
+                        (imagem_id, responsavel_id, status_id, status, data,
+                         deadline_job_id)
+                    VALUES (%s, %s, %s, 'Não iniciado', NOW(), %s)
+                    """,
+                    (image_id, responsible_id, expected_status_id, job_id),
+                )
+            except Exception as exc:
+                # Escritores legados podem nao respeitar o lock da imagem. A
+                # chave unica protege o banco; a proxima classificacao recarrega
+                # o render vencedor sem escolher uma tentativa arbitrariamente.
+                if "duplicate" in str(exc).lower():
+                    return {"outcome": "RACE_RENDER_EXISTS"}
+                raise
+            render_id = int(cursor.lastrowid)
+            started = initial_state == EM_ANDAMENTO
+            completed = initial_state == EM_APROVACAO
+            cursor.execute(
+                """
+                INSERT INTO render_tentativas
+                    (render_id, imagem_id, status_id, numero_tentativa,
+                     deadline_job_id, deadline_job_name, status, ativa,
+                     vinculado_em, iniciado_em, concluido_em)
+                VALUES (%s, %s, %s, 1, %s, %s, %s, 1, NOW(),
+                        IF(%s, NOW(), NULL), IF(%s, NOW(), NULL))
+                """,
+                (
+                    render_id,
+                    image_id,
+                    expected_status_id,
+                    job_id,
+                    job_name[:255],
+                    initial_state,
+                    started,
+                    completed,
+                ),
+            )
+            attempt_id = int(cursor.lastrowid)
+            self._insert_event_dict(
+                cursor,
+                attempt_id,
+                "VINCULO",
+                job_id,
+                {"job_name": job_name, "origem": "FIRST_RENDER_CREATED"},
+            )
+            return {
+                "outcome": "FIRST_RENDER_CREATED",
+                "id": attempt_id,
+                "render_id": render_id,
+                "imagem_id": image_id,
+                "status_id": expected_status_id,
+                "numero_tentativa": 1,
+                "deadline_job_id": job_id,
+                "deadline_job_name": job_name,
+                "status": initial_state,
+                "ativa": 1,
+            }
 
     def bind_job(self, attempt_id: int, job_id: str, job_name: str) -> bool:
         if not valid_job_id(job_id):

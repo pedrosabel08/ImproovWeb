@@ -8,7 +8,6 @@ import signal
 import socket
 import sys
 import time
-from datetime import datetime, timedelta
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
@@ -28,6 +27,20 @@ PID_FILE = BASE_DIR / "deadline_worker.pid"
 LOCK_FILE = BASE_DIR / "deadline_worker.lock"
 STOP_FILE = BASE_DIR / "deadline_worker.stop"
 STOP_REQUESTED = False
+
+
+def first_submission_plan(target: str) -> dict:
+    """Plano do primeiro envio, cujo estado anterior e externo ao Flow."""
+    return {
+        "state_changed": True,
+        "process": True,
+        "process_preview": target == "EM_APROVACAO",
+        "process_post": target == "EM_APROVACAO",
+        "send_notifications": True,
+        "state_event_key": f"PRIMEIRO_ENVIO->{target}",
+        "previous_status": "PRIMEIRO_ENVIO",
+        "target": target,
+    }
 
 
 class JsonFormatter(logging.Formatter):
@@ -335,7 +348,7 @@ class DeadlineWorker:
             return
         known_job_ids = self.repository.known_job_ids()
         unknown = [job_id for job_id in job_ids if job_id not in known_job_ids]
-        proposals = []
+        resend_proposals = []
         for job_id in unknown:
             job_result, job_data = self.client.get_job(job_id)
             if not job_result.success:
@@ -345,68 +358,68 @@ class DeadlineWorker:
             ).strip()
             if not job_name or "ANIMA" in job_name.upper():
                 continue
-            candidates = self.repository.discovery_candidates(job_id, job_name)
-            if len(candidates) != 1:
-                log = (
-                    self.logger.warning
-                    if job_id not in self.unlinked_jobs_seen
-                    else self.logger.debug
+            target_info = self.repository.discovery_target(job_id, job_name)
+            outcome = target_info["outcome"]
+            if outcome == "FIRST_RENDER":
+                task_result, task_data = self.client.get_tasks(job_id)
+                if not task_result.success:
+                    task_data = {}
+                target = state_from_deadline(job_data, task_data)
+                created = self.repository.create_first_render(
+                    target_info, job_id, job_name, target
                 )
-                log(
-                    "new job not linked",
-                    extra={
-                        "routine": "discovery",
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "reason": "NO_CANDIDATE" if not candidates else "AMBIGUOUS_CANDIDATES",
-                        "candidates": [item["tentativa_id"] for item in candidates],
-                    },
-                )
-                self.unlinked_jobs_seen.add(job_id)
-                continue
-            submitted_raw = (
-                job_data.get("SubmitDateTime")
-                or job_data.get("SubmitDate")
-                or job_data.get("JobSubmitDateTime")
-            )
-            submitted_normalized = self.business.normalize_datetime_for_mysql(
-                submitted_raw
-            )
-            if not submitted_normalized:
-                self.logger.warning(
-                    "new job not linked",
-                    extra={
-                        "routine": "discovery",
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "reason": "MISSING_SUBMISSION_DATE",
-                        "candidates": [candidates[0]["tentativa_id"]],
-                    },
-                )
-                continue
-            submitted_at = datetime.fromisoformat(submitted_normalized)
-            attempt_created_at = candidates[0]["tentativa_criada_em"]
-            if submitted_at < attempt_created_at - timedelta(minutes=5):
-                self.logger.warning(
-                    "new job not linked",
-                    extra={
-                        "routine": "discovery",
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "reason": "JOB_OLDER_THAN_ATTEMPT",
-                        "candidates": [candidates[0]["tentativa_id"]],
-                    },
-                )
-                continue
-            proposal = dict(candidates[0])
-            proposal.update({"job_id": job_id, "job_name": job_name})
-            proposals.append(proposal)
+                outcome = created["outcome"]
+                if outcome == "FIRST_RENDER_CREATED":
+                    self.logger.info(
+                        "first render created from discovered job",
+                        extra={
+                            "routine": "discovery",
+                            "attempt_id": created["id"],
+                            "render_id": created["render_id"],
+                            "job_id": job_id,
+                            "job_name": job_name,
+                            "reason": "FIRST_RENDER_CREATED",
+                        },
+                    )
+                    self.process_first_render(
+                        created,
+                        job_result,
+                        job_data,
+                        task_data,
+                        target,
+                    )
+                    continue
+                if outcome == "RACE_RENDER_EXISTS":
+                    # Rele a realidade apos o lock/UNIQUE detectar outro
+                    # escritor. Somente o caminho seguro de reenvio prossegue.
+                    target_info = self.repository.discovery_target(job_id, job_name)
+                    outcome = target_info["outcome"]
+                else:
+                    self.log_discovery_outcome(job_id, job_name, outcome, created)
+                    continue
 
-        selected, conflicts = choose_unambiguous_candidates(proposals)
+            if outcome == "RESEND":
+                # O 3ds Max pode enviar o re-render antes de o usuario
+                # registrar a reprovacao no Flow. A data de submissao nao e
+                # uma relacao causal confiavel; Job ID, imagem e tentativa
+                # AGUARDANDO_JOB sao as protecoes de vinculo.
+                proposal = dict(target_info)
+                proposal.update({"job_id": job_id, "job_name": job_name})
+                resend_proposals.append(proposal)
+                continue
+
+            self.log_discovery_outcome(job_id, job_name, outcome, target_info)
+
+        selected, conflicts = choose_unambiguous_candidates(resend_proposals)
         for attempt_id, items in conflicts.items():
             self.logger.warning(
-                "multiple new jobs compete for the same attempt",
-                extra={"routine": "discovery", "attempt_id": attempt_id},
+                "new jobs not linked due to ambiguity",
+                extra={
+                    "routine": "discovery",
+                    "attempt_id": attempt_id,
+                    "reason": "MULTIPLE_UNMATCHED_JOBS",
+                    "candidates": [item["job_id"] for item in items],
+                },
             )
         for proposal in selected:
             if self.repository.bind_job(
@@ -421,6 +434,82 @@ class DeadlineWorker:
                         "job_id": proposal["job_id"],
                     },
                 )
+
+    def log_discovery_outcome(
+        self, job_id: str, job_name: str, reason: str, details: dict | None = None
+    ) -> None:
+        """Loga um diagnostico de descoberta apenas uma vez por processo/job."""
+        log = (
+            self.logger.warning
+            if job_id not in self.unlinked_jobs_seen
+            else self.logger.debug
+        )
+        log(
+            "new job not linked",
+            extra={
+                "routine": "discovery",
+                "job_id": job_id,
+                "job_name": job_name,
+                "reason": reason,
+                "candidates": (details or {}).get("image_ids", []),
+            },
+        )
+        self.unlinked_jobs_seen.add(job_id)
+
+    def process_first_render(
+        self, attempt: dict, job_result, job_data: dict, task_data: dict, target: str
+    ) -> None:
+        """Executa uma vez o comportamento legado apos criar o primeiro envio."""
+        context = {
+            "routine": "first_render",
+            "attempt_id": attempt["id"],
+            "render_id": attempt["render_id"],
+            "job_id": attempt["deadline_job_id"],
+        }
+        plan = first_submission_plan(target)
+        try:
+            error_info = (
+                self.business.deadline_error_info(
+                    attempt["deadline_job_id"], job_data, task_data
+                )
+                if target == "ERRO"
+                else (False, "")
+            )
+            with self.database.transaction(dict_rows=False) as cursor:
+                if not self.repository.lock_attempt_context_tuple(cursor, attempt):
+                    raise RuntimeError("Tentativa inicial mudou antes do processamento.")
+                p00_rollup = {}
+                processed = self.business.process_deadline_job(
+                    cursor,
+                    p00_rollup=p00_rollup,
+                    deadline_job_id=attempt["deadline_job_id"],
+                    job_data=job_data,
+                    task_data=task_data,
+                    raw_job_output=job_result.output,
+                    attempt_context=attempt,
+                    notifications_enabled=True,
+                    error_info=error_info,
+                    processing_plan=plan,
+                )
+                if processed is False:
+                    raise RuntimeError("Vinculo estrito recusou o primeiro envio.")
+                self.business.finalize_p00_rollup(
+                    cursor, p00_rollup, notifications_enabled=True
+                )
+            # O primeiro processamento ja aplicou preview/POS/Slack. Registra
+            # o snapshot somente apos esse sucesso para que o proximo ciclo
+            # ativo seja barato e nao trate a observacao inicial como preview.
+            self.repository.observe_deadline_state(
+                attempt,
+                target,
+                self.observation_fingerprint(target, job_data, task_data),
+            )
+            self.logger.info(
+                "first render processed",
+                extra={**context, "target": target, "result": "FIRST_RENDER_CREATED"},
+            )
+        except Exception:
+            self.logger.exception("first render processing failed", extra=context)
 
     def reconcile(self) -> None:
         recovered = self.repository.recover_stale_commands(self.settings.lock_timeout)

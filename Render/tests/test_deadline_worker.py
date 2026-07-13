@@ -11,6 +11,7 @@ if str(RENDER_DIR) not in sys.path:
 
 from deadline_client import CommandResult, DeadlineClient
 from deadline_repository import build_observation_plan
+from deadline_worker import DeadlineWorker, first_submission_plan
 from deadline_domain import (
     AGUARDANDO_JOB,
     EM_ANDAMENTO,
@@ -108,6 +109,89 @@ class FakeP00Cursor:
 
     def fetchone(self):
         return (10, self.current_status)
+
+
+class FakeDiscoveryLogger:
+    def __init__(self):
+        self.records = []
+
+    def warning(self, message, extra=None):
+        self.records.append(("warning", message, extra or {}))
+
+    def debug(self, message, extra=None):
+        self.records.append(("debug", message, extra or {}))
+
+    def info(self, message, extra=None):
+        self.records.append(("info", message, extra or {}))
+
+
+class DiscoveryModel:
+    """Modelo de contratos da descoberta: primeiro envio e reenvio."""
+
+    def __init__(self):
+        self.renders = {}
+        self.attempts = []
+        self.jobs = set()
+        self.next_render = 100
+        self.next_attempt = 1000
+
+    def add_waiting_attempt(self, image_id, status_id):
+        render_id = self.next_render
+        self.next_render += 1
+        self.renders[(image_id, status_id)] = render_id
+        self.attempts.append(
+            {
+                "id": self.next_attempt,
+                "render_id": render_id,
+                "image_id": image_id,
+                "status_id": status_id,
+                "status": AGUARDANDO_JOB,
+                "active": True,
+                "job": None,
+            }
+        )
+        self.next_attempt += 1
+
+    def discover(self, job_id, image_ids, image_id=2075, status_id=2, target=EM_ANDAMENTO):
+        if job_id in self.jobs:
+            return "JOB_ALREADY_KNOWN", None
+        if not image_ids:
+            return "NO_IMAGE_MATCH", None
+        if len(image_ids) != 1:
+            return "AMBIGUOUS_IMAGE", None
+        render_id = self.renders.get((image_id, status_id))
+        if render_id is None:
+            render_id = self.next_render
+            self.next_render += 1
+            self.renders[(image_id, status_id)] = render_id
+            attempt = {
+                "id": self.next_attempt,
+                "render_id": render_id,
+                "image_id": image_id,
+                "status_id": status_id,
+                "numero_tentativa": 1,
+                "status": target,
+                "active": True,
+                "job": job_id,
+            }
+            self.next_attempt += 1
+            self.attempts.append(attempt)
+            self.jobs.add(job_id)
+            return "FIRST_RENDER_CREATED", attempt
+        waiting = [
+            item
+            for item in self.attempts
+            if item["render_id"] == render_id
+            and item["active"]
+            and item["status"] == AGUARDANDO_JOB
+            and item["job"] is None
+        ]
+        if len(waiting) != 1:
+            return "NO_WAITING_ATTEMPT", None
+        waiting[0]["job"] = job_id
+        waiting[0]["status"] = "VINCULADA"
+        self.jobs.add(job_id)
+        return "RESEND", waiting[0]
 
 
 class DeadlineWorkerAcceptanceTests(unittest.TestCase):
@@ -296,6 +380,131 @@ class DeadlineWorkerAcceptanceTests(unittest.TestCase):
         self.assertTrue(plan["process_preview"])
         self.assertFalse(plan["process_post"])
         self.assertFalse(plan["send_notifications"])
+
+    def test_case_17_first_job_creates_render_and_attempt(self):
+        model = DiscoveryModel()
+        outcome, attempt = model.discover(JOB_A, [2075])
+        self.assertEqual(outcome, "FIRST_RENDER_CREATED")
+        self.assertEqual(attempt["numero_tentativa"], 1)
+        self.assertEqual(attempt["status"], EM_ANDAMENTO)
+        self.assertTrue(attempt["active"])
+
+    def test_case_18_two_instances_do_not_duplicate_first_job(self):
+        model = DiscoveryModel()
+        first, _attempt = model.discover(JOB_A, [2075])
+        second, duplicate = model.discover(JOB_A, [2075])
+        self.assertEqual(first, "FIRST_RENDER_CREATED")
+        self.assertEqual(second, "JOB_ALREADY_KNOWN")
+        self.assertIsNone(duplicate)
+        self.assertEqual(len(model.renders), 1)
+        self.assertEqual(len(model.attempts), 1)
+
+    def test_case_19_render_created_between_read_and_insert_is_reclassified_as_resend(self):
+        model = DiscoveryModel()
+        model.add_waiting_attempt(2075, 2)
+        outcome, attempt = model.discover(JOB_A, [2075])
+        self.assertEqual(outcome, "RESEND")
+        self.assertEqual(attempt["job"], JOB_A)
+
+    def test_case_20_rejection_resend_uses_waiting_attempt(self):
+        model = DiscoveryModel()
+        model.add_waiting_attempt(2075, 2)
+        outcome, attempt = model.discover(JOB_B, [2075])
+        self.assertEqual(outcome, "RESEND")
+        self.assertEqual(attempt["status"], "VINCULADA")
+
+    def test_case_21_old_terminal_attempt_cannot_reopen(self):
+        model = DiscoveryModel()
+        model.renders[(2075, 2)] = 10
+        model.attempts.append(
+            {"id": 1, "render_id": 10, "status": ENCERRADA, "active": False, "job": JOB_A}
+        )
+        model.jobs.add(JOB_A)
+        outcome, _attempt = model.discover(JOB_B, [2075])
+        self.assertEqual(outcome, "NO_WAITING_ATTEMPT")
+
+    def test_case_22_ambiguous_name_is_not_selected(self):
+        model = DiscoveryModel()
+        outcome, _attempt = model.discover(JOB_A, [2075, 2076])
+        self.assertEqual(outcome, "AMBIGUOUS_IMAGE")
+
+    def test_case_23_known_job_is_not_first_render_again(self):
+        model = DiscoveryModel()
+        model.discover(JOB_A, [2075])
+        outcome, _attempt = model.discover(JOB_A, [2075])
+        self.assertEqual(outcome, "JOB_ALREADY_KNOWN")
+
+    def test_case_24_first_active_job_uses_em_andamento(self):
+        model = DiscoveryModel()
+        _outcome, attempt = model.discover(JOB_A, [2075], target=EM_ANDAMENTO)
+        self.assertEqual(attempt["status"], EM_ANDAMENTO)
+
+    def test_case_25_first_completed_job_processes_preview_post_and_slack(self):
+        plan = first_submission_plan(EM_APROVACAO)
+        self.assertTrue(plan["process_preview"])
+        self.assertTrue(plan["process_post"])
+        self.assertTrue(plan["send_notifications"])
+
+    def test_case_26_first_render_preserves_notification_and_post_plan(self):
+        plan = first_submission_plan(EM_APROVACAO)
+        self.assertEqual(plan["state_event_key"], "PRIMEIRO_ENVIO->EM_APROVACAO")
+        self.assertTrue(plan["state_changed"])
+
+    def test_case_27_resend_does_not_depend_on_deadline_submission_time(self):
+        worker_source = (RENDER_DIR / "deadline_worker.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("JOB_OLDER_THAN_ATTEMPT", worker_source)
+        self.assertNotIn("submitted_at <", worker_source)
+
+    def test_case_28_multiple_unknown_jobs_remain_unlinked(self):
+        selected, conflicts = choose_unambiguous_candidates(
+            [
+                {"tentativa_id": 4101, "job_id": JOB_A},
+                {"tentativa_id": 4101, "job_id": JOB_B},
+            ]
+        )
+        self.assertEqual(selected, [])
+        self.assertEqual([item["job_id"] for item in conflicts[4101]], [JOB_A, JOB_B])
+
+    def test_case_29_discovery_logs_multiple_unmatched_jobs_without_binding(self):
+        class Client:
+            def list_job_ids(self):
+                return CommandResult(True, "", returncode=0), [JOB_A, JOB_B]
+
+            def get_job(self, job_id):
+                return CommandResult(True, "", returncode=0), {
+                    "Name": "2.WER_RIO Fotomontagem aerea 2_003"
+                }
+
+        class Repository:
+            def __init__(self):
+                self.bind_calls = []
+
+            def known_job_ids(self):
+                return set()
+
+            def discovery_target(self, _job_id, _job_name):
+                return {
+                    "outcome": "RESEND",
+                    "tentativa_id": 4101,
+                    "render_id": 356465,
+                }
+
+            def bind_job(self, *args):
+                self.bind_calls.append(args)
+                return True
+
+        worker = DeadlineWorker.__new__(DeadlineWorker)
+        worker.client = Client()
+        worker.repository = Repository()
+        worker.logger = FakeDiscoveryLogger()
+        worker.unlinked_jobs_seen = set()
+        worker.discover()
+
+        self.assertEqual(worker.repository.bind_calls, [])
+        warnings = [record for record in worker.logger.records if record[0] == "warning"]
+        self.assertEqual(warnings[0][2]["reason"], "MULTIPLE_UNMATCHED_JOBS")
 
 
 if __name__ == "__main__":

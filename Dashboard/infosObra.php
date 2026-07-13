@@ -57,38 +57,74 @@ $response['funcoes'] = $funcoes;
 
 $stmtFuncoes->close();
 
-// Segundo SELECT: Detalhes gerais da obra
+// Segundo SELECT: detalhes gerais da obra
 $sqlObra = "SELECT
-    o.*, 
-    COUNT(*) AS total_imagens,
+    o.*,
+    COUNT(i.idimagens_cliente_obra) AS total_imagens,
     MAX(i.cliente_id) AS cliente_id,
-    COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
+    SUM(CASE WHEN i.antecipada = 1 THEN 1 ELSE 0 END) AS total_imagens_antecipadas,
     MIN(i.data_inicio) AS primeira_imagem_data_inicio,
     MAX(i.prazo) AS max_imagem_prazo,
     SUM(i.dias_trabalhados) AS soma_dias_trabalhados
-FROM 
-    imagens_cliente_obra i
-JOIN
-    obra o 
-    ON o.idobra = i.obra_id
-WHERE 
-    i.obra_id = ?
+FROM obra o
+JOIN imagens_cliente_obra i
+    ON i.obra_id = o.idobra
+WHERE i.obra_id = ?
 GROUP BY o.idobra";
 
 $stmtObra = $conn->prepare($sqlObra);
+
 if ($stmtObra === false) {
     die('Erro na preparação da consulta (obra): ' . $conn->error);
 }
 
 $stmtObra->bind_param("i", $obraId);
 $stmtObra->execute();
-$resultObra = $stmtObra->get_result();
 
-// Processa os resultados do segundo SELECT
-$obra = $resultObra->fetch_assoc(); // Deve retornar uma única linha
-$response['obra'] = $obra;
+$resultObra = $stmtObra->get_result();
+$obra = $resultObra->fetch_assoc();
 
 $stmtObra->close();
+
+
+// Quantidade de imagens por tipo
+$sqlTiposImagem = "SELECT
+    COALESCE(NULLIF(TRIM(tipo_imagem), ''), 'Sem tipo') AS tipo_imagem,
+    COUNT(*) AS total
+FROM imagens_cliente_obra
+WHERE obra_id = ?
+GROUP BY COALESCE(NULLIF(TRIM(tipo_imagem), ''), 'Sem tipo')
+ORDER BY total DESC, tipo_imagem ASC";
+
+$stmtTipos = $conn->prepare($sqlTiposImagem);
+
+if ($stmtTipos === false) {
+    die('Erro na preparação da consulta (tipos de imagem): ' . $conn->error);
+}
+
+$stmtTipos->bind_param("i", $obraId);
+$stmtTipos->execute();
+
+$resultTipos = $stmtTipos->get_result();
+
+$imagensPorTipo = [];
+
+while ($tipo = $resultTipos->fetch_assoc()) {
+    $imagensPorTipo[] = [
+        'tipo_imagem' => $tipo['tipo_imagem'],
+        'total' => (int) $tipo['total']
+    ];
+}
+
+$stmtTipos->close();
+
+
+// Monta a resposta
+$obra['total_imagens'] = (int) ($obra['total_imagens'] ?? 0);
+$obra['total_imagens_antecipadas'] = (int) ($obra['total_imagens_antecipadas'] ?? 0);
+$obra['imagens_por_tipo'] = $imagensPorTipo;
+
+$response['obra'] = $obra;
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlAprovacaoObra = "SELECT 

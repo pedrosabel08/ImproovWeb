@@ -615,10 +615,42 @@ $conn->close();
                 </div>
             </div>
 
-            <div class="contagem_imagens">
-                <p id="imagens-totais"></p>
-                <p id="antecipadas"></p>
-                <p id="revisoes"></p>
+            <div class="contagem_imagens resumo-imagens-card">
+                <button
+                    type="button"
+                    id="imagens-totais"
+                    class="imagens-totais-toggle"
+                    aria-expanded="false"
+                    aria-controls="imagens-por-tipo">
+                    <div class="resumo-imagens-principal">
+                        <span class="resumo-imagens-icone" aria-hidden="true">
+                            <i class="fa-regular fa-images"></i>
+                        </span>
+
+                        <span class="resumo-imagens-conteudo">
+                            <span class="resumo-imagens-label">Total de imagens</span>
+                            <strong class="imagens-totais-texto">0</strong>
+                        </span>
+                    </div>
+
+                    <div class="resumo-imagens-lateral">
+                        <span class="resumo-antecipadas">
+                            <span class="resumo-imagens-label">Antecipadas</span>
+                            <strong id="antecipadas">0</strong>
+                        </span>
+
+                        <i
+                            class="fa-solid fa-chevron-down imagens-totais-chevron"
+                            aria-hidden="true"></i>
+                    </div>
+                </button>
+
+                <div
+                    id="imagens-por-tipo"
+                    class="imagens-por-tipo"
+                    hidden></div>
+
+                <p id="revisoes" class="resumo-imagens-revisoes"></p>
             </div>
 
             <div id="estrela-container" style="display: none;">

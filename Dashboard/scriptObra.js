@@ -6800,6 +6800,183 @@ function applyStatusImagem(cell, status, descricao = "") {
 }
 
 let __centerTableAfterFilter = false;
+function agruparImagensPorTipo(imagens) {
+  const totaisPorTipo = new Map();
+
+  const listaImagens = Array.isArray(imagens) ? imagens : [];
+
+  listaImagens.forEach((imagem) => {
+    const tipo = String(imagem?.tipo_imagem ?? "").trim() || "Sem tipo";
+
+    totaisPorTipo.set(tipo, (totaisPorTipo.get(tipo) || 0) + 1);
+  });
+
+  return Array.from(totaisPorTipo, ([tipo, total]) => ({
+    tipo,
+    total,
+  })).sort(
+    (a, b) => b.total - a.total || a.tipo.localeCompare(b.tipo, "pt-BR"),
+  );
+}
+
+function formatarNumeroResumo(numero) {
+  return Number(numero || 0).toLocaleString("pt-BR");
+}
+
+function renderizarImagensPorTipo(imagens) {
+  const gaveta = document.getElementById("imagens-por-tipo");
+
+  if (!gaveta) return;
+
+  const listaImagens = Array.isArray(imagens) ? imagens : [];
+  const totalGeral = listaImagens.length;
+  const totaisPorTipo = agruparImagensPorTipo(listaImagens);
+
+  gaveta.replaceChildren();
+
+  if (totaisPorTipo.length === 0) {
+    const vazio = document.createElement("p");
+
+    vazio.className = "imagens-por-tipo-vazio";
+    vazio.textContent = "Nenhuma imagem encontrada.";
+
+    gaveta.appendChild(vazio);
+    return;
+  }
+
+  const fragmento = document.createDocumentFragment();
+  const barras = [];
+
+  totaisPorTipo.forEach(({ tipo, total }) => {
+    const percentual =
+      totalGeral > 0 ? Math.round((total / totalGeral) * 100) : 0;
+
+    const item = document.createElement("div");
+    item.className = "imagem-tipo-item";
+
+    const nome = document.createElement("span");
+    nome.className = "imagem-tipo-nome";
+    nome.textContent = tipo;
+    nome.title = tipo;
+
+    const barra = document.createElement("div");
+    barra.className = "imagem-tipo-barra";
+    barra.setAttribute("aria-hidden", "true");
+
+    const preenchimento = document.createElement("span");
+    preenchimento.className = "imagem-tipo-barra-preenchimento";
+    preenchimento.dataset.percentual = String(percentual);
+
+    barra.appendChild(preenchimento);
+
+    const quantidade = document.createElement("strong");
+    quantidade.className = "imagem-tipo-total";
+
+    const valor = document.createElement("span");
+    valor.textContent = formatarNumeroResumo(total);
+
+    const percentualElemento = document.createElement("span");
+    percentualElemento.className = "imagem-tipo-percentual";
+    percentualElemento.textContent = ` (${percentual}%)`;
+
+    quantidade.append(valor, percentualElemento);
+
+    item.append(nome, barra, quantidade);
+    fragmento.appendChild(item);
+
+    barras.push(preenchimento);
+  });
+
+  gaveta.appendChild(fragmento);
+
+  /*
+   * Executa após a inserção no DOM para que a barra
+   * anime de 0 até o percentual calculado.
+   */
+  requestAnimationFrame(() => {
+    barras.forEach((barra) => {
+      barra.style.width = `${barra.dataset.percentual}%`;
+    });
+  });
+}
+
+function atualizarResumoImagens(imagens) {
+  const listaImagens = Array.isArray(imagens) ? imagens : [];
+
+  const textoTotal = document.querySelector(
+    "#imagens-totais .imagens-totais-texto",
+  );
+
+  const antecipadas = document.getElementById("antecipadas");
+
+  const antecipadasFiltradas = listaImagens.filter((imagem) => {
+    return Number(imagem?.antecipada) === 1 || imagem?.antecipada === true;
+  }).length;
+
+  if (textoTotal) {
+    textoTotal.textContent = formatarNumeroResumo(listaImagens.length);
+  }
+
+  if (antecipadas) {
+    antecipadas.textContent = formatarNumeroResumo(antecipadasFiltradas);
+  }
+
+  renderizarImagensPorTipo(listaImagens);
+}
+
+function alternarGavetaImagens() {
+  const botao = document.getElementById("imagens-totais");
+  const gaveta = document.getElementById("imagens-por-tipo");
+  const icone = botao?.querySelector(".imagens-totais-chevron");
+
+  if (!botao || !gaveta || !icone) return;
+
+  const estaAberto = botao.getAttribute("aria-expanded") === "true";
+
+  const deveAbrir = !estaAberto;
+
+  botao.setAttribute("aria-expanded", String(deveAbrir));
+
+  icone.classList.toggle("fa-chevron-down", !deveAbrir);
+
+  icone.classList.toggle("fa-chevron-up", deveAbrir);
+
+  if (deveAbrir) {
+    gaveta.hidden = false;
+
+    requestAnimationFrame(() => {
+      gaveta.classList.add("is-open");
+    });
+
+    return;
+  }
+
+  gaveta.classList.remove("is-open");
+
+  const finalizarFechamento = (event) => {
+    if (event.propertyName !== "max-height") return;
+
+    if (!gaveta.classList.contains("is-open")) {
+      gaveta.hidden = true;
+    }
+
+    gaveta.removeEventListener("transitionend", finalizarFechamento);
+  };
+
+  gaveta.addEventListener("transitionend", finalizarFechamento);
+}
+
+function inicializarResumoImagens() {
+  const botao = document.getElementById("imagens-totais");
+
+  if (!botao || botao.dataset.gavetaInicializada === "true") {
+    return;
+  }
+
+  botao.addEventListener("click", alternarGavetaImagens);
+
+  botao.dataset.gavetaInicializada = "true";
+}
 
 function filtrarTabela() {
   var tabela = document.getElementById("tabela-obra");
@@ -6809,8 +6986,7 @@ function filtrarTabela() {
   var linhas = tbody.getElementsByTagName("tr");
   const globals = readGlobalFilters();
 
-  let imagensFiltradas = 0;
-  let antecipadasFiltradas = 0;
+  const imagensFiltradas = [];
 
   for (var i = 0; i < linhas.length; i++) {
     var antecipadaTd = linhas[i].querySelector("td[antecipada]");
@@ -6820,17 +6996,17 @@ function filtrarTabela() {
     var mostrarLinha = rowMatchesAllFilters(linhas[i], globals);
 
     if (mostrarLinha) {
-      imagensFiltradas++;
-      if (isAntecipada) antecipadasFiltradas++;
+      imagensFiltradas.push({
+        tipo_imagem: linhas[i].getAttribute("tipo-imagem"),
+        antecipada: isAntecipada ? "1" : "0",
+      });
     }
 
     linhas[i].style.display = mostrarLinha ? "" : "none";
   }
 
-  const imagens_totais = document.getElementById("imagens-totais");
-  imagens_totais.textContent = `Total de imagens: ${imagensFiltradas}`;
-  const antecipadas = document.getElementById("antecipadas");
-  antecipadas.textContent = `Antecipadas: ${antecipadasFiltradas}`;
+  inicializarResumoImagens();
+  atualizarResumoImagens(imagensFiltradas);
 
   updateFunctionHeaderIndicators();
   if (
@@ -7207,7 +7383,9 @@ document
     var idImagemSelecionada =
       linhaSelecionada?.getAttribute("data-id") ||
       document.getElementById("imagem_id")?.value ||
-      document.getElementById("alterar_status")?.getAttribute("data-imagemid") ||
+      document
+        .getElementById("alterar_status")
+        ?.getAttribute("data-imagemid") ||
       window.__ctxMenuImagemId ||
       "";
 
@@ -15789,7 +15967,9 @@ function salvarFuncoesAnimacao() {
 
   const dados = {
     animacao_id: animacaoId,
-    animacao_ativa: modernFuncoesState.activeKeys.has("finalizacao") ? "1" : "0",
+    animacao_ativa: modernFuncoesState.activeKeys.has("finalizacao")
+      ? "1"
+      : "0",
     animacao_colaborador_id: document.getElementById("opcao_final").value || "",
     status_animacao: document.getElementById("status_finalizacao").value || "",
     prazo_animacao: document.getElementById("prazo_finalizacao").value || "",
@@ -15899,8 +16079,14 @@ async function excluirFuncaoAnimacao(funcaoId, cfg) {
     if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
     return true;
   } catch (error) {
-    console.error("Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o:", error);
-    showModernFuncoesToast("Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o.", false);
+    console.error(
+      "Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o:",
+      error,
+    );
+    showModernFuncoesToast(
+      "Erro ao excluir fun\u00e7\u00e3o da anima\u00e7\u00e3o.",
+      false,
+    );
     return false;
   }
 }

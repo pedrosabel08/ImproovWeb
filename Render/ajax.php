@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
+require_once __DIR__ . '/deadline_flow.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -599,6 +600,7 @@ if (isset($_POST['action'])) {
                 $logs[] = "updateRender: idrender_alta={$idrender_alta}, status={$status}";
                 $manualApprovalData = null;
                 $transactionStarted = false;
+                $deadlineFlowResult = null;
 
                 if (strtolower($status) === 'aprovado') {
                     aprovacao_interna_ensure_schema($conn);
@@ -650,12 +652,46 @@ if (isset($_POST['action'])) {
                     }
                 }
 
-                // Ao reprovar/refazer, limpar dados do ciclo atual. Mantemos
-                // deadline_job_id para o monitor conseguir deletar o job antigo
-                // no Deadline; ele limpa esse vinculo apos DeleteJob com sucesso.
-                if ($manualApprovalData) {
+                if (in_array(strtolower($status), ['reprovado', 'refazendo'], true)) {
+                    try {
+                        $conn->begin_transaction();
+                        $deadlineFlowResult = deadline_flow_rework_locked(
+                            $conn,
+                            (int) $idrender_alta,
+                            $status
+                        );
+                        $conn->commit();
+
+                        $hasJob = !empty($deadlineFlowResult['deadline_job_id']);
+                        $message = $hasJob
+                            ? 'Render reprovado. A remocao do job no Deadline esta pendente.'
+                            : 'Render reprovado. Nao havia job do Deadline vinculado.';
+                        echo json_encode([
+                            'status' => 'sucesso',
+                            'success' => true,
+                            'render_id' => (int) $idrender_alta,
+                            'tentativa_encerrada_id' => $deadlineFlowResult['tentativa_encerrada_id'],
+                            'nova_tentativa_id' => $deadlineFlowResult['nova_tentativa_id'],
+                            'deadline_command_created' => $deadlineFlowResult['deadline_command_created'],
+                            'deadline_command_status' => $deadlineFlowResult['deadline_command_status'],
+                            'message' => $message,
+                        ]);
+                    } catch (Throwable $e) {
+                        $conn->rollback();
+                        $logs[] = 'deadline_flow.rework_error=' . $e->getMessage();
+                        $resp = ['status' => 'erro', 'success' => false, 'message' => 'Erro ao registrar a reprovacao e a fila Deadline.'];
+                        if ($debug) $resp['logs'] = $logs;
+                        echo json_encode($resp);
+                    }
+                    break;
+                }
+
+                if (!$transactionStarted) {
                     $conn->begin_transaction();
                     $transactionStarted = true;
+                }
+
+                if ($manualApprovalData) {
                     $approvalOk = aprovacao_interna_registrar(
                         $conn,
                         $manualApprovalData['funcao_imagem_id'],
@@ -680,13 +716,7 @@ if (isset($_POST['action'])) {
                     $logs[] = 'aprovacao_interna.manual_registrada=' . $manualApprovalData['origem'];
                 }
 
-                if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
-                    $stmtUpd = $conn->prepare(
-                        "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL, deadline_job_id = NULL WHERE idrender_alta = ?"
-                    );
-                } else {
-                    $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");
-                }
+                $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");
                 if (!$stmtUpd) {
                     if ($transactionStarted) {
                         $conn->rollback();
@@ -700,6 +730,24 @@ if (isset($_POST['action'])) {
                 $stmtUpd->close();
 
                 if ($okUpd === TRUE) {
+                    if (strtolower($status) === 'aprovado') {
+                        try {
+                            $deadlineFlowResult = deadline_flow_approve_locked($conn, (int) $idrender_alta);
+                        } catch (Throwable $e) {
+                            if ($transactionStarted) {
+                                $conn->rollback();
+                                $transactionStarted = false;
+                            }
+                            $logs[] = 'deadline_flow.approval_error=' . $e->getMessage();
+                            echo json_encode([
+                                'status' => 'erro',
+                                'success' => false,
+                                'message' => 'Erro ao registrar a aprovacao e a fila Deadline.',
+                                'logs' => $debug ? $logs : null,
+                            ]);
+                            break;
+                        }
+                    }
                     if ($transactionStarted) {
                         $conn->commit();
                         $transactionStarted = false;
@@ -1020,7 +1068,12 @@ if (isset($_POST['action'])) {
                             }
                         }
                     }
-                    $resp = ['status' => 'sucesso', 'message' => 'Render atualizado com sucesso'];
+                    $resp = ['status' => 'sucesso', 'success' => true, 'message' => 'Render atualizado com sucesso'];
+                    if ($deadlineFlowResult) {
+                        $resp['tentativa_id'] = $deadlineFlowResult['tentativa_id'] ?? null;
+                        $resp['deadline_command_created'] = $deadlineFlowResult['command']['created'] ?? false;
+                        $resp['deadline_command_status'] = $deadlineFlowResult['command']['status'] ?? null;
+                    }
                     if ($debug) $resp['logs'] = $logs;
                     echo json_encode($resp);
                 } else {
@@ -1053,16 +1106,25 @@ if (isset($_POST['action'])) {
             break;
 
         case 'deleteRender':
-            // Excluir o render
             if (isset($_POST['idrender_alta'])) {
-                $idrender_alta = $_POST['idrender_alta'];
-                $sql = "DELETE FROM render_alta WHERE idrender_alta = $idrender_alta";
-                if ($conn->query($sql) === TRUE) {
-                    echo json_encode(['status' => 'sucesso', 'message' => 'Render excluído com sucesso']);
-                } else {
+                $idrender_alta = (int) $_POST['idrender_alta'];
+                try {
+                    $conn->begin_transaction();
+                    $archive = deadline_flow_archive_locked($conn, $idrender_alta);
+                    $conn->commit();
+                    echo json_encode([
+                        'status' => 'sucesso',
+                        'success' => true,
+                        'message' => 'Render arquivado. Jobs vinculados foram adicionados a fila de exclusao.',
+                        'render_id' => $idrender_alta,
+                        'deadline_commands_created' => $archive['deadline_commands_created'],
+                    ]);
+                } catch (Throwable $e) {
+                    $conn->rollback();
                     echo json_encode([
                         'status' => 'erro',
-                        'message' => 'Erro ao excluir o render: ' . $conn->error
+                        'success' => false,
+                        'message' => 'Erro ao arquivar o render: ' . $e->getMessage(),
                     ]);
                 }
             }

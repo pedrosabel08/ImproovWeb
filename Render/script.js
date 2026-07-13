@@ -1197,7 +1197,7 @@ $("#reprovarRender").click(function () {
         loadRenderKpis();
         $("#myModal").removeClass("is-open");
         Toastify({
-          text: "Render reprovado com sucesso!",
+          text: response.message || "Render reprovado. A remoção no Deadline está pendente.",
           duration: 3000,
           gravity: "top",
           position: "right",
@@ -1247,11 +1247,19 @@ $("#deleteRender")
           $("#myModal").removeClass("is-open");
 
           Toastify({
-            text: "Render excluído com sucesso!",
+            text: response.message || "Render arquivado com segurança.",
             duration: 3000,
             gravity: "top",
             position: "right",
             backgroundColor: "#f15e1aff", // verde
+          }).showToast();
+        } else {
+          Toastify({
+            text: response.message || "Erro ao arquivar o render.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#f44336",
           }).showToast();
         }
       },

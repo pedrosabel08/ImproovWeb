@@ -142,3 +142,12 @@ conexao.php
 conexaoMain.php
 
 AGENTS.MD
+
+# Runtime do worker Flow x Deadline
+Render/__pycache__/
+Render/tests/__pycache__/
+Render/*.py[cod]
+Render/logs/
+Render/deadline_worker.pid
+Render/deadline_worker.lock
+Render/deadline_worker.stop

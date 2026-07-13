@@ -24,7 +24,6 @@ else:
 
 PARENT_FOLDER = r"C:\Backburner_Job"
 EXCLUDE_KEYWORD = "ANIMA"
-DEADLINE_COMMAND = "deadlinecommand"
 SCHEDULER_DELETE_STATUSES = ("Aprovado", "Finalizado", "Reprovado")
 
 # Filtros opcionais (por ambiente) para evitar varredura completa
@@ -207,40 +206,6 @@ def is_truthy(value: str) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"yes", "true", "1", "sim", "y"}
-
-
-def delete_deadline_job(job_id: str) -> bool:
-    if not job_id:
-        return False
-    try:
-        result = subprocess.run(
-            [DEADLINE_COMMAND, "DeleteJob", str(job_id)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=60,
-            check=False
-        )
-    except FileNotFoundError:
-        log_and_print("❌ deadlinecommand não encontrado no PATH.", "error")
-        return False
-    except subprocess.TimeoutExpired:
-        log_and_print(f"❌ Timeout ao deletar Job Deadline {job_id}.", "error")
-        return False
-    except Exception as e:
-        log_and_print(f"❌ Falha ao deletar Job Deadline {job_id}: {e}", "error")
-        return False
-
-    output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
-    if result.returncode == 0:
-        log_and_print(f"✅ Job Deadline deletado: {job_id}")
-        return True
-
-    log_and_print(f"⚠ Não foi possível deletar o Job Deadline {job_id}.", "warning")
-    if output:
-        log_and_print(output, "warning")
-    return False
 
 
 def upload_to_ftp(local_path, remote_path, ftp_host, ftp_user, ftp_pass):
@@ -806,8 +771,10 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     # Enquanto o novo job está rodando (active=True, complete=False), deixamos ele finalizar.
     if ultimo_status in SCHEDULER_DELETE_STATUSES:
         if deadline_job_id:
-            log_and_print(f"⏭ Status '{ultimo_status}' detectado — deletando Job Deadline: {deadline_job_id}")
-            delete_deadline_job(deadline_job_id)
+            log_and_print(
+                f"⏭ Status '{ultimo_status}' com Job Deadline {deadline_job_id}; "
+                "Backburner nao executa nem substitui a fila Deadline."
+            )
         else:
             log_and_print(f"⏭ Status '{ultimo_status}' detectado — removendo job do Backburner: {job_folder}")
             delete_backburner_job(job_folder)

@@ -516,6 +516,11 @@ $conn->close();
                                 <div>
                                     <span
                                         style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
+                                    <span id="modalRecebimento" style="font-size:13px;font-weight:500;">—</span>
+                                </div>
+                                <div>
+                                    <span
+                                        style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
                                     <span id="modalPrazo" style="font-size:13px;font-weight:500;">—</span>
                                 </div>
                                 <div>

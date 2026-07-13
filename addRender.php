@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
+require_once __DIR__ . '/Render/deadline_flow.php';
 // session_start();
 header('Content-Type: application/json');
 
@@ -52,29 +53,55 @@ if ($notificar && $finalizador_id) {
 
     $mensagem = "Imagem {$imagem_nome} pode ser feito o render {$nome_status}";
 
-    // Corrigido: não envia data, deixa o banco preencher
-    $stmt_notif = $conn->prepare("insert into notificacoes_gerais (colaborador_id, mensagem, lida, funcao_imagem_id) VALUES (?, ?, 0, ?)");
-    if (!$stmt_notif) {
-        echo json_encode(['status' => 'erro', 'message' => 'Erro no prepare: ' . $conn->error]);
-        exit;
+    $conn->begin_transaction();
+    try {
+        // Corrigido: não envia data, deixa o banco preencher
+        $stmt_notif = $conn->prepare("insert into notificacoes_gerais (colaborador_id, mensagem, lida, funcao_imagem_id) VALUES (?, ?, 0, ?)");
+        if (!$stmt_notif) {
+            throw new RuntimeException('Erro no prepare: ' . $conn->error);
+        }
+        $stmt_notif->bind_param("isi", $finalizador_id, $mensagem, $data_id_funcao);
+        $stmt_notif->execute();
+        $stmt_notif->close();
+
+        // Cria um render novo ou reativa o registro lógico arquivado.
+        $stmt_existing = $conn->prepare(
+            "SELECT idrender_alta, status FROM render_alta WHERE imagem_id = ? AND status_id = ? LIMIT 1"
+        );
+        $stmt_existing->bind_param('ii', $imagem_id, $status_id);
+        $stmt_existing->execute();
+        $existingRender = $stmt_existing->get_result()->fetch_assoc();
+        $stmt_existing->close();
+        if ($existingRender) {
+            if ((string) $existingRender['status'] !== 'Arquivado') {
+                throw new RuntimeException('Render com esta combinação de imagem e status já existe.');
+            }
+            $idRenderAdicionado = (int) $existingRender['idrender_alta'];
+            deadline_flow_reactivate_archived_locked(
+                $conn,
+                $idRenderAdicionado,
+                (int) $finalizador_id
+            );
+        } else {
+            $stmt_render = $conn->prepare("INSERT INTO render_alta (status, imagem_id, responsavel_id, status_id) VALUES ('Não iniciado',?, ?, ?)");
+            $stmt_render->bind_param("iii", $imagem_id, $finalizador_id, $status_id);
+            $stmt_render->execute();
+            $idRenderAdicionado = $conn->insert_id;
+            $stmt_render->close();
+            deadline_flow_ensure_initial_attempt($conn, (int) $idRenderAdicionado);
+        }
+        $conn->commit();
+
+        $response = [
+            'status' => 'sucesso',
+            'notificado' => true,
+            'mensagem_notificacao' => $mensagem,
+            'idrender' => $idRenderAdicionado
+        ];
+    } catch (Throwable $e) {
+        $conn->rollback();
+        $response = ['status' => 'erro', 'message' => 'Erro ao criar o render: ' . $e->getMessage()];
     }
-    $stmt_notif->bind_param("isi", $finalizador_id, $mensagem, $data_id_funcao);
-    $stmt_notif->execute();
-    $stmt_notif->close();
-
-    // Adiciona em render_alta com status 'Não iniciado'
-    $stmt_render = $conn->prepare("INSERT INTO render_alta (status, imagem_id, responsavel_id, status_id) VALUES ('Não iniciado',?, ?, ?)");
-    $stmt_render->bind_param("iii", $imagem_id, $finalizador_id, $status_id);
-    $stmt_render->execute();
-    $idRenderAdicionado = $conn->insert_id;
-    $stmt_render->close();
-
-    $response = [
-        'status' => 'sucesso',
-        'notificado' => true,
-        'mensagem_notificacao' => $mensagem,
-        'idrender' => $idRenderAdicionado
-    ];
 
     echo json_encode($response);
     exit;
@@ -91,30 +118,40 @@ try {
 
     if ($stmt_check_exists->num_rows === 0) {
         $stmt_check_exists->close();
+        $conn->rollback();
         echo json_encode(['status' => 'erro', 'message' => 'ID não encontrado na tabela imagens_cliente_obra.']);
         exit;
     }
     $stmt_check_exists->close();
 
-    // Verifica duplicidade na render_alta
-    $stmt_check_render = $conn->prepare("SELECT idrender_alta FROM render_alta WHERE imagem_id = ? AND status_id = ?");
+    // Verifica duplicidade ou permite reativar um registro arquivado.
+    $stmt_check_render = $conn->prepare("SELECT idrender_alta, status FROM render_alta WHERE imagem_id = ? AND status_id = ? LIMIT 1");
     $stmt_check_render->bind_param("ii", $imagem_id, $status_id);
     $stmt_check_render->execute();
-    $stmt_check_render->store_result();
-
-    if ($stmt_check_render->num_rows > 0) {
-        $stmt_check_render->close();
-        echo json_encode(['status' => 'erro', 'message' => 'Render com esta combinação de imagem e status já existe.']);
-        exit;
-    }
+    $existingRender = $stmt_check_render->get_result()->fetch_assoc();
     $stmt_check_render->close();
 
-    // Insere em render_alta
-    $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id, responsavel_id, status_id) VALUES (?, ?, ?)");
-    $stmt1->bind_param("iii", $imagem_id, $responsavel_id, $status_id);
-    $stmt1->execute();
-    $idRenderAdicionado = $conn->insert_id;
-    $stmt1->close();
+    if ($existingRender) {
+        if ((string) $existingRender['status'] !== 'Arquivado') {
+            $conn->rollback();
+            echo json_encode(['status' => 'erro', 'message' => 'Render com esta combinação de imagem e status já existe.']);
+            exit;
+        }
+        $idRenderAdicionado = (int) $existingRender['idrender_alta'];
+        deadline_flow_reactivate_archived_locked(
+            $conn,
+            $idRenderAdicionado,
+            (int) $responsavel_id
+        );
+    } else {
+        // Insere em render_alta
+        $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id, responsavel_id, status_id) VALUES (?, ?, ?)");
+        $stmt1->bind_param("iii", $imagem_id, $responsavel_id, $status_id);
+        $stmt1->execute();
+        $idRenderAdicionado = $conn->insert_id;
+        $stmt1->close();
+        deadline_flow_ensure_initial_attempt($conn, (int) $idRenderAdicionado);
+    }
 
     $response['idrender'] = $idRenderAdicionado;
 
@@ -157,7 +194,7 @@ try {
     $response['message'] = 'Render criado e status atualizado com sucesso.';
     $response['notificado'] = false;
     $response['finalizador'] = $finalizador_resp;
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $conn->rollback();
     $response = ['status' => 'erro', 'message' => 'Erro ao executar as consultas: ' . $e->getMessage()];
 }

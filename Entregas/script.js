@@ -3934,6 +3934,7 @@ document
 })();
 
 // --- ADICIONAR IMAGEM POR ID (botão no modal de entrega) ---
+/*
 const btnAdicionarImagem = document.getElementById("btnAdicionarImagem");
 if (btnAdicionarImagem) {
   btnAdicionarImagem.addEventListener("click", async function () {
@@ -3983,6 +3984,7 @@ if (btnAdicionarImagem) {
   });
 }
 
+*/
 /* ══════════════════════════════════════════════════════════════════════════
  *  RELATÓRIO DE PRODUÇÃO
  *  Accordion hierarchy: Obra → Etapa → Entrega → Images table

@@ -315,6 +315,10 @@ $conn->close();
                     </div>
                     <select id="indiceSelect"></select>
                     <div class="buttons">
+                        <button type="button" id="compare-envios-btn" class="compare-envios-btn" hidden>
+                            <i class="fa-solid fa-code-compare"></i>
+                            <span>Comparar envios</span>
+                        </button>
                         <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>
                         <button id="btn-menos-zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
                         <button id="btn-mais-zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
@@ -323,6 +327,44 @@ $conn->close();
                 </div>
                 <div id="image_wrapper" class="image_wrapper">
                 </div>
+                <section id="envios-comparison" class="envios-comparison" hidden aria-label="Comparação de envios">
+                    <div class="envios-comparison-toolbar">
+                        <strong>Comparar envios</strong>
+                        <span>Selecione um envio em cada lado. Zoom e movimento são independentes.</span>
+                    </div>
+                    <div class="envios-comparison-grid">
+                        <article class="envios-comparison-side" data-compare-side="a">
+                            <header class="envios-comparison-side-toolbar">
+                                <label for="compare-envio-a">Envio A</label>
+                                <select id="compare-envio-a"></select>
+                                <div class="envios-comparison-zoom" aria-label="Zoom do envio A">
+                                    <button type="button" data-compare-action="zoom-out" title="Diminuir zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                                    <button type="button" data-compare-action="zoom-reset" title="Restaurar zoom"><i class="fa-solid fa-compress"></i></button>
+                                    <button type="button" data-compare-action="zoom-in" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                                </div>
+                            </header>
+                            <div class="envios-comparison-viewport">
+                                <div class="envios-comparison-content"></div>
+                            </div>
+                            <div class="envios-comparison-comment-cache" aria-hidden="true"></div>
+                        </article>
+                        <article class="envios-comparison-side" data-compare-side="b">
+                            <header class="envios-comparison-side-toolbar">
+                                <label for="compare-envio-b">Envio B</label>
+                                <select id="compare-envio-b"></select>
+                                <div class="envios-comparison-zoom" aria-label="Zoom do envio B">
+                                    <button type="button" data-compare-action="zoom-out" title="Diminuir zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                                    <button type="button" data-compare-action="zoom-reset" title="Restaurar zoom"><i class="fa-solid fa-compress"></i></button>
+                                    <button type="button" data-compare-action="zoom-in" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                                </div>
+                            </header>
+                            <div class="envios-comparison-viewport">
+                                <div class="envios-comparison-content"></div>
+                            </div>
+                            <div class="envios-comparison-comment-cache" aria-hidden="true"></div>
+                        </article>
+                    </div>
+                </section>
             </div>
             <div class="sidebar-direita">
                 <button class="sidebar-collapse-btn sidebar-collapse-right" id="right-collapse-btn" title="Recolher painel">

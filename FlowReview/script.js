@@ -23,11 +23,17 @@ function canViewFrKpiScope(scope) {
 }
 
 function getTaskTipo(tarefa) {
-  return tarefa?.tipo_tarefa || (tarefa?.funcao_animacao_id ? "animacao" : "imagem");
+  return (
+    tarefa?.tipo_tarefa || (tarefa?.funcao_animacao_id ? "animacao" : "imagem")
+  );
 }
 
 function getTaskRefId(tarefa) {
-  return tarefa?.funcao_ref_id || tarefa?.idfuncao_imagem || tarefa?.funcao_animacao_id;
+  return (
+    tarefa?.funcao_ref_id ||
+    tarefa?.idfuncao_imagem ||
+    tarefa?.funcao_animacao_id
+  );
 }
 
 function isVideoMedia(media) {
@@ -1298,7 +1304,10 @@ function getTaskStatusMeta(tarefa) {
 }
 
 function getTaskTone(tarefa, mentionCount) {
-  if (tarefa.prioridade_aprovacao == 1 && tarefa.status_novo === "Em aprovação") {
+  if (
+    tarefa.prioridade_aprovacao == 1 &&
+    tarefa.status_novo === "Em aprovação"
+  ) {
     return "priority";
   }
 
@@ -1401,9 +1410,11 @@ function updateTaskTimeBadge(el) {
 }
 
 function refreshTaskTimeBadges() {
-  document.querySelectorAll(".task-time-badge[data-time-start]").forEach((el) => {
-    updateTaskTimeBadge(el);
-  });
+  document
+    .querySelectorAll(".task-time-badge[data-time-start]")
+    .forEach((el) => {
+      updateTaskTimeBadge(el);
+    });
 }
 
 // Função para exibir as tarefas e abastecer os filtros
@@ -1469,7 +1480,8 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       const pairBadge = tarefa.par_primario_nome
         ? `<span class="task-card-pair-badge" title="${escapeHtml(`${tarefa.par_primario_nome}: ${tarefa.par_primario_status}`)}">+ ${escapeHtml(tarefa.par_primario_nome)}</span>`
         : "";
-      const taskTitle = tarefa.nome_obra || tarefa.imagem_nome || tarefa.nome_funcao;
+      const taskTitle =
+        tarefa.nome_obra || tarefa.imagem_nome || tarefa.nome_funcao;
       const taskSubtitle = tarefa.imagem_nome || tarefa.nomenclatura || "";
 
       taskItem.innerHTML = `
@@ -2024,7 +2036,9 @@ function updateAngleActionForSelection(imagensDoIndice, context) {
   };
 
   const btnOpen = document.getElementById("submit_decision");
-  const actionsGroupLabel = document.querySelector(".angulo-actions-group-label");
+  const actionsGroupLabel = document.querySelector(
+    ".angulo-actions-group-label",
+  );
   if (!btnOpen) return;
 
   if (!isP00Finalizacao) {
@@ -2477,7 +2491,353 @@ async function enviarFuncaoParaAjustes() {
   }
 }
 
+const enviosComparisonState = {
+  active: false,
+  grouped: {},
+  indices: [],
+  viewers: [],
+  normalMedia: null,
+};
+let activeComparisonCommentViewer = null;
+let commentPreviewContainer = null;
+let historyRequestSequence = 0;
+let relativeX = null;
+let relativeY = null;
+
+class EnvioCompareViewer {
+  constructor(side) {
+    this.side = side;
+    this.root = document.querySelector(`[data-compare-side="${side}"]`);
+    this.select = document.getElementById(`compare-envio-${side}`);
+    this.viewport = this.root?.querySelector(".envios-comparison-viewport");
+    this.content = this.root?.querySelector(".envios-comparison-content");
+    this.commentsCache = this.root?.querySelector(
+      ".envios-comparison-comment-cache",
+    );
+    this.imageId = null;
+    this.zoom = 1;
+    this.translateX = 0;
+    this.translateY = 0;
+    this.panning = false;
+    this.dragMoved = false;
+    this.startClientX = 0;
+    this.startClientY = 0;
+    this.startTranslateX = 0;
+    this.startTranslateY = 0;
+    this.loadSequence = 0;
+    this.bindEvents();
+  }
+
+  bindEvents() {
+    if (!this.root) return;
+    this.select.addEventListener("change", () => this.loadSelectedEnvio());
+    this.root
+      .querySelector('[data-compare-action="zoom-in"]')
+      ?.addEventListener("click", () => this.changeZoom(0.1));
+    this.root
+      .querySelector('[data-compare-action="zoom-out"]')
+      ?.addEventListener("click", () => this.changeZoom(-0.1));
+    this.root
+      .querySelector('[data-compare-action="zoom-reset"]')
+      ?.addEventListener("click", () => this.resetTransform());
+
+    this.viewport.addEventListener(
+      "wheel",
+      (event) => {
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.changeZoom(event.deltaY < 0 ? 0.1 : -0.1);
+      },
+      { passive: false },
+    );
+
+    document.addEventListener("mousemove", (event) => {
+      if (!this.panning) return;
+      event.preventDefault();
+      const dx = event.clientX - this.startClientX;
+      const dy = event.clientY - this.startClientY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this.dragMoved = true;
+      this.translateX = this.startTranslateX + dx;
+      this.translateY = this.startTranslateY + dy;
+      this.applyTransform();
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (!this.panning) return;
+      this.panning = false;
+      this.viewport.classList.remove("is-panning");
+      window.setTimeout(() => {
+        this.dragMoved = false;
+      }, 0);
+    });
+  }
+
+  setOptions(indices, selectedIndex) {
+    this.select.innerHTML = "";
+    indices.forEach((indice) => {
+      const option = document.createElement("option");
+      option.value = indice;
+      option.textContent = `Envio ${indice}`;
+      this.select.appendChild(option);
+    });
+    this.select.value = selectedIndex || indices[0] || "";
+  }
+
+  getSelectedMedia() {
+    const items = [...(enviosComparisonState.grouped[this.select.value] || [])];
+    items.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+    return items[0] || null;
+  }
+
+  activateCommentTarget() {
+    activeComparisonCommentViewer = this;
+    commentPreviewContainer = this.content;
+    ap_imagem_id = this.imageId;
+    currentMediaMode = "image";
+    currentVideoTimeMs = null;
+    pdfViewerState.logId = null;
+  }
+
+  async loadSelectedEnvio() {
+    const requestSequence = ++this.loadSequence;
+    const media = this.getSelectedMedia();
+    this.imageId = media?.id || null;
+    this.commentsCache.innerHTML = "";
+    this.content.innerHTML = "";
+    this.resetTransform();
+
+    if (!media || isVideoMedia(media)) {
+      const empty = document.createElement("div");
+      empty.className = "envios-comparison-empty";
+      empty.textContent = media
+        ? "Este envio não contém uma imagem comparável."
+        : "Envio sem imagem.";
+      this.content.appendChild(empty);
+      return;
+    }
+
+    const img = document.createElement("img");
+    img.alt =
+      media.nome_arquivo || media.imagem || `Envio ${this.select.value}`;
+    img.draggable = false;
+    img.src = `https://improov.com.br/flow/ImproovWeb/${encodeURI(media.imagem)}`;
+    this.content.appendChild(img);
+
+    img.addEventListener("click", (event) => {
+      if (this.dragMoved || drawingTool !== "ponto") return;
+      if (_replyingToCommentId !== null) return;
+      this.activateCommentTarget();
+      const rect = img.getBoundingClientRect();
+      relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+      relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+      _editingCommentId = null;
+      if (quillComentario) quillComentario.setContents([]);
+      const title = document.querySelector("#comentarioModal h3");
+      if (title) title.textContent = "Novo Comentário";
+      document.getElementById("imagemComentario").value = "";
+      showCommentPreview();
+      openCommentModalAtPoint(event.clientX, event.clientY);
+      mencionadosIds = [];
+    });
+
+    img.addEventListener("mousedown", (event) => {
+      if (event.button !== 0 || event.ctrlKey) return;
+      this.activateCommentTarget();
+      if (drawingTool !== "ponto") {
+        startDrawingOnReviewElement(event, img, this.content);
+        return;
+      }
+      this.panning = true;
+      this.dragMoved = false;
+      this.startClientX = event.clientX;
+      this.startClientY = event.clientY;
+      this.startTranslateX = this.translateX;
+      this.startTranslateY = this.translateY;
+      this.viewport.classList.add("is-panning");
+    });
+
+    await renderComments(media.id, {
+      comentariosDiv: this.commentsCache,
+      markerContainer: this.content,
+      hideList: true,
+      isCurrent: () => requestSequence === this.loadSequence,
+    });
+  }
+
+  async refreshComments() {
+    if (!this.imageId) return;
+    const requestSequence = this.loadSequence;
+    await renderComments(this.imageId, {
+      comentariosDiv: this.commentsCache,
+      markerContainer: this.content,
+      hideList: true,
+      isCurrent: () => requestSequence === this.loadSequence,
+    });
+  }
+
+  changeZoom(delta) {
+    this.zoom = Math.max(0.5, this.zoom + delta);
+    if (this.zoom === 0.5) {
+      this.translateX = 0;
+      this.translateY = 0;
+    }
+    this.applyTransform();
+  }
+
+  resetTransform() {
+    this.zoom = 1;
+    this.translateX = 0;
+    this.translateY = 0;
+    this.applyTransform();
+  }
+
+  applyTransform() {
+    if (!this.content) return;
+    this.content.style.transform = `scale(${this.zoom}) translate(${this.translateX}px, ${this.translateY}px)`;
+    this.content.querySelectorAll(".comment").forEach((comment) => {
+      comment.style.transform = `translate(-50%, -50%) scale(${1 / this.zoom})`;
+    });
+    this.content.querySelectorAll(".comment-shape-badge").forEach((badge) => {
+      badge.style.transform = `scale(${1 / this.zoom})`;
+      badge.style.transformOrigin = "top left";
+    });
+  }
+}
+
+function updateEnviosComparisonAvailability() {
+  const button = document.getElementById("compare-envios-btn");
+  if (!button) return;
+  const isDesktop = window.matchMedia("(min-width: 1025px)").matches;
+  button.hidden = !isDesktop || enviosComparisonState.indices.length < 2;
+  if (!isDesktop && enviosComparisonState.active) {
+    exitEnviosComparison(true);
+  }
+}
+
+function setEnviosComparisonData(grouped, indices) {
+  enviosComparisonState.grouped = grouped || {};
+  enviosComparisonState.indices = Array.isArray(indices) ? [...indices] : [];
+  updateEnviosComparisonAvailability();
+}
+
+function enterEnviosComparison() {
+  if (
+    enviosComparisonState.active ||
+    enviosComparisonState.indices.length < 2 ||
+    !window.matchMedia("(min-width: 1025px)").matches
+  ) {
+    return;
+  }
+
+  enviosComparisonState.normalMedia = {
+    id: ap_imagem_id,
+    mode: currentMediaMode,
+    downloadUrl: currentDownloadUrl,
+    pdfLogId: pdfViewerState.logId,
+    pdfPage: pdfViewerState.page,
+  };
+  enviosComparisonState.active = true;
+  closeCommentPopup();
+
+  const layout = document.querySelector(".imagens");
+  const normalViewer = document.getElementById("image_wrapper");
+  const comparison = document.getElementById("envios-comparison");
+  const button = document.getElementById("compare-envios-btn");
+  const wrapperSidebar = document.getElementById("wrapper-sidebar");
+  wrapperSidebar.classList.add("collapsed");
+  layout?.classList.add("envios-comparison-active");
+  if (normalViewer) normalViewer.hidden = true;
+  if (comparison) comparison.hidden = false;
+  if (button) {
+    button.querySelector("span").textContent = "Sair da comparação";
+    button.title = "Sair da comparação";
+  }
+
+  const [first, second] = enviosComparisonState.indices;
+  enviosComparisonState.viewers.forEach((viewer, index) => {
+    viewer.setOptions(
+      enviosComparisonState.indices,
+      index === 0 ? first : second,
+    );
+    viewer.loadSelectedEnvio();
+  });
+}
+
+function exitEnviosComparison(restoreNormalViewer = true) {
+  if (!enviosComparisonState.active) return;
+  enviosComparisonState.active = false;
+  activeComparisonCommentViewer = null;
+  commentPreviewContainer = null;
+  closeCommentPopup();
+  removeCommentPreview();
+
+  document
+    .querySelector(".imagens")
+    ?.classList.remove("envios-comparison-active");
+  const normalViewer = document.getElementById("image_wrapper");
+  const comparison = document.getElementById("envios-comparison");
+  const button = document.getElementById("compare-envios-btn");
+  const wrapperSidebar = document.getElementById("wrapper-sidebar");
+  wrapperSidebar.classList.remove("collapsed");
+  if (normalViewer) normalViewer.hidden = false;
+  if (comparison) comparison.hidden = true;
+  if (button) {
+    button.querySelector("span").textContent = "Comparar envios";
+    button.title = "Comparar envios";
+  }
+
+  const normalMedia = enviosComparisonState.normalMedia;
+  enviosComparisonState.normalMedia = null;
+  if (restoreNormalViewer && normalMedia) {
+    ap_imagem_id = normalMedia.id;
+    currentMediaMode = normalMedia.mode || "image";
+    currentDownloadUrl = normalMedia.downloadUrl || null;
+    if (normalMedia.mode === "pdf" && normalMedia.pdfLogId) {
+      pdfViewerState.logId = normalMedia.pdfLogId;
+      pdfViewerState.page = normalMedia.pdfPage || 1;
+      renderComments({
+        arquivo_log_id: normalMedia.pdfLogId,
+        pagina: pdfViewerState.page,
+      });
+    } else if (normalMedia.id) {
+      renderComments(normalMedia.id);
+    }
+  }
+}
+
+function refreshCurrentCommentTarget() {
+  if (
+    enviosComparisonState.active &&
+    activeComparisonCommentViewer &&
+    String(activeComparisonCommentViewer.imageId) === String(ap_imagem_id)
+  ) {
+    return activeComparisonCommentViewer.refreshComments();
+  }
+  return renderComments(ap_imagem_id);
+}
+
+function initializeEnviosComparison() {
+  const button = document.getElementById("compare-envios-btn");
+  if (!button) return;
+  enviosComparisonState.viewers = [
+    new EnvioCompareViewer("a"),
+    new EnvioCompareViewer("b"),
+  ];
+  button.addEventListener("click", () => {
+    if (enviosComparisonState.active) exitEnviosComparison(true);
+    else enterEnviosComparison();
+  });
+  window.addEventListener("resize", updateEnviosComparisonAvailability);
+  updateEnviosComparisonAvailability();
+}
+
+initializeEnviosComparison();
+
 function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
+  const requestSequence = ++historyRequestSequence;
+  exitEnviosComparison(false);
+  setEnviosComparisonData({}, []);
   funcaoImagemId = idfuncao_imagem;
   const tarefaAtualPre = dadosTarefas.find(
     (t) => String(t.idfuncao_imagem) === String(idfuncao_imagem),
@@ -2510,6 +2870,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
   )
     .then((response) => response.json())
     .then((response) => {
+      if (requestSequence !== historyRequestSequence) return;
       // console.log("Funcao Imagem:", idfuncao_imagem);
       const main = document.querySelector(".main");
       main.classList.add("hidden");
@@ -2604,22 +2965,21 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
             const currentApprovalStatus = normalizeApprovalStatus(
               tarefaAtual?.status || item?.status || item?.status_novo,
             );
-            const approver =
-              currentApprovalStatus.startsWith("em aprova")
-                ? null
-                : [...historico]
-                    .filter((h) => h.responsavel && h.responsavel !== "0")
-                    .sort(
-                      (a, b) =>
-                        new Date(b.data_aprovacao || b.data || 0) -
-                        new Date(a.data_aprovacao || a.data || 0),
-                    )
-                    .find(
-                      (h) =>
-                        !normalizeApprovalStatus(
-                          h.status_novo || h.status,
-                        ).startsWith("em aprova"),
-                    ) || null;
+            const approver = currentApprovalStatus.startsWith("em aprova")
+              ? null
+              : [...historico]
+                  .filter((h) => h.responsavel && h.responsavel !== "0")
+                  .sort(
+                    (a, b) =>
+                      new Date(b.data_aprovacao || b.data || 0) -
+                      new Date(a.data_aprovacao || a.data || 0),
+                  )
+                  .find(
+                    (h) =>
+                      !normalizeApprovalStatus(
+                        h.status_novo || h.status,
+                      ).startsWith("em aprova"),
+                  ) || null;
             if (approver) {
               const name = approver.responsavel_nome || "—";
               const status = approver.status_novo || approver.status || "—";
@@ -2638,10 +2998,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
                 if (
                   !["Aprovado", "Aprovado com ajustes"].includes(displayStatus)
                 ) {
-                  displayStatus = [
-                    "Aprovado",
-                    "Aprovado com ajustes",
-                  ].includes(approver.status_anterior)
+                  displayStatus = ["Aprovado", "Aprovado com ajustes"].includes(
+                    approver.status_anterior,
+                  )
                     ? approver.status_anterior
                     : "Aprovado";
                 }
@@ -2671,8 +3030,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
         Array.isArray(imagens) &&
         imagens.some(
           (img) =>
-            String(img?.nome_status_envio || img?.nome_status || "").toLowerCase() ===
-            "p00",
+            String(
+              img?.nome_status_envio || img?.nome_status || "",
+            ).toLowerCase() === "p00",
         );
       currentIsFlowAngulo = isFlowAngulo;
       if (!isFlowAngulo) {
@@ -2861,6 +3221,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
       const indicesOrdenados = Object.keys(imagensAgrupadas).sort(
         (a, b) => b - a,
       );
+      setEnviosComparisonData(imagensAgrupadas, indicesOrdenados);
 
       if (indicesOrdenados.length === 0) {
         indiceSelect.style.display = "none";
@@ -2994,7 +3355,8 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
                 imgElement.type = "button";
                 imgElement.className = "image video-thumb";
                 imgElement.setAttribute("data-id", img.id);
-                imgElement.innerHTML = '<i class="fa-solid fa-play"></i><span>Vídeo</span>';
+                imgElement.innerHTML =
+                  '<i class="fa-solid fa-play"></i><span>Vídeo</span>';
                 imgElement.addEventListener("click", () => {
                   mostrarVideoCompleto(fullImageUrl, img.id, img);
                 });
@@ -3502,7 +3864,8 @@ function openCommentModalAtPoint(cx, cy) {
 
 function showCommentPreview() {
   removeCommentPreview();
-  const imageWrapper = document.getElementById("image_wrapper");
+  const imageWrapper =
+    commentPreviewContainer || document.getElementById("image_wrapper");
   if (!imageWrapper) return;
   const marker = document.createElement("div");
   marker.className = "comment comment-preview";
@@ -4136,6 +4499,8 @@ function mostrarPdfCompleto(
 // Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
   closeCommentPopup();
+  activeComparisonCommentViewer = null;
+  commentPreviewContainer = null;
   ap_imagem_id = id;
   currentMediaMode = "image";
   currentVideoTimeMs = null;
@@ -4302,7 +4667,10 @@ function startDrawingOnReviewElement(event, refElement, containerElement) {
   currentDrawRef = refElement;
 
   if (currentMediaMode === "video" && refElement.currentTime !== undefined) {
-    currentVideoTimeMs = Math.max(0, Math.round((refElement.currentTime || 0) * 1000));
+    currentVideoTimeMs = Math.max(
+      0,
+      Math.round((refElement.currentTime || 0) * 1000),
+    );
   }
 
   if (drawingTool === "freehand") {
@@ -4657,7 +5025,7 @@ document.getElementById("enviarComentario").onclick = async () => {
         pagina: pdfViewerState.page,
       });
     } else {
-      renderComments(ap_imagem_id);
+      refreshCurrentCommentTarget();
     }
     return;
   }
@@ -4728,7 +5096,7 @@ document.getElementById("enviarComentario").onclick = async () => {
           pagina: pdfViewerState.page,
         });
       } else {
-        renderComments(ap_imagem_id);
+        refreshCurrentCommentTarget();
       }
     } else {
       Toastify({
@@ -4881,10 +5249,6 @@ function showCommentPopup(markerEl, comentarioId) {
         ".comment.highlight, .comment-shape.highlight, .comment-freehand.highlight",
       )
       .forEach((n) => n.classList.remove("highlight"));
-    wrapper.classList.add("highlight");
-    const cardNum = document.querySelector(
-      `.comment-card[data-id="${comentario.id}"] .comment-number`,
-    );
   });
   popup.appendChild(closeBtn);
 
@@ -5015,17 +5379,19 @@ function renderCommentProgress(container, comentarios) {
 
 // ---------------------------------------------------------------------------
 
-async function renderComments(id) {
+async function renderComments(id, target = {}) {
   // console.log("renderComments", id); // debug
-  const comentariosDiv = document.querySelector(".comentarios");
+  const comentariosDiv =
+    target.comentariosDiv || document.querySelector(".comentarios");
   comentariosDiv.innerHTML = "";
-  const imagemCompletaDiv = document.getElementById("image_wrapper");
+  const imagemCompletaDiv =
+    target.markerContainer || document.getElementById("image_wrapper");
 
   const isPdf = typeof id === "object" && id && id.arquivo_log_id;
-  const isVideo = !isPdf && currentMediaMode === "video";
+  const isVideo = !isPdf && (target.mediaMode || currentMediaMode) === "video";
   const markerContainer = isPdf
     ? document.getElementById("pdf_comment_layer") || imagemCompletaDiv
-    : imagemCompletaDiv;
+    : target.markerContainer || imagemCompletaDiv;
 
   // No PDF: não busca por página; busca tudo uma vez e filtra no front
   let comentarios = [];
@@ -5038,6 +5404,7 @@ async function renderComments(id) {
       const urlAll = `buscar_comentarios.php?arquivo_log_id=${encodeURIComponent(logId)}`;
       const response = await fetch(urlAll);
       const all = await response.json();
+      if (target.isCurrent && !target.isCurrent()) return;
       pdfCommentsCache.logId = logId;
       pdfCommentsCache.comentarios = Array.isArray(all) ? all : [];
       pdfCommentsCache.fetchedAt = Date.now();
@@ -5048,6 +5415,7 @@ async function renderComments(id) {
     const url = `buscar_comentarios.php?id=${encodeURIComponent(String(id))}`;
     const response = await fetch(url);
     const data = await response.json();
+    if (target.isCurrent && !target.isCurrent()) return;
     comentarios = Array.isArray(data) ? data : [];
   }
 
@@ -5057,7 +5425,9 @@ async function renderComments(id) {
     .forEach((c) => c.remove());
 
   // Oculta a sidebar-direita se não houver comentários
-  if (comentarios.length === 0) {
+  if (target.hideList) {
+    comentariosDiv.style.display = "none";
+  } else if (comentarios.length === 0) {
     comentariosDiv.style.display = "none";
   } else {
     comentariosDiv.style.display = "flex";
@@ -5065,6 +5435,7 @@ async function renderComments(id) {
   }
 
   const users = await fetch("buscar_usuarios.php").then((res) => res.json());
+  if (target.isCurrent && !target.isCurrent()) return;
   if (users.length > 0) _cachedUsers = users;
 
   const tribute = new Tribute({
@@ -5852,7 +6223,7 @@ async function deleteComment(commentId) {
           pagina: pdfViewerState.page,
         });
       } else {
-        renderComments(ap_imagem_id);
+        refreshCurrentCommentTarget();
       }
     } else {
       Toastify({

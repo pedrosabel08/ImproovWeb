@@ -688,6 +688,10 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.column.is-hidden {
+  display: none;
+}
+
 .column-header {
   display: flex;
   align-items: center;

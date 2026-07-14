@@ -421,7 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Render a list of entregas into the columns
   function renderEntregas(list) {
-    // clear existing cards
+    // Clear existing cards
     columns.forEach((col) =>
       (col.querySelector(".column-cards") || col)
         .querySelectorAll(".card-entrega")
@@ -429,37 +429,47 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     list.forEach((entrega) => {
-      // find column based on dataset statuses
+      // Find column based on dataset statuses
       const col = Array.from(columns).find((c) => {
         const statuses = (c.dataset.status || "")
           .split(",")
           .map((s) => s.trim().toLowerCase());
-        // try to match using kanban_status first, then status, then nome_etapa
+
         const entStatus = String(
           entrega.kanban_status || entrega.status || entrega.nome_etapa || "",
         )
           .trim()
           .toLowerCase();
+
         return entStatus && statuses.includes(entStatus);
       });
 
       if (!col) return;
+
       const card = createCard(entrega);
       (col.querySelector(".column-cards") || col).appendChild(card);
     });
 
-    // Update column count badges
+    // Update column count badges and hide empty HOLD column
     columns.forEach((col) => {
       const count = col.querySelectorAll(".card-entrega").length;
-      const statusKey = (col.dataset.status || "")
-        .split(",")[0]
-        .trim()
-        .toLowerCase();
+
+      const statuses = (col.dataset.status || "")
+        .split(",")
+        .map((status) => status.trim().toLowerCase());
+
+      const statusKey = statuses[0] || "";
+
       const countEl = document.getElementById("count-" + statusKey);
       if (countEl) countEl.textContent = count;
+
+      const isHoldColumn = statuses.includes("hold");
+
+      if (isHoldColumn) {
+        col.classList.toggle("is-hidden", count === 0);
+      }
     });
   }
-
   // Populate filter selects (obra/status) from the fetched entregas
   function populateFiltersFrom(entregas) {
     try {
@@ -4559,7 +4569,9 @@ if (btnAdicionarImagem) {
 
   function generateRelatorioPdf(data) {
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      alert("Biblioteca de PDF nao carregada. Atualize a pagina e tente novamente.");
+      alert(
+        "Biblioteca de PDF nao carregada. Atualize a pagina e tente novamente.",
+      );
       return;
     }
 
@@ -4571,7 +4583,9 @@ if (btnAdicionarImagem) {
     });
 
     if (typeof doc.autoTable !== "function") {
-      alert("Biblioteca de tabelas do PDF nao carregada. Atualize a pagina e tente novamente.");
+      alert(
+        "Biblioteca de tabelas do PDF nao carregada. Atualize a pagina e tente novamente.",
+      );
       return;
     }
 
@@ -4625,7 +4639,16 @@ if (btnAdicionarImagem) {
       theme: "grid",
       styles: { font: "helvetica", fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [67, 77, 92], textColor: 255 },
-      head: [["Etapas", "Entregas", "Imagens", "Concluidas", "Pendentes", "% concluido"]],
+      head: [
+        [
+          "Etapas",
+          "Entregas",
+          "Imagens",
+          "Concluidas",
+          "Pendentes",
+          "% concluido",
+        ],
+      ],
       body: [
         [
           textValue(sum.total_etapas ?? 0),
@@ -4642,7 +4665,9 @@ if (btnAdicionarImagem) {
     etapas.forEach((etapa) => {
       const rows = relatorioPdfRows(etapa);
       const isP00 = etapa.tipo === "p00";
-      const count = isP00 ? etapa.versoes_count || 0 : etapa.entregas_count || 0;
+      const count = isP00
+        ? etapa.versoes_count || 0
+        : etapa.entregas_count || 0;
       const sectionTitle = `${textValue(etapa.codigo)} - ${textValue(etapa.label || etapa.codigo)} (${count} ${isP00 ? "versoes" : "entregas"}, ${etapa.pct ?? 0}%)`;
 
       if (nextY > pageHeight - 30) {
@@ -4672,7 +4697,13 @@ if (btnAdicionarImagem) {
 
       const drawHeader = () => {
         doc.setFillColor(34, 93, 150);
-        doc.rect(margin, nextY, widths.reduce((acc, width) => acc + width, 0), rowHeight, "F");
+        doc.rect(
+          margin,
+          nextY,
+          widths.reduce((acc, width) => acc + width, 0),
+          rowHeight,
+          "F",
+        );
         doc.setTextColor(255);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(6.8);
@@ -4697,16 +4728,27 @@ if (btnAdicionarImagem) {
 
         if (rowIndex % 2 === 1) {
           doc.setFillColor(246, 248, 251);
-          doc.rect(margin, nextY - 0.5, widths.reduce((acc, width) => acc + width, 0), rowHeight, "F");
+          doc.rect(
+            margin,
+            nextY - 0.5,
+            widths.reduce((acc, width) => acc + width, 0),
+            rowHeight,
+            "F",
+          );
         }
 
         let x = margin;
         row.forEach((cell, index) => {
           const alignRight = index === 5;
-          doc.text(textValue(cell), alignRight ? x + widths[index] - 1.2 : x + 1.2, nextY + 3.8, {
-            align: alignRight ? "right" : "left",
-            maxWidth: widths[index] - 2.4,
-          });
+          doc.text(
+            textValue(cell),
+            alignRight ? x + widths[index] - 1.2 : x + 1.2,
+            nextY + 3.8,
+            {
+              align: alignRight ? "right" : "left",
+              maxWidth: widths[index] - 2.4,
+            },
+          );
           x += widths[index];
         });
         nextY += rowHeight;
@@ -4721,9 +4763,14 @@ if (btnAdicionarImagem) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(100);
-      doc.text(`Pagina ${page} de ${pages}`, pageWidth - margin, pageHeight - 7, {
-        align: "right",
-      });
+      doc.text(
+        `Pagina ${page} de ${pages}`,
+        pageWidth - margin,
+        pageHeight - 7,
+        {
+          align: "right",
+        },
+      );
     }
 
     const filename = `relatorio-producao-${safeFileName(obra.nomenclatura) || "obra"}-${todayFileStamp()}.pdf`;

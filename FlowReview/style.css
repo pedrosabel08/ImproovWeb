@@ -1640,7 +1640,7 @@ p.imagem_nome {
   width: auto !important;
   min-width: 142px;
   padding: 0 12px;
-  border-radius: 16px !important;
+  border-radius: 6px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;

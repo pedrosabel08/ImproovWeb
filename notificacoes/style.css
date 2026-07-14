@@ -344,6 +344,39 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
+/* Quill reutiliza a mesma base visual dos campos do formulário. */
+.quill-value { display: none; }
+
+#mensagem-quill-editor {
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+}
+
+#mensagem-quill-editor .ql-toolbar.ql-snow {
+    border-color: var(--border-input);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--bg-surface-alt);
+}
+
+#mensagem-quill-editor .ql-container.ql-snow {
+    min-height: 110px;
+    border-color: var(--border-input);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+}
+
+#mensagem-quill-editor .ql-editor {
+    min-height: 110px;
+    color: var(--text-primary);
+}
+
+#mensagem-quill-editor .ql-editor.ql-blank::before {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .inline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .checkbox { display: inline-flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 13px; }
 .checkbox input { width: 14px; height: 14px; accent-color: var(--accent); }

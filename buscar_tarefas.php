@@ -133,6 +133,55 @@ if ($notificacao_modulo_stmt) {
     $notificacao_modulo_stmt->close();
 }
 
+// Anexos do novo modelo. A consulta separada preserva uma linha por notificação.
+if (!empty($notificacoes_modulo)) {
+    $byId = [];
+    foreach ($notificacoes_modulo as $index => $notificacao) {
+        $notificacoes_modulo[$index]['anexos'] = [];
+        $byId[(int)$notificacao['id']] = $index;
+    }
+
+    $tableCheck = $conn->query("SHOW TABLES LIKE 'notificacoes_anexos'");
+    if ($tableCheck && $tableCheck->num_rows > 0) {
+        $ids = array_keys($byId);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmtAnexos = $conn->prepare("SELECT id, notificacao_id, nome_original, caminho, mime_type, tamanho, ordem FROM notificacoes_anexos WHERE notificacao_id IN ($placeholders) ORDER BY notificacao_id, ordem, id");
+        if ($stmtAnexos) {
+            $types = str_repeat('i', count($ids));
+            $stmtAnexos->bind_param($types, ...$ids);
+            $stmtAnexos->execute();
+            $resAnexos = $stmtAnexos->get_result();
+            while ($resAnexos && ($anexo = $resAnexos->fetch_assoc())) {
+                $notifId = (int)$anexo['notificacao_id'];
+                if (!isset($byId[$notifId])) continue;
+                $notificacoes_modulo[$byId[$notifId]]['anexos'][] = [
+                    'id' => (int)$anexo['id'],
+                    'nome_original' => $anexo['nome_original'],
+                    'url' => $anexo['caminho'],
+                    'mime_type' => $anexo['mime_type'],
+                    'tamanho' => (int)$anexo['tamanho'],
+                ];
+            }
+            $stmtAnexos->close();
+        }
+    }
+
+    // Compatibilidade com notificações anteriores à tabela filha.
+    foreach ($notificacoes_modulo as &$notificacao) {
+        if (!empty($notificacao['arquivo_path'])) {
+            $notificacao['anexos'][] = [
+                'id' => null,
+                'nome_original' => $notificacao['arquivo_nome'] ?: 'Arquivo',
+                'url' => $notificacao['arquivo_path'],
+                'mime_type' => '',
+                'tamanho' => null,
+                'legado' => true,
+            ];
+        }
+    }
+    unset($notificacao);
+}
+
 // Resposta combinada
 echo json_encode([
     'tarefas' => $tarefas,

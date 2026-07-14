@@ -2,13 +2,13 @@
 
 require_once __DIR__ . '/../_common.php';
 
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../index.php');
-    exit();
+    notificacaoJsonResponse(false, 'Método não permitido.', 405);
 }
 
 $titulo = trim((string)($_POST['titulo'] ?? ''));
-$mensagem = trim((string)($_POST['mensagem'] ?? ''));
+$mensagem = notificacaoSanitizeHtml($_POST['mensagem'] ?? '');
 $tipo = trim((string)($_POST['tipo'] ?? 'info'));
 $canal = trim((string)($_POST['canal'] ?? 'banner'));
 $segmentacao_tipo = trim((string)($_POST['segmentacao_tipo'] ?? 'geral'));
@@ -31,11 +31,13 @@ $version_type = trim((string)($_POST['version_type'] ?? 'patch'));
 $version_manual = trim((string)($_POST['version_manual'] ?? ''));
 $version_desc = trim((string)($_POST['version_desc'] ?? ''));
 
-list($arquivo_path, $arquivo_nome) = saveUploadedPdf('arquivo_pdf');
-
 if ($titulo === '' || $mensagem === '') {
-    header('Location: ../index.php?err=' . urlencode('Título e mensagem são obrigatórios.'));
-    exit();
+    notificacaoJsonResponse(false, [
+        'erro' => 'Título e mensagem são obrigatórios.',
+        'titulo_recebido' => $titulo,
+        'mensagem_original' => $_POST['mensagem'] ?? null,
+        'mensagem_sanitizada' => $mensagem,
+    ], 422);
 }
 
 $allowedTipos = ['info', 'warning', 'danger', 'success'];
@@ -57,6 +59,15 @@ $cta_label = $cta_label === '' ? null : $cta_label;
 $cta_url = $cta_url === '' ? null : $cta_url;
 $payload_json = $payload_json === '' ? null : $payload_json;
 
+try {
+    if (notificacaoNormalizeUploads('arquivos') && !notificacaoAnexosTableExists($conn)) {
+        throw new RuntimeException('A migration de anexos de notificações precisa ser aplicada antes de enviar arquivos.');
+    }
+    $attachments = notificacaoSaveUploadedFiles('arquivos');
+} catch (Throwable $e) {
+    notificacaoJsonResponse(false, $e->getMessage(), 422);
+}
+
 $alvoIds = [];
 if ($segmentacao_tipo === 'funcao') {
     $alvoIds = $_POST['funcao_ids'] ?? [];
@@ -66,18 +77,18 @@ if ($segmentacao_tipo === 'funcao') {
     $alvoIds = $_POST['obra_ids'] ?? [];
 }
 
-$sql = "INSERT INTO notificacoes (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em, fim_em, fixa, fechavel, exige_confirmacao, cta_label, cta_url, arquivo_nome, arquivo_path, payload_json, criado_por)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+$sql = "INSERT INTO notificacoes (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em, fim_em, fixa, fechavel, exige_confirmacao, cta_label, cta_url, payload_json, criado_por)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
-    header('Location: ../index.php?err=' . urlencode('Erro ao preparar INSERT. Verifique se o SQL foi executado.'));
-    exit();
+    notificacaoRemoveFiles($attachments);
+    notificacaoJsonResponse(false, 'Erro ao preparar INSERT. Verifique se o SQL foi executado.', 500);
 }
 
 $criado_por = (int)($_SESSION['idusuario'] ?? 0);
 $stmt->bind_param(
-    'sssssiissiiisssssi',
+    'sssssiissiiisssi',
     $titulo,
     $mensagem,
     $tipo,
@@ -92,22 +103,29 @@ $stmt->bind_param(
     $exige_confirmacao,
     $cta_label,
     $cta_url,
-    $arquivo_nome,
-    $arquivo_path,
     $payload_json,
     $criado_por
 );
 
-if (!$stmt->execute()) {
+$conn->begin_transaction();
+try {
+    if (!$stmt->execute()) {
+        throw new RuntimeException('Erro ao salvar a notificação.');
+    }
+
+    $notificacaoId = (int)$conn->insert_id;
     $stmt->close();
-    header('Location: ../index.php?err=' . urlencode('Erro ao salvar notificação.'));
-    exit();
+    $stmt = null;
+
+    notificacaoInsertAttachments($conn, $notificacaoId, $attachments);
+    replaceTargetsAndRecipients($conn, $notificacaoId, $segmentacao_tipo, $alvoIds);
+    $conn->commit();
+} catch (Throwable $e) {
+    if ($stmt) $stmt->close();
+    $conn->rollback();
+    notificacaoRemoveFiles($attachments);
+    notificacaoJsonResponse(false, $e->getMessage() ?: 'Erro ao salvar a notificação.', 500);
 }
-
-$notificacaoId = (int)$conn->insert_id;
-$stmt->close();
-
-replaceTargetsAndRecipients($conn, $notificacaoId, $segmentacao_tipo, $alvoIds);
 
 $okMsg = 'Notificação criada!';
 $errMsg = '';
@@ -139,10 +157,4 @@ if ($version_bump) {
     }
 }
 
-$redirect = '../index.php?ok=' . urlencode($okMsg);
-if ($errMsg !== '') {
-    $redirect .= '&err=' . urlencode($errMsg);
-}
-
-header('Location: ' . $redirect);
-exit();
+notificacaoJsonResponse(true, $okMsg, 200, ['warning' => $errMsg ?: null, 'redirect' => 'index.php']);

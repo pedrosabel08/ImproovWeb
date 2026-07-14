@@ -183,13 +183,13 @@ function buscarTarefas(mostrarAlerta = true) {
         console.log("Nenhuma tarefa pendente.");
       }
 
-      // if (mostrarAlerta && notificacoesModulo.length > 0) {
-      //   console.debug(
-      //     "buscarTarefas: enfileirando notificacoesModulo",
-      //     notificacoesModulo.length,
-      //   );
-      //   enfileirarNotificacoesModulo(notificacoesModulo);
-      // }
+      if (mostrarAlerta && notificacoesModulo.length > 0) {
+        console.debug(
+          "buscarTarefas: enfileirando notificacoesModulo",
+          notificacoesModulo.length,
+        );
+        enfileirarNotificacoesModulo(notificacoesModulo);
+      }
 
       return { tarefas, notificacoes, notificacoesModulo };
     })
@@ -641,6 +641,91 @@ function mostrarProximaNotificacaoModulo() {
   });
 }
 
+function sanitizarHtmlNotificacao(html) {
+  const permitidos = new Set([
+    "P",
+    "BR",
+    "STRONG",
+    "B",
+    "EM",
+    "I",
+    "U",
+    "S",
+    "UL",
+    "OL",
+    "LI",
+    "A",
+    "H1",
+    "H2",
+    "H3",
+    "BLOCKQUOTE",
+    "SPAN",
+  ]);
+  const template = document.createElement("template");
+  template.innerHTML = String(html || "");
+  const limpar = (node) =>
+    [...node.children].forEach((el) => {
+      if (!permitidos.has(el.tagName)) {
+        el.replaceWith(...el.childNodes);
+        return;
+      }
+      [...el.attributes].forEach((attr) => {
+        const nome = attr.name.toLowerCase(),
+          valor = attr.value.trim();
+        const classe =
+          nome === "class" &&
+          valor
+            .split(/\s+/)
+            .every((c) =>
+              /^(ql-align-(center|right|justify)|ql-indent-[1-8])$/.test(c),
+            );
+        const lista =
+          el.tagName === "LI" &&
+          nome === "data-list" &&
+          ["ordered", "bullet"].includes(valor);
+        const href =
+          el.tagName === "A" &&
+          nome === "href" &&
+          /^(https?:\/\/|mailto:|\/)/i.test(valor);
+        const target =
+          el.tagName === "A" &&
+          nome === "target" &&
+          ["_blank", "_self"].includes(valor);
+        const style =
+          nome === "style" &&
+          /^(color|background-color)\s*:\s*(#[0-9a-f]{3,8}|rgb\([\d\s,%]+\)|rgba\([\d\s,.%]+\))\s*;?$/i.test(
+            valor,
+          );
+        if (!(classe || lista || href || target || style))
+          el.removeAttribute(attr.name);
+      });
+      if (el.tagName === "A" && el.target === "_blank")
+        el.rel = "noopener noreferrer";
+      limpar(el);
+    });
+  limpar(template.content);
+  return template.innerHTML;
+}
+
+function notificacaoEhImagem(anexo) {
+  return (
+    /^image\//i.test(anexo.mime_type || "") ||
+    /\.(png|jpe?g|gif|webp|bmp)(?:$|\?)/i.test(anexo.url || "")
+  );
+}
+
+function formatarTamanhoNotificacao(bytes) {
+  if (!Number.isFinite(Number(bytes)) || Number(bytes) < 1) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = Number(bytes),
+    index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index++;
+  }
+  return `${value.toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
 function abrirModalNotificacaoModulo(notificacao, onClose) {
   const modalId = "noti-modal-modulo";
   let modal = document.getElementById(modalId);
@@ -653,8 +738,8 @@ function abrirModalNotificacaoModulo(notificacao, onClose) {
             <div class="noti-modal__overlay"></div>
             <div class="noti-modal__panel">
                 <button class="noti-modal__close" aria-label="Fechar">×</button>
-                <div class="noti-modal__title"></div>
-                <div class="noti-modal__message"></div>
+                <div class="noti-modal__header"><div class="noti-modal__title"></div></div>
+                <div class="noti-modal__body"><div class="noti-modal__message"></div></div>
                 <div class="noti-modal__actions"></div>
                 <div class="noti-modal__pdf" style="display:none;">
                     <canvas class="noti-modal__pdf-canvas"></canvas>
@@ -692,15 +777,144 @@ function abrirModalNotificacaoModulo(notificacao, onClose) {
   if (titleEl) titleEl.textContent = notificacao.titulo || "Notificação";
   // Render message as HTML so formatting (bold, links, lists, etc.) appears as written
   // Convert plain-text newlines to <br> so stored plain text keeps visual breaks
-  if (msgEl)
-    msgEl.innerHTML = (notificacao.mensagem || "").replace(/\r?\n/g, "<br>");
+  if (msgEl) {
+    msgEl.classList.add("notification-content");
+    const mensagem = notificacao.mensagem || "";
+    msgEl.innerHTML = sanitizarHtmlNotificacao(
+      mensagem.includes("<") ? mensagem : mensagem.replace(/\r?\n/g, "<br>"),
+    );
+  }
+
+  let mediaEl = modal.querySelector(".noti-modal__media");
+  let attachmentsEl = modal.querySelector(".noti-modal__attachments");
+  if (!mediaEl) {
+    mediaEl = document.createElement("div");
+    mediaEl.className = "noti-modal__media";
+    attachmentsEl = document.createElement("div");
+    attachmentsEl.className = "noti-modal__attachments";
+    modal.querySelector(".noti-modal__body").append(mediaEl, attachmentsEl);
+  }
+  const anexos = Array.isArray(notificacao.anexos)
+    ? notificacao.anexos
+    : notificacao.arquivo_path
+      ? [
+          {
+            nome_original: notificacao.arquivo_nome || "Arquivo",
+            url: notificacao.arquivo_path,
+            mime_type: "",
+          },
+        ]
+      : [];
+  const imagens = anexos.filter(notificacaoEhImagem);
+  const outros = anexos.filter((anexo) => !notificacaoEhImagem(anexo));
+  mediaEl.innerHTML = "";
+  mediaEl.style.display = imagens.length ? "" : "none";
+  attachmentsEl.innerHTML = "";
+  attachmentsEl.style.display = outros.length ? "" : "none";
+  if (imagens.length) {
+    let indice = 0;
+    const carousel = document.createElement("div");
+    carousel.className = "noti-carousel";
+    carousel.tabIndex = 0;
+    const image = document.createElement("img");
+    image.className = "noti-carousel__image";
+    carousel.appendChild(image);
+    const atualizar = (novoIndice) => {
+      indice = (novoIndice + imagens.length) % imagens.length;
+      const atual = imagens[indice];
+      image.src = resolveImproovUrl(atual.url);
+      image.alt = atual.nome_original || "Imagem da notificação";
+      const position = carousel.querySelector(".noti-carousel__position");
+      if (position) position.textContent = `${indice + 1} de ${imagens.length}`;
+      carousel
+        .querySelectorAll(".noti-carousel__thumb")
+        .forEach((thumb, i) =>
+          thumb.setAttribute("aria-current", i === indice ? "true" : "false"),
+        );
+    };
+    image.onerror = () => image.classList.add("noti-carousel__image--error");
+    image.onload = () => image.classList.remove("noti-carousel__image--error");
+    if (imagens.length > 1) {
+      [
+        ["previous", "‹", -1],
+        ["next", "›", 1],
+      ].forEach(([direction, label, delta]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `noti-carousel__nav noti-carousel__nav--${direction}`;
+        button.setAttribute(
+          "aria-label",
+          direction === "previous" ? "Imagem anterior" : "Próxima imagem",
+        );
+        button.textContent = label;
+        button.onclick = () => atualizar(indice + delta);
+        carousel.appendChild(button);
+      });
+      const position = document.createElement("div");
+      position.className = "noti-carousel__position";
+      carousel.appendChild(position);
+      const thumbs = document.createElement("div");
+      thumbs.className = "noti-carousel__thumbs";
+      imagens.forEach((anexo, i) => {
+        const thumb = document.createElement("button");
+        thumb.type = "button";
+        thumb.className = "noti-carousel__thumb";
+        thumb.setAttribute("aria-label", `Ver imagem ${i + 1}`);
+        const thumbImage = document.createElement("img");
+        thumbImage.src = resolveImproovUrl(anexo.url);
+        thumbImage.alt = "";
+        thumb.appendChild(thumbImage);
+        thumb.onclick = () => atualizar(i);
+        thumbs.appendChild(thumb);
+      });
+      carousel.appendChild(thumbs);
+    }
+    carousel.onkeydown = (event) => {
+      if (event.key === "ArrowLeft") atualizar(indice - 1);
+      if (event.key === "ArrowRight") atualizar(indice + 1);
+    };
+    let touchStart = 0;
+    carousel.ontouchstart = (event) => {
+      touchStart = event.changedTouches[0]?.clientX || 0;
+    };
+    carousel.ontouchend = (event) => {
+      const end = event.changedTouches[0]?.clientX || 0;
+      if (Math.abs(end - touchStart) > 40 && imagens.length > 1)
+        atualizar(indice + (end < touchStart ? 1 : -1));
+    };
+    mediaEl.appendChild(carousel);
+    atualizar(0);
+  }
+  if (outros.length) {
+    const list = document.createElement("ul");
+    list.className = "noti-attachments-list";
+    outros.forEach((anexo) => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = resolveImproovUrl(anexo.url);
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "noti-attachments-list__link";
+      const icon = document.createElement("i");
+      icon.className = "fas fa-paperclip";
+      icon.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.textContent = anexo.nome_original || "Arquivo";
+      const size = document.createElement("small");
+      size.textContent = formatarTamanhoNotificacao(anexo.tamanho);
+      link.append(icon, label, size);
+      item.appendChild(link);
+      list.appendChild(item);
+    });
+    attachmentsEl.appendChild(list);
+  }
 
   if (actionsEl) {
     actionsEl.innerHTML = "";
     const closeBtn = modal.querySelector(".noti-modal__close");
     if (closeBtn) {
       closeBtn.disabled = false;
-      closeBtn.addEventListener("click", () => {
+      closeBtn.onclick = () => {
         const exige =
           notificacao.exige_confirmacao &&
           String(notificacao.exige_confirmacao) !== "0";
@@ -711,7 +925,7 @@ function abrirModalNotificacaoModulo(notificacao, onClose) {
         } else {
           fecharModalNotificacaoModulo(onClose);
         }
-      });
+      };
     }
 
     if (notificacao.cta_label && notificacao.cta_url) {
@@ -783,7 +997,7 @@ function abrirModalNotificacaoModulo(notificacao, onClose) {
     }
   }
 
-  if (pdfEl || imgEl) {
+  if (false && (pdfEl || imgEl)) {
     const filePath = notificacao.arquivo_path || "";
     const fileName = notificacao.arquivo_nome || "Arquivo";
     const fileRef = `${filePath} ${fileName}`.toLowerCase();

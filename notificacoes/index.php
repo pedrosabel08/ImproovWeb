@@ -10,6 +10,7 @@ unset($__root, $__p);
 
 
 require_once __DIR__ . '/_common.php';
+include_once __DIR__ . '/../conexao.php';
 
 $flashOk = $_GET['ok'] ?? null;
 $flashErr = $_GET['err'] ?? null;
@@ -21,6 +22,7 @@ $usuarios = getAllUsuarios($conn);
 $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
 $editRow = null;
 $editTargets = [];
+$editAttachments = [];
 
 if ($editId) {
     $stmt = $conn->prepare('SELECT * FROM notificacoes WHERE id = ?');
@@ -31,6 +33,17 @@ if ($editId) {
             $editRow = $res ? $res->fetch_assoc() : null;
         }
         $stmt->close();
+    }
+
+    if ($editRow && notificacaoAnexosTableExists($conn)) {
+        $stmtA = $conn->prepare('SELECT id, nome_original, caminho, mime_type, tamanho FROM notificacoes_anexos WHERE notificacao_id = ? ORDER BY ordem, id');
+        if ($stmtA) {
+            $stmtA->bind_param('i', $editId);
+            $stmtA->execute();
+            $resA = $stmtA->get_result();
+            while ($resA && ($rowA = $resA->fetch_assoc())) $editAttachments[] = $rowA;
+            $stmtA->close();
+        }
     }
 
     $stmtT = $conn->prepare('SELECT tipo, alvo_id FROM notificacoes_alvos WHERE notificacao_id = ?');
@@ -120,9 +133,11 @@ if ($resVer === false) {
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>" />
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <title>Notificações</title>
 </head>
 
@@ -140,13 +155,6 @@ if ($resVer === false) {
                 <button class="btn-apply" type="button" id="btnOpenCreate"><i class="fa-solid fa-plus"></i> Adicionar notificação</button>
             </div>
         </div>
-
-        <?php if ($flashOk): ?>
-            <div class="alert-box ok"><i class="fa-solid fa-circle-check"></i><?= h($flashOk) ?></div>
-        <?php endif; ?>
-        <?php if ($flashErr): ?>
-            <div class="alert-box err"><i class="fa-solid fa-circle-xmark"></i><?= h($flashErr) ?></div>
-        <?php endif; ?>
 
         <?php if (!$tableReady): ?>
             <div class="alert-box danger"><i class="fa-solid fa-circle-xmark"></i>
@@ -216,7 +224,7 @@ if ($resVer === false) {
                                 <div class="inline">
                                     <a class="btn-row neutral" href="index.php?edit=<?= (int)$n['id'] ?>#modal"><i class="fa-solid fa-pen"></i> Editar</a>
 
-                                    <form method="POST" action="actions/toggle.php" style="display:inline;">
+                                    <form method="POST" action="actions/toggle.php" style="display:inline;" data-async-action>
                                         <input type="hidden" name="id" value="<?= (int)$n['id'] ?>" />
                                         <input type="hidden" name="ativa" value="<?= (int)$n['ativa'] ?>" />
                                         <button class="btn-row neutral" type="submit"><?= ((int)$n['ativa'] === 1) ? 'Desativar' : 'Ativar' ?></button>
@@ -263,7 +271,7 @@ if ($resVer === false) {
                     </div>
 
                     <div class="tab-panel is-active" data-tab-panel="notif">
-                        <form method="POST" action="<?= $editRow ? 'actions/update.php' : 'actions/create.php' ?>" enctype="multipart/form-data">
+                        <form id="notificationForm" method="POST" action="<?= $editRow ? 'actions/update.php' : 'actions/create.php' ?>" enctype="multipart/form-data">
                             <?php if ($editRow): ?>
                                 <input type="hidden" name="id" value="<?= (int)$editRow['id'] ?>" />
                             <?php endif; ?>
@@ -281,7 +289,8 @@ if ($resVer === false) {
 
                         <div class="row">
                             <label>Mensagem</label>
-                            <textarea id="f_mensagem" name="mensagem" required><?= h($editRow['mensagem'] ?? '') ?></textarea>
+                            <textarea id="f_mensagem" name="mensagem" class="quill-value" aria-hidden="true" tabindex="-1"><?= h($editRow['mensagem'] ?? '') ?></textarea>
+                            <div id="mensagem-quill-editor" aria-label="Mensagem da notificação"></div>
                         </div>
 
                         <div class="grid-3">
@@ -406,7 +415,17 @@ if ($resVer === false) {
 
                         <div class="row">
                             <label>Arquivo (PDF ou imagem) (opcional)</label>
-                            <input type="file" name="arquivo_pdf" accept="application/pdf,image/*" />
+                            <input id="f_arquivos" type="file" name="arquivos[]" accept="application/pdf,image/png,image/jpeg,image/gif,image/webp,image/bmp" multiple />
+                            <div class="small">Até 10 arquivos, 10 MB por arquivo e 40 MB no total. Formatos aceitos: PDF, PNG, JPG, GIF, WEBP e BMP.</div>
+                            <div id="f_arquivos_feedback" class="small" aria-live="polite"></div>
+                            <?php if (!empty($editAttachments)): ?>
+                                <div class="small">Anexos já enviados:</div>
+                                <ul class="attachment-list">
+                                    <?php foreach ($editAttachments as $attachment): ?>
+                                        <li><a href="../<?= h($attachment['caminho']) ?>" target="_blank" rel="noopener noreferrer"><?= h($attachment['nome_original']) ?></a></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
                             <?php if (!empty($editRow['arquivo_path'])): ?>
                                 <div class="small">Arquivo atual: <a href="../<?= h($editRow['arquivo_path']) ?>" target="_blank" rel="noopener noreferrer"><?= h($editRow['arquivo_nome'] ?? 'Arquivo') ?></a></div>
                             <?php endif; ?>
@@ -420,7 +439,7 @@ if ($resVer === false) {
                     </div>
 
                     <div class="tab-panel" data-tab-panel="version">
-                        <form method="POST" action="actions/version_bump.php">
+                        <form method="POST" action="actions/version_bump.php" data-async-action>
                             <div class="row">
                                 <label>Versão atual</label>
                                 <div class="small"><b><?= h(defined('APP_VERSION') ? APP_VERSION : 'dev') ?></b></div>
@@ -521,6 +540,8 @@ if ($resVer === false) {
 
     <script>
         window.__editOpen = <?= $editRow ? 'true' : 'false' ?>;
+        window.__legacyToast = <?= json_encode($flashOk ?: $flashErr ?: '', JSON_UNESCAPED_UNICODE) ?>;
+        window.__legacyToastType = <?= json_encode($flashErr ? 'error' : 'success') ?>;
         // Count badge
         document.addEventListener('DOMContentLoaded', () => {
             const rows = document.querySelectorAll('.data-table tbody tr');

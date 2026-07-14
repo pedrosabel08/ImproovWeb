@@ -4,8 +4,7 @@ require_once __DIR__ . '/../_common.php';
 require_once realpath(__DIR__ . '/../../config/version_manager.php') ?: __DIR__ . '/../../config/version_manager.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../index.php');
-    exit();
+    notificacaoJsonResponse(false, 'Método não permitido.', 405);
 }
 
 $version_type = trim((string)($_POST['version_type'] ?? 'patch'));
@@ -17,8 +16,7 @@ $explicit = ($version_type === 'manual') ? $version_manual : null;
 $result = improov_bump_versions($root ?: (__DIR__ . '/../../'), $version_type, $explicit);
 
 if (!$result['ok']) {
-    header('Location: ../index.php?err=' . urlencode($result['message'] ?? 'Falha ao atualizar a versão.'));
-    exit();
+    notificacaoJsonResponse(false, $result['message'] ?? 'Falha ao atualizar a versão.', 422);
 }
 
 $version_final = (string)($result['app_version'] ?? '');
@@ -31,14 +29,11 @@ if ($stmtV) {
     $stmtV->bind_param('sssi', $version_final, $desc_final, $tipo_final, $criado_por);
     if (!$stmtV->execute()) {
         $stmtV->close();
-        header('Location: ../index.php?err=' . urlencode('Versão atualizada, mas falhou ao registrar no banco.'));
-        exit();
+        notificacaoJsonResponse(false, 'Versão atualizada, mas falhou ao registrar no banco.', 500);
     }
     $stmtV->close();
 } else {
-    header('Location: ../index.php?err=' . urlencode('Versão atualizada, mas falhou ao preparar registro no banco.'));
-    exit();
+    notificacaoJsonResponse(false, 'Versão atualizada, mas falhou ao preparar registro no banco.', 500);
 }
 
-header('Location: ../index.php?ok=' . urlencode('Versão registrada: ' . $version_final));
-exit();
+notificacaoJsonResponse(true, 'Versão registrada: ' . $version_final, 200, ['redirect' => 'index.php']);

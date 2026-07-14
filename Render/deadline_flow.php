@@ -162,17 +162,19 @@ function deadline_flow_ensure_initial_attempt(mysqli $conn, int $renderId): int
 {
     deadline_flow_require_schema($conn);
     $render = deadline_flow_lock_render($conn, $renderId);
-    $stmt = $conn->prepare(
-        'SELECT id FROM render_tentativas WHERE render_id = ? ORDER BY numero_tentativa DESC LIMIT 1'
-    );
-    $stmt->bind_param('i', $renderId);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    if ($row) {
-        return (int) $row['id'];
+
+    // Tentativas encerradas pertencem a ciclos anteriores e nao podem ser
+    // reutilizadas como tentativa operacional atual.
+    $activeAttempt = deadline_flow_lock_active_attempt($conn, $renderId);
+    if ($activeAttempt) {
+        return (int) $activeAttempt['id'];
     }
-    return deadline_flow_create_attempt($conn, $render, 1);
+
+    return deadline_flow_create_attempt(
+        $conn,
+        $render,
+        deadline_flow_next_attempt_number($conn, $renderId)
+    );
 }
 
 function deadline_flow_reactivate_archived_locked(
@@ -345,45 +347,139 @@ function deadline_flow_rework_locked(mysqli $conn, int $renderId, string $flowSt
 function deadline_flow_approve_locked(mysqli $conn, int $renderId): array
 {
     deadline_flow_require_schema($conn);
+
     $render = deadline_flow_lock_render($conn, $renderId);
+
+    if (!$render) {
+        throw new RuntimeException(
+            "Render {$renderId} não encontrado ou não pôde ser bloqueado."
+        );
+    }
+
     $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
+
     if (!$attempt) {
         deadline_flow_ensure_initial_attempt($conn, $renderId);
         $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
     }
+
     if (!$attempt) {
-        throw new RuntimeException('Tentativa ativa nao encontrada para aprovacao.');
+        throw new RuntimeException(
+            "Tentativa ativa não encontrada para o render {$renderId}."
+        );
     }
 
-    // Nunca herdar o cache de uma tentativa anterior para a tentativa ativa.
-    $jobId = deadline_flow_valid_job_id($attempt['deadline_job_id'] ?? null);
-    $attemptId = (int) $attempt['id'];
+    $attemptId = (int) ($attempt['id'] ?? 0);
+
+    if ($attemptId <= 0) {
+        throw new RuntimeException(
+            'A tentativa ativa retornou um ID inválido.'
+        );
+    }
+
+    $jobId = deadline_flow_valid_job_id(
+        $attempt['deadline_job_id'] ?? null
+    );
+
     if ($jobId !== null) {
         $stmt = $conn->prepare(
             "UPDATE render_tentativas
-             SET status = ?, ativa = 0, concluido_em = COALESCE(concluido_em, NOW()),
+             SET status = ?,
+                 ativa = 0,
+                 concluido_em = COALESCE(concluido_em, NOW()),
                  motivo_encerramento = 'APROVADA_NO_FLOW'
              WHERE id = ?"
         );
+
+        if (!$stmt) {
+            throw new RuntimeException(
+                'Erro ao preparar encerramento da tentativa: ' .
+                    $conn->error
+            );
+        }
+
         $pending = DEADLINE_TENTATIVA_EXCLUSAO_PENDENTE;
         $stmt->bind_param('si', $pending, $attemptId);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+
+            throw new RuntimeException(
+                'Erro ao encerrar tentativa vinculada ao Deadline: ' .
+                    $error
+            );
+        }
+
+        if ($stmt->affected_rows === 0) {
+            $stmt->close();
+
+            throw new RuntimeException(
+                "Nenhuma tentativa foi atualizada para o ID {$attemptId}."
+            );
+        }
+
         $stmt->close();
-        $command = deadline_flow_enqueue_delete($conn, $render, $attemptId, $jobId, 80);
+
+        $command = deadline_flow_enqueue_delete(
+            $conn,
+            $render,
+            $attemptId,
+            $jobId,
+            80
+        );
     } else {
         $stmt = $conn->prepare(
             "UPDATE render_tentativas
-             SET status = ?, ativa = 0, concluido_em = COALESCE(concluido_em, NOW()),
-                 encerrado_em = NOW(), motivo_encerramento = 'APROVADA_SEM_JOB'
+             SET status = ?,
+                 ativa = 0,
+                 concluido_em = COALESCE(concluido_em, NOW()),
+                 encerrado_em = NOW(),
+                 motivo_encerramento = 'APROVADA_SEM_JOB'
              WHERE id = ?"
         );
+
+        if (!$stmt) {
+            throw new RuntimeException(
+                'Erro ao preparar aprovação sem job: ' .
+                    $conn->error
+            );
+        }
+
         $approved = DEADLINE_TENTATIVA_APROVADA;
         $stmt->bind_param('si', $approved, $attemptId);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+
+            throw new RuntimeException(
+                'Erro ao aprovar tentativa sem job: ' . $error
+            );
+        }
+
+        if ($stmt->affected_rows === 0) {
+            $stmt->close();
+
+            throw new RuntimeException(
+                "Nenhuma tentativa foi aprovada para o ID {$attemptId}."
+            );
+        }
+
         $stmt->close();
-        $command = ['created' => false, 'id' => null, 'status' => null];
+
+        $command = [
+            'created' => false,
+            'id' => null,
+            'status' => null,
+        ];
     }
-    return ['tentativa_id' => $attemptId, 'command' => $command];
+
+    return [
+        'tentativa_id' => $attemptId,
+        'deadline_job_id' => $jobId,
+        'command' => $command,
+    ];
 }
 
 function deadline_flow_archive_locked(mysqli $conn, int $renderId): array

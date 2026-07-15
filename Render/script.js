@@ -752,6 +752,12 @@ function editRender(idrender_alta) {
           `<span class="status-badge ${sc}"><i class="fa-solid ${ico}"></i> ${r.status}</span>`,
         );
 
+        if (r.status !== "Aprovado") {
+          $("#openRenderReferences").hide();
+        } else {
+          $("#openRenderReferences").show();
+        }
+
         // — Detail fields —
         $("#modal_idrender").text(r.idrender_alta || "—");
         $("#modal_numero_bg").text(r.numero_bg || "—");
@@ -1087,11 +1093,13 @@ function aprovarRender(approvalOrigin) {
     .trim()
     .toLowerCase();
   if (statusImagem !== "p00" && !approvalOrigin) {
-    if (window.RenderReferenceReview) window.RenderReferenceReview.open(idrender_alta);
+    if (window.RenderReferenceReview)
+      window.RenderReferenceReview.open(idrender_alta);
     return;
   }
   if (statusImagem !== "p00") {
-    if (window.RenderReferenceReview) window.RenderReferenceReview.open(idrender_alta, approvalOrigin);
+    if (window.RenderReferenceReview)
+      window.RenderReferenceReview.open(idrender_alta, approvalOrigin);
     return;
   }
   const payload = {
@@ -1148,7 +1156,8 @@ $("#aprovarRender")
 
 $("#openRenderReferences").on("click", function () {
   const idrender = Number($("#modal_idrender").text());
-  if (idrender && window.RenderReferenceReview) window.RenderReferenceReview.open(idrender, null, true);
+  if (idrender && window.RenderReferenceReview)
+    window.RenderReferenceReview.open(idrender, null, true);
 });
 
 // Fechar modal POS

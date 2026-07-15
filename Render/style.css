@@ -1404,11 +1404,11 @@ body {
 }
 
 .btn-aprovar {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  background: #298b3e8e;
+  color: #ffffff;
 }
 .btn-aprovar:hover {
-  background: rgba(16, 185, 129, 0.22);
+  background: #298b3f;
   transform: translateY(-1px);
 }
 
@@ -1427,6 +1427,16 @@ body {
 }
 .btn-excluir:hover {
   background: rgba(239, 68, 68, 0.18);
+  transform: translateY(-1px);
+}
+
+button#openRenderReferences {
+  background: #237d7fad;
+  color: #ffffff;
+}
+
+button#openRenderReferences:hover {
+  background: #237e7f;
   transform: translateY(-1px);
 }
 
@@ -2146,14 +2156,14 @@ body {
   margin: 0 0 10px;
 }
 .rr-comments textarea {
-    width: 100%;
-    min-height: 90px;
-    margin-top: 10px;
-    resize: vertical;
-    background: var(--bg-card);
-    padding: 5px;
-    border-radius: 4px;
-    color: var(--text-primary);
+  width: 100%;
+  min-height: 90px;
+  margin-top: 10px;
+  resize: vertical;
+  background: var(--bg-card);
+  padding: 5px;
+  border-radius: 4px;
+  color: var(--text-primary);
 }
 .rr-comment {
   padding: 9px;

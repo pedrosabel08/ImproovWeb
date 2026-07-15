@@ -371,11 +371,11 @@ $conn->close();
                 <button type="button" class="btn-action btn-reprovar" id="reprovarRender">
                     <i class="fa-solid fa-rotate-right"></i> Reprovar
                 </button>
-                <button type="button" class="btn-action" id="openRenderReferences">
-                    <i class="fa-solid fa-images"></i> Referências
-                </button>
                 <button type="button" class="btn-action btn-aprovar" id="aprovarRender">
                     <i class="fa-solid fa-check"></i> Aprovar
+                </button>
+                <button type="button" class="btn-action" id="openRenderReferences">
+                    <i class="fa-solid fa-images"></i> Referências
                 </button>
             </div>
 
@@ -413,11 +413,32 @@ $conn->close();
 
     <div id="renderReferenceReviewModal" class="modal render-reference-review" aria-hidden="true">
         <section class="render-reference-review__dialog" aria-labelledby="rrTitle">
-            <header class="render-reference-review__header"><div><h2 id="rrTitle">Referências e revisão</h2><p>Prepare as referências, comentários e anotações antes de enviar para a Pós.</p></div><button type="button" id="rrClose" class="modal-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></header>
+            <header class="render-reference-review__header">
+                <div>
+                    <h2 id="rrTitle">Referências e revisão</h2>
+                    <p>Prepare as referências, comentários e anotações antes de enviar para a Pós.</p>
+                </div><button type="button" id="rrClose" class="modal-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </header>
             <div class="render-reference-review__body">
-                <aside class="rr-sidebar"><label class="rr-upload"><i class="fa-solid fa-plus"></i> Adicionar referências<input id="rrFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><div id="rrReferenceList" class="rr-reference-list"></div></aside>
-                <main class="rr-workspace"><div class="rr-toolbar" role="toolbar"><button type="button" data-rr-tool="select" class="is-active"><i class="fa-solid fa-arrow-pointer"></i> Selecionar</button><button type="button" data-rr-tool="pencil"><i class="fa-solid fa-pen"></i> Lápis</button><button type="button" data-rr-tool="arrow"><i class="fa-solid fa-arrow-right"></i> Seta</button><button type="button" data-rr-tool="rectangle"><i class="fa-regular fa-square"></i> Retângulo</button><button type="button" data-rr-tool="circle"><i class="fa-regular fa-circle"></i> Círculo</button><button type="button" data-rr-tool="eraser"><i class="fa-solid fa-eraser"></i> Apagar</button><label class="rr-toolbar-control"><span>Cor</span><input id="rrColor" type="color" value="#f59e0b"></label><label class="rr-toolbar-control"><span>Espessura</span><select id="rrWidth"><option value="2">2px</option><option value="4">4px</option><option value="6">6px</option></select></label></div><div id="rrStage" class="rr-stage" data-tool="select"><div id="rrLayer" class="rr-layer"><img id="rrImage" alt="Referência selecionada"><canvas id="rrCanvas"></canvas></div><span id="rrZoomLabel" class="rr-zoom-label">100%</span></div><p class="rr-help">Ctrl + roda do mouse amplia no ponto do cursor. Arraste a imagem para navegar quando estiver ampliada.</p></main>
-                <aside class="rr-comments"><h3>Comentários</h3><div id="rrCommentList"></div><textarea id="rrCommentText" maxlength="1000" placeholder="Comentário sobre esta referência..."></textarea><p id="rrCommentBinding" class="rr-comment-binding">O comentário será salvo sem desenho.</p><button type="button" id="rrSaveCurrent" class="btn-pos-enviar">Salvar alterações desta referência</button></aside>
+                <aside class="rr-sidebar"><label class="rr-upload"><i class="fa-solid fa-plus"></i> Adicionar referências<input id="rrFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
+                    <div id="rrReferenceList" class="rr-reference-list"></div>
+                </aside>
+                <main class="rr-workspace">
+                    <div class="rr-toolbar" role="toolbar"><button type="button" data-rr-tool="select" class="is-active"><i class="fa-solid fa-arrow-pointer"></i> Selecionar</button><button type="button" data-rr-tool="pencil"><i class="fa-solid fa-pen"></i> Lápis</button><button type="button" data-rr-tool="arrow"><i class="fa-solid fa-arrow-right"></i> Seta</button><button type="button" data-rr-tool="rectangle"><i class="fa-regular fa-square"></i> Retângulo</button><button type="button" data-rr-tool="circle"><i class="fa-regular fa-circle"></i> Círculo</button><button type="button" data-rr-tool="eraser"><i class="fa-solid fa-eraser"></i> Apagar</button><label class="rr-toolbar-control"><span>Cor</span><input id="rrColor" type="color" value="#f59e0b"></label><label class="rr-toolbar-control"><span>Espessura</span><select id="rrWidth">
+                                <option value="2">2px</option>
+                                <option value="4">4px</option>
+                                <option value="6">6px</option>
+                            </select></label></div>
+                    <div id="rrStage" class="rr-stage" data-tool="select">
+                        <div id="rrLayer" class="rr-layer"><img id="rrImage" alt="Referência selecionada"><canvas id="rrCanvas"></canvas></div><span id="rrZoomLabel" class="rr-zoom-label">100%</span>
+                    </div>
+                    <p class="rr-help">Ctrl + roda do mouse amplia no ponto do cursor. Arraste a imagem para navegar quando estiver ampliada.</p>
+                </main>
+                <aside class="rr-comments">
+                    <h3>Comentários</h3>
+                    <div id="rrCommentList"></div><textarea id="rrCommentText" maxlength="1000" placeholder="Comentário sobre esta referência..."></textarea>
+                    <p id="rrCommentBinding" class="rr-comment-binding">O comentário será salvo sem desenho.</p><button type="button" id="rrSaveCurrent" class="btn-pos-enviar">Salvar alterações desta referência</button>
+                </aside>
             </div>
             <footer class="render-reference-review__footer"><button type="button" id="rrCancel" class="btn-pos-fechar">Cancelar</button><button type="button" id="rrConfirm" class="btn-pos-enviar">Confirmar envio para Pós</button></footer>
         </section>

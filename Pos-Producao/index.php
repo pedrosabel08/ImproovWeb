@@ -126,7 +126,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=1'; ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -249,6 +249,27 @@ $conn->close();
             </nav>
             <div id="tabela-imagens"></div>
         </div>
+    </div>
+
+    <div id="posReferenceAnnotationModal" class="modal pos-reference-modal" style="display:none;z-index:12000;">
+        <section class="modal-content pos-reference-modal__content" aria-labelledby="posReferenceAnnotationTitle">
+            <header class="pos-reference-modal__header">
+                <div><h2 id="posReferenceAnnotationTitle">Comentários e rabiscos da referência</h2><p>Adicione comentários e marque pontos importantes para orientar a Pós-produção.</p></div>
+                <div class="pos-reference-modal__header-actions"><button type="button" id="togglePosReferenceFullscreen" class="pos-reference-action-button"><i class="fa-solid fa-expand"></i> Tela cheia</button><button type="button" id="closePosReferenceAnnotation" class="modal-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+            </header>
+            <div class="pos-reference-modal__body">
+                <section class="pos-reference-workspace" aria-label="Área de anotação">
+                    <div class="pos-reference-toolbar" role="toolbar" aria-label="Ferramentas de anotação">
+                        <button type="button" class="pos-reference-tool is-active" data-reference-tool="select"><i class="fa-solid fa-arrow-pointer"></i><span>Selecionar</span></button><button type="button" class="pos-reference-tool" data-reference-tool="pen"><i class="fa-solid fa-pen"></i><span>Caneta</span></button><button type="button" class="pos-reference-tool" data-reference-tool="arrow"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Seta</span></button><button type="button" class="pos-reference-tool" data-reference-tool="rectangle"><i class="fa-regular fa-square"></i><span>Retângulo</span></button><button type="button" class="pos-reference-tool" data-reference-tool="circle"><i class="fa-regular fa-circle"></i><span>Círculo</span></button><button type="button" class="pos-reference-tool" data-reference-tool="text"><i class="fa-solid fa-t"></i><span>Texto</span></button><button type="button" class="pos-reference-tool" data-reference-tool="eraser"><i class="fa-solid fa-eraser"></i><span>Apagar</span></button>
+                        <span class="pos-reference-toolbar__divider" aria-hidden="true"></span><label class="pos-reference-control">Cor <input id="posReferenceCommentColor" type="color" value="#f59e0b" aria-label="Cor da anotação"></label><label class="pos-reference-control">Espessura <select id="posReferenceStrokeWidth" aria-label="Espessura do traço"><option value="2">2px</option><option value="4">4px</option><option value="6">6px</option></select></label>
+                    </div>
+                    <div id="posReferenceCanvasWrap" class="pos-reference-canvas-wrap"><div id="posReferenceMediaLayer" class="pos-reference-media-layer"><img id="posReferenceAnnotationImage" alt="Referência" draggable="false"><canvas id="posReferenceAnnotationCanvas"></canvas></div><div class="pos-reference-zoom" aria-label="Zoom da referência"><button type="button" id="zoomInPosReference" aria-label="Aumentar zoom"><i class="fa-solid fa-plus"></i></button><button type="button" id="zoomOutPosReference" aria-label="Diminuir zoom"><i class="fa-solid fa-minus"></i></button><span id="posReferenceZoomLabel">100%</span><button type="button" id="resetZoomPosReference" aria-label="Redefinir zoom"><i class="fa-solid fa-expand"></i></button></div></div>
+                    <p class="pos-reference-tip"><i class="fa-solid fa-circle-info"></i> Selecione uma ferramenta e marque os pontos importantes na imagem.</p>
+                </section>
+                <aside class="pos-reference-comments" aria-label="Comentários da referência"><div class="pos-reference-comments__header"><strong><i class="fa-regular fa-comments"></i> Comentários (<span id="posReferenceCommentCount">0</span>)</strong></div><label class="pos-reference-only-mine"><input type="checkbox" id="posReferenceOnlyMine"> Exibir apenas meus comentários</label><div id="posReferenceCommentList" class="pos-reference-comment-list"></div></aside>
+            </div>
+            <footer class="pos-reference-modal__footer"><div class="pos-reference-composer"><label for="posReferenceCommentText">Novo comentário</label><textarea id="posReferenceCommentText" class="form-textarea" rows="3" maxlength="1000" placeholder="Digite seu comentário sobre esta referência..."></textarea><div><span id="posReferenceCommentLength">0 / 1000</span></div></div><div class="pos-reference-modal__actions"><button type="button" id="clearPosReferenceDrawing" class="pos-reference-danger-button"><i class="fa-regular fa-trash-can"></i> Limpar rabiscos</button><div><button type="button" id="cancelPosReferenceAnnotation" class="pos-reference-secondary-button">Cancelar</button><button type="button" id="savePosReferenceComment" class="pos-reference-primary-button">Salvar comentário(s)</button></div></div></footer>
+        </section>
     </div>
 
 
@@ -394,6 +415,10 @@ $conn->close();
                         </label>
                         <textarea id="observacao" name="obs" rows="3" class="form-textarea" placeholder="Observações sobre esta pós-produção..."></textarea>
                     </div>
+                    <div class="form-group" id="posVisualReferencesGroup" style="display:none;">
+                        <label class="form-label"><i class="fa-solid fa-images"></i> Referências visuais</label>
+                        <div id="posVisualReferences" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px;"></div>
+                    </div>
                 </form>
             </div>
 
@@ -452,7 +477,7 @@ $conn->close();
     </div>
 
 
-    <script src="<?php echo asset_url('scriptPos.js'); ?>"></script>
+    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=4'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

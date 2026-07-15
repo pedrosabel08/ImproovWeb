@@ -182,7 +182,9 @@ class DeadlineWorker:
             "task_error_count": task_data.get("TaskErrorCount")
             or task_data.get("ErrorCount"),
         }
-        serialized = json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False)
+        serialized = json.dumps(
+            payload, sort_keys=True, default=str, ensure_ascii=False
+        )
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def process_one_command(self) -> bool:
@@ -274,7 +276,8 @@ class DeadlineWorker:
             )
             if plan is None:
                 self.logger.debug(
-                    "attempt changed before observation", extra={**context, "target": target}
+                    "attempt changed before observation",
+                    extra={**context, "target": target},
                 )
                 continue
             if plan["ignored"]:
@@ -333,8 +336,16 @@ class DeadlineWorker:
                         **context,
                         "current": plan["previous_status"],
                         "target": target,
-                        "result": "STATE_CHANGE" if plan["state_changed"] else "PREVIEW_CHANGE",
+                        "result": (
+                            "STATE_CHANGE"
+                            if plan["state_changed"]
+                            else "PREVIEW_CHANGE"
+                        ),
                     },
+                )
+                self.business.publish_render_update(
+                    "render.preview_changed" if not plan["state_changed"] else "render.status_changed",
+                    {"render_id": attempt["render_id"], "imagem_id": attempt["imagem_id"], "status": target},
                 )
             except Exception:
                 self.logger.exception("active synchronization failed", extra=context)
@@ -477,7 +488,9 @@ class DeadlineWorker:
             )
             with self.database.transaction(dict_rows=False) as cursor:
                 if not self.repository.lock_attempt_context_tuple(cursor, attempt):
-                    raise RuntimeError("Tentativa inicial mudou antes do processamento.")
+                    raise RuntimeError(
+                        "Tentativa inicial mudou antes do processamento."
+                    )
                 p00_rollup = {}
                 processed = self.business.process_deadline_job(
                     cursor,
@@ -516,7 +529,9 @@ class DeadlineWorker:
         result = self.repository.reconcile()
         for attempt in self.repository.active_attempts():
             read_result, _job_data = self.client.get_job(attempt["deadline_job_id"])
-            if read_result.not_found and self.repository.mark_active_job_missing(attempt):
+            if read_result.not_found and self.repository.mark_active_job_missing(
+                attempt
+            ):
                 self.logger.error(
                     "active job is explicitly absent in Deadline; attempt marked inconsistent",
                     extra={

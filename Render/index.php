@@ -393,6 +393,12 @@ $conn->close();
                 <label for="pos_referencias">Observações</label>
                 <textarea id="pos_referencias" placeholder="Observações adicionais…"></textarea>
             </div>
+            <div class="modal-pos-field">
+                <label for="pos_references_files">Imagens de referência</label>
+                <input id="pos_references_files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+                <small class="reference-help">JPG, PNG ou WEBP, até 10 MB por arquivo.</small>
+                <div id="posReferencesPreview" class="pos-references-preview" aria-live="polite"></div>
+            </div>
             <div class="modal-pos-actions">
                 <button class="btn-pos-fechar" id="fecharPOS">Fechar</button>
                 <button class="btn-pos-enviar" id="enviarPOS">
@@ -417,7 +423,7 @@ $conn->close();
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 

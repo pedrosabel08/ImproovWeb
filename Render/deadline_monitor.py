@@ -12,6 +12,11 @@ import locale
 from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
 
+try:
+    import redis
+except ImportError:
+    redis = None
+
 # Carrega as variáveis do arquivo .env
 # Preferir um `.env` localizado ao lado deste script, senão usar o caminho antigo.
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -60,6 +65,20 @@ if not LEGACY_LOGGER.handlers:
 LEGACY_LOGGER.setLevel(logging.INFO)
 LEGACY_LOGGER.propagate = False
 EXTERNAL_LOGGER = None
+
+
+def publish_render_update(event, payload):
+    """Best-effort post-commit UI notification for the continuous worker."""
+    if redis is None:
+        return
+    try:
+        message = {"version": 1, "event": event, "ts": int(datetime.now().timestamp())}
+        message.update(payload)
+        redis.Redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379"), socket_connect_timeout=1).publish(
+            "render:updated", json.dumps(message, ensure_ascii=False)
+        )
+    except Exception as exc:
+        log_and_print(f"Falha ao publicar evento Render: {exc}", "debug")
 
 
 def log_and_print(msg, level="info"):

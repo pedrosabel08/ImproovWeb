@@ -2,10 +2,24 @@
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/deadline_flow.php';
+require_once __DIR__ . '/pos_referencias_helper.php';
+require_once __DIR__ . '/render_ws_notify.php';
+require_once __DIR__ . '/../Pos-Producao/ws_notify.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
 header('Content-Type: application/json; charset=utf-8');
+
+if (empty($_SESSION['logado'])) {
+    http_response_code(401);
+    echo json_encode(['status' => 'erro', 'message' => 'Sessão expirada.']);
+    exit;
+}
+
+function render_current_colaborador_id(): int
+{
+    return isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : 0;
+}
 
 function render_kpi_valid_date($value)
 {
@@ -590,6 +604,96 @@ LIMIT $limit OFFSET $offset";
 
 if (isset($_POST['action'])) {
     switch ($_POST['action']) {
+        case 'approveToPos':
+            $renderId = isset($_POST['idrender_alta']) ? (int) $_POST['idrender_alta'] : 0;
+            $colaboradorId = render_current_colaborador_id();
+            if ($renderId <= 0 || $colaboradorId <= 0) {
+                echo json_encode(['status' => 'erro', 'message' => 'Dados de aprovação inválidos.']);
+                break;
+            }
+
+            $refs = trim((string) ($_POST['refs'] ?? ''));
+            $obs = trim((string) ($_POST['obs'] ?? ''));
+            $savedFiles = [];
+            try {
+                pos_referencias_ensure_schema($conn);
+                aprovacao_interna_ensure_schema($conn);
+                $conn->begin_transaction();
+                $stmt = $conn->prepare("SELECT r.idrender_alta, r.imagem_id, r.status_id, r.responsavel_id,
+                    i.obra_id, s.nome_status, p.idpos_producao
+                    FROM render_alta r
+                    JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                    JOIN status_imagem s ON s.idstatus = r.status_id
+                    LEFT JOIN pos_producao p ON p.render_id = r.idrender_alta
+                    WHERE r.idrender_alta = ? FOR UPDATE");
+                $stmt->bind_param('i', $renderId);
+                $stmt->execute();
+                $render = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if (!$render) throw new RuntimeException('Render não encontrado.');
+                if (mb_strtolower(trim((string) $render['nome_status']), 'UTF-8') === 'p00') {
+                    throw new RuntimeException('P00 mantém o fluxo de aprovação e Follow-up atual.');
+                }
+
+                $alteracao = aprovacao_interna_resolver_alteracao_por_render($conn, $renderId);
+                if ($alteracao && !aprovacao_interna_tem_registro($conn, (int) $alteracao['funcao_imagem_id'], (int) $alteracao['status_id'])) {
+                    $origin = strtolower(trim((string) ($_POST['approval_origin'] ?? '')));
+                    if (!in_array($origin, ['presencial', 'whatsapp'], true)) {
+                        $conn->rollback();
+                        echo json_encode(['status' => 'aprovacao_interna_pendente', 'message' => 'A aprovação interna precisa ser registrada antes do envio à Pós.']);
+                        break;
+                    }
+                    if (!aprovacao_interna_registrar($conn, (int) $alteracao['funcao_imagem_id'], (int) $alteracao['imagem_id'], (int) $alteracao['status_id'], $origin, $colaboradorId, $renderId, null, $obs ?: null)) {
+                        throw new RuntimeException('Não foi possível registrar a aprovação interna.');
+                    }
+                }
+
+                $posId = (int) ($render['idpos_producao'] ?? 0);
+                if ($posId <= 0) {
+                    $responsavel = (int) ($render['responsavel_id'] ?: $colaboradorId);
+                    $insertPos = $conn->prepare("INSERT INTO pos_producao
+                        (render_id, imagem_id, obra_id, colaborador_id, status_id, responsavel_id, refs, obs, data_pos)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                    $insertPos->bind_param('iiiiiiss', $renderId, $render['imagem_id'], $render['obra_id'], $responsavel, $render['status_id'], $responsavel, $refs, $obs);
+                    if (!$insertPos->execute()) throw new RuntimeException('Não foi possível criar a Pós-Produção.');
+                    $posId = (int) $conn->insert_id;
+                    $insertPos->close();
+                } else {
+                    $updatePos = $conn->prepare('UPDATE pos_producao SET refs = ?, obs = ?, data_pos = NOW() WHERE idpos_producao = ?');
+                    $updatePos->bind_param('ssi', $refs, $obs, $posId);
+                    if (!$updatePos->execute()) throw new RuntimeException('Não foi possível atualizar a Pós-Produção.');
+                    $updatePos->close();
+                }
+
+                $savedFiles = pos_referencias_insert_uploads($conn, $posId, $colaboradorId, $_FILES['references'] ?? []);
+                $updateRender = $conn->prepare("UPDATE render_alta SET status = 'Aprovado', data = NOW() WHERE idrender_alta = ?");
+                $updateRender->bind_param('i', $renderId);
+                if (!$updateRender->execute()) throw new RuntimeException('Não foi possível aprovar o render.');
+                $updateRender->close();
+                $deadlineFlowResult = deadline_flow_approve_locked($conn, $renderId);
+                $conn->commit();
+
+                notifyRenderUpdate('render.approved_to_pos', ['render_id' => $renderId, 'imagem_id' => (int) $render['imagem_id'], 'pos_producao_id' => $posId]);
+                if (function_exists('notifyPosProducaoUpdate')) notifyPosProducaoUpdate('references_changed', ['render_id' => $renderId, 'pos_producao_id' => $posId]);
+                echo json_encode(['status' => 'sucesso', 'render_id' => $renderId, 'pos_producao_id' => $posId, 'references' => pos_referencias_list($conn, $posId), 'deadline_command_created' => $deadlineFlowResult['command']['created'] ?? false]);
+            } catch (Throwable $e) {
+                $conn->rollback();
+                foreach ($savedFiles as $savedFile) if (is_file($savedFile)) @unlink($savedFile);
+                echo json_encode(['status' => 'erro', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'getPosReferences':
+            $renderId = isset($_GET['render_id']) ? (int) $_GET['render_id'] : 0;
+            pos_referencias_ensure_schema($conn);
+            $stmt = $conn->prepare('SELECT idpos_producao FROM pos_producao WHERE render_id = ? LIMIT 1');
+            $stmt->bind_param('i', $renderId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            echo json_encode(['status' => 'sucesso', 'references' => $row ? pos_referencias_list($conn, (int) $row['idpos_producao']) : []]);
+            break;
+
         case 'updateRender':
             // Atualizar o render
             if (isset($_POST['idrender_alta']) && isset($_POST['status'])) {
@@ -676,6 +780,7 @@ if (isset($_POST['action'])) {
                             'deadline_command_status' => $deadlineFlowResult['deadline_command_status'],
                             'message' => $message,
                         ]);
+                        notifyRenderUpdate('render.status_changed', ['render_id' => (int) $idrender_alta, 'status' => $status]);
                     } catch (Throwable $e) {
                         $conn->rollback();
                         $logs[] = 'deadline_flow.rework_error=' . $e->getMessage();
@@ -1075,6 +1180,7 @@ if (isset($_POST['action'])) {
                         $resp['deadline_command_status'] = $deadlineFlowResult['command']['status'] ?? null;
                     }
                     if ($debug) $resp['logs'] = $logs;
+                    notifyRenderUpdate('render.status_changed', ['render_id' => (int) $idrender_alta, 'status' => $status]);
                     echo json_encode($resp);
                 } else {
                     if ($transactionStarted) {
@@ -1091,17 +1197,18 @@ if (isset($_POST['action'])) {
         case 'updatePOS':
             // Aprovar o render
             if (isset($_POST['render_id'])) {
-                $render_id = $_POST['render_id'];
-                $refs = $_POST['refs'];
-                $obs = $_POST['obs'];
-
-                // Atualiza a tabela pos
-                $sql = "UPDATE pos_producao SET refs = '$refs', obs = '$obs', data_pos = NOW() WHERE render_id = $render_id;";
-                if ($conn->query($sql) === TRUE) {
+                $render_id = (int) $_POST['render_id'];
+                $refs = (string) ($_POST['refs'] ?? '');
+                $obs = (string) ($_POST['obs'] ?? '');
+                $stmt = $conn->prepare('UPDATE pos_producao SET refs = ?, obs = ?, data_pos = NOW() WHERE render_id = ?');
+                $stmt->bind_param('ssi', $refs, $obs, $render_id);
+                if ($stmt->execute() && $stmt->affected_rows > 0) {
+                    notifyPosProducaoUpdate('updated', ['render_id' => (int) $render_id]);
                     echo json_encode(['status' => 'sucesso']);
                 } else {
-                    echo json_encode(['status' => 'erro', 'message' => $conn->error]);
+                    echo json_encode(['status' => 'erro', 'message' => 'Pós-Produção não encontrada para o render.']);
                 }
+                $stmt->close();
             }
             break;
 
@@ -1119,6 +1226,7 @@ if (isset($_POST['action'])) {
                         'render_id' => $idrender_alta,
                         'deadline_commands_created' => $archive['deadline_commands_created'],
                     ]);
+                    notifyRenderUpdate('render.archived', ['render_id' => $idrender_alta]);
                 } catch (Throwable $e) {
                     $conn->rollback();
                     echo json_encode([
@@ -1141,6 +1249,7 @@ if (isset($_POST['action'])) {
                 $stmt = $conn->prepare("UPDATE render_alta SET responsavel_id = ? WHERE idrender_alta = ?");
                 $stmt->bind_param('ii', $resp_id, $id);
                 if ($stmt->execute()) {
+                    notifyRenderUpdate('render.assignee_changed', ['render_id' => $id, 'responsavel_id' => $resp_id]);
                     echo json_encode(['status' => 'sucesso']);
                 } else {
                     echo json_encode(['status' => 'erro', 'message' => $stmt->error]);

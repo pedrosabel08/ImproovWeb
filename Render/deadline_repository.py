@@ -436,14 +436,15 @@ class DeadlineRepository:
             return list(cursor.fetchall())
 
     def discovery_target(self, job_id: str, job_name: str) -> dict:
-        """Classifica um job desconhecido sem escolher imagem ambigua.
+        """Classifica um job desconhecido sem escolher imagem ambígua.
 
-        O primeiro envio nasce no Deadline. Portanto, a ausencia de tentativa
-        aguardando so impede um *reenvio*; ela nao impede a criacao do primeiro
+        O primeiro envio nasce no Deadline. Portanto, a ausência de tentativa
+        aguardando só impede um reenvio; ela não impede a criação do primeiro
         render para a etapa atual da imagem.
         """
         if not valid_job_id(job_id) or not job_name:
             return {"outcome": "NO_IMAGE_MATCH"}
+
         with self.database.transaction() as cursor:
             cursor.execute(
                 """
@@ -454,36 +455,43 @@ class DeadlineRepository:
                 """,
                 (job_id,),
             )
+
             if cursor.fetchone():
                 return {"outcome": "JOB_ALREADY_KNOWN"}
 
             cursor.execute(
                 """
                 SELECT i.idimagens_cliente_obra AS imagem_id,
-                       i.imagem_nome AS imagem_nome,
-                       i.status_id AS status_id
+                    i.imagem_nome AS imagem_nome,
+                    i.status_id AS status_id
                 FROM imagens_cliente_obra i
                 WHERE i.imagem_nome = %s
                 """,
                 (job_name,),
             )
+
             images = list(cursor.fetchall())
+
             if not images:
                 prefix = self._name_prefix(job_name)
+
                 if prefix:
                     cursor.execute(
                         """
                         SELECT i.idimagens_cliente_obra AS imagem_id,
-                               i.imagem_nome AS imagem_nome,
-                               i.status_id AS status_id
+                            i.imagem_nome AS imagem_nome,
+                            i.status_id AS status_id
                         FROM imagens_cliente_obra i
                         WHERE REPLACE(i.imagem_nome, ' ', '') LIKE %s
                         """,
                         (prefix + "%",),
                     )
+
                     images = list(cursor.fetchall())
+
             if not images:
                 return {"outcome": "NO_IMAGE_MATCH"}
+
             if len(images) != 1:
                 return {
                     "outcome": "AMBIGUOUS_IMAGE",
@@ -491,47 +499,78 @@ class DeadlineRepository:
                 }
 
             image = dict(images[0])
+
+            # Um reenvio pode pertencer a uma etapa anterior ao status atual
+            # da imagem. Por isso a tentativa deve ser localizada pela imagem,
+            # e não pelo render da etapa atual.
+            cursor.execute(
+                """
+                SELECT rt.id AS tentativa_id,
+                    rt.render_id AS render_id,
+                    rt.imagem_id AS imagem_id,
+                    rt.status_id AS status_id,
+                    rt.numero_tentativa AS numero_tentativa,
+                    rt.criado_em AS tentativa_criada_em
+                FROM render_tentativas rt
+                WHERE rt.imagem_id = %s
+                AND rt.ativa = 1
+                AND rt.status = %s
+                AND rt.deadline_job_id IS NULL
+                ORDER BY rt.id DESC
+                """,
+                (image["imagem_id"], AGUARDANDO_JOB),
+            )
+
+            waiting = list(cursor.fetchall())
+
+            if len(waiting) == 1:
+                return {
+                    "outcome": "RESEND",
+                    **dict(waiting[0]),
+                }
+
+            if len(waiting) > 1:
+                return {
+                    "outcome": "AMBIGUOUS_WAITING_ATTEMPT",
+                    **image,
+                    "attempt_ids": [
+                        row["tentativa_id"]
+                        for row in waiting
+                    ],
+                    "render_ids": [
+                        row["render_id"]
+                        for row in waiting
+                    ],
+                }
+
+            # Sem tentativa aguardando, verifica se há render na etapa atual.
             cursor.execute(
                 """
                 SELECT r.idrender_alta AS render_id,
-                       r.status AS flow_status,
-                       r.deadline_job_id AS cache_job_id
+                    r.status AS flow_status,
+                    r.deadline_job_id AS cache_job_id
                 FROM render_alta r
-                WHERE r.imagem_id = %s AND r.status_id = %s
+                WHERE r.imagem_id = %s
+                AND r.status_id = %s
+                ORDER BY r.idrender_alta DESC
                 LIMIT 1
                 """,
                 (image["imagem_id"], image["status_id"]),
             )
+
             render = cursor.fetchone()
+
             if not render:
-                return {"outcome": "FIRST_RENDER", **image}
-
-            cursor.execute(
-                """
-                SELECT rt.id AS tentativa_id,
-                       rt.render_id AS render_id,
-                       rt.imagem_id AS imagem_id,
-                       rt.status_id AS status_id,
-                       rt.numero_tentativa AS numero_tentativa,
-                       rt.criado_em AS tentativa_criada_em
-                FROM render_tentativas rt
-                WHERE rt.render_id = %s
-                  AND rt.ativa = 1
-                  AND rt.status = %s
-                  AND rt.deadline_job_id IS NULL
-                ORDER BY rt.id
-                """,
-                (render["render_id"], AGUARDANDO_JOB),
-            )
-            waiting = list(cursor.fetchall())
-            if len(waiting) != 1:
                 return {
-                    "outcome": "NO_WAITING_ATTEMPT",
+                    "outcome": "FIRST_RENDER",
                     **image,
-                    "render_id": render["render_id"],
                 }
-            return {"outcome": "RESEND", **dict(waiting[0])}
 
+            return {
+                "outcome": "NO_WAITING_ATTEMPT",
+                **image,
+                "render_id": render["render_id"],
+            }
     def create_first_render(
         self, candidate: dict, job_id: str, job_name: str, initial_state: str
     ) -> dict:

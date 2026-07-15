@@ -62,6 +62,29 @@ statusSelects.forEach(select => {
 
 let idImagem = null;
 let idObra = null;
+function renderReferenciasVisuaisPos(referencias, basePath) {
+    let section = document.getElementById('referencias-visuais-pos');
+    const field = document.getElementById('referenciasCaminho');
+    if (!section && field) {
+        section = document.createElement('div');
+        section.id = 'referencias-visuais-pos';
+        section.style.cssText = 'margin:10px 0;display:none;';
+        field.parentElement.insertAdjacentElement('afterend', section);
+    }
+    if (!section) return;
+    section.replaceChildren();
+    if (!referencias.length) { section.style.display = 'none'; return; }
+    const title = document.createElement('strong'); title.textContent = 'Referências visuais da Pós'; section.appendChild(title);
+    const list = document.createElement('div'); list.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;';
+    referencias.forEach(function (referencia) {
+        const image = document.createElement('img');
+        image.src = basePath + encodeURIComponent(referencia.arquivo);
+        image.alt = referencia.nome_original || 'Referência visual'; image.title = image.alt;
+        image.style.cssText = 'width:88px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #ddd;';
+        list.appendChild(image);
+    });
+    section.appendChild(list); section.style.display = 'block';
+}
 function atualizarModal(idImagem) {
     // Limpar campos do formulário de edição
     limparCampos();
@@ -71,6 +94,7 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
+            renderReferenciasVisuaisPos(response.referencias_pos || [], 'uploads/pos_referencias/');
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;

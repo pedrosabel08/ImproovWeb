@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 $conn = null;
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../Render/pos_referencias_helper.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $_GET['ajid'];
@@ -32,6 +33,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $response = array();
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
+            pos_referencias_ensure_schema($conn);
+            $row['referencias_visuais'] = pos_referencias_list($conn, (int) $row['idpos_producao']);
             $response[] = $row;
         }
     }

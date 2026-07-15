@@ -1905,6 +1905,10 @@ body {
   height: 1px;
 }
 
+.reference-help { display:block; margin-top:6px; color:var(--muted); font-size:.78rem; }
+.pos-references-preview { display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:8px; margin-top:10px; }
+.pos-references-preview img { width:100%; height:66px; border-radius:7px; object-fit:cover; border:1px solid var(--border); }
+
 @media (max-width: 1024px) {
   .kpi-panel {
     padding: 8px 12px;

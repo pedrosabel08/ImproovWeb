@@ -233,6 +233,28 @@ function alterarStatus(imagemId) {
 }
 
 
+function renderReferenciasVisuaisPosObra(referencias) {
+    var section = document.getElementById('referencias-visuais-pos-obra');
+    var field = document.getElementById('referenciasCaminho');
+    if (!section && field) {
+        section = document.createElement('div'); section.id = 'referencias-visuais-pos-obra';
+        section.style.cssText = 'margin:10px 0;display:none;';
+        field.parentElement.insertAdjacentElement('afterend', section);
+    }
+    if (!section) return;
+    section.replaceChildren();
+    if (!referencias.length) { section.style.display = 'none'; return; }
+    var title = document.createElement('strong'); title.textContent = 'Referências visuais da Pós'; section.appendChild(title);
+    var list = document.createElement('div'); list.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;';
+    referencias.forEach(function (referencia) {
+        var image = document.createElement('img');
+        image.src = '../uploads/pos_referencias/' + encodeURIComponent(referencia.arquivo);
+        image.alt = referencia.nome_original || 'Referência visual'; image.title = image.alt;
+        image.style.cssText = 'width:88px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #ddd;'; list.appendChild(image);
+    });
+    section.appendChild(list); section.style.display = 'block';
+}
+
 function atualizarModal(idImagem) {
     let nomePdf = '';
     // Limpar campos do formulário de edição
@@ -245,6 +267,7 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
+            renderReferenciasVisuaisPosObra(response.referencias_pos || []);
 
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;

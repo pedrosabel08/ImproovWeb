@@ -16,8 +16,30 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
   let sub = null;
   let reconnectTimer = null;
 
+  function socketCounts() {
+    let open = 0;
+    wss.clients.forEach((socket) => {
+      if (socket.readyState === WebSocket.OPEN) open++;
+    });
+    return { connected: wss.clients.size, open };
+  }
+
+  function broadcastEnvelope(envelope, diagnosticScope, channel, payload) {
+    const counts = socketCounts();
+    let sent = 0;
+    wss.clients.forEach((socket) => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(envelope);
+        sent++;
+      }
+    });
+    console.log(`[WS-DIAG][Node][${diagnosticScope}] broadcast channel=${channel} event=${payload && payload.event ? payload.event : '(sem event)'} sockets_connected=${counts.connected} sockets_open=${counts.open} sockets_sent=${sent}`);
+    return sent;
+  }
+
   async function startRedis() {
     try {
+      console.log(`[WS-DIAG][Node] redis.connect.start REDIS_URL=${REDIS_URL}`);
       client = createClient({ url: REDIS_URL });
       client.on('error', (err) => console.error('Redis client error', err));
       await client.connect();
@@ -25,6 +47,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
       // subscriber
       sub = client.duplicate();
       await sub.connect();
+      console.log(`[WS-DIAG][Node] redis.connected REDIS_URL=${REDIS_URL}`);
 
       // psubscribe to upload_progress:* channels
       await sub.pSubscribe('upload_progress:*', (message, channel) => {
@@ -43,20 +66,26 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
       // psubscribe to pos_producao:* channels (table update broadcasts)
       await sub.pSubscribe('pos_producao:*', (message, channel) => {
-        console.log('pos_producao message received on channel:', channel);
         try {
           const payload = JSON.parse(message);
           const envelope = JSON.stringify({ channel, payload });
-          let sent = 0;
-          wss.clients.forEach((socket) => {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(envelope);
-              sent++;
-            }
-          });
-          console.log(`pos_producao broadcast sent to ${sent} client(s)`);
+          const counts = socketCounts();
+          console.log(`[WS-DIAG][Node][Pós] redis.received channel=${channel} event=${payload && payload.event ? payload.event : '(sem event)'} payload=${message} sockets_connected=${counts.connected} sockets_open=${counts.open}`);
+          broadcastEnvelope(envelope, 'Pós', channel, payload);
         } catch (err) {
           console.error('Failed to forward pos_producao message', err);
+        }
+      });
+
+      await sub.pSubscribe('render:*', (message, channel) => {
+        try {
+          const payload = JSON.parse(message);
+          const envelope = JSON.stringify({ channel, payload });
+          const counts = socketCounts();
+          console.log(`[WS-DIAG][Node][Render] redis.received channel=${channel} event=${payload && payload.event ? payload.event : '(sem event)'} payload=${message} sockets_connected=${counts.connected} sockets_open=${counts.open}`);
+          broadcastEnvelope(envelope, 'Render', channel, payload);
+        } catch (err) {
+          console.error('Failed to forward render message', err);
         }
       });
 
@@ -79,7 +108,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
-      console.log('Connected to Redis and subscribed to upload_progress:*, pos_producao:* and funcao_atualizada:*');
+      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,funcao_atualizada:*`);
 
       // clear any reconnect timer if successful
       if (reconnectTimer) {
@@ -87,7 +116,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         reconnectTimer = null;
       }
     } catch (err) {
-      console.error('Redis connect failed:', err.message || err);
+      console.error('[WS-DIAG][Node] redis.connect.error REDIS_URL=' + REDIS_URL, err && err.stack ? err.stack : (err.message || err));
       // schedule reconnect attempts
       if (!reconnectTimer) {
         reconnectTimer = setInterval(() => {
@@ -102,6 +131,8 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
   startRedis();
 
   wss.on('connection', (ws) => {
+    const counts = socketCounts();
+    console.log(`[WS-DIAG][Node] socket.connected sockets_connected=${counts.connected} sockets_open=${counts.open}`);
     ws.send(JSON.stringify({ info: 'connected', timestamp: Date.now() }));
     ws.on('message', async (msg) => {
       try {

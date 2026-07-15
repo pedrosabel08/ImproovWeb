@@ -72,7 +72,10 @@ function formatKpiNumber(value) {
   const num = Number(value || 0);
   return Number.isInteger(num)
     ? String(num)
-    : num.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    : num.toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      });
 }
 
 function formatSigned(value, suffix) {
@@ -84,7 +87,10 @@ function formatSigned(value, suffix) {
 function renderSparkline(id, series) {
   const svg = document.getElementById(id);
   if (!svg) return;
-  const values = Array.isArray(series) && series.length ? series.map((item) => Number(item || 0)) : [0, 0];
+  const values =
+    Array.isArray(series) && series.length
+      ? series.map((item) => Number(item || 0))
+      : [0, 0];
   const width = 120;
   const height = 34;
   const max = Math.max(...values);
@@ -114,7 +120,8 @@ function updateKpiCard(cardKey, metric, config) {
     : `${formatKpiNumber(metric.current)}${config.valueSuffix || ""}`;
   setText(config.valueId, value);
 
-  const arrow = metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
+  const arrow =
+    metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
   const changeSuffix = config.percent ? " p.p." : "%";
   const changeText = formatSigned(metric.change, changeSuffix);
   const diffText = config.percent
@@ -132,7 +139,8 @@ function updateKpiCard(cardKey, metric, config) {
 }
 
 function updateTopResponsavel(highlight) {
-  const top = highlight && highlight.top_responsavel ? highlight.top_responsavel : {};
+  const top =
+    highlight && highlight.top_responsavel ? highlight.top_responsavel : {};
   const total = parseInt(top.total || 0, 10);
   const sentiment = top.sentiment || "neutral";
   const card = document.getElementById("renderTopResponsavelCard");
@@ -141,8 +149,14 @@ function updateTopResponsavel(highlight) {
     card.classList.add(`is-${sentiment}`);
   }
   setText("renderKpiTopNome", top.nome_colaborador || "Sem dados");
-  setText("renderKpiTopTotal", `${total} render${total === 1 ? "" : "s"} aprovado${total === 1 ? "" : "s"}`);
-  setText("renderKpiTopDelta", `${formatSigned(top.change || 0, "%")} vs periodo anterior`);
+  setText(
+    "renderKpiTopTotal",
+    `${total} render${total === 1 ? "" : "s"} aprovado${total === 1 ? "" : "s"}`,
+  );
+  setText(
+    "renderKpiTopDelta",
+    `${formatSigned(top.change || 0, "%")} vs periodo anterior`,
+  );
 }
 
 function loadRenderKpis() {
@@ -217,12 +231,17 @@ function initRenderKpis() {
   }
 
   controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.days === String(RENDER_KPI_DEFAULT_DAYS));
+    btn.classList.toggle(
+      "active",
+      btn.dataset.days === String(RENDER_KPI_DEFAULT_DAYS),
+    );
   });
 
   controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      controls.querySelectorAll(".kpi-period-btn").forEach((item) => item.classList.remove("active"));
+      controls
+        .querySelectorAll(".kpi-period-btn")
+        .forEach((item) => item.classList.remove("active"));
       btn.classList.add("active");
 
       if (btn.dataset.custom === "1") {
@@ -232,7 +251,10 @@ function initRenderKpis() {
         if (customRange) customRange.classList.add("is-open");
       } else {
         renderKpiState.mode = "quick";
-        renderKpiState.days = parseInt(btn.dataset.days || String(RENDER_KPI_DEFAULT_DAYS), 10);
+        renderKpiState.days = parseInt(
+          btn.dataset.days || String(RENDER_KPI_DEFAULT_DAYS),
+          10,
+        );
         if (customRange) customRange.classList.remove("is-open");
       }
 
@@ -1013,8 +1035,7 @@ function abrirPosAposAprovarRender(idrender_alta) {
     backgroundColor: "#4caf50",
   }).showToast();
 
-  $("#modalPOS").addClass("is-open");
-  $("#pos_render_id").val(idrender_alta);
+  $("#modalPOS, #myModal").removeClass("is-open");
 }
 
 function mostrarModalAprovacaoInterna() {
@@ -1062,6 +1083,18 @@ function mostrarModalAprovacaoInterna() {
 
 function aprovarRender(approvalOrigin) {
   const idrender_alta = $("#modal_idrender").text();
+  const statusImagem = String($("#modal_status_id").text() || "")
+    .trim()
+    .toLowerCase();
+  if (statusImagem !== "p00" && !approvalOrigin) {
+    $("#pos_render_id").val(idrender_alta);
+    $("#modalPOS").addClass("is-open");
+    return;
+  }
+  if (statusImagem !== "p00") {
+    enviarParaPos(approvalOrigin);
+    return;
+  }
   const payload = {
     action: "updateRender",
     idrender_alta: idrender_alta,
@@ -1108,9 +1141,11 @@ function aprovarRender(approvalOrigin) {
   });
 }
 
-$("#aprovarRender").off("click").on("click", function () {
-  aprovarRender();
-});
+$("#aprovarRender")
+  .off("click")
+  .on("click", function () {
+    aprovarRender();
+  });
 
 // Fechar modal POS
 $("#fecharPOS").click(function () {
@@ -1181,6 +1216,72 @@ $("#enviarPOS").click(function () {
   });
 });
 
+function enviarParaPos(approvalOrigin) {
+  const form = new FormData();
+  form.append("action", "approveToPos");
+  form.append("idrender_alta", $("#pos_render_id").val());
+  form.append("refs", $("#pos_caminho").val());
+  form.append("obs", $("#pos_referencias").val());
+  if (approvalOrigin) form.append("approval_origin", approvalOrigin);
+  Array.from($("#pos_references_files")[0].files || []).forEach((file) =>
+    form.append("references[]", file),
+  );
+  $.ajax({
+    url: "ajax.php",
+    method: "POST",
+    data: form,
+    processData: false,
+    contentType: false,
+    dataType: "json",
+    success: function (response) {
+      if (response.status === "sucesso") {
+        abrirPosAposAprovarRender($("#pos_render_id").val());
+        $("#pos_caminho, #pos_referencias, #pos_references_files").val("");
+        $("#posReferencesPreview").empty();
+      } else if (response.status === "aprovacao_interna_pendente") {
+        mostrarModalAprovacaoInterna();
+      } else {
+        Toastify({
+          text: response.message || "Erro ao enviar para Pós-Produção!",
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#f44336",
+        }).showToast();
+      }
+    },
+    error: function () {
+      Toastify({
+        text: "Erro de comunicação com o servidor!",
+        duration: 3500,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#f44336",
+      }).showToast();
+    },
+  });
+}
+
+$("#enviarPOS")
+  .off("click")
+  .on("click", function () {
+    if (!$("#pos_render_id").val()) return;
+    enviarParaPos();
+  });
+
+$("#pos_references_files").on("change", function () {
+  const preview = $("#posReferencesPreview").empty();
+  Array.from(this.files || []).forEach(function (file) {
+    if (!file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    $("<img>", { src: url, alt: file.name })
+      .on("load", function () {
+        URL.revokeObjectURL(url);
+      })
+      .appendTo(preview);
+  });
+});
+
 $("#reprovarRender").click(function () {
   const idrender_alta = $("#modal_idrender").text();
   const targetStatus = $(this).data("target-status") || "Reprovado";
@@ -1197,7 +1298,9 @@ $("#reprovarRender").click(function () {
         loadRenderKpis();
         $("#myModal").removeClass("is-open");
         Toastify({
-          text: response.message || "Render reprovado. A remoção no Deadline está pendente.",
+          text:
+            response.message ||
+            "Render reprovado. A remoção no Deadline está pendente.",
           duration: 3000,
           gravity: "top",
           position: "right",
@@ -1362,6 +1465,18 @@ $(document).ready(function () {
   $(document).on("keydown.ctx", function (e) {
     if (e.key === "Escape") $ctxMenu.removeClass("is-open");
   });
+});
+
+let renderRealtimeReloadTimer = null;
+window.addEventListener("improov:renderUpdated", function (event) {
+  const detail = event.detail || {};
+  if (renderRealtimeReloadTimer) clearTimeout(renderRealtimeReloadTimer);
+  renderRealtimeReloadTimer = setTimeout(function () {
+    loadRenders(1);
+    loadRenderKpis();
+    const openedId = Number($("#modal_idrender").text());
+    if (openedId && Number(detail.render_id) === openedId) editRender(openedId);
+  }, 180);
 });
 
 // Mobile filter toggle (Render)

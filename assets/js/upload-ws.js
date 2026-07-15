@@ -197,7 +197,12 @@
         const data = JSON.parse(ev.data);
 
         if (data.channel && data.channel.startsWith("pos_producao:")) {
-          window.dispatchEvent(new CustomEvent("improov:posProducaoUpdated"));
+          window.dispatchEvent(new CustomEvent("improov:posProducaoUpdated", { detail: data.payload }));
+          return;
+        }
+
+        if (data.channel && data.channel.startsWith("render:")) {
+          window.dispatchEvent(new CustomEvent("improov:renderUpdated", { detail: data.payload }));
           return;
         }
 

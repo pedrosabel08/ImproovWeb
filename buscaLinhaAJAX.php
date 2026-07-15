@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 // Conectar ao banco de dados
 
 include 'conexao.php';
+require_once __DIR__ . '/Render/pos_referencias_helper.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $_GET['ajid'];
@@ -62,8 +63,21 @@ WHERE img.idimagens_cliente_obra = $idImagemSelecionada";
     // Adicionar o status_id da imagem ao array de funções
     $response = array(
         'funcoes' => $funcoes,
-        'status_id' => $statusImagem
+        'status_id' => $statusImagem,
+        'referencias_pos' => []
     );
+
+    // Referências enviadas com a aprovação do Render, consumidas também pelos modais da obra.
+    pos_referencias_ensure_schema($conn);
+    $stmtPos = $conn->prepare('SELECT idpos_producao FROM pos_producao WHERE imagem_id = ? ORDER BY data_pos DESC, idpos_producao DESC LIMIT 1');
+    $stmtPos->bind_param('i', $idImagemSelecionada);
+    $stmtPos->execute();
+    $pos = $stmtPos->get_result()->fetch_assoc();
+    $stmtPos->close();
+    if ($pos) {
+        $response['referencias_pos'] = pos_referencias_list($conn, (int) $pos['idpos_producao']);
+        $response['pos_producao_id'] = (int) $pos['idpos_producao'];
+    }
 
     echo json_encode($response);
 } else {

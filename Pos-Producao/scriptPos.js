@@ -862,15 +862,28 @@ function buscarInfosImagem(idImagemSelecionada) {
         const visualGroup = document.getElementById("posVisualReferencesGroup");
         visualContainer.innerHTML = "";
         visualRefs.forEach(function (ref) {
+          const imageUrl = urlImagemReferenciaPos(ref);
+
+          // Se for o render principal, só mostra se houver uma imagem válida
+          if (
+            ref.origem === "render_principal" &&
+            (!imageUrl ||
+              !/\.(jpg|jpeg|png|webp|gif|bmp|avif)(\?.*)?$/i.test(imageUrl))
+          ) {
+            return;
+          }
+
           const image = document.createElement("img");
-          image.src = urlImagemReferenciaPos(ref);
+          image.src = imageUrl;
           image.alt = ref.nome_original || "Referência visual";
           image.title = ref.nome_original || "Referência visual";
           image.style.cssText =
             "width:100%;height:72px;object-fit:cover;border-radius:7px;cursor:zoom-in;";
+
           image.addEventListener("click", function () {
             abrirAnotacoesReferenciaPos(ref);
           });
+
           visualContainer.appendChild(image);
         });
         visualGroup.style.display = visualRefs.length ? "block" : "none";
@@ -1206,9 +1219,7 @@ function carregarAnotacoesReferenciaPos() {
         item.innerHTML =
           '<div class="pos-reference-comment__meta"><strong></strong></div><div class="pos-reference-comment__text"></div>';
         item.querySelector("strong").textContent =
-          number +
-          " · " +
-          (comentario.nome_colaborador || "Colaborador");
+          number + " · " + (comentario.nome_colaborador || "Colaborador");
         var description =
           comentario.possui_desenho && comentario.texto
             ? "Desenho: " + comentario.texto

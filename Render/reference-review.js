@@ -12,6 +12,7 @@
     pan: { x: 0, y: 0 },
     panning: null,
     commentTarget: null,
+    confirming: false,
   };
   const $ = window.jQuery;
   const byId = (id) => document.getElementById(id);
@@ -548,6 +549,14 @@
       });
   }
   function confirm() {
+    if (state.confirming) return;
+    state.confirming = true;
+    const confirmButton = byId("rrConfirm"),
+      originalLabel = confirmButton.textContent;
+    confirmButton.disabled = true;
+    confirmButton.textContent = state.editOnly
+      ? "Salvando referências..."
+      : "Enviando para Pós...";
     const saves = state.items
       .filter((i) => i.reference_id)
       .map((i) => {
@@ -556,7 +565,15 @@
       });
     Promise.all(saves)
       .then(() => {
-        if (state.posId) return uploadAfterApproval();
+        // A Pós pode já existir por um processamento anterior do Deadline. Isso
+        // não torna o Render aprovado: somente o modal aberto em modo de edição
+        // (depois da aprovação) deve pular a transação approveToPos.
+        if (state.editOnly) {
+          return uploadAfterApproval().then(() => {
+            toast("Referências atualizadas.");
+            fechar();
+          });
+        }
         const data = new FormData(),
           drafts = {};
         data.append("action", "approveToPos");
@@ -597,7 +614,12 @@
           e.message || "Não foi possível salvar as referências.",
           "#c0392b",
         ),
-      );
+      )
+      .finally(() => {
+        state.confirming = false;
+        confirmButton.disabled = false;
+        confirmButton.textContent = originalLabel;
+      });
   }
   function fechar() {
     byId("renderReferenceReviewModal").classList.remove("is-open");
@@ -607,6 +629,7 @@
     state.renderId = Number(renderId);
     state.approvalOrigin = approvalOrigin || null;
     state.editOnly = !!editOnly;
+    state.confirming = false;
     byId("rrConfirm").textContent = editOnly
       ? "Salvar referências"
       : "Confirmar envio para Pós";

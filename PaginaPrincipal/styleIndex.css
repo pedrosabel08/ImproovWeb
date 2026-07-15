@@ -3633,9 +3633,9 @@ form#task-form button {
   list-style: none;
 }
 
-li {
+/* li {
   padding: 15px;
-}
+} */
 
 .modal-content button {
   padding: 6px;

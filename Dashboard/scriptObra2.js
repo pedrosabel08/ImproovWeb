@@ -248,11 +248,20 @@ function renderReferenciasVisuaisPosObra(referencias) {
     var list = document.createElement('div'); list.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;';
     referencias.forEach(function (referencia) {
         var image = document.createElement('img');
-        image.src = '../uploads/pos_referencias/' + encodeURIComponent(referencia.arquivo);
+        image.src = urlReferenciaVisualPosObra(referencia);
         image.alt = referencia.nome_original || 'Referência visual'; image.title = image.alt;
         image.style.cssText = 'width:88px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #ddd;'; list.appendChild(image);
     });
     section.appendChild(list); section.style.display = 'block';
+}
+
+function urlReferenciaVisualPosObra(referencia) {
+    var base = 'https://improov.com.br/flow/ImproovWeb/';
+    if (referencia && referencia.origem === 'render_principal') {
+        var preview = referencia.preview_render || referencia.previa_jpg || '';
+        return preview ? base + 'uploads/renders/' + encodeURIComponent(preview) : '';
+    }
+    return base + 'uploads/pos_referencias/' + encodeURIComponent((referencia && referencia.arquivo) || '');
 }
 
 function atualizarModal(idImagem) {

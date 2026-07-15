@@ -62,7 +62,15 @@ statusSelects.forEach(select => {
 
 let idImagem = null;
 let idObra = null;
-function renderReferenciasVisuaisPos(referencias, basePath) {
+function urlReferenciaVisualPos(referencia) {
+    const base = 'https://improov.com.br/flow/ImproovWeb/';
+    if (referencia && referencia.origem === 'render_principal') {
+        const preview = referencia.preview_render || referencia.previa_jpg || '';
+        return preview ? base + 'uploads/renders/' + encodeURIComponent(preview) : '';
+    }
+    return base + 'uploads/pos_referencias/' + encodeURIComponent((referencia && referencia.arquivo) || '');
+}
+function renderReferenciasVisuaisPos(referencias) {
     let section = document.getElementById('referencias-visuais-pos');
     const field = document.getElementById('referenciasCaminho');
     if (!section && field) {
@@ -78,7 +86,7 @@ function renderReferenciasVisuaisPos(referencias, basePath) {
     const list = document.createElement('div'); list.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;';
     referencias.forEach(function (referencia) {
         const image = document.createElement('img');
-        image.src = basePath + encodeURIComponent(referencia.arquivo);
+        image.src = urlReferenciaVisualPos(referencia);
         image.alt = referencia.nome_original || 'Referência visual'; image.title = image.alt;
         image.style.cssText = 'width:88px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #ddd;';
         list.appendChild(image);
@@ -94,7 +102,7 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
-            renderReferenciasVisuaisPos(response.referencias_pos || [], 'uploads/pos_referencias/');
+            renderReferenciasVisuaisPos(response.referencias_pos || []);
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;

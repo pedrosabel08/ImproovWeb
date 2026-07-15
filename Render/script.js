@@ -1087,12 +1087,11 @@ function aprovarRender(approvalOrigin) {
     .trim()
     .toLowerCase();
   if (statusImagem !== "p00" && !approvalOrigin) {
-    $("#pos_render_id").val(idrender_alta);
-    $("#modalPOS").addClass("is-open");
+    if (window.RenderReferenceReview) window.RenderReferenceReview.open(idrender_alta);
     return;
   }
   if (statusImagem !== "p00") {
-    enviarParaPos(approvalOrigin);
+    if (window.RenderReferenceReview) window.RenderReferenceReview.open(idrender_alta, approvalOrigin);
     return;
   }
   const payload = {
@@ -1146,6 +1145,11 @@ $("#aprovarRender")
   .on("click", function () {
     aprovarRender();
   });
+
+$("#openRenderReferences").on("click", function () {
+  const idrender = Number($("#modal_idrender").text());
+  if (idrender && window.RenderReferenceReview) window.RenderReferenceReview.open(idrender, null, true);
+});
 
 // Fechar modal POS
 $("#fecharPOS").click(function () {

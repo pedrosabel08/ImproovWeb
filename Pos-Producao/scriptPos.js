@@ -863,10 +863,11 @@ function buscarInfosImagem(idImagemSelecionada) {
         visualContainer.innerHTML = "";
         visualRefs.forEach(function (ref) {
           const image = document.createElement("img");
-          image.src = "../uploads/pos_referencias/" + encodeURIComponent(ref.arquivo);
+          image.src = urlImagemReferenciaPos(ref);
           image.alt = ref.nome_original || "Referência visual";
           image.title = ref.nome_original || "Referência visual";
-          image.style.cssText = "width:100%;height:72px;object-fit:cover;border-radius:7px;cursor:zoom-in;";
+          image.style.cssText =
+            "width:100%;height:72px;object-fit:cover;border-radius:7px;cursor:zoom-in;";
           image.addEventListener("click", function () {
             abrirAnotacoesReferenciaPos(ref);
           });
@@ -897,7 +898,29 @@ function buscarInfosImagem(idImagemSelecionada) {
   });
 }
 
-var anotacoesReferenciaPos = { referenciaId: null, comentarios: [], rascunho: [], desenhando: false, ferramenta: "select", zoom: 1 };
+function urlImagemReferenciaPos(referencia) {
+  const base = "https://improov.com.br/flow/ImproovWeb/";
+  if (referencia && referencia.origem === "render_principal") {
+    const preview = referencia.preview_render || referencia.previa_jpg || "";
+    return preview
+      ? base + "uploads/renders/" + encodeURIComponent(preview)
+      : "";
+  }
+  return (
+    base +
+    "uploads/pos_referencias/" +
+    encodeURIComponent((referencia && referencia.arquivo) || "")
+  );
+}
+
+var anotacoesReferenciaPos = {
+  referenciaId: null,
+  comentarios: [],
+  rascunho: [],
+  desenhando: false,
+  ferramenta: "select",
+  zoom: 1,
+};
 
 function abrirAnotacoesReferenciaPos(referencia) {
   var modal = document.getElementById("posReferenceAnnotationModal");
@@ -910,9 +933,25 @@ function abrirAnotacoesReferenciaPos(referencia) {
   document.getElementById("posReferenceCommentText").value = "";
   document.getElementById("posReferenceCanvasWrap").dataset.tool = "select";
   atualizarZoomReferenciaPos();
+  // A Pós consulta as referências enviadas pelo finalizador, mas não as altera.
+  // A classe também é aplicada ao conteúdo visível para manter o bloqueio
+  // independente da estrutura do overlay externo.
+  var somenteLeitura = !!window.POS_REFERENCE_READONLY;
+  var conteudoModal = modal.querySelector(".pos-reference-modal__content");
+  modal.classList.toggle("is-readonly", somenteLeitura);
+  if (conteudoModal)
+    conteudoModal.classList.toggle("is-readonly", somenteLeitura);
+  var descricao = modal.querySelector(".pos-reference-modal__header p");
+  if (descricao)
+    descricao.textContent = somenteLeitura
+      ? "Consulte os comentários e as marcações enviados para orientar a Pós-produção."
+      : "Adicione comentários e marque pontos importantes para orientar a Pós-produção.";
   modal.style.display = "flex";
-  image.onload = function () { prepararCanvasReferenciaPos(); carregarAnotacoesReferenciaPos(); };
-  image.src = "../uploads/pos_referencias/" + encodeURIComponent(referencia.arquivo);
+  image.onload = function () {
+    prepararCanvasReferenciaPos();
+    carregarAnotacoesReferenciaPos();
+  };
+  image.src = urlImagemReferenciaPos(referencia);
 }
 
 function prepararCanvasReferenciaPos() {
@@ -925,11 +964,18 @@ function prepararCanvasReferenciaPos() {
   canvas.height = image.clientHeight;
   canvas.style.width = image.clientWidth + "px";
   canvas.style.height = image.clientHeight + "px";
-  if (canvas.dataset.anotacoesPreparadas) { desenharAnotacoesReferenciaPos(); return; }
+  if (canvas.dataset.anotacoesPreparadas) {
+    desenharAnotacoesReferenciaPos();
+    return;
+  }
   canvas.dataset.anotacoesPreparadas = "1";
   canvas.addEventListener("pointerdown", function (event) {
     if (anotacoesReferenciaPos.ferramenta === "select") return;
-    if (anotacoesReferenciaPos.ferramenta === "eraser") { anotacoesReferenciaPos.rascunho = []; desenharAnotacoesReferenciaPos(); return; }
+    if (anotacoesReferenciaPos.ferramenta === "eraser") {
+      anotacoesReferenciaPos.rascunho = [];
+      desenharAnotacoesReferenciaPos();
+      return;
+    }
     anotacoesReferenciaPos.desenhando = true;
     anotacoesReferenciaPos.rascunho = [coordenadaReferenciaPos(event)];
     canvas.setPointerCapture(event.pointerId);
@@ -942,7 +988,8 @@ function prepararCanvasReferenciaPos() {
   function concluirRabisco(event) {
     if (!anotacoesReferenciaPos.desenhando) return;
     anotacoesReferenciaPos.desenhando = false;
-    if (anotacoesReferenciaPos.rascunho.length === 1) anotacoesReferenciaPos.rascunho.push(coordenadaReferenciaPos(event));
+    if (anotacoesReferenciaPos.rascunho.length === 1)
+      anotacoesReferenciaPos.rascunho.push(coordenadaReferenciaPos(event));
     desenharAnotacoesReferenciaPos();
   }
   canvas.addEventListener("pointerup", concluirRabisco);
@@ -952,23 +999,136 @@ function prepararCanvasReferenciaPos() {
 
 function coordenadaReferenciaPos(event) {
   var rect = event.currentTarget.getBoundingClientRect();
-  return { x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)), y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)) };
+  return {
+    x: Math.max(
+      0,
+      Math.min(100, ((event.clientX - rect.left) / rect.width) * 100),
+    ),
+    y: Math.max(
+      0,
+      Math.min(100, ((event.clientY - rect.top) / rect.height) * 100),
+    ),
+  };
 }
 
 function desenharCaminhoReferenciaPos(context, pontos, cor, ponto, espessura) {
   if (!pontos || !pontos.length) return;
   var canvas = context.canvas;
-  context.save(); context.strokeStyle = cor || "#f59e0b"; context.fillStyle = cor || "#f59e0b"; context.lineWidth = parseInt(espessura, 10) || 2; context.lineCap = "round";
+  context.save();
+  context.strokeStyle = cor || "#f59e0b";
+  context.fillStyle = cor || "#f59e0b";
+  context.lineWidth = parseInt(espessura, 10) || 2;
+  context.lineCap = "round";
   if (ponto || pontos.length === 1) {
-    context.beginPath(); context.arc((pontos[0].x / 100) * canvas.width, (pontos[0].y / 100) * canvas.height, 6, 0, Math.PI * 2); context.fill();
+    context.beginPath();
+    context.arc(
+      (pontos[0].x / 100) * canvas.width,
+      (pontos[0].y / 100) * canvas.height,
+      6,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
   } else {
     context.beginPath();
     pontos.forEach(function (coordenada, indice) {
-      var x = (coordenada.x / 100) * canvas.width, y = (coordenada.y / 100) * canvas.height;
-      if (indice === 0) context.moveTo(x, y); else context.lineTo(x, y);
+      var x = (coordenada.x / 100) * canvas.width,
+        y = (coordenada.y / 100) * canvas.height;
+      if (indice === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
     });
     context.stroke();
   }
+  context.restore();
+}
+
+function desenharObjetoReferenciaPos(context, objeto, cor, espessura) {
+  if (!objeto || Array.isArray(objeto))
+    return desenharCaminhoReferenciaPos(context, objeto, cor, false, espessura);
+  var pontos = objeto.points || [],
+    inicio = objeto.start || pontos[0],
+    fim = objeto.end || inicio;
+  if (!inicio || !fim) return;
+  var canvas = context.canvas,
+    a = {
+      x: (inicio.x * canvas.width) / 100,
+      y: (inicio.y * canvas.height) / 100,
+    },
+    b = { x: (fim.x * canvas.width) / 100, y: (fim.y * canvas.height) / 100 };
+  context.save();
+  context.strokeStyle = cor || "#f59e0b";
+  context.lineWidth = parseInt(espessura, 10) || 2;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  if (objeto.tool === "pencil") {
+    context.beginPath();
+    pontos.forEach(function (p, i) {
+      var q = { x: (p.x * canvas.width) / 100, y: (p.y * canvas.height) / 100 };
+      if (i) context.lineTo(q.x, q.y);
+      else context.moveTo(q.x, q.y);
+    });
+    context.stroke();
+  } else if (objeto.tool === "arrow") {
+    var angle = Math.atan2(b.y - a.y, b.x - a.x);
+    context.beginPath();
+    context.moveTo(a.x, a.y);
+    context.lineTo(b.x, b.y);
+    context.lineTo(
+      b.x - 12 * Math.cos(angle - Math.PI / 6),
+      b.y - 12 * Math.sin(angle - Math.PI / 6),
+    );
+    context.moveTo(b.x, b.y);
+    context.lineTo(
+      b.x - 12 * Math.cos(angle + Math.PI / 6),
+      b.y - 12 * Math.sin(angle + Math.PI / 6),
+    );
+    context.stroke();
+  } else if (objeto.tool === "rectangle")
+    context.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  else if (objeto.tool === "circle") {
+    context.beginPath();
+    context.ellipse(
+      (a.x + b.x) / 2,
+      (a.y + b.y) / 2,
+      Math.abs(b.x - a.x) / 2,
+      Math.abs(b.y - a.y) / 2,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    context.stroke();
+  }
+  context.restore();
+}
+
+function desenharNumeroComentarioReferenciaPos(context, objeto, numero, cor) {
+  if (!objeto || numero == null) return;
+  var pontos = objeto.points || [],
+    ancora = objeto.start || pontos[0];
+  if (!ancora) return;
+  var canvas = context.canvas,
+    radius = 12,
+    x = Math.max(
+      radius + 2,
+      Math.min(canvas.width - radius - 2, (ancora.x * canvas.width) / 100),
+    ),
+    y = Math.max(
+      radius + 2,
+      Math.min(canvas.height - radius - 2, (ancora.y * canvas.height) / 100),
+    );
+  context.save();
+  context.fillStyle = cor || "#f59e0b";
+  context.strokeStyle = "#fff";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.arc(x, y, radius, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = "#111827";
+  context.font = "700 12px Arial, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(String(numero), x, y + 0.5);
   context.restore();
 }
 
@@ -977,86 +1137,211 @@ function desenharAnotacoesReferenciaPos() {
   if (!canvas.width) return;
   var context = canvas.getContext("2d");
   context.clearRect(0, 0, canvas.width, canvas.height);
-  anotacoesReferenciaPos.comentarios.forEach(function (comentario) {
+  anotacoesReferenciaPos.comentarios.forEach(function (comentario, index) {
     if (comentario.tipo === "freehand" && comentario.path_data) {
-      desenharCaminhoReferenciaPos(context, JSON.parse(comentario.path_data), comentario.cor, false, comentario.espessura);
+      try {
+        var objeto = JSON.parse(comentario.path_data);
+        desenharObjetoReferenciaPos(
+          context,
+          objeto,
+          comentario.cor,
+          comentario.espessura,
+        );
+        desenharNumeroComentarioReferenciaPos(
+          context,
+          objeto,
+          index + 1,
+          comentario.cor,
+        );
+      } catch (_) {
+        // Uma anotação legada inválida não deve impedir a exibição das demais.
+      }
       return;
     }
 
-    if (comentario.x !== null && comentario.x !== undefined && comentario.y !== null && comentario.y !== undefined) {
-      desenharCaminhoReferenciaPos(context, [{ x: comentario.x, y: comentario.y }], comentario.cor, true, comentario.espessura);
+    if (
+      comentario.x !== null &&
+      comentario.x !== undefined &&
+      comentario.y !== null &&
+      comentario.y !== undefined
+    ) {
+      desenharCaminhoReferenciaPos(
+        context,
+        [{ x: comentario.x, y: comentario.y }],
+        comentario.cor,
+        true,
+        comentario.espessura,
+      );
     }
   });
-  desenharCaminhoReferenciaPos(context, anotacoesReferenciaPos.rascunho, document.getElementById("posReferenceCommentColor").value, anotacoesReferenciaPos.rascunho.length === 1, document.getElementById("posReferenceStrokeWidth").value);
+  desenharCaminhoReferenciaPos(
+    context,
+    anotacoesReferenciaPos.rascunho,
+    document.getElementById("posReferenceCommentColor").value,
+    anotacoesReferenciaPos.rascunho.length === 1,
+    document.getElementById("posReferenceStrokeWidth").value,
+  );
 }
 
 function carregarAnotacoesReferenciaPos() {
-  fetch("referencias_comentarios.php?referencia_id=" + encodeURIComponent(anotacoesReferenciaPos.referenciaId))
-    .then(function (response) { return response.json(); })
+  fetch(
+    "referencias_comentarios.php?referencia_id=" +
+      encodeURIComponent(anotacoesReferenciaPos.referenciaId),
+  )
+    .then(function (response) {
+      return response.json();
+    })
     .then(function (dados) {
-      anotacoesReferenciaPos.comentarios = dados.sucesso ? dados.comentarios : [];
-      var lista = document.getElementById("posReferenceCommentList"); lista.innerHTML = "";
-      document.getElementById("posReferenceCommentCount").textContent = anotacoesReferenciaPos.comentarios.length;
-      anotacoesReferenciaPos.comentarios.forEach(function (comentario) {
-        var item = document.createElement("article"); item.className = "pos-reference-comment";
-        item.innerHTML = '<div class="pos-reference-comment__meta"><strong></strong></div><div class="pos-reference-comment__text"></div>';
-        item.querySelector("strong").textContent = comentario.nome_colaborador || "Colaborador";
-        item.querySelector(".pos-reference-comment__text").textContent = comentario.texto || "Anotação visual";
+      anotacoesReferenciaPos.comentarios = dados.sucesso
+        ? dados.comentarios
+        : [];
+      var lista = document.getElementById("posReferenceCommentList");
+      lista.innerHTML = "";
+      document.getElementById("posReferenceCommentCount").textContent =
+        anotacoesReferenciaPos.comentarios.length;
+      anotacoesReferenciaPos.comentarios.forEach(function (comentario, index) {
+        var number = index + 1;
+        var item = document.createElement("article");
+        item.className = "pos-reference-comment";
+        item.innerHTML =
+          '<div class="pos-reference-comment__meta"><strong></strong></div><div class="pos-reference-comment__text"></div>';
+        item.querySelector("strong").textContent =
+          number +
+          " · " +
+          (comentario.nome_colaborador || "Colaborador");
+        var description =
+          comentario.possui_desenho && comentario.texto
+            ? "Desenho: " + comentario.texto
+            : comentario.texto || "Anotação visual";
+        item.querySelector(".pos-reference-comment__text").textContent =
+          description;
         lista.appendChild(item);
       });
       desenharAnotacoesReferenciaPos();
     })
-    .catch(function () { alert("Não foi possível carregar as anotações da referência."); });
+    .catch(function () {
+      alert("Não foi possível carregar as anotações da referência.");
+    });
 }
 
 function salvarAnotacaoReferenciaPos() {
-  var dados = new FormData(), texto = document.getElementById("posReferenceCommentText").value.trim();
+  var dados = new FormData(),
+    texto = document.getElementById("posReferenceCommentText").value.trim();
   var tipo = anotacoesReferenciaPos.rascunho.length > 1 ? "freehand" : "ponto";
-  dados.append("referencia_id", anotacoesReferenciaPos.referenciaId); dados.append("texto", texto); dados.append("tipo", tipo); dados.append("cor", document.getElementById("posReferenceCommentColor").value); dados.append("espessura", document.getElementById("posReferenceStrokeWidth").value);
+  dados.append("referencia_id", anotacoesReferenciaPos.referenciaId);
+  dados.append("texto", texto);
+  dados.append("tipo", tipo);
+  dados.append(
+    "cor",
+    document.getElementById("posReferenceCommentColor").value,
+  );
+  dados.append(
+    "espessura",
+    document.getElementById("posReferenceStrokeWidth").value,
+  );
   if (anotacoesReferenciaPos.rascunho.length) {
-    dados.append("x", anotacoesReferenciaPos.rascunho[0].x); dados.append("y", anotacoesReferenciaPos.rascunho[0].y);
-    if (tipo === "freehand") dados.append("path_data", JSON.stringify(anotacoesReferenciaPos.rascunho));
+    dados.append("x", anotacoesReferenciaPos.rascunho[0].x);
+    dados.append("y", anotacoesReferenciaPos.rascunho[0].y);
+    if (tipo === "freehand")
+      dados.append(
+        "path_data",
+        JSON.stringify(anotacoesReferenciaPos.rascunho),
+      );
   }
   fetch("referencias_comentarios.php", { method: "POST", body: dados })
-    .then(function (response) { return response.json(); })
-    .then(function (resultado) {
-      if (!resultado.sucesso) throw new Error(resultado.erro || "Falha ao salvar.");
-      anotacoesReferenciaPos.rascunho = []; document.getElementById("posReferenceCommentText").value = ""; atualizarContadorComentarioReferenciaPos(); carregarAnotacoesReferenciaPos();
+    .then(function (response) {
+      return response.json();
     })
-    .catch(function (erro) { alert(erro.message || "Não foi possível salvar a anotação."); });
+    .then(function (resultado) {
+      if (!resultado.sucesso)
+        throw new Error(resultado.erro || "Falha ao salvar.");
+      anotacoesReferenciaPos.rascunho = [];
+      document.getElementById("posReferenceCommentText").value = "";
+      atualizarContadorComentarioReferenciaPos();
+      carregarAnotacoesReferenciaPos();
+    })
+    .catch(function (erro) {
+      alert(erro.message || "Não foi possível salvar a anotação.");
+    });
 }
 
 function atualizarZoomReferenciaPos() {
   var layer = document.getElementById("posReferenceMediaLayer");
   if (!layer) return;
   layer.style.transform = "scale(" + anotacoesReferenciaPos.zoom + ")";
-  document.getElementById("posReferenceZoomLabel").textContent = Math.round(anotacoesReferenciaPos.zoom * 100) + "%";
+  document.getElementById("posReferenceZoomLabel").textContent =
+    Math.round(anotacoesReferenciaPos.zoom * 100) + "%";
 }
 
 function atualizarContadorComentarioReferenciaPos() {
   var campo = document.getElementById("posReferenceCommentText");
-  document.getElementById("posReferenceCommentLength").textContent = campo.value.length + " / 1000";
+  document.getElementById("posReferenceCommentLength").textContent =
+    campo.value.length + " / 1000";
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   var modal = document.getElementById("posReferenceAnnotationModal");
-  function fecharModalReferencia() { modal.style.display = "none"; }
-  document.getElementById("closePosReferenceAnnotation").addEventListener("click", fecharModalReferencia);
-  document.getElementById("cancelPosReferenceAnnotation").addEventListener("click", fecharModalReferencia);
-  document.getElementById("clearPosReferenceDrawing").addEventListener("click", function () { anotacoesReferenciaPos.rascunho = []; desenharAnotacoesReferenciaPos(); });
-  document.getElementById("savePosReferenceComment").addEventListener("click", salvarAnotacaoReferenciaPos);
-  document.getElementById("posReferenceCommentText").addEventListener("input", atualizarContadorComentarioReferenciaPos);
+  function fecharModalReferencia() {
+    modal.style.display = "none";
+  }
+  document
+    .getElementById("closePosReferenceAnnotation")
+    .addEventListener("click", fecharModalReferencia);
+  document
+    .getElementById("cancelPosReferenceAnnotation")
+    .addEventListener("click", fecharModalReferencia);
+  document
+    .getElementById("clearPosReferenceDrawing")
+    .addEventListener("click", function () {
+      anotacoesReferenciaPos.rascunho = [];
+      desenharAnotacoesReferenciaPos();
+    });
+  document
+    .getElementById("savePosReferenceComment")
+    .addEventListener("click", salvarAnotacaoReferenciaPos);
+  document
+    .getElementById("posReferenceCommentText")
+    .addEventListener("input", atualizarContadorComentarioReferenciaPos);
   document.querySelectorAll(".pos-reference-tool").forEach(function (botao) {
     botao.addEventListener("click", function () {
       anotacoesReferenciaPos.ferramenta = botao.dataset.referenceTool;
-      document.querySelectorAll(".pos-reference-tool").forEach(function (item) { item.classList.toggle("is-active", item === botao); });
-      document.getElementById("posReferenceCanvasWrap").dataset.tool = anotacoesReferenciaPos.ferramenta;
+      document.querySelectorAll(".pos-reference-tool").forEach(function (item) {
+        item.classList.toggle("is-active", item === botao);
+      });
+      document.getElementById("posReferenceCanvasWrap").dataset.tool =
+        anotacoesReferenciaPos.ferramenta;
     });
   });
-  document.getElementById("zoomInPosReference").addEventListener("click", function () { anotacoesReferenciaPos.zoom = Math.min(1, anotacoesReferenciaPos.zoom + 0.1); atualizarZoomReferenciaPos(); });
-  document.getElementById("zoomOutPosReference").addEventListener("click", function () { anotacoesReferenciaPos.zoom = Math.max(0.6, anotacoesReferenciaPos.zoom - 0.1); atualizarZoomReferenciaPos(); });
-  document.getElementById("resetZoomPosReference").addEventListener("click", function () { anotacoesReferenciaPos.zoom = 1; atualizarZoomReferenciaPos(); });
-  document.getElementById("togglePosReferenceFullscreen").addEventListener("click", function () { modal.classList.toggle("is-fullscreen"); requestAnimationFrame(prepararCanvasReferenciaPos); });
+  document
+    .getElementById("zoomInPosReference")
+    .addEventListener("click", function () {
+      anotacoesReferenciaPos.zoom = Math.min(
+        1,
+        anotacoesReferenciaPos.zoom + 0.1,
+      );
+      atualizarZoomReferenciaPos();
+    });
+  document
+    .getElementById("zoomOutPosReference")
+    .addEventListener("click", function () {
+      anotacoesReferenciaPos.zoom = Math.max(
+        0.6,
+        anotacoesReferenciaPos.zoom - 0.1,
+      );
+      atualizarZoomReferenciaPos();
+    });
+  document
+    .getElementById("resetZoomPosReference")
+    .addEventListener("click", function () {
+      anotacoesReferenciaPos.zoom = 1;
+      atualizarZoomReferenciaPos();
+    });
+  document
+    .getElementById("togglePosReferenceFullscreen")
+    .addEventListener("click", function () {
+      modal.classList.toggle("is-fullscreen");
+      requestAnimationFrame(prepararCanvasReferenciaPos);
+    });
 });
 
 function formatarDataHora(data) {

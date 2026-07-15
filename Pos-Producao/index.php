@@ -126,7 +126,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=1'; ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=2'; ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -254,7 +254,7 @@ $conn->close();
     <div id="posReferenceAnnotationModal" class="modal pos-reference-modal" style="display:none;z-index:12000;">
         <section class="modal-content pos-reference-modal__content" aria-labelledby="posReferenceAnnotationTitle">
             <header class="pos-reference-modal__header">
-                <div><h2 id="posReferenceAnnotationTitle">Comentários e rabiscos da referência</h2><p>Adicione comentários e marque pontos importantes para orientar a Pós-produção.</p></div>
+                <div><h2 id="posReferenceAnnotationTitle">Comentários e rabiscos da referência</h2><p>Consulte os comentários e as marcações enviados para orientar a Pós-produção.</p></div>
                 <div class="pos-reference-modal__header-actions"><button type="button" id="togglePosReferenceFullscreen" class="pos-reference-action-button"><i class="fa-solid fa-expand"></i> Tela cheia</button><button type="button" id="closePosReferenceAnnotation" class="modal-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
             </header>
             <div class="pos-reference-modal__body">
@@ -477,7 +477,8 @@ $conn->close();
     </div>
 
 
-    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=4'; ?>"></script>
+    <script>window.POS_REFERENCE_READONLY = true;</script>
+    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=6'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

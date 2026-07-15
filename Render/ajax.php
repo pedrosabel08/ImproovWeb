@@ -617,9 +617,10 @@ if (isset($_POST['action'])) {
             $savedFiles = [];
             try {
                 pos_referencias_ensure_schema($conn);
+                pos_referencias_ensure_annotations_schema($conn);
                 aprovacao_interna_ensure_schema($conn);
                 $conn->begin_transaction();
-                $stmt = $conn->prepare("SELECT r.idrender_alta, r.imagem_id, r.status_id, r.responsavel_id,
+                $stmt = $conn->prepare("SELECT r.idrender_alta, r.imagem_id, r.status_id, r.responsavel_id, r.previa_jpg,
                     i.obra_id, s.nome_status, p.idpos_producao
                     FROM render_alta r
                     JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
@@ -665,7 +666,35 @@ if (isset($_POST['action'])) {
                     $updatePos->close();
                 }
 
+                $primaryReferenceId = pos_referencias_ensure_render_principal($conn, $posId, $renderId, (string)($render['previa_jpg'] ?? ''), $colaboradorId);
                 $savedFiles = pos_referencias_insert_uploads($conn, $posId, $colaboradorId, $_FILES['references'] ?? []);
+                $referenceMap = ['main' => $primaryReferenceId];
+                foreach ($savedFiles as $savedFile) {
+                    if (!empty($savedFile['reference_id'])) $referenceMap['upload_' . (int)$savedFile['input_index']] = (int)$savedFile['reference_id'];
+                }
+                $drafts = json_decode((string)($_POST['reference_review_drafts'] ?? '{}'), true);
+                if (is_array($drafts)) {
+                    foreach ($drafts as $draftKey => $annotations) {
+                        $referenceId = $referenceMap[$draftKey] ?? 0;
+                        if ($referenceId <= 0 || !is_array($annotations)) continue;
+                        foreach ($annotations as $annotation) {
+                            if (!is_array($annotation)) continue;
+                            pos_referencias_annotation_create(
+                                $conn,
+                                $referenceId,
+                                $colaboradorId,
+                                trim((string)($annotation['texto'] ?? '')),
+                                (string)($annotation['tipo'] ?? 'freehand'),
+                                isset($annotation['x']) ? (float)$annotation['x'] : null,
+                                isset($annotation['y']) ? (float)$annotation['y'] : null,
+                                isset($annotation['path_data']) ? json_encode($annotation['path_data'], JSON_UNESCAPED_UNICODE) : null,
+                                (string)($annotation['cor'] ?? '#f59e0b'),
+                                (int)($annotation['espessura'] ?? 2),
+                                array_key_exists('possui_desenho', $annotation) ? (bool)$annotation['possui_desenho'] : null
+                            );
+                        }
+                    }
+                }
                 $updateRender = $conn->prepare("UPDATE render_alta SET status = 'Aprovado', data = NOW() WHERE idrender_alta = ?");
                 $updateRender->bind_param('i', $renderId);
                 if (!$updateRender->execute()) throw new RuntimeException('Não foi possível aprovar o render.');
@@ -678,7 +707,7 @@ if (isset($_POST['action'])) {
                 echo json_encode(['status' => 'sucesso', 'render_id' => $renderId, 'pos_producao_id' => $posId, 'references' => pos_referencias_list($conn, $posId), 'deadline_command_created' => $deadlineFlowResult['command']['created'] ?? false]);
             } catch (Throwable $e) {
                 $conn->rollback();
-                foreach ($savedFiles as $savedFile) if (is_file($savedFile)) @unlink($savedFile);
+                pos_referencias_cleanup_uploaded_files($savedFiles);
                 echo json_encode(['status' => 'erro', 'message' => $e->getMessage()]);
             }
             break;
@@ -692,6 +721,107 @@ if (isset($_POST['action'])) {
             $row = $stmt->get_result()->fetch_assoc();
             $stmt->close();
             echo json_encode(['status' => 'sucesso', 'references' => $row ? pos_referencias_list($conn, (int) $row['idpos_producao']) : []]);
+            break;
+
+        case 'getReferenceReview':
+            $renderId = isset($_POST['render_id']) ? (int)$_POST['render_id'] : (isset($_GET['render_id']) ? (int)$_GET['render_id'] : 0);
+            $colaboradorId = render_current_colaborador_id();
+            if ($renderId <= 0 || $colaboradorId <= 0) {
+                echo json_encode(['status' => 'erro', 'message' => 'Render inválido.']);
+                break;
+            }
+            pos_referencias_ensure_schema($conn);
+            $stmt = $conn->prepare("SELECT r.idrender_alta, r.previa_jpg, p.idpos_producao
+                FROM render_alta r LEFT JOIN pos_producao p ON p.render_id = r.idrender_alta
+                WHERE r.idrender_alta = ? LIMIT 1");
+            $stmt->bind_param('i', $renderId);
+            $stmt->execute();
+            $review = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$review) {
+                echo json_encode(['status' => 'erro', 'message' => 'Render não encontrado.']);
+                break;
+            }
+            $posId = (int)($review['idpos_producao'] ?? 0);
+            $primaryId = null;
+            $references = [];
+            if ($posId > 0) {
+                $primaryId = pos_referencias_ensure_render_principal($conn, $posId, $renderId, (string)($review['previa_jpg'] ?? ''), $colaboradorId);
+                $references = pos_referencias_list($conn, $posId);
+            }
+            echo json_encode([
+                'status' => 'sucesso',
+                'render_id' => $renderId,
+                'pos_producao_id' => $posId,
+                'main_reference_id' => $primaryId,
+                'main_preview' => (string)($review['previa_jpg'] ?? ''),
+                'references' => $references,
+            ]);
+            break;
+
+        case 'addReferenceFiles':
+            $renderId = isset($_POST['render_id']) ? (int)$_POST['render_id'] : 0;
+            $colaboradorId = render_current_colaborador_id();
+            $stmt = $conn->prepare('SELECT idpos_producao FROM pos_producao WHERE render_id = ? LIMIT 1');
+            $stmt->bind_param('i', $renderId);
+            $stmt->execute();
+            $pos = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$pos || $colaboradorId <= 0) {
+                echo json_encode(['status' => 'erro', 'message' => 'A Pós-Produção ainda não está disponível para esta referência.']);
+                break;
+            }
+            pos_referencias_ensure_schema($conn);
+            pos_referencias_ensure_annotations_schema($conn);
+            $saved = [];
+            try {
+                $conn->begin_transaction();
+                $saved = pos_referencias_insert_uploads($conn, (int)$pos['idpos_producao'], $colaboradorId, $_FILES['references'] ?? []);
+                $referenceMap = [];
+                foreach ($saved as $savedFile) {
+                    if (!empty($savedFile['reference_id'])) $referenceMap['upload_' . (int)$savedFile['input_index']] = (int)$savedFile['reference_id'];
+                }
+                $drafts = json_decode((string)($_POST['reference_review_drafts'] ?? '{}'), true);
+                if (is_array($drafts)) {
+                    foreach ($drafts as $draftKey => $annotations) {
+                        $referenceId = $referenceMap[$draftKey] ?? 0;
+                        if ($referenceId <= 0 || !is_array($annotations)) continue;
+                        foreach ($annotations as $annotation) {
+                            if (!is_array($annotation)) continue;
+                            pos_referencias_annotation_create(
+                                $conn,
+                                $referenceId,
+                                $colaboradorId,
+                                trim((string)($annotation['texto'] ?? '')),
+                                (string)($annotation['tipo'] ?? 'freehand'),
+                                isset($annotation['x']) ? (float)$annotation['x'] : null,
+                                isset($annotation['y']) ? (float)$annotation['y'] : null,
+                                isset($annotation['path_data']) ? json_encode($annotation['path_data'], JSON_UNESCAPED_UNICODE) : null,
+                                (string)($annotation['cor'] ?? '#f59e0b'),
+                                (int)($annotation['espessura'] ?? 2),
+                                array_key_exists('possui_desenho', $annotation) ? (bool)$annotation['possui_desenho'] : null
+                            );
+                        }
+                    }
+                }
+                $conn->commit();
+                notifyPosProducaoUpdate('references_changed', ['render_id' => $renderId, 'pos_producao_id' => (int)$pos['idpos_producao']]);
+                echo json_encode(['status' => 'sucesso', 'saved_count' => count($saved), 'references' => pos_referencias_list($conn, (int)$pos['idpos_producao'])]);
+            } catch (Throwable $e) {
+                $conn->rollback();
+                pos_referencias_cleanup_uploaded_files($saved);
+                echo json_encode(['status' => 'erro', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'removeReference':
+            $referenceId = isset($_POST['reference_id']) ? (int)$_POST['reference_id'] : 0;
+            $colaboradorId = render_current_colaborador_id();
+            if ($referenceId <= 0 || $colaboradorId <= 0 || !pos_referencias_remove($conn, $referenceId, $colaboradorId)) {
+                echo json_encode(['status' => 'erro', 'message' => 'A referência não pode ser removida.']);
+                break;
+            }
+            echo json_encode(['status' => 'sucesso']);
             break;
 
         case 'updateRender':

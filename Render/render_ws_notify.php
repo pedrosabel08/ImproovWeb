@@ -7,13 +7,18 @@
 function notifyRenderUpdate(string $event, array $payload = []): void
 {
     $channel = 'render:updated';
-    $configuredRedisUrl = getenv('REDIS_URL') ?: '(não definida; Predis usará a conexão padrão)';
+
     try {
-        if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
-            require_once __DIR__ . '/../vendor/autoload.php';
+        $autoload = __DIR__ . '/../vendor/autoload.php';
+
+        if (file_exists($autoload)) {
+            require_once $autoload;
         }
-        if (!class_exists('\\Predis\\Client')) {
-            error_log('[WS-DIAG][Render][PHP] Predis\\Client indisponível; publish não executado. REDIS_URL=' . $configuredRedisUrl);
+
+        if (!class_exists(\Predis\Client::class)) {
+            error_log(
+                '[WS-DIAG][Render][PHP] Predis\\Client indisponível.'
+            );
             return;
         }
 
@@ -22,15 +27,46 @@ function notifyRenderUpdate(string $event, array $payload = []): void
             'event' => $event,
             'ts' => time(),
         ], $payload);
-        $encodedMessage = json_encode($message);
-        error_log('[WS-DIAG][Render][PHP] publish.in REDIS_URL=' . $configuredRedisUrl . ' host=127.0.0.1 porta=6379 canal=' . $channel . ' payload=' . $encodedMessage);
 
-        // Mantém a mesma construção existente: sem parâmetros, Predis usa 127.0.0.1:6379.
-        $redis = new \Predis\Client();
+        $encodedMessage = json_encode(
+            $message,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+
+        if ($encodedMessage === false) {
+            throw new RuntimeException(
+                'Falha ao serializar evento: ' . json_last_error_msg()
+            );
+        }
+
+        $redisUrl = getenv('REDIS_URL') ?: 'tcp://127.0.0.1:6379';
+
+        error_log(
+            '[WS-DIAG][Render][PHP] publish.in' .
+            ' redis=' . $redisUrl .
+            ' canal=' . $channel .
+            ' payload=' . $encodedMessage
+        );
+
+        $redis = new \Predis\Client($redisUrl, [
+            'timeout' => 2,
+            'read_write_timeout' => 2,
+        ]);
+
         $publishResult = $redis->publish($channel, $encodedMessage);
-        error_log('[WS-DIAG][Render][PHP] publish.out canal=' . $channel . ' retorno=' . var_export($publishResult, true));
+
+        error_log(
+            '[WS-DIAG][Render][PHP] publish.out' .
+            ' canal=' . $channel .
+            ' subscribers=' . var_export($publishResult, true)
+        );
     } catch (Throwable $e) {
-        error_log('[WS-DIAG][Render][PHP] publish.error REDIS_URL=' . $configuredRedisUrl . ' canal=' . $channel . ' exception=' . $e->getMessage() . ' trace=' . $e->getTraceAsString());
-        // Redis is an interface acceleration only; never fail a committed action.
+        error_log(
+            '[WS-DIAG][Render][PHP] publish.error' .
+            ' canal=' . $channel .
+            ' exception=' . $e->getMessage()
+        );
+
+        // O WebSocket não deve invalidar uma alteração já salva no banco.
     }
 }

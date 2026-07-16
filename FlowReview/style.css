@@ -5950,3 +5950,66 @@ nav.breadcrumb-nav a {
     border-color: rgba(44, 95, 212, 0.3);
   }
 }
+/* Indicador de um novo envio recebido sem interromper a revisão atual. */
+.flowreview-realtime-indicator {
+  display: inline-flex;
+  align-items: center;
+  max-width: 0;
+  min-height: 30px;
+  padding: 0;
+  overflow: hidden;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    max-width 180ms ease,
+    padding 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.flowreview-realtime-indicator::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgb(34 197 94 / 18%);
+}
+
+.flowreview-realtime-indicator.is-visible {
+  max-width: 320px;
+  padding: 7px 11px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.imagens > nav.has-realtime-update {
+  box-shadow: inset 0 0 0 2px rgb(34 197 94 / 35%);
+}
+
+@media (max-width: 1024px) {
+  .flowreview-realtime-indicator.is-visible {
+    max-width: 190px;
+  }
+}
+
+@media (max-width: 600px) {
+  .flowreview-realtime-indicator {
+    order: 3;
+    width: 100%;
+  }
+
+  .flowreview-realtime-indicator.is-visible {
+    width: auto;
+    max-width: min(100%, 240px);
+  }
+}

@@ -1,5 +1,7 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 // Suporta tanto multipart/form-data (com imagem) quanto application/json (sem imagem)
 $isJson = isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false;
@@ -64,6 +66,9 @@ if ($stmt->affected_rows > 0 || $stmt->errno === 0) {
         }
     }
 
+    notifyFlowReviewUpdate($conn, 'comment.updated', [
+        'comentario_id' => (int) $id,
+    ]);
     echo json_encode(['sucesso' => true, 'imagem' => $imagem_path]);
 } else {
     echo json_encode(['sucesso' => false]);

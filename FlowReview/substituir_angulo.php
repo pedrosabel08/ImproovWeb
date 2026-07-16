@@ -9,6 +9,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 $historico_id = isset($_POST['historico_id']) ? intval($_POST['historico_id']) : 0;
 
@@ -99,6 +100,11 @@ try {
     }
 
     $conn->commit();
+    notifyFlowReviewUpdate($conn, 'media.updated', [
+        'funcao_imagem_id' => (int) $funcao_imagem_id,
+        'imagem_id' => (int) $imagem_id,
+        'historico_id' => (int) $historico_id,
+    ]);
     echo json_encode(['success' => true, 'path' => $relPath]);
 } catch (Exception $e) {
     $conn->rollback();

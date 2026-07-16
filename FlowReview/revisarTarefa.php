@@ -17,6 +17,7 @@ require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/approval_media_schema.php';
+require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use phpseclib3\Net\SFTP;
@@ -401,6 +402,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $resultadoFinal['logs'] = array_merge($resultadoFinal['logs'], $slackLog);
             }
 
+            notifyFlowReviewUpdate($conn, 'approval.changed', [
+                'funcao_animacao_id' => (int) $funcao_animacao_id,
+                'imagem_id' => $imagem_id ?: null,
+                'historico_id' => $historico_id ?: null,
+                'status_anterior' => $status_anterior,
+                'status_novo' => $status,
+                'decision' => $tipoRevisao,
+            ]);
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Revisao de animacao registrada com sucesso.',
@@ -595,6 +605,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->rollback();
                 throw $e;
             }
+
+            notifyFlowReviewUpdate($conn, 'approval.changed', [
+                'funcao_imagem_id' => (int) $idfuncao_imagem,
+                'imagem_id' => $imagem_id_context ?: $imagem_id,
+                'historico_id' => $historico_id ?: null,
+                'aprovacao_id' => $historicoDirecaoId ?: null,
+                'status_anterior' => $status_funcao_context,
+                'status_novo' => 'Aguardando Direção',
+                'decision' => $tipoRevisao,
+            ]);
 
             if ($novoHistoricoDirecao) {
                 $stmtDirSlack = $conn->prepare(
@@ -1445,6 +1465,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->commit();
 
         // Slack envio final — só na 1ª chamada (não reenvia na resolução de conflito SFTP)
+        notifyFlowReviewUpdate($conn, 'approval.changed', [
+            'funcao_imagem_id' => (int) $idfuncao_imagem,
+            'imagem_id' => $imagem_id_context ?: $imagem_id,
+            'historico_id' => $historico_id ?: null,
+            'status_anterior' => $status_funcao_context,
+            'status_novo' => $status,
+            'decision' => $tipoRevisao,
+        ]);
+
         if ($sftp_action !== null) {
             $resultadoFinal['logs'][] = 'Slack: notificação pulada (resolução de conflito SFTP).';
         } else {

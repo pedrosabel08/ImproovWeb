@@ -475,7 +475,7 @@ $conn->close();
     </script>
 
 
-    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('script.js'); ?>&fr_rt=<?php echo filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

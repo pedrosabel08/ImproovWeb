@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 include 'conexao.php';
+require_once __DIR__ . '/FlowReview/ws_notify.php';
 // Verifica se o autoload do composer está presente para evitar fatal error (500)
 $vendorAutoload = __DIR__ . '/vendor/autoload.php';
 if (!file_exists($vendorAutoload)) {
@@ -631,7 +632,15 @@ for ($i = 0; $i < $total; $i++) {
                 $fidInt = (int)$fid;
                 // tipos: i s s i s i s -> 'issisis'
                 $stmtLog->bind_param('issisis', $fidInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id, $status_atual);
-                @$stmtLog->execute();
+                if (@$stmtLog->execute() && $ok && in_array($nome_funcao_lower, ['caderno', 'filtro de assets'], true)) {
+                    notifyFlowReviewUpdate($conn, 'media.created', [
+                        'funcao_imagem_id' => $fidInt,
+                        'arquivo_log_id' => (int)$conn->insert_id,
+                        'versao' => $revisao ?? null,
+                        'media_count' => 1,
+                        'actor_id' => $colaborador_id ? (int)$colaborador_id : null,
+                    ]);
+                }
             }
         } else {
             $nullInt = null;

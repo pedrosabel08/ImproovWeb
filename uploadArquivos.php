@@ -124,6 +124,7 @@ register_shutdown_function(function () {
 require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/config/secure_env.php';
 require_once __DIR__ . '/FlowReview/approval_media_schema.php';
+require_once __DIR__ . '/FlowReview/ws_notify.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -494,6 +495,7 @@ if (!isset($_FILES['imagens'])) {
 $imagens = $_FILES['imagens'];
 $totalImagens = count($imagens['name']);
 $imagensEnviadas = [];
+$historicoIdsEnviados = [];
 $postersEnviados = [];
 $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 
@@ -528,6 +530,49 @@ $tipoImagem = $resultTipo->fetch_assoc()['tipo_imagem'] ?? '';
 $nomeFuncaoKeyGlobal = strtolower(removerTodosAcentos($nomeFuncao));
 $tipoImagemKeyGlobal = strtolower(removerTodosAcentos($tipoImagem));
 $funcao_status_norm  = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
+
+// Impede persistência parcial: a regra de comentários pendentes precisa ser
+// avaliada antes de enviar para o SFTP e inserir o histórico da nova prévia.
+if (!$isAnimacaoUpload && $funcao_status_norm === 'ajuste') {
+    $chkCol = $conn->prepare(
+        "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comentarios_imagem' AND COLUMN_NAME = 'concluido' LIMIT 1"
+    );
+    $chkCol->execute();
+    $colExists = ($chkCol->get_result()->num_rows > 0);
+    $chkCol->close();
+
+    if ($colExists) {
+        $stmtLastHai = $conn->prepare(
+            "SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1"
+        );
+        $stmtLastHai->bind_param('i', $idFuncaoImagem);
+        $stmtLastHai->execute();
+        $rowLastHai = $stmtLastHai->get_result()->fetch_assoc();
+        $stmtLastHai->close();
+
+        if ($rowLastHai) {
+            $lastApImagemId = (int) $rowLastHai['id'];
+            $stmtPend = $conn->prepare(
+                "SELECT COUNT(*) AS total, SUM(concluido) AS concluidos FROM comentarios_imagem WHERE ap_imagem_id = ?"
+            );
+            $stmtPend->bind_param('i', $lastApImagemId);
+            $stmtPend->execute();
+            $rowPend = $stmtPend->get_result()->fetch_assoc();
+            $stmtPend->close();
+
+            $totalComents = (int) ($rowPend['total'] ?? 0);
+            $concluidosCo = (int) ($rowPend['concluidos'] ?? 0);
+            if ($totalComents > 0 && $concluidosCo < $totalComents) {
+                $pendentes = $totalComents - $concluidosCo;
+                json_error(
+                    "Existem {$pendentes} comentÃ¡rio(s) nÃ£o concluÃ­do(s). Conclua todos os ajustes no Flow Review antes de enviar uma nova versÃ£o.",
+                    422,
+                    ['pendentes' => $pendentes, 'total' => $totalComents, 'concluidos' => $concluidosCo]
+                );
+            }
+        }
+    }
+}
 
 $isNasDirectBypass = !$isAnimacaoUpload && (
     ($nomeFuncaoKeyGlobal === 'pos-producao' && $funcao_status_norm === 'aprovado com ajustes')
@@ -618,6 +663,7 @@ for ($i = 0; $i < $totalImagens; $i++) {
     $stmt->bind_param("isisssis", $idFuncaoImagem, $caminhoBanco, $indice_envio, $nomeFinalSemExt, $mediaTipo, $mimeType, $tamanhoArquivo, $posterPathBanco);
     if ($stmt->execute()) {
         $imagensEnviadas[] = $caminhoBanco;
+        $historicoIdsEnviados[] = (int) $conn->insert_id;
         if ($isNasDirectBypass) {
             $arquivosParaNAS[] = [
                 'tmp_name'   => $imagemAtual['tmp_name'],
@@ -869,6 +915,18 @@ if ($isNasDirectBypass) {
         curl_close($ch);
     }
 
+    notifyFlowReviewUpdate($conn, 'media.created', [
+        'funcao_imagem_id' => $isAnimacaoUpload ? null : (int) $idFuncaoImagem,
+        'funcao_animacao_id' => $isAnimacaoUpload ? (int) $idFuncaoImagem : null,
+        'imagem_id' => (int) $idimagem,
+        'historico_id' => $historicoIdsEnviados ? (int) end($historicoIdsEnviados) : null,
+        'historico_ids' => $historicoIdsEnviados,
+        'indice_envio' => (int) $indice_envio,
+        'versao' => (int) $indice_envio,
+        'media_count' => count($imagensEnviadas),
+        'status_novo' => 'Aprovado',
+    ]);
+
     echo json_encode([
         "success"        => "Imagens enviadas e aprovadas automaticamente!",
         "bypass_nas"     => true,
@@ -1041,6 +1099,18 @@ if (!$isAnimacaoUpload && in_array($funcao_status_norm, ['ajuste', 'em aprovacao
         curl_close($ch);
     }
 }
+
+notifyFlowReviewUpdate($conn, 'media.created', [
+    'funcao_imagem_id' => $isAnimacaoUpload ? null : (int) $idFuncaoImagem,
+    'funcao_animacao_id' => $isAnimacaoUpload ? (int) $idFuncaoImagem : null,
+    'imagem_id' => (int) $idimagem,
+    'historico_id' => $historicoIdsEnviados ? (int) end($historicoIdsEnviados) : null,
+    'historico_ids' => $historicoIdsEnviados,
+    'indice_envio' => (int) $indice_envio,
+    'versao' => (int) $indice_envio,
+    'media_count' => count($imagensEnviadas),
+    'status_novo' => 'Em aprovação',
+]);
 
 echo json_encode([
     "success"      => "Imagens enviadas com sucesso via SFTP!",

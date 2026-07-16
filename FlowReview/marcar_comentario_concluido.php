@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 header('Content-Type: application/json');
 
@@ -84,6 +85,12 @@ if ($ap_imagem_id) {
     $total      = (int)($prog['total']     ?? 0);
     $concluidos = (int)($prog['concluidos'] ?? 0);
 }
+
+notifyFlowReviewUpdate($conn, 'comment.completion_changed', [
+    'comentario_id' => (int) $comentario_id,
+    'historico_id' => $ap_imagem_id ?: null,
+    'concluido' => (bool) $concluido,
+]);
 
 echo json_encode([
     'sucesso'    => true,

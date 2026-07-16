@@ -2834,7 +2834,197 @@ function initializeEnviosComparison() {
 
 initializeEnviosComparison();
 
-function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
+function captureFlowReviewViewState() {
+  const comentarioModal = document.getElementById("comentarioModal");
+  const video = document.getElementById("video_atual");
+  const comparison = enviosComparisonState.active
+    ? enviosComparisonState.viewers.map((viewer) => ({
+        side: viewer.side,
+        indice: viewer.select?.value || "",
+        zoom: viewer.zoom,
+        translateX: viewer.translateX,
+        translateY: viewer.translateY,
+        imageId: viewer.imageId,
+      }))
+    : [];
+
+  const filterIds = [
+    "filtro_obra",
+    "filtro_colaborador",
+    "nome_funcao",
+    "filtro_status",
+    "fr-search-funcao",
+    "stab-search",
+    "stab-funcao",
+    "stab-colab",
+  ];
+  const filters = {};
+  filterIds.forEach((id) => {
+    const element = document.getElementById(id);
+    if (element) filters[id] = element.value;
+  });
+
+  return {
+    mediaId: enviosComparisonState.active
+      ? enviosComparisonState.normalMedia?.id
+      : ap_imagem_id,
+    mediaMode: enviosComparisonState.active
+      ? enviosComparisonState.normalMedia?.mode
+      : currentMediaMode,
+    pdfLogId: enviosComparisonState.active
+      ? enviosComparisonState.normalMedia?.pdfLogId
+      : pdfViewerState.logId,
+    pdfPage: enviosComparisonState.active
+      ? enviosComparisonState.normalMedia?.pdfPage
+      : pdfViewerState.page,
+    indiceEnvio: document.getElementById("indiceSelect")?.value || "",
+    zoom: currentZoom,
+    translateX: currentTranslateX,
+    translateY: currentTranslateY,
+    videoTime: video ? video.currentTime : null,
+    comparisonActive: enviosComparisonState.active,
+    comparison,
+    filters,
+    navScrollTop: document.querySelector(".imagens > nav")?.scrollTop || 0,
+    navScrollLeft: document.querySelector(".imagens > nav")?.scrollLeft || 0,
+    commentsScrollTop: document.querySelector(".comentarios")?.scrollTop || 0,
+    taskScrollTop: document.getElementById("stab-items")?.scrollTop || 0,
+    windowScrollX: window.scrollX,
+    windowScrollY: window.scrollY,
+    rightCollapsed: document
+      .querySelector(".sidebar-direita")
+      ?.classList.contains("collapsed"),
+    leftCollapsed: document
+      .getElementById("wrapper-sidebar")
+      ?.classList.contains("collapsed"),
+    commentModalOpen: comentarioModal?.style.display === "flex",
+    commentDraft: quillComentario?.root?.innerHTML || "",
+    editingCommentId: _editingCommentId,
+    replyingToCommentId: _replyingToCommentId,
+    editingReplyId: _editingReplyId,
+  };
+}
+
+function restoreFlowReviewFilters(filters) {
+  Object.entries(filters || {}).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (!element) return;
+    const supportsValue =
+      element.tagName !== "SELECT" ||
+      Array.from(element.options).some((option) => option.value === value);
+    if (supportsValue) element.value = value;
+  });
+  const stabFuncao = document.getElementById("stab-funcao");
+  if (stabFuncao) stabFuncao.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+async function restoreFlowReviewViewState(state) {
+  if (!state) return;
+
+  restoreFlowReviewFilters(state.filters);
+
+  const indiceSelect = document.getElementById("indiceSelect");
+  if (
+    indiceSelect &&
+    state.indiceEnvio &&
+    Array.from(indiceSelect.options).some(
+      (option) => option.value === String(state.indiceEnvio),
+    )
+  ) {
+    indiceSelect.value = String(state.indiceEnvio);
+    indiceSelect.dispatchEvent(new Event("change"));
+  }
+
+  if (state.mediaId) {
+    const selectedMedia = document.querySelector(
+      `#imagens [data-id="${String(state.mediaId)}"]`,
+    );
+    if (selectedMedia) selectedMedia.click();
+  }
+
+  if (
+    state.mediaMode === "pdf" &&
+    state.pdfLogId &&
+    String(pdfViewerState.logId) === String(state.pdfLogId) &&
+    state.pdfPage > 1
+  ) {
+    for (let attempt = 0; attempt < 20 && !pdfViewerState.doc; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    if (pdfViewerState.doc) {
+      pdfViewerState.page = Math.min(
+        Number(state.pdfPage) || 1,
+        pdfViewerState.pages || Number(state.pdfPage) || 1,
+      );
+      await renderizarPaginaPdf();
+    }
+  }
+
+  currentZoom = Number(state.zoom) || 1;
+  currentTranslateX = Number(state.translateX) || 0;
+  currentTranslateY = Number(state.translateY) || 0;
+  applyTransforms();
+
+  const currentVideo = document.getElementById("video_atual");
+  if (currentVideo && state.videoTime !== null) {
+    currentVideo.currentTime = Math.max(0, Number(state.videoTime) || 0);
+  }
+
+  if (state.comparisonActive && enviosComparisonState.indices.length >= 2) {
+    enterEnviosComparison();
+    await Promise.all(
+      enviosComparisonState.viewers.map(async (viewer) => {
+        const saved = state.comparison.find((item) => item.side === viewer.side);
+        if (!saved) return;
+        if (
+          saved.indice &&
+          Array.from(viewer.select.options).some(
+            (option) => option.value === String(saved.indice),
+          )
+        ) {
+          viewer.select.value = String(saved.indice);
+          await viewer.loadSelectedEnvio();
+        }
+        viewer.zoom = Number(saved.zoom) || 1;
+        viewer.translateX = Number(saved.translateX) || 0;
+        viewer.translateY = Number(saved.translateY) || 0;
+        viewer.applyTransform();
+      }),
+    );
+  }
+
+  const rightSidebar = document.querySelector(".sidebar-direita");
+  const leftSidebar = document.getElementById("wrapper-sidebar");
+  rightSidebar?.classList.toggle("collapsed", Boolean(state.rightCollapsed));
+  leftSidebar?.classList.toggle("collapsed", Boolean(state.leftCollapsed));
+
+  if (state.commentModalOpen) {
+    _editingCommentId = state.editingCommentId;
+    _replyingToCommentId = state.replyingToCommentId;
+    _editingReplyId = state.editingReplyId;
+    if (quillComentario?.root) quillComentario.root.innerHTML = state.commentDraft;
+    const modal = document.getElementById("comentarioModal");
+    if (modal) modal.style.display = "flex";
+  }
+
+  requestAnimationFrame(() => {
+    const nav = document.querySelector(".imagens > nav");
+    const comments = document.querySelector(".comentarios");
+    const tasks = document.getElementById("stab-items");
+    if (nav) {
+      nav.scrollTop = state.navScrollTop;
+      nav.scrollLeft = state.navScrollLeft;
+    }
+    if (comments) comments.scrollTop = state.commentsScrollTop;
+    if (tasks) tasks.scrollTop = state.taskScrollTop;
+    window.scrollTo(state.windowScrollX, state.windowScrollY);
+  });
+}
+
+function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
+  const preservedViewState = options.preserveView
+    ? captureFlowReviewViewState()
+    : null;
   const requestSequence = ++historyRequestSequence;
   exitEnviosComparison(false);
   setEnviosComparisonData({}, []);
@@ -2865,7 +3055,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
     }
   });
 
-  fetch(
+  return fetch(
     `historico.php?ajid=${encodeURIComponent(String(idfuncao_imagem))}&tipo_tarefa=${encodeURIComponent(tipoTarefaAtual)}`,
   )
     .then((response) => response.json())
@@ -3045,6 +3235,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
       }
 
       const podeAprovar =
+        Boolean(tarefaAtual) &&
         ([1, 2, 9, 20, 3].includes(idusuario) ||
           (idusuario === 8 &&
             [23, 40].includes(Number(item?.colaborador_id))) ||
@@ -3406,6 +3597,10 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null) {
       if (indicesOrdenados.length > 0) {
         indiceSelect.value = indicesOrdenados[0];
         indiceSelect.dispatchEvent(new Event("change"));
+      }
+
+      if (preservedViewState) {
+        return restoreFlowReviewViewState(preservedViewState);
       }
     })
     .catch((error) => console.error("Erro ao buscar dados:", error));
@@ -5379,10 +5574,17 @@ function renderCommentProgress(container, comentarios) {
 
 // ---------------------------------------------------------------------------
 
+const commentRenderVersions = new WeakMap();
+
 async function renderComments(id, target = {}) {
   // console.log("renderComments", id); // debug
   const comentariosDiv =
     target.comentariosDiv || document.querySelector(".comentarios");
+  const renderVersion = (commentRenderVersions.get(comentariosDiv) || 0) + 1;
+  commentRenderVersions.set(comentariosDiv, renderVersion);
+  const isCurrentRender = () =>
+    commentRenderVersions.get(comentariosDiv) === renderVersion &&
+    (!target.isCurrent || target.isCurrent());
   comentariosDiv.innerHTML = "";
   const imagemCompletaDiv =
     target.markerContainer || document.getElementById("image_wrapper");
@@ -5404,7 +5606,7 @@ async function renderComments(id, target = {}) {
       const urlAll = `buscar_comentarios.php?arquivo_log_id=${encodeURIComponent(logId)}`;
       const response = await fetch(urlAll);
       const all = await response.json();
-      if (target.isCurrent && !target.isCurrent()) return;
+      if (!isCurrentRender()) return;
       pdfCommentsCache.logId = logId;
       pdfCommentsCache.comentarios = Array.isArray(all) ? all : [];
       pdfCommentsCache.fetchedAt = Date.now();
@@ -5415,8 +5617,16 @@ async function renderComments(id, target = {}) {
     const url = `buscar_comentarios.php?id=${encodeURIComponent(String(id))}`;
     const response = await fetch(url);
     const data = await response.json();
-    if (target.isCurrent && !target.isCurrent()) return;
+    if (!isCurrentRender()) return;
     comentarios = Array.isArray(data) ? data : [];
+  }
+
+  if (!isPdf) {
+    const total = comentarios.length;
+    const pendentes = comentarios.filter(
+      (comentario) => parseInt(comentario.concluido ?? 0, 10) !== 1,
+    ).length;
+    _atualizarBadgeImagem(id, total, pendentes);
   }
 
   // Remove marcadores anteriores (pontos, formas e freehand)
@@ -5435,7 +5645,7 @@ async function renderComments(id, target = {}) {
   }
 
   const users = await fetch("buscar_usuarios.php").then((res) => res.json());
-  if (target.isCurrent && !target.isCurrent()) return;
+  if (!isCurrentRender()) return;
   if (users.length > 0) _cachedUsers = users;
 
   const tribute = new Tribute({
@@ -5979,6 +6189,14 @@ async function salvarResposta(
 // Função pra adicionar resposta no DOM
 function adicionarRespostaDOM(comentarioId, resposta) {
   const container = document.getElementById(`respostas-${comentarioId}`);
+  if (!container || !resposta?.id) return;
+  if (
+    container.querySelector(
+      `.resposta[data-reply-id="${String(resposta.id)}"]`,
+    )
+  ) {
+    return;
+  }
   const respostaDiv = document.createElement("div");
   respostaDiv.classList.add("resposta");
   respostaDiv.setAttribute("data-reply-id", resposta.id);
@@ -6735,3 +6953,208 @@ const id_revisao = document.getElementById("id_revisao");
     if (t) hideTooltipFor(t);
   });
 })();
+
+// Atualizações em tempo real do FlowReview (Redis -> WebSocket -> navegador)
+const flowReviewRealtimeSeen = new Set();
+let flowReviewRealtimeQueue = Promise.resolve();
+let flowReviewRealtimeIndicatorTimer = null;
+
+function flowReviewSameId(left, right) {
+  return left !== null &&
+    left !== undefined &&
+    left !== "" &&
+    right !== null &&
+    right !== undefined &&
+    right !== "" &&
+    String(left) === String(right);
+}
+
+function getFlowReviewRealtimeScope() {
+  const task = dadosTarefas.find(
+    (item) => String(item.idfuncao_imagem) === String(funcaoImagemId),
+  );
+  const selectedObra = document.getElementById("filtro_obra")?.value || "";
+  const obraTask = dadosTarefas.find(
+    (item) => item.nomenclatura === selectedObra,
+  );
+
+  return {
+    taskOpen:
+      Boolean(funcaoImagemId) &&
+      !document.querySelector(".container-aprovacao")?.classList.contains("hidden"),
+    funcaoId: funcaoImagemId,
+    tipoTarefa:
+      currentFuncaoContext?.tipo_tarefa || getTaskTipo(task || currentFuncaoContext),
+    imagemId:
+      currentFuncaoContext?.imagem_id || task?.imagem_id || null,
+    obraId:
+      currentFuncaoContext?.obra_id ||
+      currentFuncaoContext?.idobra ||
+      task?.idobra ||
+      obraTask?.idobra ||
+      null,
+    obraNome: selectedObra,
+  };
+}
+
+function flowReviewEventBelongsToView(payload, scope) {
+  if (!payload || !scope) return false;
+  const payloadFuncao =
+    payload.funcao_imagem_id || payload.funcao_animacao_id || null;
+
+  if (scope.taskOpen) {
+    return (
+      flowReviewSameId(payloadFuncao, scope.funcaoId) ||
+      flowReviewSameId(payload.imagem_id, scope.imagemId)
+    );
+  }
+
+  // Na visão geral nenhuma obra está selecionada: qualquer evento do
+  // FlowReview pode introduzir um novo card e precisa atualizar a listagem.
+  if (!scope.obraNome) {
+    return Boolean(payload.obra_id || payload.imagem_id || payloadFuncao);
+  }
+
+  return flowReviewSameId(payload.obra_id, scope.obraId);
+}
+
+async function refreshFlowReviewTaskSnapshot() {
+  const response = await fetch("atualizar.php", { cache: "no-store" });
+  if (!response.ok) throw new Error("Erro ao atualizar tarefas do FlowReview");
+  const responseData = await response.json();
+  dadosTarefas = responseData.tarefas ?? responseData;
+  todasAsObras = new Set(dadosTarefas.map((task) => task.nomenclatura));
+  todosOsColaboradores = new Set(
+    dadosTarefas.map((task) => task.nome_colaborador),
+  );
+  todasAsFuncoes = new Set(dadosTarefas.map((task) => task.nome_funcao));
+
+  if (responseData.server_now) {
+    const serverDate = new Date(
+      responseData.server_now.replace(" ", "T") + "-03:00",
+    );
+    _serverTimeOffset = serverDate.getTime() - Date.now();
+  }
+}
+
+function refreshFlowReviewVisibleTaskList(scope) {
+  if (scope.taskOpen) return;
+  if (scope.obraNome) {
+    filtrarTarefasPorObra(scope.obraNome);
+  } else {
+    applyHomeFilters();
+    loadKpis(null);
+  }
+}
+
+async function refreshFlowReviewCommentsFromEvent(payload) {
+  const historicoId = payload.historico_id;
+  const arquivoLogId = payload.arquivo_log_id;
+  let refreshed = false;
+
+  if (
+    arquivoLogId &&
+    flowReviewSameId(arquivoLogId, pdfViewerState.logId)
+  ) {
+    pdfCommentsCache.logId = null;
+    pdfCommentsCache.comentarios = null;
+    await renderComments({
+      arquivo_log_id: pdfViewerState.logId,
+      pagina: pdfViewerState.page,
+    });
+    refreshed = true;
+  }
+
+  if (enviosComparisonState.active) {
+    const matchingViewers = enviosComparisonState.viewers.filter((viewer) =>
+      flowReviewSameId(viewer.imageId, historicoId),
+    );
+    if (matchingViewers.length) {
+      await Promise.all(matchingViewers.map((viewer) => viewer.refreshComments()));
+      refreshed = true;
+    }
+  } else if (flowReviewSameId(ap_imagem_id, historicoId)) {
+    await renderComments(ap_imagem_id);
+    refreshed = true;
+  }
+
+  return refreshed;
+}
+
+function showFlowReviewRealtimeIndicator(payload) {
+  const navSelect = document.querySelector(".nav-select");
+  if (!navSelect) return;
+  let indicator = document.getElementById("flowreview-realtime-indicator");
+  if (!indicator) {
+    indicator = document.createElement("span");
+    indicator.id = "flowreview-realtime-indicator";
+    indicator.className = "flowreview-realtime-indicator";
+    indicator.setAttribute("role", "status");
+    indicator.setAttribute("aria-live", "polite");
+    navSelect.insertBefore(indicator, navSelect.querySelector(".buttons"));
+  }
+
+  const envio = payload.indice_envio || payload.versao;
+  const actor = payload.actor_name ? ` por ${payload.actor_name}` : "";
+  indicator.textContent = envio
+    ? `Novo envio ${envio}${actor}`
+    : `Novo envio recebido${actor}`;
+  indicator.classList.add("is-visible");
+  document.querySelector(".imagens > nav")?.classList.add("has-realtime-update");
+
+  clearTimeout(flowReviewRealtimeIndicatorTimer);
+  flowReviewRealtimeIndicatorTimer = setTimeout(() => {
+    indicator?.classList.remove("is-visible");
+    document
+      .querySelector(".imagens > nav")
+      ?.classList.remove("has-realtime-update");
+  }, 8000);
+}
+
+async function handleFlowReviewRealtimeEvent(payload) {
+  if (!payload?.event) return;
+  const eventId = payload.event_id || `${payload.event}:${payload.ts || ""}`;
+  if (flowReviewRealtimeSeen.has(eventId)) return;
+  flowReviewRealtimeSeen.add(eventId);
+  if (flowReviewRealtimeSeen.size > 200) {
+    flowReviewRealtimeSeen.delete(flowReviewRealtimeSeen.values().next().value);
+  }
+
+  const scope = getFlowReviewRealtimeScope();
+  if (!flowReviewEventBelongsToView(payload, scope)) return;
+
+  if (String(payload.event).startsWith("comment.")) {
+    await refreshFlowReviewCommentsFromEvent(payload);
+    return;
+  }
+
+  const isApproval = String(payload.event).startsWith("approval.");
+  const isMedia = String(payload.event).startsWith("media.");
+  if (!isApproval && !isMedia) return;
+
+  await refreshFlowReviewTaskSnapshot();
+  if (scope.taskOpen && scope.funcaoId) {
+    await historyAJAX(scope.funcaoId, scope.tipoTarefa, {
+      preserveView: true,
+      realtime: true,
+    });
+  } else {
+    refreshFlowReviewVisibleTaskList(scope);
+  }
+
+  if (payload.event === "media.created") {
+    showFlowReviewRealtimeIndicator(payload);
+  }
+}
+
+window.addEventListener("improov:flowReviewUpdated", (event) => {
+  flowReviewRealtimeQueue = flowReviewRealtimeQueue
+    .then(() => handleFlowReviewRealtimeEvent(event.detail))
+    .catch((error) => console.error("FlowReview realtime:", error));
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.improovUploadWS?.connect) {
+    window.improovUploadWS.connect();
+  }
+});

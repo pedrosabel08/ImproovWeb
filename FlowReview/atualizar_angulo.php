@@ -10,6 +10,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 $logs = [];
 $slackToken = getenv('SLACK_TOKEN') ?: null;
@@ -984,6 +985,14 @@ $response = [
     'sftp_inserido' => $sftpInserido,
     'vps_inserido' => $vpsInserido,
 ];
+notifyFlowReviewUpdate($conn, 'approval.changed', [
+    'funcao_imagem_id' => (int) $funcao_imagem_id,
+    'imagem_id' => (int) $imagem_id,
+    'historico_id' => (int) $historico_id,
+    'status_anterior' => $status_funcao_atual,
+    'status_novo' => $histStatusNovo,
+    'decision' => $acao,
+]);
 if ($debug) {
     $response['debug'] = $logs;
 }

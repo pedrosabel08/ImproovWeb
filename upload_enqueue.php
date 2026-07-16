@@ -6,6 +6,7 @@
 // Captura qualquer output/warning solto antes de enviar o JSON
 ob_start();
 ini_set('display_errors', '0');
+require_once __DIR__ . '/FlowReview/ws_notify.php';
 $_enqueue_errors = [];
 $results = []; // inicializa cedo para o shutdown handler
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
@@ -471,12 +472,22 @@ for ($i = 0; $i < $total; $i++) {
         // 2) Se função for Caderno/Filtro de assets: colocar em aprovação
         $func_lower = mb_strtolower($nome_funcao, 'UTF-8');
         if ($tipo_tarefa !== 'animacao' && !empty($dataIdFuncoes) && in_array($func_lower, ['caderno', 'filtro de assets'])) {
-            foreach ($dataIdFuncoes as $fid) {
+            foreach ($dataIdFuncoes as $fidIndex => $fid) {
                 $fidInt = (int)$fid;
                 $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?");
                 if ($stmt) {
                     $stmt->bind_param('i', $fidInt);
-                    @$stmt->execute();
+                    if (@$stmt->execute()) {
+                        $arquivoLogId = isset($logIds[$fidIndex]) ? (int)$logIds[$fidIndex] : null;
+                        notifyFlowReviewUpdate($conn, 'media.created', [
+                            'funcao_imagem_id' => $fidInt,
+                            'arquivo_log_id' => $arquivoLogId,
+                            'versao' => $revisao ?? null,
+                            'media_count' => 1,
+                            'actor_id' => $colaborador_id ?? null,
+                            'upload_id' => $id,
+                        ]);
+                    }
                     $stmt->close();
                 }
             }

@@ -12,6 +12,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 $autoload = __DIR__ . '/vendor/autoload.php';
 if (file_exists($autoload)) {
@@ -793,6 +794,14 @@ try {
         'nome_interno' => $publicacao['nome_interno'] ?? null,
         'vps_inserido' => !empty($publicacao['vps_inserido']),
     ];
+    notifyFlowReviewUpdate($conn, 'approval.changed', [
+        'funcao_imagem_id' => (int) $funcaoImagemId,
+        'imagem_id' => (int) $imagemId,
+        'historico_id' => (int) $novoHistoricoId,
+        'status_anterior' => $statusAnterior,
+        'status_novo' => $statusNovo,
+        'decision' => 'angle_replaced',
+    ]);
     if ($debug) {
         $response['debug'] = $logs;
     }

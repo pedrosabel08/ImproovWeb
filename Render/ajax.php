@@ -5,6 +5,7 @@ require_once __DIR__ . '/deadline_flow.php';
 require_once __DIR__ . '/pos_referencias_helper.php';
 require_once __DIR__ . '/render_ws_notify.php';
 require_once __DIR__ . '/../Pos-Producao/ws_notify.php';
+require_once __DIR__ . '/../FlowReview/ws_notify.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -19,6 +20,125 @@ if (empty($_SESSION['logado'])) {
 function render_current_colaborador_id(): int
 {
     return isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : 0;
+}
+
+/**
+ * Finaliza a etapa de Finalizacao da imagem quando o render e enviado para a Pos.
+ * Esta operacao deve ocorrer dentro da mesma transacao da aprovacao do render.
+ */
+function render_mark_finalizacao_file_pending($conn, int $imagemId, int $colaboradorId): int
+{
+    $funcaoImagemId = 0;
+
+    // Mantem a mesma prioridade usada pelo fluxo legado de aprovacao de Render.
+    foreach ([6, 4] as $funcaoId) {
+        $stmt = $conn->prepare(
+            'SELECT idfuncao_imagem
+             FROM funcao_imagem
+             WHERE imagem_id = ? AND funcao_id = ?
+             LIMIT 1 FOR UPDATE'
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Nao foi possivel localizar a funcao de Finalizacao.');
+        }
+        $stmt->bind_param('ii', $imagemId, $funcaoId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($row) {
+            $funcaoImagemId = (int) $row['idfuncao_imagem'];
+            break;
+        }
+    }
+
+    // Compatibilidade com obras cuja funcao de Finalizacao nao usa os IDs acima.
+    if ($funcaoImagemId <= 0) {
+        $stmt = $conn->prepare(
+            "SELECT fi.idfuncao_imagem
+             FROM funcao_imagem fi
+             INNER JOIN funcao f ON f.idfuncao = fi.funcao_id
+             WHERE fi.imagem_id = ? AND LOWER(f.nome_funcao) LIKE 'finaliza%'
+             LIMIT 1 FOR UPDATE"
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Nao foi possivel localizar a funcao de Finalizacao.');
+        }
+        $stmt->bind_param('i', $imagemId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $funcaoImagemId = $row ? (int) $row['idfuncao_imagem'] : 0;
+    }
+
+    if ($funcaoImagemId <= 0) {
+        throw new RuntimeException('Funcao de Finalizacao nao encontrada para esta imagem.');
+    }
+
+    $stmt = $conn->prepare(
+        'SELECT prazo, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1 FOR UPDATE'
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Nao foi possivel ler o status atual da Finalizacao.');
+    }
+    $stmt->bind_param('i', $funcaoImagemId);
+    $stmt->execute();
+    $before = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$before) {
+        throw new RuntimeException('Funcao de Finalizacao nao encontrada para esta imagem.');
+    }
+
+    $stmt = $conn->prepare(
+        "UPDATE funcao_imagem
+         SET prazo = NOW(), status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL
+         WHERE idfuncao_imagem = ?"
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Nao foi possivel finalizar a funcao da imagem.');
+    }
+    $stmt->bind_param('i', $funcaoImagemId);
+    if (!$stmt->execute()) {
+        $stmt->close();
+        throw new RuntimeException('Nao foi possivel finalizar a funcao da imagem.');
+    }
+    $stmt->close();
+
+    $stmt = $conn->prepare(
+        'INSERT INTO funcao_imagem_prazo_historico
+            (funcao_imagem_id, prazo_anterior, prazo_novo,
+             alterado_por_colaborador_id, alterado_por_usuario_id,
+             origem, motivo, status_anterior, status_novo)
+         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)'
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Nao foi possivel registrar o historico da Finalizacao.');
+    }
+
+    $prazoAnterior = $before['prazo'] ?? null;
+    $prazoNovo = date('Y-m-d');
+    $usuarioId = isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null;
+    $origem = 'render_finalizado';
+    $statusAnterior = $before['status'] ?? null;
+    $statusNovo = 'Finalizado';
+    $stmt->bind_param(
+        'issiisss',
+        $funcaoImagemId,
+        $prazoAnterior,
+        $prazoNovo,
+        $colaboradorId,
+        $usuarioId,
+        $origem,
+        $statusAnterior,
+        $statusNovo
+    );
+    if (!$stmt->execute()) {
+        $stmt->close();
+        throw new RuntimeException('Nao foi possivel registrar o historico da Finalizacao.');
+    }
+    $stmt->close();
+
+    return $funcaoImagemId;
 }
 
 function render_kpi_valid_date($value)
@@ -695,6 +815,11 @@ if (isset($_POST['action'])) {
                         }
                     }
                 }
+
+                // A aprovacao so e concluida quando a Finalizacao estiver marcada
+                // como concluida e aguardando o upload do arquivo final.
+                render_mark_finalizacao_file_pending($conn, (int) $render['imagem_id'], $colaboradorId);
+
                 $updateRender = $conn->prepare("UPDATE render_alta SET status = 'Aprovado', data = NOW() WHERE idrender_alta = ?");
                 $updateRender->bind_param('i', $renderId);
                 if (!$updateRender->execute()) throw new RuntimeException('Não foi possível aprovar o render.');
@@ -835,6 +960,8 @@ if (isset($_POST['action'])) {
                 $manualApprovalData = null;
                 $transactionStarted = false;
                 $deadlineFlowResult = null;
+                $flowReviewMediaCreated = [];
+                $flowReviewMediaContext = null;
 
                 if (strtolower($status) === 'aprovado') {
                     aprovacao_interna_ensure_schema($conn);
@@ -1192,6 +1319,15 @@ if (isset($_POST['action'])) {
                                                     $stIns->bind_param('isiss', $funcaoImagemId, $path, $nextIndice, $nomeArquivo, $path);
                                                     if ($stIns->execute()) {
                                                         $histId = $conn->insert_id;
+                                                        $flowReviewMediaCreated[] = (int)$histId;
+                                                        $flowReviewMediaContext = [
+                                                            'imagem_id' => (int)$imagem_id,
+                                                            'funcao_imagem_id' => (int)$funcaoImagemId,
+                                                            'historico_id' => (int)$histId,
+                                                            'indice_envio' => (int)$nextIndice,
+                                                            'versao' => (int)$nextIndice,
+                                                            'render_id' => (int)$idrender_alta,
+                                                        ];
                                                         $logs[] = 'import_ok: ' . $fn . ' -> historico_id=' . $histId;
                                                     } else {
                                                         $logs[] = 'import_erro: ' . $fn . ' -> ' . $stIns->error;
@@ -1311,6 +1447,12 @@ if (isset($_POST['action'])) {
                     }
                     if ($debug) $resp['logs'] = $logs;
                     notifyRenderUpdate('render.status_changed', ['render_id' => (int) $idrender_alta, 'status' => $status]);
+                    if ($flowReviewMediaCreated && $flowReviewMediaContext) {
+                        notifyFlowReviewUpdate($conn, 'media.created', array_merge($flowReviewMediaContext, [
+                            'historico_ids' => $flowReviewMediaCreated,
+                            'media_count' => count($flowReviewMediaCreated),
+                        ]));
+                    }
                     echo json_encode($resp);
                 } else {
                     if ($transactionStarted) {

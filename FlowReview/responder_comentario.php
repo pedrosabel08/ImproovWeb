@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/upload_comentario_vps.php';
+require_once __DIR__ . '/ws_notify.php';
 
 // Suporta tanto JSON quanto multipart (quando há imagem)
 $comentario_id = null;
@@ -90,6 +91,10 @@ if ($stmt->affected_rows > 0) {
     if ($imagem_url !== null) {
         $result['imagem'] = $imagem_url;
     }
+    notifyFlowReviewUpdate($conn, 'comment.replied', [
+        'comentario_id' => (int) $comentario_id,
+        'resposta_id' => (int) $resposta_id,
+    ]);
     echo json_encode($result);
 } else {
     echo json_encode(["erro" => "Erro ao salvar resposta"]);

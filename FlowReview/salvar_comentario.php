@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/approval_media_schema.php';
+require_once __DIR__ . '/ws_notify.php';
 
 function tableHasColumn(mysqli $conn, string $table, string $column): bool
 {
@@ -187,6 +188,13 @@ $response = [
     'imagem' => $imagem_path,
     'slack_mencoes' => $slackLog ?? null,
 ];
+
+notifyFlowReviewUpdate($conn, 'comment.created', [
+    'comentario_id' => (int) $comentario_id,
+    'historico_id' => $ap_imagem_id ? (int) $ap_imagem_id : null,
+    'arquivo_log_id' => $arquivo_log_id ? (int) $arquivo_log_id : null,
+    'pagina' => $arquivo_log_id ? (int) $pagina : null,
+]);
 
 header('Content-Type: application/json');
 echo json_encode($response);

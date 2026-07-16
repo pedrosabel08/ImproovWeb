@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 $id   = isset($data['id']) ? intval($data['id']) : 0;
@@ -12,6 +13,9 @@ if (!$id) {
 }
 
 $responsavel = $_SESSION['idcolaborador'];
+$realtimeContext = flowReviewResolveRealtimeContext($conn, [
+    'resposta_id' => $id,
+]);
 
 // Exclui menções vinculadas a esta resposta antes de deletar
 $stmtMencoes = $conn->prepare('DELETE FROM mencoes WHERE resposta_id = ?');
@@ -23,6 +27,10 @@ $stmt->bind_param('ii', $id, $responsavel);
 $stmt->execute();
 
 if ($stmt->affected_rows > 0) {
+    notifyFlowReviewUpdate($conn, 'comment.reply_deleted', array_merge(
+        $realtimeContext,
+        ['resposta_id' => $id]
+    ));
     echo json_encode(['sucesso' => true]);
 } else {
     echo json_encode(['sucesso' => false, 'erro' => 'Resposta não encontrada ou sem permissão.']);

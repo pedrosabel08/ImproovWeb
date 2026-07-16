@@ -1,6 +1,8 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 // inclui conexao central (mantém compatibilidade com PDO local abaixo)
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/ws_notify.php';
 
 header('Content-Type: application/json');
 
@@ -71,6 +73,7 @@ if (isset($_FILES['imagens'])) {
     $total = count($imagens['name']);
     $destino = 'uploads';
     $enviadas = [];
+    $historicoIds = [];
 
     for ($i = 0; $i < $total; $i++) {
         $atual = [
@@ -95,6 +98,7 @@ if (isset($_FILES['imagens'])) {
                     ':indice_envio' => $indice_envio
                 ]);
                 $enviadas[] = $caminho;
+                $historicoIds[] = (int) $pdo->lastInsertId();
             } catch (PDOException $e) {
                 echo json_encode(["error" => "Erro ao salvar imagem: " . $e->getMessage()]);
                 exit;
@@ -104,6 +108,15 @@ if (isset($_FILES['imagens'])) {
             exit;
         }
     }
+
+    notifyFlowReviewUpdate($conn, 'media.created', [
+        'funcao_imagem_id' => (int) $funcao_imagem_id,
+        'historico_id' => $historicoIds ? (int) end($historicoIds) : null,
+        'historico_ids' => $historicoIds,
+        'indice_envio' => (int) $indice_envio,
+        'versao' => (int) $indice_envio,
+        'media_count' => count($enviadas),
+    ]);
 
     echo json_encode([
         "success" => "Imagens enviadas com sucesso!",

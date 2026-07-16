@@ -8,6 +8,7 @@
   let ws = null;
   let subscribedId = null;
   let reconnectTimer = null;
+  let keepRealtimeConnected = false;
 
   function log() {
     if (window.console && console.log) console.log.apply(console, arguments);
@@ -148,10 +149,18 @@
     notify(title, body);
   }
 
-  function connect() {
+  function connect(forceRealtime) {
+    if (forceRealtime) keepRealtimeConnected = true;
+    if (
+      ws &&
+      (ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
     const id = getClientId();
     const activeUploadIds = getActiveUploadIds();
-    if (!id && activeUploadIds.length === 0) {
+    if (!keepRealtimeConnected && !id && activeUploadIds.length === 0) {
       log("upload-ws: no client id in localStorage; not connecting");
       return;
     }
@@ -203,6 +212,15 @@
 
         if (data.channel && data.channel.startsWith("render:")) {
           window.dispatchEvent(new CustomEvent("improov:renderUpdated", { detail: data.payload }));
+          return;
+        }
+
+        if (data.channel && data.channel.startsWith("flow_review:")) {
+          window.dispatchEvent(
+            new CustomEvent("improov:flowReviewUpdated", {
+              detail: data.payload,
+            }),
+          );
           return;
         }
 
@@ -326,6 +344,9 @@
   });
 
   window.improovUploadWS = {
+    connect: function () {
+      connect(true);
+    },
     subscribe: function (id) {
       var nextId = id ? String(id) : "";
       if (!nextId) return;

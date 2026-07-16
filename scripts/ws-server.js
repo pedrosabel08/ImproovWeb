@@ -89,6 +89,16 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
+      await sub.pSubscribe('flow_review:*', (message, channel) => {
+        try {
+          const payload = JSON.parse(message);
+          const envelope = JSON.stringify({ channel, payload });
+          broadcastEnvelope(envelope, 'FlowReview', channel, payload);
+        } catch (err) {
+          console.error('Failed to forward flow_review message', err);
+        }
+      });
+
       // psubscribe to funcao_atualizada:* channels (function insert/update broadcasts)
       await sub.pSubscribe('funcao_atualizada:*', (message, channel) => {
         console.log('funcao_atualizada message received on channel:', channel);
@@ -108,7 +118,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
-      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,funcao_atualizada:*`);
+      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,flow_review:*,funcao_atualizada:*`);
 
       // clear any reconnect timer if successful
       if (reconnectTimer) {

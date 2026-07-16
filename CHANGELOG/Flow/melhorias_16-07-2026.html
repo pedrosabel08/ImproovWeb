@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Propostas de evolu&ccedil;&atilde;o do Flow</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 12px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="propostas-de-evolução-do-flow">Propostas de evolução do Flow</h1>
+<h2 id="1-classificação-de-motivos-de-hold">1. Classificação de motivos de HOLD</h2>
+<h3 id="problema-atual">Problema atual</h3>
+<p>Atualmente, quando uma tarefa é movida para <strong>HOLD</strong>, o colaborador informa apenas uma observação em texto livre.</p>
+<p>Isso permite entender pontualmente o ocorrido, mas dificulta:</p>
+<ul>
+<li>identificar os principais motivos de paralisação;</li>
+<li>medir quanto tempo as tarefas permanecem bloqueadas;</li>
+<li>diferenciar atrasos internos de dependências externas;</li>
+<li>identificar gargalos recorrentes;</li>
+<li>avaliar o impacto dos HOLDs nos prazos de entrega.</li>
+</ul>
+<h3 id="objetivo">Objetivo</h3>
+<p>Estruturar os motivos de HOLD para permitir análise operacional, identificação de gargalos e melhoria dos processos.</p>
+<h3 id="solução-proposta">Solução proposta</h3>
+<p>Ao mover uma tarefa para HOLD, o sistema deve abrir um modal contendo:</p>
+<p><strong>Motivo do HOLD</strong></p>
+<ul>
+<li>Aguardando cliente;</li>
+<li>Aguardando arquivo ou material;</li>
+<li>Aguardando aprovação interna;</li>
+<li>Aguardando aprovação externa;</li>
+<li>Dependência de outra tarefa;</li>
+<li>Dúvida técnica;</li>
+<li>Problema no arquivo;</li>
+<li>Problema de software ou equipamento;</li>
+<li>Sobrecarga ou falta de capacidade;</li>
+<li>Mudança de prioridade;</li>
+<li>Outro.</li>
+</ul>
+<p><strong>Responsável pela resolução</strong></p>
+<ul>
+<li>Cliente;</li>
+<li>Gestão;</li>
+<li>Direção;</li>
+<li>Outro colaborador;</li>
+<li>O próprio responsável pela tarefa;</li>
+<li>Fornecedor ou parceiro externo.</li>
+</ul>
+<p><strong>Previsão de desbloqueio</strong></p>
+<ul>
+<li>Data prevista;</li>
+<li>Sem previsão definida.</li>
+</ul>
+<p><strong>Descrição</strong></p>
+<ul>
+<li>Campo de texto obrigatório para contextualização.</li>
+</ul>
+<h3 id="encerramento-do-hold">Encerramento do HOLD</h3>
+<p>Quando a tarefa sair de HOLD, o sistema deve registrar:</p>
+<ul>
+<li>data e hora do desbloqueio;</li>
+<li>usuário que retirou o HOLD;</li>
+<li>ação ou resposta que resolveu o bloqueio;</li>
+<li>tempo total em HOLD;</li>
+<li>se o prazo da tarefa foi impactado.</li>
+</ul>
+<h3 id="indicadores-possíveis">Indicadores possíveis</h3>
+<ul>
+<li>quantidade de HOLDs por período;</li>
+<li>tempo médio em HOLD;</li>
+<li>principais motivos;</li>
+<li>setores ou responsáveis que mais geram bloqueios;</li>
+<li>percentual de tarefas atrasadas por HOLD;</li>
+<li>quantidade de HOLDs externos versus internos;</li>
+<li>reincidência de HOLD por projeto, imagem ou etapa.</li>
+</ul>
+<h3 id="ponto-de-atenção">Ponto de atenção</h3>
+<p>A lista não deve ser excessivamente detalhada no início. Muitas opções podem fazer com que o usuário escolha qualquer motivo apenas para concluir o processo.</p>
+<p>O ideal é começar com aproximadamente oito categorias principais e permitir que a gestão ajuste a taxonomia depois de analisar os primeiros registros.</p>
+<hr>
+<h2 id="2-central-de-ideias-e-sugestões-do-flow">2. Central de ideias e sugestões do Flow</h2>
+<h3 id="problema-atual-1">Problema atual</h3>
+<p>Ideias e sugestões sobre o Flow surgem durante conversas, reuniões, mensagens ou situações do cotidiano, mas não existe um local centralizado para registrá-las e acompanhá-las.</p>
+<p>Com isso:</p>
+<ul>
+<li>boas ideias podem ser esquecidas;</li>
+<li>sugestões semelhantes são registradas várias vezes;</li>
+<li>não fica claro quem sugeriu, quando surgiu ou por qual motivo;</li>
+<li>não existe acompanhamento do que foi analisado, descartado ou implementado.</li>
+</ul>
+<h3 id="objetivo-1">Objetivo</h3>
+<p>Criar uma base centralizada de oportunidades de melhoria do Flow, permitindo registrar, organizar, avaliar e acompanhar ideias.</p>
+<h3 id="solução-recomendada">Solução recomendada</h3>
+<p>Em vez de um blog, utilizar uma <strong>Central de Ideias e Sugestões</strong>.</p>
+<p>O formato de blog é mais adequado para comunicação e publicação de novidades. Para gestão de ideias, uma estrutura semelhante a backlog é mais funcional.</p>
+<h3 id="informações-de-uma-ideia">Informações de uma ideia</h3>
+<ul>
+<li>título;</li>
+<li>descrição;</li>
+<li>autor da sugestão;</li>
+<li>data de criação;</li>
+<li>módulo relacionado;</li>
+<li>problema observado;</li>
+<li>solução sugerida;</li>
+<li>benefício esperado;</li>
+<li>prioridade percebida;</li>
+<li>anexos ou imagens;</li>
+<li>comentários;</li>
+<li>status.</li>
+</ul>
+<h3 id="status-sugeridos">Status sugeridos</h3>
+<ul>
+<li>Nova;</li>
+<li>Em análise;</li>
+<li>Precisa de mais informações;</li>
+<li>Aprovada;</li>
+<li>Planejada;</li>
+<li>Em desenvolvimento;</li>
+<li>Implementada;</li>
+<li>Não será realizada;</li>
+<li>Duplicada.</li>
+</ul>
+<h3 id="visualizações">Visualizações</h3>
+<p><strong>Visão geral</strong></p>
+<ul>
+<li>lista de ideias;</li>
+<li>filtros por autor, módulo, status e período;</li>
+<li>busca por título ou descrição.</li>
+</ul>
+<p><strong>Kanban</strong></p>
+<ul>
+<li>ideias organizadas por status.</li>
+</ul>
+<p><strong>Detalhes da ideia</strong></p>
+<ul>
+<li>histórico de alterações;</li>
+<li>comentários;</li>
+<li>decisões tomadas;</li>
+<li>responsável pela análise;</li>
+<li>vínculo com tarefa ou desenvolvimento.</li>
+</ul>
+<h3 id="exemplo-de-histórico">Exemplo de histórico</h3>
+<blockquote>
+<p>Pedro registrou a ideia em 16/07/2026.
+Pedro alterou o status para “Em análise” em 18/07/2026.
+A ideia foi aprovada e vinculada à tarefa FLOW-243 em 22/07/2026.</p>
+</blockquote>
+<h3 id="funcionalidades-futuras">Funcionalidades futuras</h3>
+<ul>
+<li>votação ou apoio de outros colaboradores;</li>
+<li>identificação de sugestões semelhantes;</li>
+<li>vínculo com bugs, tarefas e projetos;</li>
+<li>ranking das ideias mais solicitadas;</li>
+<li>publicação automática das melhorias implementadas;</li>
+<li>geração de changelog do Flow.</li>
+</ul>
+<h3 id="ponto-de-atenção-1">Ponto de atenção</h3>
+<p>Nem toda sugestão deve se transformar diretamente em uma tarefa de desenvolvimento.</p>
+<p>Primeiro, a ideia deve passar por uma análise mínima:</p>
+<ul>
+<li>qual problema resolve;</li>
+<li>quem é afetado;</li>
+<li>frequência do problema;</li>
+<li>impacto operacional;</li>
+<li>esforço estimado;</li>
+<li>existência de alternativas mais simples.</li>
+</ul>
+<p>Sem essa avaliação, a central pode virar apenas uma lista extensa de pedidos desconectados das prioridades do produto.</p>
+<hr>
+<h2 id="3-métricas-de-desempenho-por-colaborador">3. Métricas de desempenho por colaborador</h2>
+<h3 id="problema-atual-2">Problema atual</h3>
+<p>O colaborador não possui uma visão objetiva e contínua das expectativas relacionadas ao seu trabalho.</p>
+<p>Conceitos como produtividade, qualidade e pontualidade existem, mas podem não estar claramente definidos ou acompanhados dentro do Flow.</p>
+<h3 id="objetivo-2">Objetivo</h3>
+<p>Criar um painel que ajude o colaborador e a gestão a acompanhar desempenho, identificar dificuldades e orientar melhorias.</p>
+<p>O objetivo não deve ser apenas comparar pessoas, mas mostrar:</p>
+<ul>
+<li>o que é esperado;</li>
+<li>como o desempenho está sendo medido;</li>
+<li>onde existe evolução;</li>
+<li>onde existem dificuldades;</li>
+<li>quais fatores estão impactando os resultados.</li>
+</ul>
+<h3 id="dimensões-propostas">Dimensões propostas</h3>
+<h4 id="produtividade">Produtividade</h4>
+<p>Possíveis indicadores:</p>
+<ul>
+<li>quantidade de tarefas concluídas;</li>
+<li>quantidade de imagens ou entregas finalizadas;</li>
+<li>volume de trabalho ponderado por complexidade;</li>
+<li>tempo médio de execução;</li>
+<li>tarefas concluídas dentro do período;</li>
+<li>comparação entre capacidade planejada e realizada.</li>
+</ul>
+<p>A produtividade não deve ser medida apenas pela quantidade de tarefas. Uma imagem complexa não pode ter o mesmo peso de uma alteração simples.</p>
+<h4 id="qualidade">Qualidade</h4>
+<p>Possíveis indicadores:</p>
+<ul>
+<li>quantidade de aprovações sem ajustes;</li>
+<li>quantidade média de ciclos de revisão;</li>
+<li>percentual de tarefas reprovadas;</li>
+<li>quantidade de retrabalhos;</li>
+<li>erros identificados após a entrega;</li>
+<li>avaliação da direção ou responsável técnico.</li>
+</ul>
+<p>Também é necessário separar:</p>
+<ul>
+<li>alteração solicitada pelo cliente;</li>
+<li>erro de execução;</li>
+<li>mudança de escopo;</li>
+<li>informação incorreta ou incompleta recebida.</li>
+</ul>
+<p>Caso contrário, o colaborador pode ser penalizado por situações que não estavam sob seu controle.</p>
+<h4 id="pontualidade">Pontualidade</h4>
+<p>Possíveis indicadores:</p>
+<ul>
+<li>percentual de tarefas concluídas dentro do prazo;</li>
+<li>atraso médio;</li>
+<li>tarefas entregues antecipadamente;</li>
+<li>tempo em HOLD;</li>
+<li>atrasos causados por dependências externas;</li>
+<li>cumprimento das previsões informadas pelo próprio colaborador.</li>
+</ul>
+<h3 id="painel-individual">Painel individual</h3>
+<p>O colaborador poderia visualizar:</p>
+<ul>
+<li>metas ou expectativas do período;</li>
+<li>resultado atual;</li>
+<li>evolução em relação aos meses anteriores;</li>
+<li>tarefas entregues;</li>
+<li>principais motivos de atraso;</li>
+<li>índice de qualidade;</li>
+<li>feedbacks recebidos;</li>
+<li>pontos de desenvolvimento.</li>
+</ul>
+<h3 id="painel-da-gestão">Painel da gestão</h3>
+<p>A gestão poderia visualizar:</p>
+<ul>
+<li>desempenho por colaborador;</li>
+<li>desempenho por função;</li>
+<li>capacidade planejada versus utilizada;</li>
+<li>evolução ao longo do tempo;</li>
+<li>concentração de retrabalho;</li>
+<li>gargalos por etapa;</li>
+<li>colaboradores sobrecarregados;</li>
+<li>colaboradores com capacidade disponível.</li>
+</ul>
+<h3 id="sugestão-de-composição">Sugestão de composição</h3>
+<p>Em vez de gerar uma única nota geral imediatamente, apresentar três indicadores separados:</p>
+<ul>
+<li>Produtividade;</li>
+<li>Qualidade;</li>
+<li>Pontualidade.</li>
+</ul>
+<p>Uma nota única pode esconder problemas. Por exemplo, um colaborador pode produzir muito, mas gerar bastante retrabalho. Outro pode ter excelente qualidade, mas estar recebendo tarefas mais complexas e demoradas.</p>
+<h3 id="contextualização-obrigatória">Contextualização obrigatória</h3>
+<p>Os indicadores precisam considerar:</p>
+<ul>
+<li>função exercida;</li>
+<li>complexidade das tarefas;</li>
+<li>quantidade de alterações do cliente;</li>
+<li>tempo em HOLD;</li>
+<li>dependências;</li>
+<li>prioridade;</li>
+<li>volume de trabalho atribuído;</li>
+<li>disponibilidade do colaborador;</li>
+<li>tipo de projeto.</li>
+</ul>
+<h3 id="ponto-de-atenção-2">Ponto de atenção</h3>
+<p>Esse é o módulo de maior risco entre as três propostas.</p>
+<p>Métricas mal definidas podem gerar:</p>
+<ul>
+<li>competição negativa;</li>
+<li>manipulação dos registros;</li>
+<li>priorização de quantidade em detrimento da qualidade;</li>
+<li>sensação de vigilância;</li>
+<li>comparação injusta entre funções diferentes;</li>
+<li>decisões baseadas em dados incompletos.</li>
+</ul>
+<p>Por isso, o painel deve inicialmente ser utilizado como ferramenta de acompanhamento e desenvolvimento, e não como ranking público ou mecanismo automático de punição.</p>
+<hr>
+<h1 id="ordem-recomendada-de-implementação">Ordem recomendada de implementação</h1>
+<h2 id="etapa-1--motivos-de-hold">Etapa 1 — Motivos de HOLD</h2>
+<p>É a funcionalidade mais objetiva e gera dados necessários para as métricas de pontualidade e produtividade.</p>
+<p>Entrega inicial:</p>
+<ul>
+<li>classificação do HOLD;</li>
+<li>observação;</li>
+<li>responsável pela resolução;</li>
+<li>previsão de desbloqueio;</li>
+<li>registro do início e fim;</li>
+<li>tempo total bloqueado.</li>
+</ul>
+<h2 id="etapa-2--central-de-ideias">Etapa 2 — Central de ideias</h2>
+<p>Pode ser implementada como um backlog interno simples.</p>
+<p>Entrega inicial:</p>
+<ul>
+<li>cadastro de ideia;</li>
+<li>autor e data;</li>
+<li>módulo;</li>
+<li>status;</li>
+<li>responsável;</li>
+<li>comentários;</li>
+<li>filtros.</li>
+</ul>
+<h2 id="etapa-3--base-das-métricas">Etapa 3 — Base das métricas</h2>
+<p>Antes de criar um painel completo, validar a qualidade dos dados existentes:</p>
+<ul>
+<li>prazos;</li>
+<li>complexidade;</li>
+<li>responsáveis;</li>
+<li>aprovações;</li>
+<li>retrabalhos;</li>
+<li>HOLDs;</li>
+<li>alterações de escopo;</li>
+<li>histórico de status.</li>
+</ul>
+<h2 id="etapa-4--painel-individual">Etapa 4 — Painel individual</h2>
+<p>Criar primeiro uma visão privada para o colaborador e para a gestão, sem ranking entre pessoas.</p>
+<h2 id="etapa-5--metas-e-expectativas">Etapa 5 — Metas e expectativas</h2>
+<p>Após validar os indicadores, permitir definir expectativas por função, período e nível de experiência.</p>
+<hr>
+<h1 id="resultado-esperado">Resultado esperado</h1>
+<p>As três iniciativas se complementam:</p>
+<ul>
+<li>a classificação de HOLD explica os bloqueios;</li>
+<li>a central de ideias organiza a evolução do produto;</li>
+<li>as métricas mostram os resultados operacionais;</li>
+<li>o histórico permite entender não apenas o que aconteceu, mas por que aconteceu.</li>
+</ul>
+<p>A prioridade deve ser garantir dados confiáveis antes de criar indicadores de desempenho. Um painel visualmente completo, baseado em registros incompletos, pode produzir conclusões incorretas e prejudicar decisões de gestão.</p>
+
+            
+            
+        </body>
+        </html>

@@ -4466,6 +4466,13 @@ nav.breadcrumb-nav a {
   --fr-brand-text: #ffffff;
   --fr-label-color: #aaa;
   --fr-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 6'%3E%3Cpath fill='%23aaa' d='M0 0l6 6 6-6z'/%3E%3C/svg%3E");
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
 }
 
 @media (prefers-color-scheme: light) {
@@ -6012,4 +6019,11 @@ nav.breadcrumb-nav a {
     width: auto;
     max-width: min(100%, 240px);
   }
+}
+
+.toastify {
+  border-radius: var(--radius-sm) !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
 }

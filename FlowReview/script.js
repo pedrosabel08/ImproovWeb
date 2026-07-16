@@ -2915,7 +2915,8 @@ function restoreFlowReviewFilters(filters) {
     if (supportsValue) element.value = value;
   });
   const stabFuncao = document.getElementById("stab-funcao");
-  if (stabFuncao) stabFuncao.dispatchEvent(new Event("change", { bubbles: true }));
+  if (stabFuncao)
+    stabFuncao.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 async function restoreFlowReviewViewState(state) {
@@ -2974,7 +2975,9 @@ async function restoreFlowReviewViewState(state) {
     enterEnviosComparison();
     await Promise.all(
       enviosComparisonState.viewers.map(async (viewer) => {
-        const saved = state.comparison.find((item) => item.side === viewer.side);
+        const saved = state.comparison.find(
+          (item) => item.side === viewer.side,
+        );
         if (!saved) return;
         if (
           saved.indice &&
@@ -3002,7 +3005,8 @@ async function restoreFlowReviewViewState(state) {
     _editingCommentId = state.editingCommentId;
     _replyingToCommentId = state.replyingToCommentId;
     _editingReplyId = state.editingReplyId;
-    if (quillComentario?.root) quillComentario.root.innerHTML = state.commentDraft;
+    if (quillComentario?.root)
+      quillComentario.root.innerHTML = state.commentDraft;
     const modal = document.getElementById("comentarioModal");
     if (modal) modal.style.display = "flex";
   }
@@ -6191,9 +6195,7 @@ function adicionarRespostaDOM(comentarioId, resposta) {
   const container = document.getElementById(`respostas-${comentarioId}`);
   if (!container || !resposta?.id) return;
   if (
-    container.querySelector(
-      `.resposta[data-reply-id="${String(resposta.id)}"]`,
-    )
+    container.querySelector(`.resposta[data-reply-id="${String(resposta.id)}"]`)
   ) {
     return;
   }
@@ -6428,7 +6430,7 @@ async function deleteComment(commentId) {
       Toastify({
         text: "Comentário excluído com sucesso!",
         duration: 3000,
-        backgroundColor: "green",
+        backgroundColor: "red",
         close: true,
         gravity: "top",
         position: "left",
@@ -6447,7 +6449,7 @@ async function deleteComment(commentId) {
       Toastify({
         text: "Erro ao excluir comentário!",
         duration: 3000,
-        backgroundColor: "green",
+        backgroundColor: "red",
         close: true,
         gravity: "top",
         position: "left",
@@ -6960,13 +6962,15 @@ let flowReviewRealtimeQueue = Promise.resolve();
 let flowReviewRealtimeIndicatorTimer = null;
 
 function flowReviewSameId(left, right) {
-  return left !== null &&
+  return (
+    left !== null &&
     left !== undefined &&
     left !== "" &&
     right !== null &&
     right !== undefined &&
     right !== "" &&
-    String(left) === String(right);
+    String(left) === String(right)
+  );
 }
 
 function getFlowReviewRealtimeScope() {
@@ -6981,12 +6985,14 @@ function getFlowReviewRealtimeScope() {
   return {
     taskOpen:
       Boolean(funcaoImagemId) &&
-      !document.querySelector(".container-aprovacao")?.classList.contains("hidden"),
+      !document
+        .querySelector(".container-aprovacao")
+        ?.classList.contains("hidden"),
     funcaoId: funcaoImagemId,
     tipoTarefa:
-      currentFuncaoContext?.tipo_tarefa || getTaskTipo(task || currentFuncaoContext),
-    imagemId:
-      currentFuncaoContext?.imagem_id || task?.imagem_id || null,
+      currentFuncaoContext?.tipo_tarefa ||
+      getTaskTipo(task || currentFuncaoContext),
+    imagemId: currentFuncaoContext?.imagem_id || task?.imagem_id || null,
     obraId:
       currentFuncaoContext?.obra_id ||
       currentFuncaoContext?.idobra ||
@@ -7052,10 +7058,7 @@ async function refreshFlowReviewCommentsFromEvent(payload) {
   const arquivoLogId = payload.arquivo_log_id;
   let refreshed = false;
 
-  if (
-    arquivoLogId &&
-    flowReviewSameId(arquivoLogId, pdfViewerState.logId)
-  ) {
+  if (arquivoLogId && flowReviewSameId(arquivoLogId, pdfViewerState.logId)) {
     pdfCommentsCache.logId = null;
     pdfCommentsCache.comentarios = null;
     await renderComments({
@@ -7070,7 +7073,9 @@ async function refreshFlowReviewCommentsFromEvent(payload) {
       flowReviewSameId(viewer.imageId, historicoId),
     );
     if (matchingViewers.length) {
-      await Promise.all(matchingViewers.map((viewer) => viewer.refreshComments()));
+      await Promise.all(
+        matchingViewers.map((viewer) => viewer.refreshComments()),
+      );
       refreshed = true;
     }
   } else if (flowReviewSameId(ap_imagem_id, historicoId)) {
@@ -7100,7 +7105,9 @@ function showFlowReviewRealtimeIndicator(payload) {
     ? `Novo envio ${envio}${actor}`
     : `Novo envio recebido${actor}`;
   indicator.classList.add("is-visible");
-  document.querySelector(".imagens > nav")?.classList.add("has-realtime-update");
+  document
+    .querySelector(".imagens > nav")
+    ?.classList.add("has-realtime-update");
 
   clearTimeout(flowReviewRealtimeIndicatorTimer);
   flowReviewRealtimeIndicatorTimer = setTimeout(() => {

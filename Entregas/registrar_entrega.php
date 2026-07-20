@@ -3,6 +3,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
+require_once __DIR__ . '/../helpers/pendencias_links_obra_helper.php';
 
 improov_p00_ensure_schema($conn);
 entregas_review_schema_ready($conn);
@@ -287,6 +288,15 @@ try {
             } catch (Exception $e) { /* ignore Redis failures */
             }
         }
+    }
+
+    if ($obra_id && !empty($entregaInfo['status_id'])) {
+        pendencias_links_obra_abrir_por_entrega(
+            $conn,
+            (int) $obra_id,
+            (int) $entregaInfo['status_id'],
+            $entrega_id
+        );
     }
 
     $conn->commit();

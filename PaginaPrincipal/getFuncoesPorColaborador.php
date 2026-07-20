@@ -71,6 +71,38 @@ $sql = "SELECT
         ORDER BY sh.id DESC
         LIMIT 1
     ) AS hold_justificativa_recente,
+    (
+        SELECT COUNT(*)
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
+    ) AS flow_block_issues_abertas,
+    (
+        SELECT fbi.id
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
+        ORDER BY fbi.criado_em ASC, fbi.id ASC LIMIT 1
+    ) AS flow_block_issue_principal_id,
+    (
+        SELECT ft.nome
+        FROM flow_issue fbi
+        JOIN flow_issue_tipo ft ON ft.id = fbi.tipo_id
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
+        ORDER BY fbi.criado_em ASC, fbi.id ASC LIMIT 1
+    ) AS flow_block_motivo_principal,
+    (
+        SELECT fbi.criado_em
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
+        ORDER BY fbi.criado_em ASC, fbi.id ASC LIMIT 1
+    ) AS flow_block_bloqueada_desde,
     fi.file_uploaded_at,
     fi.requires_file_upload,
     CASE

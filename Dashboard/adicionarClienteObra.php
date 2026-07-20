@@ -288,7 +288,6 @@ try {
         $types .= 'i';
         $values[] = 0;
     }
-
     $sqlObra = 'INSERT INTO obra (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $placeholders) . ')';
     $stmtObra = $conn->prepare($sqlObra);
     if (!$stmtObra) {

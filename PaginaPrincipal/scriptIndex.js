@@ -902,6 +902,16 @@ function abrirModuloPendencias(module) {
 }
 
 function abrirPendenciaOperacional(item, module) {
+  if (item.source_type === "links") {
+    const linkLabel = item.metadata?.link_label || "link";
+    Swal.fire({
+      icon: "info",
+      title: "Link pendente",
+      text: `Cadastre o ${linkLabel} na tela da obra para remover esta pendência.`,
+    });
+    return;
+  }
+
   if (item.checklist_id) {
     abrirChecklistOperacionalModal(item);
     return;

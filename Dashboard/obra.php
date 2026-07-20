@@ -608,6 +608,9 @@ $conn->close();
                             data-tooltip="Liberar modelagem antes do filtro de assets">
                             <i class="fa-solid fa-lock"></i> Liberar Modelagem
                         </button>
+                        <button id="modelagemComplexidadeBtn" class="action-item">
+                            <i class="fa-solid fa-layer-group"></i> Complexidade Modelagem
+                        </button>
                         <button id="btnNotificarObra" class="action-item">
                             <i class="fa-solid fa-paper-plane"></i> Notificar Equipe
                         </button>
@@ -1218,6 +1221,16 @@ $conn->close();
                                         <input type="text" name="link_review" id="link_review" class="campo-input">
                                         <span class="campo-si" id="si-link_review"></span>
                                         <button type="button" class="campo-edit-btn" data-target="link_review"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo link_campo" data-field="google_earth">
+                                    <label>Link do Google Earth:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val campo-val--link" id="val-google_earth">—</span>
+                                        <input type="text" name="google_earth" id="google_earth" class="campo-input">
+                                        <span class="campo-si" id="si-google_earth"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="google_earth"
                                             title="Editar"><i class="fa-solid fa-pencil"></i></button>
                                     </div>
                                 </div>
@@ -2861,42 +2874,54 @@ $conn->close();
                 <button id="closeFotografico" style="background:none;border:0;font-size:20px;">&times;</button>
             </div>
             <div id="fotograficoBody">
-                <label>Endereço</label>
-                <input type="text" id="fotografico_endereco" style="width:100%;" />
-                <div id="fotografico_alturas_container" style="margin-top:8px;"></div>
-                <button id="addAlturaBtn" class="btn" style="margin-top:8px;">Adicionar Altura</button>
-                <div id="fotograficoAddAlturaForm" style="display:none; margin-top:8px;">
-                    <label>Altura</label>
-                    <input type="text" id="fotografico_altura_value" style="width:100%;" />
-                    <label>Observações</label>
-                    <input type="text" id="fotografico_altura_obs" style="width:100%;" />
-                    <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button id="saveAlturaBtn" class="btn">Salvar Altura</button>
-                        <button id="cancelAlturaBtn" class="btn">Cancelar</button>
+                <div id="fotograficoWorkflowSummary"
+                    style="border:1px solid #dfe7e5;border-radius:12px;padding:12px;margin-bottom:14px;background:#f4faf8;">
+                    <strong>Planejamento Fotografico</strong>
+                    <p id="fotograficoWorkflowText" style="margin:6px 0 10px;color:#4b5563;">Carregando fluxo atual...</p>
+                    <a id="fotograficoWorkflowLink" class="btn" href="#"
+                        style="display:inline-flex;text-decoration:none;align-items:center;gap:6px;">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir planejamento
+                    </a>
+                </div>
+                <details>
+                    <summary style="cursor:pointer;font-weight:700;margin-bottom:10px;">Historico fotografico anterior</summary>
+                    <label>Endereço</label>
+                    <input type="text" id="fotografico_endereco" style="width:100%;" />
+                    <div id="fotografico_alturas_container" style="margin-top:8px;"></div>
+                    <button id="addAlturaBtn" class="btn" style="margin-top:8px;">Adicionar Altura</button>
+                    <div id="fotograficoAddAlturaForm" style="display:none; margin-top:8px;">
+                        <label>Altura</label>
+                        <input type="text" id="fotografico_altura_value" style="width:100%;" />
+                        <label>Observações</label>
+                        <input type="text" id="fotografico_altura_obs" style="width:100%;" />
+                        <div style="margin-top:8px; display:flex; gap:8px;">
+                            <button id="saveAlturaBtn" class="btn">Salvar Altura</button>
+                            <button id="cancelAlturaBtn" class="btn">Cancelar</button>
+                        </div>
                     </div>
-                </div>
-                <div class="buttonsFotografico">
-                    <button id="saveFotograficoInfo" class="btn">Salvar Informações</button>
-                    <button id="openRegistrarFotografico" class="btn">Registrar Fotográfico</button>
-                </div>
-
-                <hr style="margin:12px 0;" />
-                <h4>Registros</h4>
-                <div id="fotograficoRegistrosList"
-                    style="max-height:220px; overflow:auto; border:1px solid #eee; padding:8px; background:#fafafa;">
-                </div>
-
-                <div id="fotograficoRegistroForm"
-                    style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
-                    <label>Data</label>
-                    <input type="date" id="fotografico_registro_data" />
-                    <label style="margin-top:8px;">Observações</label>
-                    <textarea id="fotografico_registro_obs" style="width:100%; height:80px;"></textarea>
-                    <div style="margin-top:8px; display:flex; gap:8px;">
-                        <button id="saveFotograficoRegistro" class="btn">Salvar Registro</button>
-                        <button id="cancelFotograficoRegistro" class="btn">Cancelar</button>
+                    <div class="buttonsFotografico">
+                        <button id="saveFotograficoInfo" class="btn">Salvar Informações</button>
+                        <button id="openRegistrarFotografico" class="btn">Registrar Fotográfico</button>
                     </div>
-                </div>
+
+                    <hr style="margin:12px 0;" />
+                    <h4>Registros</h4>
+                    <div id="fotograficoRegistrosList"
+                        style="max-height:220px; overflow:auto; border:1px solid #eee; padding:8px; background:#fafafa;">
+                    </div>
+
+                    <div id="fotograficoRegistroForm"
+                        style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
+                        <label>Data</label>
+                        <input type="date" id="fotografico_registro_data" />
+                        <label style="margin-top:8px;">Observações</label>
+                        <textarea id="fotografico_registro_obs" style="width:100%; height:80px;"></textarea>
+                        <div style="margin-top:8px; display:flex; gap:8px;">
+                            <button id="saveFotograficoRegistro" class="btn">Salvar Registro</button>
+                            <button id="cancelFotograficoRegistro" class="btn">Cancelar</button>
+                        </div>
+                    </div>
+                </details>
             </div>
         </div>
     </div>

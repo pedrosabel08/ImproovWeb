@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/pendencias_links_obra_helper.php';
 
 if (!defined('PENDENCIAS_PROJETO_OK_SLA_HORAS')) {
     define('PENDENCIAS_PROJETO_OK_SLA_HORAS', 24);
@@ -653,6 +654,7 @@ function pendencias_operacionais_fetch(
         'render'           => pendencias_operacionais_empty_module('render', 'Render', 'Aprovações internas de render', 'ri-box-3-line', '#db2777'),
         'projeto'          => pendencias_operacionais_empty_module('projeto', 'Projeto', 'Checklist operacional da obra', 'ri-folder-3-line', '#f59e0b'),
         'imagem'           => pendencias_operacionais_empty_module('imagem', 'Imagem', 'Validações antes da produção', 'ri-image-edit-line', '#16a34a'),
+        'links'            => pendencias_operacionais_empty_module('links', 'Links', 'Links pendentes para a obra', 'ri-links-line', '#0f766e'),
         'cobranca_cliente' => pendencias_operacionais_empty_module('cobranca_cliente', 'Cobrança de Cliente', 'Retornos e cobranças de lotes', 'ri-time-line', '#0891b2'),
     ];
 
@@ -702,7 +704,7 @@ function pendencias_operacionais_fetch(
     }
 
     if (
-        pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID, PENDENCIAS_ANDRE_ID])
+        pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID, PENDENCIAS_ANDRE_ID])
         && pendencias_operacionais_table_exists($conn, 'pre_alt_lote')
     ) {
         $sql = "SELECT
@@ -770,7 +772,10 @@ function pendencias_operacionais_fetch(
     }
 
     if (pendencias_operacionais_table_exists($conn, 'render_alta')) {
-        $whereUser = $colaboradorId === (int) PENDENCIAS_PEDRO_ID
+        $whereUser = in_array((int) $colaboradorId, [
+            (int) PENDENCIAS_PEDRO_ID,
+            (int) PENDENCIAS_ANDRE_ID
+        ], true)
             ? '1=1'
             : 'r.responsavel_id = ' . (int) $colaboradorId;
         $sql = "SELECT
@@ -827,7 +832,42 @@ function pendencias_operacionais_fetch(
 
     pendencias_operacionais_ensure_schema($conn);
 
-    if (pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
+    if (pendencias_operacionais_user_in($colaboradorId, [
+        PENDENCIAS_PEDRO_ID,
+        PENDENCIAS_ANDRE_ID,
+        PENDENCIAS_IMAGEM_RESPONSAVEL_ID,
+    ])) {
+        foreach (pendencias_links_obra_listar_abertas($conn) as $link) {
+            pendencias_operacionais_add_item($modules['links'], [
+                'id' => 'link-' . (int) $link['id'],
+                'source_type' => 'links',
+                'source_id' => (int) $link['id'],
+                'title' => (string) $link['obra_nome'],
+                'subtitle' => 'Cadastrar ' . $link['link_label'] . ' na tela da obra.',
+                'obra_id' => (int) $link['obra_id'],
+                'obra_nome' => (string) $link['obra_nome'],
+                'responsavel_id' => null,
+                'responsavel_nome' => 'Operacional',
+                'created_at' => $link['criada_em'],
+                'sla_start_at' => null,
+                'due_at' => null,
+                'sla_status' => 'dentro',
+                'sla_label' => 'Pendente',
+                'tempo_decorrido_minutos' => null,
+                'sla_minutos' => null,
+                'comments_count' => 0,
+                'critical_count' => 0,
+                'action_url' => '',
+                'metadata' => [
+                    'link_key' => $link['tipo_link'],
+                    'link_label' => $link['link_label'],
+                    'origem' => $link['origem'],
+                ],
+            ]);
+        }
+    }
+
+    if (pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
         $sqlCompletedProjects = "SELECT
                     o.idobra,
                     MAX(ae.colaborador_id) AS responsavel_id
@@ -883,7 +923,7 @@ function pendencias_operacionais_fetch(
         }
     }
 
-    if (pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
+    if (pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
         $sqlQueue = "SELECT
                         co.*,
                         ico.imagem_nome,
@@ -931,7 +971,10 @@ function pendencias_operacionais_fetch(
     }
 
     if (
-        $colaboradorId === (int) PENDENCIAS_PEDRO_ID
+        in_array((int) $colaboradorId, [
+            (int) PENDENCIAS_PEDRO_ID,
+            (int) PENDENCIAS_ANDRE_ID
+        ], true)
         && pendencias_operacionais_table_exists($conn, 'cobranca_review')
     ) {
         $sql = "SELECT
@@ -955,7 +998,7 @@ function pendencias_operacionais_fetch(
                 JOIN obra o ON o.idobra = e.obra_id
                 LEFT JOIN status_imagem s ON s.idstatus = e.status_id
                 LEFT JOIN review_batch_items rbi ON rbi.review_batch_id = rb.id
-                WHERE cr.status IN ('OVERDUE', 'NOTIFIED')
+                WHERE cr.status = 'OVERDUE'
                   AND cr.resolved_at IS NULL
                   AND rb.status NOT IN ('RESOLVED', 'IGNORED')
                   AND o.status_obra = 0

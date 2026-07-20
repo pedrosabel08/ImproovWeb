@@ -1,101 +1,150 @@
 <?php
-header('Content-Type: application/json');
+
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/review_cobranca_lib.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/../Fotografico/fotografico_service.php';
 
-// Recebe os dados enviados via AJAX
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    http_response_code(401);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Nao autenticado']);
+    exit;
+}
+
 $data = json_decode(file_get_contents('php://input'), true);
-
-if (!$data || !isset($data['ids']) || !isset($data['campos'])) {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Dados inválidos']);
+if (!is_array($data) || !isset($data['ids'], $data['campos']) || !is_array($data['ids']) || !is_array($data['campos'])) {
+    http_response_code(400);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Dados invalidos']);
     exit;
 }
 
-$ids = array_map('intval', $data['ids']); // garante que os IDs são inteiros
-$campos = $data['campos'];
-$holdJustificativa = trim((string)($data['hold_justificativa'] ?? ''));
+$ids = array_values(array_unique(array_filter(
+    array_map('intval', $data['ids']),
+    static fn(int $id): bool => $id > 0
+)));
+$camposPermitidos = ['substatus_id', 'status_id', 'prazo', 'subtipo_id'];
+$campos = [];
+foreach ($data['campos'] as $coluna => $valor) {
+    if (!in_array($coluna, $camposPermitidos, true)) {
+        continue;
+    }
+    $campos[$coluna] = $coluna === 'prazo' ? trim((string) $valor) : (int) $valor;
+}
+$holdJustificativa = trim((string) ($data['hold_justificativa'] ?? ''));
 
-if (empty($ids)) {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Nenhuma imagem selecionada']);
+if ($ids === [] || $campos === []) {
+    http_response_code(422);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Nenhuma imagem ou campo permitido foi informado']);
     exit;
 }
 
-$destinoHold = isset($campos['substatus_id']) && (int)$campos['substatus_id'] === 7;
+$destinoHold = isset($campos['substatus_id']) && (int) $campos['substatus_id'] === FOTOGRAFICO_HOLD_SUBSTATUS_ID;
 if ($destinoHold && $holdJustificativa === '') {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Justificativa de HOLD é obrigatória']);
+    http_response_code(422);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Justificativa de HOLD e obrigatoria']);
     exit;
 }
 
-// Monta a parte SET da query
-$set = [];
-foreach ($campos as $col => $valor) {
-    $valor = mysqli_real_escape_string($conn, $valor);
-    $set[] = "`$col` = '$valor'";
-}
-
-// Monta a lista de IDs para o IN
 $idsList = implode(',', $ids);
-
-// Query única
-$sql = "UPDATE imagens_cliente_obra SET " . implode(", ", $set) . " WHERE idimagens_cliente_obra IN ($idsList)";
-
 mysqli_begin_transaction($conn);
 
 try {
-    if (!mysqli_query($conn, $sql)) {
-        throw new Exception(mysqli_error($conn));
+    $oldSubstatus = [];
+    $resRows = $conn->query(
+        "SELECT idimagens_cliente_obra, obra_id, substatus_id
+           FROM imagens_cliente_obra
+          WHERE idimagens_cliente_obra IN ($idsList)
+          FOR UPDATE"
+    );
+    if (!$resRows || $resRows->num_rows !== count($ids)) {
+        throw new RuntimeException('Uma ou mais imagens nao foram encontradas.');
+    }
+    while ($row = $resRows->fetch_assoc()) {
+        $obraId = (int) $row['obra_id'];
+        if (!improov_usuario_pode_acessar_obra($conn, $obraId)) {
+            throw new RuntimeException('Sem acesso a uma das obras selecionadas.');
+        }
+        $oldSubstatus[(int) $row['idimagens_cliente_obra']] = $row['substatus_id'] !== null
+            ? (int) $row['substatus_id']
+            : null;
     }
 
+    $set = [];
+    $types = '';
+    $params = [];
+    foreach ($campos as $coluna => $valor) {
+        $set[] = "`$coluna` = ?";
+        $types .= $coluna === 'prazo' ? 's' : 'i';
+        $params[] = $valor;
+    }
+    $stmtUpdate = $conn->prepare(
+        'UPDATE imagens_cliente_obra SET ' . implode(', ', $set) . " WHERE idimagens_cliente_obra IN ($idsList)"
+    );
+    if (!$stmtUpdate) {
+        throw new RuntimeException($conn->error);
+    }
+    $stmtUpdate->bind_param($types, ...$params);
+    if (!$stmtUpdate->execute()) {
+        throw new RuntimeException($stmtUpdate->error);
+    }
+    $stmtUpdate->close();
+
     if ($destinoHold) {
-        $sqlObras = "SELECT idimagens_cliente_obra, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra IN ($idsList)";
-        $resObras = mysqli_query($conn, $sqlObras);
-        if (!$resObras) {
-            throw new Exception(mysqli_error($conn));
-        }
-
-        $stmtHold = $conn->prepare("INSERT INTO status_hold (justificativa, imagem_id, obra_id) VALUES (?, ?, ?)");
+        $stmtHold = $conn->prepare(
+            'INSERT INTO status_hold (justificativa, imagem_id, obra_id) VALUES (?, ?, ?)'
+        );
         if (!$stmtHold) {
-            throw new Exception(mysqli_error($conn));
+            throw new RuntimeException($conn->error);
         }
-
-        while ($row = mysqli_fetch_assoc($resObras)) {
-            $imagemId = (int)$row['idimagens_cliente_obra'];
-            $obraId = isset($row['obra_id']) ? (int)$row['obra_id'] : null;
+        $resRows->data_seek(0);
+        while ($row = $resRows->fetch_assoc()) {
+            $imagemId = (int) $row['idimagens_cliente_obra'];
+            $obraId = (int) $row['obra_id'];
             $stmtHold->bind_param('sii', $holdJustificativa, $imagemId, $obraId);
             if (!$stmtHold->execute()) {
-                $stmtHold->close();
-                throw new Exception($stmtHold->error);
+                throw new RuntimeException($stmtHold->error);
             }
         }
         $stmtHold->close();
     }
 
-    if (isset($campos['substatus_id']) && (int) $campos['substatus_id'] === 2) {
+    if (isset($campos['substatus_id']) && (int) $campos['substatus_id'] === FOTOGRAFICO_TODO_SUBSTATUS_ID) {
         foreach ($ids as $imagemId) {
-            improov_p00_register_handoff_for_image($conn, (int) $imagemId);
+            improov_p00_register_handoff_for_image($conn, $imagemId);
         }
     }
 
     if (isset($campos['substatus_id'])) {
         $novoSubstatusId = (int) $campos['substatus_id'];
         foreach ($ids as $imagemId) {
-            entregas_review_sync_p00_batch_state($conn, (int) $imagemId, null, $novoSubstatusId);
+            entregas_review_sync_p00_batch_state($conn, $imagemId, null, $novoSubstatusId);
+            fotografico_sync_imagem_substatus(
+                $conn,
+                $imagemId,
+                $oldSubstatus[$imagemId] ?? null,
+                $novoSubstatusId,
+                fotografico_actor_id(),
+                'Dashboard/batch_actions.php'
+            );
         }
     }
 
-    if (isset($campos['substatus_id']) || isset($campos['subtipo_id']) || isset($campos['tipo_imagem'])) {
+    if (isset($campos['substatus_id']) || isset($campos['subtipo_id'])) {
         foreach ($ids as $imagemId) {
-            pendencias_operacionais_sync_image_checklist($conn, (int) $imagemId);
+            pendencias_operacionais_sync_image_checklist($conn, $imagemId);
         }
     }
 
     mysqli_commit($conn);
-    echo json_encode(['sucesso' => true]);
+    echo json_encode(['sucesso' => true], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     mysqli_rollback($conn);
-    echo json_encode(['sucesso' => false, 'mensagem' => $e->getMessage()]);
+    http_response_code(500);
+    echo json_encode(['sucesso' => false, 'mensagem' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }
 
-mysqli_close($conn);
+$conn->close();

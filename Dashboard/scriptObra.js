@@ -2612,6 +2612,11 @@ function atualizarModal(idImagem) {
             label: "Fotográfico",
             icon: "fa-solid fa-camera",
           },
+          {
+            key: "google_earth",
+            label: "Google Earth",
+            icon: "fa-solid fa-earth-americas",
+          },
         ];
         const linkBtns = LINK_DEFS.filter(
           (d) => links[d.key] && String(links[d.key]).trim() !== "",
@@ -4858,6 +4863,8 @@ function infosObra(obraId) {
       }
       // Guarda os dados carregados globalmente para filtros
       dadosImagens = data.imagens || [];
+      const modelagemComplexidadeObra =
+        data?.obra?.modelagem_complexidade_nome || "";
       atualizarChecklistImagemCache(dadosImagens);
 
       // Briefing (Arquivos): renderiza baseado nos tipos presentes na obra
@@ -5269,7 +5276,13 @@ function infosObra(obraId) {
           cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
 
           cellColaborador.addEventListener("mouseenter", (event) => {
-            tooltip.textContent = status ? status : "";
+            const complexidade =
+              coluna.col === "modelagem"
+                ? modelagemComplexidadeObra
+                : "";
+            tooltip.textContent = complexidade
+              ? `${status || ""}\nComplexidade: ${complexidade}`
+              : status || "";
             tooltip.style.display = "block";
             tooltip.style.left = event.clientX + "px";
             tooltip.style.top = event.clientY - 30 + "px";
@@ -5508,6 +5521,7 @@ function infosObra(obraId) {
         link_drive: obra.link_drive || "",
         link_review: obra.link_review || "",
         fotografico: obra.fotografico || "",
+        google_earth: obra.google_earth || "",
       };
       document.getElementById("nomenclatura").textContent =
         obra.nome_real || "Nome não disponível";
@@ -5535,6 +5549,7 @@ function infosObra(obraId) {
       const fotograficoEl = document.getElementById("fotografico");
       const driveEl = document.getElementById("link_drive");
       const reviewEl = document.getElementById("link_review");
+      const googleEarthEl = document.getElementById("google_earth");
 
       if (fotograficoEl) {
         // set both property and attribute so the value is visible in DOM inspector
@@ -5570,6 +5585,17 @@ function infosObra(obraId) {
         const sp = document.getElementById("val-link_review");
         if (sp) sp.textContent = val || "—";
       }
+      if (googleEarthEl) {
+        const val = obra.google_earth || "";
+        googleEarthEl.value = val;
+        try {
+          googleEarthEl.setAttribute("value", val);
+        } catch (e) {}
+        googleEarthEl.style.display = "";
+        googleEarthEl.placeholder = val ? "" : "--";
+        const sp = document.getElementById("val-google_earth");
+        if (sp) sp.textContent = val || "—";
+      }
 
       // Admin check: enable edit buttons for admins
       const _uid = Number(localStorage.getItem("usuarioId"));
@@ -5589,6 +5615,7 @@ function infosObra(obraId) {
           addOpenButton("fotografico");
           addOpenButton("link_drive");
           addOpenButton("link_review");
+          addOpenButton("google_earth");
         }
       } catch (err) {
         console.warn("addOpenButton error", err);
@@ -7198,14 +7225,60 @@ function clearFilters() {
   }
 }
 
-// Select2 com tags para o select de subtipo no modal de batch edit
-function initSubtipoModalSelect2() {
+// Agrupa os subtipos da obra e os demais no mesmo Select2.
+// A opção de criação é exibida apenas quando a busca não encontra nenhum subtipo.
+async function initSubtipoModalSelect2() {
   if (!window.jQuery || !$.fn || !$.fn.select2) return;
   const $sel = $("#subtipo_modal");
   if (!$sel.length) return;
+
+  const currentObraId = Number(
+    window.obraId || (typeof obraId !== "undefined" ? obraId : 0),
+  );
+  let subtiposDaObra = [];
+  let demaisSubtipos = [];
+  try {
+    const response = await fetch(
+      `getSubtipos.php?obra_id=${encodeURIComponent(currentObraId)}`,
+    );
+    if (!response.ok) throw new Error("Não foi possível carregar os subtipos.");
+    const payload = await response.json();
+    if (Array.isArray(payload)) {
+      // Compatibilidade com consumidores antigos do endpoint.
+      demaisSubtipos = payload;
+    } else {
+      subtiposDaObra = Array.isArray(payload.obra) ? payload.obra : [];
+      demaisSubtipos = Array.isArray(payload.demais) ? payload.demais : [];
+    }
+  } catch (error) {
+    console.error("Erro ao carregar subtipos da obra:", error);
+    return;
+  }
+
+  const valorSelecionado = String($sel.val() || "");
   try {
     $sel.select2("destroy");
   } catch (_) {}
+
+  $sel.empty().append(new Option("-- Sem subtipo --", "", false, valorSelecionado === ""));
+  const adicionarGrupo = (titulo, subtipos) => {
+    if (!subtipos.length) return;
+    const grupo = document.createElement("optgroup");
+    grupo.label = titulo;
+    subtipos.forEach((subtipo) => {
+      const id = String(subtipo.id);
+      grupo.appendChild(new Option(subtipo.nome, id, false, id === valorSelecionado));
+    });
+    $sel.append(grupo);
+  };
+  adicionarGrupo("Obra", subtiposDaObra);
+  adicionarGrupo("Demais", demaisSubtipos);
+  const todosSubtipos = [...subtiposDaObra, ...demaisSubtipos];
+  const normalizarBuscaSubtipo = (valor) => String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
 
   $sel.select2({
     tags: true,
@@ -7213,23 +7286,30 @@ function initSubtipoModalSelect2() {
     allowClear: true,
     width: "100%",
     dropdownParent: $("body"),
-    language: { noResults: () => "Nenhum resultado. Digite para criar." },
+    language: {
+      noResults: () => "Nenhum subtipo encontrado. Crie um novo subtipo.",
+    },
     createTag(params) {
       const term = params.term.trim();
       if (!term) return null;
+      const busca = normalizarBuscaSubtipo(term);
+      const encontrouSubtipo = todosSubtipos.some((subtipo) =>
+        normalizarBuscaSubtipo(subtipo.nome).includes(busca),
+      );
+      if (encontrouSubtipo) return null;
       return { id: "new:" + term, text: term, newTag: true };
     },
     templateResult(item) {
       if (item.newTag) {
         const el = document.createElement("span");
-        el.innerHTML = `<i class="fa-solid fa-plus"></i> <small>Criar:</small> <strong>${item.text}</strong>`;
+        el.innerHTML = `<i class="fa-solid fa-plus"></i> <small>Novo +:</small> <strong>${item.text}</strong>`;
         return el;
       }
       return item.text || item.id;
     },
   });
 
-  $sel.on("select2:select", async function (e) {
+  $sel.off("select2:select.subtipo").on("select2:select.subtipo", async function (e) {
     const data = e.params.data;
     if (!data.newTag) return;
     const nome = data.text.trim();
@@ -7254,6 +7334,14 @@ function initSubtipoModalSelect2() {
       console.error("Erro ao criar subtipo:", err);
     }
   });
+}
+
+async function carregarComplexidadesModelagem() {
+  const response = await fetch("getComplexidadesModelagem.php");
+  if (!response.ok) throw new Error("Não foi possível carregar as complexidades.");
+  const complexidades = await response.json();
+  if (!Array.isArray(complexidades)) throw new Error("Resposta inválida de complexidades.");
+  return complexidades;
 }
 
 // Ligando o botão Limpar filtros
@@ -12872,8 +12960,6 @@ function positionHistModal() {
 window.addEventListener("resize", positionHistModal);
 window.addEventListener("scroll", positionHistModal, true);
 
-let _subtipoSelect2Initialized = false;
-
 document.querySelectorAll(".modal-row").forEach((row) => {
   row.addEventListener("click", function () {
     const targetId = this.getAttribute("data-target");
@@ -12881,9 +12967,7 @@ document.querySelectorAll(".modal-row").forEach((row) => {
     const opening = field.style.display !== "block";
     field.style.display = opening ? "block" : "none";
 
-    // Inicializa Select2 do subtipo somente na primeira vez que o campo fica visível
-    if (opening && targetId === "subtipoField" && !_subtipoSelect2Initialized) {
-      _subtipoSelect2Initialized = true;
+    if (opening && targetId === "subtipoField") {
       initSubtipoModalSelect2();
     }
   });
@@ -12957,7 +13041,10 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
         return;
       }
 
-      const funcaoFields = ["funcao_id", "colaborador_id"];
+      const funcaoFields = [
+        "funcao_id",
+        "colaborador_id",
+      ];
       const toSend = {};
       funcaoFields.forEach((f) => {
         const valor = dadosAtualizar[f];
@@ -13946,6 +14033,78 @@ function addOpenButton(inputId, containerSelector) {
 addOpenButton("fotografico");
 addOpenButton("link_drive");
 addOpenButton("link_review");
+addOpenButton("google_earth");
+
+async function abrirComplexidadeModelagem() {
+  let complexidades;
+  try {
+    complexidades = await carregarComplexidadesModelagem();
+  } catch (error) {
+    console.error("Erro ao carregar complexidades da modelagem:", error);
+    await Swal.fire({
+      icon: "error",
+      title: "Não foi possível carregar",
+      text: "Tente novamente em alguns instantes.",
+    });
+    return;
+  }
+
+  const opcoes = Object.fromEntries(
+    complexidades.map((complexidade) => [String(complexidade.id), complexidade.nome]),
+  );
+  const escolha = await Swal.fire({
+    title: "Complexidade da Modelagem",
+    text: "Escolha a classificação deste projeto.",
+    input: "radio",
+    inputOptions: opcoes,
+    inputValidator: (valor) => (!valor ? "Escolha uma complexidade." : undefined),
+    confirmButtonText: "Escolher",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+  });
+  if (!escolha.isConfirmed) return;
+
+  Swal.fire({
+    title: "Atualizando complexidade...",
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => Swal.showLoading(),
+  });
+  try {
+    const response = await fetch("atualizarComplexidadeModelagem.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        obra_id: Number(obraId),
+        complexidade_modelagem_id: escolha.value,
+      }),
+    });
+    const resultado = await response.json();
+    if (!response.ok || !resultado.sucesso) {
+      throw new Error(resultado.mensagem || "Não foi possível atualizar a complexidade.");
+    }
+
+    await Swal.fire({
+      icon: "success",
+      title: "Complexidade atualizada",
+      text: "A classificação de Modelagem foi atualizada para toda a obra.",
+    });
+    infosObra(obraId);
+  } catch (error) {
+    console.error("Erro ao atualizar complexidade da modelagem:", error);
+    await Swal.fire({
+      icon: "error",
+      title: "Atualização não concluída",
+      text: error.message || "Tente novamente em alguns instantes.",
+    });
+  }
+}
+
+function initComplexidadeModelagemAction() {
+  const botao = document.getElementById("modelagemComplexidadeBtn");
+  if (!botao) return;
+  botao.addEventListener("click", abrirComplexidadeModelagem);
+}
 
 // Actions menu initialization (moved from inline in obra.php)
 (function () {
@@ -14004,8 +14163,10 @@ addOpenButton("link_review");
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initActionsMenu);
+    document.addEventListener("DOMContentLoaded", initComplexidadeModelagemAction);
   } else {
     initActionsMenu();
+    initComplexidadeModelagemAction();
   }
 })();
 
@@ -14450,12 +14611,54 @@ const quickFotografico = document.getElementById("quick_fotografico");
 const fotograficoModal = document.getElementById("fotograficoModal");
 const closeBtn = document.getElementById("closeFotografico");
 
+function fotograficoWorkflowUrl(planId = 0) {
+  const base = window.PROJECT_ROOT || "/ImproovWeb";
+  const params = new URLSearchParams();
+  if (planId) params.set("plano_id", String(planId));
+  else if (obraId) params.set("obra_id", String(obraId));
+  return `${base}/Fotografico/index.php?${params.toString()}`;
+}
+
+async function loadFotograficoWorkflowSummary() {
+  const text = document.getElementById("fotograficoWorkflowText");
+  const link = document.getElementById("fotograficoWorkflowLink");
+  if (!text || !link || !obraId) return;
+  link.href = fotograficoWorkflowUrl();
+  try {
+    const base = window.PROJECT_ROOT || "/ImproovWeb";
+    const response = await fetch(
+      `${base}/Fotografico/api.php?action=summary&obra_id=${encodeURIComponent(obraId)}`,
+      { headers: { Accept: "application/json" } },
+    );
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      throw new Error(payload?.error?.message || "Fluxo indisponivel");
+    }
+    const summary = payload.data || {};
+    const labels = {
+      AGUARDANDO_FACHADA: "Aguardando a primeira fachada entrar em TO-DO",
+      PLANO_A_FAZER: "Plano fotografico a fazer",
+      EM_ELABORACAO: "Plano fotografico em elaboracao",
+      PRONTO_EXECUCAO: "Plano pronto para execucao",
+      EM_CONFERENCIA: "Material em conferencia",
+      HOLD: "Processo em HOLD",
+      CONCLUIDO: "Fotografico concluido",
+      CANCELADO: "Processo cancelado",
+    };
+    text.textContent = labels[summary.status] || summary.status || "Aguardando fachada";
+    if (summary.id) link.href = fotograficoWorkflowUrl(Number(summary.id));
+  } catch (error) {
+    text.textContent = error.message;
+  }
+}
+
 async function loadFotografico() {
   if (!obraId) {
     console.warn("obra_id não disponível");
     return;
   }
   try {
+    loadFotograficoWorkflowSummary();
     const res = await fetch(`get_fotografico.php?obra_id=${obraId}`);
     const json = await res.json();
     if (json && json.success) {
@@ -14488,9 +14691,22 @@ function renderAlturas(alturas) {
     div.style.padding = "6px 4px";
     div.style.borderBottom = "1px solid #eee";
     const left = document.createElement("div");
-    left.innerHTML = `<strong>${a.altura || ""}</strong><div style="font-size:13px;color:#333;">${a.observacoes || ""}</div>`;
+    const strong = document.createElement("strong");
+    strong.textContent = a.altura || "";
+    const observation = document.createElement("div");
+    observation.style.fontSize = "13px";
+    observation.style.color = "#333";
+    observation.textContent = a.observacoes || "";
+    left.append(strong, observation);
     const right = document.createElement("div");
-    right.innerHTML = `<button class="btn btn-sm delete-altura" data-id="${a.id}"><i class="fa-solid fa-x"></i></button>`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn-sm delete-altura";
+    remove.dataset.id = String(a.id || "");
+    const icon = document.createElement("i");
+    icon.className = "fa-solid fa-x";
+    remove.append(icon);
+    right.append(remove);
     div.appendChild(left);
     div.appendChild(right);
     container.appendChild(div);
@@ -14512,7 +14728,14 @@ function renderRegistros(regs) {
     const date = r.registro_data
       ? r.registro_data.split("-").reverse().join("/")
       : r.created_at;
-    d.innerHTML = `<strong>${date}</strong><div style="font-size:13px;color:#333;">${(r.observacoes || "").replace(/\n/g, "<br>")}</div>`;
+    const strong = document.createElement("strong");
+    strong.textContent = date;
+    const observation = document.createElement("div");
+    observation.style.fontSize = "13px";
+    observation.style.color = "#333";
+    observation.style.whiteSpace = "pre-wrap";
+    observation.textContent = r.observacoes || "";
+    d.append(strong, observation);
     container.appendChild(d);
   });
 }
@@ -14683,6 +14906,8 @@ function openModal() {
 }
 
 function openFotograficoLink() {
+  window.open(fotograficoWorkflowUrl(), "_blank", "noopener");
+  return;
   const input = document.getElementById("fotografico");
   const raw = input ? input.value || input.getAttribute("value") || "" : "";
   const url = normalizeUrl(raw);

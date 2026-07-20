@@ -522,7 +522,6 @@ try {
         $types .= 'i';
         $values[] = 2;
     }
-
     $sqlObra = 'INSERT INTO obra (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $placeholders) . ')';
     $stmtObra = $conn->prepare($sqlObra);
     if (!$stmtObra) {

@@ -60,6 +60,7 @@ $stmtFuncoes->close();
 // Segundo SELECT: detalhes gerais da obra
 $sqlObra = "SELECT
     o.*,
+    cm.nome AS modelagem_complexidade_nome,
     COUNT(i.idimagens_cliente_obra) AS total_imagens,
     MAX(i.cliente_id) AS cliente_id,
     SUM(CASE WHEN i.antecipada = 1 THEN 1 ELSE 0 END) AS total_imagens_antecipadas,
@@ -69,6 +70,8 @@ $sqlObra = "SELECT
 FROM obra o
 JOIN imagens_cliente_obra i
     ON i.obra_id = o.idobra
+LEFT JOIN complexidade_modelagem cm
+    ON cm.id = o.complexidade_modelagem_id
 WHERE i.obra_id = ?
 GROUP BY o.idobra";
 

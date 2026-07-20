@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/../helpers/pendencias_links_obra_helper.php';
 
 function dashboard_table_has_column(mysqli $conn, string $table, string $column): bool
 {
@@ -291,6 +292,7 @@ function dashboard_finalize_onboarding_if_ready(mysqli $conn, int $obraId, ?int 
     }
 
     pendencias_operacionais_ensure_project_checklist($conn, $obraId, $colaboradorId);
+    pendencias_links_obra_abrir_google_earth($conn, $obraId);
 
     return ['completed' => true, 'pending_items' => 0];
 }

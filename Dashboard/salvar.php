@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../helpers/pendencias_links_obra_helper.php';
 
 if (isset($_POST["campo"], $_POST["valor"], $_POST["obraId"])) {
     $campo = $_POST["campo"];
@@ -9,7 +11,7 @@ if (isset($_POST["campo"], $_POST["valor"], $_POST["obraId"])) {
 
     // Lista de campos que pertencem a cada tabela
     $camposBriefing = ["assets", "comp_planta", "nivel", "conceito", "valor_media", "outro_padrao", "vidro", "esquadria", "soleira", "acab_calcadas"];
-    $camposObra = ["link_drive", "local", "altura_drone", "fotografico", "link_review"]; ;
+    $camposObra = ["link_drive", "local", "altura_drone", "fotografico", "link_review", "google_earth"]; ;
 
     // Determinar a tabela e a chave correta
     if (in_array($campo, $camposBriefing)) {
@@ -36,6 +38,10 @@ if (isset($_POST["campo"], $_POST["valor"], $_POST["obraId"])) {
     $executado = $stmt->execute();
 
     if ($executado) {
+        if (in_array($campo, ["link_drive", "link_review", "google_earth"], true)) {
+            $colaboradorId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
+            pendencias_links_obra_concluir_por_campo($conn, $obraId, $campo, $valor, $colaboradorId);
+        }
         echo json_encode(["sucesso" => true]);
     } else {
         echo json_encode(["sucesso" => false, "erro" => "Erro ao executar: " . $stmt->error]);

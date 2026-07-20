@@ -157,7 +157,7 @@ $conn->close();
             <button type="button" data-batch-action="prazo"><i class="fa-solid fa-calendar-days"></i> Alterar prazo</button>
             <button type="button" data-batch-action="prioridade"><i class="fa-solid fa-flag"></i> Alterar prioridade</button>
             <button type="button" data-batch-action="status"><i class="fa-solid fa-arrow-right-arrow-left"></i> Mover etapa</button>
-            <button type="button" data-batch-action="concluir"><i class="fa-solid fa-circle-check"></i> Concluir triagem</button>
+            <button type="button" data-batch-action="concluir"><i class="fa-solid fa-circle-check"></i> Liberar prontas</button>
             <button type="button" class="batch-clear" id="btnLimparSelecao"><i class="fa-solid fa-xmark"></i> Remover seleção</button>
         </section>
 
@@ -246,8 +246,8 @@ $conn->close();
         <form class="conclusao-card" id="conclusaoForm">
             <header>
                 <div>
-                    <span>Concluir triagem</span>
-                    <h3 id="conclusaoTitle">Resumo do lote</h3>
+                    <span>Liberação de imagens</span>
+                    <h3 id="conclusaoTitle">Resumo da liberação</h3>
                 </div>
                 <button type="button" id="conclusaoModalClose" title="Fechar">
                     <i class="fa-solid fa-xmark"></i>
@@ -260,7 +260,7 @@ $conn->close();
                     <button type="button" class="btn btn-secondary" id="conclusaoCancel">Cancelar</button>
                     <button type="submit" class="btn btn-primary" id="conclusaoSubmit">
                         <i class="fa-solid fa-circle-check"></i>
-                        Concluir e liberar lote
+                        Liberar imagens prontas
                     </button>
                 </div>
             </footer>

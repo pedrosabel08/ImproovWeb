@@ -40,7 +40,8 @@ $stmtFetch = $conn->prepare(
         necessita_retorno,
         quantidade_comentarios,
         reanalise_pos_retorno,
-        responsavel_id
+        responsavel_id,
+        (SELECT pli.id FROM pre_alt_liberacao_itens pli WHERE pli.pre_alt_item_id = pre_alt_itens.id LIMIT 1) AS liberacao_item_id
      FROM pre_alt_itens
      WHERE id = ?
      LIMIT 1'
@@ -108,6 +109,11 @@ foreach ($data['itens'] as $item) {
     if (!$current) {
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Item nao encontrado.']);
+        exit;
+    }
+    if (!empty($current['liberacao_item_id'])) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => 'Imagens ja liberadas nao podem ser alteradas.']);
         exit;
     }
 

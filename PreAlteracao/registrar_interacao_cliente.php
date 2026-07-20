@@ -79,11 +79,12 @@ try {
 
     $itemIdList = implode(',', $itemIds);
     $resItens = $conn->query(
-        "SELECT id, imagem_id, resultado, nivel_complexidade, tipo_alteracao, acao,
-                necessita_retorno, quantidade_comentarios, responsavel_id, reanalise_pos_retorno
-         FROM pre_alt_itens
-         WHERE pre_alt_lote_id = $loteId
-           AND id IN ($itemIdList)
+        "SELECT pai.id, pai.imagem_id, pai.resultado, pai.nivel_complexidade, pai.tipo_alteracao, pai.acao,
+                pai.necessita_retorno, pai.quantidade_comentarios, pai.responsavel_id, pai.reanalise_pos_retorno,
+                (SELECT pli.id FROM pre_alt_liberacao_itens pli WHERE pli.pre_alt_item_id = pai.id LIMIT 1) AS liberacao_item_id
+         FROM pre_alt_itens pai
+         WHERE pai.pre_alt_lote_id = $loteId
+           AND pai.id IN ($itemIdList)
          FOR UPDATE"
     );
     if (!$resItens) {
@@ -96,6 +97,12 @@ try {
     }
     if (count($itens) !== count($itemIds)) {
         throw new RuntimeException('Uma ou mais imagens nao pertencem ao lote selecionado.');
+    }
+
+    foreach ($itens as $item) {
+        if (!empty($item['liberacao_item_id'])) {
+            throw new RuntimeException('Imagens ja liberadas nao podem receber novas interacoes com o cliente.');
+        }
     }
 
     if ($tipo === 'RETORNO') {

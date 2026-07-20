@@ -46,11 +46,20 @@ $sql = "
         c.nome_colaborador AS responsavel_nome,
         COUNT(DISTINCT rbi.review_batch_id) AS batch_count,
         COUNT(DISTINCT i.id) AS total_itens,
+        SUM(CASE WHEN pli.id IS NOT NULL THEN 1 ELSE 0 END) AS count_liberadas,
+        SUM(CASE WHEN i.id IS NOT NULL AND pli.id IS NULL THEN 1 ELSE 0 END) AS count_restantes,
+        SUM(CASE
+            WHEN i.id IS NOT NULL
+             AND pli.id IS NULL
+             AND i.necessita_retorno = 0
+             AND i.reanalise_pos_retorno = 0
+             AND (i.resultado = 'SEM_ALTERACAO' OR (i.resultado = 'ALTERACAO' AND i.nivel_complexidade BETWEEN 1 AND 5))
+            THEN 1 ELSE 0 END) AS count_prontas,
         SUM(CASE WHEN i.resultado = 'ALTERACAO' THEN 1 ELSE 0 END) AS count_alteracao,
         SUM(CASE WHEN i.resultado = 'SEM_ALTERACAO' THEN 1 ELSE 0 END) AS count_sem_alteracao,
-        SUM(CASE WHEN i.resultado = 'AGUARDANDO_CLIENTE' OR i.necessita_retorno = 1 THEN 1 ELSE 0 END) AS count_aguardando,
-        SUM(CASE WHEN i.reanalise_pos_retorno = 1 THEN 1 ELSE 0 END) AS count_reanalise_pos_retorno,
-        SUM(CASE WHEN i.resultado IS NULL OR (i.resultado = 'ALTERACAO' AND i.nivel_complexidade IS NULL) THEN 1 ELSE 0 END) AS count_incompleto,
+        SUM(CASE WHEN pli.id IS NULL AND (i.resultado = 'AGUARDANDO_CLIENTE' OR i.necessita_retorno = 1) THEN 1 ELSE 0 END) AS count_aguardando,
+        SUM(CASE WHEN pli.id IS NULL AND i.reanalise_pos_retorno = 1 THEN 1 ELSE 0 END) AS count_reanalise_pos_retorno,
+        SUM(CASE WHEN pli.id IS NULL AND (i.resultado IS NULL OR (i.resultado = 'ALTERACAO' AND i.nivel_complexidade IS NULL)) THEN 1 ELSE 0 END) AS count_incompleto,
         SUM(COALESCE(i.quantidade_comentarios, cm.comment_count, 0)) AS total_comentarios,
         SUM(COALESCE(cm.critical_count, 0)) AS comentarios_criticos,
         MAX(cm.last_comment_at) AS ultimo_comentario_em,
@@ -68,6 +77,7 @@ $sql = "
     LEFT JOIN cliente cli ON cli.idcliente = o.cliente
     JOIN status_imagem si ON si.idstatus = l.status_id
     LEFT JOIN pre_alt_itens i ON i.pre_alt_lote_id = l.id
+    LEFT JOIN pre_alt_liberacao_itens pli ON pli.pre_alt_item_id = i.id
     LEFT JOIN pre_alt_diagramas d ON d.pre_alt_lote_id = l.id
     LEFT JOIN pre_alt_cliente_interacoes ultci ON ultci.id = (
         SELECT ci2.id
@@ -149,6 +159,9 @@ while ($row = $res->fetch_assoc()) {
     $row['planejamento_id'] = isset($row['planejamento_id']) ? (int) $row['planejamento_id'] : null;
     $row['batch_count'] = (int) ($row['batch_count'] ?? 0);
     $row['total_itens'] = (int) ($row['total_itens'] ?? 0);
+    $row['count_liberadas'] = (int) ($row['count_liberadas'] ?? 0);
+    $row['count_restantes'] = (int) ($row['count_restantes'] ?? 0);
+    $row['count_prontas'] = (int) ($row['count_prontas'] ?? 0);
     $row['count_alteracao'] = (int) ($row['count_alteracao'] ?? 0);
     $row['count_sem_alteracao'] = (int) ($row['count_sem_alteracao'] ?? 0);
     $row['count_aguardando'] = (int) ($row['count_aguardando'] ?? 0);
@@ -229,6 +242,7 @@ $kpis = [
     'comentarios_criticos' => 0,
     'em_planejamento' => 0,
     'classificados' => 0,
+    'liberadas' => 0,
 ];
 
 foreach ($lotes as $lote) {
@@ -237,6 +251,7 @@ foreach ($lotes as $lote) {
     $kpis['comentarios'] += $lote['total_comentarios'];
     $kpis['comentarios_criticos'] += $lote['comentarios_criticos'];
     $kpis['classificados'] += $lote['classificados'];
+    $kpis['liberadas'] += $lote['count_liberadas'];
     if ($lote['lote_status'] === 'PRONTO_PLANEJAMENTO') {
         $kpis['em_planejamento'] += 1;
     }

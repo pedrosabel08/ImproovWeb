@@ -251,6 +251,11 @@ function pre_alt_planejamento_fetch_itens(mysqli $conn, int $loteId): array
          LEFT JOIN colaborador resp ON resp.idcolaborador = pai.responsavel_id
          WHERE pai.pre_alt_lote_id = ?
            AND pai.resultado = 'ALTERACAO'
+           AND NOT EXISTS (
+                SELECT 1
+                FROM pre_alt_liberacao_itens pli
+                WHERE pli.pre_alt_item_id = pai.id
+           )
          ORDER BY ico.imagem_nome ASC, pai.id ASC"
     );
     if (!$stmt) {

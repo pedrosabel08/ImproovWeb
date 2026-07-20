@@ -719,6 +719,27 @@ button {
   font-weight: 700;
 }
 
+.card-release-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.card-release-summary span {
+  padding: 6px 7px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-sm);
+  background: rgba(34, 197, 94, 0.055);
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.card-release-summary strong {
+  color: #4ade80;
+}
+
 .comments-by-image {
   margin-top: 12px;
   padding-top: 12px;
@@ -1078,6 +1099,34 @@ button {
   box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.08) inset;
 }
 
+.modal-imagem-item.is-released {
+  border-color: rgba(34, 197, 94, 0.32);
+  background: rgba(34, 197, 94, 0.045);
+}
+
+.modal-imagem-item.is-released input:disabled,
+.modal-imagem-item.is-released select:disabled,
+.modal-imagem-item.is-released textarea:disabled,
+.modal-imagem-item.is-released button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.item-release-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80 !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .modal-item-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto auto;
@@ -1312,6 +1361,12 @@ button {
   border: 1px solid rgba(245, 158, 11, 0.38);
   background: rgba(245, 158, 11, 0.08);
   color: #fcd34d;
+}
+
+.client-item-state.is-released {
+  border: 1px solid rgba(34, 197, 94, 0.38);
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
 }
 
 .form-grid {
@@ -1790,6 +1845,15 @@ button {
   line-height: 1.45;
 }
 
+.conclusao-pendencias.is-warning {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: rgba(245, 158, 11, 0.055);
+}
+
+.conclusao-pendencias.is-warning strong {
+  color: #fbbf24;
+}
+
 .conclusao-entregas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1954,6 +2018,23 @@ button {
     padding: 10px;
   }
 
+  .conclusao-card footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .conclusao-card footer > div {
+    display: grid;
+    grid-template-columns: minmax(86px, 0.7fr) minmax(0, 1.6fr);
+    width: 100%;
+  }
+
+  .conclusao-card footer .btn {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+  }
+
   .modal-pa-header {
     grid-template-columns: 1fr auto;
   }
@@ -1979,5 +2060,14 @@ button {
 
   .client-item-selector {
     grid-column: 2 / 3;
+  }
+
+  .item-release-badge {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .card-release-summary {
+    grid-template-columns: 1fr;
   }
 }

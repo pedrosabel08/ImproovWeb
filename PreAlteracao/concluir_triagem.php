@@ -34,7 +34,7 @@ try {
     pre_alt_ensure_schema($conn);
     $conn->begin_transaction();
 
-    $stmtLock = $conn->prepare('SELECT status FROM pre_alt_lote WHERE id = ? FOR UPDATE');
+    $stmtLock = $conn->prepare('SELECT status, status_id FROM pre_alt_lote WHERE id = ? FOR UPDATE');
     if (!$stmtLock) {
         throw new RuntimeException('Nao foi possivel bloquear o lote para conclusao.');
     }
@@ -46,13 +46,22 @@ try {
     if (!$locked) {
         throw new RuntimeException('Lote de triagem nao encontrado.');
     }
-    if (($locked['status'] ?? '') === 'PLANEJADO') {
-        throw new RuntimeException('Este lote ja foi planejado e nao pode ser concluido novamente.');
+    if (in_array(($locked['status'] ?? ''), ['PLANEJADO', 'CANCELADO'], true)) {
+        throw new RuntimeException('Este lote nao pode receber novas liberacoes.');
     }
+
+    $stmtLockItens = $conn->prepare('SELECT id FROM pre_alt_itens WHERE pre_alt_lote_id = ? FOR UPDATE');
+    if (!$stmtLockItens) {
+        throw new RuntimeException('Nao foi possivel bloquear as imagens para liberacao.');
+    }
+    $stmtLockItens->bind_param('i', $loteId);
+    $stmtLockItens->execute();
+    $stmtLockItens->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmtLockItens->close();
 
     $summary = pre_alt_fetch_conclusao_summary($conn, $loteId, $dataTriagem);
     if (!$summary['eligible']) {
-        throw new RuntimeException('Conclua as pendencias antes de liberar o lote: ' . implode(' | ', $summary['pendencias']));
+        throw new RuntimeException('Nao ha imagens prontas para liberar: ' . implode(' | ', $summary['pendencias']));
     }
 
     $totalEf = (int) $summary['grupos']['ef']['total'];
@@ -82,13 +91,46 @@ try {
         ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusAlteracao, $dataTriagem, $prazoAlteracao, $idsAlteracao, $observacaoEntrega)
         : null;
 
+    $responsavelId = (int) $_SESSION['idcolaborador'];
+    $stmtLiberacao = $conn->prepare(
+        'INSERT INTO pre_alt_liberacoes (
+            pre_alt_lote_id, data_triagem, entrega_ef_id, entrega_alteracao_id, observacao, created_by
+         ) VALUES (?, ?, ?, ?, NULLIF(?, \'\'), ?)'
+    );
+    if (!$stmtLiberacao) {
+        throw new RuntimeException('Nao foi possivel registrar a liberacao parcial.');
+    }
+    $stmtLiberacao->bind_param('isiisi', $loteId, $dataTriagem, $entregaEfId, $entregaAlteracaoId, $observacao, $responsavelId);
+    $stmtLiberacao->execute();
+    $liberacaoId = (int) $stmtLiberacao->insert_id;
+    $stmtLiberacao->close();
+
+    $stmtLiberacaoItem = $conn->prepare(
+        'INSERT INTO pre_alt_liberacao_itens (
+            liberacao_id, pre_alt_item_id, entrega_destino_id, status_destino_id, prazo
+         ) VALUES (?, ?, ?, ?, ?)'
+    );
+    if (!$stmtLiberacaoItem) {
+        throw new RuntimeException('Nao foi possivel vincular as imagens a liberacao.');
+    }
+    foreach ($itensEf as $item) {
+        $itemId = (int) $item['item_id'];
+        $stmtLiberacaoItem->bind_param('iiiis', $liberacaoId, $itemId, $entregaEfId, $statusEf, $prazoEf);
+        $stmtLiberacaoItem->execute();
+    }
+    foreach ($itensAlteracao as $item) {
+        $itemId = (int) $item['item_id'];
+        $stmtLiberacaoItem->bind_param('iiiis', $liberacaoId, $itemId, $entregaAlteracaoId, $statusAlteracao, $prazoAlteracao);
+        $stmtLiberacaoItem->execute();
+    }
+    $stmtLiberacaoItem->close();
+
     $stmtUpdateImagem = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?');
     $stmtEvento = $conn->prepare('INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)');
     if (!$stmtUpdateImagem) {
         throw new RuntimeException('Nao foi possivel preparar a atualizacao das imagens.');
     }
 
-    $responsavelId = (int) $_SESSION['idcolaborador'];
     $tipoEvento = 'Entrega';
 
     foreach ($itensEf as $item) {
@@ -126,45 +168,104 @@ try {
         $stmtEvento->close();
     }
 
-    $statusLoteFinal = $totalAlteracao > 0 ? $statusAlteracao : $statusEf;
-    $stmtUpdateLote = $conn->prepare("UPDATE pre_alt_lote SET status_id = ?, status = 'PLANEJADO', prazo = ?, updated_at = NOW() WHERE id = ?");
-    if (!$stmtUpdateLote) {
-        throw new RuntimeException('Nao foi possivel atualizar o lote.');
+    $stmtTotais = $conn->prepare(
+        "SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN pli.id IS NOT NULL THEN 1 ELSE 0 END) AS liberadas,
+            MAX(CASE WHEN pli.status_destino_id <> 6 THEN pli.status_destino_id ELSE NULL END) AS status_alteracao,
+            MAX(CASE WHEN pli.status_destino_id <> 6 THEN pli.prazo ELSE NULL END) AS prazo_alteracao,
+            MAX(CASE WHEN pli.status_destino_id = 6 THEN pli.prazo ELSE NULL END) AS prazo_ef
+         FROM pre_alt_itens pai
+         LEFT JOIN pre_alt_liberacao_itens pli ON pli.pre_alt_item_id = pai.id
+         WHERE pai.pre_alt_lote_id = ?"
+    );
+    if (!$stmtTotais) {
+        throw new RuntimeException('Nao foi possivel recalcular o saldo do lote.');
     }
-    $prazoLote = $totalAlteracao > 0 ? $prazoAlteracao : $prazoEf;
-    $stmtUpdateLote->bind_param('isi', $statusLoteFinal, $prazoLote, $loteId);
-    $stmtUpdateLote->execute();
-    $stmtUpdateLote->close();
+    $stmtTotais->bind_param('i', $loteId);
+    $stmtTotais->execute();
+    $saldo = $stmtTotais->get_result()->fetch_assoc();
+    $stmtTotais->close();
+
+    $totalImagens = (int) ($saldo['total'] ?? 0);
+    $totalLiberadas = (int) ($saldo['liberadas'] ?? 0);
+    $totalRestantes = max(0, $totalImagens - $totalLiberadas);
+    $statusLote = pre_alt_recalcular_status_lote(
+        $conn,
+        $loteId,
+        pre_alt_batch_id(),
+        'Status recalculado apos liberacao de imagens prontas.'
+    );
+
+    $statusLoteFinal = (int) ($locked['status_id'] ?? $summary['lote']['status_id']);
+    if ($totalRestantes === 0) {
+        $statusAlteracaoHistorico = isset($saldo['status_alteracao']) ? (int) $saldo['status_alteracao'] : 0;
+        $statusLoteFinal = $statusAlteracaoHistorico > 0 ? $statusAlteracaoHistorico : $statusEf;
+        $prazoLote = $statusAlteracaoHistorico > 0 ? (string) $saldo['prazo_alteracao'] : (string) $saldo['prazo_ef'];
+        $stmtUpdateLote = $conn->prepare("UPDATE pre_alt_lote SET status_id = ?, status = 'PLANEJADO', prazo = ?, updated_at = NOW() WHERE id = ?");
+        if (!$stmtUpdateLote) {
+            throw new RuntimeException('Nao foi possivel finalizar o lote.');
+        }
+        $stmtUpdateLote->bind_param('isi', $statusLoteFinal, $prazoLote, $loteId);
+        $stmtUpdateLote->execute();
+        $stmtUpdateLote->close();
+        $statusLote = 'PLANEJADO';
+    }
 
     pre_alt_registrar_historico(
         $conn,
         $loteId,
-        'CONCLUSAO_TRIAGEM',
-        'status',
-        $locked['status'] ?? null,
-        'PLANEJADO',
+        'LIBERACAO_PARCIAL',
+        'itens_liberados',
+        null,
+        (string) ($totalEf + $totalAlteracao),
         $observacao !== '' ? $observacao : null,
         null,
         pre_alt_batch_id(),
         [
+            'liberacao_id' => $liberacaoId,
             'data_triagem' => $dataTriagem,
             'entrega_ef_id' => $entregaEfId,
             'entrega_alteracao_id' => $entregaAlteracaoId,
             'status_id_anterior' => (int) $summary['lote']['status_id'],
             'status_id_final' => $statusLoteFinal,
             'totais' => $summary['totais'],
+            'liberadas_acumuladas' => $totalLiberadas,
+            'restantes' => $totalRestantes,
         ]
     );
+
+    if ($totalRestantes === 0) {
+        pre_alt_registrar_historico(
+            $conn,
+            $loteId,
+            'CONCLUSAO_TRIAGEM',
+            'status',
+            $locked['status'] ?? null,
+            'PLANEJADO',
+            $observacao !== '' ? $observacao : 'Todas as imagens do lote foram liberadas.',
+            null,
+            pre_alt_batch_id(),
+            ['liberacao_id' => $liberacaoId, 'status_id_final' => $statusLoteFinal]
+        );
+    }
 
     $conn->commit();
 
     echo json_encode([
         'success' => true,
-        'message' => 'Triagem concluida e lote liberado.',
+        'message' => $totalRestantes === 0
+            ? 'Imagens liberadas e triagem concluida.'
+            : 'Imagens prontas liberadas; o lote permanece aberto para as pendentes.',
+        'liberacao_id' => $liberacaoId,
         'entregas' => [
             'ef' => $entregaEfId,
             'alteracao' => $entregaAlteracaoId,
         ],
+        'liberadas_agora' => $totalEf + $totalAlteracao,
+        'liberadas_acumuladas' => $totalLiberadas,
+        'restantes' => $totalRestantes,
+        'lote_status' => $statusLote,
         'totais' => $summary['totais'],
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {

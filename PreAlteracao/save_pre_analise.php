@@ -69,7 +69,8 @@ $stmtLote = $conn->prepare(
         necessita_retorno,
         quantidade_comentarios,
         reanalise_pos_retorno,
-        responsavel_id
+        responsavel_id,
+        (SELECT pli.id FROM pre_alt_liberacao_itens pli WHERE pli.pre_alt_item_id = pre_alt_itens.id LIMIT 1) AS liberacao_item_id
      FROM pre_alt_itens
      WHERE id = ?
      LIMIT 1'
@@ -94,6 +95,12 @@ $loteId = (int) $rowLote['pre_alt_lote_id'];
 $reanalisePosRetorno = (int) ($rowLote['reanalise_pos_retorno'] ?? 0);
 if ($reanalisePosRetorno === 1 && ($resultado === 'SEM_ALTERACAO' || ($resultado === 'ALTERACAO' && $nivel !== null))) {
     $reanalisePosRetorno = 0;
+}
+
+if (!empty($rowLote['liberacao_item_id'])) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'error' => 'Esta imagem ja foi liberada e nao pode mais ser alterada.']);
+    exit;
 }
 
 $stmt = $conn->prepare(

@@ -148,3 +148,51 @@ CREATE TABLE IF NOT EXISTS `pre_alt_cliente_interacao_itens` (
         FOREIGN KEY (`pre_alt_item_id`) REFERENCES `pre_alt_itens` (`id`)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Liberações podem ocorrer em várias etapas enquanto o lote permanece aberto.
+CREATE TABLE IF NOT EXISTS `pre_alt_liberacoes` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `pre_alt_lote_id` INT UNSIGNED NOT NULL,
+    `data_triagem` DATE NOT NULL,
+    `entrega_ef_id` INT NULL,
+    `entrega_alteracao_id` INT NULL,
+    `observacao` TEXT NULL,
+    `created_by` INT UNSIGNED NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_pre_alt_liberacoes_lote_data` (`pre_alt_lote_id`, `created_at`),
+    KEY `idx_pre_alt_liberacoes_entrega_ef` (`entrega_ef_id`),
+    KEY `idx_pre_alt_liberacoes_entrega_alt` (`entrega_alteracao_id`),
+    CONSTRAINT `fk_pre_alt_liberacoes_lote`
+        FOREIGN KEY (`pre_alt_lote_id`) REFERENCES `pre_alt_lote` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_pre_alt_liberacoes_entrega_ef`
+        FOREIGN KEY (`entrega_ef_id`) REFERENCES `entregas` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `fk_pre_alt_liberacoes_entrega_alt`
+        FOREIGN KEY (`entrega_alteracao_id`) REFERENCES `entregas` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pre_alt_liberacao_itens` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `liberacao_id` INT UNSIGNED NOT NULL,
+    `pre_alt_item_id` INT UNSIGNED NOT NULL,
+    `entrega_destino_id` INT NOT NULL,
+    `status_destino_id` INT NOT NULL,
+    `prazo` DATE NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `ux_pre_alt_liberacao_item` (`pre_alt_item_id`),
+    KEY `idx_pre_alt_liberacao_itens_liberacao` (`liberacao_id`),
+    KEY `idx_pre_alt_liberacao_itens_entrega` (`entrega_destino_id`),
+    CONSTRAINT `fk_pre_alt_liberacao_itens_liberacao`
+        FOREIGN KEY (`liberacao_id`) REFERENCES `pre_alt_liberacoes` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_pre_alt_liberacao_itens_item`
+        FOREIGN KEY (`pre_alt_item_id`) REFERENCES `pre_alt_itens` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_pre_alt_liberacao_itens_entrega`
+        FOREIGN KEY (`entrega_destino_id`) REFERENCES `entregas` (`id`)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -117,6 +117,12 @@ $stmtItens = $conn->prepare(
         pai.necessita_retorno,
         pai.quantidade_comentarios,
         pai.reanalise_pos_retorno,
+        pli.liberacao_id,
+        pli.entrega_destino_id,
+        pli.status_destino_id,
+        pli.prazo AS prazo_liberado,
+        pli.created_at AS liberado_em,
+        sdest.nome_status AS status_destino_nome,
         pai.responsavel_id,
         c.nome_colaborador AS responsavel_nome,
         rb.data_entrega_lote,
@@ -145,6 +151,8 @@ $stmtItens = $conn->prepare(
      ) cm ON cm.ap_imagem_id = pv.historico_id
      LEFT JOIN substatus_imagem ss ON ss.id = ico.substatus_id
      LEFT JOIN colaborador c ON c.idcolaborador = pai.responsavel_id
+     LEFT JOIN pre_alt_liberacao_itens pli ON pli.pre_alt_item_id = pai.id
+     LEFT JOIN status_imagem sdest ON sdest.idstatus = pli.status_destino_id
      WHERE pai.pre_alt_lote_id = ?
      ORDER BY
         ico.idimagens_cliente_obra ASC,
@@ -174,6 +182,9 @@ while ($row = $resItens->fetch_assoc()) {
     $row['necessita_retorno'] = (int) ($row['necessita_retorno'] ?? 0);
     $row['quantidade_comentarios'] = isset($row['quantidade_comentarios']) ? (int) $row['quantidade_comentarios'] : null;
     $row['reanalise_pos_retorno'] = (int) ($row['reanalise_pos_retorno'] ?? 0);
+    $row['liberacao_id'] = isset($row['liberacao_id']) ? (int) $row['liberacao_id'] : null;
+    $row['entrega_destino_id'] = isset($row['entrega_destino_id']) ? (int) $row['entrega_destino_id'] : null;
+    $row['status_destino_id'] = isset($row['status_destino_id']) ? (int) $row['status_destino_id'] : null;
     $row['responsavel_id'] = isset($row['responsavel_id']) ? (int) $row['responsavel_id'] : null;
     $row['substatus_id'] = isset($row['substatus_id']) ? (int) $row['substatus_id'] : null;
     $row['review_round'] = (int) ($row['review_round'] ?? 1);
@@ -197,6 +208,27 @@ $lote['prazo_operacional'] = entregas_valid_date($resolvidoData)
     ? entregas_adicionar_dias_uteis($resolvidoData, 1)
     : null;
 $lote['ultima_atualizacao'] = $lote['ultima_movimentacao'] ?: $lote['updated_at'];
+$lote['total_liberadas'] = 0;
+$lote['total_prontas'] = 0;
+$lote['total_restantes'] = 0;
+foreach ($itens as $item) {
+    if (!empty($item['liberacao_id'])) {
+        $lote['total_liberadas']++;
+        continue;
+    }
+    $lote['total_restantes']++;
+    $resultado = strtoupper(trim((string) ($item['resultado'] ?? '')));
+    $prontaEf = $resultado === 'SEM_ALTERACAO'
+        && (int) $item['necessita_retorno'] === 0
+        && (int) $item['reanalise_pos_retorno'] === 0;
+    $prontaAlteracao = $resultado === 'ALTERACAO'
+        && (int) $item['necessita_retorno'] === 0
+        && (int) $item['reanalise_pos_retorno'] === 0
+        && $item['nivel_complexidade'] !== null;
+    if ($prontaEf || $prontaAlteracao) {
+        $lote['total_prontas']++;
+    }
+}
 $interacoesCliente = pre_alt_buscar_interacoes_cliente($conn, $loteId);
 
 echo json_encode([

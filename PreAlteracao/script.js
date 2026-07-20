@@ -413,6 +413,7 @@
     state.restoringDraft = true;
     try {
       refs.paModalBody.querySelectorAll(".prealt-item").forEach((container) => {
+        if (container.classList.contains("is-released")) return;
         const imagemId = container.dataset.imagemId || container.dataset.itemId;
         const dados = draft.itens?.[imagemId];
         if (!dados) return;
@@ -598,6 +599,9 @@
     const n3 = Number(lote.nivel_3 || 0);
     const n4 = Number(lote.nivel_4 || 0);
     const n5 = Number(lote.nivel_5 || 0);
+    const countLiberadas = Number(lote.count_liberadas || 0);
+    const countProntas = Number(lote.count_prontas || 0);
+    const countRestantes = Number(lote.count_restantes || 0);
     const comments = lote.comentarios_por_imagem || [];
     const planStatus = lote.planejamento_status || "";
     const planBadge = planStatus
@@ -653,6 +657,12 @@
         ${metric("fa-circle-exclamation", lote.comentarios_criticos || 0, "críticos")}
       </div>
 
+      <div class="card-release-summary" aria-label="Situação da liberação">
+        <span><strong>${countLiberadas}</strong> liberada${countLiberadas === 1 ? "" : "s"}</span>
+        <span><strong>${countProntas}</strong> pronta${countProntas === 1 ? "" : "s"} agora</span>
+        <span><strong>${countRestantes}</strong> restante${countRestantes === 1 ? "" : "s"}</span>
+      </div>
+
       <div class="complexity-row">
         <span class="active-n1">N1 <strong>${n1}</strong></span>
         <span class="active-n2">N2 <strong>${n2}</strong></span>
@@ -680,7 +690,7 @@
         <button type="button" data-card-action="detalhes">Ver detalhes</button>
         <button type="button" data-card-action="triagem">Abrir triagem</button>
         <button type="button" data-card-action="planejar">Planejar</button>
-        <button type="button" data-card-action="concluir">Concluir triagem</button>
+        <button type="button" data-card-action="concluir" ${countProntas > 0 ? "" : "disabled"}>Liberar prontas</button>
         <button type="button" data-card-action="review" ${lote.link_review ? "" : "disabled"}>Review Studio</button>
       </div>
     `;
@@ -822,6 +832,9 @@
     refs.paModalBody.innerHTML = `
       <div class="modal-summary">
         ${summaryTile(resumo.total, "Imagens")}
+        ${summaryTile(resumo.liberadas, "Liberadas")}
+        ${summaryTile(resumo.prontas, "Prontas agora")}
+        ${summaryTile(resumo.restantes, "Restantes")}
         ${summaryTile(resumo.comentarios, "Comentários")}
         ${summaryTile(resumo.criticos, "Críticos")}
         ${summaryTile(resumo.alteracao, "Com alteração")}
@@ -852,6 +865,7 @@
           <option value="alteracao">Alteração</option>
           <option value="aguardando_cliente">Aguardando cliente</option>
           <option value="aprovada">Aprovada</option>
+          <option value="liberada">Liberada</option>
         </select>
       </div>
       <div class="modal-items-list"></div>
@@ -875,10 +889,14 @@
   }
 
   function isClientPending(item) {
-    return (
+    return !isReleased(item) && (
       item?.resultado === "AGUARDANDO_CLIENTE" ||
       Number(item?.necessita_retorno || 0) === 1
     );
+  }
+
+  function isReleased(item) {
+    return Number(item?.liberacao_id || 0) > 0;
   }
 
   function getClientInteractionsForItem(itemId) {
@@ -901,8 +919,9 @@
       (interacao) => interacao.tipo === "SOLICITACAO",
     );
     const legacyPending = isClientPending(item) && !hasSolicitacao;
-    const stateBadge =
-      item.reanalise_pos_retorno == 1
+    const stateBadge = isReleased(item)
+      ? `<span class="client-item-state is-released"><i class="fa-solid fa-circle-check"></i> Liberada para ${escHtml(item.status_destino_nome || "próxima etapa")} · Entrega #${escHtml(item.entrega_destino_id)} · ${escHtml(formatDateTime(item.liberado_em))}</span>`
+      : item.reanalise_pos_retorno == 1
         ? '<span class="client-item-state is-attention"><i class="fa-solid fa-triangle-exclamation"></i> Reanalisar após retorno do cliente</span>'
         : legacyPending
           ? '<span class="client-item-state is-legacy"><i class="fa-solid fa-circle-info"></i> Solicitação não registrada</span>'
@@ -1041,6 +1060,10 @@
     const selectedItems = state.itensAbertos.filter((item) =>
       itemIds.includes(Number(item.item_id)),
     );
+    if (selectedItems.some(isReleased)) {
+      toast("Imagens já liberadas não podem receber novas interações.", "#F59E0B");
+      return;
+    }
     if (tipo === "RETORNO" && !selectedItems.every(isClientPending)) {
       toast(
         "Selecione somente imagens aguardando cliente para registrar o retorno.",
@@ -1104,11 +1127,12 @@
   function createItem(item) {
     const div = document.createElement("article");
     const resultado = item.resultado || "ALTERACAO";
-    div.className = "modal-imagem-item prealt-item is-expanded";
+    const released = isReleased(item);
+    div.className = `modal-imagem-item prealt-item is-expanded ${released ? "is-released" : ""}`;
     div.dataset.itemId = item.item_id;
     div.dataset.imagemId = item.imagem_id || item.item_id;
     div.dataset.nome = item.nome || "";
-    div.dataset.resultado = resultadoFilterValue(resultado);
+    div.dataset.resultado = released ? "liberada" : resultadoFilterValue(resultado);
 
     div.innerHTML = `
       <header class="modal-item-header">
@@ -1116,35 +1140,38 @@
           <strong title="${escHtml(item.nome)}">${escHtml(item.nome)}</strong>
           <span>${Number(item.comment_count || item.quantidade_comentarios || 0)} comentário${Number(item.comment_count || item.quantidade_comentarios || 0) === 1 ? "" : "s"}${Number(item.critical_count || 0) ? `, ${item.critical_count} crítico(s)` : ""}</span>
         </div>
-        <label class="client-item-selector" title="Selecionar para contato com o cliente">
-          <input type="checkbox" class="client-item-select" value="${item.item_id}">
-          <span>Cliente</span>
+        <label class="client-item-selector" title="${released ? "Imagem já liberada" : "Selecionar para contato com o cliente"}">
+          <input type="checkbox" class="client-item-select" value="${item.item_id}" ${released ? "disabled" : ""}>
+          <span>${released ? "Liberada" : "Cliente"}</span>
         </label>
-        <button type="button" class="item-upload-btn" data-upload-image title="Enviar arquivos para esta imagem">
+        <button type="button" class="item-upload-btn" data-upload-image title="Enviar arquivos para esta imagem" ${released ? "disabled" : ""}>
           <i class="fa-solid fa-upload"></i>
         </button>
         <span class="badge-resultado ${resultadoBadgeClass(resultado)}" data-resultado-badge>${escHtml(resultadoLabel(resultado))}</span>
+        ${released ? `<span class="item-release-badge"><i class="fa-solid fa-circle-check"></i> Entrega #${escHtml(item.entrega_destino_id)}</span>` : ""}
         ${item.nivel_complexidade ? `<span class="item-status item-level">${item.nivel_complexidade}</span>` : ""}
       </header>
-      <div class="modal-item-body">${createForm(item)}${renderClientInteractionTimeline(item)}</div>
+      <div class="modal-item-body">${createForm(item, released)}${renderClientInteractionTimeline(item)}</div>
     `;
 
-    wireItem(div, item);
-    div.querySelector("[data-upload-image]")?.addEventListener("click", () => {
-      openTriagemUploadModal("imagem", item);
-    });
-    div
-      .querySelector(".client-item-select")
-      ?.addEventListener("change", (event) => {
-        const itemId = Number(event.currentTarget.value);
-        if (event.currentTarget.checked) state.clientItemSelection.add(itemId);
-        else state.clientItemSelection.delete(itemId);
-        syncClientInteractionSelectionUi();
+    if (!released) {
+      wireItem(div, item);
+      div.querySelector("[data-upload-image]")?.addEventListener("click", () => {
+        openTriagemUploadModal("imagem", item);
       });
+      div
+        .querySelector(".client-item-select")
+        ?.addEventListener("change", (event) => {
+          const itemId = Number(event.currentTarget.value);
+          if (event.currentTarget.checked) state.clientItemSelection.add(itemId);
+          else state.clientItemSelection.delete(itemId);
+          syncClientInteractionSelectionUi();
+        });
+    }
     return div;
   }
 
-  function createForm(item) {
+  function createForm(item, released = false) {
     const resultado = item.resultado || "ALTERACAO";
     const nivel = item.nivel_complexidade || "";
     const tipo = escHtml(item.tipo_alteracao || "");
@@ -1158,7 +1185,7 @@
       <div class="form-grid">
         <label>
           <span>Resultado</span>
-          <select class="resultado-select">
+          <select class="resultado-select" ${released ? "disabled" : ""}>
             <option value="ALTERACAO" ${resultado === "ALTERACAO" ? "selected" : ""}>Alteração</option>
             <option value="SEM_ALTERACAO" ${resultado === "SEM_ALTERACAO" ? "selected" : ""}>Aprovada</option>
             <option value="AGUARDANDO_CLIENTE" ${resultado === "AGUARDANDO_CLIENTE" ? "selected" : ""}>Aguardando cliente</option>
@@ -1166,11 +1193,11 @@
         </label>
         <label class="tipo-row">
           <span>Tipo</span>
-          <input class="tipo-input" type="text" placeholder="Acabamento, composição, projeto" value="${tipo}">
+          <input class="tipo-input" type="text" placeholder="Acabamento, composição, projeto" value="${tipo}" ${released ? "disabled" : ""}>
         </label>
         <label>
           <span>Quantidade de comentários</span>
-          <input class="comentarios-input" type="number" min="0" step="1" value="${qtdComentarios}">
+          <input class="comentarios-input" type="number" min="0" step="1" value="${qtdComentarios}" ${released ? "disabled" : ""}>
         </label>
       </div>
       <div class="nivel-row">
@@ -1179,18 +1206,18 @@
           ${[1, 2, 3, 4, 5]
             .map(
               (n) =>
-                `<button type="button" class="complexidade-btn ${Number(nivel) === n ? `active active-n${n}` : ""}" data-valor="${n}" title="${escHtml(NIVEL_LABELS[n])}">N${n}</button>`,
+                `<button type="button" class="complexidade-btn ${Number(nivel) === n ? `active active-n${n}` : ""}" data-valor="${n}" title="${escHtml(NIVEL_LABELS[n])}" ${released ? "disabled" : ""}>N${n}</button>`,
             )
             .join("")}
         </div>
       </div>
       <label class="necessita-retorno-row">
-        <input type="checkbox" class="necessita-retorno-check" ${nr ? "checked" : ""}>
+        <input type="checkbox" class="necessita-retorno-check" ${nr ? "checked" : ""} ${released ? "disabled" : ""}>
         <span><i class="fa-solid fa-clock-rotate-left"></i> Necessita retorno do cliente</span>
       </label>
       <label class="textarea-row">
         <span>Ação / Observações</span>
-        <textarea class="acao-textarea" placeholder="Resumo objetivo para orientar planejamento e execução">${acao}</textarea>
+        <textarea class="acao-textarea" placeholder="Resumo objetivo para orientar planejamento e execução" ${released ? "disabled" : ""}>${acao}</textarea>
       </label>
     `;
   }
@@ -1692,6 +1719,9 @@
       criticos: 0,
       alteracao: 0,
       aguardando: 0,
+      liberadas: 0,
+      prontas: 0,
+      restantes: 0,
       classificados: 0,
       progresso: 0,
     };
@@ -1700,6 +1730,21 @@
         item.comment_count || item.quantidade_comentarios || 0,
       );
       resumo.criticos += Number(item.critical_count || 0);
+      if (isReleased(item)) {
+        resumo.liberadas += 1;
+      } else {
+        resumo.restantes += 1;
+        const prontaEf =
+          item.resultado === "SEM_ALTERACAO" &&
+          Number(item.necessita_retorno || 0) === 0 &&
+          Number(item.reanalise_pos_retorno || 0) === 0;
+        const prontaAlteracao =
+          item.resultado === "ALTERACAO" &&
+          Number(item.necessita_retorno || 0) === 0 &&
+          Number(item.reanalise_pos_retorno || 0) === 0 &&
+          Number(item.nivel_complexidade || 0) > 0;
+        if (prontaEf || prontaAlteracao) resumo.prontas += 1;
+      }
       if (item.resultado === "ALTERACAO") resumo.alteracao += 1;
       if (
         item.resultado === "AGUARDANDO_CLIENTE" ||
@@ -1754,7 +1799,7 @@
     if (action === "concluir") {
       if (loteIds.length !== 1) {
         toast(
-          "Selecione um lote por vez para concluir a triagem.",
+          "Selecione um lote por vez para liberar as imagens prontas.",
           "#F59E0B",
           3600,
         );
@@ -1777,7 +1822,7 @@
       prazo: "Alterar prazo",
       prioridade: "Alterar prioridade",
       status: "Mover etapa",
-      concluir: "Concluir triagem",
+      concluir: "Liberar imagens prontas",
     }[action];
   }
 
@@ -1812,7 +1857,7 @@
         </select></label>
       `;
     }
-    return `<p class="batch-confirm">Concluir ${totalLotes} lote${totalLotes === 1 ? "" : "s"} e mover para planejamento.</p>`;
+    return `<p class="batch-confirm">Liberar as imagens prontas de ${totalLotes} lote${totalLotes === 1 ? "" : "s"}.</p>`;
   }
 
   async function submitBatch(event) {
@@ -1885,8 +1930,8 @@
     refs.conclusaoTitle.textContent = lote.obra_nome || "Resumo do lote";
     refs.conclusaoSubmit.disabled = !canSubmit;
     refs.conclusaoFooterInfo.textContent = canSubmit
-      ? `${plural(totais.imagens || 0, "imagem pronta", "imagens prontas")} para liberação.`
-      : "Resolva as pendências antes de liberar o lote.";
+      ? `${plural(totais.prontas || 0, "imagem pronta", "imagens prontas")} para liberação agora.`
+      : "Nenhuma imagem está pronta para liberação.";
 
     const pendenciasHtml = canSubmit
       ? ""
@@ -1896,6 +1941,15 @@
           ${(resumo.pendencias || []).map((item) => `<span>${escHtml(item)}</span>`).join("")}
         </section>
       `;
+
+    const remanescentesHtml = (resumo.remanescentes || []).length
+      ? `
+        <section class="conclusao-pendencias is-warning">
+          <strong>Permanecerão neste lote</strong>
+          ${(resumo.remanescentes || []).map((item) => `<span>${escHtml(item)}</span>`).join("")}
+        </section>
+      `
+      : "";
 
     const efHtml =
       Number(grupoEf.total || 0) > 0
@@ -1924,6 +1978,11 @@
 
       <section class="conclusao-totals">
         ${summaryTile(totais.imagens || 0, "Total de imagens")}
+        ${summaryTile(totais.liberadas || 0, "Já liberadas")}
+        ${summaryTile(totais.prontas || 0, "Prontas agora")}
+        ${summaryTile(totais.pendentes || 0, "Permanecem no lote")}
+        ${summaryTile(totais.aguardando || 0, "Aguardando cliente")}
+        ${summaryTile(totais.incompletas || 0, "Incompletas")}
         ${summaryTile(totais.aprovadas || 0, "Aprovadas")}
         ${summaryTile(totais.alteracoes || 0, "Com alteração")}
         ${summaryTile(`N1 ${niveis[1] || 0}`, "Complexidade")}
@@ -1934,6 +1993,7 @@
       </section>
 
       ${pendenciasHtml}
+      ${remanescentesHtml}
 
       <section class="conclusao-entregas">
         ${efHtml}
@@ -1981,7 +2041,7 @@
     event.preventDefault();
     const resumo = state.conclusaoResumo;
     if (!resumo || !resumo.eligible) {
-      toast("Este lote ainda possui pendências.", "#F59E0B");
+      toast("Este lote não possui imagens prontas para liberar.", "#F59E0B");
       return;
     }
 
@@ -2008,8 +2068,8 @@
       });
       const json = await res.json();
       if (!json.success)
-        throw new Error(json.message || "Erro ao concluir triagem");
-      toast("Triagem concluída e lote liberado.", "#22C55E");
+        throw new Error(json.message || "Erro ao liberar imagens");
+      toast(json.message || "Imagens prontas liberadas.", "#22C55E");
       closeConclusaoModal();
       closePaModal();
       clearSelection();
@@ -2019,7 +2079,7 @@
       refs.conclusaoSubmit.disabled = false;
     } finally {
       refs.conclusaoSubmit.innerHTML =
-        '<i class="fa-solid fa-circle-check"></i> Concluir e liberar lote';
+        '<i class="fa-solid fa-circle-check"></i> Liberar imagens prontas';
     }
   }
 

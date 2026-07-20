@@ -224,6 +224,13 @@
           return;
         }
 
+        if (data.channel && data.channel.startsWith("fotografico:")) {
+          window.dispatchEvent(
+            new CustomEvent("improov:fotograficoUpdated", { detail: data.payload }),
+          );
+          return;
+        }
+
         if (data.channel && data.channel.startsWith("funcao_atualizada:")) {
           window.dispatchEvent(
             new CustomEvent("improov:funcaoAtualizada", {
@@ -306,10 +313,14 @@
     }, 2500);
   }
 
-  const bc =
-    typeof BroadcastChannel !== "undefined"
-      ? new BroadcastChannel(BC_NAME)
-      : null;
+  // Alguns navegadores embutidos expõem BroadcastChannel, mas bloqueiam sua
+  // construção. A falha não pode impedir o bridge WebSocket de inicializar.
+  let bc = null;
+  try {
+    bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(BC_NAME) : null;
+  } catch (e) {
+    log("upload-ws BroadcastChannel unavailable", e);
+  }
 
   if (bc) {
     bc.onmessage = (ev) => {

@@ -166,6 +166,8 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             class="fas fa-cube"></i><span> Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
                 <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i
                             class="fas fa-film"></i><span> Lista Pós-Produção</span><span class="sidebar-badge" data-module="pos_producao" aria-hidden="true"></span></a></li>
+                <li><a title="Planejamento Fotografico" href="<?php echo htmlspecialchars(improov_sidebar_url('Fotografico'), ENT_QUOTES, 'UTF-8'); ?>"><i
+                            class="fa-solid fa-camera-retro"></i><span> Fotografico</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                     <li><a title="Flow Drive" href="https://improov.com.br/flow/ImproovWeb/FlowDrive"><i
                                 class="fas fa-file"></i><span> Flow Drive</span></a></li>

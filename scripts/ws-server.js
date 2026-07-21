@@ -108,6 +108,17 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
+      // Flow Block issue lifecycle updates refresh the central list and the
+      // affected task card without coupling them to image-level HOLDs.
+      await sub.pSubscribe('flow_block:*', (message, channel) => {
+        try {
+          const payload = JSON.parse(message);
+          broadcastEnvelope(JSON.stringify({ channel, payload }), 'FlowBlock', channel, payload);
+        } catch (err) {
+          console.error('Failed to forward Flow Block message', err);
+        }
+      });
+
       // psubscribe to funcao_atualizada:* channels (function insert/update broadcasts)
       await sub.pSubscribe('funcao_atualizada:*', (message, channel) => {
         console.log('funcao_atualizada message received on channel:', channel);
@@ -127,7 +138,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
-      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,flow_review:*,fotografico:*,funcao_atualizada:*`);
+      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,flow_review:*,fotografico:*,flow_block:*,funcao_atualizada:*`);
 
       // clear any reconnect timer if successful
       if (reconnectTimer) {

@@ -3245,7 +3245,6 @@ form#task-form button {
 
 .card-modal {
   position: fixed;
-  width: 400px;
   max-height: 90vh;
   background: #fff;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4);
@@ -3289,9 +3288,9 @@ form#task-form button {
   border-radius: 8px;
 }
 
-.card-modal .buttons button#salvarModal {
+/* .card-modal .buttons button#salvarModal {
   background-color: green;
-}
+} */
 
 .card-modal .buttons button#fecharModal {
   background-color: red;
@@ -4311,8 +4310,11 @@ form#dailyForm button {
 .file-list {
   list-style: none;
   padding: 0;
+  padding-right: 6px;
   margin: 8px 0;
   color: #444;
+  overflow: auto;
+  max-height: 20vh;
 }
 
 .file-list li {
@@ -4359,8 +4361,92 @@ form#dailyForm button {
   flex-direction: column;
 }
 
+.modal-item[hidden] {
+  display: none !important;
+}
+
 .card-modal .modal-content .modalUploads {
   gap: 20px;
+}
+
+/* Flow Block: substitui a observação livre quando uma tarefa é bloqueada. */
+.flow-block-hold-form {
+  display: grid;
+  gap: 12px;
+  min-width: min(390px, calc(100vw - 44px));
+}
+.flow-block-hold-form label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.flow-block-hold-intro {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(217, 75, 75, 0.2);
+  border-radius: 8px;
+  background: #fff7f7;
+  color: #7f3333;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.flow-block-hold-form select,
+.flow-block-hold-form textarea {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #1d2939;
+  font: inherit;
+  background: #fff;
+}
+.flow-block-hold-form textarea {
+  resize: vertical;
+}
+.flow-block-hold-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.flow-block-hold-grid label:last-child {
+  grid-column: span 2;
+}
+.flow-block-hold-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.flow-block-hold-actions button {
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.flow-block-cancel {
+  background: #edf1f3;
+  color: #344054;
+}
+.flow-block-create {
+  background: #19b86b;
+  color: #fff;
+}
+.flow-block-create:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+@media (max-width: 560px) {
+  .flow-block-hold-grid {
+    grid-template-columns: 1fr;
+  }
+  .flow-block-hold-grid label:last-child {
+    grid-column: auto;
+  }
 }
 
 .statusAnterior h4 {
@@ -6047,4 +6133,339 @@ tr.prod-row-recorde td {
 
 .fc .fc-toolbar-title {
   color: #333;
+}
+/* Flow Block: motivo do bloqueio abaixo do título, sem sobrecarregar o card. */
+.flow-block-card-type {
+  display: block;
+  width: 100%;
+  margin: 7px 0 3px;
+  padding: 0;
+  color: #bd3618;
+  font: inherit;
+  line-height: 1.25;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.flow-block-card-type span {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-block-card-type span i {
+  margin-right: 3px;
+  color: #d83b22;
+}
+.flow-block-card-type small,
+.flow-block-card-type em {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #79625a;
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-block-card-type small {
+  color: #9d4b38;
+  font-weight: 700;
+}
+.flow-block-card-type:hover span,
+.flow-block-card-type:focus-visible span {
+  color: #8f250f;
+  text-decoration: underline;
+}
+.flow-block-card-type.is-overdue em {
+  color: #bd2618;
+  font-weight: 700;
+}
+.flow-block-card-type.is-paused {
+  color: #4d5fb6;
+}
+.flow-block-card-type.is-paused span i {
+  color: #5a67c7;
+}
+.flow-block-card-type.is-paused small {
+  color: #5160a6;
+}
+.flow-block-card-type.is-paused:hover span,
+.flow-block-card-type.is-paused:focus-visible span {
+  color: #39488f;
+}
+.flow-block-card-type.is-resolved {
+  color: #177a48;
+}
+.flow-block-card-type.is-resolved span i {
+  color: #1a9a59;
+}
+.flow-block-card-type.is-resolved small,
+.flow-block-card-type.is-resolved em {
+  color: #34775b;
+}
+.flow-block-card-type.is-resolved:hover span,
+.flow-block-card-type.is-resolved:focus-visible span {
+  color: #0e6135;
+}
+.flow-block-card-ready {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  margin: 7px 0 4px;
+  padding: 8px;
+  color: #177a48;
+  background: rgba(34, 197, 94, 0.09);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 7px;
+}
+.flow-block-card-ready > span {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-block-card-ready > span i {
+  margin-right: 3px;
+  color: #1a9a59;
+}
+.flow-block-card-ready > small {
+  grid-column: 1;
+  color: #34775b;
+  font-size: 10px;
+}
+.flow-block-continue-task {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding: 5px 7px;
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  background: #16824b;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.flow-block-continue-task:hover,
+.flow-block-continue-task:focus-visible {
+  background: #0e6135;
+  outline: 2px solid rgba(34, 197, 94, 0.35);
+  outline-offset: 1px;
+}
+
+/* Modal compartilhado do Kanban: HOLD e os demais status usam a mesma linguagem visual. */
+#cardModal {
+  --kanban-modal-bg: #151c25;
+  --kanban-modal-surface: #1a222d;
+  --kanban-modal-input: #111923;
+  --kanban-modal-line: #334252;
+  --kanban-modal-text: #edf3f8;
+  --kanban-modal-muted: #9aa8b8;
+  --kanban-modal-primary: #129117;
+  width: min(460px, calc(100vw - 28px));
+  max-height: min(86vh, 720px);
+  background: var(--kanban-modal-bg);
+  border: 1px solid var(--kanban-modal-line);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  color: var(--kanban-modal-text);
+}
+#cardModal .modal-content {
+  width: 100%;
+  max-width: none;
+  padding: 20px;
+  background: var(--kanban-modal-bg);
+  color: var(--kanban-modal-text);
+  gap: 16px;
+}
+#cardModal .modal-content h3 {
+  padding: 0 0 13px;
+  color: var(--kanban-modal-text);
+  font-size: 16px;
+  font-weight: 750;
+  text-align: left;
+  border-bottom: 1px solid var(--kanban-modal-line);
+}
+#cardModal .modal-content h4,
+#cardModal .modal-content label {
+  margin: 0 0 7px;
+  color: var(--kanban-modal-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+#cardModal .modal-content .modal-item {
+  gap: 7px;
+}
+#cardModal .modal-content input[type="date"],
+#cardModal .modal-content textarea,
+#cardModal .flow-block-hold-form select,
+#cardModal .flow-block-hold-form textarea {
+  min-height: 42px;
+  padding: 10px 11px;
+  color: var(--kanban-modal-text);
+  background: var(--kanban-modal-input);
+  border: 1px solid var(--kanban-modal-line);
+  border-radius: 8px;
+  color-scheme: dark;
+}
+#cardModal .modal-content textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+#cardModal .modal-content input[type="date"]:focus,
+#cardModal .modal-content textarea:focus,
+#cardModal .flow-block-hold-form select:focus,
+#cardModal .flow-block-hold-form textarea:focus {
+  border-color: var(--kanban-modal-primary);
+  outline: 2px solid rgba(25, 184, 107, 0.22);
+  outline-offset: 1px;
+}
+#cardModal .statusAnterior,
+#cardModal .flow-block-hold-intro {
+  padding: 10px 11px;
+  background: rgba(124, 92, 255, 0.12);
+  border: 1px solid rgba(124, 92, 255, 0.3);
+  border-radius: 8px;
+  color: #d8ceff;
+}
+#cardModal .statusAnterior h4,
+#cardModal .flow-block-hold-intro {
+  margin: 0;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+#cardModal .aprovadaComAjustes {
+  color: #c6b6ff;
+}
+#cardModal .modalUploads {
+  padding-top: 2px;
+}
+#cardModal .modalUploads h4 {
+  color: var(--kanban-modal-text);
+}
+#cardModal .drop-area {
+  padding: 18px;
+  color: var(--kanban-modal-muted);
+  background: var(--kanban-modal-input);
+  border: 1px dashed #52657a;
+  border-radius: 9px;
+}
+#cardModal .drop-area:hover {
+  border-color: var(--kanban-modal-primary);
+  background: rgba(25, 184, 107, 0.08);
+}
+#cardModal .file-list li {
+  color: var(--kanban-modal-text);
+  background: var(--kanban-modal-surface);
+  border: 1px solid var(--kanban-modal-line);
+  border-radius: 7px;
+}
+#cardModal .buttons,
+#cardModal .flow-block-hold-actions,
+#cardModal .flow-block-replan-form .flow-block-hold-actions,
+#cardModal .buttons-upload {
+  justify-content: flex-end;
+  gap: 9px;
+}
+#cardModal .buttons button,
+#cardModal .flow-block-hold-actions button,
+#cardModal .flow-block-replan-form .flow-block-hold-actions button,
+#cardModal .buttons-upload button {
+  margin: 0;
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 750;
+  background: var(--kanban-modal-primary);
+  border: 0;
+  border-radius: 7px;
+  box-shadow: none;
+  transition: 0.2s all;
+}
+#cardModal .buttons #fecharModal,
+#cardModal .flow-block-cancel {
+  color: var(--kanban-modal-text) !important;
+  background: var(--kanban-modal-surface) !important;
+  border: 1px solid var(--kanban-modal-line) !important;
+}
+#cardModal .flow-block-replan-form {
+  display: grid;
+  gap: 13px;
+}
+#cardModal .flow-block-replan-intro {
+  display: flex;
+  gap: 10px;
+  padding: 11px;
+  color: #d2f7df;
+  background: rgba(34, 197, 94, 0.11);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+}
+#cardModal .flow-block-replan-intro > i {
+  color: #4ade80;
+  font-size: 21px;
+}
+#cardModal .flow-block-replan-intro strong,
+#cardModal .flow-block-replan-intro p {
+  display: block;
+  margin: 0;
+}
+#cardModal .flow-block-replan-intro p {
+  margin-top: 3px;
+  color: var(--kanban-modal-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+#cardModal .flow-block-replan-summary {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+#cardModal .flow-block-replan-summary > div {
+  padding: 9px 10px;
+  background: var(--kanban-modal-surface);
+  border: 1px solid var(--kanban-modal-line);
+  border-radius: 7px;
+}
+#cardModal .flow-block-replan-summary dt {
+  margin-bottom: 3px;
+  color: var(--kanban-modal-muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+#cardModal .flow-block-replan-summary dd {
+  margin: 0;
+  color: var(--kanban-modal-text);
+  font-size: 12px;
+  line-height: 1.35;
+}
+#cardModal .buttons button:hover,
+#cardModal .flow-block-hold-actions button:hover,
+#cardModal .buttons-upload button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+@media (max-width: 600px) {
+  #cardModal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+  #cardModal .modal-content {
+    padding: 16px;
+  }
+  #cardModal .flow-block-hold-grid {
+    grid-template-columns: 1fr;
+  }
+  #cardModal .flow-block-hold-grid label:last-child {
+    grid-column: auto;
+  }
 }

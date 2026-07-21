@@ -113,6 +113,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
     window.IMPROOV_SESSION_ABSOLUTE_MS = <?php echo json_encode($__absSeconds * 1000); ?>;
     window.IMPROOV_SESSION_ABSOLUTE_WARN_MS = <?php echo json_encode($__absWarnSeconds * 1000); ?>;
     window.IMPROOV_LOGIN_TS = <?php echo json_encode($__loginTs); ?>; // seconds since epoch
+    window.IMPROOV_COLABORADOR_ID = <?php echo json_encode((int) ($_SESSION['idcolaborador'] ?? 0)); ?>;
     window.IMPROOV_APP_BASE = <?php echo json_encode(rtrim($__basePath, '/')); ?>;
     window.IMPROOV_ALLOWED_OBRA_IDS = <?php echo json_encode($__sidebarAllowedObraIds); ?>;
     window.IMPROOV_WS_URL = <?php
@@ -162,12 +163,14 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             class="fas fa-home"></i><span> Página Principal</span></a></li>
                 <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i
                             class="fas fa-check"></i><span> Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
+                <li><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i
+                            class="fa-solid fa-ban"></i><span> Flow Block</span></a></li>
                 <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i
                             class="fas fa-cube"></i><span> Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
                 <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i
                             class="fas fa-film"></i><span> Lista Pós-Produção</span><span class="sidebar-badge" data-module="pos_producao" aria-hidden="true"></span></a></li>
-                <li><a title="Planejamento Fotografico" href="<?php echo htmlspecialchars(improov_sidebar_url('Fotografico'), ENT_QUOTES, 'UTF-8'); ?>"><i
-                            class="fa-solid fa-camera-retro"></i><span> Fotografico</span></a></li>
+                <!-- <li><a title="Planejamento Fotografico" href="<?php echo htmlspecialchars(improov_sidebar_url('Fotografico'), ENT_QUOTES, 'UTF-8'); ?>"><i
+                            class="fa-solid fa-camera-retro"></i><span> Fotografico</span></a></li> -->
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                     <li><a title="Flow Drive" href="https://improov.com.br/flow/ImproovWeb/FlowDrive"><i
                                 class="fas fa-file"></i><span> Flow Drive</span></a></li>
@@ -343,7 +346,9 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
 
 </html>
 
-<script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>"></script>
+<link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/flow-block-mentions.css'); ?>&fbm=<?php echo filemtime(__DIR__ . '/assets/css/flow-block-mentions.css'); ?>">
+<script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>&fbws=<?php echo filemtime(__DIR__ . '/assets/js/upload-ws.js'); ?>"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/flow-block-mentions.js'); ?>&fbm=<?php echo filemtime(__DIR__ . '/assets/js/flow-block-mentions.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-badge.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/sidebar-counts.js'); ?>"></script>
 

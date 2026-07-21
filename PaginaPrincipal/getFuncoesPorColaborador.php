@@ -76,33 +76,79 @@ $sql = "SELECT
         FROM flow_issue fbi
         WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
           AND fbi.bloqueante = 1
-          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
     ) AS flow_block_issues_abertas,
     (
         SELECT fbi.id
         FROM flow_issue fbi
         WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
           AND fbi.bloqueante = 1
-          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
-        ORDER BY fbi.criado_em ASC, fbi.id ASC LIMIT 1
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
+        ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
     ) AS flow_block_issue_principal_id,
+    (
+        SELECT fbi.status
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
+        ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
+    ) AS flow_block_issue_principal_status,
     (
         SELECT ft.nome
         FROM flow_issue fbi
         JOIN flow_issue_tipo ft ON ft.id = fbi.tipo_id
         WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
           AND fbi.bloqueante = 1
-          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
-        ORDER BY fbi.criado_em ASC, fbi.id ASC LIMIT 1
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
+        ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
     ) AS flow_block_motivo_principal,
     (
         SELECT fbi.criado_em
         FROM flow_issue fbi
         WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
           AND fbi.bloqueante = 1
-          AND fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO')
-        ORDER BY fbi.criado_em ASC, fbi.id ASC LIMIT 1
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
+        ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
     ) AS flow_block_bloqueada_desde,
+    (
+        SELECT fbi.proxima_cobranca_em
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
+        ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
+    ) AS flow_block_proxima_cobranca_em,
+    (
+        SELECT CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 1 ELSE 0 END
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+          AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
+        ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
+    ) AS flow_block_cobranca_atrasada,
+    (
+        SELECT MIN(fbi.criado_em)
+        FROM flow_issue fbi
+        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+          AND fbi.bloqueante = 1
+    ) AS flow_block_hold_desde,
+    CASE
+        WHEN fi.status = 'HOLD'
+         AND EXISTS (
+             SELECT 1 FROM flow_issue fbi_confirmada
+             WHERE fbi_confirmada.funcao_imagem_id = fi.idfuncao_imagem
+               AND fbi_confirmada.bloqueante = 1
+               AND (fbi_confirmada.status = 'CANCELADA' OR (fbi_confirmada.status = 'RESOLVIDA' AND fbi_confirmada.confirmada_em IS NOT NULL))
+         )
+         AND NOT EXISTS (
+             SELECT 1 FROM flow_issue fbi_bloqueante
+             WHERE fbi_bloqueante.funcao_imagem_id = fi.idfuncao_imagem
+               AND fbi_bloqueante.bloqueante = 1
+               AND (fbi_bloqueante.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi_bloqueante.status = 'RESOLVIDA' AND fbi_bloqueante.confirmada_em IS NULL))
+         )
+        THEN 1 ELSE 0
+    END AS flow_block_pronta_para_continuar,
     fi.file_uploaded_at,
     fi.requires_file_upload,
     CASE
@@ -989,6 +1035,17 @@ foreach ($funcoes as $funcao) {
         'hold_justificativa_recente' => $funcao['hold_justificativa_recente'] ?? null,
         'justificativa'              => $funcao['hold_justificativa_recente'] ?? null,
         'descricao'                  => $funcao['hold_justificativa_recente'] ?? null,
+        // O SELECT já calcula a Issue principal. Estes campos precisam seguir
+        // para o JSON final, pois o Kanban renderiza a partir de $funcoesFinal.
+        'flow_block_issues_abertas'       => (int) ($funcao['flow_block_issues_abertas'] ?? 0),
+        'flow_block_issue_principal_id'   => isset($funcao['flow_block_issue_principal_id']) ? (int) $funcao['flow_block_issue_principal_id'] : null,
+        'flow_block_issue_principal_status' => $funcao['flow_block_issue_principal_status'] ?? null,
+        'flow_block_motivo_principal'     => $funcao['flow_block_motivo_principal'] ?? null,
+        'flow_block_bloqueada_desde'      => $funcao['flow_block_bloqueada_desde'] ?? null,
+        'flow_block_proxima_cobranca_em'  => $funcao['flow_block_proxima_cobranca_em'] ?? null,
+        'flow_block_cobranca_atrasada'    => (int) ($funcao['flow_block_cobranca_atrasada'] ?? 0),
+        'flow_block_hold_desde'            => $funcao['flow_block_hold_desde'] ?? null,
+        'flow_block_pronta_para_continuar' => (int) ($funcao['flow_block_pronta_para_continuar'] ?? 0),
         'status_funcao_anterior'     => $statusAnterior,
         'prazo_funcao_anterior'      => $prazoAnterior,
         'liberada'                   => $liberada,

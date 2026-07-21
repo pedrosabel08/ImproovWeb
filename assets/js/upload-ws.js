@@ -224,6 +224,23 @@
           return;
         }
 
+        if (data.channel && data.channel.startsWith("flow_block:")) {
+          window.dispatchEvent(
+            new CustomEvent("improov:flowBlockUpdated", {
+              detail: data.payload,
+            }),
+          );
+        }
+
+        if (data.channel && data.channel.startsWith("flow_block:mention")) {
+          window.dispatchEvent(
+            new CustomEvent("improov:flowBlockMention", {
+              detail: data.payload,
+            }),
+          );
+          return;
+        }
+
         if (data.channel && data.channel.startsWith("fotografico:")) {
           window.dispatchEvent(
             new CustomEvent("improov:fotograficoUpdated", { detail: data.payload }),

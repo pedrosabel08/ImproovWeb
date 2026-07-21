@@ -654,6 +654,7 @@ function pendencias_operacionais_fetch(
         'render'           => pendencias_operacionais_empty_module('render', 'Render', 'Aprovações internas de render', 'ri-box-3-line', '#db2777'),
         'projeto'          => pendencias_operacionais_empty_module('projeto', 'Projeto', 'Checklist operacional da obra', 'ri-folder-3-line', '#f59e0b'),
         'imagem'           => pendencias_operacionais_empty_module('imagem', 'Imagem', 'Validações antes da produção', 'ri-image-edit-line', '#16a34a'),
+        'flow_block'       => pendencias_operacionais_empty_module('flow_block', 'Flow Block', 'Cobranças de retorno de impedimentos operacionais', 'ri-forbid-2-line', '#dc2626'),
         'links'            => pendencias_operacionais_empty_module('links', 'Links', 'Links pendentes para a obra', 'ri-links-line', '#0f766e'),
         'cobranca_cliente' => pendencias_operacionais_empty_module('cobranca_cliente', 'Cobrança de Cliente', 'Retornos e cobranças de lotes', 'ri-time-line', '#0891b2'),
     ];
@@ -701,6 +702,113 @@ function pendencias_operacionais_fetch(
             'action_url' => 'FlowReview/index.php',
             'metadata' => $row,
         ]);
+    }
+
+    // Uma Issue ativa é uma pendência operacional do responsável. Para Issues
+    // abertas a cobrança vem do SLA de primeira tratativa (2h); para pausadas,
+    // ela vem do prazo de retorno informado ao pausar.
+    if (
+        pendencias_operacionais_table_exists($conn, 'flow_issue')
+        && pendencias_operacionais_table_exists($conn, 'flow_issue_tipo')
+        && pendencias_operacionais_column_exists($conn, 'flow_issue', 'proxima_cobranca_em')
+    ) {
+        $sqlFlowBlock = "SELECT
+                i.id,
+                i.codigo,
+                i.status,
+                i.descricao,
+                i.urgencia,
+                i.criado_em,
+                i.pausada_em,
+                i.pausa_motivo,
+                i.proxima_cobranca_em,
+                i.responsavel_colaborador_id AS responsavel_id,
+                t.nome AS tipo_nome,
+                fi.idfuncao_imagem,
+                fi.colaborador_id AS tarefa_responsavel_id,
+                f.nome_funcao,
+                ico.imagem_nome,
+                o.idobra AS obra_id,
+                o.nomenclatura AS obra_nome,
+                c.nome_colaborador AS responsavel_nome,
+                ct.nome_colaborador AS tarefa_responsavel_nome,
+                CASE
+                    WHEN i.status = 'PAUSADA' AND i.pausada_em IS NOT NULL THEN i.pausada_em
+                    ELSE DATE_SUB(i.proxima_cobranca_em, INTERVAL 2 HOUR)
+                END AS sla_inicio
+            FROM flow_issue i
+            JOIN flow_issue_tipo t ON t.id = i.tipo_id
+            JOIN funcao_imagem fi ON fi.idfuncao_imagem = i.funcao_imagem_id
+            JOIN funcao f ON f.idfuncao = fi.funcao_id
+            JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+            JOIN obra o ON o.idobra = ico.obra_id
+            LEFT JOIN colaborador c ON c.idcolaborador = i.responsavel_colaborador_id
+            LEFT JOIN colaborador ct ON ct.idcolaborador = fi.colaborador_id
+            WHERE i.bloqueante = 1
+              AND (
+                    i.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')
+                    OR (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL)
+              )
+              AND (i.proxima_cobranca_em IS NOT NULL OR (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL))
+              AND (
+                    (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL AND fi.colaborador_id = ?)
+                    OR (
+                        i.status <> 'RESOLVIDA'
+                        AND (i.responsavel_colaborador_id = ? OR (i.responsavel_colaborador_id IS NULL AND fi.colaborador_id = ?))
+                    )
+              )
+              AND (o.status_obra = 0 OR o.status_obra IS NULL)
+            ORDER BY i.proxima_cobranca_em ASC, i.id ASC
+            LIMIT 80";
+        $stmtFlowBlock = $conn->prepare($sqlFlowBlock);
+        if ($stmtFlowBlock) {
+            $stmtFlowBlock->bind_param('iii', $colaboradorId, $colaboradorId, $colaboradorId);
+            $stmtFlowBlock->execute();
+            $resultFlowBlock = $stmtFlowBlock->get_result();
+            while ($row = $resultFlowBlock->fetch_assoc()) {
+                $awaitingConfirmation = ($row['status'] ?? '') === 'RESOLVIDA';
+                $start = $awaitingConfirmation ? ($row['criado_em'] ?? null) : ($row['sla_inicio'] ?? $row['criado_em'] ?? null);
+                $due = $awaitingConfirmation ? null : ($row['proxima_cobranca_em'] ?? null);
+                $sla = pendencias_operacionais_sla_status($start, $due);
+                $isPaused = ($row['status'] ?? '') === 'PAUSADA';
+                $subtitle = trim(
+                    ($awaitingConfirmation ? 'Issue resolvida · Confirmar resposta' : (string) ($row['tipo_nome'] ?? 'Impedimento'))
+                    . ' · '
+                    . (string) ($row['nome_funcao'] ?? '')
+                    . ($isPaused && !empty($row['pausa_motivo']) ? ' · Pausada: ' . $row['pausa_motivo'] : '')
+                );
+                pendencias_operacionais_add_item($modules['flow_block'], [
+                    'id' => 'flow-block-' . (int) $row['id'],
+                    'source_type' => 'flow_block',
+                    'source_id' => (int) $row['id'],
+                    'title' => trim((string) ($row['codigo'] ?? 'Issue') . ' · ' . (string) ($row['imagem_nome'] ?? 'Tarefa')),
+                    'subtitle' => $subtitle,
+                    'obra_id' => (int) ($row['obra_id'] ?? 0),
+                    'obra_nome' => (string) ($row['obra_nome'] ?? ''),
+                    'responsavel_id' => (int) ($awaitingConfirmation ? ($row['tarefa_responsavel_id'] ?? 0) : ($row['responsavel_id'] ?? 0)),
+                    'responsavel_nome' => (string) ($awaitingConfirmation ? ($row['tarefa_responsavel_nome'] ?? 'Não definido') : ($row['responsavel_nome'] ?? 'Não definido')),
+                    'created_at' => $row['criado_em'] ?? null,
+                    'sla_start_at' => $start,
+                    'due_at' => $due,
+                    'sla_status' => $sla['nivel'],
+                    'sla_label' => $sla['label'],
+                    'tempo_decorrido_minutos' => $sla['tempo_decorrido_minutos'],
+                    'sla_minutos' => $sla['sla_minutos'],
+                    'comments_count' => 0,
+                    'critical_count' => 0,
+                    'action_url' => 'FlowBlock/issue.php?id=' . (int) $row['id'],
+                    'metadata' => [
+                        'issue_id' => (int) $row['id'],
+                        'codigo' => (string) ($row['codigo'] ?? ''),
+                        'tipo' => (string) ($row['tipo_nome'] ?? ''),
+                        'status' => (string) ($row['status'] ?? ''),
+                        'urgencia' => (string) ($row['urgencia'] ?? ''),
+                        'pausada' => $isPaused,
+                    ],
+                ]);
+            }
+            $stmtFlowBlock->close();
+        }
     }
 
     if (

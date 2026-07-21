@@ -1310,6 +1310,250 @@ function abrirModalUploadFinalPendente(card) {
   cardModal.style.top = `${top}px`;
 }
 
+function abrirFormularioFlowBlockHold(card, colunaOrigem, indiceOriginal) {
+  if (!card || !cardModal) return;
+
+  // O status só muda depois que a Issue for criada com sucesso.
+  if (colunaOrigem) {
+    const referencia = colunaOrigem.children[indiceOriginal] || null;
+    colunaOrigem.insertBefore(card, referencia);
+  }
+
+  const conteudo = cardModal.querySelector(".modal-content");
+  const modalTitle = document.getElementById("modalCardTitle");
+  if (!conteudo || !modalTitle) return;
+
+  conteudo.querySelector("#flow-block-hold-form")?.remove();
+  cardModal.classList.add("flow-block-hold-active");
+  modalTitle.textContent = "Registrar Impedimento";
+  document.querySelector(".modalPrazo").style.display = "none";
+  document.querySelector(".modalObs").style.display = "none";
+  document.querySelector(".modalUploads").style.display = "none";
+  document.querySelector(".statusAnterior").style.display = "none";
+  document.querySelector(".buttons").style.display = "none";
+
+  const form = document.createElement("section");
+  form.id = "flow-block-hold-form";
+  form.className = "flow-block-hold-form";
+  form.innerHTML = `
+    <p class="flow-block-hold-intro">A tarefa ficará em HOLD automaticamente quando o Impedimento for criado.</p>
+    <label>Tipo <select data-field="tipo_id" required><option value="">Carregando tipos…</option></select></label>
+    <div class="flow-block-hold-grid">
+      <label>Fila responsável <select data-field="fila_id"><option value="">Não definida</option></select></label>
+      <label>Responsável <select data-field="responsavel_id"><option value="">Não definido</option></select></label>
+      <label>Urgência <select data-field="urgencia"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
+    </div>
+    <label>Observação <textarea data-field="descricao" rows="4" maxlength="5000" placeholder="O que impede a continuidade da tarefa?" required></textarea></label>
+    <div class="flow-block-hold-actions"><button type="button" class="flow-block-cancel">Cancelar</button><button type="button" class="flow-block-create"><i class="ri-forbid-2-line"></i> Criar Impedimento</button></div>
+  `;
+  conteudo.insertBefore(form, conteudo.querySelector(".buttons"));
+
+  const fillSelect = (field, items, firstLabel) => {
+    const select = form.querySelector(`[data-field="${field}"]`);
+    if (!select) return;
+    select.innerHTML =
+      `<option value="">${firstLabel}</option>` +
+      items
+        .map(
+          (item) =>
+            `<option value="${item.id}">${String(item.nome || "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char])}</option>`,
+        )
+        .join("");
+  };
+
+  fetch("FlowBlock/api.php?action=options")
+    .then((response) => response.json())
+    .then((data) => {
+      if (!data.ok)
+        throw new Error(
+          data.message || "Não foi possível carregar os campos do Impedimento.",
+        );
+      fillSelect("tipo_id", data.types || [], "Selecione o tipo");
+      fillSelect("fila_id", data.queues || [], "Não definida");
+      fillSelect("responsavel_id", data.collaborators || [], "Não definido");
+    })
+    .catch((error) => {
+      const select = form.querySelector('[data-field="tipo_id"]');
+      if (select)
+        select.innerHTML = `<option value="">${error.message}</option>`;
+    });
+
+  form.querySelector(".flow-block-cancel").addEventListener("click", () => {
+    cardModal.classList.remove("active");
+    form.remove();
+    cardModal.classList.remove("flow-block-hold-active");
+    card.classList.remove("selected");
+  });
+
+  form
+    .querySelector(".flow-block-create")
+    .addEventListener("click", async () => {
+      const typeId = Number(form.querySelector('[data-field="tipo_id"]').value);
+      const description = form
+        .querySelector('[data-field="descricao"]')
+        .value.trim();
+      if (!typeId || !description) {
+        Toastify({
+          text: "Informe o tipo e a observação do Impedimento.",
+          duration: 3000,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "#d94b4b",
+        }).showToast();
+        return;
+      }
+      const createButton = form.querySelector(".flow-block-create");
+      createButton.disabled = true;
+      createButton.textContent = "Criando…";
+      try {
+        const response = await fetch("FlowBlock/api.php?action=create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            funcao_imagem_id: Number(card.dataset.id),
+            tipo_id: typeId,
+            fila_id:
+              Number(form.querySelector('[data-field="fila_id"]').value) ||
+              null,
+            responsavel_id:
+              Number(
+                form.querySelector('[data-field="responsavel_id"]').value,
+              ) || null,
+            urgencia: form.querySelector('[data-field="urgencia"]').value,
+            descricao: description,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok)
+          throw new Error(
+            data.message || "Não foi possível criar o impedimento.",
+          );
+        cardModal.classList.remove("active");
+        form.remove();
+        carregarDados(colaborador_id);
+        window.location.href = `FlowBlock/issue.php?id=${encodeURIComponent(data.id)}`;
+      } catch (error) {
+        createButton.disabled = false;
+        createButton.innerHTML =
+          '<i class="ri-forbid-2-line"></i> Criar Impedimento';
+        Toastify({
+          text: error.message,
+          duration: 4000,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "#d94b4b",
+        }).showToast();
+      }
+    });
+
+  cardModal.classList.add("active");
+  card.classList.add("selected");
+  const modalWidth = cardModal.offsetWidth || 420;
+  const modalHeight = cardModal.offsetHeight || 560;
+  cardModal.style.left = `${Math.max(10, Math.round((window.innerWidth - modalWidth) / 2))}px`;
+  cardModal.style.top = `${Math.max(10, Math.round((window.innerHeight - modalHeight) / 2))}px`;
+}
+
+function formatarTempoFlowBlock(data) {
+  if (!data) return "";
+  const inicio = new Date(String(data).replace(" ", "T"));
+  if (Number.isNaN(inicio.getTime())) return "";
+  const minutos = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 60000));
+  const dias = Math.floor(minutos / 1440);
+  const horas = Math.floor((minutos % 1440) / 60);
+  const mins = minutos % 60;
+  if (dias) return `${dias}d ${horas}h`;
+  if (horas) return `${horas}h ${mins}min`;
+  return `${mins}min`;
+}
+
+function abrirReplanejamentoFlowBlock(card) {
+  if (!card || !cardModal) return;
+  const conteudo = cardModal.querySelector(".modal-content");
+  const modalTitle = document.getElementById("modalCardTitle");
+  if (!conteudo || !modalTitle) return;
+
+  const prazoAnterior = String(card.dataset.prazo || "").slice(0, 10);
+  const holdDesde = card.dataset.flowBlockHoldDesde || "";
+  const prazoData = prazoAnterior ? new Date(`${prazoAnterior}T00:00:00`) : null;
+  const prazoVencido = prazoData && prazoData.getTime() < new Date().setHours(0, 0, 0, 0);
+  const contextoPrazo = prazoVencido
+    ? `Prazo vencido há ${formatarTempoFlowBlock(prazoAnterior)}.`
+    : prazoAnterior
+      ? "O prazo anterior ainda não venceu, mas a continuidade exige replanejamento."
+      : "A tarefa não possuía prazo definido."
+  const contextoHold = holdDesde
+    ? `Em HOLD há ${formatarTempoFlowBlock(holdDesde)}.`
+    : "";
+
+  conteudo.querySelector("#flow-block-hold-form")?.remove();
+  conteudo.querySelector("#flow-block-replan-form")?.remove();
+  cardModal.classList.add("flow-block-replan-active");
+  modalTitle.textContent = "Replanejar e continuar tarefa";
+  document.querySelector(".modalPrazo").style.display = "none";
+  document.querySelector(".modalObs").style.display = "none";
+  document.querySelector(".modalUploads").style.display = "none";
+  document.querySelector(".statusAnterior").style.display = "none";
+  document.querySelector(".buttons").style.display = "none";
+
+  const form = document.createElement("section");
+  form.id = "flow-block-replan-form";
+  form.className = "flow-block-replan-form";
+  form.innerHTML = `
+    <div class="flow-block-replan-intro"><i class="ri-calendar-schedule-line"></i><div><strong>Tudo resolvido</strong><p>Defina um novo prazo antes de retornar a tarefa para Em andamento.</p></div></div>
+    <dl class="flow-block-replan-summary">
+      <div><dt>Prazo anterior</dt><dd>${prazoAnterior ? formatarData(prazoAnterior) : "Não definido"}</dd></div>
+      <div><dt>Situação do prazo</dt><dd>${contextoPrazo}</dd></div>
+      ${contextoHold ? `<div><dt>Tempo em HOLD</dt><dd>${contextoHold}</dd></div>` : ""}
+    </dl>
+    <label>Novo prazo da tarefa <input data-field="prazo" type="date" required></label>
+    <label>Observação da reprogramação <textarea data-field="observacao" rows="3" maxlength="5000" placeholder="Opcional: contexto da nova previsão."></textarea></label>
+    <div class="flow-block-hold-actions"><button type="button" class="flow-block-cancel">Cancelar</button><button type="button" class="flow-block-continue"><i class="ri-play-circle-line"></i> Confirmar e continuar</button></div>
+  `;
+  conteudo.insertBefore(form, conteudo.querySelector(".buttons"));
+
+  const close = () => {
+    form.remove();
+    cardModal.classList.remove("active", "flow-block-replan-active");
+    card.classList.remove("selected");
+  };
+  form.querySelector(".flow-block-cancel").addEventListener("click", close);
+  form.querySelector(".flow-block-continue").addEventListener("click", async () => {
+    const deadline = form.querySelector('[data-field="prazo"]').value;
+    const note = form.querySelector('[data-field="observacao"]').value.trim();
+    if (!deadline) {
+      Toastify({ text: "Informe o novo prazo para continuar a tarefa.", duration: 3000, gravity: "top", position: "left", backgroundColor: "#d94b4b" }).showToast();
+      return;
+    }
+    const button = form.querySelector(".flow-block-continue");
+    button.disabled = true;
+    button.textContent = "Reprogramando…";
+    try {
+      const response = await fetch("FlowBlock/api.php?action=continue_task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ funcao_imagem_id: Number(card.dataset.id), prazo: deadline, observacao: note }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message || "Não foi possível continuar a tarefa.");
+      close();
+      carregarDados(colaborador_id);
+      Toastify({ text: "Tarefa reprogramada e movida para Em andamento.", duration: 3500, gravity: "top", position: "left", backgroundColor: "#129117" }).showToast();
+    } catch (error) {
+      button.disabled = false;
+      button.innerHTML = '<i class="ri-play-circle-line"></i> Confirmar e continuar';
+      Toastify({ text: error.message, duration: 4000, gravity: "top", position: "left", backgroundColor: "#d94b4b" }).showToast();
+    }
+  });
+
+  cardModal.classList.add("active");
+  card.classList.add("selected");
+  const modalWidth = cardModal.offsetWidth || 440;
+  const modalHeight = cardModal.offsetHeight || 560;
+  cardModal.style.left = `${Math.max(10, Math.round((window.innerWidth - modalWidth) / 2))}px`;
+  cardModal.style.top = `${Math.max(10, Math.round((window.innerHeight - modalHeight) / 2))}px`;
+}
+
 function alertarPendenciasSeNecessario(data) {
   const funcoes = data && Array.isArray(data.funcoes) ? data.funcoes : [];
   const pendentes = funcoes.filter(
@@ -1385,6 +1629,43 @@ function processarDados(data) {
   renderizarCentralAtencao(data);
 
   // Função auxiliar para criar cards
+  function flowBlockDuration(value) {
+    if (!value) return "agora";
+    const startedAt = new Date(String(value).replace(" ", "T"));
+    const minutes = Math.max(
+      0,
+      Math.floor((Date.now() - startedAt.getTime()) / 60000),
+    );
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h`;
+    return `${minutes}min`;
+  }
+
+  function flowBlockCommitment(value, overdue) {
+    if (!value) return "SLA de atendimento pendente";
+    const deadline = new Date(String(value).replace(" ", "T"));
+    if (Number.isNaN(deadline.getTime())) return "SLA de atendimento pendente";
+    if (overdue || deadline.getTime() < Date.now()) {
+      return `SLA atrasado há ${flowBlockDuration(value)}`;
+    }
+    return `Próxima cobrança: ${deadline.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+    })} ${deadline.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
+  function flowBlockShortDeadline(value) {
+    if (!value) return "";
+    const deadline = new Date(String(value).replace(" ", "T"));
+    if (Number.isNaN(deadline.getTime())) return "";
+    return `${deadline.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+    })} ${deadline.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
   function criarCard(item, tipo, media) {
     // Define status real (mantemos 'Aprovado com ajustes' separado)
     // Normalize incoming status: trim and compare case-insensitively
@@ -1772,6 +2053,26 @@ function processarDados(data) {
         ? null
         : item.tempo_calculado;
 
+    const flowBlockIssueCount = Number(item.flow_block_issues_abertas || 0);
+    const flowBlockPrincipalStatus = String(item.flow_block_issue_principal_status || "");
+    const flowBlockAwaitingConfirmation = flowBlockPrincipalStatus === "RESOLVIDA";
+    const flowBlockPaused = flowBlockPrincipalStatus === "PAUSADA";
+    const flowBlockReadyToContinue = Number(item.flow_block_pronta_para_continuar || 0) === 1;
+    const flowBlockIssueHtml =
+      flowBlockReadyToContinue
+        ? `<div class="flow-block-card-ready" title="Todas as Issues foram encerradas. Reprograme a tarefa para continuar.">
+             <span><i class="ri-checkbox-circle-line"></i> Tudo resolvido</span>
+             <small>Replanejamento obrigatório</small>
+             <button type="button" class="flow-block-continue-task"><i class="ri-play-circle-line"></i> Continuar tarefa</button>
+           </div>`
+        : flowBlockIssueCount > 0
+        ? `<button type="button" class="flow-block-card-type${flowBlockAwaitingConfirmation ? " is-resolved" : ""}${flowBlockPaused ? " is-paused" : ""}${Number(item.flow_block_cobranca_atrasada || 0) && !flowBlockAwaitingConfirmation ? " is-overdue" : ""}" data-issue-id="${item.flow_block_issue_principal_id || ""}" title="${flowBlockAwaitingConfirmation ? "Confirmar resposta da Issue" : "Abrir Issue principal"}">
+             <span><i class="${flowBlockAwaitingConfirmation ? "ri-checkbox-circle-line" : "ri-error-warning-line"}"></i> ${flowBlockAwaitingConfirmation ? "Issue resolvida" : item.flow_block_motivo_principal || "Não classificada"}</span>
+             ${flowBlockAwaitingConfirmation ? `<small>Confirmar resposta${item.flow_block_motivo_principal ? ` · ${item.flow_block_motivo_principal}` : ""}</small>` : flowBlockPaused ? `<small>Pausada${item.flow_block_proxima_cobranca_em ? ` até ${flowBlockShortDeadline(item.flow_block_proxima_cobranca_em)}` : ""}</small>` : flowBlockIssueCount > 1 ? `<small>+${flowBlockIssueCount - 1} impedimento${flowBlockIssueCount > 2 ? "s" : ""}</small>` : ""}
+             <em>${flowBlockAwaitingConfirmation ? "Aguardando confirmação" : flowBlockCommitment(item.flow_block_proxima_cobranca_em, Number(item.flow_block_cobranca_atrasada || 0))}</em>
+           </button>`
+        : "";
+
     card.innerHTML = `
                     ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ""}
                     ${hasPendingRender ? `<div class="pending-render-ribbon${hasPendingFile ? " below-file-ribbon" : ""}"><i class="ri-send-plane-line"></i> Enviar render</div>` : ""}
@@ -1792,6 +2093,7 @@ function processarDados(data) {
                         }
                     </div>
                         <h5>${titulo || "-"}</h5>
+                        ${flowBlockIssueHtml}
                         <!-- Use server-side thumb generator to reduce weight for thumbnails -->
                         <img loading="lazy" src="${imgSrc}" alt="" style="max-width: 100%; height: auto; margin-bottom: 8px;">
                     <div class="card-footer">
@@ -1826,6 +2128,11 @@ function processarDados(data) {
     card.dataset.obra_nome = item.nomenclatura || ""; // nome da obra
     card.dataset.funcao_nome = item.nome_funcao || ""; // nome da função
     card.dataset.status = status; // status normalizado
+    card.dataset.flowBlockIssues = String(
+      Number(item.flow_block_issues_abertas || 0),
+    );
+    card.dataset.flowBlockHoldDesde = item.flow_block_hold_desde || "";
+    card.dataset.flowBlockReadyToContinue = flowBlockReadyToContinue ? "1" : "0";
 
     card.addEventListener("click", () => {
       document
@@ -1877,6 +2184,27 @@ function processarDados(data) {
         abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "");
       }
     });
+
+    const flowBlockIssue = card.querySelector(".flow-block-card-type");
+    if (flowBlockIssue) {
+      flowBlockIssue.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const issueId = flowBlockIssue.dataset.issueId;
+        window.location.href = issueId
+          ? `FlowBlock/issue.php?id=${encodeURIComponent(issueId)}`
+          : `FlowBlock/index.php?new_task=${encodeURIComponent(item.idfuncao_imagem)}`;
+      });
+    }
+
+    const flowBlockContinueTask = card.querySelector(".flow-block-continue-task");
+    if (flowBlockContinueTask) {
+      flowBlockContinueTask.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        abrirReplanejamentoFlowBlock(card);
+      });
+    }
 
     if (liberado === "1") {
       // Inserir no topo da coluna, antes dos bloqueados
@@ -2664,6 +2992,12 @@ carregarDados(colaborador_id);
 
 // Atualiza lista automaticamente quando uma função for inserida/atualizada ou upload enfileirado (via WebSocket)
 window.addEventListener("improov:funcaoAtualizada", () => {
+  carregarDados(colaborador_id);
+});
+
+// Alterações no Flow Block (incluindo resolução aguardando confirmação) precisam
+// atualizar o resumo da Issue e a posição do card sem recarregar a página.
+window.addEventListener("improov:flowBlockUpdated", () => {
   carregarDados(colaborador_id);
 });
 
@@ -5102,9 +5436,17 @@ const modalPrazo = document.getElementById("modalPrazo");
 const modalObs = document.getElementById("modalObs");
 let cardSelecionado = null;
 
+function restaurarCardModalPadrao() {
+  if (!cardModal) return;
+  cardModal.querySelector("#flow-block-hold-form")?.remove();
+  cardModal.querySelector("#flow-block-replan-form")?.remove();
+  cardModal.classList.remove("flow-block-hold-active", "flow-block-replan-active");
+}
+
 // Fechar modal
 document.getElementById("fecharModal").addEventListener("click", () => {
   cardModal.classList.remove("active");
+  restaurarCardModalPadrao();
   cardSelecionado = null;
 });
 
@@ -5523,6 +5865,7 @@ var subtitulo = null;
 var obra = null;
 var idimagem = null;
 var nome_status = null;
+var statusAnterior = null;
 const dropArea = document.getElementById("drop-area");
 const fileInput = document.getElementById("fileElem");
 const fileList = document.getElementById("fileList");
@@ -5558,6 +5901,11 @@ colunas.forEach((col) => {
       const holdMovel = fromId === "hold" && !imagemEmHold;
 
       if (imagemEmHold) return false;
+      if (
+        fromId === "hold" &&
+        Number(dragged?.dataset?.flowBlockIssues || 0) > 0
+      )
+        return false;
 
       if (toId === "in-progress" && requiresFileUpload) return false;
 
@@ -5597,6 +5945,11 @@ colunas.forEach((col) => {
         alert(
           "Existe arquivo pendente da etapa anterior. Envie o arquivo final antes de mover para Em andamento.",
         );
+        return;
+      }
+
+      if (novaColuna?.id === "hold" && deColuna?.id !== "hold") {
+        abrirFormularioFlowBlockHold(card, evt.from, evt.oldIndex);
         return;
       }
 
@@ -5642,6 +5995,17 @@ colunas.forEach((col) => {
         subtitulo = card.getAttribute("data-funcao_nome");
         obra = card.getAttribute("data-obra_nome");
         nome_status = card.getAttribute("data-nome_status");
+        statusAnterior = card.getAttribute("data-status-anterior");
+
+        const avisoStatusAnterior = cardModal.querySelector(
+          ".modal-item.statusAnterior",
+        );
+
+        if (avisoStatusAnterior) {
+          avisoStatusAnterior.hidden =
+            statusAnterior !== "Aprovado com ajustes";
+        }
+        console.log(statusAnterior, avisoStatusAnterior?.style.display);
 
         // Preenche os campos comuns
         modalPrazo.value = card.dataset.prazo || "";
@@ -5678,6 +6042,7 @@ colunas.forEach((col) => {
         // ==== END UNIFIED PAIR HANDLING ====
 
         // Reset modal: mostra tudo inicialmente
+        restaurarCardModalPadrao();
         document.querySelector(".modalPrazo").style.display = "flex";
         document.querySelector(".modalObs").style.display = "flex";
         document.querySelector(".modalUploads").style.display = "flex";
@@ -5717,12 +6082,10 @@ colunas.forEach((col) => {
             // Apenas observação e botões
             document.querySelector(".modalPrazo").style.display = "none";
             document.querySelector(".modalUploads").style.display = "none";
-            document.querySelector(".statusAnterior").style.display = "none";
             break;
           case "in-progress":
             // Apenas observação e botões
             document.querySelector(".modalUploads").style.display = "none";
-            document.querySelector(".statusAnterior").style.display = "flex";
             break;
           case "in-review": // "Em aprovação"
             // Mostra ambos inputs de arquivo (prévia e arquivo final)
@@ -5730,21 +6093,18 @@ colunas.forEach((col) => {
             document.querySelector(".modalObs").style.display = "none";
             document.querySelector(".modalUploads").style.display = "flex";
             document.querySelector(".buttons").style.display = "none";
-            document.querySelector(".statusAnterior").style.display = "none";
             // // Em aprovação: somente envio de PRÉVIA (esconde envio de arquivo final)
             // if (etapaPreviaEl) etapaPreviaEl.style.display = '';
             // if (etapaFinalEl) etapaFinalEl.style.display = 'none';
             break;
           case "aguardando-direcao":
             document.querySelector(".modalUploads").style.display = "none";
-            document.querySelector(".statusAnterior").style.display = "flex";
             break;
           case "done": // "Finalizado"
             // Mostra prazo, observação e botões
             document.querySelector(".modalPrazo").style.display = "flex";
             document.querySelector(".modalObs").style.display = "flex";
             document.querySelector(".modalUploads").style.display = "flex";
-            document.querySelector(".statusAnterior").style.display = "flex";
             // // Finalizado: somente envio do ARQUIVO FINAL (esconde prévias)
             // if (etapaPreviaEl) etapaPreviaEl.style.display = 'none';
             // if (etapaFinalEl) etapaFinalEl.style.display = '';
@@ -5777,14 +6137,18 @@ colunas.forEach((col) => {
         const modalHeight = cardModal.offsetHeight;
 
         let left = rect.right + 10;
-        let top = rect.top + 10;
+        let top = rect.top - 120; // sobe 120px
 
         if (left + modalWidth > window.innerWidth) {
           left = rect.left - modalWidth - 10;
         }
+
+        if (top < 10) {
+          top = 10;
+        }
+
         if (top + modalHeight > window.innerHeight) {
           top = window.innerHeight - modalHeight - 10;
-          if (top < 10) top = 10;
         }
 
         cardModal.style.left = `${left}px`;
@@ -6145,6 +6509,7 @@ document.addEventListener("keydown", function (e) {
     }
     if (cardModal.classList.contains("active")) {
       cardModal.classList.remove("active");
+      restaurarCardModalPadrao();
     }
   }
 });

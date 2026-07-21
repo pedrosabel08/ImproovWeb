@@ -158,14 +158,11 @@ try {
         $prazoEmAtrasoOuAusente = !$prazoAtual || $prazoAtual < $today;
 
         if ($status === 'hold') {
-            if ($observacao === '') {
-                throw new InvalidArgumentException('Informe a observação para a tarefa em HOLD ' . $idFuncaoImagem . '.');
-            }
+            throw new InvalidArgumentException('O HOLD é derivado de uma Issue. Crie a Issue no Flow Block para a tarefa ' . $idFuncaoImagem . '.');
+        }
 
-            $updateHoldStmt->bind_param('si', $observacao, $idFuncaoImagem);
-            $updateHoldStmt->execute();
-            $updatedIds[] = $idFuncaoImagem;
-            continue;
+        if (strcasecmp((string) ($current['status'] ?? ''), 'HOLD') === 0) {
+            throw new InvalidArgumentException('Uma tarefa em HOLD só pode continuar pelo Flow Block, após confirmar as Issues e informar o novo prazo.');
         }
 
         if ($prazoEmAtrasoOuAusente && !$novoPrazo) {

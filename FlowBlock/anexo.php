@@ -12,11 +12,8 @@ if ($attachmentId <= 0) {
 }
 
 $stmt = $conn->prepare(
-    'SELECT a.nome_original, a.caminho, a.mime_type, i.responsavel_colaborador_id,
-            i.criado_por_colaborador_id, fi.colaborador_id AS tarefa_colaborador_id
+    'SELECT a.nome_original, a.caminho, a.mime_type
      FROM flow_issue_anexo a
-     JOIN flow_issue i ON i.id = a.issue_id
-     JOIN funcao_imagem fi ON fi.idfuncao_imagem = i.funcao_imagem_id
      WHERE a.id = ? LIMIT 1'
 );
 $stmt->bind_param('i', $attachmentId);
@@ -24,15 +21,10 @@ $stmt->execute();
 $attachment = $stmt->get_result()->fetch_assoc() ?: null;
 $stmt->close();
 
-$actorId = flow_block_actor_id();
-$canView = $attachment && (
-    flow_block_is_manager()
-    || (int) $attachment['tarefa_colaborador_id'] === $actorId
-    || (int) ($attachment['responsavel_colaborador_id'] ?? 0) === $actorId
-    || (int) $attachment['criado_por_colaborador_id'] === $actorId
-);
-if (!$canView) {
-    http_response_code(403);
+// Anexos de Issues são visíveis para qualquer usuário autenticado do Flow.
+// As permissões de criação, edição e exclusão continuam sendo validadas na API.
+if (!$attachment) {
+    http_response_code(404);
     exit;
 }
 

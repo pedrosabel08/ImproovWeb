@@ -1,6 +1,45 @@
 (() => {
   const config = window.FlowBlockConfig || {};
   const $ = (selector, parent = document) => parent.querySelector(selector);
+  const toastStyles = {
+    success: { className: "fb-toastify fb-toastify--success", duration: 4200 },
+    error: { className: "fb-toastify fb-toastify--error", duration: 6500 },
+    warning: { className: "fb-toastify fb-toastify--warning", duration: 5200 },
+    info: { className: "fb-toastify fb-toastify--info", duration: 4200 },
+  };
+  const notify = (message, type = "info") => {
+    const settings = toastStyles[type] || toastStyles.info;
+    if (typeof window.Toastify === "function") {
+      window
+        .Toastify({
+          text: String(message || "Ação concluída."),
+          duration: settings.duration,
+          close: true,
+          gravity: "top",
+          position: "right",
+          stopOnFocus: true,
+          className: settings.className,
+        })
+        .showToast();
+      return;
+    }
+    console[type === "error" ? "error" : "warn"](message);
+  };
+  const flashToast = (message, type = "success") => {
+    sessionStorage.setItem("flowBlockToast", JSON.stringify({ message, type }));
+  };
+  const showFlashToast = () => {
+    try {
+      const flash = JSON.parse(
+        sessionStorage.getItem("flowBlockToast") || "null",
+      );
+      if (!flash?.message) return;
+      sessionStorage.removeItem("flowBlockToast");
+      notify(flash.message, flash.type);
+    } catch (_) {
+      sessionStorage.removeItem("flowBlockToast");
+    }
+  };
   const esc = (value) =>
     String(value ?? "").replace(
       /[&<>'"]/g,
@@ -32,7 +71,7 @@
     const now = new Date();
     const deadline = new Date(issue.proxima_cobranca_em);
 
-    if(issue.status == "RESOLVIDA" || issue.status == "CANCELADA") {
+    if (issue.status == "RESOLVIDA" || issue.status == "CANCELADA") {
       return `
           <span class="fb-sla">-</span>
     `;
@@ -151,6 +190,7 @@
         syncUrl();
       } catch (error) {
         table.innerHTML = `<tr><td colspan="9">${esc(error.message)}</td></tr>`;
+        notify(error.message, "error");
       } finally {
         $("#loading").hidden = true;
       }
@@ -381,6 +421,10 @@
     });
     $("#issue-form").addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (!Number($("#task-id").value) || !Number($("#issue-type").value)) {
+        notify("Selecione a tarefa e o tipo da Issue.", "warning");
+        return;
+      }
       try {
         const result = await api("create", {
           method: "POST",
@@ -393,9 +437,10 @@
             descricao: $("#issue-description").value,
           },
         });
+        flashToast("Issue criada e a tarefa foi colocada em HOLD.");
         location.href = `${config.detail}?id=${result.id}`;
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     });
   }
@@ -429,6 +474,7 @@
         await renderDetail(data);
       } catch (error) {
         root.innerHTML = `<a class="fb-back" href="index.php">← Flow Block</a><p>${esc(error.message)}</p>`;
+        notify(error.message, "error");
       }
     };
     const renderDetail = async ({ issue, activities, attachments }) => {
@@ -439,10 +485,9 @@
       const deadline = issue.proxima_cobranca_em
         ? `<span class="fb-sla ${issue.cobranca_atrasada ? "is-overdue" : ""}"><i class="ri-alarm-warning-line"></i> ${issue.cobranca_atrasada ? "Cobrança atrasada" : "Próxima cobrança"}: ${fmtDate(issue.proxima_cobranca_em)}</span>`
         : "";
-      const actions =
-        awaitingConfirmation
-          ? ""
-          : terminal && can
+      const actions = awaitingConfirmation
+        ? ""
+        : terminal && can
           ? `
       <button class="fb-button fb-button--ghost" data-transition="ABERTA">
         Reabrir Issue
@@ -485,9 +530,12 @@
       const confirmationCta = awaitingConfirmation
         ? `<section class="fb-resolution-confirmation"><i class="ri-checkbox-circle-line"></i><div><strong>A pendência foi marcada como resolvida.</strong><p>Confirme se a resposta ou o material recebido é suficiente. A tarefa continuará em HOLD até ser replanejada.</p></div>${issue.can_confirm_resolution ? '<div class="fb-resolution-confirmation-actions"><button class="fb-button fb-button--ghost" data-transition="ABERTA">Reabrir Issue</button><button class="fb-button fb-button--primary" data-confirm-resolution>Entendi, confirmar resolução</button></div>' : '<span class="fb-secondary">Aguardando confirmação do dono da tarefa.</span>'}</section>`
         : "";
-      const taskReadyNotice = !awaitingConfirmation && issue.task_ready_to_continue && issue.tarefa_status === "HOLD"
-        ? '<section class="fb-resolution-confirmation"><i class="ri-calendar-schedule-line"></i><div><strong>Tudo resolvido.</strong><p>A tarefa permanece em HOLD até receber um novo prazo. No Kanban, use “Continuar tarefa” para replanejá-la.</p></div></section>'
-        : "";
+      const taskReadyNotice =
+        !awaitingConfirmation &&
+        issue.task_ready_to_continue &&
+        issue.tarefa_status === "HOLD"
+          ? '<section class="fb-resolution-confirmation"><i class="ri-calendar-schedule-line"></i><div><strong>Tudo resolvido.</strong><p>A tarefa permanece em HOLD até receber um novo prazo. No Kanban, use “Continuar tarefa” para replanejá-la.</p></div></section>'
+          : "";
       const attachmentsByActivity = new Map();
       attachments.forEach((attachment) => {
         const key = Number(attachment.atividade_id);
@@ -503,16 +551,25 @@
       const contextLinks = document.createElement("div");
       contextLinks.innerHTML = `<a class="fb-detail-task" href="index.php?image_id=${issue.imagem_id}"><i class="ri-image-line"></i> Issues da imagem</a><a class="fb-detail-task" href="index.php?obra_id=${issue.obra_id}"><i class="ri-building-line"></i> Issues da obra</a>`;
       $(".fb-details-panel").appendChild(contextLinks);
-      const mentionedIds = setupMentionPicker(
-        $("#comment-content"),
-        $("#comment-mention-picker"),
-        mentionOptions.collaborators || [],
-      );
-      $("#comment-form").addEventListener("submit", async (e) => {
+      if (!issue.can_comment) {
+        $("#comment-form").outerHTML =
+          `<div class="fb-composer"><h2>Comentários</h2><p class="fb-secondary">Você pode visualizar os comentários e anexos desta Issue. Para interagir, acesse uma Issue da qual participe.</p></div>`;
+      }
+      const mentionedIds = issue.can_comment
+        ? setupMentionPicker(
+            $("#comment-content"),
+            $("#comment-mention-picker"),
+            mentionOptions.collaborators || [],
+          )
+        : () => [];
+      $("#comment-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const field = $("#comment-content");
         const fileField = $("#comment-file");
-        if (!field.value.trim() && !fileField.files.length) return;
+        if (!field.value.trim() && !fileField.files.length) {
+          notify("Escreva um comentário ou selecione um anexo.", "warning");
+          return;
+        }
         try {
           await sendComment({
             issueId,
@@ -520,9 +577,10 @@
             mentionIds: mentionedIds(),
             files: fileField.files,
           });
+          notify("Comentário enviado.", "success");
           load();
         } catch (error) {
-          alert(error.message);
+          notify(error.message, "error");
         }
       });
       root.querySelectorAll("[data-comment-action]").forEach((button) => {
@@ -549,12 +607,24 @@
       root
         .querySelector("[data-confirm-resolution]")
         ?.addEventListener("click", async () => {
-          if (!confirm("Confirmar que a resolução é suficiente? A tarefa continuará em HOLD até ser replanejada.")) return;
+          if (
+            !confirm(
+              "Confirmar que a resolução é suficiente? A tarefa continuará em HOLD até ser replanejada.",
+            )
+          )
+            return;
           try {
-            await api("confirm_resolution", { method: "POST", body: { id: issue.id } });
+            await api("confirm_resolution", {
+              method: "POST",
+              body: { id: issue.id },
+            });
+            notify(
+              "Resolução confirmada. A tarefa permanece em HOLD até ser replanejada.",
+              "success",
+            );
             load();
           } catch (error) {
-            alert(error.message);
+            notify(error.message, "error");
           }
         });
       root
@@ -636,9 +706,13 @@
             },
           });
         }
+        notify(
+          mode === "reply" ? "Resposta enviada." : "Comentário atualizado.",
+          "success",
+        );
         reload();
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     });
     article.appendChild(form);
@@ -677,9 +751,10 @@
           method: "POST",
           body: { id: issue.id, atividade_id: activityId },
         });
+        notify("Comentário excluído.", "success");
         reload();
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     }
   }
@@ -701,20 +776,29 @@
       const target = new Date(Date.now() + hours * 60 * 60 * 1000);
       returnAt.value = toLocalInput(target);
     };
-    $("#pause-title").textContent = updating ? "Atualizar pausa" : "Pausar Issue";
+    $("#pause-title").textContent = updating
+      ? "Atualizar pausa"
+      : "Pausar Issue";
     $("#pause-help").textContent = updating
       ? "Renove a pausa com a nova informação. A Issue continuará pausada e receberá uma nova cobrança."
       : "A pausa encerra o SLA inicial e cria um novo compromisso de retorno para o responsável.";
-    $("#pause-submit").textContent = updating ? "Atualizar pausa" : "Confirmar pausa";
+    $("#pause-submit").textContent = updating
+      ? "Atualizar pausa"
+      : "Confirmar pausa";
     reason.value = updating ? issue.pausa_motivo || "" : "";
     observation.value = updating ? issue.pausa_observacao || "" : "";
     const existingReturn = String(
       issue.retorno_previsto_em || issue.proxima_cobranca_em || "",
-    ).replace(" ", "T").slice(0, 16);
+    )
+      .replace(" ", "T")
+      .slice(0, 16);
     if (updating && existingReturn) returnAt.value = existingReturn;
     else setHoursFromNow(4);
     responsible.innerHTML = `<option value="">Não alterar responsável</option>${collaborators
-      .map((person) => `<option value="${Number(person.id)}">${esc(person.nome)}</option>`)
+      .map(
+        (person) =>
+          `<option value="${Number(person.id)}">${esc(person.nome)}</option>`,
+      )
       .join("")}`;
     responsible.value = String(issue.responsavel_colaborador_id || "");
     responsibleGroup.hidden = !collaborators.length;
@@ -733,7 +817,10 @@
     };
     $("#pause-form").onsubmit = async (event) => {
       event.preventDefault();
-      if (!reason.value.trim() || !returnAt.value) return;
+      if (!reason.value.trim() || !returnAt.value) {
+        notify("Informe o motivo e o prazo previsto para retorno.", "warning");
+        return;
+      }
       try {
         await api("pause", {
           method: "POST",
@@ -746,9 +833,15 @@
           },
         });
         dialog.close();
+        notify(
+          updating
+            ? "Pausa atualizada com nova cobrança."
+            : "Issue pausada e nova cobrança agendada.",
+          "success",
+        );
         reload();
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     };
   }
@@ -771,16 +864,20 @@
     $("#reassign-form").onsubmit = async (event) => {
       event.preventDefault();
       const responsibleId = Number(select.value);
-      if (!responsibleId) return;
+      if (!responsibleId) {
+        notify("Selecione um responsável para reatribuir a Issue.", "warning");
+        return;
+      }
       try {
         await api("update", {
           method: "POST",
           body: { id: issue.id, responsavel_colaborador_id: responsibleId },
         });
         dialog.close();
+        notify("Responsável da Issue atualizado.", "success");
         reload();
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     };
   }
@@ -878,7 +975,7 @@
     const isComment = a.tipo === "COMENTARIO";
     const deleted = Boolean(a.excluido_em);
     const actions =
-      isComment && !deleted
+      isComment && !deleted && a.can_interact
         ? `<div class="fb-comment-actions"><button type="button" data-comment-action="reply" data-activity-id="${Number(a.id)}">Responder</button>${a.can_edit ? `<button type="button" data-comment-action="edit" data-activity-id="${Number(a.id)}">Editar</button><button type="button" data-comment-action="delete" data-activity-id="${Number(a.id)}">Excluir</button>` : ""}</div>`
         : "";
     const replyHtml = (replies.get(Number(a.id)) || [])
@@ -942,13 +1039,22 @@
           },
         });
         dialog.close();
+        notify(
+          target === "RESOLVIDA"
+            ? "Issue resolvida. Aguarde a confirmação da resolução."
+            : target === "CANCELADA"
+              ? "Issue cancelada."
+              : "Issue reaberta e a tarefa continua em HOLD.",
+          "success",
+        );
         reload();
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     };
   }
 
+  showFlashToast();
   if ($("#issues-table")) listPage();
   else if ($("#flow-block-detail")) detailPage();
 })();

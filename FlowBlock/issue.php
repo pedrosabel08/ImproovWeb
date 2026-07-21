@@ -16,6 +16,7 @@ $issueId = max(0, (int) ($_GET['id'] ?? 0));
     <title>Flow Block</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="<?= asset_url('../css/styleSidebar.css') ?>">
     <link rel="stylesheet" href="<?= asset_url('style.css') ?>&fb=<?= filemtime(__DIR__ . '/style.css') ?>">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
@@ -82,6 +83,7 @@ $issueId = max(0, (int) ($_GET['id'] ?? 0));
             list: 'index.php'
         };
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="<?= asset_url('app.js') ?>&fb=<?= filemtime(__DIR__ . '/app.js') ?>"></script>
     <script src="<?= asset_url('../script/sidebar.js') ?>"></script>
     <script src="<?= asset_url('../script/controleSessao.js') ?>"></script>

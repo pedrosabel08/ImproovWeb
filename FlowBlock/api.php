@@ -330,14 +330,15 @@ try {
     if ($action === 'detail') {
         $issueId = (int) ($_GET['id'] ?? 0);
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        if (!$issue) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        $canComment = fb_visible($conn, $issue);
         $mentionId = (int) ($_GET['mention_id'] ?? 0);
         if ($mentionId > 0) {
             fb_mark_mentions_read($conn, $issueId, $actorId, $mentionId);
         } elseif ((string) ($_GET['mark_mentions'] ?? '') === '1') {
             fb_mark_mentions_read($conn, $issueId, $actorId);
         }
-        $stmt = $conn->prepare("SELECT a.*, c.nome_colaborador AS autor_nome FROM flow_issue_atividade a LEFT JOIN colaborador c ON c.idcolaborador=a.criado_por_colaborador_id WHERE a.issue_id=? ORDER BY a.criado_em ASC, a.id ASC");
+        $stmt = $conn->prepare("SELECT a.*, c.nome_colaborador AS autor_nome FROM flow_issue_atividade a LEFT JOIN colaborador c ON c.idcolaborador=a.criado_por_colaborador_id WHERE a.issue_id = ? AND a.excluido_em IS NULL ORDER BY a.criado_em ASC, a.id ASC");
         $stmt->bind_param('i', $issueId);
         $stmt->execute();
         $activities = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -361,7 +362,9 @@ try {
         foreach ($activities as &$activity) {
             $activity['metadados'] = $activity['metadados'] ? json_decode($activity['metadados'], true) : null;
             $activity['mencoes'] = $mentionsByActivity[(int) $activity['id']] ?? [];
-            $activity['can_edit'] = $activity['tipo'] === 'COMENTARIO'
+            $activity['can_interact'] = $canComment;
+            $activity['can_edit'] = $canComment
+                && $activity['tipo'] === 'COMENTARIO'
                 && empty($activity['excluido_em'])
                 && (flow_block_is_manager() || (int) $activity['criado_por_colaborador_id'] === $actorId);
         }
@@ -378,6 +381,7 @@ try {
             && in_array($issue['status'], flow_block_active_statuses(), true)
             && strtotime($issue['proxima_cobranca_em']) < time();
         $issue['can_manage'] = flow_block_is_manager();
+        $issue['can_comment'] = $canComment;
         $issue['can_resolve'] = flow_block_can_resolve_issue($issue);
         $issue['can_confirm_resolution'] = flow_block_can_confirm_resolution($issue);
         $issue['task_ready_to_continue'] = flow_block_task_ready_to_continue($conn, (int) $issue['funcao_imagem_id']);

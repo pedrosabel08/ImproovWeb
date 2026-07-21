@@ -1139,3 +1139,42 @@ body {
     padding-left: 23px;
   }
 }
+
+.fb-toastify {
+  align-items: center;
+  border: 0;
+  border-radius: 10px !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+  color: var(--fb-ink) !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.45;
+  max-width: min(390px, calc(100vw - 28px));
+  padding: 13px 38px 13px 14px !important;
+}
+
+.fb-toastify .toast-close {
+  color: var(--fb-ink) !important;
+  opacity: 0.76;
+}
+
+.fb-toastify .toast-close:hover {
+  opacity: 1;
+}
+
+.fb-toastify--success {
+  background: var(--fb-green-dark) !important;
+}
+
+.fb-toastify--error {
+  background: #a33a42 !important;
+}
+
+.fb-toastify--warning {
+  background: #946d1f !important;
+}
+
+.fb-toastify--info {
+  background: #3269ac !important;
+}

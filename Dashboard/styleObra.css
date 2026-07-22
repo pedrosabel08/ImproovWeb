@@ -6725,6 +6725,10 @@ a#mobile_flow_review {
   cursor: pointer;
 }
 
+.notificacao-sino.hidden {
+  display: none;
+}
+
 #icone-sino {
   font-size: 50px;
   color: #f39c12;

@@ -9,14 +9,13 @@ function getUrlBuscarTarefas() {
 }
 
 function ativarSino() {
-  // Ativar sino com animação
   const sino = document.getElementById("icone-sino");
+
   sino.classList.add("ativado");
 
-  // Remover a classe 'ativado' após 2 segundos
   setTimeout(() => {
     sino.classList.remove("ativado");
-  }, 2000); // 2 segundos (2000 milissegundos)
+  }, 2000);
 }
 
 function atualizarContadorTarefas() {
@@ -132,21 +131,26 @@ function buscarTarefas(mostrarAlerta = true) {
     .then((response) => response.json())
     .then((data) => {
       console.debug("buscarTarefas: recebeu dados", data);
+
       const tarefas = data.tarefas || [];
       const notificacoes = data.notificacoes || [];
       const notificacoesModulo = data.notificacoes_modulo || [];
+
+      const notificacaoSino = document.getElementById("notificacao-sino");
       const contadorTarefas = document.getElementById("contador-tarefas");
 
-      if (
-        tarefas.length > 0 ||
-        notificacoes.length > 0 ||
-        notificacoesModulo.length > 0
-      ) {
-        contadorTarefas.textContent =
-          tarefas.length + notificacoes.length + notificacoesModulo.length;
+      const totalNotificacoes =
+        tarefas.length + notificacoes.length + notificacoesModulo.length;
+
+      // Esconde quando o total for 0 e exibe quando for maior que 0
+      notificacaoSino.classList.toggle("hidden", totalNotificacoes === 0);
+
+      contadorTarefas.textContent =
+        totalNotificacoes > 0 ? totalNotificacoes : "";
+
+      if (totalNotificacoes > 0) {
         ativarSino();
 
-        // Contagem por função (considerando filtro por colaborador_id)
         const contagemPorFuncao = {};
         const funcoesPermitidas = filtrarFuncoesPorColaborador(colaborador_id);
 
@@ -158,27 +162,8 @@ function buscarTarefas(mostrarAlerta = true) {
           }
         });
 
-        contagemTarefasGlobal = contagemPorFuncao; // Atualiza global
-
-        const idsPermitidos = [1, 9, 19, 21];
-
-        // if (idsPermitidos.includes(colaborador_id) && mostrarAlerta) {
-        //   let mensagem = "";
-        //   for (const funcao in contagemPorFuncao) {
-        //     mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
-        //   }
-
-        //   const htmlContent = `<div>${mensagem || "<p>Nenhuma tarefa para aprovação.</p>"}</div>`;
-
-        //   Swal.fire({
-        //     title: "Tarefas em aprovação",
-        //     icon: "info",
-        //     html: htmlContent,
-        //     confirmButtonText: "OK",
-        //   });
-        // }
+        contagemTarefasGlobal = contagemPorFuncao;
       } else {
-        contadorTarefas.textContent = "";
         contagemTarefasGlobal = {};
         console.log("Nenhuma tarefa pendente.");
       }
@@ -188,12 +173,19 @@ function buscarTarefas(mostrarAlerta = true) {
           "buscarTarefas: enfileirando notificacoesModulo",
           notificacoesModulo.length,
         );
+
         enfileirarNotificacoesModulo(notificacoesModulo);
       }
 
-      return { tarefas, notificacoes, notificacoesModulo };
+      return {
+        tarefas,
+        notificacoes,
+        notificacoesModulo,
+      };
     })
-    .catch((error) => console.error("Erro ao buscar tarefas:", error));
+    .catch((error) => {
+      console.error("Erro ao buscar tarefas:", error);
+    });
 }
 
 function filtrarFuncoesPorColaborador(id) {

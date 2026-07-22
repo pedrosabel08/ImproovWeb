@@ -1989,7 +1989,7 @@ $conn->close();
         </div>
     </div>
 
-    <div id="notificacao-sino" class="notificacao-sino">
+    <div id="notificacao-sino" class="notificacao-sino hidden">
         <i class="fas fa-bell sino" id="icone-sino"></i>
         <span id="contador-tarefas" class="contador-tarefas">0</span>
     </div>

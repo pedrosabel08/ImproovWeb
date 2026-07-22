@@ -41,6 +41,7 @@ $sql = "SELECT fi.idfuncao_imagem,
         JOIN obra o ON ico.obra_id = o.idobra
         WHERE fi.colaborador_id = ?
           AND fi.status = 'Em andamento'
+          AND fi.prazo < CURDATE()
         ORDER BY fi.prazo ASC, fi.idfuncao_imagem ASC";
 
 $stmt = $conn->prepare($sql);

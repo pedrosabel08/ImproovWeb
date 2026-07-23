@@ -642,12 +642,171 @@ function pendencias_operacionais_item_from_checklist(array $row, string $moduleK
     ];
 }
 
+/**
+ * Fonte única dos cards fotográficos: pendências persistidas no módulo.
+ * A filtragem de obras replica o contexto do sidebar sem consultas por obra.
+ */
+function pendencias_operacionais_append_fotografico(
+    mysqli $conn,
+    array &$module,
+    int $colaboradorId,
+    ?int $obraId = null,
+    bool $bypassPackageScope = false
+): void
+{
+    if (
+        !pendencias_operacionais_table_exists($conn, 'fotografico_pendencia')
+        || !pendencias_operacionais_column_exists($conn, 'fotografico_pendencia', 'responsavel_cobranca_id')
+        || !pendencias_operacionais_column_exists($conn, 'fotografico_pendencia', 'proxima_cobranca_em')
+    ) {
+        return;
+    }
+
+    // O painel da obra já validou o acesso à obra antes de chegar aqui. Nas
+    // outras telas, preservamos a lista pessoal para não transformar o helper
+    // em uma consulta global de planos fotográficos.
+    $assigneeSql = $bypassPackageScope
+        ? '1 = 1'
+        : '(pe.responsavel_id = ? OR pe.responsavel_cobranca_id = ?)';
+
+    $obraFilter = $obraId !== null && $obraId > 0 ? ' AND o.idobra = ' . (int) $obraId : '';
+    $sql = "SELECT pe.id, pe.plano_id, pe.codigo, pe.titulo, pe.detalhes, pe.status,
+                   pe.responsavel_id, pe.responsavel_cobranca_id, pe.criado_em,
+                   pe.proxima_cobranca_em, p.status AS plano_status, p.campanha_numero,
+                   o.idobra AS obra_id, COALESCE(o.nomenclatura, o.nome_obra) AS obra_nome,
+                   r.nome_colaborador AS responsavel_nome,
+                   c.nome_colaborador AS responsavel_cobranca_nome
+              FROM fotografico_pendencia pe
+              JOIN fotografico_plano p ON p.id = pe.plano_id
+              JOIN obra o ON o.idobra = p.obra_id
+         LEFT JOIN colaborador r ON r.idcolaborador = pe.responsavel_id
+         LEFT JOIN colaborador c ON c.idcolaborador = pe.responsavel_cobranca_id
+             WHERE pe.status = 'ABERTA'
+               AND (o.status_obra = 0 OR o.status_obra IS NULL)
+               AND {$assigneeSql}
+               {$obraFilter}
+             ORDER BY (pe.proxima_cobranca_em IS NULL), pe.proxima_cobranca_em, pe.criado_em
+             LIMIT 120";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log('[Pendencias/Fotografico] Falha ao preparar consolidação: ' . $conn->error);
+        return;
+    }
+    if (!$bypassPackageScope) {
+        $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $due = $row['proxima_cobranca_em'] ?: null;
+        $sla = pendencias_operacionais_sla_status($row['criado_em'] ?? null, $due);
+        $stage = in_array((string) $row['codigo'], ['EXECUCAO_FOTOGRAFICA', 'CONFERENCIA_FOTOGRAFICO', 'COMPLEMENTO_MATERIAL'], true)
+            ? 'execution'
+            : 'plan';
+        $actionUrl = 'Fotografico/index.php?plano_id=' . (int) $row['plano_id']
+            . '&tab=' . $stage . '&pendencia_id=' . (int) $row['id'];
+        pendencias_operacionais_add_item($module, [
+            'id' => 'fotografico-' . (int) $row['id'],
+            'source_type' => 'fotografico',
+            'source_id' => (int) $row['id'],
+            'plano_id' => (int) $row['plano_id'],
+            'tipo' => (string) $row['codigo'],
+            'title' => (string) ($row['titulo'] ?: 'Pendência fotográfica'),
+            'subtitle' => (string) ($row['detalhes'] ?: ('Plano fotográfico #' . (int) $row['plano_id'])),
+            'obra_id' => (int) $row['obra_id'],
+            'obra_nome' => (string) $row['obra_nome'],
+            'responsavel_id' => $row['responsavel_id'] !== null ? (int) $row['responsavel_id'] : null,
+            'responsavel_nome' => (string) ($row['responsavel_nome'] ?? 'Não definido'),
+            'responsavel_cobranca_id' => $row['responsavel_cobranca_id'] !== null ? (int) $row['responsavel_cobranca_id'] : null,
+            'responsavel_cobranca_nome' => (string) ($row['responsavel_cobranca_nome'] ?? 'Não definido'),
+            'created_at' => $row['criado_em'] ?? null,
+            'proxima_cobranca_em' => $due,
+            'sla_start_at' => $row['criado_em'] ?? null,
+            'due_at' => $due,
+            'sla_status' => $sla['nivel'],
+            'sla_label' => $sla['label'],
+            'tempo_decorrido_minutos' => $sla['tempo_decorrido_minutos'],
+            'sla_minutos' => $sla['sla_minutos'],
+            'status' => (string) $row['status'],
+            'action_url' => $actionUrl,
+            'url_destino' => $actionUrl,
+            'metadata' => [
+                'plano_status' => (string) $row['plano_status'],
+                'campanha_numero' => (int) $row['campanha_numero'],
+                'etapa' => $stage,
+            ],
+        ]);
+    }
+    $stmt->close();
+}
+
+/** Pendências de aprovação que a Página Principal antes preparava fora do helper. */
+function pendencias_operacionais_flow_review_por_obra(mysqli $conn, int $obraId): array
+{
+    if ($obraId <= 0 || !pendencias_operacionais_table_exists($conn, 'historico_aprovacoes_imagens')) {
+        return [];
+    }
+    $hasSla = pendencias_operacionais_table_exists($conn, 'sla_funcao');
+    $slaSelect = $hasSla ? 'sf.limite_horas' : 'NULL';
+    $slaJoin = $hasSla ? 'LEFT JOIN sla_funcao sf ON sf.funcao_id = fi.funcao_id' : '';
+    $sql = "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status,
+                   f.nome_funcao, ico.imagem_nome, ico.obra_id, o.nomenclatura, o.nome_obra,
+                   c.idcolaborador AS responsavel_id, c.nome_colaborador AS responsavel_nome,
+                   COALESCE(
+                     (SELECT h.data_envio FROM historico_aprovacoes_imagens h WHERE h.funcao_imagem_id = fi.idfuncao_imagem ORDER BY h.data_envio DESC, h.id DESC LIMIT 1),
+                     (SELECT a.criado_em FROM arquivo_log a WHERE a.funcao_imagem_id = fi.idfuncao_imagem AND UPPER(a.tipo) = 'PDF' ORDER BY a.criado_em DESC, a.id DESC LIMIT 1)
+                   ) AS data_postagem_flowreview,
+                   {$slaSelect} AS sla_limite_horas,
+                   CASE WHEN fi.funcao_id = 5 THEN 'Pós-produção'
+                        WHEN fi.status = 'Aguardando Direção' THEN 'Direção'
+                        WHEN fi.funcao_id = 6 THEN 'Revisão'
+                        ELSE 'Aprovação' END AS tipo_pendencia
+              FROM funcao_imagem fi
+              JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+              JOIN obra o ON o.idobra = ico.obra_id
+              JOIN funcao f ON f.idfuncao = fi.funcao_id
+         LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+              {$slaJoin}
+             WHERE ico.obra_id = ?
+               AND fi.status IN ('Em aprovação', 'Aguardando Direção')
+               AND (
+                    EXISTS (SELECT 1 FROM historico_aprovacoes_imagens h WHERE h.funcao_imagem_id = fi.idfuncao_imagem)
+                    OR EXISTS (SELECT 1 FROM arquivo_log a WHERE a.funcao_imagem_id = fi.idfuncao_imagem AND UPPER(a.tipo) = 'PDF')
+               )
+             ORDER BY data_postagem_flowreview ASC, fi.idfuncao_imagem ASC";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log('[Pendencias/FlowReview] Falha ao preparar pendências da obra: ' . $conn->error);
+        return [];
+    }
+    $stmt->bind_param('i', $obraId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    foreach ($rows as &$row) {
+        $hours = is_numeric($row['sla_limite_horas'] ?? null) ? (float) $row['sla_limite_horas'] : 0.0;
+        $postedAt = $row['data_postagem_flowreview'] ?? null;
+        $row['prazo_sla'] = $hours > 0 && $postedAt
+            ? date('Y-m-d H:i:s', strtotime((string) $postedAt . ' +' . $hours . ' hours'))
+            : null;
+        $row['tempo_decorrido_minutos'] = $postedAt ? max(0, (int) floor((time() - strtotime((string) $postedAt)) / 60)) : null;
+    }
+    unset($row);
+    return $rows;
+}
+
 function pendencias_operacionais_fetch(
     mysqli $conn,
     int $colaboradorId,
     int $nivelAcesso,
-    array $pendenciasFlowReview = []
+    array $pendenciasFlowReview = [],
+    array $options = []
 ): array {
+    $obraScopeId = isset($options['obra_id']) ? (int) $options['obra_id'] : 0;
+    $showAllForObra = $obraScopeId > 0 && !empty($options['include_all_for_obra']);
+    // O endpoint da obra já autorizou o acesso. Neste escopo, cada consulta é
+    // limitada à obra solicitada, sem aplicar as filas pessoais da Página Principal.
+    $obraFilter = $obraScopeId > 0 ? ' AND o.idobra = ' . $obraScopeId : '';
     $modules = [
         'flow_review'      => pendencias_operacionais_empty_module('flow_review', 'Flow Review', 'Aprovações e revisões de imagens', 'ri-external-link-line', '#7c3aed'),
         'pre_alteracao'    => pendencias_operacionais_empty_module('pre_alteracao', 'Pré-Alteração', 'Triagens e planejamentos', 'ri-survey-line', '#2563eb'),
@@ -657,7 +816,20 @@ function pendencias_operacionais_fetch(
         'flow_block'       => pendencias_operacionais_empty_module('flow_block', 'Flow Block', 'Cobranças de retorno de impedimentos operacionais', 'ri-forbid-2-line', '#dc2626'),
         'links'            => pendencias_operacionais_empty_module('links', 'Links', 'Links pendentes para a obra', 'ri-links-line', '#0f766e'),
         'cobranca_cliente' => pendencias_operacionais_empty_module('cobranca_cliente', 'Cobrança de Cliente', 'Retornos e cobranças de lotes', 'ri-time-line', '#0891b2'),
+        'fotografico'      => pendencias_operacionais_empty_module('fotografico', 'Fotográfico', 'Planejamento, execução e conferência fotográfica', 'ri-camera-line', '#2563eb'),
     ];
+
+    pendencias_operacionais_append_fotografico(
+        $conn,
+        $modules['fotografico'],
+        $colaboradorId,
+        $obraScopeId ?: null,
+        $showAllForObra
+    );
+
+    if ($obraScopeId > 0 && empty($pendenciasFlowReview)) {
+        $pendenciasFlowReview = pendencias_operacionais_flow_review_por_obra($conn, $obraScopeId);
+    }
 
     foreach ($pendenciasFlowReview as $row) {
         $start = $row['data_postagem_flowreview'] ?? null;
@@ -707,6 +879,15 @@ function pendencias_operacionais_fetch(
     // Uma Issue ativa é uma pendência operacional do responsável. Para Issues
     // abertas a cobrança vem do SLA de primeira tratativa (2h); para pausadas,
     // ela vem do prazo de retorno informado ao pausar.
+    $flowBlockAssigneeFilter = $showAllForObra
+        ? '1 = 1'
+        : "(
+                    (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL AND fi.colaborador_id = ?)
+                    OR (
+                        i.status <> 'RESOLVIDA'
+                        AND (i.responsavel_colaborador_id = ? OR (i.responsavel_colaborador_id IS NULL AND fi.colaborador_id = ?))
+                    )
+              )";
     if (
         pendencias_operacionais_table_exists($conn, 'flow_issue')
         && pendencias_operacionais_table_exists($conn, 'flow_issue_tipo')
@@ -750,19 +931,16 @@ function pendencias_operacionais_fetch(
                     OR (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL)
               )
               AND (i.proxima_cobranca_em IS NOT NULL OR (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL))
-              AND (
-                    (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL AND fi.colaborador_id = ?)
-                    OR (
-                        i.status <> 'RESOLVIDA'
-                        AND (i.responsavel_colaborador_id = ? OR (i.responsavel_colaborador_id IS NULL AND fi.colaborador_id = ?))
-                    )
-              )
+              AND {$flowBlockAssigneeFilter}
               AND (o.status_obra = 0 OR o.status_obra IS NULL)
+              {$obraFilter}
             ORDER BY i.proxima_cobranca_em ASC, i.id ASC
             LIMIT 80";
         $stmtFlowBlock = $conn->prepare($sqlFlowBlock);
         if ($stmtFlowBlock) {
-            $stmtFlowBlock->bind_param('iii', $colaboradorId, $colaboradorId, $colaboradorId);
+            if (!$showAllForObra) {
+                $stmtFlowBlock->bind_param('iii', $colaboradorId, $colaboradorId, $colaboradorId);
+            }
             $stmtFlowBlock->execute();
             $resultFlowBlock = $stmtFlowBlock->get_result();
             while ($row = $resultFlowBlock->fetch_assoc()) {
@@ -773,9 +951,9 @@ function pendencias_operacionais_fetch(
                 $isPaused = ($row['status'] ?? '') === 'PAUSADA';
                 $subtitle = trim(
                     ($awaitingConfirmation ? 'Issue resolvida · Confirmar resposta' : (string) ($row['tipo_nome'] ?? 'Impedimento'))
-                    . ' · '
-                    . (string) ($row['nome_funcao'] ?? '')
-                    . ($isPaused && !empty($row['pausa_motivo']) ? ' · Pausada: ' . $row['pausa_motivo'] : '')
+                        . ' · '
+                        . (string) ($row['nome_funcao'] ?? '')
+                        . ($isPaused && !empty($row['pausa_motivo']) ? ' · Pausada: ' . $row['pausa_motivo'] : '')
                 );
                 pendencias_operacionais_add_item($modules['flow_block'], [
                     'id' => 'flow-block-' . (int) $row['id'],
@@ -812,7 +990,7 @@ function pendencias_operacionais_fetch(
     }
 
     if (
-        pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID, PENDENCIAS_ANDRE_ID])
+        ($showAllForObra || pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID, PENDENCIAS_ANDRE_ID]))
         && pendencias_operacionais_table_exists($conn, 'pre_alt_lote')
     ) {
         $sql = "SELECT
@@ -837,6 +1015,7 @@ function pendencias_operacionais_fetch(
                 WHERE o.status_obra = 0
                   AND l.status NOT IN ('PLANEJADO', 'CANCELADO')
                   AND COALESCE(l.responsavel_id, l.created_by) IS NOT NULL
+                  {$obraFilter}
                 GROUP BY l.id, l.obra_id, l.status, l.prazo, l.data_finalizacao_cliente, l.created_at, l.updated_at, l.responsavel_id, l.created_by, o.nomenclatura, c.nome_colaborador, si.nome_status
                 ORDER BY l.prazo IS NULL ASC, l.prazo ASC, l.created_at ASC
                 LIMIT 80";
@@ -880,7 +1059,7 @@ function pendencias_operacionais_fetch(
     }
 
     if (pendencias_operacionais_table_exists($conn, 'render_alta')) {
-        $whereUser = in_array((int) $colaboradorId, [
+        $whereUser = $showAllForObra || in_array((int) $colaboradorId, [
             (int) PENDENCIAS_PEDRO_ID,
             (int) PENDENCIAS_ANDRE_ID
         ], true)
@@ -906,6 +1085,7 @@ function pendencias_operacionais_fetch(
                   AND r.responsavel_id IS NOT NULL
                   AND (o.status_obra = 0 OR o.status_obra IS NULL)
                   AND {$whereUser}
+                  {$obraFilter}
                 ORDER BY r.data ASC
                 LIMIT 80";
         if ($res = $conn->query($sql)) {
@@ -940,12 +1120,15 @@ function pendencias_operacionais_fetch(
 
     pendencias_operacionais_ensure_schema($conn);
 
-    if (pendencias_operacionais_user_in($colaboradorId, [
+    if ($showAllForObra || pendencias_operacionais_user_in($colaboradorId, [
         PENDENCIAS_PEDRO_ID,
         PENDENCIAS_ANDRE_ID,
         PENDENCIAS_IMAGEM_RESPONSAVEL_ID,
     ])) {
         foreach (pendencias_links_obra_listar_abertas($conn) as $link) {
+            if ($obraScopeId > 0 && (int) ($link['obra_id'] ?? 0) !== $obraScopeId) {
+                continue;
+            }
             pendencias_operacionais_add_item($modules['links'], [
                 'id' => 'link-' . (int) $link['id'],
                 'source_type' => 'links',
@@ -975,7 +1158,7 @@ function pendencias_operacionais_fetch(
         }
     }
 
-    if (pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
+    if ($showAllForObra || pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
         $sqlCompletedProjects = "SELECT
                     o.idobra,
                     MAX(ae.colaborador_id) AS responsavel_id
@@ -988,6 +1171,7 @@ function pendencias_operacionais_fetch(
                 WHERE o.status_obra = 0
                   AND ae.tipo = 'ONBOARDING_COMPLETED'
                   AND co.id IS NULL
+                  {$obraFilter}
                 GROUP BY o.idobra
                 LIMIT 50";
         if ($resCompleted = $conn->query($sqlCompletedProjects)) {
@@ -1010,6 +1194,7 @@ function pendencias_operacionais_fetch(
                 WHERE co.module_key = 'projeto'
                   AND co.status = 'aberto'
                   AND co.responsavel_id IS NOT NULL
+                  {$obraFilter}
                 ORDER BY co.due_at ASC
                 LIMIT 80";
         if ($res = $conn->query($sql)) {
@@ -1031,7 +1216,7 @@ function pendencias_operacionais_fetch(
         }
     }
 
-    if (pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
+    if ($showAllForObra || pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
         $sqlQueue = "SELECT
                         co.*,
                         ico.imagem_nome,
@@ -1047,6 +1232,7 @@ function pendencias_operacionais_fetch(
                       AND o.status_obra = 0
                       AND ico.substatus_id = 2
                       AND ico.status_id IN (1, 2)
+                      {$obraFilter}
                       AND EXISTS (
                           SELECT 1
                             FROM checklist_operacional_item coi
@@ -1079,10 +1265,10 @@ function pendencias_operacionais_fetch(
     }
 
     if (
-        in_array((int) $colaboradorId, [
+        ($showAllForObra || in_array((int) $colaboradorId, [
             (int) PENDENCIAS_PEDRO_ID,
             (int) PENDENCIAS_ANDRE_ID
-        ], true)
+        ], true))
         && pendencias_operacionais_table_exists($conn, 'cobranca_review')
     ) {
         $sql = "SELECT
@@ -1110,6 +1296,7 @@ function pendencias_operacionais_fetch(
                   AND cr.resolved_at IS NULL
                   AND rb.status NOT IN ('RESOLVED', 'IGNORED')
                   AND o.status_obra = 0
+                  {$obraFilter}
                 GROUP BY cr.id, cr.review_batch_id, cr.due_at, cr.status, cr.overdue_days, cr.notification_count, cr.last_notification_at, cr.snooze_until, cr.created_at, rb.entrega_id, e.obra_id, o.nomenclatura, s.nome_status
                 ORDER BY cr.overdue_days DESC, cr.due_at ASC
                 LIMIT 80";

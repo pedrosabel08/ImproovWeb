@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-const FOTOGRAFICO_RESPONSAVEL_PLANO_ID = 2;
+require_once __DIR__ . '/fotografico_slack.php';
+
+const FOTOGRAFICO_RESPONSAVEL_PLANO_ID = 9;
+const FOTOGRAFICO_RESPONSAVEL_ACOMPANHAMENTO_ID = 21;
 const FOTOGRAFICO_TODO_SUBSTATUS_ID = 2;
 const FOTOGRAFICO_HOLD_SUBSTATUS_ID = 7;
 
@@ -149,91 +152,203 @@ function fotografico_notificar_colaborador(
     string $mensagem,
     string $tipo = 'info'
 ): void {
+    // O Fotográfico não usa mais as notificações internas. Cobranças são
+    // entregues pelo worker de pendências em DM no Slack, depois do commit.
+    error_log(sprintf(
+        '[Fotografico] Evento de notificação convertido em cobrança Slack: plano=%d colaborador=%d chave=%s',
+        $planoId,
+        $colaboradorId,
+        $chave
+    ));
+    // A notificacao e enfileirada durante a transacao. Quem chamou o servico
+    // deve despacha-la somente depois do commit: falha no Slack nunca desfaz
+    // a criacao do plano nem aumenta o tempo do lock do banco.
+    $recipients = array_values(array_unique(array_filter([
+        $colaboradorId,
+        FOTOGRAFICO_RESPONSAVEL_ACOMPANHAMENTO_ID,
+    ], static fn(int $id): bool => $id > 0)));
+    foreach ($recipients as $recipientId) {
+        $GLOBALS['fotografico_slack_queue'][] = [
+            'key' => $planoId . ':' . $chave . ':' . $recipientId,
+            'plano_id' => $planoId,
+            'recipient_id' => $recipientId,
+            'titulo' => $titulo,
+            'mensagem' => $mensagem,
+            'tipo' => $tipo,
+        ];
+    }
+}
+
+/**
+ * Entrega em best-effort os eventos que ja foram confirmados pelo banco.
+ * Esta funcao nunca lanca excecao para a rota HTTP chamadora.
+ */
+function fotografico_enviar_notificacoes_pendentes(mysqli $conn): void
+{
+    $queue = (array) ($GLOBALS['fotografico_slack_queue'] ?? []);
+    unset($GLOBALS['fotografico_slack_queue']);
+    $delivered = [];
+    foreach ($queue as $notification) {
+        $key = (string) ($notification['key'] ?? '');
+        if ($key === '' || isset($delivered[$key])) {
+            continue;
+        }
+        $delivered[$key] = true;
+        try {
+            $planId = (int) ($notification['plano_id'] ?? 0);
+            $message = '*' . (string) ($notification['titulo'] ?? 'Atualizacao do fotografico') . "*\n"
+                . (string) ($notification['mensagem'] ?? '') . "\n"
+                . 'Abrir plano: https://improov/ImproovWeb/Fotografico/index.php?plano_id=' . $planId;
+            fotografico_slack_enviar_dm($conn, (int) ($notification['recipient_id'] ?? 0), $message);
+        } catch (Throwable $error) {
+            error_log('[Fotografico/Slack] falha apos commit: ' . $error->getMessage());
+        }
+    }
+}
+
+function fotografico_column_exists(mysqli $conn, string $table, string $column): bool
+{
+    static $cache = [];
+    $key = spl_object_id($conn) . ':' . $table . ':' . $column;
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+    $stmt = $conn->prepare(
+        'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1'
+    );
+    if (!$stmt) {
+        return $cache[$key] = false;
+    }
+    $stmt->bind_param('ss', $table, $column);
+    $stmt->execute();
+    $cache[$key] = (bool) $stmt->get_result()->fetch_row();
+    $stmt->close();
+    return $cache[$key];
+}
+
+function fotografico_sync_stage_pending(mysqli $conn, int $planoId, ?int $actorId = null): void
+{
+    if (!fotografico_column_exists($conn, 'fotografico_pendencia', 'responsavel_cobranca_id')) {
+        return;
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT p.status, p.responsavel_plano_id, p.responsavel_execucao_id,
+                MIN(CASE WHEN s.completed_at IS NULL AND s.tipo = 'CRIACAO' THEN s.due_at_effective END) AS prazo_criacao,
+                MIN(CASE WHEN s.completed_at IS NULL AND s.tipo = 'EXECUCAO' THEN s.due_at_effective END) AS prazo_execucao
+           FROM fotografico_plano p
+      LEFT JOIN fotografico_sla s ON s.plano_id = p.id
+          WHERE p.id = ?
+          GROUP BY p.id, p.status, p.responsavel_plano_id, p.responsavel_execucao_id"
+    );
+    if (!$stmt) {
+        return;
+    }
+    $stmt->bind_param('i', $planoId);
+    $stmt->execute();
+    $plan = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$plan) {
+        return;
+    }
+
+    $status = (string) $plan['status'];
+
+    // O planejamento nasce sempre para André. A antiga validação de "ativo"
+    // produzia uma segunda pendência de contingência sem prazo e deixava a
+    // pendência principal sem responsável, apesar de o fluxo ter dono fixo.
     if (
-        !fotografico_table_exists($conn, 'notificacoes')
-        || !fotografico_table_exists($conn, 'notificacoes_destinatarios')
-        || !fotografico_table_exists($conn, 'fotografico_notificacao_envio')
+        in_array($status, ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)
+        && $plan['responsavel_plano_id'] === null
     ) {
+        $defaultPlannerId = FOTOGRAFICO_RESPONSAVEL_PLANO_ID;
+        $assign = $conn->prepare('UPDATE fotografico_plano SET responsavel_plano_id = ? WHERE id = ? AND responsavel_plano_id IS NULL');
+        if ($assign) {
+            $assign->bind_param('ii', $defaultPlannerId, $planoId);
+            $assign->execute();
+            $assign->close();
+            $plan['responsavel_plano_id'] = $defaultPlannerId;
+        }
+    }
+
+    // Corrige planos criados pela regra anterior. Esta não é uma pendência do
+    // processo: há uma única pendência de planejamento até a publicação.
+    $cleanup = $conn->prepare("UPDATE fotografico_pendencia SET status = 'RESOLVIDA', resolvido_por = ?, resolvido_em = NOW() WHERE plano_id = ? AND codigo = 'ATRIBUICAO_RESPONSAVEL' AND status = 'ABERTA'");
+    if ($cleanup) {
+        $cleanup->bind_param('ii', $actorId, $planoId);
+        $cleanup->execute();
+        $cleanup->close();
+    }
+
+    $code = null;
+    $title = null;
+    $details = null;
+    $responsavelId = null;
+    $cobrancaId = null;
+    $dueAt = null;
+    if (in_array($status, ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
+        $code = 'PLANEJAMENTO_FOTOGRAFICO';
+        $title = 'Planejamento fotográfico pendente';
+        $details = 'O plano precisa ser concluído e publicado para iniciar a execução.';
+        $responsavelId = $plan['responsavel_plano_id'] !== null ? (int) $plan['responsavel_plano_id'] : null;
+        // Uma única linha é entregue ao responsável (André) e ao
+        // acompanhante (Pedro), que são os dois destinatários do Kanban.
+        $cobrancaId = FOTOGRAFICO_RESPONSAVEL_ACOMPANHAMENTO_ID;
+        $dueAt = $plan['prazo_criacao'];
+    } elseif ($status === 'PRONTO_EXECUCAO') {
+        $code = 'EXECUCAO_FOTOGRAFICA';
+        $title = 'Execução fotográfica pendente';
+        $details = 'Registre a tentativa e o link do material no Drive.';
+        $responsavelId = $plan['responsavel_execucao_id'] !== null ? (int) $plan['responsavel_execucao_id'] : null;
+        $cobrancaId = $plan['responsavel_plano_id'] !== null ? (int) $plan['responsavel_plano_id'] : $responsavelId;
+        $dueAt = $plan['prazo_execucao'];
+    } elseif ($status === 'EM_CONFERENCIA') {
+        $code = 'CONFERENCIA_FOTOGRAFICO';
+        $title = 'Conferência fotográfica pendente';
+        $details = 'O material enviado aguarda a decisão global de conferência.';
+        $responsavelId = $plan['responsavel_plano_id'] !== null ? (int) $plan['responsavel_plano_id'] : null;
+        $cobrancaId = $responsavelId;
+        $dueAt = $plan['prazo_execucao'];
+    }
+
+    $stageCodes = "'PLANEJAMENTO_FOTOGRAFICO','EXECUCAO_FOTOGRAFICA','CONFERENCIA_FOTOGRAFICO'";
+    if ($code === null) {
+        $stmt = $conn->prepare("UPDATE fotografico_pendencia SET status = 'RESOLVIDA', resolvido_por = ?, resolvido_em = NOW() WHERE plano_id = ? AND status = 'ABERTA' AND codigo IN ($stageCodes)");
+        if ($stmt) {
+            $stmt->bind_param('ii', $actorId, $planoId);
+            $stmt->execute();
+            $stmt->close();
+        }
         return;
     }
 
-    $stmt = $conn->prepare(
-        'SELECT 1 FROM fotografico_notificacao_envio WHERE plano_id = ? AND chave = ? LIMIT 1'
-    );
-    if (!$stmt) {
-        return;
-    }
-    $stmt->bind_param('is', $planoId, $chave);
-    $stmt->execute();
-    $alreadySent = (bool) $stmt->get_result()->fetch_row();
-    $stmt->close();
-    if ($alreadySent) {
-        return;
-    }
-
-    $stmt = $conn->prepare('SELECT idusuario FROM usuario WHERE idcolaborador = ? AND ativo = 1 LIMIT 1');
-    if (!$stmt) {
-        return;
-    }
-    $stmt->bind_param('i', $colaboradorId);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    $usuarioId = (int) ($row['idusuario'] ?? 0);
-    if ($usuarioId <= 0) {
-        return;
-    }
-
-    $ctaUrl = '/ImproovWeb/Fotografico/index.php?plano_id=' . $planoId;
-    $payload = fotografico_json_encode(['modulo' => 'fotografico', 'plano_id' => $planoId]);
-    $criadoPor = fotografico_user_id();
-    $canal = 'card';
-    $segmentacao = 'pessoa';
-    $ctaLabel = 'Abrir plano';
-    $stmt = $conn->prepare(
-        "INSERT INTO notificacoes
-            (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em,
-             fixa, fechavel, exige_confirmacao, cta_label, cta_url, payload_json, criado_por)
-         VALUES (?, ?, ?, ?, ?, 10, 1, NOW(), 0, 1, 0, ?, ?, ?, ?)"
-    );
-    if (!$stmt) {
-        error_log('[Fotografico] Notificacao indisponivel: ' . $conn->error);
-        return;
-    }
-    $stmt->bind_param(
-        'ssssssssi',
-        $titulo,
-        $mensagem,
-        $tipo,
-        $canal,
-        $segmentacao,
-        $ctaLabel,
-        $ctaUrl,
-        $payload,
-        $criadoPor
-    );
-    if (!$stmt->execute()) {
-        error_log('[Fotografico] Falha ao criar notificacao: ' . $stmt->error);
-        $stmt->close();
-        return;
-    }
-    $notificacaoId = (int) $conn->insert_id;
-    $stmt->close();
-
-    $stmt = $conn->prepare(
-        'INSERT INTO notificacoes_destinatarios (notificacao_id, usuario_id) VALUES (?, ?)'
-    );
+    $stmt = $conn->prepare("UPDATE fotografico_pendencia SET status = 'RESOLVIDA', resolvido_por = ?, resolvido_em = NOW() WHERE plano_id = ? AND status = 'ABERTA' AND codigo IN ($stageCodes) AND codigo <> ?");
     if ($stmt) {
-        $stmt->bind_param('ii', $notificacaoId, $usuarioId);
+        $stmt->bind_param('iis', $actorId, $planoId, $code);
         $stmt->execute();
         $stmt->close();
     }
-
-    $stmt = $conn->prepare(
-        'INSERT IGNORE INTO fotografico_notificacao_envio (plano_id, chave, notificacao_id) VALUES (?, ?, ?)'
-    );
+    $stmt = $conn->prepare("SELECT id FROM fotografico_pendencia WHERE plano_id = ? AND codigo = ? AND status = 'ABERTA' LIMIT 1");
+    if (!$stmt) {
+        return;
+    }
+    $stmt->bind_param('is', $planoId, $code);
+    $stmt->execute();
+    $current = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($current) {
+        $id = (int) $current['id'];
+        $stmt = $conn->prepare('UPDATE fotografico_pendencia SET titulo = ?, detalhes = ?, responsavel_id = ?, responsavel_cobranca_id = ?, proxima_cobranca_em = ? WHERE id = ?');
+        if ($stmt) {
+            $stmt->bind_param('ssiisi', $title, $details, $responsavelId, $cobrancaId, $dueAt, $id);
+            $stmt->execute();
+            $stmt->close();
+        }
+        return;
+    }
+    $stmt = $conn->prepare("INSERT INTO fotografico_pendencia (plano_id, codigo, titulo, detalhes, status, responsavel_id, responsavel_cobranca_id, criado_por, proxima_cobranca_em) VALUES (?, ?, ?, ?, 'ABERTA', ?, ?, ?, ?)");
     if ($stmt) {
-        $stmt->bind_param('isi', $planoId, $chave, $notificacaoId);
+        $stmt->bind_param('isssiiis', $planoId, $code, $title, $details, $responsavelId, $cobrancaId, $actorId, $dueAt);
         $stmt->execute();
         $stmt->close();
     }
@@ -297,9 +412,7 @@ function fotografico_criar_plano_automatico(
     $nextCampaign = (int) ($stmt->get_result()->fetch_assoc()['next_number'] ?? 1);
     $stmt->close();
 
-    $plannerId = fotografico_colaborador_ativo($conn, FOTOGRAFICO_RESPONSAVEL_PLANO_ID)
-        ? FOTOGRAFICO_RESPONSAVEL_PLANO_ID
-        : null;
+    $plannerId = FOTOGRAFICO_RESPONSAVEL_PLANO_ID;
     $status = 'PLANO_A_FAZER';
     $origin = 'AUTOMATICO';
     $stmt = $conn->prepare(
@@ -393,27 +506,16 @@ function fotografico_criar_plano_automatico(
         ['imagem_gatilho_id' => $imagemId, 'obra_id' => $obraId, 'versao_id' => $versaoId]
     );
 
-    if ($plannerId === null) {
-        $title = 'Responsavel pelo plano indisponivel';
-        $details = 'O colaborador configurado para o planejamento nao esta ativo. Atribua um responsavel.';
-        $stmt = $conn->prepare(
-            "INSERT INTO fotografico_pendencia
-                (plano_id, codigo, titulo, detalhes, status, criado_por)
-             VALUES (?, 'ATRIBUICAO_RESPONSAVEL', ?, ?, 'ABERTA', ?)"
-        );
-        $stmt->bind_param('issi', $planoId, $title, $details, $atorId);
-        $stmt->execute();
-        $stmt->close();
-    } else {
-        fotografico_notificar_colaborador(
-            $conn,
-            $planoId,
-            $plannerId,
-            'PLANO_CRIADO',
-            'Novo plano fotografico',
-            'Uma fachada entrou em TO-DO. O plano fotografico foi criado e precisa ser elaborado.'
-        );
-    }
+    fotografico_notificar_colaborador(
+        $conn,
+        $planoId,
+        $plannerId,
+        'PLANO_CRIADO',
+        'Novo plano fotografico',
+        'Uma fachada entrou em TO-DO. O plano fotografico foi criado e precisa ser elaborado.'
+    );
+
+    fotografico_sync_stage_pending($conn, $planoId, $atorId);
 
     return $planoId;
 }
@@ -561,9 +663,10 @@ function fotografico_open_revision_issue(
         $details = 'A imagem-gatilho saiu de TO-DO. Confirme se o plano precisa de uma nova versao.';
         $stmt = $conn->prepare(
             "INSERT INTO fotografico_pendencia
-                (plano_id, codigo, titulo, detalhes, status, responsavel_id, criado_por)
-             SELECT id, 'FACHADA_REVISAO', ?, ?, 'ABERTA', responsavel_plano_id, ?
-               FROM fotografico_plano WHERE id = ?"
+                (plano_id, codigo, titulo, detalhes, status, responsavel_id, responsavel_cobranca_id, criado_por, proxima_cobranca_em)
+             SELECT p.id, 'FACHADA_REVISAO', ?, ?, 'ABERTA', p.responsavel_plano_id, p.responsavel_plano_id, ?,
+                    (SELECT MIN(s.due_at_effective) FROM fotografico_sla s WHERE s.plano_id = p.id AND s.tipo = 'CRIACAO' AND s.completed_at IS NULL)
+               FROM fotografico_plano p WHERE p.id = ?"
         );
         $stmt->bind_param('ssii', $title, $details, $atorId, $planoId);
         $stmt->execute();
@@ -647,12 +750,7 @@ function fotografico_start_execution_sla(mysqli $conn, int $planoId, DateTimeImm
             (plano_id, tipo, started_at, due_at_original, due_at_effective)
          VALUES (?, 'EXECUCAO', ?, ?, ?)
          ON DUPLICATE KEY UPDATE
-            started_at = VALUES(started_at),
-            due_at_original = VALUES(due_at_original),
-            due_at_effective = VALUES(due_at_effective),
-            completed_at = NULL,
-            total_paused_seconds = 0,
-            resultado = 'EM_ANDAMENTO'"
+            id = id"
     );
     $stmt->bind_param('isss', $planoId, $startedSql, $dueSql, $dueSql);
     if (!$stmt->execute()) {

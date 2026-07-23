@@ -7,12 +7,12 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/fotografico_service.php';
 require_once __DIR__ . '/ws_notify.php';
+require_once __DIR__ . '/performance.php';
+
+$GLOBALS['foto_perf'] = new FotoPerf();
 
 function foto_response(bool $success, $data = null, ?string $code = null, ?string $message = null, int $status = 200): never
 {
-    http_response_code($status);
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-store');
     $payload = ['success' => $success];
     if ($success) {
         $payload['data'] = $data;
@@ -22,7 +22,16 @@ function foto_response(bool $success, $data = null, ?string $code = null, ?strin
             $payload['error']['details'] = $data;
         }
     }
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $perf = $GLOBALS['foto_perf'] ?? null;
+    if ($perf instanceof FotoPerf && $perf->action !== '') {
+        $perf->setResponseSize(strlen((string) $encoded));
+        $perf->finish();
+    }
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo $encoded;
     exit;
 }
 
@@ -192,33 +201,30 @@ function foto_get_detail(mysqli $conn, int $planoId): array
         $stmt->execute();
         $positions = foto_fetch_all($stmt->get_result());
         $stmt->close();
+        $capturesByPosition = [];
+        $stmt = $conn->prepare(
+            "SELECT c.*, pe.codigo AS periodo_codigo, pe.nome AS periodo_nome,
+                    GROUP_CONCAT(ci.plano_imagem_id ORDER BY ci.plano_imagem_id) AS plano_imagem_ids_csv
+               FROM fotografico_captura c
+               JOIN fotografico_posicao p ON p.id = c.posicao_id
+               JOIN fotografico_periodo pe ON pe.id = c.periodo_id
+          LEFT JOIN fotografico_captura_imagem ci ON ci.captura_id = c.id
+              WHERE p.versao_id = ?
+              GROUP BY c.id
+              ORDER BY c.posicao_id, c.prioridade, c.id"
+        );
+        $stmt->bind_param('i', $versionId);
+        $stmt->execute();
+        foreach (foto_fetch_all($stmt->get_result()) as $capture) {
+            $capture['plano_imagem_ids'] = ($capture['plano_imagem_ids_csv'] ?? '') === ''
+                ? []
+                : array_map('intval', explode(',', (string) $capture['plano_imagem_ids_csv']));
+            unset($capture['plano_imagem_ids_csv']);
+            $capturesByPosition[(int) $capture['posicao_id']][] = $capture;
+        }
+        $stmt->close();
         foreach ($positions as &$position) {
-            $positionId = (int) $position['id'];
-            $stmt = $conn->prepare(
-                "SELECT c.*, pe.codigo AS periodo_codigo, pe.nome AS periodo_nome
-                   FROM fotografico_captura c
-                   JOIN fotografico_periodo pe ON pe.id = c.periodo_id
-                  WHERE c.posicao_id = ? ORDER BY c.prioridade, c.id"
-            );
-            $stmt->bind_param('i', $positionId);
-            $stmt->execute();
-            $captures = foto_fetch_all($stmt->get_result());
-            $stmt->close();
-            foreach ($captures as &$capture) {
-                $captureId = (int) $capture['id'];
-                $stmt = $conn->prepare(
-                    'SELECT plano_imagem_id FROM fotografico_captura_imagem WHERE captura_id = ? ORDER BY plano_imagem_id'
-                );
-                $stmt->bind_param('i', $captureId);
-                $stmt->execute();
-                $capture['plano_imagem_ids'] = array_map(
-                    'intval',
-                    array_column(foto_fetch_all($stmt->get_result()), 'plano_imagem_id')
-                );
-                $stmt->close();
-            }
-            unset($capture);
-            $position['capturas'] = $captures;
+            $position['capturas'] = $capturesByPosition[(int) $position['id']] ?? [];
         }
         unset($position);
         $detail['posicoes'] = $positions;
@@ -228,7 +234,7 @@ function foto_get_detail(mysqli $conn, int $planoId): array
         [
             'sla' => 'SELECT * FROM fotografico_sla WHERE plano_id = ? ORDER BY id',
             'holds' => 'SELECT h.*, c.nome_colaborador AS responsavel_nome FROM fotografico_hold h LEFT JOIN colaborador c ON c.idcolaborador = h.responsavel_id WHERE h.plano_id = ? ORDER BY h.id DESC',
-            'pendencias' => 'SELECT pe.*, c.nome_colaborador AS responsavel_nome FROM fotografico_pendencia pe LEFT JOIN colaborador c ON c.idcolaborador = pe.responsavel_id WHERE pe.plano_id = ? ORDER BY pe.id DESC',
+            'pendencias' => 'SELECT pe.*, c.nome_colaborador AS responsavel_nome, cc.nome_colaborador AS responsavel_cobranca_nome FROM fotografico_pendencia pe LEFT JOIN colaborador c ON c.idcolaborador = pe.responsavel_id LEFT JOIN colaborador cc ON cc.idcolaborador = pe.responsavel_cobranca_id WHERE pe.plano_id = ? ORDER BY pe.id DESC',
             'execucoes' => "SELECT e.*, c.nome_colaborador AS responsavel_nome, ep.nome_colaborador AS enviado_por_nome,
                              ec.decisao AS decisao_conferencia, ec.consideracao, ec.conferido_em AS conferencia_em,
                              cc.nome_colaborador AS conferente_nome
@@ -252,13 +258,18 @@ function foto_get_detail(mysqli $conn, int $planoId): array
         $stmt->close();
     }
 
+    $executionIds = array_values(array_filter(array_map(static fn(array $execution): int => (int) $execution['id'], $detail['execucoes'])));
+    $attachmentsByExecution = [];
+    if ($executionIds !== []) {
+        $ids = implode(',', array_map('intval', $executionIds));
+        $result = $conn->query("SELECT * FROM fotografico_anexo WHERE entidade_tipo = 'EXECUCAO' AND entidade_id IN ($ids) AND arquivado_em IS NULL ORDER BY id DESC");
+        while ($result && ($attachment = $result->fetch_assoc())) {
+            $attachmentsByExecution[(int) $attachment['entidade_id']][] = $attachment;
+        }
+        $result?->free();
+    }
     foreach ($detail['execucoes'] as &$execution) {
-        $executionId = (int) $execution['id'];
-        $stmt = $conn->prepare('SELECT * FROM fotografico_anexo WHERE entidade_tipo = \'EXECUCAO\' AND entidade_id = ? AND arquivado_em IS NULL ORDER BY id DESC');
-        $stmt->bind_param('i', $executionId);
-        $stmt->execute();
-        $execution['anexos'] = foto_fetch_all($stmt->get_result());
-        $stmt->close();
+        $execution['anexos'] = $attachmentsByExecution[(int) $execution['id']] ?? [];
     }
     unset($execution);
 
@@ -268,7 +279,10 @@ function foto_get_detail(mysqli $conn, int $planoId): array
     ];
 
     // Diagnóstico sempre calculado no servidor: a interface nunca deduz prontidão sozinha.
-    $detail['prontidao'] = foto_verificar_prontidao_execucao($conn, $planoId);
+    // Fonte unica do checklist; a interface apenas apresenta este diagnostico.
+    $detail['checklist'] = foto_calcular_checklist_plano($conn, $planoId);
+    // Compatibilidade com os consumidores atuais da Visao geral.
+    $detail['prontidao'] = $detail['checklist'];
 
     $detail['permissions'] = [
         'manage' => foto_manager($conn),
@@ -278,6 +292,99 @@ function foto_get_detail(mysqli $conn, int $planoId): array
     ];
     $detail['csrf_token'] = foto_csrf_token();
     return $detail;
+}
+
+function foto_mutation_summary(mysqli $conn, int $planId, ?array $readiness = null): array
+{
+    $stmt = $conn->prepare('SELECT p.id, p.status, p.lock_version, p.responsavel_execucao_id, p.data_planejada, o.local, o.maps_url FROM fotografico_plano p JOIN obra o ON o.idobra = p.obra_id WHERE p.id = ?');
+    $stmt->bind_param('i', $planId);
+    $stmt->execute();
+    $plan = $stmt->get_result()->fetch_assoc() ?: [];
+    $stmt->close();
+    $stmt = $conn->prepare("SELECT v.id, v.status FROM fotografico_plano_versao v WHERE v.plano_id = ? AND v.status IN ('RASCUNHO','PUBLICADA') ORDER BY CASE v.status WHEN 'RASCUNHO' THEN 0 ELSE 1 END, v.numero DESC LIMIT 1");
+    $stmt->bind_param('i', $planId);
+    $stmt->execute();
+    $version = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $versionId = (int) ($version['id'] ?? 0);
+    $positions = 0;
+    $unlinkedImages = 0;
+    if ($versionId > 0) {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS total FROM fotografico_posicao WHERE versao_id = ?');
+        $stmt->bind_param('i', $versionId);
+        $stmt->execute();
+        $positions = (int) ($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $stmt->close();
+        $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM fotografico_plano_imagem pi WHERE pi.versao_id = ? AND pi.decisao = 'INCLUIDA' AND NOT EXISTS (SELECT 1 FROM fotografico_captura_imagem ci WHERE ci.plano_imagem_id = pi.id)");
+        $stmt->bind_param('i', $versionId);
+        $stmt->execute();
+        $unlinkedImages = (int) ($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $stmt->close();
+    }
+    return [
+        'id' => (int) ($plan['id'] ?? $planId),
+        'status' => $plan['status'] ?? null,
+        'lock_version' => (int) ($plan['lock_version'] ?? 0),
+        'responsavel_execucao_id' => $plan['responsavel_execucao_id'] !== null ? (int) $plan['responsavel_execucao_id'] : null,
+        'data_planejada' => $plan['data_planejada'] ?? null,
+        'local' => $plan['local'] ?? null,
+        'maps_url' => $plan['maps_url'] ?? null,
+        'versao_id' => $versionId ?: null,
+        'versao_status' => $version['status'] ?? null,
+        'resumo' => [
+            'posicoes' => $positions,
+            'imagens_sem_posicao' => $unlinkedImages,
+            'prontidao' => $readiness,
+        ],
+    ];
+}
+
+function foto_mutation_pin(mysqli $conn, int $pinId): ?array
+{
+    if ($pinId <= 0) return null;
+    $stmt = $conn->prepare('SELECT * FROM fotografico_posicao WHERE id = ?');
+    $stmt->bind_param('i', $pinId);
+    $stmt->execute();
+    $pin = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$pin) return null;
+    $stmt = $conn->prepare("SELECT c.*, pe.codigo AS periodo_codigo, pe.nome AS periodo_nome, GROUP_CONCAT(ci.plano_imagem_id ORDER BY ci.plano_imagem_id) AS plano_imagem_ids_csv FROM fotografico_captura c JOIN fotografico_periodo pe ON pe.id = c.periodo_id LEFT JOIN fotografico_captura_imagem ci ON ci.captura_id = c.id WHERE c.posicao_id = ? GROUP BY c.id ORDER BY c.prioridade, c.id");
+    $stmt->bind_param('i', $pinId);
+    $stmt->execute();
+    $pin['capturas'] = [];
+    foreach (foto_fetch_all($stmt->get_result()) as $capture) {
+        $capture['plano_imagem_ids'] = ($capture['plano_imagem_ids_csv'] ?? '') === '' ? [] : array_map('intval', explode(',', (string) $capture['plano_imagem_ids_csv']));
+        unset($capture['plano_imagem_ids_csv']);
+        $pin['capturas'][] = $capture;
+    }
+    $stmt->close();
+    return $pin;
+}
+
+/** Retorna somente as imagens cujo resumo de vinculos foi afetado pela mutacao. */
+function foto_mutation_images(mysqli $conn, int $planId, array $imageIds): array
+{
+    $imageIds = array_values(array_unique(array_filter(array_map('intval', $imageIds))));
+    if ($imageIds === []) return [];
+    $ids = implode(',', $imageIds);
+    $sql = "SELECT pi.id, pi.decisao, pi.motivo_exclusao,
+                   GROUP_CONCAT(DISTINCT per.nome ORDER BY per.ordem SEPARATOR ', ') AS periodos_vinculados,
+                   GROUP_CONCAT(DISTINCT po.codigo ORDER BY po.ordem SEPARATOR ', ') AS posicoes_vinculadas,
+                   MIN(c.prioridade) AS prioridade_vinculada
+              FROM fotografico_plano_imagem pi
+              JOIN fotografico_plano_versao v ON v.id = pi.versao_id AND v.plano_id = ?
+         LEFT JOIN fotografico_captura_imagem ci ON ci.plano_imagem_id = pi.id
+         LEFT JOIN fotografico_captura c ON c.id = ci.captura_id
+         LEFT JOIN fotografico_posicao po ON po.id = c.posicao_id
+         LEFT JOIN fotografico_periodo per ON per.id = c.periodo_id
+             WHERE pi.id IN ($ids)
+             GROUP BY pi.id";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $planId);
+    $stmt->execute();
+    $rows = foto_fetch_all($stmt->get_result());
+    $stmt->close();
+    return $rows;
 }
 
 function foto_period_map(mysqli $conn): array
@@ -291,7 +398,7 @@ function foto_period_map(mysqli $conn): array
 }
 
 /** Fonte única da condição que permite iniciar a execução. */
-function foto_verificar_prontidao_execucao(mysqli $conn, int $planoId): array
+function foto_calcular_checklist_plano(mysqli $conn, int $planoId): array
 {
     $blocks = [];
     // A consulta de diagnóstico também é usada em GETs. O lock é obtido
@@ -310,7 +417,8 @@ function foto_verificar_prontidao_execucao(mysqli $conn, int $planoId): array
         $stmt->close();
     }
     if (!$version) {
-        return ['pronto' => false, 'bloqueios' => [['codigo' => 'VERSAO_AUSENTE', 'mensagem' => 'O plano não possui uma versão para validar.']]];
+        $blocks[] = ['codigo' => 'VERSAO_AUSENTE', 'mensagem' => 'O plano não possui uma versão para validar.', 'anchor' => 'fotoPlanGuidance'];
+        return ['pronto' => false, 'total' => 1, 'completed' => 0, 'pending' => $blocks, 'bloqueios' => $blocks, 'status_atual' => $plan['status'], 'status_esperado' => 'PRONTO_PARA_PUBLICAR', 'versao_id' => null];
     }
     $versionId = (int) $version['id'];
     if ((int) ($version['mapa_anexo_id'] ?? 0) <= 0) {
@@ -322,7 +430,15 @@ function foto_verificar_prontidao_execucao(mysqli $conn, int $planoId): array
     if (empty($plan['data_planejada'])) {
         $blocks[] = ['codigo' => 'DATA_PLANEJADA_OBRIGATORIA', 'mensagem' => 'Informe a data planejada da execução.'];
     }
-    $stmt = $conn->prepare("SELECT id, codigo, COALESCE(observacao, '') AS observacao FROM fotografico_posicao WHERE versao_id = ? ORDER BY ordem, id");
+    $stmt = $conn->prepare(
+        "SELECT p.id, p.codigo, COALESCE(p.observacao, '') AS observacao,
+                COUNT(c.id) AS total_capturas
+           FROM fotografico_posicao p
+      LEFT JOIN fotografico_captura c ON c.posicao_id = p.id
+          WHERE p.versao_id = ?
+          GROUP BY p.id
+          ORDER BY p.ordem, p.id"
+    );
     $stmt->bind_param('i', $versionId);
     $stmt->execute();
     $positions = foto_fetch_all($stmt->get_result());
@@ -334,14 +450,8 @@ function foto_verificar_prontidao_execucao(mysqli $conn, int $planoId): array
         if (trim((string) $position['observacao']) === '') {
             $blocks[] = ['codigo' => 'PONTO_SEM_DESCRICAO', 'entidade_id' => (int) $position['id'], 'mensagem' => 'O ponto ' . $position['codigo'] . ' não possui descrição.'];
         }
-        $stmt = $conn->prepare('SELECT COUNT(*) AS total FROM fotografico_captura WHERE posicao_id = ?');
-        $positionId = (int) $position['id'];
-        $stmt->bind_param('i', $positionId);
-        $stmt->execute();
-        $captureCount = (int) $stmt->get_result()->fetch_assoc()['total'];
-        $stmt->close();
-        if ($captureCount === 0) {
-            $blocks[] = ['codigo' => 'PONTO_SEM_CAPTURA', 'entidade_id' => $positionId, 'mensagem' => 'O ponto ' . $position['codigo'] . ' não possui nenhum período/captura definido.'];
+        if ((int) $position['total_capturas'] === 0) {
+            $blocks[] = ['codigo' => 'PONTO_SEM_CAPTURA', 'entidade_id' => (int) $position['id'], 'mensagem' => 'O ponto ' . $position['codigo'] . ' não possui nenhum período/captura definido.'];
         }
     }
     $stmt = $conn->prepare("SELECT pi.id, i.imagem_nome, pi.decisao, pi.motivo_exclusao,
@@ -380,15 +490,54 @@ function foto_verificar_prontidao_execucao(mysqli $conn, int $planoId): array
     if ($pending > 0) {
         $blocks[] = ['codigo' => 'PENDENCIA_BLOQUEANTE', 'mensagem' => 'Existem pendências bloqueantes abertas para o plano.'];
     }
-    return ['pronto' => $blocks === [], 'status_atual' => $plan['status'], 'status_esperado' => 'PRONTO_EXECUCAO', 'bloqueios' => $blocks, 'versao_id' => $versionId];
+    foreach ($blocks as &$block) {
+        $code = (string) ($block['codigo'] ?? '');
+        if (in_array($code, ['MAPA_OBRIGATORIO'], true)) $block['anchor'] = 'fotoMapCard';
+        elseif (in_array($code, ['EXECUTOR_OBRIGATORIO'], true)) $block['anchor'] = 'fotoExecutor';
+        elseif (in_array($code, ['DATA_PLANEJADA_OBRIGATORIA'], true)) $block['anchor'] = 'fotoPlannedDate';
+        elseif (in_array($code, ['POSICAO_AUSENTE'], true)) $block['anchor'] = 'fotoAddPosition';
+        elseif (str_starts_with($code, 'PONTO_')) {
+            $block['anchor'] = 'fotoPointsCard';
+            $block['posicao_id'] = (int) ($block['entidade_id'] ?? 0);
+        } elseif (str_starts_with($code, 'IMAGEM_') || $code === 'EXCLUSAO_SEM_MOTIVO') {
+            $block['anchor'] = 'fotoImagesCard';
+            $block['imagem_plano_id'] = (int) ($block['entidade_id'] ?? 0);
+            if ($code === 'IMAGEM_SEM_VINCULO') $block['tags'] = ['Sem posição', 'Sem período', 'Sem captura'];
+        } else {
+            $block['anchor'] = 'fotoPlanGuidance';
+        }
+    }
+    unset($block);
+    // Cada requisito e sua falha sao computados no mesmo servico; a UI nao recalcula regras.
+    $total = 4 + (count($positions) * 2) + (count($images) * 2) + 1;
+    $completed = max(0, $total - count($blocks));
+    return ['pronto' => $blocks === [], 'total' => $total, 'completed' => $completed, 'pending' => $blocks, 'status_atual' => $plan['status'], 'status_esperado' => 'PRONTO_PARA_PUBLICAR', 'bloqueios' => $blocks, 'versao_id' => $versionId];
+}
+
+/** Alias de compatibilidade: o checklist acima e a unica fonte de prontidao. */
+function foto_verificar_prontidao_execucao(mysqli $conn, int $planoId): array
+{
+    return foto_calcular_checklist_plano($conn, $planoId);
 }
 
 function foto_sincronizar_prontidao_execucao(mysqli $conn, int $planoId, ?int $actorId, string $origin): array
 {
-    $readiness = foto_verificar_prontidao_execucao($conn, $planoId);
+    if (!empty($GLOBALS['foto_defer_readiness'])) {
+        $GLOBALS['foto_readiness_deferred'] = true;
+        return [];
+    }
+    $perf = $GLOBALS['foto_perf'] ?? null;
+    $readiness = foto_calcular_checklist_plano($conn, $planoId);
+    $GLOBALS['foto_last_readiness'] = $readiness;
+    if ($perf instanceof FotoPerf) $perf->mark('readiness');
     $plan = foto_plan($conn, $planoId, true);
-    if (in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_EXECUCAO'], true)) {
-        $next = $readiness['pronto'] ? 'PRONTO_EXECUCAO' : 'EM_ELABORACAO';
+    $stmt = $conn->prepare("SELECT 1 FROM fotografico_plano_versao WHERE plano_id = ? AND status = 'PUBLICADA' LIMIT 1");
+    $stmt->bind_param('i', $planoId);
+    $stmt->execute();
+    $hasPublished = (bool) $stmt->get_result()->fetch_row();
+    $stmt->close();
+    if (in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true) || ($plan['status'] === 'PRONTO_EXECUCAO' && !$hasPublished)) {
+        $next = $readiness['pronto'] ? 'PRONTO_PARA_PUBLICAR' : 'EM_ELABORACAO';
         if ($next !== $plan['status']) {
             $stmt = $conn->prepare('UPDATE fotografico_plano SET status = ?, iniciado_em = COALESCE(iniciado_em, NOW()), lock_version = lock_version + 1 WHERE id = ?');
             $stmt->bind_param('si', $next, $planoId);
@@ -418,9 +567,7 @@ function foto_create_manual_campaign(mysqli $conn, int $obraId, ?int $actorId): 
     $stmt->execute();
     $number = (int) $stmt->get_result()->fetch_assoc()['numero'];
     $stmt->close();
-    $plannerId = fotografico_colaborador_ativo($conn, FOTOGRAFICO_RESPONSAVEL_PLANO_ID)
-        ? FOTOGRAFICO_RESPONSAVEL_PLANO_ID
-        : null;
+    $plannerId = FOTOGRAFICO_RESPONSAVEL_PLANO_ID;
     $stmt = $conn->prepare(
         "INSERT INTO fotografico_plano
             (obra_id, campanha_numero, origem, status, responsavel_plano_id, criado_por)
@@ -457,6 +604,15 @@ function foto_create_manual_campaign(mysqli $conn, int $obraId, ?int $actorId): 
     $stmt->execute();
     $stmt->close();
     fotografico_evento($conn, $planId, 'CAMPANHA_CRIADA', null, 'PLANO_A_FAZER', $actorId, 'Fotografico/api.php');
+    fotografico_sync_stage_pending($conn, $planId, $actorId);
+    fotografico_notificar_colaborador(
+        $conn,
+        $planId,
+        $plannerId,
+        'PLANO_CRIADO',
+        'Novo plano fotografico',
+        'Um plano fotografico foi criado e precisa ser elaborado.'
+    );
     return $planId;
 }
 
@@ -467,6 +623,10 @@ if (!fotografico_schema_ready($conn)) {
 
 $action = trim((string) ($_GET['action'] ?? $_POST['action'] ?? 'list'));
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+$fotoPerf = $GLOBALS['foto_perf'];
+$fotoPerf->action = $action;
+$fotoPerf->attach($conn);
+$fotoPerf->mark('request');
 
 try {
     if ($method === 'GET' && $action === 'list') {
@@ -475,16 +635,25 @@ try {
                     p.lock_version, p.updated_at, o.nome_obra, o.nomenclatura,
                     rp.nome_colaborador AS responsavel_plano_nome,
                     re.nome_colaborador AS responsavel_execucao_nome,
-                    MIN(CASE WHEN s.completed_at IS NULL THEN s.due_at_effective END) AS proximo_prazo,
-                    SUM(CASE WHEN pe.status = 'ABERTA' THEN 1 ELSE 0 END) AS pendencias_abertas
+                    sla.proximo_prazo, pendencias.pendencias_abertas, pendencias.proxima_cobranca
                FROM fotografico_plano p
                JOIN obra o ON o.idobra = p.obra_id
           LEFT JOIN colaborador rp ON rp.idcolaborador = p.responsavel_plano_id
           LEFT JOIN colaborador re ON re.idcolaborador = p.responsavel_execucao_id
-          LEFT JOIN fotografico_sla s ON s.plano_id = p.id
-          LEFT JOIN fotografico_pendencia pe ON pe.plano_id = p.id
-              GROUP BY p.id
-              ORDER BY FIELD(p.status, 'HOLD','PLANO_A_FAZER','EM_ELABORACAO','PRONTO_EXECUCAO','EM_CONFERENCIA','CONCLUIDO','CANCELADO'), proximo_prazo, p.id DESC"
+          LEFT JOIN (
+                SELECT plano_id, MIN(due_at_effective) AS proximo_prazo
+                  FROM fotografico_sla
+                 WHERE completed_at IS NULL
+                 GROUP BY plano_id
+          ) sla ON sla.plano_id = p.id
+          LEFT JOIN (
+                SELECT plano_id, COUNT(*) AS pendencias_abertas,
+                       MIN(proxima_cobranca_em) AS proxima_cobranca
+                  FROM fotografico_pendencia
+                 WHERE status = 'ABERTA'
+                 GROUP BY plano_id
+          ) pendencias ON pendencias.plano_id = p.id
+              ORDER BY FIELD(p.status, 'HOLD','PLANO_A_FAZER','EM_ELABORACAO','PRONTO_PARA_PUBLICAR','PRONTO_EXECUCAO','EM_CONFERENCIA','CONCLUIDO','CANCELADO'), sla.proximo_prazo, p.id DESC"
         );
         $rows = [];
         while ($result && ($row = $result->fetch_assoc())) {
@@ -496,7 +665,8 @@ try {
     }
 
     if ($method === 'GET' && $action === 'get') {
-        foto_response(true, foto_get_detail($conn, (int) ($_GET['plano_id'] ?? 0)));
+        $fotoPerf->planId = (int) ($_GET['plano_id'] ?? 0);
+        foto_response(true, foto_get_detail($conn, $fotoPerf->planId));
     }
 
     if ($method === 'GET' && $action === 'summary') {
@@ -507,6 +677,7 @@ try {
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+        $fotoPerf->planId = (int) ($row['id'] ?? 0);
         foto_response(true, $row ? foto_get_detail($conn, (int) $row['id']) : ['obra_id' => $obraId, 'status' => 'AGUARDANDO_FACHADA', 'csrf_token' => foto_csrf_token()]);
     }
 
@@ -523,22 +694,38 @@ try {
     $actorId = fotografico_actor_id();
 
     if ($action === 'create_campaign') {
+        $fotoPerf->mark('begin');
         $conn->begin_transaction();
         try {
             $planId = foto_create_manual_campaign($conn, (int) ($payload['obra_id'] ?? 0), $actorId);
+            $fotoPerf->mark('mutation');
             $conn->commit();
+            fotografico_enviar_notificacoes_pendentes($conn);
         } catch (Throwable $e) {
             $conn->rollback();
             throw $e;
         }
+        $fotoPerf->planId = $planId;
+        $fotoPerf->mark('commit');
         fotografico_notify_update('campaign.created', ['plan_id' => $planId, 'client_event_id' => (string) ($payload['client_event_id'] ?? '')]);
-        foto_response(true, foto_get_detail($conn, $planId));
+        $fotoPerf->mark('redis');
+        $delta = foto_mutation_summary($conn, $planId);
+        $delta['action'] = 'create_campaign';
+        $delta['refresh_required'] = true;
+        foto_response(true, $delta);
     }
 
     $planId = (int) ($payload['plano_id'] ?? 0);
+    $fotoPerf->planId = $planId;
+    $GLOBALS['foto_defer_readiness'] = in_array($action, ['plan_update', 'image_update', 'save_draft', 'pin_create', 'pin_update', 'pin_delete'], true);
+    $GLOBALS['foto_readiness_deferred'] = false;
+    $GLOBALS['foto_last_readiness'] = null;
+    $affectedImageIds = [];
     $conn->begin_transaction();
     try {
+        $fotoPerf->mark('begin');
         $plan = foto_plan($conn, $planId, true);
+        $fotoPerf->mark('lock');
         foto_assert_version($plan, $payload);
 
         if ($action === 'start') {
@@ -553,7 +740,7 @@ try {
             fotografico_evento($conn, $planId, 'ELABORACAO_INICIADA', 'PLANO_A_FAZER', 'EM_ELABORACAO', $actorId, 'Fotografico/api.php');
         } elseif ($action === 'plan_update') {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para alterar este plano.');
-            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_EXECUCAO'], true)) {
+            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
                 foto_response(false, null, 'TRANSICAO_INVALIDA', 'Crie uma revisao antes de alterar um plano publicado.', 422);
             }
             $executorId = array_key_exists('responsavel_execucao_id', $payload) ? (int) $payload['responsavel_execucao_id'] : (int) ($plan['responsavel_execucao_id'] ?? 0);
@@ -575,7 +762,7 @@ try {
             foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
         } elseif ($action === 'image_update') {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para alterar imagens.');
-            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_EXECUCAO'], true)) {
+            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
                 foto_response(false, null, 'TRANSICAO_INVALIDA', 'Crie uma revisao antes de alterar um plano publicado.', 422);
             }
             $versionId = (int) ($payload['versao_id'] ?? 0);
@@ -611,10 +798,11 @@ try {
             $stmt->execute();
             $stmt->close();
             fotografico_evento($conn, $planId, 'DECISAO_IMAGEM_ATUALIZADA', null, null, $actorId, 'Fotografico/api.php', ['plano_imagem_id' => $imageItemId, 'decisao' => $decision]);
+            $affectedImageIds = [$imageItemId];
             foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
         } elseif ($action === 'save_draft') {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para editar este plano.');
-            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_EXECUCAO'], true)) {
+            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
                 foto_response(false, null, 'TRANSICAO_INVALIDA', 'Crie uma revisao antes de alterar um plano publicado.', 422);
             }
             $versionId = (int) ($payload['versao_id'] ?? 0);
@@ -718,7 +906,7 @@ try {
             foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
         } elseif (in_array($action, ['pin_create', 'pin_update', 'pin_delete'], true)) {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para alterar pins.');
-            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_EXECUCAO'], true)) {
+            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
                 foto_response(false, null, 'TRANSICAO_INVALIDA', 'Crie uma revisao antes de alterar o mapa publicado.', 422);
             }
             $versionId = (int) ($payload['versao_id'] ?? 0);
@@ -731,6 +919,7 @@ try {
                 foto_response(false, null, 'MAPA_OBRIGATORIO', 'Envie a imagem do mapa antes de criar pins.', 422);
             }
             $pinId = (int) ($payload['pin_id'] ?? 0);
+            $pinMoveOnly = false;
             if ($action === 'pin_delete') {
                 $stmt = $conn->prepare('SELECT id FROM fotografico_posicao WHERE id = ? AND versao_id = ? FOR UPDATE');
                 $stmt->bind_param('ii', $pinId, $versionId);
@@ -739,11 +928,13 @@ try {
                     foto_response(false, null, 'PIN_INVALIDO', 'Pin nao encontrado.', 422);
                 }
                 $stmt->close();
-                $stmt = $conn->prepare('SELECT COUNT(*) AS total FROM fotografico_captura c JOIN fotografico_captura_imagem ci ON ci.captura_id = c.id WHERE c.posicao_id = ?');
+                $stmt = $conn->prepare('SELECT ci.plano_imagem_id FROM fotografico_captura c JOIN fotografico_captura_imagem ci ON ci.captura_id = c.id WHERE c.posicao_id = ?');
                 $stmt->bind_param('i', $pinId);
                 $stmt->execute();
-                $linked = (int) $stmt->get_result()->fetch_assoc()['total'];
+                $linkedRows = foto_fetch_all($stmt->get_result());
                 $stmt->close();
+                $linked = count($linkedRows);
+                $affectedImageIds = array_values(array_unique(array_map(static fn(array $row): int => (int) $row['plano_imagem_id'], $linkedRows)));
                 if ($linked > 0 && empty($payload['confirmar_exclusao'])) {
                     foto_response(false, ['vinculos' => $linked], 'CONFIRMAR_EXCLUSAO', 'Este pin possui imagens vinculadas. Confirme a exclusao.', 409);
                 }
@@ -767,7 +958,7 @@ try {
                     $stmt->close();
                     fotografico_evento($conn, $planId, 'PIN_CRIADO', null, null, $actorId, 'Fotografico/api.php', ['pin_id' => $pinId, 'codigo' => $code]);
                 } else {
-                    $stmt = $conn->prepare('SELECT x_percentual, y_percentual FROM fotografico_posicao WHERE id = ? AND versao_id = ? FOR UPDATE');
+                    $stmt = $conn->prepare('SELECT x_percentual, y_percentual, observacao FROM fotografico_posicao WHERE id = ? AND versao_id = ? FOR UPDATE');
                     $stmt->bind_param('ii', $pinId, $versionId);
                     $stmt->execute();
                     $before = $stmt->get_result()->fetch_assoc();
@@ -775,6 +966,9 @@ try {
                     if (!$before) {
                         foto_response(false, null, 'PIN_INVALIDO', 'Pin nao encontrado.', 422);
                     }
+                    $pinMoveOnly = (string) ($payload['mutation_kind'] ?? '') === 'MOVE'
+                        && !array_key_exists('capturas', $payload)
+                        && (string) ($before['observacao'] ?? '') === (string) ($note ?? '');
                     $stmt = $conn->prepare('UPDATE fotografico_posicao SET x_percentual = ?, y_percentual = ?, observacao = ?, atualizado_por = ? WHERE id = ?');
                     $stmt->bind_param('ddsii', $x, $y, $note, $actorId, $pinId);
                     $stmt->execute();
@@ -791,7 +985,10 @@ try {
                 $stmt->execute();
                 $stmt->close();
                 $stmtCapture = $conn->prepare('INSERT INTO fotografico_captura (posicao_id, periodo_id, prioridade, observacao) VALUES (?, ?, ?, ?)');
-                $stmtLink = $conn->prepare('INSERT INTO fotografico_captura_imagem (captura_id, plano_imagem_id) SELECT ?, id FROM fotografico_plano_imagem WHERE id = ? AND versao_id = ? AND decisao = \'INCLUIDA\'');
+                // A primeira vinculacao no ponto tambem confirma a imagem.
+                // Dessa forma uma imagem que ainda esta PENDENTE pode ser
+                // selecionada sem exigir uma etapa intermediaria na tela.
+                $stmtLink = $conn->prepare("INSERT INTO fotografico_captura_imagem (captura_id, plano_imagem_id) SELECT ?, id FROM fotografico_plano_imagem WHERE id = ? AND versao_id = ? AND decisao IN ('INCLUIDA', 'PENDENTE')");
                 foreach ($captures as $capture) {
                     $periodCode = strtoupper(trim((string) ($capture['periodo_codigo'] ?? '')));
                     if (!isset($periods[$periodCode])) {
@@ -812,16 +1009,28 @@ try {
                 }
                 $stmtCapture->close();
                 $stmtLink->close();
+                $stmt = $conn->prepare(
+                    "UPDATE fotografico_plano_imagem pi
+                       JOIN fotografico_captura_imagem ci ON ci.plano_imagem_id = pi.id
+                       JOIN fotografico_captura c ON c.id = ci.captura_id
+                       SET pi.decisao = 'INCLUIDA', pi.motivo_exclusao = NULL
+                     WHERE c.posicao_id = ? AND pi.versao_id = ? AND pi.decisao = 'PENDENTE'"
+                );
+                $stmt->bind_param('ii', $pinId, $versionId);
+                $stmt->execute();
+                $stmt->close();
                 fotografico_evento($conn, $planId, 'CAPTURAS_ATUALIZADAS', null, null, $actorId, 'Fotografico/api.php', ['pin_id' => $pinId]);
             }
             $stmt = $conn->prepare('UPDATE fotografico_plano SET iniciado_em = COALESCE(iniciado_em, NOW()), lock_version = lock_version + 1 WHERE id = ?');
             $stmt->bind_param('i', $planId);
             $stmt->execute();
             $stmt->close();
-            foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
+            if (empty($pinMoveOnly)) {
+                foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
+            }
         } elseif ($action === 'publish') {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para publicar este plano.');
-            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_EXECUCAO'], true)) {
+            if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
                 foto_response(false, null, 'TRANSICAO_INVALIDA', 'O plano nao esta em elaboracao.', 422);
             }
             $versionId = (int) ($payload['versao_id'] ?? 0);
@@ -856,8 +1065,8 @@ try {
             fotografico_notificar_colaborador($conn, $planId, (int) $plan['responsavel_execucao_id'], 'EXECUCAO_ATRIBUIDA_V' . $versionId, 'Fotografico pronto para executar', 'O plano foi publicado e a execucao foi atribuida a voce.');
         } elseif ($action === 'create_revision') {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para revisar este plano.');
-            if (!in_array($plan['status'], ['PRONTO_EXECUCAO', 'EM_CONFERENCIA'], true)) {
-                foto_response(false, null, 'TRANSICAO_INVALIDA', 'A revisao exige um plano publicado.', 422);
+            if (!in_array($plan['status'], ['PRONTO_EXECUCAO', 'CONCLUIDO'], true)) {
+                foto_response(false, null, 'TRANSICAO_INVALIDA', 'A revisao exige um plano publicado que nao esteja em conferencia.', 422);
             }
             $stmt = $conn->prepare("SELECT * FROM fotografico_plano_versao WHERE plano_id = ? AND status = 'PUBLICADA' ORDER BY numero DESC LIMIT 1");
             $stmt->bind_param('i', $planId);
@@ -910,7 +1119,7 @@ try {
                     $stmt->close();
                 }
             }
-            $stmt = $conn->prepare("UPDATE fotografico_plano SET status = 'EM_ELABORACAO', lock_version = lock_version + 1 WHERE id = ?");
+            $stmt = $conn->prepare("UPDATE fotografico_plano SET status = 'EM_ELABORACAO', concluido_em = NULL, lock_version = lock_version + 1 WHERE id = ?");
             $stmt->bind_param('i', $planId);
             $stmt->execute();
             $stmt->close();
@@ -1008,11 +1217,28 @@ try {
                 $stmt->bind_param('ii', $actorId, $planId);
                 $stmt->execute();
                 $stmt->close();
+                if ((int) ($plan['responsavel_execucao_id'] ?? 0) > 0) {
+                    $approvalTitle = $decision === 'APROVADO'
+                        ? 'Plano fotografico aprovado'
+                        : 'Plano fotografico aprovado com ressalvas';
+                    $approvalMessage = $decision === 'APROVADO'
+                        ? 'A conferencia foi aprovada e o plano fotografico foi concluido.'
+                        : 'A conferencia foi aprovada com ressalvas e o plano fotografico foi concluido. Consideracao: ' . $consideration;
+                    fotografico_notificar_colaborador(
+                        $conn,
+                        $planId,
+                        (int) $plan['responsavel_execucao_id'],
+                        'PLANO_APROVADO_EXEC_' . $executionId,
+                        $approvalTitle,
+                        $approvalMessage
+                    );
+                }
             } else {
                 $title = $decision === 'REPROVADO' ? 'Material fotografico reprovado' : 'Complemento fotografico solicitado';
-                $stmt = $conn->prepare("INSERT INTO fotografico_pendencia (plano_id, codigo, titulo, detalhes, status, responsavel_id, criado_por) VALUES (?, 'COMPLEMENTO_MATERIAL', ?, ?, 'ABERTA', ?, ?)");
                 $executorId = $plan['responsavel_execucao_id'] !== null ? (int) $plan['responsavel_execucao_id'] : null;
-                $stmt->bind_param('issii', $planId, $title, $consideration, $executorId, $actorId);
+                $cobrancaId = $plan['responsavel_plano_id'] !== null ? (int) $plan['responsavel_plano_id'] : $executorId;
+                $stmt = $conn->prepare("INSERT INTO fotografico_pendencia (plano_id, codigo, titulo, detalhes, status, responsavel_id, responsavel_cobranca_id, criado_por, proxima_cobranca_em) VALUES (?, 'COMPLEMENTO_MATERIAL', ?, ?, 'ABERTA', ?, ?, ?, (SELECT MIN(due_at_effective) FROM fotografico_sla WHERE plano_id = ? AND tipo = 'EXECUCAO' AND completed_at IS NULL))");
+                $stmt->bind_param('issiiii', $planId, $title, $consideration, $executorId, $cobrancaId, $actorId, $planId);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -1076,13 +1302,47 @@ try {
             foto_response(false, null, 'ACAO_INVALIDA', 'Acao desconhecida.', 404);
         }
 
+        fotografico_sync_stage_pending($conn, $planId, $actorId);
+        $fotoPerf->mark('mutation');
         $conn->commit();
+        fotografico_enviar_notificacoes_pendentes($conn);
+        $fotoPerf->mark('commit');
     } catch (Throwable $e) {
         $conn->rollback();
         throw $e;
     }
+    $readiness = $GLOBALS['foto_last_readiness'] ?? null;
+    if (!empty($GLOBALS['foto_readiness_deferred'])) {
+        // A prontidao continua autoritativa, mas nao prolonga o lock da mutacao do pin.
+        // Publicar e avancar de etapa continuam validando integralmente dentro da transacao.
+        $GLOBALS['foto_defer_readiness'] = false;
+        try {
+            $conn->begin_transaction();
+            $fotoPerf->mark('readiness_begin');
+            $readiness = foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
+            $conn->commit();
+            $fotoPerf->mark('readiness_commit');
+        } catch (Throwable $readinessError) {
+            $conn->rollback();
+            error_log('[Fotografico/api] readiness post-commit failed plan=' . $planId . ': ' . $readinessError->getMessage());
+        }
+    }
     fotografico_notify_update('plan.updated', ['plan_id' => $planId, 'action' => $action, 'client_event_id' => (string) ($payload['client_event_id'] ?? '')]);
-    foto_response(true, foto_get_detail($conn, $planId));
+    $fotoPerf->mark('redis');
+    $pinId = in_array($action, ['pin_create', 'pin_update'], true) ? (int) ($pinId ?? 0) : 0;
+    $delta = foto_mutation_summary($conn, $planId, $readiness);
+    $delta['action'] = $action;
+    if ($pinId > 0) $delta['pin'] = foto_mutation_pin($conn, $pinId);
+    if ($action === 'pin_delete') $delta['deleted_pin_id'] = (int) ($payload['pin_id'] ?? 0);
+    if ($pinId > 0 && !empty($delta['pin']['capturas'])) {
+        foreach ($delta['pin']['capturas'] as $capture) {
+            $affectedImageIds = array_merge($affectedImageIds, array_map('intval', (array) ($capture['plano_imagem_ids'] ?? [])));
+        }
+    }
+    $delta['affected_image_ids'] = array_values(array_unique(array_filter($affectedImageIds)));
+    $delta['affected_images'] = foto_mutation_images($conn, $planId, $delta['affected_image_ids']);
+    if (!in_array($action, ['pin_create', 'pin_update', 'pin_delete', 'plan_update'], true)) $delta['refresh_required'] = true;
+    foto_response(true, $delta);
 } catch (Throwable $e) {
     error_log('[Fotografico/api] ' . $e->getMessage());
     foto_response(false, null, 'ERRO_INTERNO', $e->getMessage(), 500);

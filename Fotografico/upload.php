@@ -7,15 +7,29 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/fotografico_service.php';
 require_once __DIR__ . '/ws_notify.php';
+require_once __DIR__ . '/performance.php';
+
+$fotoPerf = new FotoPerf();
+$fotoPerf->action = 'upload';
+$fotoPerf->attach($conn);
+$fotoPerf->mark('request');
 
 function foto_upload_response(bool $success, array $payload, int $status = 200): never
 {
+    $encoded = json_encode($success ? ['success' => true, 'data' => $payload] : ['success' => false, 'error' => $payload], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $perf = $GLOBALS['foto_upload_perf'] ?? null;
+    if ($perf instanceof FotoPerf) {
+        $perf->setResponseSize(strlen((string) $encoded));
+        $perf->finish();
+    }
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
-    echo json_encode($success ? ['success' => true, 'data' => $payload] : ['success' => false, 'error' => $payload], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo $encoded;
     exit;
 }
+
+$GLOBALS['foto_upload_perf'] = $fotoPerf;
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     foto_upload_response(false, ['code' => 'NAO_AUTENTICADO', 'message' => 'Sessao expirada.'], 401);
@@ -29,6 +43,7 @@ if ($csrf === '' || empty($_SESSION['fotografico_csrf']) || !hash_equals((string
 }
 
 $planoId = (int) ($_POST['plano_id'] ?? 0);
+$fotoPerf->planId = $planoId;
 $kind = strtolower(trim((string) ($_POST['tipo'] ?? 'evidencia_execucao')));
 $targetId = (int) ($_POST['entidade_id'] ?? 0);
 if ($planoId <= 0 || $targetId <= 0 || !in_array($kind, ['mapa', 'evidencia_execucao'], true)) {
@@ -105,11 +120,13 @@ if (!move_uploaded_file($tmp, $target)) {
 
 try {
     $conn->begin_transaction();
+    $fotoPerf->mark('begin');
     $stmt = $conn->prepare('SELECT lock_version FROM fotografico_plano WHERE id = ? FOR UPDATE');
     $stmt->bind_param('i', $planoId);
     $stmt->execute();
     $currentVersion = (int) ($stmt->get_result()->fetch_assoc()['lock_version'] ?? 0);
     $stmt->close();
+    $fotoPerf->mark('lock');
     if ($currentVersion !== $expectedVersion) {
         $conn->rollback();
         @unlink($target);
@@ -142,7 +159,9 @@ try {
     $stmt->bind_param('i', $planoId);
     $stmt->execute();
     $stmt->close();
+    $fotoPerf->mark('mutation');
     $conn->commit();
+    $fotoPerf->mark('commit');
 } catch (Throwable $e) {
     $conn->rollback();
     @unlink($target);
@@ -155,4 +174,5 @@ fotografico_notify_update($kind === 'mapa' ? 'map.updated' : 'execution.evidence
     'attachment_id' => $attachmentId,
     'client_event_id' => (string) ($_POST['client_event_id'] ?? ''),
 ]);
+$fotoPerf->mark('redis');
 foto_upload_response(true, ['id' => $attachmentId, 'caminho' => $path, 'nome_original' => $original, 'mime' => $mime]);

@@ -140,6 +140,7 @@ try {
     }
 
     mysqli_commit($conn);
+    fotografico_enviar_notificacoes_pendentes($conn);
     echo json_encode(['sucesso' => true], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     mysqli_rollback($conn);

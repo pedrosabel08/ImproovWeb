@@ -210,7 +210,12 @@ $conn->close();
     <div class="container animate__animated animate__fadeIn">
 
         <header>
-            <h1 id="nomenclatura" class="animate__animated animate__fadeInDown"></h1>
+            <div class="obra-title-row">
+                <h1 id="nomenclatura" class="animate__animated animate__fadeInDown"></h1>
+                <button id="obraPendenciasButton" class="obra-pendencias-button" type="button" hidden>
+                    <i class="fa-solid fa-triangle-exclamation"></i> Pendências <span id="obraPendenciasCount">0</span>
+                </button>
+            </div>
 
             <!-- Quick access links: in-page anchors + Drive, Fotográfico, Review Studio -->
             <div id="quickAccess" class="quick-access" aria-label="Acessos rápidos" style="display: none;">
@@ -318,6 +323,13 @@ $conn->close();
                 </div>
             </div>
         </header>
+        <div id="obraPendenciasDialog" class="obra-pendencias-dialog" role="dialog" aria-modal="true" aria-label="Pendências da obra" hidden>
+            <div class="obra-pendencias-dialog-head">
+                <div><strong>Pendências da obra</strong><small id="obraPendenciasSummary"></small></div>
+                <button type="button" id="obraPendenciasClose" aria-label="Fechar">×</button>
+            </div>
+            <div id="obraPendenciasList" class="obra-pendencias-list"></div>
+        </div>
 
         <section id="onboardingObraPanel" class="onboarding-obra-panel" hidden>
             <div class="onboarding-obra-head">
@@ -618,43 +630,57 @@ $conn->close();
                 </div>
             </div>
 
-            <div class="contagem_imagens resumo-imagens-card">
-                <button
-                    type="button"
-                    id="imagens-totais"
-                    class="imagens-totais-toggle"
-                    aria-expanded="false"
-                    aria-controls="imagens-por-tipo">
-                    <div class="resumo-imagens-principal">
-                        <span class="resumo-imagens-icone" aria-hidden="true">
-                            <i class="fa-regular fa-images"></i>
-                        </span>
-
-                        <span class="resumo-imagens-conteudo">
-                            <span class="resumo-imagens-label">Total de imagens</span>
-                            <strong class="imagens-totais-texto">0</strong>
-                        </span>
+            <!-- Dashboard compacto da obra: um único detalhe aberto por vez. -->
+            <section id="obraDashboard" class="obra-dashboard" aria-label="Resumo da obra">
+                <div class="obra-dashboard-head">
+                    <div>
+                        <span class="obra-dashboard-eyebrow">Resumo da obra</span>
+                        <h2>Dashboard</h2>
                     </div>
+                    <span class="obra-dashboard-hint">Selecione um card para ver detalhes</span>
+                </div>
 
-                    <div class="resumo-imagens-lateral">
-                        <span class="resumo-antecipadas">
-                            <span class="resumo-imagens-label">Antecipadas</span>
-                            <strong id="antecipadas">0</strong>
-                        </span>
-
-                        <i
-                            class="fa-solid fa-chevron-down imagens-totais-chevron"
-                            aria-hidden="true"></i>
+                <div class="obra-dashboard-cards" role="list">
+                    <button type="button" class="obra-dashboard-card is-interactive" id="imagens-totais"
+                        data-dashboard-card="imagens" aria-pressed="false" aria-controls="dashboardDetailImagens">
+                        <span class="obra-dashboard-card-icon is-blue"><i class="fa-regular fa-images"></i></span>
+                        <span class="obra-dashboard-card-content"><span>Total de imagens</span><strong class="imagens-totais-texto">0</strong></span>
+                        <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="obra-dashboard-card is-interactive" id="dashboardPendenciasCard"
+                        data-dashboard-card="pendencias" aria-pressed="false" aria-controls="dashboardDetailPendencias">
+                        <span class="obra-dashboard-card-icon is-amber"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                        <span class="obra-dashboard-card-content"><span>Pendências</span><strong id="dashboardPendenciasTotal">0</strong><small id="dashboardPendenciasCaption">Carregando...</small></span>
+                        <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="obra-dashboard-card is-interactive" id="dashboardEntregasCard"
+                        data-dashboard-card="entregas" aria-pressed="false" aria-controls="dashboardDetailEntregas">
+                        <span class="obra-dashboard-card-icon is-violet"><i class="fa-solid fa-box-open"></i></span>
+                        <span class="obra-dashboard-card-content"><span>Entregas</span><strong id="dashboardEntregasTotal">—</strong><small>Pendentes</small></span>
+                        <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
+                    </button>
+                    <div class="obra-dashboard-card is-informative">
+                        <span class="obra-dashboard-card-icon is-green"><i class="fa-solid fa-forward"></i></span>
+                        <span class="obra-dashboard-card-content"><span>Antecipadas</span><strong id="antecipadas">0</strong></span>
                     </div>
-                </button>
+                </div>
 
-                <div
-                    id="imagens-por-tipo"
-                    class="imagens-por-tipo"
-                    hidden></div>
-
+                <div id="obraDashboardDetails" class="obra-dashboard-details" aria-live="polite" hidden>
+                    <section id="dashboardDetailImagens" class="obra-dashboard-detail" hidden>
+                        <div class="obra-dashboard-detail-head"><div><span>Distribuição</span><h3>Imagens por tipo</h3></div><small>Clique em um tipo para filtrar a tabela</small></div>
+                        <div id="imagens-por-tipo" class="imagens-por-tipo"></div>
+                    </section>
+                    <section id="dashboardDetailPendencias" class="obra-dashboard-detail" hidden>
+                        <div class="obra-dashboard-detail-head"><div><span>Atividades da obra</span><h3>Pendências</h3></div><div id="dashboardPendenciasResumo" class="obra-dashboard-pending-summary"></div></div>
+                        <div id="dashboardPendenciasList" class="obra-dashboard-pending-list"></div>
+                    </section>
+                    <section id="dashboardDetailEntregas" class="obra-dashboard-detail" hidden>
+                        <div class="obra-dashboard-detail-head"><div><span>Acompanhamento</span><h3>Entregas pendentes</h3></div><small>Clique em uma entrega para abrir os detalhes</small></div>
+                        <div id="dashboardEntregasHost"></div>
+                    </section>
+                </div>
                 <p id="revisoes" class="resumo-imagens-revisoes"></p>
-            </div>
+            </section>
 
             <div id="estrela-container" style="display: none;">
                 <span class="estrela" id="estrela1">★</span>
@@ -2957,7 +2983,7 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script src="<?php echo asset_url('../assets/js/upload-ws.js'); ?>"></script>
-    <script src="<?php echo asset_url('scriptObra.js'); ?>"></script>
+    <script src="<?php echo asset_url('scriptObra.js') . '&t=' . filemtime(__DIR__ . '/scriptObra.js'); ?>"></script>
     <script src="<?php echo asset_url('onboardingObra.js'); ?>"></script>
     <script src="<?php echo asset_url('obraContacts.js'); ?>"></script>
     <script src="<?php echo asset_url('../Entregas/script.js') . '&t=' . filemtime(__DIR__ . '/../Entregas/script.js'); ?>"></script>

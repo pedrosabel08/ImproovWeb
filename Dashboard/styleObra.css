@@ -10275,3 +10275,67 @@ tr#linha-porcentagem {
     padding-left: 12px;
   }
 }
+/* Consolidação de pendências da obra. */
+.obra-title-row { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.obra-pendencias-button { border:1px solid #b7791f; background:#3b2a10; color:#ffd166; border-radius:8px; padding:8px 12px; cursor:pointer; font-weight:700; }
+.obra-pendencias-button span { background:#b45309; color:#fff; border-radius:999px; padding:1px 7px; margin-left:5px; }
+.obra-pendencias-dialog { position:fixed; z-index:10050; left:50%; top:50%; transform:translate(-50%, -50%); width:min(720px, calc(100vw - 28px)); max-height:min(78vh, 740px); border:1px solid #334155; border-radius:12px; padding:0; color:#e5edf8; background:#0d1a2b; box-shadow:0 24px 70px #000b; }
+.obra-pendencias-dialog[hidden] { display:none; }
+.obra-pendencias-dialog-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #24364b; }
+.obra-pendencias-dialog-head strong, .obra-pendencias-dialog-head small { display:block; }
+.obra-pendencias-dialog-head small { color:#91a4ba; margin-top:3px; }
+.obra-pendencias-dialog-head button { border:0; background:transparent; color:#d7e4f4; font-size:25px; cursor:pointer; }
+.obra-pendencias-list { padding:12px 18px 18px; display:grid; gap:9px; overflow:auto; max-height:calc(min(78vh, 740px) - 70px); }
+.obra-pendencia-item { display:block; color:inherit; text-decoration:none; border:1px solid #263c55; background:#101f32; border-radius:8px; padding:12px; }
+.obra-pendencia-item:hover { border-color:#4da3ff; background:#142942; }
+.obra-pendencia-item header, .obra-pendencia-item footer { display:flex; gap:9px; justify-content:space-between; align-items:center; }
+.obra-pendencia-item h4 { margin:8px 0 3px; font-size:14px; }
+.obra-pendencia-item p, .obra-pendencia-item small { margin:0; color:#b6c7d9; font-size:12px; }
+.obra-pendencia-item .is-overdue { color:#ff9aa5; font-weight:700; }
+@media (max-width: 640px) { .obra-title-row { align-items:flex-start; flex-direction:column; } .obra-pendencias-button { align-self:flex-start; } }
+
+/* Dashboard compacto da obra. Os detalhes ocupam sempre a mesma área. */
+.obra-title-row .obra-pendencias-button { display: none !important; }
+#kpi-charts .entregas-container { display: none !important; }
+.obra-dashboard {
+  --dashboard-border: #2a3a4e;
+  --dashboard-surface: #101d2d;
+  --dashboard-surface-hover: #15283d;
+  margin: 14px 0 18px;
+  padding: 16px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #0c1827, #101d2d);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .14);
+}
+.obra-dashboard-head, .obra-dashboard-detail-head { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.obra-dashboard-head { margin-bottom: 13px; }
+.obra-dashboard-eyebrow, .obra-dashboard-detail-head > div > span { color:#7e9bb9; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.obra-dashboard h2, .obra-dashboard h3 { margin:3px 0 0; color:#edf4fd; font-size:17px; }
+.obra-dashboard-hint, .obra-dashboard-detail-head small { color:#91a4ba; font-size:12px; }
+.obra-dashboard-cards { display:grid; grid-template-columns:repeat(4, minmax(145px, 1fr)); gap:10px; }
+.obra-dashboard-card { display:flex; min-width:0; min-height:82px; align-items:center; gap:10px; padding:12px; border:1px solid #263a50; border-radius:10px; background:var(--dashboard-surface); color:#e8f1fb; text-align:left; }
+button.obra-dashboard-card { width:100%; cursor:pointer; font:inherit; transition:border-color .2s ease, background-color .2s ease, transform .2s ease; }
+button.obra-dashboard-card:hover, button.obra-dashboard-card:focus-visible { border-color:#4e91cf; background:var(--dashboard-surface-hover); outline:0; }
+button.obra-dashboard-card:active { transform:translateY(1px); }
+.obra-dashboard-card.is-selected { border-color:#4e9ddd; background:#152c45; box-shadow:inset 0 0 0 1px rgba(102, 183, 246, .25); }
+.obra-dashboard-card-icon { display:grid; flex:0 0 auto; width:34px; height:34px; place-items:center; border-radius:8px; font-size:15px; }
+.obra-dashboard-card-icon.is-blue { color:#78b7ee; background:#1b42622e; }.obra-dashboard-card-icon.is-amber { color:#f5bd62; background:#8756103b; }.obra-dashboard-card-icon.is-violet { color:#bb9bff; background:#56399b36; }.obra-dashboard-card-icon.is-green { color:#68d391; background:#1d6b4140; }.obra-dashboard-card-icon.is-cyan { color:#6bd5e9; background:#155c6d42; }
+.obra-dashboard-card-content { display:flex; min-width:0; flex:1; flex-direction:column; gap:3px; color:#9aacc0; font-size:12px; }
+.obra-dashboard-card-content strong { color:#f4f8fc; font-size:22px; font-variant-numeric:tabular-nums; line-height:1; }.obra-dashboard-card-content small { overflow:hidden; color:#8ea2b7; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.obra-dashboard-card-chevron { color:#7891a9; font-size:11px; transition:transform .25s ease; }.obra-dashboard-card.is-selected .obra-dashboard-card-chevron { color:#8ec8f6; transform:rotate(180deg); }
+.obra-dashboard-details { margin-top:12px; overflow:hidden; border:1px solid #263a50; border-radius:10px; background:#0c1928; animation:obraDashboardOpen .28s ease both; }
+.obra-dashboard-details[hidden], .obra-dashboard-detail[hidden] { display:none; }
+.obra-dashboard-detail { padding:16px; }.obra-dashboard-detail-head { padding-bottom:13px; border-bottom:1px solid #22364c; }.obra-dashboard-detail-head h3 { font-size:16px; }
+.obra-dashboard-detail .imagens-por-tipo { display:grid; max-height:none; gap:8px; padding:13px 0 0; opacity:1; overflow:visible; }
+.obra-dashboard-detail .imagem-tipo-item { width:100%; min-height:38px; padding:0 8px; border:0; background:transparent; cursor:pointer; text-align:left; }
+.obra-dashboard-detail .imagem-tipo-item:hover, .obra-dashboard-detail .imagem-tipo-item:focus-visible { border-radius:6px; outline:0; background:#172b40; }
+.obra-dashboard-detail .imagem-tipo-nome { color:#d7e4f1; }.obra-dashboard-detail .imagem-tipo-total { color:#e9f2fb; }
+.obra-dashboard-pending-summary { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }.obra-dashboard-pending-summary span { padding:4px 7px; border-radius:99px; background:#172b40; color:#aac0d7; font-size:11px; }.obra-dashboard-pending-summary .is-critical { color:#ffb0b7; background:#6a293535; }.obra-dashboard-pending-summary .is-overdue { color:#ffd08a; background:#704c2038; }.obra-dashboard-pending-summary .is-sla { color:#8ce7b0; background:#1a6a4138; }
+.obra-dashboard-pending-list { display:grid; gap:9px; padding-top:12px; }.obra-dashboard-pending-group { border:1px solid #23394f; border-radius:8px; overflow:hidden; background:#101f30; }.obra-dashboard-pending-group-toggle { display:flex; width:100%; align-items:center; justify-content:space-between; padding:10px 12px; border:0; background:#13253a; color:#dceafa; cursor:pointer; font:inherit; font-size:13px; font-weight:700; text-align:left; }.obra-dashboard-pending-group-toggle i { color:#7f9ab6; transition:transform .25s ease; }.obra-dashboard-pending-group.is-open .obra-dashboard-pending-group-toggle i { transform:rotate(180deg); }.obra-dashboard-pending-group-content { display:grid; grid-template-rows:0fr; transition:grid-template-rows .28s ease; }.obra-dashboard-pending-group.is-open .obra-dashboard-pending-group-content { grid-template-rows:1fr; }.obra-dashboard-pending-group-content > div { display:grid; min-height:0; gap:8px; padding:0 10px; overflow:hidden; transition:padding .28s ease; }.obra-dashboard-pending-group.is-open .obra-dashboard-pending-group-content > div { padding:10px; }
+.obra-dashboard-pending-item { display:grid; gap:6px; padding:11px; border:1px solid #2a4057; border-left:3px solid #4d9ad8; border-radius:7px; color:inherit; background:#102236; text-decoration:none; transition:background-color .18s ease, border-color .18s ease; }.obra-dashboard-pending-item:hover { border-color:#63aee9; background:#152d45; }.obra-dashboard-pending-item.is-critical { border-left-color:#f15f70; }.obra-dashboard-pending-item.is-overdue { border-left-color:#e7a94d; }.obra-dashboard-pending-item-head, .obra-dashboard-pending-item-foot { display:flex; align-items:center; justify-content:space-between; gap:9px; }.obra-dashboard-pending-item h4 { margin:0; color:#eff6ff; font-size:13px; }.obra-dashboard-pending-item small { color:#9db1c5; font-size:11px; }.obra-dashboard-pending-item .sla-label { font-weight:700; }.obra-dashboard-pending-item.is-critical .sla-label { color:#ff9da8; }.obra-dashboard-pending-item.is-overdue .sla-label { color:#f8c26f; }
+#dashboardEntregasHost .entregas-container { display:block !important; min-width:0 !important; }.obra-dashboard-detail #kanban { margin-top:8px; }.obra-dashboard-detail .column { width:100%; max-width:none; }.obra-dashboard-detail .chart-title { display:none; }
+@keyframes obraDashboardOpen { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width: 1180px) { .obra-dashboard-cards { grid-template-columns:repeat(3, minmax(170px, 1fr)); } }
+@media (max-width: 700px) { .obra-dashboard { padding:12px; }.obra-dashboard-head, .obra-dashboard-detail-head { align-items:flex-start; flex-direction:column; }.obra-dashboard-hint { display:none; }.obra-dashboard-cards { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }.obra-dashboard-card { min-height:72px; padding:10px; }.obra-dashboard-card-content strong { font-size:19px; }.obra-dashboard-pending-summary { justify-content:flex-start; }.obra-dashboard-detail { padding:12px; }.obra-dashboard-detail .imagem-tipo-item { grid-template-columns:minmax(95px, 1fr) minmax(80px, 1fr) auto; gap:8px; } }
+@media (max-width: 390px) { .obra-dashboard-cards { grid-template-columns:1fr; }.obra-dashboard-card { min-height:62px; } }

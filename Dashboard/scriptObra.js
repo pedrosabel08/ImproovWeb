@@ -200,6 +200,142 @@
 var obraId = localStorage.getItem("obraId");
 var usuarioId = Number(localStorage.getItem("idusuario"));
 
+// A tela da obra reutiliza a mesma consolidação usada pelo Kanban. URLs e
+// permissões vêm do backend; o front só renderiza o resumo já filtrado.
+const OBRA_PENDENCIAS = (() => {
+  let cache = [];
+  let lastData = { items: [], groups: {}, total: 0 };
+  const esc = (v) =>
+    String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  const format = (v) =>
+    v
+      ? new Intl.DateTimeFormat("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(new Date(String(v).replace(" ", "T")))
+      : "—";
+  const render = (data) => {
+    cache = Array.isArray(data?.items) ? data.items : [];
+    lastData = { ...(data || {}), items: cache };
+    const button = document.getElementById("obraPendenciasButton");
+    const count = document.getElementById("obraPendenciasCount");
+    const summary = document.getElementById("obraPendenciasSummary");
+    const list = document.getElementById("obraPendenciasList");
+    if (!button || !count || !summary || !list) {
+      document.dispatchEvent(
+        new CustomEvent("obra-pendencias-updated", { detail: lastData }),
+      );
+      return;
+    }
+    count.textContent = String(cache.length);
+    button.hidden = false;
+    const parts = Object.entries(data?.groups || {}).map(
+      ([name, total]) =>
+        `${total} ${name === "fotografico" ? "fotográfica(s)" : name}`,
+    );
+    summary.textContent = cache.length
+      ? parts.join(" · ")
+      : "Nenhuma pendência ativa";
+    list.innerHTML = cache.length
+      ? cache
+          .map((item) => {
+            const overdue =
+              item.sla_status === "estourado" || item.sla_status === "critico";
+            const action = item.url_destino || "#";
+            return `
+    <a class="obra-pendencia-item" href="${esc(action)}">
+        <header>
+            <small>
+                ${esc(item.module_name || "Operacional")}
+                ·
+                ${esc(item.tipo || item.source_type || "Pendência")}
+            </small>
+
+            <small class="${overdue ? "is-overdue" : ""}">
+                ${overdue ? "Atrasada" : esc(item.status || "ABERTA")}
+            </small>
+        </header>
+
+        <h4>${esc(item.title)}</h4>
+
+        <p>${esc(item.subtitle)}</p>
+
+        <footer>
+            <small>
+                Responsável:
+                ${esc(item.responsavel_nome || "Não definido")}
+            </small>
+
+            <small>
+                Cobrança:
+                ${esc(item.responsavel_cobranca_nome || "—")}
+            </small>
+        </footer>
+
+        <footer>
+            <small>
+                Criada:
+                ${format(item.created_at)}
+            </small>
+
+            <small class="${overdue ? "is-overdue" : ""}">
+                Próxima cobrança:
+                ${format(item.proxima_cobranca_em || item.due_at)}
+            </small>
+        </footer>
+    </a>
+`;
+          })
+          .join("")
+      : '<p class="obra-pendencia-empty">Nenhuma pendência ativa nesta obra.</p>';
+    document.dispatchEvent(
+      new CustomEvent("obra-pendencias-updated", { detail: lastData }),
+    );
+  };
+  const load = async (id) => {
+    if (!id) return;
+    const base = window.PROJECT_ROOT || "/ImproovWeb";
+    try {
+      const response = await fetch(
+        `${base}/Dashboard/get_obra_pendencias.php?obra_id=${encodeURIComponent(id)}`,
+        { headers: { Accept: "application/json" } },
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload?.success)
+        throw new Error(payload?.error?.code || "Pendências indisponíveis");
+      render(payload.data || {});
+    } catch (error) {
+      console.warn(
+        "Não foi possível carregar pendências consolidadas da obra:",
+        error,
+      );
+    }
+  };
+  document
+    .getElementById("obraPendenciasButton")
+    ?.addEventListener("click", () => {
+      const dialog = document.getElementById("obraPendenciasDialog");
+      if (dialog) dialog.hidden = false;
+    });
+  document
+    .getElementById("obraPendenciasClose")
+    ?.addEventListener("click", () => {
+      const dialog = document.getElementById("obraPendenciasDialog");
+      if (dialog) dialog.hidden = true;
+    });
+  document
+    .getElementById("obraPendenciasDialog")
+    ?.addEventListener("click", (event) => {
+      if (event.target.id === "obraPendenciasDialog")
+        event.currentTarget.hidden = true;
+    });
+  return { load, getData: () => lastData };
+})();
+
 try {
   const entregasWidget = document.querySelector(".entregas-container");
   const actionsMenuBtn = document.querySelector(".actions-menu");
@@ -2520,32 +2656,48 @@ function renderReferenciasVisuaisPosObra(referencias) {
   var section = document.getElementById("referencias-visuais-pos-obra");
   var field = document.getElementById("referenciasCaminho");
   if (!section && field) {
-    section = document.createElement("div"); section.id = "referencias-visuais-pos-obra";
+    section = document.createElement("div");
+    section.id = "referencias-visuais-pos-obra";
     section.style.cssText = "margin:10px 0;display:none;";
     field.parentElement.insertAdjacentElement("afterend", section);
   }
   if (!section) return;
   section.replaceChildren();
-  if (!referencias.length) { section.style.display = "none"; return; }
-  var title = document.createElement("strong"); title.textContent = "Referências visuais da Pós"; section.appendChild(title);
-  var list = document.createElement("div"); list.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;";
+  if (!referencias.length) {
+    section.style.display = "none";
+    return;
+  }
+  var title = document.createElement("strong");
+  title.textContent = "Referências visuais da Pós";
+  section.appendChild(title);
+  var list = document.createElement("div");
+  list.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;";
   referencias.forEach(function (referencia) {
     var image = document.createElement("img");
     image.src = urlReferenciaVisualPosObra(referencia);
-    image.alt = referencia.nome_original || "Referência visual"; image.title = image.alt;
-    image.style.cssText = "width:88px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #ddd;";
+    image.alt = referencia.nome_original || "Referência visual";
+    image.title = image.alt;
+    image.style.cssText =
+      "width:88px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #ddd;";
     list.appendChild(image);
   });
-  section.appendChild(list); section.style.display = "block";
+  section.appendChild(list);
+  section.style.display = "block";
 }
 
 function urlReferenciaVisualPosObra(referencia) {
   var base = "https://improov.com.br/flow/ImproovWeb/";
   if (referencia && referencia.origem === "render_principal") {
     var preview = referencia.preview_render || referencia.previa_jpg || "";
-    return preview ? base + "uploads/renders/" + encodeURIComponent(preview) : "";
+    return preview
+      ? base + "uploads/renders/" + encodeURIComponent(preview)
+      : "";
   }
-  return base + "uploads/pos_referencias/" + encodeURIComponent((referencia && referencia.arquivo) || "");
+  return (
+    base +
+    "uploads/pos_referencias/" +
+    encodeURIComponent((referencia && referencia.arquivo) || "")
+  );
 }
 
 function atualizarModal(idImagem) {
@@ -4838,6 +4990,7 @@ const BRIEFING_ARQUIVOS = (function () {
   return { ensureRenderedFrom, openModal };
 })();
 function infosObra(obraId) {
+  OBRA_PENDENCIAS.load(obraId);
   fetch(`infosObra.php?obraId=${obraId}`)
     .then((response) => response.json())
     .then((data) => {
@@ -5277,9 +5430,7 @@ function infosObra(obraId) {
 
           cellColaborador.addEventListener("mouseenter", (event) => {
             const complexidade =
-              coluna.col === "modelagem"
-                ? modelagemComplexidadeObra
-                : "";
+              coluna.col === "modelagem" ? modelagemComplexidadeObra : "";
             tooltip.textContent = complexidade
               ? `${status || ""}\nComplexidade: ${complexidade}`
               : status || "";
@@ -6859,6 +7010,326 @@ function applyStatusImagem(cell, status, descricao = "") {
   }
 }
 
+const OBRA_DASHBOARD = (() => {
+  let selected = null;
+  let pendingData = { items: [] };
+  const groupOrder = ["Críticas", "Em atraso", "Hoje", "Amanhã", "Próximas"];
+  const escape = (value) =>
+    String(value ?? "").replace(
+      /[&<>"']/g,
+      (char) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        })[char],
+    );
+  const dueDate = (item) =>
+    String(
+      item?.due_at || item?.proxima_cobranca_em || item?.prazo || "",
+    ).slice(0, 10);
+  const todayKey = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 10);
+  };
+  const labelDate = (value) => {
+    if (!value) return "Sem prazo definido";
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime())
+      ? "Sem prazo definido"
+      : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  };
+  const isCritical = (item) =>
+    ["critico", "crítico", "critical"].includes(
+      String(item?.sla_status || "").toLowerCase(),
+    );
+  const isOverdue = (item) =>
+    ["estourado", "atrasado", "overdue"].includes(
+      String(item?.sla_status || "").toLowerCase(),
+    ) ||
+    (!!dueDate(item) && dueDate(item) < todayKey());
+  const groupFor = (item) => {
+    if (isCritical(item)) return "Críticas";
+    if (isOverdue(item)) return "Em atraso";
+    const due = dueDate(item);
+    if (due === todayKey()) return "Hoje";
+    const tomorrow = new Date(`${todayKey()}T00:00:00`);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (due === tomorrow.toISOString().slice(0, 10)) return "Amanhã";
+    return "Próximas";
+  };
+  const updateDeliveryTotal = () => {
+    const target = document.getElementById("dashboardEntregasTotal");
+    if (target)
+      target.textContent = String(
+        document.querySelectorAll(".entregas-container .card-entrega").length,
+      );
+  };
+  const renderPendencias = (data) => {
+    pendingData = data || { items: [] };
+
+    const items = Array.isArray(pendingData.items) ? pendingData.items : [];
+
+    const total = document.getElementById("dashboardPendenciasTotal");
+    const caption = document.getElementById("dashboardPendenciasCaption");
+    const summary = document.getElementById("dashboardPendenciasResumo");
+    const list = document.getElementById("dashboardPendenciasList");
+
+    if (!total || !caption || !summary || !list) return;
+
+    const critical = items.filter(isCritical).length;
+
+    const overdue = items.filter(
+      (item) => !isCritical(item) && isOverdue(item),
+    ).length;
+
+    const withinSla = Math.max(0, items.length - critical - overdue);
+
+    total.textContent = String(items.length);
+
+    caption.textContent = critical
+      ? `${critical} crítica${critical > 1 ? "s" : ""}`
+      : "Sem críticas";
+
+    summary.innerHTML = `
+    <span class="is-critical">
+      ${critical} Críticas
+    </span>
+
+    <span class="is-overdue">
+      ${overdue} Em atraso
+    </span>
+
+    <span class="is-sla">
+      ${withinSla} Dentro do SLA
+    </span>
+  `;
+
+    if (!items.length) {
+      list.innerHTML = `
+      <p class="imagens-por-tipo-vazio">
+        Nenhuma pendência ativa nesta obra.
+      </p>
+    `;
+
+      return;
+    }
+
+    const groups = Object.fromEntries(groupOrder.map((name) => [name, []]));
+
+    items.forEach((item) => {
+      groups[groupFor(item)].push(item);
+    });
+
+    list.innerHTML = groupOrder
+      .filter((name) => groups[name].length)
+      .map((name) => {
+        const entries = groups[name]
+          .map((item) => {
+            const criticalItem = isCritical(item);
+            const overdueItem = !criticalItem && isOverdue(item);
+
+            const css = criticalItem
+              ? "is-critical"
+              : overdueItem
+                ? "is-overdue"
+                : "";
+
+            const destination = escape(item.url_destino || "#");
+
+            const moduleName = escape(item.module_name || "Operacional");
+
+            const pendingType = escape(
+              item.metadata?.tipo_pendencia ||
+                item.subtitle ||
+                item.tipo ||
+                item.source_type ||
+                "Pendência",
+            );
+
+            const person = escape(
+              item.responsavel_nome ||
+                item.responsavel_cobranca_nome ||
+                "Não definido",
+            );
+
+            const sla = criticalItem
+              ? "Crítica"
+              : overdueItem
+                ? "Em atraso"
+                : "Dentro do SLA";
+
+            return `
+            <a
+              class="obra-dashboard-pending-item ${css}"
+              href="${destination}"
+            >
+              <div class="obra-dashboard-pending-item-head">
+                <small>
+                  ${moduleName}
+                  ·
+                  ${pendingType}
+                </small>
+
+                <small class="sla-label">
+                  ${sla}
+                </small>
+              </div>
+
+              <h4>
+                ${escape(item.title || "Pendência")}
+              </h4>
+
+              <div class="obra-dashboard-pending-item-foot">
+                <small>
+                  ${person}
+                </small>
+
+                <small>
+                  ${labelDate(dueDate(item))}
+                </small>
+              </div>
+            </a>
+          `;
+          })
+          .join("");
+
+        const open =
+          name === "Críticas" || name === "Em atraso" || name === "Hoje";
+
+        return `
+        <section
+          class="obra-dashboard-pending-group${open ? " is-open" : ""}"
+        >
+          <button
+            type="button"
+            class="obra-dashboard-pending-group-toggle"
+            aria-expanded="${open}"
+          >
+            <span>
+              ${name} (${groups[name].length})
+            </span>
+
+            <i
+              class="fa-solid fa-chevron-down"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <div class="obra-dashboard-pending-group-content">
+            <div>
+              ${entries}
+            </div>
+          </div>
+        </section>
+      `;
+      })
+      .join("");
+
+    list
+      .querySelectorAll(".obra-dashboard-pending-group-toggle")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const group = button.closest(".obra-dashboard-pending-group");
+
+          if (!group) return;
+
+          const open = !group.classList.contains("is-open");
+
+          group.classList.toggle("is-open", open);
+
+          button.setAttribute("aria-expanded", String(open));
+        });
+      });
+  };
+  const select = (key) => {
+    const root = document.getElementById("obraDashboard");
+    const details = document.getElementById("obraDashboardDetails");
+    if (!root || !details) return;
+
+    // Clicou novamente no mesmo card
+    if (selected === key) {
+      selected = null;
+
+      root.querySelectorAll("[data-dashboard-card]").forEach((card) => {
+        card.classList.remove("is-selected");
+        card.setAttribute("aria-pressed", "false");
+      });
+
+      details.hidden = true;
+      return;
+    }
+
+    selected = key;
+
+    root.querySelectorAll("[data-dashboard-card]").forEach((card) => {
+      const active = card.dataset.dashboardCard === key;
+      card.classList.toggle("is-selected", active);
+      card.setAttribute("aria-pressed", String(active));
+    });
+
+    details.hidden = false;
+
+    root.querySelectorAll(".obra-dashboard-detail").forEach((detail) => {
+      detail.hidden =
+        detail.id !== `dashboardDetail${key[0].toUpperCase()}${key.slice(1)}`;
+    });
+
+    if (key === "entregas") {
+      const source = document.querySelector(".entregas-container");
+      const host = document.getElementById("dashboardEntregasHost");
+      if (source && host && source.parentElement !== host) {
+        host.appendChild(source);
+      }
+      updateDeliveryTotal();
+    }
+  };
+  const init = () => {
+    const root = document.getElementById("obraDashboard");
+    if (!root || root.dataset.initialized === "1") return;
+    root.dataset.initialized = "1";
+    root
+      .querySelectorAll("[data-dashboard-card]")
+      .forEach((card) =>
+        card.addEventListener("click", () =>
+          select(card.dataset.dashboardCard),
+        ),
+      );
+    document.addEventListener("obra-pendencias-updated", (event) =>
+      renderPendencias(event.detail),
+    );
+    renderPendencias(OBRA_PENDENCIAS.getData());
+    const deliveries = document.querySelector(".entregas-container");
+    if (deliveries)
+      new MutationObserver(updateDeliveryTotal).observe(deliveries, {
+        childList: true,
+        subtree: true,
+      });
+    updateDeliveryTotal();
+  };
+  return { init, select, renderPendencias };
+})();
+
+function aplicarFiltroTipoImagem(tipo) {
+  const select = document.getElementById("tipo_imagem");
+  if (!select) return;
+  const value = String(tipo || "").trim();
+  if (!value) return;
+  if (window.jQuery && $(select).data("select2")) {
+    $(select).val([value]).trigger("change");
+  } else {
+    Array.from(select.options).forEach((option) => {
+      option.selected = option.value === value;
+    });
+    __centerTableAfterFilter = true;
+    filtrarTabela();
+    __centerTableAfterFilter = false;
+  }
+}
+
 let __centerTableAfterFilter = false;
 function agruparImagensPorTipo(imagens) {
   const totaisPorTipo = new Map();
@@ -6911,8 +7382,11 @@ function renderizarImagensPorTipo(imagens) {
     const percentual =
       totalGeral > 0 ? Math.round((total / totalGeral) * 100) : 0;
 
-    const item = document.createElement("div");
+    const item = document.createElement("button");
+    item.type = "button";
     item.className = "imagem-tipo-item";
+    item.title = `Filtrar tabela por ${tipo}`;
+    item.addEventListener("click", () => aplicarFiltroTipoImagem(tipo));
 
     const nome = document.createElement("span");
     nome.className = "imagem-tipo-nome";
@@ -6981,7 +7455,13 @@ function atualizarResumoImagens(imagens) {
     antecipadas.textContent = formatarNumeroResumo(antecipadasFiltradas);
   }
 
-  renderizarImagensPorTipo(listaImagens);
+  // A tabela pode estar filtrada, mas o dashboard continua exibindo todos
+  // os tipos de imagem existentes na obra.
+  renderizarImagensPorTipo(
+    Array.isArray(dadosImagens) && dadosImagens.length
+      ? dadosImagens
+      : listaImagens,
+  );
 }
 
 function alternarGavetaImagens() {
@@ -7033,7 +7513,7 @@ function inicializarResumoImagens() {
     return;
   }
 
-  botao.addEventListener("click", alternarGavetaImagens);
+  OBRA_DASHBOARD.init();
 
   botao.dataset.gavetaInicializada = "true";
 }
@@ -7059,6 +7539,10 @@ function filtrarTabela() {
       imagensFiltradas.push({
         tipo_imagem: linhas[i].getAttribute("tipo-imagem"),
         antecipada: isAntecipada ? "1" : "0",
+        imagem_status: linhas[i].getAttribute("status"),
+        imagem_sub_status:
+          linhas[i].querySelector('td[data-field="status_imagem"]')
+            ?.textContent || "",
       });
     }
 
@@ -7260,25 +7744,32 @@ async function initSubtipoModalSelect2() {
     $sel.select2("destroy");
   } catch (_) {}
 
-  $sel.empty().append(new Option("-- Sem subtipo --", "", false, valorSelecionado === ""));
+  $sel
+    .empty()
+    .append(
+      new Option("-- Sem subtipo --", "", false, valorSelecionado === ""),
+    );
   const adicionarGrupo = (titulo, subtipos) => {
     if (!subtipos.length) return;
     const grupo = document.createElement("optgroup");
     grupo.label = titulo;
     subtipos.forEach((subtipo) => {
       const id = String(subtipo.id);
-      grupo.appendChild(new Option(subtipo.nome, id, false, id === valorSelecionado));
+      grupo.appendChild(
+        new Option(subtipo.nome, id, false, id === valorSelecionado),
+      );
     });
     $sel.append(grupo);
   };
   adicionarGrupo("Obra", subtiposDaObra);
   adicionarGrupo("Demais", demaisSubtipos);
   const todosSubtipos = [...subtiposDaObra, ...demaisSubtipos];
-  const normalizarBuscaSubtipo = (valor) => String(valor || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLocaleLowerCase("pt-BR");
+  const normalizarBuscaSubtipo = (valor) =>
+    String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLocaleLowerCase("pt-BR");
 
   $sel.select2({
     tags: true,
@@ -7309,38 +7800,42 @@ async function initSubtipoModalSelect2() {
     },
   });
 
-  $sel.off("select2:select.subtipo").on("select2:select.subtipo", async function (e) {
-    const data = e.params.data;
-    if (!data.newTag) return;
-    const nome = data.text.trim();
-    if (!nome) return;
-    try {
-      const resp = await fetch("getSubtipos.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome }),
-      });
-      const json = await resp.json();
-      if (json.id && !json.error) {
-        // Adiciona a option real com ID do banco e remove a temporária
-        const realOpt = new Option(json.nome, json.id, true, true);
-        $sel.append(realOpt);
-        $sel.find(`option[value="new:${nome}"]`).remove();
-        $sel.val(json.id).trigger("change");
-      } else {
-        console.warn("Erro ao criar subtipo:", json.error);
+  $sel
+    .off("select2:select.subtipo")
+    .on("select2:select.subtipo", async function (e) {
+      const data = e.params.data;
+      if (!data.newTag) return;
+      const nome = data.text.trim();
+      if (!nome) return;
+      try {
+        const resp = await fetch("getSubtipos.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome }),
+        });
+        const json = await resp.json();
+        if (json.id && !json.error) {
+          // Adiciona a option real com ID do banco e remove a temporária
+          const realOpt = new Option(json.nome, json.id, true, true);
+          $sel.append(realOpt);
+          $sel.find(`option[value="new:${nome}"]`).remove();
+          $sel.val(json.id).trigger("change");
+        } else {
+          console.warn("Erro ao criar subtipo:", json.error);
+        }
+      } catch (err) {
+        console.error("Erro ao criar subtipo:", err);
       }
-    } catch (err) {
-      console.error("Erro ao criar subtipo:", err);
-    }
-  });
+    });
 }
 
 async function carregarComplexidadesModelagem() {
   const response = await fetch("getComplexidadesModelagem.php");
-  if (!response.ok) throw new Error("Não foi possível carregar as complexidades.");
+  if (!response.ok)
+    throw new Error("Não foi possível carregar as complexidades.");
   const complexidades = await response.json();
-  if (!Array.isArray(complexidades)) throw new Error("Resposta inválida de complexidades.");
+  if (!Array.isArray(complexidades))
+    throw new Error("Resposta inválida de complexidades.");
   return complexidades;
 }
 
@@ -13041,10 +13536,7 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
         return;
       }
 
-      const funcaoFields = [
-        "funcao_id",
-        "colaborador_id",
-      ];
+      const funcaoFields = ["funcao_id", "colaborador_id"];
       const toSend = {};
       funcaoFields.forEach((f) => {
         const valor = dadosAtualizar[f];
@@ -14050,14 +14542,18 @@ async function abrirComplexidadeModelagem() {
   }
 
   const opcoes = Object.fromEntries(
-    complexidades.map((complexidade) => [String(complexidade.id), complexidade.nome]),
+    complexidades.map((complexidade) => [
+      String(complexidade.id),
+      complexidade.nome,
+    ]),
   );
   const escolha = await Swal.fire({
     title: "Complexidade da Modelagem",
     text: "Escolha a classificação deste projeto.",
     input: "radio",
     inputOptions: opcoes,
-    inputValidator: (valor) => (!valor ? "Escolha uma complexidade." : undefined),
+    inputValidator: (valor) =>
+      !valor ? "Escolha uma complexidade." : undefined,
     confirmButtonText: "Escolher",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
@@ -14081,7 +14577,9 @@ async function abrirComplexidadeModelagem() {
     });
     const resultado = await response.json();
     if (!response.ok || !resultado.sucesso) {
-      throw new Error(resultado.mensagem || "Não foi possível atualizar a complexidade.");
+      throw new Error(
+        resultado.mensagem || "Não foi possível atualizar a complexidade.",
+      );
     }
 
     await Swal.fire({
@@ -14163,7 +14661,10 @@ function initComplexidadeModelagemAction() {
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initActionsMenu);
-    document.addEventListener("DOMContentLoaded", initComplexidadeModelagemAction);
+    document.addEventListener(
+      "DOMContentLoaded",
+      initComplexidadeModelagemAction,
+    );
   } else {
     initActionsMenu();
     initComplexidadeModelagemAction();
@@ -14645,7 +15146,8 @@ async function loadFotograficoWorkflowSummary() {
       CONCLUIDO: "Fotografico concluido",
       CANCELADO: "Processo cancelado",
     };
-    text.textContent = labels[summary.status] || summary.status || "Aguardando fachada";
+    text.textContent =
+      labels[summary.status] || summary.status || "Aguardando fachada";
     if (summary.id) link.href = fotograficoWorkflowUrl(Number(summary.id));
   } catch (error) {
     text.textContent = error.message;

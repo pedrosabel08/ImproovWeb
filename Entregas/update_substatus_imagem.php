@@ -100,6 +100,7 @@ try {
     }
 
     $conn->commit();
+    fotografico_enviar_notificacoes_pendentes($conn);
     echo json_encode(['success' => true, 'affected' => $affected], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $conn->rollback();

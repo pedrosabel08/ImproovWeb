@@ -506,6 +506,28 @@ class DeadlineWorkerAcceptanceTests(unittest.TestCase):
         warnings = [record for record in worker.logger.records if record[0] == "warning"]
         self.assertEqual(warnings[0][2]["reason"], "MULTIPLE_UNMATCHED_JOBS")
 
+    def test_case_30_failed_render_processing_leaves_observation_retryable(self):
+        repository = (RENDER_DIR / "deadline_repository.py").read_text(
+            encoding="utf-8"
+        )
+        worker = (RENDER_DIR / "deadline_worker.py").read_text(encoding="utf-8")
+        observation_start = repository.index("    def observe_deadline_state(")
+        confirmation_start = repository.index(
+            "    def confirm_deadline_observation("
+        )
+        observation = repository[observation_start:confirmation_start]
+
+        # Planejar a observacao nao pode consumir o evento. Caso a atualizacao
+        # do Render falhe (por exemplo, por queda de conexao), o job deve ser
+        # processado novamente no proximo ciclo.
+        self.assertNotIn("UPDATE render_tentativas", observation)
+        self.assertNotIn("INSERT INTO render_tentativa_eventos", observation)
+        self.assertIn("def confirm_deadline_observation", repository)
+        self.assertGreater(
+            worker.index("confirm_deadline_observation", worker.index("def sync_active")),
+            worker.index("finalize_p00_rollup", worker.index("def sync_active")),
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

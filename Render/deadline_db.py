@@ -44,7 +44,13 @@ class Database:
                 yield cursor
             conn.commit()
         except Exception:
-            conn.rollback()
+            # Uma desconexao do MySQL tambem pode impedir o ROLLBACK. Preserve
+            # a excecao original para o log e descarte a conexao quebrada para
+            # que o proximo ciclo reconecte antes de tentar o job novamente.
+            try:
+                conn.rollback()
+            except Exception:
+                self.close()
             raise
 
     def close(self):

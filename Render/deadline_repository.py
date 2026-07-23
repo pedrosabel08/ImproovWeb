@@ -790,10 +790,11 @@ class DeadlineRepository:
     def observe_deadline_state(
         self, attempt: dict, target: str, fingerprint: str
     ) -> dict | None:
-        """Persiste a observacao barata e devolve o plano de processamento.
+        """Monta o plano de uma observacao sem confirma-la ainda.
 
-        A tabela de eventos guarda apenas o ultimo snapshot da consulta Deadline.
-        Uma observacao identica nao escreve no banco e nao dispara trabalho pesado.
+        A confirmacao acontece junto da atualizacao do Render. Assim, uma perda de
+        conexao no meio do processamento nao marca o job como ja processado e o
+        proximo ciclo pode repeti-lo com seguranca.
         """
         with self.database.transaction() as cursor:
             cursor.execute(
@@ -847,31 +848,6 @@ class DeadlineRepository:
             plan = build_observation_plan(
                 previous_status, target, previous_fingerprint, fingerprint
             )
-            if plan["state_changed"]:
-                cursor.execute(
-                    """
-                    UPDATE render_tentativas
-                    SET status = %s,
-                        iniciado_em = IF(%s = 'EM_ANDAMENTO', COALESCE(iniciado_em, NOW()), iniciado_em),
-                        concluido_em = IF(%s = 'EM_APROVACAO', COALESCE(concluido_em, NOW()), concluido_em)
-                    WHERE id = %s
-                    """,
-                    (target, target, target, current["tentativa_id"]),
-                )
-            if plan["snapshot_changed"] or plan["state_changed"]:
-                payload = json.dumps(
-                    {"fingerprint": fingerprint, "state": target},
-                    ensure_ascii=False,
-                )
-                cursor.execute(
-                    """
-                    INSERT INTO render_tentativa_eventos
-                        (tentativa_id, tipo, chave, dados_json)
-                    VALUES (%s, 'OBSERVACAO_DEADLINE', 'ATUAL', %s)
-                    ON DUPLICATE KEY UPDATE dados_json = VALUES(dados_json)
-                    """,
-                    (current["tentativa_id"], payload),
-                )
             plan.update(
                 {
                     "ignored": False,
@@ -881,6 +857,53 @@ class DeadlineRepository:
                 }
             )
             return plan
+
+    def confirm_deadline_observation(
+        self, cursor, attempt: dict, target: str, fingerprint: str
+    ) -> bool:
+        """Confirma a observacao dentro da mesma transacao do efeito no Flow."""
+        cursor.execute(
+            """
+            SELECT status, ativa, deadline_job_id
+            FROM render_tentativas
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (attempt["id"],),
+        )
+        row = cursor.fetchone()
+        if (
+            not row
+            or int(row[1]) != 1
+            or str(row[2]) != str(attempt["deadline_job_id"])
+        ):
+            return False
+        current = str(row[0])
+        if not transition_allowed(current, target):
+            return False
+        cursor.execute(
+            """
+            UPDATE render_tentativas
+            SET status = %s,
+                iniciado_em = IF(%s = 'EM_ANDAMENTO', COALESCE(iniciado_em, NOW()), iniciado_em),
+                concluido_em = IF(%s = 'EM_APROVACAO', COALESCE(concluido_em, NOW()), concluido_em)
+            WHERE id = %s
+            """,
+            (target, target, target, attempt["id"]),
+        )
+        payload = json.dumps(
+            {"fingerprint": fingerprint, "state": target}, ensure_ascii=False
+        )
+        cursor.execute(
+            """
+            INSERT INTO render_tentativa_eventos
+                (tentativa_id, tipo, chave, dados_json)
+            VALUES (%s, 'OBSERVACAO_DEADLINE', 'ATUAL', %s)
+            ON DUPLICATE KEY UPDATE dados_json = VALUES(dados_json)
+            """,
+            (attempt["id"], payload),
+        )
+        return True
 
     def lock_attempt_context_tuple(self, cursor, attempt: dict) -> bool:
         """Usa a mesma ordem de locks do PHP: render e depois tentativa."""

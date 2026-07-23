@@ -269,10 +269,11 @@ class DeadlineWorker:
                 self.logger.warning("active job tasks could not be read", extra=context)
                 task_data = {}
             target = state_from_deadline(job_data, task_data)
+            fingerprint = self.observation_fingerprint(target, job_data, task_data)
             plan = self.repository.observe_deadline_state(
                 attempt,
                 target,
-                self.observation_fingerprint(target, job_data, task_data),
+                fingerprint,
             )
             if plan is None:
                 self.logger.debug(
@@ -330,6 +331,12 @@ class DeadlineWorker:
                         p00_rollup,
                         notifications_enabled=plan["send_notifications"],
                     )
+                    if not self.repository.confirm_deadline_observation(
+                        cursor, attempt, target, fingerprint
+                    ):
+                        raise RuntimeError(
+                            "Tentativa mudou antes da confirmacao da observacao."
+                        )
                 self.logger.info(
                     "deadline event processed",
                     extra={
@@ -509,14 +516,17 @@ class DeadlineWorker:
                 self.business.finalize_p00_rollup(
                     cursor, p00_rollup, notifications_enabled=True
                 )
-            # O primeiro processamento ja aplicou preview/POS/Slack. Registra
-            # o snapshot somente apos esse sucesso para que o proximo ciclo
-            # ativo seja barato e nao trate a observacao inicial como preview.
-            self.repository.observe_deadline_state(
-                attempt,
-                target,
-                self.observation_fingerprint(target, job_data, task_data),
-            )
+                # O primeiro processamento ja aplicou preview/POS/Slack. O
+                # snapshot so e confirmado se todos esses efeitos forem gravados.
+                if not self.repository.confirm_deadline_observation(
+                    cursor,
+                    attempt,
+                    target,
+                    self.observation_fingerprint(target, job_data, task_data),
+                ):
+                    raise RuntimeError(
+                        "Tentativa inicial mudou antes da confirmacao da observacao."
+                    )
             self.logger.info(
                 "first render processed",
                 extra={**context, "target": target, "result": "FIRST_RENDER_CREATED"},

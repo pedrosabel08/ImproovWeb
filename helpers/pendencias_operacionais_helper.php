@@ -1123,7 +1123,6 @@ function pendencias_operacionais_fetch(
     if ($showAllForObra || pendencias_operacionais_user_in($colaboradorId, [
         PENDENCIAS_PEDRO_ID,
         PENDENCIAS_ANDRE_ID,
-        PENDENCIAS_IMAGEM_RESPONSAVEL_ID,
     ])) {
         foreach (pendencias_links_obra_listar_abertas($conn) as $link) {
             if ($obraScopeId > 0 && (int) ($link['obra_id'] ?? 0) !== $obraScopeId) {

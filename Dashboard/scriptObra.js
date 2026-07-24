@@ -3359,6 +3359,23 @@ function atualizarModal(idImagem) {
     .catch((error) => console.error("Erro ao buscar dados da linha:", error));
 }
 
+function stringToColor(str) {
+  let hash = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const hue = Math.abs(hash) % 360;
+
+  return {
+    background: `hsla(${hue}, 70%, 45%, 0.18)`,
+    color: `hsl(${hue}, 75%, 70%)`,
+    border: `hsl(${hue}, 70%, 45%)`
+  };
+}
+
+
 function renderAnimacaoAllocationInfo(response) {
   const container = document.getElementById("modalFuncoesInfo");
   if (!container) return;
@@ -5225,9 +5242,13 @@ function infosObra(obraId) {
         if (item.subtipo_nome) {
           const subtipoBadge = document.createElement("span");
           subtipoBadge.className = "subtipo-badge";
-          if (item.subtipo_id) {
-            subtipoBadge.classList.add(`subtipo-badge--${item.subtipo_id}`);
-          }
+
+          const colors = stringToColor(item.subtipo_nome);
+
+          subtipoBadge.style.backgroundColor = colors.background;
+          subtipoBadge.style.color = colors.color;
+          subtipoBadge.style.borderColor = colors.border;
+
           subtipoBadge.textContent = item.subtipo_nome;
           cellNomeImagem.appendChild(subtipoBadge);
         }

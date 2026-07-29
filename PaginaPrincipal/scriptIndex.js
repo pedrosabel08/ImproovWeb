@@ -1856,10 +1856,10 @@ function processarDados(data) {
     let imagemEmHold = false;
 
     if (hasPendingFile) {
-      card.classList.add("arquivo-pendente");
+      card.classList.add("arquivo-pendente", "kanban-card--operational-file");
     }
     if (hasPendingRender) {
-      card.classList.add("render-pendente");
+      card.classList.add("render-pendente", "kanban-card--operational-render");
     }
     if (hasImageChecklist) {
       card.classList.add("checklist-pendente");
@@ -1960,34 +1960,34 @@ function processarDados(data) {
 
     // adiciona bloqueado se necessário
     if (liberado === "0" && !holdMovel) {
-      card.classList.add("bloqueado");
+      card.classList.add("bloqueado", "kanban-card--operational-hold");
     }
 
-    if (cardEmHold) {
-      const holdMotivo = (
-        item.hold_justificativa_recente ||
-        item.descricao ||
-        item.justificativa ||
-        ""
-      )
-        .toString()
-        .trim();
-      const holdTexto = holdMotivo
-        ? `Imagem em HOLD\nMotivo: ${holdMotivo}`
-        : "Imagem em HOLD\nMotivo: não informado";
+    // if (cardEmHold) {
+    //   const holdMotivo = (
+    //     item.hold_justificativa_recente ||
+    //     item.descricao ||
+    //     item.justificativa ||
+    //     ""
+    //   )
+    //     .toString()
+    //     .trim();
+    //   const holdTexto = holdMotivo
+    //     ? `Imagem em HOLD\nMotivo: ${holdMotivo}`
+    //     : "Imagem em HOLD\nMotivo: não informado";
 
-      card.addEventListener("mouseenter", (event) => {
-        showHoldTooltip(event, holdTexto);
-      });
+    //   card.addEventListener("mouseenter", (event) => {
+    //     showHoldTooltip(event, holdTexto);
+    //   });
 
-      card.addEventListener("mousemove", (event) => {
-        moveHoldTooltip(event);
-      });
+    //   card.addEventListener("mousemove", (event) => {
+    //     moveHoldTooltip(event);
+    //   });
 
-      card.addEventListener("mouseleave", () => {
-        hideHoldTooltip();
-      });
-    }
+    //   card.addEventListener("mouseleave", () => {
+    //     hideHoldTooltip();
+    //   });
+    // }
 
     function isAtrasada(prazoStr) {
       // Divide a string 'YYYY-MM-DD'
@@ -2136,7 +2136,9 @@ function processarDados(data) {
       .toString()
       .trim();
 
-    if (isHold) card.classList.add("kanban-card--hold");
+    if (isHold) {
+      card.classList.add("kanban-card--hold", "kanban-card--operational-hold");
+    }
     if (liberado === "0" && pendenciasInicio.length > 0) {
       card.classList.add("kanban-card--requirement-blocked");
     }
@@ -5424,50 +5426,91 @@ function preencherFiltros() {
   const statuses = new Set();
 
   document.querySelectorAll(".kanban-card").forEach((card) => {
-    if (card.dataset.obra_nome) obras.add(card.dataset.obra_nome);
-    if (card.dataset.funcao_nome) funcoes.add(card.dataset.funcao_nome);
-    if (card.dataset.status) statuses.add(card.dataset.status);
+    if (card.dataset.obra_nome) {
+      obras.add(card.dataset.obra_nome);
+    }
+
+    if (card.dataset.funcao_nome) {
+      funcoes.add(card.dataset.funcao_nome);
+    }
+
+    if (card.dataset.status) {
+      statuses.add(card.dataset.status);
+    }
   });
 
   const filtroObra = document.getElementById("filtroObra");
   const filtroFuncao = document.getElementById("filtroFuncao");
   const filtroStatus = document.getElementById("filtroStatus");
-  if (!filtroObra || !filtroFuncao || !filtroStatus) return;
 
-  // Salva os valores selecionados antes de reconstruir (padrão scriptObra.js)
+  if (!filtroObra || !filtroFuncao || !filtroStatus) {
+    return;
+  }
+
+  // Salva as seleções atuais antes de reconstruir os filtros
   const obrasSelecionadas = new Set(
     Array.from(filtroObra.querySelectorAll("input:checked"))
-      .map((el) => el.value)
-      .filter((v) => v),
+      .map((input) => input.value)
+      .filter(Boolean),
   );
+
   const funcoesSelecionadas = new Set(
     Array.from(filtroFuncao.querySelectorAll("input:checked"))
-      .map((el) => el.value)
-      .filter((v) => v),
+      .map((input) => input.value)
+      .filter(Boolean),
   );
+
   const statusSelecionados = new Set(
     Array.from(filtroStatus.querySelectorAll("input:checked"))
-      .map((el) => el.value)
-      .filter((v) => v),
+      .map((input) => input.value)
+      .filter(Boolean),
   );
 
+  // Limpa e recria as opções gerais
   filtroObra.innerHTML =
     '<label><input type="checkbox" value=""> Todas as obras</label>';
+
   filtroFuncao.innerHTML =
     '<label><input type="checkbox" value=""> Todas as funções</label>';
-
-  obras.forEach((o) => {
-    filtroObra.innerHTML += `<label><input type="checkbox" value="${o}"> ${o}</label>`;
-  });
 
   filtroStatus.innerHTML =
     '<label><input type="checkbox" value=""> Todos os status</label>';
 
-  funcoes.forEach((f) => {
-    filtroFuncao.innerHTML += `<label><input type="checkbox" value="${f}"> ${f}</label>`;
-  });
+  // Obras em ordem alfabética
+  [...obras]
+    .sort((a, b) =>
+      a.localeCompare(b, "pt-BR", {
+        sensitivity: "base",
+        numeric: true,
+      }),
+    )
+    .forEach((obra) => {
+      filtroObra.innerHTML += `
+        <label>
+          <input type="checkbox" value="${obra}">
+          ${obra}
+        </label>
+      `;
+    });
 
-  // Restaura as seleções anteriores nos checkboxes recriados
+  // Funções em ordem alfabética
+  [...funcoes]
+    .sort((a, b) =>
+      a.localeCompare(b, "pt-BR", {
+        sensitivity: "base",
+        numeric: true,
+      }),
+    )
+    .forEach((funcao) => {
+      filtroFuncao.innerHTML += `
+        <label>
+          <input type="checkbox" value="${funcao}">
+          ${funcao}
+        </label>
+      `;
+    });
+
+  // Status em ordem operacional definida
   const ordemStatus = [
     "Não iniciado",
     "HOLD",
@@ -5479,36 +5522,77 @@ function preencherFiltros() {
     "Aprovado",
     "Finalizado",
   ];
+
   [...statuses]
     .sort((a, b) => {
       const posicaoA = ordemStatus.indexOf(a);
       const posicaoB = ordemStatus.indexOf(b);
+
+      const ordemA =
+        posicaoA === -1 ? ordemStatus.length : posicaoA;
+
+      const ordemB =
+        posicaoB === -1 ? ordemStatus.length : posicaoB;
+
       return (
-        (posicaoA < 0 ? ordemStatus.length : posicaoA) -
-          (posicaoB < 0 ? ordemStatus.length : posicaoB) ||
-        a.localeCompare(b, "pt-BR")
+        ordemA - ordemB ||
+        a.localeCompare(b, "pt-BR", {
+          sensitivity: "base",
+          numeric: true,
+        })
       );
     })
     .forEach((status) => {
-      filtroStatus.innerHTML += `<label><input type="checkbox" value="${status}"> ${status}</label>`;
+      filtroStatus.innerHTML += `
+        <label>
+          <input type="checkbox" value="${status}">
+          ${status}
+        </label>
+      `;
     });
 
-  filtroObra.querySelectorAll("input[type=checkbox]").forEach((cb) => {
-    if (cb.value && obrasSelecionadas.has(cb.value)) cb.checked = true;
-  });
-  filtroFuncao.querySelectorAll("input[type=checkbox]").forEach((cb) => {
-    if (cb.value && funcoesSelecionadas.has(cb.value)) cb.checked = true;
-  });
-  filtroStatus.querySelectorAll("input[type=checkbox]").forEach((cb) => {
-    if (cb.value && statusSelecionados.has(cb.value)) cb.checked = true;
-  });
+  // Restaura as seleções anteriores
+  filtroObra
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((checkbox) => {
+      if (
+        checkbox.value &&
+        obrasSelecionadas.has(checkbox.value)
+      ) {
+        checkbox.checked = true;
+      }
+    });
+
+  filtroFuncao
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((checkbox) => {
+      if (
+        checkbox.value &&
+        funcoesSelecionadas.has(checkbox.value)
+      ) {
+        checkbox.checked = true;
+      }
+    });
+
+  filtroStatus
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((checkbox) => {
+      if (
+        checkbox.value &&
+        statusSelecionados.has(checkbox.value)
+      ) {
+        checkbox.checked = true;
+      }
+    });
 
   // Reaplica os eventos de filtro
   document
     .querySelectorAll(
       "#filtroObra input, #filtroFuncao input, #filtroStatus input",
     )
-    .forEach((chk) => chk.addEventListener("change", aplicarFiltros));
+    .forEach((checkbox) => {
+      checkbox.addEventListener("change", aplicarFiltros);
+    });
 }
 
 const statusMapInvertido = {

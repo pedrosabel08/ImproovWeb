@@ -556,6 +556,7 @@ main .kanban .kanban-box-pendencias .content:empty::before {
   border-top: none;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
+  box-sizing: border-box;
   color: #6d28d9;
   font-size: 0.72rem;
   font-weight: 700;
@@ -879,73 +880,74 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
 
 .kanban-card.arquivo-pendente {
   border-left: 4px solid #ff9800;
-  background-color: #000;
-  color: #fff;
-}
-
-.kanban-card .pending-file-ribbon {
-  position: absolute;
-  left: -1px;
-  top: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #ff9800;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 0 8px 8px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  z-index: 2;
 }
 
 .kanban-card.render-pendente:not(.arquivo-pendente) {
   border-left: 4px solid #0ea5e9;
 }
 
-.kanban-card .pending-render-ribbon {
+/* =========================================================
+   RIBBONS DE PENDÊNCIA — BASE
+   ========================================================= */
+
+.kanban-card
+  :is(.pending-file-ribbon, .pending-render-ribbon, .pending-checklist-ribbon) {
   position: absolute;
-  left: -1px;
+  z-index: 2;
   top: 10px;
+  left: -1px;
+
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #0ea5e9;
+
+  padding: 3px 8px;
+
+  border: 1px solid transparent;
+  border-radius: 0 8px 8px 0;
+
   color: #fff;
   font-size: 0.62rem;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 0 8px 8px 0;
+  line-height: 1.2;
+  white-space: nowrap;
+
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  z-index: 2;
 }
+
+/* =========================================================
+   VARIAÇÕES
+   ========================================================= */
+
+/* Arquivo enviado pendente */
+.kanban-card .pending-file-ribbon {
+  background-color: #ff9800c2;
+  border-color: #ff9800;
+}
+
+/* Render pendente */
+.kanban-card .pending-render-ribbon {
+  background-color: #0ea5e9ba;
+  border-color: #0ea5e952;
+}
+
+/* Checklist pendente */
+.kanban-card .pending-checklist-ribbon {
+  background-color: #16a34a;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
+}
+
+/* =========================================================
+   EMPILHAMENTO
+   ========================================================= */
 
 .kanban-card .pending-render-ribbon.below-file-ribbon {
   top: 34px;
 }
 
-.kanban-card .pending-checklist-ribbon {
-  position: absolute;
-  left: -1px;
-  top: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #16a34a;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 0 8px 8px 0;
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
-  z-index: 2;
-}
-
 .kanban-card .pending-checklist-ribbon.below-file-ribbon {
   top: 58px;
 }
-
 .pendencia-op-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -7159,7 +7161,7 @@ tr.prod-row-recorde td {
   box-shadow: none;
 }
 
-#kanban-section .pending-file-ribbon,
+/* #kanban-section .pending-file-ribbon,
 #kanban-section .pending-render-ribbon,
 #kanban-section .pending-checklist-ribbon {
   position: absolute;
@@ -7180,7 +7182,7 @@ tr.prod-row-recorde td {
   border: 1px solid rgba(245, 158, 11, 0.26);
   border-radius: 50%;
   box-shadow: none;
-}
+} */
 
 #kanban-section .pending-render-ribbon {
   top: 29px;
@@ -7666,6 +7668,8 @@ tr.prod-row-recorde td {
 }
 
 #kanban-section .pending-file-ribbon,
+#kanban-section .pending-render-ribbon,
+#kanban-section .pending-checklist-ribbon,
 #kanban-section .pending-attachment-ribbon,
 #kanban-section .pending-comment-ribbon {
   position: static;
@@ -7673,9 +7677,29 @@ tr.prod-row-recorde td {
   width: auto;
   height: auto;
   min-height: 18px;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 3px 5px;
   border-radius: 4px;
   font-size: 0.63rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+/* Destaque operacional: HOLD/bloqueado vence arquivo pendente, que vence envio de render. */
+#kanban-section .kanban-card.kanban-card--operational-render {
+  border: 1px solid #0ea5e9 !important;
+  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.2) !important;
+}
+
+#kanban-section .kanban-card.kanban-card--operational-file {
+  border: 1px solid #f97316 !important;
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2) !important;
+}
+
+#kanban-section .kanban-card.kanban-card--operational-hold {
+  border: 1px solid #ef4444 !important;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.24) !important;
 }
 
 #kanban-section.kanban--compact .kanban-card {
@@ -7711,23 +7735,54 @@ tr.prod-row-recorde td {
   box-shadow: inset 0 3px 0 var(--kanban-status);
 }
 
-#kanban-section #pendencias-flowreview .header { --kanban-status: #9b7bff; background: #1d1930 !important; }
-#kanban-section #to-do .header { --kanban-status: #9aa9bb; background: #171d25 !important; }
-#kanban-section #hold .header { --kanban-status: #d47b52; background: #171d25 !important; }
+#kanban-section #pendencias-flowreview .header {
+  --kanban-status: #9b7bff;
+  background: #1d1930 !important;
+}
+#kanban-section #to-do .header {
+  --kanban-status: #9aa9bb;
+  background: #171d25 !important;
+}
+#kanban-section #hold .header {
+  --kanban-status: #d47b52;
+  background: #171d25 !important;
+}
 #kanban-section #em-andamento .header,
-#kanban-section #in-progress .header { --kanban-status: #d0a73c; background: #171d25 !important; }
+#kanban-section #in-progress .header {
+  --kanban-status: #d0a73c;
+  background: #171d25 !important;
+}
 #kanban-section #em-revisao .header,
-#kanban-section #in-review .header { --kanban-status: #55b6ca; background: #171d25 !important; }
-#kanban-section #aguardando-direcao .header { --kanban-status: #5baaba; background: #171d25 !important; }
-#kanban-section #ajuste .header { --kanban-status: #cf6c6a; background: #171d25 !important; }
-#kanban-section #aprovado-ajustes .header { --kanban-status: #a889df; background: #171d25 !important; }
-#kanban-section #aprovado .header { --kanban-status: #65b987; background: #171d25 !important; }
+#kanban-section #in-review .header {
+  --kanban-status: #55b6ca;
+  background: #171d25 !important;
+}
+#kanban-section #aguardando-direcao .header {
+  --kanban-status: #5baaba;
+  background: #171d25 !important;
+}
+#kanban-section #ajuste .header {
+  --kanban-status: #cf6c6a;
+  background: #171d25 !important;
+}
+#kanban-section #aprovado-ajustes .header {
+  --kanban-status: #a889df;
+  background: #171d25 !important;
+}
+#kanban-section #aprovado .header {
+  --kanban-status: #65b987;
+  background: #171d25 !important;
+}
 #kanban-section #concluido .header,
-#kanban-section #done .header { --kanban-status: #85b96c; background: #171d25 !important; }
+#kanban-section #done .header {
+  --kanban-status: #85b96c;
+  background: #171d25 !important;
+}
 
 #kanban-section .kanban-box .header::before {
   background: var(--kanban-status) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kanban-status) 18%, transparent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--kanban-status) 18%, transparent);
 }
 
 #kanban-section .kanban-box .header .title span {
@@ -7749,7 +7804,9 @@ tr.prod-row-recorde td {
 #kanban-section .pendencia-op-icon {
   color: var(--module-color, #9b7bff);
   background: #121821;
-  box-shadow: inset 0 0 0 1px var(--module-color, #9b7bff), 0 3px 10px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    inset 0 0 0 1px var(--module-color, #9b7bff),
+    0 3px 10px rgba(0, 0, 0, 0.18);
 }
 
 #kanban-section .pendencia-op-badges span {
@@ -7758,16 +7815,56 @@ tr.prod-row-recorde td {
 }
 
 /* Etiquetas de função com cor suficiente, mas ancoradas no tema escuro. */
-#kanban-section .funcao-id-1 { background: #172b3e !important; border-color: #356f9d !important; color: #a7d7ff !important; }
-#kanban-section .funcao-id-2 { background: #173222 !important; border-color: #448758 !important; color: #a6e4b1 !important; }
-#kanban-section .funcao-id-3 { background: #382912 !important; border-color: #a67932 !important; color: #ffd895 !important; }
-#kanban-section .funcao-id-4 { background: #30203c !important; border-color: #8961a7 !important; color: #dfbdff !important; }
-#kanban-section .funcao-id-5 { background: #3a2020 !important; border-color: #a55550 !important; color: #ffc0bb !important; }
-#kanban-section .funcao-id-6 { background: #163536 !important; border-color: #3e8988 !important; color: #a4e5e2 !important; }
-#kanban-section .funcao-id-7 { background: #20284b !important; border-color: #5d6ec0 !important; color: #c5ceff !important; }
-#kanban-section .funcao-id-8 { background: #352a1b !important; border-color: #967044 !important; color: #f2d19c !important; }
-#kanban-section .funcao-id-9 { background: #20341c !important; border-color: #67914c !important; color: #c4e8ad !important; }
-#kanban-section .funcao-id-11 { background: #351e2e !important; border-color: #96587a !important; color: #ffc0dc !important; }
+#kanban-section .funcao-id-1 {
+  background: #172b3e !important;
+  border-color: #356f9d !important;
+  color: #a7d7ff !important;
+}
+#kanban-section .funcao-id-2 {
+  background: #173222 !important;
+  border-color: #448758 !important;
+  color: #a6e4b1 !important;
+}
+#kanban-section .funcao-id-3 {
+  background: #382912 !important;
+  border-color: #a67932 !important;
+  color: #ffd895 !important;
+}
+#kanban-section .funcao-id-4 {
+  background: #30203c !important;
+  border-color: #8961a7 !important;
+  color: #dfbdff !important;
+}
+#kanban-section .funcao-id-5 {
+  background: #3a2020 !important;
+  border-color: #a55550 !important;
+  color: #ffc0bb !important;
+}
+#kanban-section .funcao-id-6 {
+  background: #163536 !important;
+  border-color: #3e8988 !important;
+  color: #a4e5e2 !important;
+}
+#kanban-section .funcao-id-7 {
+  background: #20284b !important;
+  border-color: #5d6ec0 !important;
+  color: #c5ceff !important;
+}
+#kanban-section .funcao-id-8 {
+  background: #352a1b !important;
+  border-color: #967044 !important;
+  color: #f2d19c !important;
+}
+#kanban-section .funcao-id-9 {
+  background: #20341c !important;
+  border-color: #67914c !important;
+  color: #c4e8ad !important;
+}
+#kanban-section .funcao-id-11 {
+  background: #351e2e !important;
+  border-color: #96587a !important;
+  color: #ffc0dc !important;
+}
 
 /* Geometria dos cards com imagem: título curto e miniatura em faixa própria. */
 #kanban-section .kanban-card {
@@ -7792,8 +7889,12 @@ tr.prod-row-recorde td {
   padding-right: 8px !important;
 }
 
-#kanban-section .kanban-card .header-kanban { order: 1; }
-#kanban-section .kanban-card h5 { order: 2; }
+#kanban-section .kanban-card .header-kanban {
+  order: 1;
+}
+#kanban-section .kanban-card h5 {
+  order: 2;
+}
 
 #kanban-section .kanban-card-thumb,
 #kanban-section.kanban--compact .kanban-card-thumb,
@@ -7814,7 +7915,13 @@ tr.prod-row-recorde td {
 #kanban-section .kanban-card .kanban-card-exception,
 #kanban-section .kanban-card .requirements-card-summary,
 #kanban-section .kanban-card .flow-block-card-type,
-#kanban-section .kanban-card .flow-block-card-ready { order: 4; }
+#kanban-section .kanban-card .flow-block-card-ready {
+  order: 4;
+}
 
-#kanban-section .kanban-card .kanban-card-meta { order: 5; }
-#kanban-section .kanban-card > .comments { order: 6; }
+#kanban-section .kanban-card .kanban-card-meta {
+  order: 5;
+}
+#kanban-section .kanban-card > .comments {
+  order: 6;
+}

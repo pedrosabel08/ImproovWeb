@@ -1290,7 +1290,12 @@ function prepararModalStatusImagem(linha) {
 
   Object.entries(campos).forEach(([chave, campo]) => {
     if (!campo) return;
-    campo.value = valores[chave];
+    const $campo = window.jQuery ? $(campo) : null;
+    if ($campo?.data("select2")) {
+      $campo.val(valores[chave]).trigger("change");
+    } else {
+      campo.value = valores[chave];
+    }
     modal.dataset[`original${chave[0].toUpperCase()}${chave.slice(1)}`] = valores[chave];
   });
   modal.querySelectorAll(".modal-field").forEach((field) => {
@@ -7836,9 +7841,9 @@ function clearFilters() {
 
 // Agrupa os subtipos da obra e os demais no mesmo Select2.
 // A opção de criação é exibida apenas quando a busca não encontra nenhum subtipo.
-async function initSubtipoModalSelect2() {
+async function initSubtipoModalSelect2(selectId = "subtipo_modal") {
   if (!window.jQuery || !$.fn || !$.fn.select2) return;
-  const $sel = $("#subtipo_modal");
+  const $sel = $("#" + selectId);
   if (!$sel.length) return;
 
   const currentObraId = Number(
@@ -7865,6 +7870,7 @@ async function initSubtipoModalSelect2() {
   }
 
   const valorSelecionado = String($sel.val() || "");
+  const $statusModal = $sel.closest("#modal_status");
   try {
     $sel.select2("destroy");
   } catch (_) {}
@@ -7901,7 +7907,7 @@ async function initSubtipoModalSelect2() {
     placeholder: "-- Sem subtipo --",
     allowClear: true,
     width: "100%",
-    dropdownParent: $("body"),
+    dropdownParent: $statusModal.length ? $statusModal : $("body"),
     language: {
       noResults: () => "Nenhum subtipo encontrado. Crie um novo subtipo.",
     },
@@ -13588,7 +13594,10 @@ document.querySelectorAll(".modal-row").forEach((row) => {
     field.style.display = opening ? "block" : "none";
 
     if (opening && targetId === "subtipoField") {
-      initSubtipoModalSelect2();
+      initSubtipoModalSelect2("subtipo_modal");
+    }
+    if (opening && targetId === "subtipoMsField") {
+      initSubtipoModalSelect2("subtipo_status_ms");
     }
   });
 

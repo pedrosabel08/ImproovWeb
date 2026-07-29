@@ -410,12 +410,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="progress-entrega">
                     <div class="progress-bar" style="width:${entrega.pct_entregue || 0}%"></div>
                 </div>
-                `;
-
-                // <div style="display:flex;justify-content:space-between;align-items:center;">
-                //     <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
-                //     ${!isConcluida ? `<button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>` : ""}
-                // </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
+                </div>
+              `;
+                        
+                        // ${!isConcluida ? `<button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>` : ""}
     return card;
   }
 

@@ -7771,8 +7771,8 @@ tr.prod-row-recorde td {
 
 /* Geometria dos cards com imagem: título curto e miniatura em faixa própria. */
 #kanban-section .kanban-card {
-  display: flex !important;
-  flex-direction: column !important;
+  display: flex;
+  flex-direction: column;
 }
 
 #kanban-section .kanban-card h5,

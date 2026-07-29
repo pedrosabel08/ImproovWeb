@@ -5421,14 +5421,18 @@ function formatarDuracao(minutos) {
 function preencherFiltros() {
   const obras = new Set();
   const funcoes = new Set();
+  const statuses = new Set();
 
   document.querySelectorAll(".kanban-card").forEach((card) => {
     if (card.dataset.obra_nome) obras.add(card.dataset.obra_nome);
     if (card.dataset.funcao_nome) funcoes.add(card.dataset.funcao_nome);
+    if (card.dataset.status) statuses.add(card.dataset.status);
   });
 
   const filtroObra = document.getElementById("filtroObra");
   const filtroFuncao = document.getElementById("filtroFuncao");
+  const filtroStatus = document.getElementById("filtroStatus");
+  if (!filtroObra || !filtroFuncao || !filtroStatus) return;
 
   // Salva os valores selecionados antes de reconstruir (padrão scriptObra.js)
   const obrasSelecionadas = new Set(
@@ -5438,6 +5442,11 @@ function preencherFiltros() {
   );
   const funcoesSelecionadas = new Set(
     Array.from(filtroFuncao.querySelectorAll("input:checked"))
+      .map((el) => el.value)
+      .filter((v) => v),
+  );
+  const statusSelecionados = new Set(
+    Array.from(filtroStatus.querySelectorAll("input:checked"))
       .map((el) => el.value)
       .filter((v) => v),
   );
@@ -5451,16 +5460,47 @@ function preencherFiltros() {
     filtroObra.innerHTML += `<label><input type="checkbox" value="${o}"> ${o}</label>`;
   });
 
+  filtroStatus.innerHTML =
+    '<label><input type="checkbox" value=""> Todos os status</label>';
+
   funcoes.forEach((f) => {
     filtroFuncao.innerHTML += `<label><input type="checkbox" value="${f}"> ${f}</label>`;
   });
 
   // Restaura as seleções anteriores nos checkboxes recriados
+  const ordemStatus = [
+    "Não iniciado",
+    "HOLD",
+    "Em andamento",
+    "Em aprovação",
+    "Aguardando Direção",
+    "Ajuste",
+    "Aprovado com ajustes",
+    "Aprovado",
+    "Finalizado",
+  ];
+  [...statuses]
+    .sort((a, b) => {
+      const posicaoA = ordemStatus.indexOf(a);
+      const posicaoB = ordemStatus.indexOf(b);
+      return (
+        (posicaoA < 0 ? ordemStatus.length : posicaoA) -
+          (posicaoB < 0 ? ordemStatus.length : posicaoB) ||
+        a.localeCompare(b, "pt-BR")
+      );
+    })
+    .forEach((status) => {
+      filtroStatus.innerHTML += `<label><input type="checkbox" value="${status}"> ${status}</label>`;
+    });
+
   filtroObra.querySelectorAll("input[type=checkbox]").forEach((cb) => {
     if (cb.value && obrasSelecionadas.has(cb.value)) cb.checked = true;
   });
   filtroFuncao.querySelectorAll("input[type=checkbox]").forEach((cb) => {
     if (cb.value && funcoesSelecionadas.has(cb.value)) cb.checked = true;
+  });
+  filtroStatus.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+    if (cb.value && statusSelecionados.has(cb.value)) cb.checked = true;
   });
 
   // Reaplica os eventos de filtro

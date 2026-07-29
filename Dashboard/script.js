@@ -167,6 +167,7 @@ function renderKanbanColumn(options) {
     let progressText = `${count}/${totalObra}`;
     let progressPct = totalObra > 0 ? Math.round((count / totalObra) * 100) : 0;
     let cardClasses = "kanban-card";
+    let secondaryMetaIcon = "fa-layer-group";
 
     if (options.mode === "onboarding") {
       const completedItems = Math.max(0, 5 - pendingChecklistItems);
@@ -175,6 +176,7 @@ function renderKanbanColumn(options) {
       progressText = `${completedItems}/5`;
       progressPct = Math.round((completedItems / 5) * 100);
       cardClasses += " is-onboarding";
+      secondaryMetaIcon = "fa-list-check";
       totalCount += pendingChecklistItems;
     } else {
       totalCount += count;
@@ -189,8 +191,10 @@ function renderKanbanColumn(options) {
         <div class="kanban-card-middle">
           <div class="kanban-card-main">
             <h5><span class="kanban-card-title">${title}</span>${checklistBadge}</h5>
-            <p class="kanban-card-subtitle">${primaryMeta}</p>
-            <p class="kanban-card-meta">${secondaryMeta}</p>
+            <div class="kanban-card-details">
+              <p class="kanban-card-subtitle"><i class="fa-solid fa-images" aria-hidden="true"></i>${primaryMeta}</p>
+              <p class="kanban-card-meta"><i class="fa-solid ${secondaryMetaIcon}" aria-hidden="true"></i>${secondaryMeta}</p>
+            </div>
           </div>
           <div class="kanban-card-progress">
             <div class="progress-bar"><span class="progress-fill" style="width: ${progressPct}%;"></span></div>
@@ -361,6 +365,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const cards = document.querySelectorAll(".stat-card");
   let currentIndex = 0;
 
+  if (!cards.length) return;
+
   // Exibe o primeiro card
   cards[currentIndex].classList.add("active");
 
@@ -372,7 +378,9 @@ document.addEventListener("DOMContentLoaded", function () {
     cards[currentIndex].classList.add("active");
   }
 
-  setInterval(nextCard, 3000); // 3000 ms = 3 segundos
+  if (cards.length > 1) {
+    setInterval(nextCard, 3000);
+  }
 });
 
 // Obtém o 'obra_id' do localStorage

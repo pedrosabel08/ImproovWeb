@@ -7,6 +7,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // Conectar ao banco de dados
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
 $nivelAcesso = isset($_SESSION['nivel_acesso']) ? (int) $_SESSION['nivel_acesso'] : 0;
@@ -1016,6 +1017,16 @@ foreach ($funcoes as $funcao) {
         $liberada = false;
     }
 
+    $avaliacaoRequisitos = motor_requisitos_resultado(false, [], $liberada);
+    if ((string) ($funcao['status'] ?? '') === 'Não iniciado') {
+        $avaliacaoRequisitos = motor_requisitos_avaliar_funcao_imagem(
+            $conn,
+            (int) $funcao['idfuncao_imagem'],
+            $liberada
+        );
+        $liberada = (bool) $avaliacaoRequisitos['elegivel'];
+    }
+
     // Calcular tempo por status usando logs já consultados
     $funcaoId       = $funcao['idfuncao_imagem'];
     $logs           = isset($logsPorFuncao[$funcaoId]) ? $logsPorFuncao[$funcaoId] : [];
@@ -1065,7 +1076,8 @@ foreach ($funcoes as $funcao) {
         'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0,
         'file_uploaded_at'           => $funcao['file_uploaded_at'],
         'requires_file_upload'       => $funcao['requires_file_upload'],
-        'requires_render_send'       => isset($funcao['requires_render_send']) ? intval($funcao['requires_render_send']) : 0
+        'requires_render_send'       => isset($funcao['requires_render_send']) ? intval($funcao['requires_render_send']) : 0,
+        'requisitos'                 => $avaliacaoRequisitos,
     ];
 }
 
@@ -1073,6 +1085,12 @@ foreach ($funcoes as $funcao) {
 // MESCLAR FUNCAO_ANIMACAO NO funcoesFinal
 // ====================
 foreach ($animFuncoes as $af) {
+    $avaliacaoRequisitosAnimacao = motor_requisitos_resultado(false, [], true);
+    $animacaoLiberada = true;
+    if ((string) ($af['status'] ?? '') === 'Não iniciado') {
+        $avaliacaoRequisitosAnimacao = motor_requisitos_avaliar_funcao_animacao($conn, (int) $af['idfuncao_imagem'], true);
+        $animacaoLiberada = (bool) $avaliacaoRequisitosAnimacao['elegivel'];
+    }
     $funcoesFinal[] = [
         'imagem_id'                  => $af['imagem_id'],
         'imagem_nome'                => $af['nome_animacao'],
@@ -1087,7 +1105,7 @@ foreach ($animFuncoes as $af) {
         'descricao'                  => $af['observacao'],
         'status_funcao_anterior'     => null,
         'prazo_funcao_anterior'      => null,
-        'liberada'                   => true,
+        'liberada'                   => $animacaoLiberada,
         'funcaoAnteriorId'           => null,
         'obra_id'                    => $af['obra_id'],
         'nomenclatura'               => $af['nomenclatura'],
@@ -1108,6 +1126,7 @@ foreach ($animFuncoes as $af) {
         'is_animacao'                => true,
         'animacao_id'                => $af['animacao_id'],
         'tipo_animacao'              => $af['tipo_animacao'],
+        'requisitos'                 => $avaliacaoRequisitosAnimacao,
     ];
 }
 

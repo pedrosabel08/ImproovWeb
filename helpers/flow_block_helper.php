@@ -75,6 +75,75 @@ if (!function_exists('flow_block_has_tables')) {
     }
 }
 
+if (!function_exists('flow_block_requirement_issue_context')) {
+    function flow_block_requirement_issue_context(mysqli $conn, int $issueId): ?array
+    {
+        if ($issueId <= 0 || !flow_block_has_tables($conn)) {
+            return null;
+        }
+
+        $stmt = $conn->prepare(
+            "SELECT metadados
+               FROM flow_issue_atividade
+              WHERE issue_id = ? AND tipo = 'CRIADA'
+              ORDER BY id ASC
+              LIMIT 1"
+        );
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param('i', $issueId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: null;
+        $stmt->close();
+        if (!$row || empty($row['metadados'])) {
+            return null;
+        }
+
+        $meta = json_decode((string) $row['metadados'], true);
+        return is_array($meta) ? $meta : null;
+    }
+}
+
+if (!function_exists('flow_block_find_active_issue_by_requirement')) {
+    function flow_block_find_active_issue_by_requirement(mysqli $conn, int $taskId, string $requirementCode): ?array
+    {
+        $requirementCode = trim($requirementCode);
+        if ($taskId <= 0 || $requirementCode === '' || !flow_block_has_tables($conn)) {
+            return null;
+        }
+
+        $stmt = $conn->prepare(
+            "SELECT id, codigo, status, confirmada_em
+               FROM flow_issue
+              WHERE funcao_imagem_id = ?
+                AND bloqueante = 1
+                AND (
+                    status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')
+                    OR (status = 'RESOLVIDA' AND confirmada_em IS NULL)
+                )
+              ORDER BY atualizado_em DESC, id DESC"
+        );
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param('i', $taskId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $context = flow_block_requirement_issue_context($conn, (int) $row['id']);
+            if (($context['requirement_code'] ?? null) === $requirementCode) {
+                $row['context'] = $context;
+                $stmt->close();
+                return $row;
+            }
+        }
+        $stmt->close();
+
+        return null;
+    }
+}
+
 if (!function_exists('flow_block_task')) {
     function flow_block_task(mysqli $conn, int $taskId): ?array
     {

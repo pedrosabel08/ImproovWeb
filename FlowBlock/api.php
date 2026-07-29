@@ -413,13 +413,35 @@ try {
         $responsibleId = (int) ($payload['responsavel_id'] ?? 0) ?: null;
         $description = trim((string) ($payload['descricao'] ?? ''));
         $urgency = strtoupper((string) ($payload['urgencia'] ?? 'NORMAL'));
+        $requirementCode = trim((string) ($payload['requirement_code'] ?? ''));
+        $requirementName = trim((string) ($payload['requirement_name'] ?? ''));
+        $requirementOrigin = trim((string) ($payload['requirement_origin'] ?? ''));
+        $requirementOriginId = isset($payload['requirement_origin_id']) ? (int) $payload['requirement_origin_id'] : null;
+        $requirementType = trim((string) ($payload['requirement_type'] ?? ''));
+        $requirementSourceUrl = trim((string) ($payload['requirement_source_url'] ?? ''));
+        $requirementContext = trim((string) ($payload['requirement_context'] ?? ''));
         $task = flow_block_task($conn, $taskId);
         if (!$task || !flow_block_can_access_task($task)) flow_block_json_response(['ok' => false, 'message' => 'Você não pode bloquear esta tarefa.'], 403);
-        if (($task['status'] ?? '') !== 'Em andamento' && ($task['status'] ?? '') !== 'HOLD') flow_block_json_response(['ok' => false, 'message' => 'A Issue só pode ser aberta em uma tarefa em andamento.'], 422);
         if (!$typeId || $description === '') flow_block_json_response(['ok' => false, 'message' => 'Tipo e observação são obrigatórios.'], 422);
         if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) $urgency = 'NORMAL';
+        $beforeStatusOriginal = (string) ($task['status'] ?? '');
+        if ($beforeStatusOriginal !== '' && !in_array($beforeStatusOriginal, ['Em andamento', 'HOLD', 'Não iniciado'], true)) {
+            flow_block_json_response(['ok' => false, 'message' => 'A Issue só pode ser aberta em tarefa em andamento, HOLD ou Não iniciado.'], 422);
+        }
+        if ($requirementCode !== '') {
+            $existingIssue = flow_block_find_active_issue_by_requirement($conn, $taskId, $requirementCode);
+            if ($existingIssue) {
+                flow_block_json_response([
+                    'ok' => true,
+                    'id' => (int) $existingIssue['id'],
+                    'codigo' => (string) ($existingIssue['codigo'] ?? ''),
+                    'existing' => true,
+                    'task_status_changed' => false,
+                ]);
+            }
+        }
         $conn->begin_transaction();
-        $beforeStatus = $task['status'];
+        $beforeStatus = $beforeStatusOriginal;
         $stmt = $conn->prepare("INSERT INTO flow_issue (funcao_imagem_id,tipo_id,fila_id,responsavel_colaborador_id,descricao,urgencia,status,bloqueante,criado_por_colaborador_id,sla_atendimento_em,proxima_cobranca_em) VALUES (?,?,?,?,?,?, 'ABERTA',1,?,DATE_ADD(NOW(), INTERVAL 2 HOUR),DATE_ADD(NOW(), INTERVAL 2 HOUR))");
         $stmt->bind_param('iiiissi', $taskId, $typeId, $queueId, $responsibleId, $description, $urgency, $actorId);
         $stmt->execute();
@@ -434,15 +456,28 @@ try {
         $cycle->bind_param('is', $issueId, $beforeStatus);
         $cycle->execute();
         $cycle->close();
-        flow_block_add_activity($conn, $issueId, 'CRIADA', $description, ['status_tarefa_anterior' => $beforeStatus]);
-        $hold = $conn->prepare("UPDATE funcao_imagem SET status='HOLD', observacao=? WHERE idfuncao_imagem=?");
-        $hold->bind_param('si', $description, $taskId);
-        $hold->execute();
-        $hold->close();
+        flow_block_add_activity($conn, $issueId, 'CRIADA', $description, [
+            'status_tarefa_anterior' => $beforeStatus,
+            'requirement_code' => $requirementCode,
+            'requirement_name' => $requirementName,
+            'requirement_origin' => $requirementOrigin,
+            'requirement_origin_id' => $requirementOriginId,
+            'requirement_type' => $requirementType,
+            'requirement_source_url' => $requirementSourceUrl,
+            'requirement_context' => $requirementContext,
+        ]);
+        $taskStatusChanged = false;
+        if ($beforeStatus === 'Em andamento') {
+            $hold = $conn->prepare("UPDATE funcao_imagem SET status='HOLD', observacao=? WHERE idfuncao_imagem=?");
+            $hold->bind_param('si', $description, $taskId);
+            $hold->execute();
+            $hold->close();
+            $taskStatusChanged = true;
+        }
         flow_block_notify($conn, $responsibleId ?? 0, $taskId, "$code foi atribuída a você no Flow Block.");
         $conn->commit();
         flow_block_publish($issueId, $taskId, 'issue_created');
-        flow_block_json_response(['ok' => true, 'id' => $issueId, 'codigo' => $code]);
+        flow_block_json_response(['ok' => true, 'id' => $issueId, 'codigo' => $code, 'existing' => false, 'task_status_changed' => $taskStatusChanged]);
     }
 
     if ($action === 'comment') {

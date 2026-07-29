@@ -73,7 +73,8 @@ try {
                 done_by = CASE WHEN ? = 1 THEN ? ELSE NULL END,
                 done_at = CASE WHEN ? = 1 THEN COALESCE(done_at, NOW()) ELSE NULL END
           WHERE checklist_id = ?
-            AND item_key = ?"
+            AND item_key = ?
+            AND update_mode = 'MANUAL'"
     );
     if (!$stmt) {
         throw new RuntimeException('Nao foi possivel atualizar itens.');
@@ -87,6 +88,20 @@ try {
         $done = !empty($doneValue) ? 1 : 0;
         $stmt->bind_param('iiiiis', $done, $done, $actor, $done, $checklistId, $itemKey);
         $stmt->execute();
+        if ($stmt->affected_rows === 0) {
+            $stmtMode = $conn->prepare(
+                'SELECT update_mode FROM checklist_operacional_item WHERE checklist_id = ? AND item_key = ? LIMIT 1'
+            );
+            if ($stmtMode) {
+                $stmtMode->bind_param('is', $checklistId, $itemKey);
+                $stmtMode->execute();
+                $modeRow = $stmtMode->get_result()->fetch_assoc();
+                $stmtMode->close();
+                if (($modeRow['update_mode'] ?? '') === 'AUTOMATICO') {
+                    throw new DomainException('O requisito Fotografico e atualizado automaticamente.');
+                }
+            }
+        }
     }
     $stmt->close();
 
@@ -108,6 +123,10 @@ try {
         'status' => $updatedChecklist['status'] ?? 'aberto',
         'items' => $updatedItems,
     ]);
+} catch (DomainException $throwable) {
+    $conn->rollback();
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => $throwable->getMessage()]);
 } catch (Throwable $throwable) {
     $conn->rollback();
     http_response_code(500);

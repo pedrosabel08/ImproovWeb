@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
+require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 
 // Simple file logger for debugging
 function write_log_insere_funcao($msg)
@@ -121,6 +122,23 @@ try {
             $existingFuncaoImagemId = (int)($currentRow['idfuncao_imagem'] ?? 0);
             $existingPrazo          = $currentRow['prazo']   ?? null;
             $existingStatus         = $currentRow['status']  ?? null;
+        }
+    }
+
+    if (
+        $existingFuncaoImagemId
+        && strcasecmp((string) $existingStatus, 'Não iniciado') === 0
+        && strcasecmp((string) $status, 'Em andamento') === 0
+    ) {
+        $avaliacaoInicio = motor_requisitos_avaliar_funcao_imagem($conn, $existingFuncaoImagemId);
+        if (!$avaliacaoInicio['elegivel']) {
+            $conn->rollback();
+            http_response_code(422);
+            echo json_encode([
+                'error' => 'A tarefa possui requisitos pendentes para iniciar.',
+                'avaliacao' => $avaliacaoInicio,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
     }
 

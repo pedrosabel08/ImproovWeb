@@ -21,6 +21,10 @@ if (!defined('PENDENCIAS_ANDRE_ID')) {
     define('PENDENCIAS_ANDRE_ID', 9);
 }
 
+if (!defined('PENDENCIAS_REQUISITOS_VERSAO')) {
+    define('PENDENCIAS_REQUISITOS_VERSAO', 'PROJECT_REQUIREMENTS_V1');
+}
+
 function pendencias_operacionais_user_in(int $colaboradorId, array $allowedIds): bool
 {
     return in_array($colaboradorId, array_map('intval', $allowedIds), true);
@@ -134,14 +138,16 @@ function pendencias_operacionais_ensure_schema(mysqli $conn): void
         return;
     }
 
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS checklist_operacional (
+    if (!pendencias_operacionais_table_exists($conn, 'checklist_operacional')) {
+        $conn->query(
+            "CREATE TABLE IF NOT EXISTS checklist_operacional (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             module_key VARCHAR(40) NOT NULL,
             entity_type VARCHAR(40) NOT NULL,
             entity_id INT NOT NULL,
             obra_id INT NULL,
             responsavel_id INT NULL,
+            requirements_version VARCHAR(40) NULL,
             sla_start_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             due_at DATETIME NOT NULL,
             status ENUM('aberto','concluido','cancelado') NOT NULL DEFAULT 'aberto',
@@ -153,16 +159,19 @@ function pendencias_operacionais_ensure_schema(mysqli $conn): void
             KEY idx_checklist_responsavel (responsavel_id),
             KEY idx_checklist_obra (obra_id),
             KEY idx_checklist_due (due_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-    );
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    }
 
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS checklist_operacional_item (
+    if (!pendencias_operacionais_table_exists($conn, 'checklist_operacional_item')) {
+        $conn->query(
+            "CREATE TABLE IF NOT EXISTS checklist_operacional_item (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             checklist_id INT UNSIGNED NOT NULL,
             item_key VARCHAR(60) NOT NULL,
             label VARCHAR(120) NOT NULL,
             required TINYINT(1) NOT NULL DEFAULT 1,
+            update_mode ENUM('MANUAL','AUTOMATICO') NOT NULL DEFAULT 'MANUAL',
             done TINYINT(1) NOT NULL DEFAULT 0,
             done_by INT NULL,
             done_at DATETIME NULL,
@@ -174,8 +183,16 @@ function pendencias_operacionais_ensure_schema(mysqli $conn): void
             CONSTRAINT fk_checklist_item_checklist
                 FOREIGN KEY (checklist_id) REFERENCES checklist_operacional (id)
                 ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-    );
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    }
+
+    if (!pendencias_operacionais_column_exists($conn, 'checklist_operacional', 'requirements_version')) {
+        $conn->query("ALTER TABLE checklist_operacional ADD COLUMN requirements_version VARCHAR(40) NULL AFTER responsavel_id");
+    }
+    if (!pendencias_operacionais_column_exists($conn, 'checklist_operacional_item', 'update_mode')) {
+        $conn->query("ALTER TABLE checklist_operacional_item ADD COLUMN update_mode ENUM('MANUAL','AUTOMATICO') NOT NULL DEFAULT 'MANUAL' AFTER required");
+    }
 
     $ensured = true;
 }
@@ -183,9 +200,11 @@ function pendencias_operacionais_ensure_schema(mysqli $conn): void
 function pendencias_operacionais_project_items(): array
 {
     return [
-        'briefing' => 'Briefing',
-        'kickoff' => 'Kickoff',
-        'referencias_mood' => 'Referencias / Mood',
+        'briefing' => ['label' => 'Briefing', 'required' => 1, 'update_mode' => 'MANUAL'],
+        'kickoff' => ['label' => 'Kickoff', 'required' => 0, 'update_mode' => 'MANUAL'],
+        'arquivos_tecnicos' => ['label' => 'Arquivos Tecnicos', 'required' => 1, 'update_mode' => 'MANUAL'],
+        'referencias_mood' => ['label' => 'Referencias', 'required' => 1, 'update_mode' => 'MANUAL'],
+        'fotografico' => ['label' => 'Fotografico', 'required' => 0, 'update_mode' => 'AUTOMATICO'],
     ];
 }
 
@@ -230,11 +249,12 @@ function pendencias_operacionais_find_checklist(mysqli $conn, string $moduleKey,
 function pendencias_operacionais_sync_items(mysqli $conn, int $checklistId, array $items): void
 {
     $stmt = $conn->prepare(
-        "INSERT INTO checklist_operacional_item (checklist_id, item_key, label, required)
-         VALUES (?, ?, ?, ?)
+        "INSERT INTO checklist_operacional_item (checklist_id, item_key, label, required, update_mode)
+         VALUES (?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
             label = VALUES(label),
-            required = VALUES(required)"
+            required = VALUES(required),
+            update_mode = VALUES(update_mode)"
     );
     if (!$stmt) {
         return;
@@ -243,7 +263,8 @@ function pendencias_operacionais_sync_items(mysqli $conn, int $checklistId, arra
     foreach ($items as $key => $config) {
         $label = is_array($config) ? (string) ($config['label'] ?? $key) : (string) $config;
         $required = is_array($config) ? (int) ($config['required'] ?? 1) : 1;
-        $stmt->bind_param('issi', $checklistId, $key, $label, $required);
+        $updateMode = is_array($config) ? (string) ($config['update_mode'] ?? 'MANUAL') : 'MANUAL';
+        $stmt->bind_param('issis', $checklistId, $key, $label, $required, $updateMode);
         $stmt->execute();
     }
 
@@ -285,30 +306,99 @@ function pendencias_operacionais_ensure_project_checklist(mysqli $conn, int $obr
     pendencias_operacionais_ensure_schema($conn);
     $existing = pendencias_operacionais_find_checklist($conn, 'projeto', 'obra', $obraId);
     if ($existing) {
-        $checklistId = (int) $existing['id'];
-        pendencias_operacionais_sync_items($conn, $checklistId, pendencias_operacionais_project_items());
-        pendencias_operacionais_update_checklist_status($conn, $checklistId);
-        return $checklistId;
+        return (int) $existing['id'];
     }
 
     $responsavelId = $responsavelId ?: null;
     $slaHours = (int) PENDENCIAS_PROJETO_OK_SLA_HORAS;
     $stmt = $conn->prepare(
         "INSERT INTO checklist_operacional
-            (module_key, entity_type, entity_id, obra_id, responsavel_id, sla_start_at, due_at)
-         VALUES ('projeto', 'obra', ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? HOUR))"
+            (module_key, entity_type, entity_id, obra_id, responsavel_id, requirements_version, sla_start_at, due_at)
+         VALUES ('projeto', 'obra', ?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? HOUR))"
     );
     if (!$stmt) {
         return null;
     }
 
-    $stmt->bind_param('iiii', $obraId, $obraId, $responsavelId, $slaHours);
+    $requirementsVersion = PENDENCIAS_REQUISITOS_VERSAO;
+    $stmt->bind_param('iiisi', $obraId, $obraId, $responsavelId, $requirementsVersion, $slaHours);
     $stmt->execute();
     $checklistId = (int) $stmt->insert_id;
     $stmt->close();
 
     pendencias_operacionais_sync_items($conn, $checklistId, pendencias_operacionais_project_items());
+    pendencias_operacionais_sync_fotografico_requirement($conn, $obraId, false);
+    pendencias_operacionais_update_checklist_status($conn, $checklistId);
     return $checklistId;
+}
+
+function pendencias_operacionais_sync_fotografico_requirement(mysqli $conn, int $obraId, bool $forceApplicable = false): void
+{
+    if ($obraId <= 0) {
+        return;
+    }
+
+    $checklist = pendencias_operacionais_find_checklist($conn, 'projeto', 'obra', $obraId);
+    if (!$checklist || ($checklist['requirements_version'] ?? null) !== PENDENCIAS_REQUISITOS_VERSAO) {
+        return;
+    }
+
+    $plan = null;
+    if (pendencias_operacionais_table_exists($conn, 'fotografico_plano')) {
+        $stmtPlan = $conn->prepare(
+            "SELECT status
+              FROM fotografico_plano
+              WHERE obra_id = ?
+                AND origem = 'AUTOMATICO'
+                AND chave_gatilho = CONCAT('obra:', ?, ':FACHADA_TODO_INICIAL')
+              ORDER BY id DESC
+              LIMIT 1"
+        );
+        if ($stmtPlan) {
+            $stmtPlan->bind_param('ii', $obraId, $obraId);
+            $stmtPlan->execute();
+            $plan = $stmtPlan->get_result()->fetch_assoc();
+            $stmtPlan->close();
+        }
+    }
+
+    $applicable = $forceApplicable || (bool) $plan;
+    $done = $applicable && strtoupper((string) ($plan['status'] ?? '')) === 'CONCLUIDO';
+    $checklistId = (int) $checklist['id'];
+    $required = $applicable ? 1 : 0;
+    $doneInt = $done ? 1 : 0;
+    $systemUser = (int) PENDENCIAS_IMAGEM_RESPONSAVEL_ID;
+    $stmt = $conn->prepare(
+        "UPDATE checklist_operacional_item
+            SET required = ?,
+                done = ?,
+                done_by = CASE WHEN ? = 1 THEN ? ELSE NULL END,
+                done_at = CASE WHEN ? = 1 THEN COALESCE(done_at, NOW()) ELSE NULL END
+          WHERE checklist_id = ?
+            AND item_key = 'fotografico'
+            AND update_mode = 'AUTOMATICO'"
+    );
+    if ($stmt) {
+        $stmt->bind_param('iiiiii', $required, $doneInt, $doneInt, $systemUser, $doneInt, $checklistId);
+        $stmt->execute();
+        $stmt->close();
+        pendencias_operacionais_update_checklist_status($conn, $checklistId);
+    }
+}
+
+function pendencias_operacionais_mark_fotografico_applicable_for_image(mysqli $conn, int $imagemId): void
+{
+    $stmt = $conn->prepare('SELECT obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? LIMIT 1');
+    if (!$stmt) {
+        return;
+    }
+    $stmt->bind_param('i', $imagemId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row) {
+        pendencias_operacionais_sync_fotografico_requirement($conn, (int) $row['obra_id'], true);
+    }
 }
 
 function pendencias_operacionais_image_requires_subtipo(?string $tipoImagem): bool
@@ -470,7 +560,7 @@ function pendencias_operacionais_ensure_image_checklist(
 function pendencias_operacionais_fetch_checklist_items(mysqli $conn, int $checklistId): array
 {
     $stmt = $conn->prepare(
-        "SELECT item_key, label, required, done, done_by, done_at
+        "SELECT item_key, label, required, update_mode, done, done_by, done_at
            FROM checklist_operacional_item
           WHERE checklist_id = ?
           ORDER BY id ASC"
@@ -500,7 +590,7 @@ function pendencias_operacionais_fetch_checklist_items_map(mysqli $conn, array $
         return [];
     }
 
-    $sql = "SELECT checklist_id, item_key, label, required, done, done_by, done_at
+    $sql = "SELECT checklist_id, item_key, label, required, update_mode, done, done_by, done_at
               FROM checklist_operacional_item
              WHERE checklist_id IN ({$idsList})
              ORDER BY checklist_id ASC, id ASC";
@@ -1158,31 +1248,6 @@ function pendencias_operacionais_fetch(
     }
 
     if ($showAllForObra || pendencias_operacionais_user_in($colaboradorId, [PENDENCIAS_PEDRO_ID, PENDENCIAS_ANDRE_ID, PENDENCIAS_IMAGEM_RESPONSAVEL_ID])) {
-        $sqlCompletedProjects = "SELECT
-                    o.idobra,
-                    MAX(ae.colaborador_id) AS responsavel_id
-                FROM obra o
-                JOIN acompanhamento_email ae ON ae.obra_id = o.idobra
-                LEFT JOIN checklist_operacional co
-                  ON co.module_key = 'projeto'
-                 AND co.entity_type = 'obra'
-                 AND co.entity_id = o.idobra
-                WHERE o.status_obra = 0
-                  AND ae.tipo = 'ONBOARDING_COMPLETED'
-                  AND co.id IS NULL
-                  {$obraFilter}
-                GROUP BY o.idobra
-                LIMIT 50";
-        if ($resCompleted = $conn->query($sqlCompletedProjects)) {
-            while ($rowCompleted = $resCompleted->fetch_assoc()) {
-                pendencias_operacionais_ensure_project_checklist(
-                    $conn,
-                    (int) $rowCompleted['idobra'],
-                    isset($rowCompleted['responsavel_id']) ? (int) $rowCompleted['responsavel_id'] : null
-                );
-            }
-        }
-
         $sql = "SELECT
                     co.*,
                     o.nomenclatura AS obra_nome,

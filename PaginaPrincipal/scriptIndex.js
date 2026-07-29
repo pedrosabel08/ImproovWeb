@@ -1310,7 +1310,12 @@ function abrirModalUploadFinalPendente(card) {
   cardModal.style.top = `${top}px`;
 }
 
-function abrirFormularioFlowBlockHold(card, colunaOrigem, indiceOriginal) {
+function abrirFormularioFlowBlockHold(
+  card,
+  colunaOrigem,
+  indiceOriginal,
+  options = {},
+) {
   if (!card || !cardModal) return;
 
   // O status só muda depois que a Issue for criada com sucesso.
@@ -1322,6 +1327,35 @@ function abrirFormularioFlowBlockHold(card, colunaOrigem, indiceOriginal) {
   const conteudo = cardModal.querySelector(".modal-content");
   const modalTitle = document.getElementById("modalCardTitle");
   if (!conteudo || !modalTitle) return;
+
+  const requirement = options.requirement || null;
+  const permaneceNaoIniciado = String(card.dataset.status || "").trim() === "Não iniciado";
+  const introducao = permaneceNaoIniciado
+    ? "A tarefa permanecerá em Não iniciado. O impedimento será registrado no Flow Block sem mover a tarefa para HOLD."
+    : "A tarefa ficará em HOLD automaticamente quando o Impedimento for criado.";
+  const requirementContext =
+    requirement?.flow_block?.context?.requirement_context || "";
+  const contextoRequisito = requirement
+    ? `<div class="flow-block-hold-context">
+         <strong>Contexto do requisito</strong>
+         <dl>
+           <div><dt>Requisito</dt><dd>${escapeKanbanText(requirement.label || "Requisito")}</dd></div>
+           <div><dt>Código</dt><dd>${escapeKanbanText(requirement.codigo || "-")}</dd></div>
+           <div><dt>Origem</dt><dd>${escapeKanbanText(requirement.tipo || "-")} · ${escapeKanbanText(requirement.origem || "-")}</dd></div>
+           <div><dt>Contexto</dt><dd>${escapeKanbanText(requirementContext)}</dd></div>
+         </dl>
+       </div>`
+    : "";
+  const descricaoInicial = requirement
+    ? [
+        `Requisito: ${requirement.label || "Requisito"}`,
+        `Código: ${requirement.codigo || "-"}`,
+        `Origem: ${requirement.tipo || "-"} · ${requirement.origem || "-"}`,
+        requirementContext,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "";
 
   conteudo.querySelector("#flow-block-hold-form")?.remove();
   cardModal.classList.add("flow-block-hold-active");
@@ -1336,14 +1370,15 @@ function abrirFormularioFlowBlockHold(card, colunaOrigem, indiceOriginal) {
   form.id = "flow-block-hold-form";
   form.className = "flow-block-hold-form";
   form.innerHTML = `
-    <p class="flow-block-hold-intro">A tarefa ficará em HOLD automaticamente quando o Impedimento for criado.</p>
+    <p class="flow-block-hold-intro">${escapeKanbanText(introducao)}</p>
+    ${contextoRequisito}
     <label>Tipo <select data-field="tipo_id" required><option value="">Carregando tipos…</option></select></label>
     <div class="flow-block-hold-grid">
       <label>Fila responsável <select data-field="fila_id"><option value="">Não definida</option></select></label>
       <label>Responsável <select data-field="responsavel_id"><option value="">Não definido</option></select></label>
       <label>Urgência <select data-field="urgencia"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
     </div>
-    <label>Observação <textarea data-field="descricao" rows="4" maxlength="5000" placeholder="O que impede a continuidade da tarefa?" required></textarea></label>
+    <label>Observação <textarea data-field="descricao" rows="7" maxlength="5000" placeholder="O que impede a continuidade da tarefa?" required>${escapeKanbanText(descricaoInicial)}</textarea></label>
     <div class="flow-block-hold-actions"><button type="button" class="flow-block-cancel">Cancelar</button><button type="button" class="flow-block-create"><i class="ri-forbid-2-line"></i> Criar Impedimento</button></div>
   `;
   conteudo.insertBefore(form, conteudo.querySelector(".buttons"));
@@ -1421,6 +1456,15 @@ function abrirFormularioFlowBlockHold(card, colunaOrigem, indiceOriginal) {
               ) || null,
             urgencia: form.querySelector('[data-field="urgencia"]').value,
             descricao: description,
+            requirement_code: requirement?.codigo || "",
+            requirement_name: requirement?.label || "",
+            requirement_origin: requirement?.origem || "",
+            requirement_origin_id:
+              Number(requirement?.origem_id || 0) || null,
+            requirement_type: requirement?.tipo || "",
+            requirement_source_url: requirement?.url_acao || "",
+            requirement_context:
+              requirement?.flow_block?.context?.requirement_context || "",
           }),
         });
         const data = await response.json();
@@ -1626,8 +1670,6 @@ function processarDados(data) {
   if (deveMostrarPendencias) {
     renderizarPendenciasOperacionais(data);
   }
-  renderizarCentralAtencao(data);
-
   // Função auxiliar para criar cards
   function flowBlockDuration(value) {
     if (!value) return "agora";
@@ -1796,8 +1838,6 @@ function processarDados(data) {
     // Pega a média da função específica
     const mediaFuncao = media[item.funcao_id] || 0;
 
-    // Bolinha só no "Não iniciado"
-    let bolinhaHTML = "";
     let liberado =
       String(item.liberada) === "false" || Number(item.liberada) === 0
         ? "0"
@@ -1835,7 +1875,6 @@ function processarDados(data) {
       imagemEmHold = nomeStatusImagem === "hold" || imagemStatusId === 7;
 
       if (imagemEmHold) {
-        bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${item.status_funcao_anterior || ""}"></span>`;
         liberado = "0";
         cardEmHold = true;
       } else if (status === "Não iniciado") {
@@ -1845,16 +1884,12 @@ function processarDados(data) {
             statusAnterior,
           )
         ) {
-          bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior}"></span>`;
           liberado = "1";
         } else if (item.liberada) {
-          bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ""}"></span>`;
           liberado = "1";
         } else if (item.nome_funcao === "Filtro de assets") {
-          bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ""}"></span>`;
           liberado = "1";
         } else {
-          bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${statusAnterior || ""}"></span>`;
           liberado = "0";
         }
       }
@@ -1907,7 +1942,6 @@ function processarDados(data) {
       }
     } else {
       // lógica para tarefas criadas
-      bolinhaHTML = "";
       // 🟢 Lógica para tarefas criadas
       card.dataset.id = item.id; // apenas id simples
       card.dataset.titulo = item.titulo; // se precisar para modal
@@ -2047,11 +2081,28 @@ function processarDados(data) {
         ? `<span class="funcao-badge funcao-id-${funcaoIdBadge}">${subtitulo || ""}</span>`
         : `<span class="priority ${item.prioridade || "medium"}">${item.prioridade || "Medium"}</span>`;
 
-    // Tempo: para Não iniciado bloqueado não exibe contagem
-    const tempoDisplay =
-      status === "Não iniciado" && liberado === "0"
-        ? null
-        : item.tempo_calculado;
+    const tempoDisplay = item.tempo_calculado;
+
+    const requisitos = item.requisitos || {};
+    const pendenciasInicio = Array.isArray(requisitos.bloqueios)
+      ? requisitos.bloqueios
+      : [];
+    card.dataset.requirementBlockReasons = pendenciasInicio
+      .map((requisito) => String(requisito.label || "Requisito"))
+      .join("||");
+    const resumoPendenciasInicio =
+      status === "Não iniciado" && pendenciasInicio.length > 0
+        ? `<div class="requirements-card-summary">
+             <strong><i class="ri-error-warning-line"></i> ${pendenciasInicio.length} ${pendenciasInicio.length === 1 ? "pendência impede" : "pendências impedem"} o início</strong>
+             <div>${pendenciasInicio
+               .slice(0, 3)
+               .map(
+                 (requisito) =>
+                   `<span title="${escapeKanbanText(requisito.label || "")}">${escapeKanbanText(requisito.label || "Requisito")}</span>`,
+               )
+               .join("")}</div>
+           </div>`
+        : "";
 
     const flowBlockIssueCount = Number(item.flow_block_issues_abertas || 0);
     const flowBlockPrincipalStatus = String(item.flow_block_issue_principal_status || "");
@@ -2070,8 +2121,44 @@ function processarDados(data) {
              <span><i class="${flowBlockAwaitingConfirmation ? "ri-checkbox-circle-line" : "ri-error-warning-line"}"></i> ${flowBlockAwaitingConfirmation ? "Issue resolvida" : item.flow_block_motivo_principal || "Não classificada"}</span>
              ${flowBlockAwaitingConfirmation ? `<small>Confirmar resposta${item.flow_block_motivo_principal ? ` · ${item.flow_block_motivo_principal}` : ""}</small>` : flowBlockPaused ? `<small>Pausada${item.flow_block_proxima_cobranca_em ? ` até ${flowBlockShortDeadline(item.flow_block_proxima_cobranca_em)}` : ""}</small>` : flowBlockIssueCount > 1 ? `<small>+${flowBlockIssueCount - 1} impedimento${flowBlockIssueCount > 2 ? "s" : ""}</small>` : ""}
              <em>${flowBlockAwaitingConfirmation ? "Aguardando confirmação" : flowBlockCommitment(item.flow_block_proxima_cobranca_em, Number(item.flow_block_cobranca_atrasada || 0))}</em>
-           </button>`
+            </button>`
         : "";
+
+    const tempoClass = getTempoClass(tempoDisplay, mediaFuncao);
+    const isHold = status === "HOLD" || cardEmHold;
+    const holdReason = (
+      item.hold_justificativa_recente ||
+      item.flow_block_motivo_principal ||
+      item.descricao ||
+      item.justificativa ||
+      ""
+    )
+      .toString()
+      .trim();
+
+    if (isHold) card.classList.add("kanban-card--hold");
+    if (liberado === "0" && pendenciasInicio.length > 0) {
+      card.classList.add("kanban-card--requirement-blocked");
+    }
+    if (atrasada) card.classList.add("kanban-card--overdue");
+    if (tempoClass === "tempo-ruim") card.classList.add("kanban-card--sla-critical");
+    if (tempoClass && tempoClass.includes("aten")) {
+      card.classList.add("kanban-card--sla-warning");
+    }
+
+    const holdExceptionHtml = isHold
+      ? `<div class="card-exception card-exception--hold" title="${escapeKanbanText(holdReason || "Tarefa em HOLD")}">
+           <i class="ri-pause-circle-line"></i><span>HOLD${holdReason ? ` · ${escapeKanbanText(holdReason)}` : ""}</span>
+         </div>`
+      : "";
+    if (tipo === "imagem" && imgSrc) card.classList.add("kanban-card--with-thumb");
+    const responsavel = String(item.nome_colaborador || "").trim();
+    const initials = responsavel
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((name) => name.charAt(0).toUpperCase())
+      .join("");
 
     card.innerHTML = `
                     ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ""}
@@ -2079,7 +2166,6 @@ function processarDados(data) {
                     ${hasImageChecklist ? `<div class="pending-checklist-ribbon${hasPendingFile || hasPendingRender ? " below-file-ribbon" : ""}"><i class="ri-checkbox-line"></i> Checklist</div>` : ""}
                     <div class="header-kanban">
                         ${funcaoBadgeHTML}
-                        ${bolinhaHTML}
                         ${
                           item.notificacoes_nao_lidas &&
                           Number(item.notificacoes_nao_lidas) > 0
@@ -2092,10 +2178,12 @@ function processarDados(data) {
                             : ""
                         }
                     </div>
-                        <h5>${titulo || "-"}</h5>
+                        <h5 title="${escapeKanbanText(titulo || "-")}">${titulo || "-"}</h5>
+                        ${holdExceptionHtml}
+                        ${resumoPendenciasInicio}
                         ${flowBlockIssueHtml}
                         <!-- Use server-side thumb generator to reduce weight for thumbnails -->
-                        <img loading="lazy" src="${imgSrc}" alt="" style="max-width: 100%; height: auto; margin-bottom: 8px;">
+                        <img class="kanban-card-thumb" loading="lazy" src="${imgSrc}" alt="Miniatura da tarefa">
                     <div class="card-footer">
                         <span class="date ${atrasada ? "atrasada" : ""}">
                             <i class="fa-regular fa-calendar"></i>
@@ -2104,7 +2192,7 @@ function processarDados(data) {
                     </div>
                     <div class="card-log">
                             <span 
-                                class="date tooltip ${getTempoClass(tempoDisplay, mediaFuncao)}" 
+                                class="date tooltip ${tempoClass}"
                                 data-tooltip="${formatarDuracao(mediaFuncao)}"
                                 data-inicio="${tempoDisplay || ""}">
                                 <i class="ri-time-line"></i> 
@@ -2123,6 +2211,31 @@ function processarDados(data) {
 
                     </div>
                 `;
+
+    const cardFooter = card.querySelector(".card-footer");
+    const cardLog = card.querySelector(".card-log");
+    if (cardFooter && cardLog) {
+      const meta = document.createElement("div");
+      meta.className = "kanban-card-meta";
+      cardFooter.before(meta);
+      meta.append(cardFooter, cardLog);
+    }
+
+    if (responsavel) {
+      const owner = document.createElement("span");
+      owner.className = "card-owner";
+      owner.title = `Responsável: ${responsavel}`;
+      owner.innerHTML = `<i class="ri-user-3-line"></i><span>${initials || responsavel}</span>`;
+      card.querySelector(".card-log")?.appendChild(owner);
+    }
+
+    const cardThumbnail = card.querySelector(".kanban-card-thumb");
+    if (cardThumbnail) {
+      cardThumbnail.addEventListener("error", () => {
+        cardThumbnail.remove();
+        card.classList.remove("kanban-card--with-thumb");
+      });
+    }
 
     // Atributos para filtros
     card.dataset.obra_nome = item.nomenclatura || ""; // nome da obra
@@ -3697,7 +3810,9 @@ function atualizarTaskCount() {
     const cards = Array.from(content.querySelectorAll(".kanban-card")).filter(
       (n) => {
         const style = window.getComputedStyle(n);
-        return style.display !== "none" && n.offsetParent !== null;
+        // O Kanban pode estar temporariamente oculto pela aba Visão Geral;
+        // isso não torna os cards transitórios vazios.
+        return style.display !== "none";
       },
     );
 
@@ -3715,12 +3830,114 @@ function atualizarTaskCount() {
         "aprovado",
         "aprovado-ajustes",
         "aguardando-direcao",
-        "pendencias-flowreview",
       ].includes(box.id)
     ) {
       box.style.display = count === 0 ? "none" : "";
     }
   });
+
+  recalcularDensidadeKanban();
+}
+
+const KANBAN_DENSITY = {
+  comfortable: { pendencias: 280, operational: 132 },
+  compact: { pendencias: 240, operational: 108 },
+};
+
+function kanbanSpacingForMode(mode) {
+  const viewport = window.innerWidth || 0;
+  if (mode === "compact") {
+    return {
+      padding: Math.min(8, Math.max(4, viewport * 0.005)),
+      gap: Math.min(4, Math.max(3, viewport * 0.003)),
+    };
+  }
+
+  return {
+    padding: Math.min(16, Math.max(8, viewport * 0.01)),
+    gap: Math.min(8, Math.max(4, viewport * 0.0045)),
+  };
+}
+
+function kanbanFitsMode(boardWidth, operationalColumns, mode) {
+  const density = KANBAN_DENSITY[mode];
+  const spacing = kanbanSpacingForMode(mode);
+  const required =
+    density.pendencias +
+    operationalColumns * density.operational +
+    operationalColumns * spacing.gap +
+    2 * spacing.padding;
+
+  return boardWidth >= required;
+}
+
+function recalcularDensidadeKanban() {
+  const board = document.getElementById("kanban-section");
+  if (!board) return;
+
+  const operationalColumns = Array.from(
+    board.querySelectorAll(".kanban-box:not(.kanban-box-pendencias)"),
+  ).filter((column) => window.getComputedStyle(column).display !== "none");
+  const count = Math.max(1, operationalColumns.length);
+  board.style.setProperty("--visible-operational-columns", String(count));
+
+  // A largura só é confiável quando o Kanban está visível. Enquanto outra aba
+  // estiver aberta, preservamos o último modo calculado.
+  if (board.offsetParent === null || board.clientWidth === 0) return;
+
+  const width = board.clientWidth;
+  const mode = kanbanFitsMode(width, count, "comfortable")
+    ? "comfortable"
+    : kanbanFitsMode(width, count, "compact")
+      ? "compact"
+      : "insufficient";
+
+  board.classList.remove(
+    "kanban--comfortable",
+    "kanban--compact",
+    "kanban--capacity-insufficient",
+  );
+  if (mode === "insufficient") {
+    // Mantém os pisos do compacto para diagnóstico; não ativa fallback,
+    // não esconde colunas e não reduz larguras abaixo do mínimo aprovado.
+    board.classList.add("kanban--compact", "kanban--capacity-insufficient");
+  } else {
+    board.classList.add(`kanban--${mode}`);
+  }
+  board.dataset.kanbanDensity = mode;
+  board.dataset.visibleOperationalColumns = String(count);
+}
+
+let kanbanDensityFrame = null;
+let kanbanDensityTimer = null;
+function agendarRecalculoDensidadeKanban() {
+  if (kanbanDensityFrame) cancelAnimationFrame(kanbanDensityFrame);
+  if (kanbanDensityTimer) clearTimeout(kanbanDensityTimer);
+  kanbanDensityFrame = requestAnimationFrame(() => {
+    kanbanDensityFrame = null;
+    recalcularDensidadeKanban();
+  });
+  // Alguns navegadores atualizam a largura do container após o primeiro frame
+  // de um redimensionamento. Uma segunda leitura curta evita manter o modo
+  // anterior durante essa transição.
+  kanbanDensityTimer = window.setTimeout(() => {
+    kanbanDensityTimer = null;
+    recalcularDensidadeKanban();
+  }, 120);
+}
+
+window.addEventListener("resize", agendarRecalculoDensidadeKanban);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener(
+    "resize",
+    agendarRecalculoDensidadeKanban,
+  );
+}
+const kanbanBoardForDensity = document.getElementById("kanban-section");
+if (kanbanBoardForDensity && typeof ResizeObserver !== "undefined") {
+  new ResizeObserver(agendarRecalculoDensidadeKanban).observe(
+    kanbanBoardForDensity,
+  );
 }
 
 // Task Panel overlay
@@ -4091,6 +4308,103 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
           }
         </div>
       `;
+      const requisitosAvaliacao = data.requisitos || {};
+      const requisitosDetalhe = Array.isArray(
+        requisitosAvaliacao.requisitos_avaliados,
+      )
+        ? requisitosAvaliacao.requisitos_avaliados
+        : [];
+      const requisitosPendentes = requisitosDetalhe.filter(
+        (requisito) => String(requisito.estado || "") === "NAO_ATENDIDO",
+      );
+      if (
+        requisitosAvaliacao.aplicavel &&
+        ["não iniciado", "nao iniciado"].includes(
+          String(funcao.status || "").toLowerCase(),
+        )
+      ) {
+        const requisitosCard = document.createElement("section");
+        requisitosCard.className = `tp-card tp-requirements-card ${
+          requisitosPendentes.length ? "is-blocked" : "is-ready"
+        }`;
+        requisitosCard.innerHTML = `
+          <div class="tp-requirements-header">
+            <div>
+              <span class="tp-section-label">Estado da tarefa</span>
+              <h3><i class="${requisitosPendentes.length ? "ri-error-warning-line" : "ri-checkbox-circle-line"}"></i> ${requisitosPendentes.length ? "Não pode iniciar" : "Pronta para iniciar"}</h3>
+              <p>${requisitosPendentes.length ? "Existem requisitos obrigatórios que ainda precisam ser resolvidos." : "Todos os requisitos obrigatórios foram atendidos."}</p>
+            </div>
+            <strong>${requisitosPendentes.length}</span></strong>
+          </div>
+          <div class="tp-requirements-list">
+            ${requisitosDetalhe
+              .map((requisito, index) => {
+                const estado = String(requisito.estado || "NAO_APLICAVEL");
+                const icon =
+                  estado === "ATENDIDO"
+                    ? "ri-checkbox-circle-line"
+                    : estado === "NAO_ATENDIDO"
+                      ? "ri-error-warning-line"
+                      : "ri-subtract-line";
+                const flowBlockAction =
+                  estado === "NAO_ATENDIDO"
+                    ? requisito.flow_block?.issue_url
+                      ? `<a class="tp-requirement-action is-primary" href="${escapeKanbanText(requisito.flow_block.issue_url)}"><i class="ri-forbid-2-line"></i> Abrir Flow Block</a>`
+                      : `<button type="button" class="tp-requirement-action is-primary" data-requirement-index="${index}"><i class="ri-forbid-2-line"></i> Registrar impedimento</button>`
+                    : "";
+                const sourceAction = requisito.url_acao
+                  ? `<a class="tp-requirement-action is-secondary" href="${escapeKanbanText(requisito.url_acao)}"><i class="ri-external-link-line"></i> Abrir origem</a>`
+                  : "";
+                const statusLabel =
+                  estado === "ATENDIDO"
+                    ? "Concluído"
+                    : estado === "NAO_ATENDIDO"
+                      ? "Pendente"
+                      : estado === "DISPENSADO"
+                        ? "Dispensado"
+                        : "Não aplicável";
+                return `
+                  <div class="tp-requirement-row state-${estado.toLowerCase()}">
+                    <i class="${icon}"></i>
+                    <span>
+                      <strong>${escapeKanbanText(requisito.label || "Requisito")}</strong>
+                      <small>${escapeKanbanText(requisito.tipo || "")} · ${escapeKanbanText(requisito.origem || "")}</small>
+                    </span>
+                    <em>${statusLabel}</em>
+                    <div class="tp-requirement-actions">${flowBlockAction}${sourceAction}</div>
+                  </div>`;
+              })
+              .join("")}
+          </div>
+        `;
+        tpMain.appendChild(requisitosCard);
+        requisitosCard
+          .querySelectorAll("[data-requirement-index]")
+          .forEach((button) => {
+            button.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const requisito =
+                requisitosDetalhe[Number(button.dataset.requirementIndex)];
+              const cardAtivo =
+                document.querySelector(
+                  `.kanban-card.selected[data-id="${String(idFuncao)}"]`,
+                ) ||
+                document.querySelector(
+                  `.kanban-card[data-id="${String(idFuncao)}"]`,
+                );
+              if (!cardAtivo || !requisito) return;
+              const coluna = cardAtivo.parentElement;
+              abrirFormularioFlowBlockHold(
+                cardAtivo,
+                coluna,
+                Array.from(coluna.children).indexOf(cardAtivo),
+                { requirement: requisito },
+              );
+            });
+          });
+      }
+
       tpMain.appendChild(summaryCard);
 
       // Expand preview on click
@@ -5078,6 +5392,13 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
       }
 
       return data; // expose fetched data to caller
+    })
+    .catch((error) => {
+      console.error("Erro ao abrir painel da tarefa:", error);
+      if (mindmapContent) {
+        mindmapContent.innerHTML = `<div class="tp-card" style="margin:24px;max-width:640px;"><h3>Não foi possível abrir a tarefa</h3><p>${escapeKanbanText(error?.message || "Ocorreu um erro ao carregar os detalhes.")}</p></div>`;
+      }
+      throw error;
     });
 }
 
@@ -5231,7 +5552,9 @@ function aplicarFiltros() {
       if (cardPrazo < prazoInicio || cardPrazo > prazoFim) mostrar = false;
     }
 
-    card.style.display = mostrar ? "block" : "none";
+    // O card Ã© um contÃªiner flex; preservar esse display evita quebrar a
+    // hierarquia vertical de tÃ­tulo, miniatura e metadados apÃ³s um filtro.
+    card.style.display = mostrar ? "flex" : "none";
   });
 
   atualizarTaskCount();
@@ -5877,7 +6200,11 @@ let imagensSelecionadas = [];
 const colunas = document.querySelectorAll(
   ".kanban-box:not(.kanban-box-pendencias) .content",
 );
-colunas.forEach((col) => {
+// A ausência temporária da biblioteca (por exemplo, CDN indisponível) não pode
+// impedir a abertura/navegação do Kanban. Sem ela os cards continuam clicáveis;
+// apenas o arrastar e soltar fica indisponível até o carregamento normal.
+if (typeof Sortable !== "undefined") {
+  colunas.forEach((col) => {
   new Sortable(col, {
     group: "kanban",
     animation: 150,
@@ -5909,7 +6236,14 @@ colunas.forEach((col) => {
 
       if (toId === "in-progress" && requiresFileUpload) return false;
 
-      if (dragged.classList.contains("bloqueado") && !holdMovel) return false;
+      // A tarefa continua navegável e pode ser reorganizada. Requisitos
+      // pendentes só são barrados na tentativa de iniciar a execução.
+      if (
+        toId === "in-progress" &&
+        dragged?.dataset?.liberado === "0" &&
+        !holdMovel
+      )
+        return true;
 
       if (toId === "ajuste") return false;
 
@@ -5934,9 +6268,21 @@ colunas.forEach((col) => {
         return;
       }
 
-      if (card.dataset.liberado === "0" && !holdMovel) {
+      if (
+        novaColuna?.id === "in-progress" &&
+        card.dataset.liberado === "0" &&
+        !holdMovel
+      ) {
         evt.from.appendChild(card);
-        alert("Esta função ainda não foi liberada.");
+        const motivos = String(card.dataset.requirementBlockReasons || "")
+          .split("||")
+          .map((motivo) => motivo.trim())
+          .filter(Boolean);
+        alert(
+          motivos.length
+            ? `Esta função ainda não pode iniciar por:\n- ${motivos.join("\n- ")}`
+            : "Esta função ainda não foi liberada.",
+        );
         return;
       }
 
@@ -6156,7 +6502,10 @@ colunas.forEach((col) => {
       }
     },
   });
-});
+  });
+} else {
+  console.warn("Sortable não foi carregado; o arrastar e soltar está indisponível.");
+}
 
 function enviarImagens() {
   if (imagensSelecionadas.length === 0) {
@@ -6957,10 +7306,12 @@ async function carregarOverview() {
 
   function showKanban() {
     hideSections();
-    kanbanSec.style.display = "flex";
+    kanbanSec.style.display = "grid";
     if (navRight) navRight.style.visibility = "visible";
     clearActive();
     btnKanban.classList.add("active");
+    atualizarTaskCount();
+    agendarRecalculoDensidadeKanban();
   }
 
   function showLista() {

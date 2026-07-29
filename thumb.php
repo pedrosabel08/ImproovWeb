@@ -103,24 +103,48 @@ if ($isRemote) {
     // debug helper: list candidates with status when ?dbg=1
     if (isset($_GET['dbg']) && $_GET['dbg']) {
         $debugOut = [];
+
         foreach ($expanded as $cand) {
+            $exists = file_exists($cand);
+            $isFile = is_file($cand);
+
+            $imageInfo = null;
+            $imageError = null;
+
+            if ($exists && $isFile) {
+                set_error_handler(function ($severity, $message) use (&$imageError) {
+                    $imageError = $message;
+                    return true;
+                });
+
+                $imageInfo = getimagesize($cand);
+
+                restore_error_handler();
+            }
+
             $debugOut[] = [
                 'path' => $cand,
-                'exists' => file_exists($cand) ? true : false,
-                'is_file' => is_file($cand) ? true : false,
+                'exists' => $exists,
+                'is_file' => $isFile,
                 'realpath' => @realpath($cand) ?: null,
-                'is_readable' => is_readable($cand) ? true : false
+                'is_readable' => is_readable($cand),
+                'filesize' => $exists ? @filesize($cand) : null,
+                'mime_content_type' => $exists ? @mime_content_type($cand) : null,
+                'getimagesize' => $imageInfo ?: null,
+                'getimagesize_error' => $imageError,
             ];
         }
-        header('Content-Type: application/json');
+
+        header('Content-Type: application/json; charset=utf-8');
+
         echo json_encode([
             'isRemote' => $isRemote,
             'originalPath' => $originalPath,
-            'expandedCandidates' => $debugOut
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            'expandedCandidates' => $debugOut,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
         exit;
     }
-
     foreach ($expanded as $cand) {
         if (file_exists($cand) && is_file($cand)) {
             $file = $cand;
@@ -179,9 +203,24 @@ if (!function_exists('imagecreatetruecolor')) {
 }
 
 $info = @getimagesize($file);
+
 if (!$info) {
+    $size = @filesize($file);
+    $mime = function_exists('mime_content_type')
+        ? @mime_content_type($file)
+        : null;
+
+    error_log(
+        '[THUMB] Arquivo não reconhecido como imagem' .
+            ' | file=' . $file .
+            ' | size=' . var_export($size, true) .
+            ' | mime=' . var_export($mime, true) .
+            ' | readable=' . (is_readable($file) ? 'yes' : 'no') .
+            ' | md5=' . (@md5_file($file) ?: 'unavailable')
+    );
+
     http_response_code(415);
-    exit('Not an image');
+    exit('Invalid or incomplete image');
 }
 
 $mime = $info['mime'];

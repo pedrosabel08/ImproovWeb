@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/fotografico_slack.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 const FOTOGRAFICO_RESPONSAVEL_PLANO_ID = 9;
 const FOTOGRAFICO_RESPONSAVEL_ACOMPANHAMENTO_ID = 21;
@@ -694,7 +695,9 @@ function fotografico_sync_imagem_substatus(
         $substatusNovo === FOTOGRAFICO_TODO_SUBSTATUS_ID
         && $substatusAnterior !== FOTOGRAFICO_TODO_SUBSTATUS_ID
     ) {
+        pendencias_operacionais_mark_fotografico_applicable_for_image($conn, $imagemId);
         $planId = fotografico_criar_plano_automatico($conn, $imagemId, $atorId, $origem);
+        pendencias_operacionais_mark_fotografico_applicable_for_image($conn, $imagemId);
     }
 
     $stmt = $conn->prepare(

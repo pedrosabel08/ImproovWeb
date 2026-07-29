@@ -1,7 +1,10 @@
 let allRenders = [];
 let currentPage = 1;
 let totalRenders = 0;
-const PAGE_LIMIT = 100;
+const PAGE_LIMIT = 200;
+let renderFilterOptions = null;
+let filterSearchTimeout = null;
+let renderRequestSequence = 0;
 const RENDER_KPI_DEFAULT_DAYS = 30;
 const renderKpiState = {
   mode: "quick",
@@ -280,72 +283,62 @@ function initRenderKpis() {
 }
 
 function renderObraFilter() {
-  const obras = [
+  const selected = $("#filterObra").val();
+  const obras = renderFilterOptions?.obras || [
     ...new Set(allRenders.map((r) => r.obra_nomenclatura).filter(Boolean)),
   ].sort();
-  $("#filterObra").html('<option value="">Todas as Obras</option>');
+  $("#filterObra").empty().append('<option value="">Todas as Obras</option>');
   obras.forEach((nome) => {
-    $("#filterObra").append(`<option value="${nome}">${nome}</option>`);
+    $("#filterObra").append($("<option>").val(nome).text(nome));
   });
-  const selected = $("#filterObra").val();
-  // restore previous selection if still available
   if (selected && obras.includes(selected)) {
     $("#filterObra").val(selected);
-  } else {
-    $("#filterObra").val("");
   }
 }
 
 function renderCollaboratorFilter() {
-  // Extrai nomes únicos dos colaboradores
-  const colaboradores = [
+  const selected = $("#filterColaborador").val();
+  const colaboradores = renderFilterOptions?.colaboradores || [
     ...new Set(allRenders.map((r) => r.nome_colaborador).filter(Boolean)),
   ].sort();
-  $("#filterColaborador").html(
+  $("#filterColaborador").empty().append(
     '<option value="">Todos os Responsáveis</option>',
   );
   colaboradores.forEach((nome) => {
-    $("#filterColaborador").append(`<option value="${nome}">${nome}</option>`);
+    $("#filterColaborador").append($("<option>").val(nome).text(nome));
   });
-  const selected = $("#filterColaborador").val();
   if (selected && colaboradores.includes(selected)) {
     $("#filterColaborador").val(selected);
-  } else {
-    $("#filterColaborador").val("");
   }
 }
 
 function renderStatusFilter() {
-  const status = [
+  const selected = $("#filterStatus").val();
+  const status = renderFilterOptions?.status || [
     ...new Set(allRenders.map((r) => r.status).filter(Boolean)),
   ].sort();
-  $("#filterStatus").html('<option value="">Todos os Status</option>');
+  $("#filterStatus").empty().append('<option value="">Todos os Status</option>');
   status.forEach((nome) => {
-    $("#filterStatus").append(`<option value="${nome}">${nome}</option>`);
+    $("#filterStatus").append($("<option>").val(nome).text(nome));
   });
-  const selected = $("#filterStatus").val();
   if (selected && status.includes(selected)) {
     $("#filterStatus").val(selected);
-  } else {
-    $("#filterStatus").val("");
   }
 }
 
 function renderStatusImagemFilter() {
-  const statusImagens = [
+  const selected = $("#filterStatusImagem").val();
+  const statusImagens = renderFilterOptions?.statusImagem || [
     ...new Set(allRenders.map((r) => r.nome_status).filter(Boolean)),
   ].sort();
-  $("#filterStatusImagem").html(
+  $("#filterStatusImagem").empty().append(
     '<option value="">Todos os Status Imagem</option>',
   );
   statusImagens.forEach((nome) => {
-    $("#filterStatusImagem").append(`<option value="${nome}">${nome}</option>`);
+    $("#filterStatusImagem").append($("<option>").val(nome).text(nome));
   });
-  const selected = $("#filterStatusImagem").val();
   if (selected && statusImagens.includes(selected)) {
     $("#filterStatusImagem").val(selected);
-  } else {
-    $("#filterStatusImagem").val("");
   }
 }
 
@@ -480,15 +473,22 @@ $("#renderGrid")
   });
 function loadRenders(page) {
   page = page || 1;
+  const requestSequence = ++renderRequestSequence;
   const btn = document.getElementById("btnLoadMore");
   if (btn) btn.classList.add("loading");
 
   $.ajax({
     url: "ajax.php",
     method: "GET",
-    data: { action: "getRenders", page: page, limit: PAGE_LIMIT },
+    data: {
+      action: "getRenders",
+      page: page,
+      limit: PAGE_LIMIT,
+      ...getActiveFilters(),
+    },
     dataType: "json",
     success: function (response) {
+      if (requestSequence !== renderRequestSequence) return;
       if (response.status === "sucesso") {
         if (page === 1) {
           allRenders = response.renders;
@@ -502,11 +502,13 @@ function loadRenders(page) {
         const loaded = allRenders.length;
         const hasMore = loaded < total;
 
+        renderFilterOptions = response.filterOptions || renderFilterOptions;
         renderObraFilter();
         renderCollaboratorFilter();
         renderStatusFilter();
         renderStatusImagemFilter();
-        filterRenders();
+        updateFilterActions();
+        renderCards(allRenders);
 
         // Show / hide "Carregar mais"
         const wrap = document.getElementById("loadMoreWrap");
@@ -517,9 +519,22 @@ function loadRenders(page) {
       }
     },
     complete: function () {
+      if (requestSequence !== renderRequestSequence) return;
       if (btn) btn.classList.remove("loading");
     },
   });
+}
+
+function getActiveFilters() {
+  return {
+    status: $("#filterStatus").val() || "",
+    statusImagem: $("#filterStatusImagem").val() || "",
+    colaborador: $("#filterColaborador").val() || "",
+    obra: $("#filterObra").val() || "",
+    search: $("#filterSearch").val().trim(),
+    dateFrom: $("#filterDateFrom").val() || "",
+    dateTo: $("#filterDateTo").val() || "",
+  };
 }
 
 /* --- Results badge --- */
@@ -556,77 +571,29 @@ function isFilterActive() {
   );
 }
 
-function filterRenders() {
-  const status = $("#filterStatus").val();
-  const statusImagem = $("#filterStatusImagem").val();
-  const colaborador = $("#filterColaborador").val();
-  const obra = $("#filterObra").val();
-  const search = $("#filterSearch").val().trim().toLowerCase();
-  const dateFrom = $("#filterDateFrom").val();
-  const dateTo = $("#filterDateTo").val();
-
-  const hasFilter =
-    colaborador ||
-    status ||
-    statusImagem ||
-    obra ||
-    search ||
-    dateFrom ||
-    dateTo;
+function updateFilterActions() {
+  const hasFilter = isFilterActive();
   document.getElementById("btnLimpar").style.display = hasFilter
     ? "inline-flex"
     : "none";
-
-  const filtered = allRenders.filter((r) => {
-    if (status && r.status !== status) return false;
-    if (statusImagem && r.nome_status !== statusImagem) return false;
-    if (colaborador && r.nome_colaborador !== colaborador) return false;
-    if (obra && r.obra_nomenclatura !== obra) return false;
-
-    if (search) {
-      const haystack = [
-        r.imagem_nome,
-        r.obra_nomenclatura,
-        r.nome_colaborador,
-        r.status,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (!haystack.includes(search)) return false;
-    }
-
-    if (dateFrom || dateTo) {
-      const rawDate = r.submitted || r.data;
-      const d = rawDate ? new Date(rawDate) : null;
-      if (!d || isNaN(d)) return false;
-      if (dateFrom) {
-        const [fy, fm, fd] = dateFrom.split("-").map(Number);
-        const from = new Date(fy, fm - 1, fd, 0, 0, 0, 0);
-        if (d < from) return false;
-      }
-      if (dateTo) {
-        const [ty, tm, td] = dateTo.split("-").map(Number);
-        const end = new Date(ty, tm - 1, td, 23, 59, 59, 999);
-        if (d > end) return false;
-      }
-    }
-
-    return true;
-  });
-
-  renderCards(filtered);
 }
 
-// Filter events — real-time on search, applied on select/date change
+function applyRenderFilters() {
+  loadRenders(1);
+}
+
+// Os filtros são aplicados no servidor antes da paginação.
 $("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").on(
   "change",
-  filterRenders,
+  applyRenderFilters,
 );
-$("#filterDateFrom, #filterDateTo").on("change", filterRenders);
-$("#filterSearch").on("input", filterRenders);
+$("#filterDateFrom, #filterDateTo").on("change", applyRenderFilters);
+$("#filterSearch").on("input", function () {
+  clearTimeout(filterSearchTimeout);
+  filterSearchTimeout = setTimeout(applyRenderFilters, 300);
+});
 
-$("#btnAplicar").on("click", filterRenders);
+$("#btnAplicar").on("click", applyRenderFilters);
 
 $("#btnLimpar").on("click", function () {
   $("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").val(
@@ -634,7 +601,7 @@ $("#btnLimpar").on("click", function () {
   );
   $("#filterSearch").val("");
   $("#filterDateFrom, #filterDateTo").val("");
-  filterRenders();
+  applyRenderFilters();
 });
 
 /* --- Timeline helpers --- */

@@ -207,7 +207,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i
                                 class="fa-solid fa-truck-fast"></i><span> Entregas</span><span class="sidebar-badge"
                                 data-module="entregas" aria-hidden="true"></span><span class="sidebar-badge sidebar-badge--warning sidebar-badge--offset"
-                                data-module="entregas_pendencias" aria-hidden="true"></span></a></li>
+                                data-module="entregas" aria-hidden="true"></span></a></li>
                     <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
                 <?php endif; ?>
             </ul>

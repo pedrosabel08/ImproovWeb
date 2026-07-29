@@ -207,16 +207,6 @@ $conn->close();
                 </nav>
             </header>
             <div id="filtros-ativos-bar"></div>
-                <section class="central-atencao" id="central-atencao" aria-label="Necessita sua atenção" hidden>
-                    <div class="central-atencao-header">
-                        <div class="central-atencao-title">
-                            <i class="ri-alarm-warning-line"></i>
-                            <span>Necessita sua atenção</span>
-                        </div>
-                        <span class="central-atencao-subtitle">Aprovações com SLA vencido</span>
-                    </div>
-                    <div class="central-atencao-list" id="central-atencao-list"></div>
-                </section>
             <div class="kanban" id="kanban-section">
                 <div class="kanban-box kanban-box-pendencias" id="pendencias-flowreview" aria-label="Pendências de aprovação do Flow Review">
                     <div class="header">

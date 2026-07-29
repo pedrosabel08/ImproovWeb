@@ -6,6 +6,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
+require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 
 // Simple file logger for debugging (insereFuncao2)
 function write_log_insere_funcao2($msg)
@@ -27,6 +28,7 @@ function emptyToNull($value)
 $data = $_POST;
 $imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : null;
 $status_id = isset($data['status_id']) ? (int)$data['status_id'] : null;
+$blockedEvaluation = null;
 
 $funcao_ids = [
     'Caderno' => 1,
@@ -97,6 +99,22 @@ try {
             $prazo = emptyToNull($data['prazo_' . $parametro]);
             $status = emptyToNull($data['status_' . $parametro]);
             $obs = emptyToNull($data['obs_' . $parametro]);
+
+            if (strcasecmp((string) $status, 'Em andamento') === 0) {
+                $stmtCurrent = $conn->prepare(
+                    'SELECT idfuncao_imagem, status FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
+                );
+                $stmtCurrent->bind_param('ii', $imagem_id, $funcao_id);
+                $stmtCurrent->execute();
+                $current = $stmtCurrent->get_result()->fetch_assoc();
+                $stmtCurrent->close();
+                if ($current && strcasecmp((string) $current['status'], 'Não iniciado') === 0) {
+                    $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, (int) $current['idfuncao_imagem']);
+                    if (!$blockedEvaluation['elegivel']) {
+                        throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
+                    }
+                }
+            }
 
             // Verifica se o colaborador existe
             $check_colaborador = $conn->prepare("SELECT COUNT(*) FROM colaborador WHERE idcolaborador = ?");
@@ -196,6 +214,9 @@ try {
     ]);
 } catch (Exception $e) {
     $conn->rollback();
+    if ($e instanceof DomainException) {
+        http_response_code(422);
+    }
     echo json_encode(['error' => 'Erro ao executar a transação: ' . $e->getMessage()]);
 }
 

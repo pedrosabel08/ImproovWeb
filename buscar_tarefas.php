@@ -17,7 +17,7 @@ if (!$idusuario) {
 
 // Definir condições para o SELECT com base no ID do usuário
 if ($idusuario == 1 || $idusuario == 2) {
-        $sql = "SELECT  f.idfuncao_imagem,
+    $sql = "SELECT  f.idfuncao_imagem,
             f.funcao_id, 
             CASE WHEN f.funcao_id = 4 AND i.status_id = 1 THEN 'Finalização P00' ELSE fun.nome_funcao END AS nome_funcao, 
             f.status, 
@@ -184,7 +184,7 @@ if (!empty($notificacoes_modulo)) {
 
 // Resposta combinada
 echo json_encode([
-    'tarefas' => $tarefas,
+    // 'tarefas' => $tarefas,
     // 'notificacoes' => $notificacoes,
     'notificacoes_modulo' => $notificacoes_modulo
 ]);

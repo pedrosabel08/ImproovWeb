@@ -785,6 +785,94 @@ main .kanban div .header .task-count {
   position: relative;
 }
 
+/* Cards de produção: altura previsível para aumentar a densidade da grade. */
+main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card {
+  height: 176px;
+  min-height: 176px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+main
+  .kanban
+  .kanban-box:not(.kanban-box-pendencias)
+  .kanban-card
+  .header-kanban {
+  min-height: 16px;
+  margin-bottom: 0;
+}
+
+main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card h5 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+}
+
+main
+  .kanban
+  .kanban-box:not(.kanban-box-pendencias)
+  .kanban-card.tarefa-imagem
+  > img {
+  width: 100%;
+  height: 62px;
+  flex: 0 0 62px;
+  margin: 0 !important;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+main
+  .kanban
+  .kanban-box:not(.kanban-box-pendencias)
+  .kanban-card.tarefa-criada
+  > img {
+  display: none;
+}
+
+main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
+  margin-top: auto;
+}
+
+.requirements-card-summary {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.requirements-card-summary strong {
+  display: block;
+  color: #fbbf24;
+  font-size: 11px;
+}
+
+.requirements-card-summary > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.requirements-card-summary span {
+  max-width: 100%;
+  padding: 2px 7px;
+  overflow: hidden;
+  color: #cbd5e1;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+}
+
 .kanban-card:last-child {
   margin-bottom: 0;
 }
@@ -1477,8 +1565,8 @@ main .kanban div .header .task-count {
 }
 
 .kanban-card.bloqueado {
-  opacity: 0.6;
-  cursor: not-allowed;
+  opacity: 1;
+  cursor: pointer;
 }
 
 .kanban .header-kanban {
@@ -2047,6 +2135,155 @@ form#task-form button {
   border: 1px solid var(--tp-border);
   border-radius: var(--tp-radius);
   padding: 18px 20px;
+}
+
+.tp-requirements-card {
+  border-color: rgba(217, 119, 6, 0.42);
+}
+
+.tp-requirements-card.is-ready {
+  border-color: rgba(34, 197, 94, 0.34);
+}
+
+.tp-requirements-card.is-ready .tp-requirements-header h3 i {
+  color: #22c55e;
+}
+
+.tp-requirements-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.tp-requirements-header .tp-section-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #fbbf24;
+}
+
+.tp-requirements-header h3 {
+  margin: 0 0 5px;
+  color: var(--tp-text-0);
+  font-size: 15px;
+}
+
+.tp-requirements-header h3 i {
+  color: #f59e0b;
+}
+
+.tp-requirements-header p {
+  margin: 0;
+  color: var(--tp-text-1);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tp-requirements-header > strong {
+  min-width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #92400e;
+  color: #fff;
+  font-size: 13px;
+}
+
+.tp-requirements-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tp-requirement-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid var(--tp-border);
+  border-radius: 7px;
+  background: var(--tp-surface);
+}
+
+.tp-requirement-row > i {
+  color: #f59e0b;
+}
+
+.tp-requirement-row.state-atendido > i {
+  color: #22c55e;
+}
+
+.tp-requirement-row em {
+  color: var(--tp-text-1);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.tp-requirement-row > span {
+  min-width: 0;
+}
+
+.tp-requirement-row strong,
+.tp-requirement-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-requirement-row strong {
+  color: var(--tp-text-0);
+  font-size: 12px;
+}
+
+.tp-requirement-row small {
+  margin-top: 2px;
+  color: var(--tp-text-1);
+  font-size: 10px;
+}
+
+.tp-requirement-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid #b45309;
+  border-radius: 6px;
+  background: #b45309;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tp-requirement-action.is-primary {
+  border-color: rgba(245, 158, 11, 0.52);
+  background: rgba(180, 83, 9, 0.9);
+}
+
+.tp-requirement-action.is-secondary {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(30, 41, 59, 0.64);
+  color: #93c5fd;
+}
+
+.tp-requirement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.tp-requirement-action:hover {
+  background: #d97706;
+  color: #fff;
 }
 
 /* ─── Summary Card ─────────────────────────────────────────────── */
@@ -6281,6 +6518,48 @@ tr.prod-row-recorde td {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   color: var(--kanban-modal-text);
 }
+
+/* O formulário de impedimento pode ser aberto a partir do painel detalhado,
+   cuja camada também usa z-index 1000. Mantém o modal acima desse painel. */
+#cardModal.flow-block-hold-active {
+  z-index: 1001;
+}
+
+.flow-block-hold-context {
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.flow-block-hold-context strong {
+  color: var(--kanban-modal-text);
+  font-size: 12px;
+}
+
+.flow-block-hold-context dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.flow-block-hold-context dt {
+  margin-bottom: 2px;
+  color: var(--kanban-modal-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.flow-block-hold-context dd {
+  margin: 0;
+  color: var(--kanban-modal-text);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 #cardModal .modal-content {
   width: 100%;
   max-width: none;
@@ -6459,6 +6738,13 @@ tr.prod-row-recorde td {
   transform: translateY(-1px);
 }
 @media (max-width: 600px) {
+  .tp-requirement-row {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+  .tp-requirement-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
   #cardModal {
     width: calc(100vw - 20px);
     max-height: calc(100vh - 20px);
@@ -6473,3 +6759,1062 @@ tr.prod-row-recorde td {
     grid-column: auto;
   }
 }
+
+/* ================================================================
+   Kanban responsivo por capacidade
+   A classe de densidade é calculada em scriptIndex.js a partir da
+   largura efetiva do quadro e das colunas operacionais visíveis.
+   ================================================================ */
+#kanban-section {
+  --visible-operational-columns: 5;
+  --kanban-gap: clamp(4px, 0.45vw, 8px);
+  --kanban-inline-padding: clamp(8px, 1vw, 16px);
+  display: grid;
+  grid-template-columns:
+    minmax(280px, 1.3fr)
+    repeat(var(--visible-operational-columns), minmax(132px, 1fr));
+  align-items: stretch;
+  gap: var(--kanban-gap);
+  width: 100%;
+  min-width: 0;
+  padding: 6px var(--kanban-inline-padding) 12px;
+  overflow: hidden;
+}
+
+#kanban-section.kanban--compact {
+  --kanban-gap: clamp(3px, 0.3vw, 4px);
+  --kanban-inline-padding: clamp(4px, 0.5vw, 8px);
+  grid-template-columns:
+    minmax(240px, 1.3fr)
+    repeat(var(--visible-operational-columns), minmax(108px, 1fr));
+}
+
+#kanban-section.kanban--capacity-insufficient {
+  /* Diagnóstico interno: nenhum fallback estrutural é ativado nesta etapa. */
+  outline: 1px dashed rgba(245, 158, 11, 0.5);
+  outline-offset: -1px;
+}
+
+#kanban-section .kanban-box,
+#kanban-section .kanban-box .content,
+#kanban-section .kanban-card {
+  min-width: 0;
+}
+
+#kanban-section .kanban-box {
+  width: auto !important;
+  min-width: 0 !important;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  background: #151d28;
+  box-shadow: none;
+}
+
+#kanban-section .kanban-box-pendencias {
+  flex: 1 1 auto;
+  background: #1d1830;
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.14);
+}
+
+#kanban-section .kanban-box .header {
+  min-width: 0;
+  min-height: 45px;
+  height: 45px;
+  padding: 7px 9px;
+  color: #e5edf6 !important;
+  background: rgba(148, 163, 184, 0.1) !important;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 0;
+}
+
+#kanban-section .kanban-box .header::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin-right: 6px;
+  content: "";
+  background: #94a3b8;
+  border-radius: 50%;
+}
+
+#kanban-section #hold .header::before {
+  background: #c66a48;
+}
+#kanban-section #in-progress .header::before {
+  background: #d6a83b;
+}
+#kanban-section #in-review .header::before {
+  background: #5ba5bd;
+}
+#kanban-section #aguardando-direcao .header::before {
+  background: #6aa7b6;
+}
+#kanban-section #ajuste .header::before {
+  background: #cf6d68;
+}
+#kanban-section #aprovado-ajustes .header::before {
+  background: #a58bd8;
+}
+#kanban-section #aprovado .header::before {
+  background: #6bbd8a;
+}
+#kanban-section #done .header::before {
+  background: #83b871;
+}
+#kanban-section .kanban-box-pendencias .header::before {
+  background: #9a7ee8;
+}
+
+#kanban-section .kanban-box .header .title {
+  min-width: 0;
+  gap: 5px;
+}
+
+#kanban-section .kanban-box .header .title i {
+  display: none;
+}
+
+#kanban-section .kanban-box .header .title span {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#kanban-section .kanban-box .header .task-count {
+  min-width: 20px;
+  padding: 3px 6px;
+  color: #dce6f1;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  background: rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  text-align: center;
+}
+
+#kanban-section .kanban-box-pendencias .header .task-count {
+  color: #e9ddff;
+  background: rgba(139, 92, 246, 0.2);
+}
+
+#kanban-section .kanban-box .content {
+  min-height: 0;
+  padding: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: transparent;
+  border: 0 !important;
+  border-radius: 0;
+}
+
+#kanban-section .kanban-box .content:empty::before {
+  height: 100%;
+  background: transparent;
+  outline: 1px dashed rgba(148, 163, 184, 0.16);
+}
+
+/* Cards operacionais: a mesma hierarquia de informação nos dois modos. */
+#kanban-section .kanban-box:not(.kanban-box-pendencias) .kanban-card {
+  min-height: 78px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 8px;
+  overflow: hidden;
+  color: #e7eef6;
+  background: #1b2633;
+  border: 1px solid rgba(148, 163, 184, 0.17);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+#kanban-section
+  .kanban-box:not(.kanban-box-pendencias)
+  .kanban-card:last-child {
+  margin-bottom: 0;
+}
+
+#kanban-section .kanban-card .header-kanban {
+  min-width: 0;
+  min-height: 16px;
+  margin: 0;
+  gap: 4px;
+}
+
+#kanban-section .kanban-card .header-kanban .funcao-badge,
+#kanban-section .kanban-card .header-kanban .priority {
+  max-width: 100%;
+  padding: 2px 5px;
+  overflow: hidden;
+  color: #b8c5d5;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 4px;
+}
+
+#kanban-section .kanban-card h5 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #f4f7fb;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+#kanban-section.kanban--comfortable .kanban-card h5 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+#kanban-section.kanban--compact .kanban-card h5 {
+  white-space: nowrap;
+}
+
+#kanban-section .kanban-card--with-thumb {
+  position: relative;
+  padding-right: 58px !important;
+}
+
+#kanban-section .kanban-card-thumb {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 50px;
+  height: 50px;
+  margin: 0 !important;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 6px;
+}
+
+#kanban-section .kanban-card.tarefa-criada .kanban-card-thumb {
+  display: none;
+}
+
+#kanban-section .kanban-card-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  margin-top: auto;
+  color: #9eb0c4;
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+#kanban-section .kanban-card .card-footer,
+#kanban-section .kanban-card .card-log,
+#kanban-section .kanban-card .comments {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  margin: 0;
+}
+
+#kanban-section .kanban-card .card-log {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+#kanban-section .kanban-card .card-footer .date,
+#kanban-section .kanban-card .card-log .date,
+#kanban-section .kanban-card .comments span,
+#kanban-section .kanban-card .card-owner {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 3px;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+}
+
+#kanban-section .kanban-card .card-owner {
+  flex: 0 0 auto;
+  color: #b8c5d5;
+}
+
+#kanban-section .kanban-card .card-owner span {
+  font-size: 0.56rem;
+}
+
+#kanban-section .kanban-card .card-footer .date.atrasada,
+#kanban-section .kanban-card--overdue .card-footer .date {
+  color: #f5b75b;
+  background: transparent;
+}
+
+#kanban-section .kanban-card .tempo-atenção {
+  color: #f5b75b !important;
+  background: transparent !important;
+}
+
+#kanban-section .kanban-card .tempo-ruim,
+#kanban-section .kanban-card--sla-critical .card-log .date {
+  color: #ff7474 !important;
+  background: transparent !important;
+}
+
+#kanban-section .card-exception,
+#kanban-section .requirements-card-summary,
+#kanban-section .flow-block-card-type,
+#kanban-section .flow-block-card-ready {
+  min-width: 0;
+  margin: 1px 0 0;
+  padding: 3px 5px;
+  overflow: hidden;
+  font-size: 0.61rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 5px;
+}
+
+#kanban-section .card-exception--hold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #e8a46b;
+  background: rgba(185, 100, 57, 0.13);
+  border-left: 2px solid #bd7045;
+}
+
+#kanban-section .kanban-card--requirement-blocked .requirements-card-summary,
+#kanban-section .flow-block-card-type {
+  color: #c6b2ff;
+  background: rgba(124, 92, 246, 0.13);
+  border-left: 2px solid #8c70e2;
+}
+
+#kanban-section .requirements-card-summary strong,
+#kanban-section .requirements-card-summary > div,
+#kanban-section .flow-block-card-type small,
+#kanban-section .flow-block-card-type em {
+  display: inline;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 800;
+}
+
+#kanban-section .requirements-card-summary > div {
+  margin-left: 4px;
+}
+
+#kanban-section .requirements-card-summary span {
+  display: none;
+}
+
+#kanban-section .flow-block-card-ready {
+  display: block;
+  color: #89d8a7;
+  background: rgba(34, 197, 94, 0.1);
+  border-left: 2px solid #5bbc80;
+}
+
+#kanban-section .flow-block-card-ready > small,
+#kanban-section .flow-block-continue-task {
+  display: none;
+}
+
+#kanban-section .card-operational-flag {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: #f7bc6b;
+  background: rgba(185, 100, 57, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.26);
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+#kanban-section .pending-file-ribbon,
+#kanban-section .pending-render-ribbon,
+#kanban-section .pending-checklist-ribbon {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  overflow: hidden;
+  color: #f7bc6b;
+  font-size: 0;
+  line-height: 1;
+  background: rgba(185, 100, 57, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.26);
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+#kanban-section .pending-render-ribbon {
+  top: 29px;
+}
+#kanban-section .pending-checklist-ribbon {
+  top: 51px;
+}
+
+#kanban-section .pending-file-ribbon i,
+#kanban-section .pending-render-ribbon i,
+#kanban-section .pending-checklist-ribbon i {
+  font-size: 0.7rem;
+}
+
+#kanban-section .card-operational-flag > span {
+  display: none;
+}
+
+#kanban-section
+  .kanban-card:has(.card-operational-flag):not(.kanban-card--with-thumb)
+  .header-kanban {
+  padding-right: 20px;
+}
+
+/* Pendências: alterações somente de densidade; estrutura e eventos intactos. */
+#kanban-section .kanban-box-pendencias .content {
+  padding: 6px;
+}
+
+#kanban-section .pendencia-op-overview {
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(139, 92, 246, 0.16);
+}
+
+#kanban-section .pendencia-op-overview strong {
+  color: #c5b1ff;
+  font-size: 0.84rem;
+}
+
+#kanban-section .pendencia-op-overview span {
+  color: #aebcd0;
+  font-size: 0.55rem;
+}
+
+#kanban-section .pendencia-op-group {
+  margin-bottom: 6px;
+  background: #191c28;
+  border-color: rgba(139, 92, 246, 0.17);
+  box-shadow: none;
+}
+
+#kanban-section .pendencia-op-summary {
+  grid-template-columns: 32px minmax(0, 1fr) auto 16px;
+  gap: 7px;
+  padding: 7px;
+  color: #e9edf4;
+}
+
+#kanban-section .pendencia-op-icon {
+  width: 32px;
+  height: 32px;
+  color: #bca6ff;
+  font-size: 1rem;
+  background: rgba(139, 92, 246, 0.14);
+}
+
+#kanban-section .pendencia-op-title strong {
+  color: #edf0f7;
+  font-size: 0.74rem;
+}
+
+#kanban-section .pendencia-op-title small {
+  color: #aebcd0;
+  font-size: 0.61rem;
+}
+
+#kanban-section .pendencia-op-badges {
+  gap: 4px;
+}
+
+#kanban-section .pendencia-op-badges span {
+  min-width: 22px;
+  padding: 3px 5px;
+  font-size: 0.62rem;
+}
+
+#kanban-section .pendencia-op-list {
+  gap: 5px;
+  padding: 0 6px 6px;
+}
+
+#kanban-section .pendencia-op-item,
+#kanban-section .pendencia-op-more {
+  color: #e7edf5;
+  background: #171b25;
+  border-color: rgba(148, 163, 184, 0.13);
+}
+
+#kanban-section .pendencia-op-item {
+  grid-template-columns: 3px minmax(0, 1fr) 16px;
+  gap: 6px;
+  min-height: 64px;
+  padding: 6px;
+}
+
+#kanban-section .pendencia-op-main {
+  gap: 3px;
+}
+
+#kanban-section .pendencia-op-main strong {
+  font-size: 0.7rem;
+}
+
+#kanban-section .pendencia-op-main small {
+  color: #aebcd0;
+  font-size: 0.61rem;
+}
+
+#kanban-section .pendencia-op-meta {
+  gap: 4px;
+}
+
+#kanban-section .pendencia-op-meta span {
+  padding: 2px 4px;
+  color: #c6d0df;
+  font-size: 0.56rem;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+#kanban-section .pendencia-op-more {
+  gap: 6px;
+  padding: 7px;
+  color: #c5b1ff;
+  font-size: 0.64rem;
+}
+
+#kanban-section.kanban--compact .kanban-box .header {
+  min-height: 42px;
+  height: 42px;
+  padding: 6px;
+}
+
+#kanban-section.kanban--compact .kanban-box .header::before {
+  width: 6px;
+  height: 6px;
+  flex-basis: 6px;
+  margin-right: 4px;
+}
+
+#kanban-section.kanban--compact .kanban-box .header .title span {
+  font-size: 0.68rem;
+}
+
+#kanban-section.kanban--compact .kanban-box .header .task-count {
+  min-width: 17px;
+  padding: 2px 4px;
+  font-size: 0.56rem;
+}
+
+#kanban-section.kanban--compact .kanban-box .content,
+#kanban-section.kanban--compact .kanban-box-pendencias .content {
+  padding: 4px;
+}
+
+#kanban-section.kanban--compact
+  .kanban-box:not(.kanban-box-pendencias)
+  .kanban-card {
+  min-height: 70px;
+  gap: 3px;
+  margin-bottom: 4px;
+  padding: 6px;
+}
+
+#kanban-section.kanban--compact .kanban-card--with-thumb {
+  padding-right: 6px !important;
+}
+
+#kanban-section.kanban--compact .kanban-card-thumb {
+  display: none;
+}
+
+#kanban-section.kanban--compact .kanban-card .header-kanban .funcao-badge,
+#kanban-section.kanban--compact .kanban-card .header-kanban .priority {
+  padding: 1px 4px;
+  font-size: 0.51rem;
+}
+
+#kanban-section.kanban--compact .kanban-card h5 {
+  font-size: 0.7rem;
+}
+
+#kanban-section.kanban--compact .kanban-card-meta {
+  gap: 4px;
+  font-size: 0.55rem;
+}
+
+#kanban-section.kanban--compact .kanban-card .card-owner span,
+#kanban-section.kanban--compact .kanban-card .card-footer .date,
+#kanban-section.kanban--compact .kanban-card .card-log .date,
+#kanban-section.kanban--compact .kanban-card .comments span {
+  max-width: 32px;
+}
+
+#kanban-section.kanban--compact .card-exception,
+#kanban-section.kanban--compact .requirements-card-summary,
+#kanban-section.kanban--compact .flow-block-card-type,
+#kanban-section.kanban--compact .flow-block-card-ready {
+  padding: 2px 4px;
+  font-size: 0.56rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-overview {
+  gap: 3px;
+  padding: 5px;
+}
+
+#kanban-section.kanban--compact .pendencia-op-overview strong {
+  font-size: 0.72rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-overview span {
+  font-size: 0.5rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-summary {
+  grid-template-columns: 28px minmax(0, 1fr) auto 14px;
+  gap: 6px;
+  padding: 6px;
+}
+
+#kanban-section.kanban--compact .pendencia-op-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 0.9rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-title strong {
+  font-size: 0.69rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-title small {
+  font-size: 0.56rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-badges span {
+  min-width: 20px;
+  padding: 2px 4px;
+  font-size: 0.56rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-list {
+  gap: 4px;
+  padding: 0 4px 4px;
+}
+
+#kanban-section.kanban--compact .pendencia-op-item {
+  grid-template-columns: 3px minmax(0, 1fr) 14px;
+  gap: 5px;
+  min-height: 58px;
+  padding: 5px;
+}
+
+#kanban-section.kanban--compact .pendencia-op-main strong {
+  font-size: 0.65rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-main small,
+#kanban-section.kanban--compact .pendencia-op-meta span {
+  font-size: 0.53rem;
+}
+
+#kanban-section.kanban--compact .pendencia-op-more {
+  padding: 6px;
+  font-size: 0.6rem;
+}
+
+/* Ajustes de legibilidade e identidade visual dos grupos do Kanban. */
+#kanban-section .pendencia-op-group {
+  border-left: 3px solid var(--module-color, #8b5cf6);
+}
+
+#kanban-section .pendencia-op-icon {
+  color: var(--module-color, #8b5cf6);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--module-color, #8b5cf6);
+}
+
+#kanban-section .pendencia-op-badges span {
+  color: var(--module-color, #6d28d9);
+  border-color: var(--module-color, #8b5cf6);
+}
+
+/* A cor da função é semântica e não deve ser sobrescrita por estilos genéricos. */
+#kanban-section .funcao-id-1 {
+  background: #dcecff !important;
+  border-color: #8cb8e8 !important;
+  color: #174a7c !important;
+}
+#kanban-section .funcao-id-2 {
+  background: #e5f5e7 !important;
+  border-color: #91c79a !important;
+  color: #276638 !important;
+}
+#kanban-section .funcao-id-3 {
+  background: #fff0d6 !important;
+  border-color: #e7b76e !important;
+  color: #805109 !important;
+}
+#kanban-section .funcao-id-4 {
+  background: #f3e4fb !important;
+  border-color: #c79cdf !important;
+  color: #65347d !important;
+}
+#kanban-section .funcao-id-5 {
+  background: #ffe5e3 !important;
+  border-color: #e89c96 !important;
+  color: #8b3732 !important;
+}
+#kanban-section .funcao-id-6 {
+  background: #ddf4f3 !important;
+  border-color: #83c9c5 !important;
+  color: #176762 !important;
+}
+#kanban-section .funcao-id-7 {
+  background: #e9edff !important;
+  border-color: #a6b3ec !important;
+  color: #394b9a !important;
+}
+#kanban-section .funcao-id-8 {
+  background: #f7ebd4 !important;
+  border-color: #d9b77d !important;
+  color: #76501d !important;
+}
+#kanban-section .funcao-id-9 {
+  background: #e8f1df !important;
+  border-color: #a7c58b !important;
+  color: #416d2d !important;
+}
+#kanban-section .funcao-id-11 {
+  background: #f3e5ed !important;
+  border-color: #d7a6bc !important;
+  color: #793c58 !important;
+}
+
+/* Cabeçalhos: cor de status em tom pastel, sem competir com alertas dos cards. */
+#kanban-section #pendencias-flowreview .header {
+  background: #eee8fb !important;
+  color: #493574 !important;
+}
+#kanban-section #to-do .header {
+  background: #e2eaf1 !important;
+  color: #283a4b !important;
+}
+#kanban-section #hold .header {
+  background: #f7e1d5 !important;
+  color: #7b442e !important;
+}
+#kanban-section #em-andamento .header,
+#kanban-section #in-progress .header {
+  background: #fcf0cf !important;
+  color: #785b13 !important;
+}
+#kanban-section #em-revisao .header,
+#kanban-section #in-review .header {
+  background: #dbf0f3 !important;
+  color: #21636b !important;
+}
+#kanban-section #aguardando-direcao .header {
+  background: #e1f1f2 !important;
+  color: #2c6268 !important;
+}
+#kanban-section #ajuste .header {
+  background: #f8e1e1 !important;
+  color: #884243 !important;
+}
+#kanban-section #aprovado-ajustes .header {
+  background: #ece1f6 !important;
+  color: #65467b !important;
+}
+#kanban-section #aprovado .header {
+  background: #e1f2e4 !important;
+  color: #326842 !important;
+}
+#kanban-section #concluido .header,
+#kanban-section #done .header {
+  background: #e5f1da !important;
+  color: #4d6b32 !important;
+}
+
+#kanban-section .header .task-count {
+  background: rgba(35, 48, 61, 0.12) !important;
+  color: currentColor !important;
+}
+
+/* Conteúdo funcional deve crescer o card, nunca ser escondido para caber. */
+#kanban-section .kanban-card,
+#kanban-section .kanban-card .header-kanban,
+#kanban-section .kanban-card-meta,
+#kanban-section .kanban-card .card-footer,
+#kanban-section .kanban-card .card-log,
+#kanban-section .kanban-card .comments {
+  min-width: 0;
+}
+
+#kanban-section .kanban-card {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#kanban-section .kanban-card .header-kanban,
+#kanban-section .kanban-card-meta,
+#kanban-section .kanban-card .card-footer,
+#kanban-section .kanban-card .card-log,
+#kanban-section .kanban-card .comments {
+  flex-wrap: wrap;
+}
+
+#kanban-section .kanban-card h5,
+#kanban-section.kanban--comfortable .kanban-card h5,
+#kanban-section.kanban--compact .kanban-card h5 {
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+#kanban-section .kanban-card .card-funcao,
+#kanban-section.kanban--compact .kanban-card .card-funcao {
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+#kanban-section .kanban-card-meta {
+  justify-content: flex-start;
+  gap: 4px 7px;
+}
+
+#kanban-section .kanban-card .card-footer,
+#kanban-section .kanban-card .card-log,
+#kanban-section .kanban-card .comments {
+  width: auto;
+  max-width: 100%;
+  gap: 3px 5px;
+}
+
+#kanban-section .kanban-card .card-owner,
+#kanban-section .kanban-card .card-owner span,
+#kanban-section .kanban-card .card-log span,
+#kanban-section.kanban--compact .kanban-card .card-owner,
+#kanban-section.kanban--compact .kanban-card .card-owner span,
+#kanban-section.kanban--compact .kanban-card .card-log span {
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+#kanban-section .requirements-card-summary,
+#kanban-section .flow-block-card-type,
+#kanban-section .flow-block-card-ready,
+#kanban-section .flow-block-card-type small,
+#kanban-section .flow-block-card-type em,
+#kanban-section .flow-block-card-ready > small {
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+#kanban-section .requirements-card-summary span,
+#kanban-section.kanban--compact .requirements-card-summary span,
+#kanban-section.kanban--compact .flow-block-card-ready > small,
+#kanban-section.kanban--compact .flow-block-continue-task {
+  display: inline-flex;
+}
+
+#kanban-section .pending-file-ribbon,
+#kanban-section .pending-attachment-ribbon,
+#kanban-section .pending-comment-ribbon {
+  position: static;
+  align-self: flex-start;
+  width: auto;
+  height: auto;
+  min-height: 18px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 0.63rem;
+}
+
+#kanban-section.kanban--compact .kanban-card {
+  min-height: 0;
+}
+
+#kanban-section.kanban--compact .kanban-card h5 {
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+/* A partir do iPad, o usuário pode percorrer as colunas mantendo seus pisos funcionais. */
+@media (max-width: 1024px) {
+  #kanban-section {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-gutter: stable;
+  }
+
+  #kanban-section > .kanban-column {
+    scroll-snap-align: start;
+  }
+}
+
+/* Kanban dark premium: status aparece como identidade, não como preenchimento pastel. */
+#kanban-section .kanban-box .header {
+  --kanban-status: #94a3b8;
+  color: #e6edf3 !important;
+  background: #171d25 !important;
+  border-bottom-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: inset 0 3px 0 var(--kanban-status);
+}
+
+#kanban-section #pendencias-flowreview .header { --kanban-status: #9b7bff; background: #1d1930 !important; }
+#kanban-section #to-do .header { --kanban-status: #9aa9bb; background: #171d25 !important; }
+#kanban-section #hold .header { --kanban-status: #d47b52; background: #171d25 !important; }
+#kanban-section #em-andamento .header,
+#kanban-section #in-progress .header { --kanban-status: #d0a73c; background: #171d25 !important; }
+#kanban-section #em-revisao .header,
+#kanban-section #in-review .header { --kanban-status: #55b6ca; background: #171d25 !important; }
+#kanban-section #aguardando-direcao .header { --kanban-status: #5baaba; background: #171d25 !important; }
+#kanban-section #ajuste .header { --kanban-status: #cf6c6a; background: #171d25 !important; }
+#kanban-section #aprovado-ajustes .header { --kanban-status: #a889df; background: #171d25 !important; }
+#kanban-section #aprovado .header { --kanban-status: #65b987; background: #171d25 !important; }
+#kanban-section #concluido .header,
+#kanban-section #done .header { --kanban-status: #85b96c; background: #171d25 !important; }
+
+#kanban-section .kanban-box .header::before {
+  background: var(--kanban-status) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kanban-status) 18%, transparent);
+}
+
+#kanban-section .kanban-box .header .title span {
+  color: #e6edf3 !important;
+}
+
+#kanban-section .kanban-box .header .task-count {
+  color: var(--kanban-status) !important;
+  background: #10151c !important;
+  border: 1px solid color-mix(in srgb, var(--kanban-status) 46%, transparent);
+  box-shadow: none;
+}
+
+#kanban-section .kanban-box-pendencias {
+  background: #19172a;
+  box-shadow: inset 0 0 0 1px rgba(155, 123, 255, 0.24);
+}
+
+#kanban-section .pendencia-op-icon {
+  color: var(--module-color, #9b7bff);
+  background: #121821;
+  box-shadow: inset 0 0 0 1px var(--module-color, #9b7bff), 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+#kanban-section .pendencia-op-badges span {
+  color: var(--module-color, #a78bfa);
+  background: #10151c;
+}
+
+/* Etiquetas de função com cor suficiente, mas ancoradas no tema escuro. */
+#kanban-section .funcao-id-1 { background: #172b3e !important; border-color: #356f9d !important; color: #a7d7ff !important; }
+#kanban-section .funcao-id-2 { background: #173222 !important; border-color: #448758 !important; color: #a6e4b1 !important; }
+#kanban-section .funcao-id-3 { background: #382912 !important; border-color: #a67932 !important; color: #ffd895 !important; }
+#kanban-section .funcao-id-4 { background: #30203c !important; border-color: #8961a7 !important; color: #dfbdff !important; }
+#kanban-section .funcao-id-5 { background: #3a2020 !important; border-color: #a55550 !important; color: #ffc0bb !important; }
+#kanban-section .funcao-id-6 { background: #163536 !important; border-color: #3e8988 !important; color: #a4e5e2 !important; }
+#kanban-section .funcao-id-7 { background: #20284b !important; border-color: #5d6ec0 !important; color: #c5ceff !important; }
+#kanban-section .funcao-id-8 { background: #352a1b !important; border-color: #967044 !important; color: #f2d19c !important; }
+#kanban-section .funcao-id-9 { background: #20341c !important; border-color: #67914c !important; color: #c4e8ad !important; }
+#kanban-section .funcao-id-11 { background: #351e2e !important; border-color: #96587a !important; color: #ffc0dc !important; }
+
+/* Geometria dos cards com imagem: título curto e miniatura em faixa própria. */
+#kanban-section .kanban-card {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#kanban-section .kanban-card h5,
+#kanban-section.kanban--comfortable .kanban-card h5,
+#kanban-section.kanban--compact .kanban-card h5 {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  white-space: normal !important;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+#kanban-section .kanban-card--with-thumb,
+#kanban-section.kanban--compact .kanban-card--with-thumb {
+  padding-right: 8px !important;
+}
+
+#kanban-section .kanban-card .header-kanban { order: 1; }
+#kanban-section .kanban-card h5 { order: 2; }
+
+#kanban-section .kanban-card-thumb,
+#kanban-section.kanban--compact .kanban-card-thumb,
+#kanban-section .kanban-card.tarefa-criada .kanban-card-thumb {
+  position: static;
+  display: block;
+  order: 3;
+  width: 100%;
+  max-width: 100%;
+  height: clamp(72px, 10vw, 132px);
+  margin: 1px 0 2px !important;
+  object-fit: cover;
+  object-position: center;
+  border-color: rgba(148, 163, 184, 0.28);
+  border-radius: 6px;
+}
+
+#kanban-section .kanban-card .kanban-card-exception,
+#kanban-section .kanban-card .requirements-card-summary,
+#kanban-section .kanban-card .flow-block-card-type,
+#kanban-section .kanban-card .flow-block-card-ready { order: 4; }
+
+#kanban-section .kanban-card .kanban-card-meta { order: 5; }
+#kanban-section .kanban-card > .comments { order: 6; }

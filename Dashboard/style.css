@@ -970,6 +970,67 @@ main {
   border-bottom: 1px solid var(--border-strong);
 }
 
+/* Cabeçalhos em tons pastéis para identificar cada etapa sem pesar no painel. */
+.kanban-box--onboarding .header {
+  background: #fff3d6;
+  border-bottom-color: #f5cf83;
+}
+
+.kanban-box--hold .header {
+  background: #ffe4e7;
+  border-bottom-color: #f6aeb7;
+}
+
+.kanban-box--waiting .header {
+  background: #fff0dc;
+  border-bottom-color: #f3c38b;
+}
+
+.kanban-box--production .header {
+  background: #e2efff;
+  border-bottom-color: #a9ccf6;
+}
+
+.kanban-box--onboarding .title,
+.kanban-box--onboarding .column-subtitle {
+  color: #865b10 !important;
+}
+
+.kanban-box--hold .title,
+.kanban-box--hold .column-subtitle {
+  color: #9f2535 !important;
+}
+
+.kanban-box--waiting .title,
+.kanban-box--waiting .column-subtitle {
+  color: #925317 !important;
+}
+
+.kanban-box--production .title,
+.kanban-box--production .column-subtitle {
+  color: #235f9d !important;
+}
+
+.kanban-box--onboarding .title i,
+.kanban-box--onboarding .task-count {
+  color: #865b10 !important;
+}
+
+.kanban-box--hold .title i,
+.kanban-box--hold .task-count {
+  color: #9f2535 !important;
+}
+
+.kanban-box--waiting .title i,
+.kanban-box--waiting .task-count {
+  color: #925317 !important;
+}
+
+.kanban-box--production .title i,
+.kanban-box--production .task-count {
+  color: #235f9d !important;
+}
+
 .kanban-box .header-copy {
   display: flex;
   flex-direction: column;
@@ -1161,10 +1222,9 @@ main {
 }
 
 .kanban-card-middle {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px;
-  gap: 8px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
 
 .kanban-card-main {
@@ -1176,7 +1236,7 @@ main {
 
 .kanban-card h5 {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 5px;
   margin: 0;
   font-size: 0.85rem;
@@ -1187,9 +1247,8 @@ main {
 
 .kanban-card-title {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .kanban-checklist-badge {
@@ -1209,14 +1268,39 @@ main {
 
 .kanban-card-subtitle {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
 }
 
 .kanban-card-meta {
   margin: 0;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.kanban-card-details {
+  display: grid;
+  gap: 4px;
+}
+
+.kanban-card-details p {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.kanban-card-details i {
+  flex: none;
+  width: 12px;
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 0.66rem;
+}
+
+.kanban-card.is-onboarding .kanban-card-details i {
+  color: var(--warning);
 }
 
 .kanban-card-progress {
@@ -1258,7 +1342,20 @@ main {
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1366px) {
   .kanban {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+    scrollbar-width: thin;
+  }
+
+  .kanban-box {
+    flex: 0 0 clamp(300px, 29vw, 360px);
+    scroll-snap-align: start;
   }
 }
 
@@ -1278,14 +1375,14 @@ main {
   }
 
   .kanban {
-    height: auto;
-    grid-template-columns: 1fr;
+    height: min(650px, calc(100vh - 190px));
+    min-height: 390px;
   }
 
   .kanban-box {
-    height: auto;
-    min-height: 280px;
-    max-height: 50vh;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
   }
 }
 
@@ -1297,5 +1394,14 @@ main {
 
   .page-title {
     font-size: 0.95rem;
+  }
+
+  .kanban {
+    height: min(620px, calc(100vh - 170px));
+    min-height: 360px;
+  }
+
+  .kanban-box {
+    flex-basis: calc(100vw - 36px);
   }
 }

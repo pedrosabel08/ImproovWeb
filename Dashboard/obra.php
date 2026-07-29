@@ -2140,9 +2140,9 @@ $conn->close();
 
     <div id="modal_status">
         <div class="modal-content" style="margin: 0;">
-            <div class="ms-section">
-                <label class="ms-label" for="opcao_status_ms">Etapa</label>
-                <div class="ms-row">
+            <div class="ms-section modal-row" data-target="etapaMsField">
+                <label class="ms-label">Etapa</label>
+                <div id="etapaMsField" class="modal-field ms-field" style="display: none;">
                     <select id="opcao_status_ms" name="status_id_ms" class="ms-select">
                         <?php foreach ($status_imagens as $status): ?>
                             <option value="<?= htmlspecialchars($status['idstatus']); ?>">
@@ -2150,13 +2150,12 @@ $conn->close();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="button" id="alterar_etapa_ms" class="ms-btn ms-btn-save">Salvar</button>
                 </div>
             </div>
             <hr class="ms-divider">
-            <div class="ms-section">
-                <label class="ms-label" for="statusSelect">Substatus</label>
-                <div class="ms-row">
+            <div class="ms-section modal-row" data-target="substatusMsField">
+                <label class="ms-label">Substatus</label>
+                <div id="substatusMsField" class="modal-field ms-field" style="display: none;">
                     <select id="statusSelect" name="statusSelect" class="ms-select" required>
                         <?php foreach ($status_etapa as $statusEtapa): ?>
                             <option value="<?= htmlspecialchars($statusEtapa['id']); ?>">
@@ -2164,11 +2163,31 @@ $conn->close();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="button" id="alterar_status" class="ms-btn ms-btn-save"
-                        onclick="alterarStatus(this.getAttribute('data-imagemid'))">Salvar</button>
                 </div>
             </div>
             <hr class="ms-divider">
+            <div class="ms-section modal-row" data-target="prazoMsField">
+                <label class="ms-label">Prazo</label>
+                <div id="prazoMsField" class="modal-field ms-field" style="display: none;">
+                    <input type="date" id="prazo_status_ms" class="ms-input">
+                </div>
+            </div>
+            <hr class="ms-divider">
+            <div class="ms-section modal-row" data-target="subtipoMsField">
+                <label class="ms-label">Subtipo</label>
+                <div id="subtipoMsField" class="modal-field ms-field" style="display: none;">
+                    <select id="subtipo_status_ms" class="ms-select">
+                        <option value="">-- Sem subtipo --</option>
+                        <?php foreach ($subtipos as $s): ?>
+                            <option value="<?= htmlspecialchars($s['id']); ?>"><?= htmlspecialchars($s['nome']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <hr class="ms-divider">
+            <div class="ms-update-actions">
+                <button type="button" id="alterar_status" class="ms-btn ms-btn-save">Atualizar</button>
+            </div>
             <div class="ms-actions">
                 <button type="button" id="addRenderMs" class="ms-btn ms-btn-render">+Render</button>
                 <button type="button" id="addEfMs" class="ms-btn ms-btn-ef">+EF</button>

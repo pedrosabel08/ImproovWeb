@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Inclua a conexão com o banco de dados
 include('conexao.php');
+require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 
 function same_caderno_date($left, $right)
 {
@@ -41,6 +42,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($rowAtual) {
         $prazoAnterior  = $rowAtual['prazo']   ?? null;
         $statusAnterior = $rowAtual['status']  ?? null;
+    }
+    if (
+        strcasecmp((string) $statusAnterior, 'Não iniciado') === 0
+        && strcasecmp((string) $status, 'Em andamento') === 0
+    ) {
+        $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idfuncao_imagem);
+        if (!$evaluation['elegivel']) {
+            http_response_code(422);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'A tarefa possui requisitos pendentes para iniciar.',
+                'avaliacao' => $evaluation,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
     }
 
     $conn->begin_transaction();

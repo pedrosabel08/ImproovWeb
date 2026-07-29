@@ -545,14 +545,71 @@ if (isset($_GET['action'])) {
             break;
 
         case 'getRenders':
-            // Buscar renders com paginação
+            // Os filtros são aplicados antes da paginação para que "Carregar mais"
+            // percorra somente os resultados do contexto selecionado.
             $page  = max(1, (int)($_GET['page']  ?? 1));
             $limit = max(1, min(200, (int)($_GET['limit'] ?? 100)));
             $offset = ($page - 1) * $limit;
 
-            $sqlCount = "SELECT COUNT(*) AS total FROM render_alta r WHERE r.status != 'Arquivado'";
-            $resCount = $conn->query($sqlCount);
-            $total = $resCount ? (int)$resCount->fetch_assoc()['total'] : 0;
+            $where = ["r.status != 'Arquivado'"];
+            $params = [];
+            $types = '';
+            $addFilter = static function ($column, $value) use (&$where, &$params, &$types) {
+                if ($value === '') {
+                    return;
+                }
+                $where[] = "$column = ?";
+                $params[] = $value;
+                $types .= 's';
+            };
+
+            $addFilter('r.status', trim((string)($_GET['status'] ?? '')));
+            $addFilter('s.nome_status', trim((string)($_GET['statusImagem'] ?? '')));
+            $addFilter('c.nome_colaborador', trim((string)($_GET['colaborador'] ?? '')));
+            $addFilter('o.nomenclatura', trim((string)($_GET['obra'] ?? '')));
+
+            $search = trim((string)($_GET['search'] ?? ''));
+            if ($search !== '') {
+                $where[] = '(i.imagem_nome LIKE ? OR o.nomenclatura LIKE ? OR c.nome_colaborador LIKE ? OR r.status LIKE ?)';
+                $like = '%' . $search . '%';
+                array_push($params, $like, $like, $like, $like);
+                $types .= 'ssss';
+            }
+
+            $dateFrom = trim((string)($_GET['dateFrom'] ?? ''));
+            if ($dateFrom !== '') {
+                $where[] = 'r.data >= ?';
+                $params[] = $dateFrom . ' 00:00:00';
+                $types .= 's';
+            }
+
+            $dateTo = trim((string)($_GET['dateTo'] ?? ''));
+            if ($dateTo !== '') {
+                $where[] = 'r.data <= ?';
+                $params[] = $dateTo . ' 23:59:59';
+                $types .= 's';
+            }
+
+            $from = "
+FROM render_alta r
+LEFT JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
+LEFT JOIN colaborador c ON r.responsavel_id = c.idcolaborador
+LEFT JOIN status_imagem s ON r.status_id = s.idstatus
+LEFT JOIN obra o ON i.obra_id = o.idobra";
+            $whereSql = ' WHERE ' . implode(' AND ', $where);
+
+            $bind = static function ($stmt, $bindTypes, $bindParams) {
+                if ($bindTypes !== '') {
+                    $stmt->bind_param($bindTypes, ...$bindParams);
+                }
+                $stmt->execute();
+                return $stmt->get_result();
+            };
+
+            $stmtCount = $conn->prepare("SELECT COUNT(*) AS total $from $whereSql");
+            $resCount = $bind($stmtCount, $types, $params);
+            $total = (int)$resCount->fetch_assoc()['total'];
+            $stmtCount->close();
 
             $sql = "SELECT 
     c.nome_colaborador, 
@@ -561,29 +618,45 @@ if (isset($_GET['action'])) {
     o.nome_obra,
     o.nomenclatura AS obra_nomenclatura,
     r.*
-FROM 
-    render_alta r
-LEFT JOIN 
-    imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
-LEFT JOIN 
-    colaborador c ON r.responsavel_id = c.idcolaborador
-LEFT JOIN 
-    status_imagem s ON r.status_id = s.idstatus
-LEFT JOIN
-    obra o ON i.obra_id = o.idobra
-WHERE 
-    r.status != 'Arquivado'
+ $from
+ $whereSql
 ORDER BY 
     FIELD(r.status, 'Em aprovação', 'Em andamento', 'Refazendo', 'Reprovado', 'Erro', 'Aprovado'), data DESC
 LIMIT $limit OFFSET $offset";
-            $result = $conn->query($sql);
+            $stmt = $conn->prepare($sql);
+            $result = $bind($stmt, $types, $params);
             $renders = [];
 
             while ($row = $result->fetch_assoc()) {
                 $renders[] = $row;
             }
+            $stmt->close();
 
-            echo json_encode(['status' => 'sucesso', 'renders' => $renders, 'total' => $total, 'page' => $page, 'limit' => $limit]);
+            $filterOptions = null;
+            if ($page === 1) {
+                // As opções não dependem da página atual: uma obra/responsável que não
+                // esteja entre os primeiros 200 ainda precisa poder ser selecionado.
+                $filterOptions = [
+                    'obras' => [],
+                    'colaboradores' => [],
+                    'status' => [],
+                    'statusImagem' => [],
+                ];
+                $optionQueries = [
+                    'obras' => "SELECT DISTINCT o.nomenclatura AS value $from WHERE r.status != 'Arquivado' AND o.nomenclatura IS NOT NULL ORDER BY value",
+                    'colaboradores' => "SELECT DISTINCT c.nome_colaborador AS value $from WHERE r.status != 'Arquivado' AND c.nome_colaborador IS NOT NULL ORDER BY value",
+                    'status' => "SELECT DISTINCT r.status AS value $from WHERE r.status != 'Arquivado' AND r.status IS NOT NULL ORDER BY value",
+                    'statusImagem' => "SELECT DISTINCT s.nome_status AS value $from WHERE r.status != 'Arquivado' AND s.nome_status IS NOT NULL ORDER BY value",
+                ];
+                foreach ($optionQueries as $key => $optionQuery) {
+                    $optionResult = $conn->query($optionQuery);
+                    while ($optionRow = $optionResult->fetch_assoc()) {
+                        $filterOptions[$key][] = $optionRow['value'];
+                    }
+                }
+            }
+
+            echo json_encode(['status' => 'sucesso', 'renders' => $renders, 'total' => $total, 'page' => $page, 'limit' => $limit, 'filterOptions' => $filterOptions]);
             break;
 
         case 'getRender':

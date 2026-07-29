@@ -239,6 +239,7 @@ $sqlImagens = "SELECT
         ico.tipo_imagem,
         ico.antecipada,
         ico.status_id,
+        ico.substatus_id,
         ico.subtipo_id,
         sti.nome AS subtipo_nome,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,

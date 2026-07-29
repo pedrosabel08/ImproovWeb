@@ -18,7 +18,7 @@ if (!$userId) {
 
 // Aggregate ready_count per obra using same rule as Entregas/listar_entregas.php
 $sql = "SELECT o.idobra AS obra_id,
-    SUM(CASE WHEN (ei.status = 'Entrega pendente' OR ss.nome_substatus IN ('RVW','DRV'))
+    SUM(CASE WHEN (ei.status = 'Entrega pendente')
         AND ei.status NOT IN ('Entregue no prazo', 'Entregue com atraso', 'Entrega antecipada')
         THEN 1 ELSE 0 END) AS ready_count
 FROM entregas e
@@ -42,7 +42,7 @@ if ($res) {
 
 $p00HandoffCounts = improov_p00_fetch_pending_handoff_counts($conn);
 foreach ($p00HandoffCounts as $obraId => $handoffCount) {
-    $counts_by_obra[$obraId] = intval($counts_by_obra[$obraId] ?? 0) + intval($handoffCount);
+    // $counts_by_obra[$obraId] = intval($counts_by_obra[$obraId] ?? 0) + intval($handoffCount);
     $total_ready += intval($handoffCount);
 }
 

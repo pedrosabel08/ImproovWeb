@@ -98,7 +98,7 @@ $conn->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&m=' . filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('addClienteObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <!-- <link rel="stylesheet" href="<?php echo asset_url('../PaginaPrincipal/styleIndex.css'); ?>"> -->
@@ -695,7 +695,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>" defer></script>
-    <script src="<?php echo asset_url('script.js'); ?>" defer></script>
+    <script src="<?php echo asset_url('script.js') . '&m=' . filemtime(__DIR__ . '/script.js'); ?>" defer></script>
     <?php if (in_array((int) $nivel_acesso, [1, 5], true)): ?>
         <script src="<?php echo asset_url('scriptAddClienteObra.js'); ?>" defer></script>
     <?php endif; ?>

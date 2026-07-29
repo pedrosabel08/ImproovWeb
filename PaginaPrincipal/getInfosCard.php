@@ -5,6 +5,7 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     // --- Parâmetro ---
@@ -73,6 +74,9 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             $funcoes[] = $row;
         }
     }
+    $avaliacaoRequisitos = $isAnimacao
+        ? motor_requisitos_avaliar_funcao_animacao($conn, $idFuncaoImagem)
+        : motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
 
     // ==========================================================
     // 2) Status da imagem
@@ -456,6 +460,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         "briefing_obra" => $briefing_obra,
         "obra_links" => $obra_links ?? [],
         "observacoes_obra" => $observacoes_obra,
+        "requisitos" => $avaliacaoRequisitos,
 
     ], JSON_UNESCAPED_UNICODE);
 } else {

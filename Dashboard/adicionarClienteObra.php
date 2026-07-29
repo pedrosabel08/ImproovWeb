@@ -19,6 +19,7 @@ if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
 }
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 // Composer autoload (para phpseclib)
 $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
@@ -187,6 +188,10 @@ if ((is_null($clienteIdFromReq) && $clienteNome === '') || $clienteNomeCompleto 
 
 try {
     ensure_project_names_schema($conn);
+    // A política de requisitos só nasce junto com uma nova obra. Esta chamada
+    // ocorre antes da transação de onboarding para que qualquer evolução
+    // aditiva do schema não provoque commit implícito no cadastro da obra.
+    pendencias_operacionais_ensure_schema($conn);
     $conn->begin_transaction();
     if (is_null($clienteIdFromReq) && onboarding_sigla_exists($conn, 'cliente', 'nome_cliente', $clienteNome)) {
         throw new Exception('A sigla do cliente ja existe. Altere antes de continuar.');
@@ -302,6 +307,13 @@ try {
 
     $obraId = (int)$stmtObra->insert_id;
     $stmtObra->close();
+
+    // Não há backfill: somente obras criadas a partir deste fluxo recebem o
+    // checklist versionado PROJECT_REQUIREMENTS_V1.
+    $responsavelId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
+    if (!pendencias_operacionais_ensure_project_checklist($conn, $obraId, $responsavelId)) {
+        throw new Exception('Falha ao criar checklist de requisitos do projeto.');
+    }
 
     // 3) Criar estrutura de pastas no servidor (template -> /mnt/clientes/<ano>/<nomenclatura>)
     ensure_remote_project_folder($nomenclatura);

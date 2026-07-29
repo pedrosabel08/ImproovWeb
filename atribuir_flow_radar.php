@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 // Flow Radar - Atribuir tarefa a colaborador
 include 'conexao.php';
+require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 
 $conn = conectarBanco();
 
@@ -18,7 +19,7 @@ if (!$colaborador_id || !$funcao_imagem_id) {
 
 try {
     // Proteção: só atribuir se tarefa estiver sem colaborador
-    $sql_check = "SELECT colaborador_id FROM funcao_imagem WHERE idfuncao_imagem = ?";
+    $sql_check = "SELECT colaborador_id, status FROM funcao_imagem WHERE idfuncao_imagem = ?";
     $stmt = $conn->prepare($sql_check);
     $stmt->bind_param('i', $funcao_imagem_id);
     $stmt->execute();
@@ -28,6 +29,17 @@ try {
     if ($res && !empty($res['colaborador_id']) && $res['colaborador_id'] != 0) {
         echo json_encode(['error' => 'Tarefa já está atribuída a outro colaborador']);
         exit;
+    }
+    if ($res && strcasecmp((string) ($res['status'] ?? ''), 'Não iniciado') === 0) {
+        $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcao_imagem_id);
+        if (!$evaluation['elegivel']) {
+            http_response_code(422);
+            echo json_encode([
+                'error' => 'A tarefa possui requisitos pendentes para iniciar.',
+                'avaliacao' => $evaluation,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
     }
 
     // Atualiza a função_imagem
@@ -56,5 +68,3 @@ try {
     echo json_encode(['error' => 'Erro ao atribuir tarefa', 'message' => $e->getMessage()]);
     exit;
 }
-
-?>

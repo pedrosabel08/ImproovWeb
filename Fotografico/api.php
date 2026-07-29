@@ -1303,6 +1303,16 @@ try {
         }
 
         fotografico_sync_stage_pending($conn, $planId, $actorId);
+        $stmtRequirementsObra = $conn->prepare('SELECT obra_id FROM fotografico_plano WHERE id = ? LIMIT 1');
+        if ($stmtRequirementsObra) {
+            $stmtRequirementsObra->bind_param('i', $planId);
+            $stmtRequirementsObra->execute();
+            $requirementsObra = $stmtRequirementsObra->get_result()->fetch_assoc();
+            $stmtRequirementsObra->close();
+            if ($requirementsObra) {
+                pendencias_operacionais_sync_fotografico_requirement($conn, (int) $requirementsObra['obra_id'], false);
+            }
+        }
         $fotoPerf->mark('mutation');
         $conn->commit();
         fotografico_enviar_notificacoes_pendentes($conn);

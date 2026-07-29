@@ -1266,7 +1266,36 @@ function sincronizarImagemSelecionada(imagemId = null) {
   if (botaoAlterar) botaoAlterar.setAttribute("data-imagemid", resolvedId);
   window.__ctxMenuImagemId = resolvedId;
 
+  if (linhaSelecionada) prepararModalStatusImagem(linhaSelecionada);
+
   return linhaSelecionada || null;
+}
+
+function prepararModalStatusImagem(linha) {
+  const modal = document.getElementById("modal_status");
+  if (!modal || !linha) return;
+
+  const valores = {
+    etapa: String(linha.getAttribute("data-status-id") || ""),
+    substatus: String(linha.getAttribute("data-substatus-id") || ""),
+    prazo: String(linha.getAttribute("data-prazo") || ""),
+    subtipo: String(linha.getAttribute("data-subtipo-id") || ""),
+  };
+  const campos = {
+    etapa: document.getElementById("opcao_status_ms"),
+    substatus: document.getElementById("statusSelect"),
+    prazo: document.getElementById("prazo_status_ms"),
+    subtipo: document.getElementById("subtipo_status_ms"),
+  };
+
+  Object.entries(campos).forEach(([chave, campo]) => {
+    if (!campo) return;
+    campo.value = valores[chave];
+    modal.dataset[`original${chave[0].toUpperCase()}${chave.slice(1)}`] = valores[chave];
+  });
+  modal.querySelectorAll(".modal-field").forEach((field) => {
+    field.style.display = "none";
+  });
 }
 
 function addEventListenersToRows() {
@@ -1528,58 +1557,122 @@ function addEventListenersToRows() {
   });
 }
 
-function alterarStatus(imagemId) {
-  const statusSelect = document.getElementById("statusSelect");
-  const statusId = statusSelect.value;
-
-  if (!statusId) {
-    alert("Por favor, selecione um status.");
+async function alterarStatus(imagemId) {
+  const modal = document.getElementById("modal_status");
+  const id = imagemId || document.getElementById("imagem_id")?.value;
+  if (!modal || !id) {
+    Toastify({
+      text: "Nenhuma imagem selecionada.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
     return;
   }
 
-  solicitarJustificativaHoldIfNeeded(Number(statusId))
-    .then((holdJustificativa) => {
-      if (holdJustificativa === null) return;
+  const definicoes = [
+    {
+      fieldId: "etapaMsField",
+      inputId: "opcao_status_ms",
+      original: "originalEtapa",
+      param: "etapa_id",
+      label: "Etapa",
+    },
+    {
+      fieldId: "substatusMsField",
+      inputId: "statusSelect",
+      original: "originalSubstatus",
+      param: "substatus_id",
+      label: "Substatus",
+    },
+    {
+      fieldId: "prazoMsField",
+      inputId: "prazo_status_ms",
+      original: "originalPrazo",
+      param: "prazo",
+      label: "Prazo",
+    },
+    {
+      fieldId: "subtipoMsField",
+      inputId: "subtipo_status_ms",
+      original: "originalSubtipo",
+      param: "subtipo_id",
+      label: "Subtipo",
+    },
+  ];
+  const alteracoes = [];
+  definicoes.forEach((definicao) => {
+    const field = document.getElementById(definicao.fieldId);
+    const input = document.getElementById(definicao.inputId);
+    if (!field || !input || field.style.display !== "block") return;
+    if (String(input.value) !== String(modal.dataset[definicao.original] || "")) {
+      alteracoes.push({ ...definicao, value: input.value, text: input.options?.[input.selectedIndex]?.text || input.value });
+    }
+  });
 
-      const formData = new FormData();
-      formData.append("imagem_id", imagemId);
-      formData.append("status_id", statusId);
-      if (Number(statusId) === 7) {
-        formData.append("hold_justificativa", holdJustificativa);
-      }
+  if (!alteracoes.length) {
+    Toastify({
+      text: "Abra e altere ao menos um campo antes de atualizar.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+    return;
+  }
 
-      return fetch("../alterarStatus.php", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            Toastify({
-              text: "Status alterado com sucesso!",
-              duration: 3000,
-              gravity: "top",
-              position: "right",
-              backgroundColor: "#4caf50",
-            }).showToast();
+  const substatus = alteracoes.find((alteracao) => alteracao.param === "substatus_id");
+  const holdJustificativa = await solicitarJustificativaHoldIfNeeded(
+    Number(substatus?.value || 0),
+  );
+  if (holdJustificativa === null) return;
 
-            const modalStatus = document.getElementById("modal_status");
-            modalStatus.style.display = "none";
-            // clear anchor so positioning stops following
-            statusModalAnchor = null;
-            infosObra(obraId);
-          } else {
-            Toastify({
-              text: data.error || "Erro ao alterar status.",
-              duration: 3000,
-              gravity: "top",
-              position: "right",
-              backgroundColor: "#f44336",
-            }).showToast();
-          }
-        });
-    })
-    .catch((error) => console.error("Erro ao alterar o status:", error));
+  const resumo = alteracoes
+    .map((alteracao) => `${alteracao.label}: ${alteracao.text}`)
+    .join("\n");
+  if (!window.confirm(`Confirmar atualização da imagem?\n\n${resumo}`)) return;
+
+  const formData = new FormData();
+  formData.append("imagem_id", id);
+  alteracoes.forEach((alteracao) => formData.append(alteracao.param, alteracao.value));
+  if (Number(substatus?.value || 0) === 7) {
+    formData.append("hold_justificativa", holdJustificativa);
+  }
+
+  const botao = document.getElementById("alterar_status");
+  if (botao) botao.disabled = true;
+  try {
+    const response = await fetch("../alterarStatus.php", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Erro ao atualizar a imagem.");
+    }
+
+    Toastify({
+      text: "Imagem atualizada com sucesso!",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#4caf50",
+    }).showToast();
+    modal.style.display = "none";
+    statusModalAnchor = null;
+    infosObra(obraId);
+  } catch (error) {
+    Toastify({
+      text: error.message || "Erro ao atualizar a imagem.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+  } finally {
+    if (botao) botao.disabled = false;
+  }
 }
 
 function solicitarJustificativaHoldIfNeeded(statusId) {
@@ -5195,6 +5288,8 @@ function infosObra(obraId) {
         row.classList.add("linha-tabela");
         row.setAttribute("data-id", item.imagem_id);
         row.setAttribute("data-status-id", item.status_id ?? "");
+        row.setAttribute("data-substatus-id", item.substatus_id ?? "");
+        row.setAttribute("data-prazo", item.prazo ?? "");
         row.setAttribute(
           "data-imagem-checklist-pendente",
           item.imagem_checklist_pendente ? "1" : "0",
@@ -7035,6 +7130,13 @@ const OBRA_DASHBOARD = (() => {
   let selected = null;
   let pendingData = { items: [] };
   const groupOrder = ["Críticas", "Em atraso", "Hoje", "Amanhã", "Próximas"];
+  const pendingGroupMeta = {
+    "Críticas": { className: "pending-group--critical", icon: "fa-triangle-exclamation" },
+    "Em atraso": { className: "pending-group--overdue", icon: "fa-clock" },
+    Hoje: { className: "pending-group--today", icon: "fa-calendar-day" },
+    "Amanhã": { className: "pending-group--tomorrow", icon: "fa-calendar-plus" },
+    "Próximas": { className: "pending-group--upcoming", icon: "fa-calendar-week" },
+  };
   const escape = (value) =>
     String(value ?? "").replace(
       /[&<>"']/g,
@@ -7220,17 +7322,19 @@ const OBRA_DASHBOARD = (() => {
 
         const open =
           name === "Críticas" || name === "Em atraso" || name === "Hoje";
+        const groupMeta = pendingGroupMeta[name] || pendingGroupMeta["Próximas"];
 
         return `
         <section
-          class="obra-dashboard-pending-group${open ? " is-open" : ""}"
+          class="obra-dashboard-pending-group ${groupMeta.className}${open ? " is-open" : ""}"
         >
           <button
             type="button"
             class="obra-dashboard-pending-group-toggle"
             aria-expanded="${open}"
           >
-            <span>
+            <span class="obra-dashboard-pending-group-label">
+              <i class="fa-solid ${groupMeta.icon} pending-group-icon" aria-hidden="true"></i>
               ${name} (${groups[name].length})
             </span>
 
@@ -14020,59 +14124,10 @@ document
     document.getElementById("opcao_status").value = this.value;
   });
 
-// Alterar Etapa from modal_status
 document
-  .getElementById("alterar_etapa_ms")
+  .getElementById("alterar_status")
   ?.addEventListener("click", function () {
-    const imagemId = document
-      .getElementById("alterar_status")
-      ?.getAttribute("data-imagemid");
-    if (!imagemId) {
-      Toastify({
-        text: "Nenhuma imagem selecionada",
-        duration: 3000,
-        gravity: "top",
-        position: "right",
-        backgroundColor: "red",
-      }).showToast();
-      return;
-    }
-    const novaEtapa = document.getElementById("opcao_status_ms").value;
-    if (!novaEtapa) return;
-
-    // Sync hidden opcao_status
-    document.getElementById("opcao_status").value = novaEtapa;
-
-    const formData = new FormData();
-    formData.append("imagem_id", imagemId);
-    formData.append("status_id", novaEtapa);
-
-    fetch("alterarEtapa.php", {
-      method: "POST",
-      body: formData,
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          Toastify({
-            text: "Etapa alterada com sucesso!",
-            duration: 3000,
-            gravity: "top",
-            position: "right",
-            backgroundColor: "#4caf50",
-          }).showToast();
-          infosObra(obraId);
-        } else {
-          Toastify({
-            text: data.error || "Erro ao alterar etapa.",
-            duration: 3000,
-            gravity: "top",
-            position: "right",
-            backgroundColor: "#f44336",
-          }).showToast();
-        }
-      })
-      .catch((err) => console.error("Erro ao alterar etapa:", err));
+    alterarStatus(this.getAttribute("data-imagemid"));
   });
 
 // Render from modal_status (mirror addRender behavior: prefer hidden #imagem_id and row data-status-id)

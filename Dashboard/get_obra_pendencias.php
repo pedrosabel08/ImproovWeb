@@ -38,7 +38,7 @@ foreach ($modules as $module) {
         $item['module_name'] = (string) ($module['name'] ?? 'Operacional');
         $url = trim((string) ($item['url_destino'] ?? $item['action_url'] ?? ''));
         if ($url !== '' && !str_starts_with($url, '/')) {
-            $url = '/ImproovWeb/' . ltrim($url, '/');
+            $url = '/flow/ImproovWeb/' . ltrim($url, '/');
         }
         $item['url_destino'] = $url;
         $items[] = $item;

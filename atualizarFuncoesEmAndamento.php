@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include __DIR__ . '/conexao.php';
+require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -75,6 +76,7 @@ if (!is_array($items) || count($items) === 0) {
 $actorColaboradorId = (int) ($_SESSION['idcolaborador'] ?? 0);
 $actorUsuarioId = (int) ($_SESSION['idusuario'] ?? 0);
 $today = (new DateTimeImmutable('today'))->format('Y-m-d');
+$blockedEvaluation = null;
 
 try {
     $conn->begin_transaction();
@@ -165,6 +167,13 @@ try {
             throw new InvalidArgumentException('Uma tarefa em HOLD só pode continuar pelo Flow Block, após confirmar as Issues e informar o novo prazo.');
         }
 
+        if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0) {
+            $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
+            if (!$blockedEvaluation['elegivel']) {
+                throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
+            }
+        }
+
         if ($prazoEmAtrasoOuAusente && !$novoPrazo) {
             throw new InvalidArgumentException('Informe o novo prazo para a tarefa ' . $idFuncaoImagem . '.');
         }
@@ -220,5 +229,6 @@ try {
     json_response(422, [
         'success' => false,
         'message' => $e->getMessage(),
+        'avaliacao' => $blockedEvaluation,
     ]);
 }

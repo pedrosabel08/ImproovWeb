@@ -12310,7 +12310,6 @@ function carregarEventos(obraId) {
   fetch(`./Calendario/getEventos.php?obraId=${obraId}`)
     .then((res) => res.json())
     .then((data) => {
-      console.log("Eventos recebidos do PHP:", data); // 👈 Verifique isso
 
       events = data.map((evento) => {
         delete evento.eventDate;
@@ -12354,7 +12353,6 @@ function carregarEventos(obraId) {
 }
 
 function notificarEventosDaSemana(eventos) {
-  console.log(eventos);
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 

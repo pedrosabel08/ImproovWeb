@@ -125,6 +125,24 @@ class FakeDiscoveryLogger:
         self.records.append(("info", message, extra or {}))
 
 
+class FakeStaleDeadlineCursor:
+    """Cursor minimo para verificar o bloqueio de uma tentativa defasada."""
+
+    def __init__(self):
+        self.executed = []
+        self.results = [
+            (123, 2709, 3, "Em andamento", None),
+            ("IMG_TESTE",),
+            (6,),
+        ]
+
+    def execute(self, sql, params=()):
+        self.executed.append((" ".join(sql.split()), params))
+
+    def fetchone(self):
+        return self.results.pop(0)
+
+
 class DiscoveryModel:
     """Modelo de contratos da descoberta: primeiro envio e reenvio."""
 
@@ -526,6 +544,40 @@ class DeadlineWorkerAcceptanceTests(unittest.TestCase):
         self.assertGreater(
             worker.index("confirm_deadline_observation", worker.index("def sync_active")),
             worker.index("finalize_p00_rollup", worker.index("def sync_active")),
+        )
+
+    def test_case_31_stale_deadline_attempt_cannot_update_a_new_image_stage(self):
+        import deadline_monitor
+
+        cursor = FakeStaleDeadlineCursor()
+        attempt = {
+            "id": 1,
+            "render_id": 123,
+            "deadline_job_id": JOB_A,
+        }
+        with patch.object(
+            deadline_monitor,
+            "deadline_status_to_legacy",
+            return_value={"Name": "IMG_TESTE"},
+        ), patch.object(
+            deadline_monitor, "find_responsavel_id", return_value=(None, None)
+        ), patch.object(deadline_monitor, "log_and_print") as logger:
+            processed = deadline_monitor.process_deadline_job(
+                cursor,
+                deadline_job_id=JOB_A,
+                job_data={},
+                task_data={},
+                attempt_context=attempt,
+                error_info=(False, "sem erro"),
+                processing_plan={"state_changed": True},
+            )
+
+        self.assertTrue(processed)
+        self.assertTrue(
+            any("ignorado" in str(call.args[0]).lower() for call in logger.call_args_list)
+        )
+        self.assertFalse(
+            any("INSERT INTO render_alta" in sql for sql, _params in cursor.executed)
         )
 
 

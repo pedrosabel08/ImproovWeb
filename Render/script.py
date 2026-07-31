@@ -677,6 +677,27 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     # render_alta com um status_id DIFERENTE do status atual da imagem,
     # significa que o job pertence a um ciclo de render já superado → pular.
     # ─────────────────────────────────────────────────────────────────────
+    # Antes de usar o status atual, conferir se esta mesma pasta ja pertence a
+    # outro ciclo. Pastas antigas podem continuar no Backburner depois que a
+    # imagem avanca de etapa; sem esta checagem o job antigo seria registrado
+    # como se fosse um render do status novo.
+    if caminho_pasta and status_id is not None:
+        cursor.execute("""
+            SELECT idrender_alta, status_id
+            FROM render_alta
+            WHERE imagem_id = %s AND job_folder = %s
+            ORDER BY idrender_alta DESC
+            LIMIT 1
+        """, (imagem_id, caminho_pasta))
+        existing_job_cycle = cursor.fetchone()
+        if existing_job_cycle and int(existing_job_cycle[1]) != int(status_id):
+            log_and_print(
+                f"⏭ Job antigo ignorado: pasta ja vinculada ao render "
+                f"{existing_job_cycle[0]} (status_id {existing_job_cycle[1]}), "
+                f"mas a imagem {imagem_id} esta no status_id {status_id}."
+            )
+            return
+
     # Buscar status existente
     cursor.execute("""
         SELECT idrender_alta, status, previa_jpg, deadline_job_id

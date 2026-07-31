@@ -990,11 +990,28 @@ def process_deadline_job(
     image_name_db = row[0] if row else None
 
     resp_id, funcao_id = find_responsavel_id(cursor, imagem_id)
-    status_id = (
-        linked_render[2]
-        if linked_render and linked_render[2]
-        else find_status_id(cursor, imagem_id)
-    )
+    current_status_id = find_status_id(cursor, imagem_id)
+
+    # A tentativa do Deadline pertence a um ciclo especifico de Render. Ela
+    # nao pode continuar atualizando o Flow caso a imagem ja tenha avancado
+    # para outra etapa desde o envio do job.
+    if (
+        linked_render
+        and linked_render[2] is not None
+        and current_status_id is not None
+        and int(linked_render[2]) != int(current_status_id)
+    ):
+        log_and_print(
+            f"Job Deadline {deadline_job_id} ignorado: render {linked_render[0]} "
+            f"pertence ao status_id {linked_render[2]}, mas a imagem {imagem_id} "
+            f"esta no status_id {current_status_id}.",
+            "warning",
+        )
+        # Retornar sucesso evita que o worker tente reaplicar o mesmo job
+        # antigo a cada sincronizacao. Nenhum dado do Render/POS e alterado.
+        return True
+
+    status_id = linked_render[2] if linked_render and linked_render[2] else current_status_id
 
     # ─────────────────────────────────────────────────────────────────────
     # Proteção contra reprocessamento de jobs antigos

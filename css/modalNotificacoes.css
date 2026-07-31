@@ -1,3 +1,7 @@
+[hidden] {
+  display: none !important;
+}
+
 .noti-modal {
   position: fixed;
   inset: 0;
@@ -585,6 +589,7 @@
   font-size: 27px;
   line-height: 1;
   cursor: pointer;
+  text-align: center;
 }
 .flow-notification__close:hover {
   background: var(--bg-surface-alt, #f1f5f9);

@@ -399,6 +399,12 @@ $stmtInsert = $pdo->prepare("
         (:funcao_imagem_id, :nomenclatura, :nome_arquivo, :caminho_origem, :caminho_storage,
          :hash_sha1, :largura, :altura, :tamanho_bytes)
 ");
+$stmtSireReference = $pdo->prepare("
+    INSERT IGNORE INTO sire_referencia
+        (referencia_imagem_id, titulo, origem, golden_sample, nome_arquivo, criado_em)
+    VALUES
+        (:referencia_imagem_id, :titulo, 'Flow', 0, :nome_arquivo, NOW())
+");
 
 // ── Processamento ─────────────────────────────────────────────────────────────
 
@@ -534,6 +540,14 @@ foreach ($registros as $idx => $row) {
             ':largura'          => $largura,
             ':altura'           => $altura,
             ':tamanho_bytes'    => $tamanhoByes,
+        ]);
+
+        // Mantém o registro técnico original e adiciona a referência à nova
+        // biblioteca classificada sem alterar o fluxo de importação existente.
+        $stmtSireReference->execute([
+            ':referencia_imagem_id' => (int) $pdo->lastInsertId(),
+            ':titulo' => $nomenclatura !== '' ? $nomenclatura : $nomeArq,
+            ':nome_arquivo' => $nomeArq,
         ]);
 
         $dim = ($largura !== null && $altura !== null) ? "{$largura}x{$altura}" : 'dim:?';

@@ -24,6 +24,7 @@ try {
             r.caminho,
             r.mime,
             r.tamanho_bytes,
+            r.hash_sha1,
             r.origem,
             r.status,
             r.observacao,
@@ -37,9 +38,23 @@ try {
          FROM evento_obra_referencias r
          INNER JOIN eventos_obra e ON e.id = r.evento_id
          INNER JOIN obra o ON o.idobra = r.obra_id
-         WHERE r.status_sire = 'pendente'
+         WHERE LOWER(TRIM(r.status)) IN (
+                'liberado',
+                'liberada',
+                'liberado para sire',
+                'liberada para sire'
+           )
+           AND r.status_sire = 'pendente'
            AND r.arquivado_em IS NULL
            AND e.arquivado_em IS NULL
+           AND (
+                (r.tipo = 'url' AND LOWER(r.url) REGEXP '^https?://')
+                OR
+                (r.tipo = 'upload'
+                    AND r.caminho IS NOT NULL
+                    AND r.caminho <> ''
+                    AND (r.mime IS NULL OR r.mime LIKE 'image/%'))
+           )
          ORDER BY r.criado_em DESC, r.id DESC
          LIMIT 300"
     );
@@ -50,11 +65,19 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
     $refs = [];
+    $seen = [];
     while ($row = $result->fetch_assoc()) {
         $obraId = (int) $row['obra_id'];
         if (function_exists('improov_usuario_pode_acessar_obra') && !improov_usuario_pode_acessar_obra($conn, $obraId)) {
             continue;
         }
+        $dedupKey = $row['tipo'] === 'url'
+            ? 'url:' . strtolower(rtrim(trim((string) $row['url']), '/'))
+            : 'upload:' . ((string) ($row['hash_sha1'] ?: $row['caminho']));
+        if ($dedupKey === 'url:' || $dedupKey === 'upload:' || isset($seen[$dedupKey])) {
+            continue;
+        }
+        $seen[$dedupKey] = true;
         $refs[] = [
             'id' => (int) $row['id'],
             'evento_id' => (int) $row['evento_id'],
@@ -67,6 +90,7 @@ try {
             'caminho' => $row['caminho'],
             'mime' => $row['mime'],
             'tamanho_bytes' => $row['tamanho_bytes'] !== null ? (int) $row['tamanho_bytes'] : null,
+            'hash_sha1' => $row['hash_sha1'],
             'origem' => $row['origem'],
             'status' => $row['status'],
             'observacao' => $row['observacao'],
@@ -86,6 +110,6 @@ try {
         'total' => count($refs),
     ]);
 } catch (Throwable $e) {
-    eventos_obra_json(['success' => false, 'error' => 'Erro interno', 'details' => $e->getMessage()], 500);
+    error_log('[SIRE_EVENT_REFS] ' . $e->getMessage());
+    eventos_obra_json(['success' => false, 'error' => 'Não foi possível carregar as referências liberadas.'], 500);
 }
-

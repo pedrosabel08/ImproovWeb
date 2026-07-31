@@ -98,11 +98,11 @@ php SIRE\importar_referencias.php --verbose
 
 ## Opções de linha de comando
 
-| Opção          | Descrição                                                         |
-|----------------|-------------------------------------------------------------------|
-| `--dry-run`    | Simula toda a lógica sem copiar arquivos nem gravar no banco      |
-| `--limit=N`    | Processa no máximo N registros (padrão: 10000)                    |
-| `--verbose`    | Exibe todas as linhas de log, inclusive os SKIP                   |
+| Opção       | Descrição                                                    |
+| ----------- | ------------------------------------------------------------ |
+| `--dry-run` | Simula toda a lógica sem copiar arquivos nem gravar no banco |
+| `--limit=N` | Processa no máximo N registros (padrão: 10000)               |
+| `--verbose` | Exibe todas as linhas de log, inclusive os SKIP              |
 
 ---
 

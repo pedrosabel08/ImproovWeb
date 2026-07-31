@@ -2511,10 +2511,12 @@ class EnvioCompareViewer {
     this.select = document.getElementById(`compare-envio-${side}`);
     this.viewport = this.root?.querySelector(".envios-comparison-viewport");
     this.content = this.root?.querySelector(".envios-comparison-content");
+    this.previews = this.root?.querySelector(".envios-comparison-previews");
     this.commentsCache = this.root?.querySelector(
       ".envios-comparison-comment-cache",
     );
     this.imageId = null;
+    this.selectedMediaId = null;
     this.zoom = 1;
     this.translateX = 0;
     this.translateY = 0;
@@ -2584,10 +2586,55 @@ class EnvioCompareViewer {
     this.select.value = selectedIndex || indices[0] || "";
   }
 
-  getSelectedMedia() {
+  getSelectedItems() {
     const items = [...(enviosComparisonState.grouped[this.select.value] || [])];
     items.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
-    return items[0] || null;
+    return items;
+  }
+
+  getSelectedMedia(mediaId = this.selectedMediaId) {
+    const items = this.getSelectedItems();
+    return (
+      items.find((item) => String(item.id) === String(mediaId)) ||
+      items[0] ||
+      null
+    );
+  }
+
+  renderPreviews(items, selectedMediaId) {
+    if (!this.previews) return;
+    this.previews.innerHTML = "";
+    this.previews.hidden = items.length < 2;
+
+    items.forEach((item, index) => {
+      const preview = document.createElement("button");
+      preview.type = "button";
+      preview.className = "envios-comparison-preview";
+      preview.classList.toggle(
+        "is-selected",
+        String(item.id) === String(selectedMediaId),
+      );
+      preview.title = `Prévia ${index + 1}: ${item.nome_arquivo || item.imagem || "imagem"}`;
+      preview.setAttribute(
+        "aria-label",
+        `Abrir prévia ${index + 1} do envio ${this.select.value}`,
+      );
+
+      if (isVideoMedia(item) && !item.poster_path) {
+        const icon = document.createElement("i");
+        icon.className = "fa-solid fa-play";
+        preview.appendChild(icon);
+      } else {
+        const thumbnail = document.createElement("img");
+        const path = isVideoMedia(item) ? item.poster_path : item.imagem;
+        thumbnail.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(path)}&w=160&q=85`;
+        thumbnail.alt = `Prévia ${index + 1}`;
+        preview.appendChild(thumbnail);
+      }
+
+      preview.addEventListener("click", () => this.loadSelectedEnvio(item.id));
+      this.previews.appendChild(preview);
+    });
   }
 
   activateCommentTarget() {
@@ -2599,9 +2646,12 @@ class EnvioCompareViewer {
     pdfViewerState.logId = null;
   }
 
-  async loadSelectedEnvio() {
+  async loadSelectedEnvio(mediaId = null) {
     const requestSequence = ++this.loadSequence;
-    const media = this.getSelectedMedia();
+    const items = this.getSelectedItems();
+    const media = this.getSelectedMedia(mediaId);
+    this.selectedMediaId = media?.id || null;
+    this.renderPreviews(items, this.selectedMediaId);
     this.imageId = media?.id || null;
     this.commentsCache.innerHTML = "";
     this.content.innerHTML = "";
@@ -2986,7 +3036,7 @@ async function restoreFlowReviewViewState(state) {
           )
         ) {
           viewer.select.value = String(saved.indice);
-          await viewer.loadSelectedEnvio();
+          await viewer.loadSelectedEnvio(saved.imageId);
         }
         viewer.zoom = Number(saved.zoom) || 1;
         viewer.translateX = Number(saved.translateX) || 0;
@@ -3567,11 +3617,11 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
               });
             }
 
-            // imgElement.addEventListener("contextmenu", (event) => {
-            //   event.preventDefault();
-            //   ap_imagem_id = img.id;
-            //   abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
-            // });
+            imgElement.addEventListener("contextmenu", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
+            });
 
             if (img.has_comments == "1" || img.has_comments === 1) {
               const notificationDot = document.createElement("div");
@@ -3905,40 +3955,78 @@ function abrirMenuContexto(x, y, id, src) {
   menu.style.display = "block";
 }
 
-function excluirImagem() {
+async function excluirImagem() {
   const menu = document.getElementById("menuContexto");
   const idImagem = menu.getAttribute("data-id");
 
   if (!idImagem) {
-    alert("ID da imagem não encontrado!");
+    Toastify({
+      text: "Não foi possível identificar a imagem.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    menu.style.display = "none";
     return;
   }
 
-  if (confirm("Tem certeza que deseja excluir esta imagem?")) {
-    fetch("excluir_imagem.php", {
+  const { isConfirmed } = await Swal.fire({
+    title: "Excluir imagem?",
+    text: "Esta ação não poderá ser desfeita.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sim, excluir",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  });
+
+  if (!isConfirmed) {
+    menu.style.display = "none";
+    return;
+  }
+
+  try {
+    const response = await fetch("excluir_imagem.php", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: `id=${idImagem}`,
-    })
-      .then((response) => response.text())
-      .then((data) => {
-        // console.log(data);
-        // Remove a imagem da tela também, se quiser
-        const imgElement = document.querySelector(`img[data-id='${idImagem}']`);
-        if (imgElement) {
-          imgElement.parentElement.remove(); // Remove o wrapper da imagem
-        }
-        // Esconde o menu
-        menu.style.display = "none";
-      })
-      .catch((error) => {
-        console.error("Erro ao excluir imagem:", error);
-        alert("Erro ao excluir imagem.");
-      });
-  } else {
-    // Fecha o menu caso cancele
+    });
+    const data = await response.text();
+    if (!response.ok || !/sucesso/i.test(data)) {
+      throw new Error(data || "Erro ao excluir imagem.");
+    }
+
+    const mediaElement = document.querySelector(
+      `#imagens [data-id='${CSS.escape(idImagem)}']`,
+    );
+    const mediaWrapper = mediaElement?.closest(".imageWrapper");
+    if (mediaWrapper) {
+      mediaWrapper.remove();
+    }
+
+    Toastify({
+      text: data,
+      duration: 3000,
+      backgroundColor: "green",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  } catch (error) {
+    console.error("Erro ao excluir imagem:", error);
+    Toastify({
+      text: error.message || "Erro ao excluir imagem.",
+      duration: 4000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  } finally {
     menu.style.display = "none";
   }
 }
@@ -4998,33 +5086,67 @@ function mostrarVideoCompleto(src, id, media = {}) {
   });
 }
 
-function ajustarNavSelectAoTamanhoDaImagem() {
-  // On mobile/tablet (≤1024px) let CSS handle the nav-select width — setting
-  // an inline pixel value would cause the toolbar to overflow the viewport.
-  if (window.innerWidth <= 1024) return;
+let navSelectResizeObserver = null;
+let navSelectObservedMedia = null;
+let navSelectAdjustmentFrame = null;
 
-  const img = document.getElementById("imagem_atual");
+function ajustarNavSelectAoTamanhoDaImagem() {
   const navSelect = document.querySelector(".nav-select");
-  if (img && navSelect) {
-    const doAjuste = () => {
-      const header = document.querySelector(".container-aprovacao header");
-      const headerH = header ? header.offsetHeight : 74;
-      const navH = navSelect.offsetHeight || 40;
-      const maxH = window.innerHeight - headerH - navH - 20;
-      img.style.maxHeight = maxH + "px";
-      img.style.maxWidth = "100%";
-      img.style.width = "auto";
-      img.style.height = "auto";
-      requestAnimationFrame(() => {
-        const cont = document.getElementById("imagem_completa");
-        if (cont)
-          navSelect.style.width = cont.getBoundingClientRect().width + "px";
-      });
-    };
-    img.onload = doAjuste;
-    if (img.complete) doAjuste();
+  const media =
+    document.getElementById("imagem_atual") ||
+    document.getElementById("video_atual");
+
+  if (!navSelect) return;
+
+  // Em telas menores e durante a comparação a barra ocupa o espaço do layout.
+  // Limpar o valor inline evita manter a largura calculada no desktop.
+  if (window.innerWidth <= 1024 || enviosComparisonState.active || !media) {
+    navSelect.style.width = "";
+    return;
   }
+
+  const doAjuste = () => {
+    const header = document.querySelector(".container-aprovacao header");
+    const headerH = header ? header.offsetHeight : 74;
+    const navH = navSelect.offsetHeight || 40;
+    const maxH = Math.max(0, window.innerHeight - headerH - navH - 20);
+
+    media.style.maxHeight = `${maxH}px`;
+    media.style.maxWidth = "100%";
+    media.style.width = "auto";
+    media.style.height = "auto";
+
+    if (navSelectAdjustmentFrame) {
+      cancelAnimationFrame(navSelectAdjustmentFrame);
+    }
+    navSelectAdjustmentFrame = requestAnimationFrame(() => {
+      navSelectAdjustmentFrame = requestAnimationFrame(() => {
+        const mediaWidth = Math.round(media.getBoundingClientRect().width);
+        const container = document.getElementById("imagem_completa");
+        const containerWidth = Math.round(
+          container?.getBoundingClientRect().width || window.innerWidth,
+        );
+
+        if (mediaWidth > 0) {
+          navSelect.style.width = `${Math.min(mediaWidth, containerWidth)}px`;
+        }
+      });
+    });
+  };
+
+  if (navSelectObservedMedia !== media) {
+    navSelectResizeObserver?.disconnect();
+    navSelectResizeObserver = new ResizeObserver(doAjuste);
+    navSelectResizeObserver.observe(media);
+    navSelectObservedMedia = media;
+  }
+
+  media.addEventListener("load", doAjuste, { once: true });
+  media.addEventListener("loadedmetadata", doAjuste, { once: true });
+  doAjuste();
 }
+
+window.addEventListener("resize", ajustarNavSelectAoTamanhoDaImagem);
 
 const btnDownload = document.getElementById("btn-download-imagem");
 if (btnDownload) {

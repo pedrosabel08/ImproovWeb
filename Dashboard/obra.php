@@ -644,7 +644,7 @@ $conn->close();
                     <button type="button" class="obra-dashboard-card is-interactive" id="imagens-totais"
                         data-dashboard-card="imagens" aria-pressed="false" aria-controls="dashboardDetailImagens">
                         <span class="obra-dashboard-card-icon is-blue"><i class="fa-regular fa-images"></i></span>
-                        <span class="obra-dashboard-card-content"><span>Total de imagens</span><strong class="imagens-totais-texto">0</strong></span>
+                        <span class="obra-dashboard-card-content"><span>Total de imagens</span><strong class="imagens-totais-texto">0</strong><small id="imagens-antecipadas" hidden></small></span>
                         <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="obra-dashboard-card is-interactive" id="dashboardPendenciasCard"
@@ -659,23 +659,32 @@ $conn->close();
                         <span class="obra-dashboard-card-content"><span>Entregas</span><strong id="dashboardEntregasTotal">—</strong><small>Pendentes</small></span>
                         <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
                     </button>
-                    <div class="obra-dashboard-card is-informative">
-                        <span class="obra-dashboard-card-icon is-green"><i class="fa-solid fa-forward"></i></span>
-                        <span class="obra-dashboard-card-content"><span>Antecipadas</span><strong id="antecipadas">0</strong></span>
-                    </div>
                 </div>
 
                 <div id="obraDashboardDetails" class="obra-dashboard-details" aria-live="polite" hidden>
                     <section id="dashboardDetailImagens" class="obra-dashboard-detail" hidden>
-                        <div class="obra-dashboard-detail-head"><div><span>Distribuição</span><h3>Imagens por tipo</h3></div><small>Clique em um tipo para filtrar a tabela</small></div>
+                        <div class="obra-dashboard-detail-head">
+                            <div><span>Distribuição</span>
+                                <h3>Imagens por tipo</h3>
+                            </div><small>Clique em um tipo para filtrar a tabela</small>
+                        </div>
                         <div id="imagens-por-tipo" class="imagens-por-tipo"></div>
                     </section>
                     <section id="dashboardDetailPendencias" class="obra-dashboard-detail" hidden>
-                        <div class="obra-dashboard-detail-head"><div><span>Atividades da obra</span><h3>Pendências</h3></div><div id="dashboardPendenciasResumo" class="obra-dashboard-pending-summary"></div></div>
+                        <div class="obra-dashboard-detail-head">
+                            <div><span>Atividades da obra</span>
+                                <h3>Pendências</h3>
+                            </div>
+                            <div id="dashboardPendenciasResumo" class="obra-dashboard-pending-summary"></div>
+                        </div>
                         <div id="dashboardPendenciasList" class="obra-dashboard-pending-list"></div>
                     </section>
                     <section id="dashboardDetailEntregas" class="obra-dashboard-detail" hidden>
-                        <div class="obra-dashboard-detail-head"><div><span>Acompanhamento</span><h3>Entregas pendentes</h3></div><small>Clique em uma entrega para abrir os detalhes</small></div>
+                        <div class="obra-dashboard-detail-head">
+                            <div><span>Acompanhamento</span>
+                                <h3>Entregas pendentes</h3>
+                            </div><small>Clique em uma entrega para abrir os detalhes</small>
+                        </div>
                         <div id="dashboardEntregasHost"></div>
                     </section>
                 </div>

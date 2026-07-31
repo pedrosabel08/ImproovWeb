@@ -332,6 +332,69 @@ function pendencias_operacionais_ensure_project_checklist(mysqli $conn, int $obr
     return $checklistId;
 }
 
+/**
+ * Retorna a situação efetiva do Fotográfico de uma obra, sem depender da versão
+ * do checklist operacional. Um plano aberto sempre prevalece sobre um plano
+ * concluído mais antigo; planos cancelados não tornam o requisito aplicável.
+ */
+function pendencias_operacionais_fotografico_plano_estado(mysqli $conn, int $obraId): array
+{
+    $resultado = [
+        'estado' => 'NAO_APLICAVEL',
+        'plano_id' => null,
+        'status' => null,
+        'responsavel_id' => null,
+        'responsavel_nome' => '',
+    ];
+    if ($obraId <= 0 || !pendencias_operacionais_table_exists($conn, 'fotografico_plano')) {
+        return $resultado;
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT p.id, p.status,
+                COALESCE(p.responsavel_plano_id, pe.responsavel_id) AS responsavel_id,
+                c.nome_colaborador AS responsavel_nome
+           FROM fotografico_plano p
+           LEFT JOIN fotografico_pendencia pe
+             ON pe.id = (
+                SELECT pe2.id FROM fotografico_pendencia pe2
+                 WHERE pe2.plano_id = p.id AND pe2.status = 'ABERTA'
+                 ORDER BY pe2.id DESC LIMIT 1
+             )
+           LEFT JOIN colaborador c
+             ON c.idcolaborador = COALESCE(p.responsavel_plano_id, pe.responsavel_id)
+          WHERE p.obra_id = ?
+          ORDER BY CASE
+                     WHEN UPPER(p.status) NOT IN ('CONCLUIDO', 'CANCELADO') THEN 0
+                     WHEN UPPER(p.status) = 'CONCLUIDO' THEN 1
+                     ELSE 2
+                   END,
+                   p.id DESC"
+    );
+    if (!$stmt) {
+        return $resultado;
+    }
+    $stmt->bind_param('i', $obraId);
+    $stmt->execute();
+    $plano = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$plano) {
+        return $resultado;
+    }
+
+    $status = strtoupper(trim((string) ($plano['status'] ?? '')));
+    if ($status === 'CANCELADO') {
+        return $resultado;
+    }
+
+    $resultado['plano_id'] = (int) $plano['id'];
+    $resultado['status'] = $status;
+    $resultado['responsavel_id'] = isset($plano['responsavel_id']) ? (int) $plano['responsavel_id'] : null;
+    $resultado['responsavel_nome'] = (string) ($plano['responsavel_nome'] ?? '');
+    $resultado['estado'] = $status === 'CONCLUIDO' ? 'ATENDIDO' : 'NAO_ATENDIDO';
+    return $resultado;
+}
+
 function pendencias_operacionais_sync_fotografico_requirement(mysqli $conn, int $obraId, bool $forceApplicable = false): void
 {
     if ($obraId <= 0) {
@@ -343,27 +406,11 @@ function pendencias_operacionais_sync_fotografico_requirement(mysqli $conn, int 
         return;
     }
 
-    $plan = null;
-    if (pendencias_operacionais_table_exists($conn, 'fotografico_plano')) {
-        $stmtPlan = $conn->prepare(
-            "SELECT status
-              FROM fotografico_plano
-              WHERE obra_id = ?
-                AND origem = 'AUTOMATICO'
-                AND chave_gatilho = CONCAT('obra:', ?, ':FACHADA_TODO_INICIAL')
-              ORDER BY id DESC
-              LIMIT 1"
-        );
-        if ($stmtPlan) {
-            $stmtPlan->bind_param('ii', $obraId, $obraId);
-            $stmtPlan->execute();
-            $plan = $stmtPlan->get_result()->fetch_assoc();
-            $stmtPlan->close();
-        }
-    }
-
-    $applicable = $forceApplicable || (bool) $plan;
-    $done = $applicable && strtoupper((string) ($plan['status'] ?? '')) === 'CONCLUIDO';
+    $fotografico = pendencias_operacionais_fotografico_plano_estado($conn, $obraId);
+    // A existência do plano é a única evidência de aplicabilidade. O parâmetro
+    // é mantido para compatibilidade com os gatilhos existentes.
+    $applicable = $fotografico['estado'] !== 'NAO_APLICAVEL';
+    $done = $fotografico['estado'] === 'ATENDIDO';
     $checklistId = (int) $checklist['id'];
     $required = $applicable ? 1 : 0;
     $doneInt = $done ? 1 : 0;
@@ -742,8 +789,7 @@ function pendencias_operacionais_append_fotografico(
     int $colaboradorId,
     ?int $obraId = null,
     bool $bypassPackageScope = false
-): void
-{
+): void {
     if (
         !pendencias_operacionais_table_exists($conn, 'fotografico_pendencia')
         || !pendencias_operacionais_column_exists($conn, 'fotografico_pendencia', 'responsavel_cobranca_id')
@@ -793,6 +839,16 @@ function pendencias_operacionais_append_fotografico(
         $stage = in_array((string) $row['codigo'], ['EXECUCAO_FOTOGRAFICA', 'CONFERENCIA_FOTOGRAFICO', 'COMPLEMENTO_MATERIAL'], true)
             ? 'execution'
             : 'plan';
+
+        $stageLabel = match ((string) $row['codigo']) {
+            'EXECUCAO_FOTOGRAFICA' => 'Execução',
+            'CONFERENCIA_FOTOGRAFICO' => 'Conferência',
+            'COMPLEMENTO_MATERIAL' => 'Complemento de material',
+            default => 'Planejamento',
+        };
+
+        $displayTitle = trim((string) $row['obra_nome']) . ' - ' . $stageLabel;
+
         $actionUrl = 'Fotografico/index.php?plano_id=' . (int) $row['plano_id']
             . '&tab=' . $stage . '&pendencia_id=' . (int) $row['id'];
         pendencias_operacionais_add_item($module, [
@@ -801,7 +857,7 @@ function pendencias_operacionais_append_fotografico(
             'source_id' => (int) $row['id'],
             'plano_id' => (int) $row['plano_id'],
             'tipo' => (string) $row['codigo'],
-            'title' => (string) ($row['titulo'] ?: 'Pendência fotográfica'),
+            'title' =>  $displayTitle,
             'subtitle' => (string) ($row['detalhes'] ?: ('Plano fotográfico #' . (int) $row['plano_id'])),
             'obra_id' => (int) $row['obra_id'],
             'obra_nome' => (string) $row['obra_nome'],

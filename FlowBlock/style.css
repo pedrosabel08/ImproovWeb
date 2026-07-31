@@ -49,36 +49,38 @@
   --si-ajuste: #ff0000;
   --si-outro: #6b7280;
 
-  /* Flow Block e um modulo operacional sempre em tema escuro. */
-  --fb-green: #5cff64;
-  --fb-green-dark: #24a32b;
-  --fb-green-soft: #5cff6460;
-  --fb-ink: #edf3f8;
-  --fb-muted: #9aa8b8;
-  --fb-subtle: #687789;
-  --fb-bg: #0d1219;
-  --fb-card: #151c25;
-  --fb-card-raised: #1a222d;
-  --fb-card-hover: #1d2834;
-  --fb-input: #111923;
-  --fb-line: #283442;
-  --fb-line-strong: #384758;
-  --fb-focus: #6d5ef865;
-  --fb-overlay: rgba(3, 7, 12, 0.72);
-  --fb-red: #ff6666;
-  --fb-red-soft: rgba(255, 102, 102, 0.13);
-  --fb-amber: #f2b84b;
-  --fb-amber-soft: rgba(242, 184, 75, 0.14);
-  --fb-blue: #72a8ff;
-  --fb-blue-soft: rgba(114, 168, 255, 0.14);
-  --fb-purple: #bb8cff;
-  --fb-purple-dark: #663ca1;
-  --fb-purple-soft: rgba(187, 140, 255, 0.14);
-  --fb-neutral-soft: rgba(154, 168, 184, 0.12);
+  /* Tema claro do Flow Block. */
+  --fb-green: #278653;
+  --fb-green-dark: #237445;
+  --fb-green-soft: rgba(39, 134, 83, 0.12);
+  --fb-ink: #243444;
+  --fb-muted: #63768a;
+  --fb-subtle: #8796a6;
+  --fb-bg: #f5f8fb;
+  --fb-card: #ffffff;
+  --fb-card-raised: #f8fafc;
+  --fb-card-hover: #eef5fa;
+  --fb-input: #ffffff;
+  --fb-line: #d9e3ec;
+  --fb-line-strong: #bdcddd;
+  --fb-focus: rgba(109, 94, 248, 0.24);
+  --fb-overlay: rgba(25, 42, 58, 0.42);
+  --fb-red: #c33f4e;
+  --fb-red-soft: rgba(195, 63, 78, 0.11);
+  --fb-amber: #a96f15;
+  --fb-amber-soft: rgba(169, 111, 21, 0.12);
+  --fb-blue: #2d74b8;
+  --fb-blue-soft: rgba(45, 116, 184, 0.11);
+  --fb-purple: #7250a5;
+  --fb-purple-dark: #5d3e8c;
+  --fb-purple-soft: rgba(114, 80, 165, 0.11);
+  --fb-neutral-soft: rgba(99, 118, 138, 0.1);
 }
 
 body {
   min-height: 100vh;
+  background: var(--fb-bg);
+  color: var(--fb-ink);
   transition:
     background-color 0.3s,
     color 0.3s;
@@ -86,18 +88,18 @@ body {
   grid-template-columns: 60px 1fr;
 }
 
-/* Scrollbar dark */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  background: #232323;
+  background: #edf2f7;
   width: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #9e9e9e;
+  background: #aab8c6;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #666;
+  background: #8295a8;
 }
 
 .flow-block-page {
@@ -120,6 +122,7 @@ body {
 } */
 .flow-block-shell {
   min-height: 100vh;
+  min-width: 0;
   padding: 38px clamp(20px, 4vw, 64px);
   grid-column: 2;
 }
@@ -272,7 +275,7 @@ body {
   color: var(--fb-ink);
   font: inherit;
   background: var(--fb-input);
-  color-scheme: dark;
+  color-scheme: light;
   font-size: 12px;
   margin-top: 6px;
 }
@@ -329,17 +332,19 @@ body {
   border-color: var(--fb-purple);
 }
 .fb-tabs button.is-active span {
-  color: #dcffe9;
+  color: #5d3e8c;
   background: var(--fb-purple-soft);
 }
 .fb-list-wrap {
   margin-top: 16px;
+  min-width: 0;
   background: var(--fb-card);
   border: 1px solid var(--fb-line);
   border-radius: 10px;
   overflow: hidden;
 }
 .fb-table-scroll {
+  min-width: 0;
   overflow-x: auto;
 }
 .fb-table {
@@ -424,8 +429,8 @@ body {
   background: var(--fb-amber-soft);
 }
 .fb-status-PAUSADA {
-  color: #b99bff;
-  background: rgba(142, 102, 255, 0.14);
+  color: #7250a5;
+  background: var(--fb-purple-soft);
 }
 .fb-status-RESOLVIDA {
   color: var(--fb-green);
@@ -642,7 +647,7 @@ body {
   gap: 14px;
   margin: 0 0 20px;
   padding: 16px 18px;
-  color: #c8f4d7;
+  color: #236a42;
   background: rgba(22, 163, 74, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.38);
   border-radius: 10px;
@@ -861,7 +866,7 @@ body {
 .fb-inline-comment-form input[type="file"] {
   margin-top: 8px;
   padding: 5px;
-  color-scheme: dark;
+  color-scheme: light;
 }
 .fb-inline-comment-form footer {
   display: flex;
@@ -919,7 +924,7 @@ body {
   font: inherit;
   color: var(--fb-ink);
   background: var(--fb-input);
-  color-scheme: dark;
+  color-scheme: light;
   font-size: 12px;
 }
 .fb-mention-field {
@@ -983,7 +988,7 @@ body {
   background: var(--fb-input);
   border: 1px solid var(--fb-line-strong);
   border-radius: 6px;
-  color-scheme: dark;
+  color-scheme: light;
 }
 .fb-attachment-control input::file-selector-button {
   margin-right: 8px;
@@ -1010,7 +1015,7 @@ body {
   cursor: pointer;
 }
 .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.85);
+  filter: none;
   opacity: 0.85;
 }
 @media (max-width: 900px) {
@@ -1177,4 +1182,75 @@ body {
 
 .fb-toastify--info {
   background: #3269ac !important;
+}
+
+/* Preferência escura do sistema: restaura a paleta original do módulo. */
+/* Light system preference keeps the current updated palette. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --fb-bg: #f5f8fb;
+    --fb-card: #ffffff;
+    --fb-card-raised: #ffffff;
+    --fb-card-hover: #f7faff;
+    --fb-input: #ffffff;
+    --fb-line: #d7e0ea;
+    --fb-line-strong: #b8c7d8;
+    --fb-ink: #243444;
+    --fb-muted: #66788b;
+    --fb-subtle: #8798aa;
+    --fb-overlay: rgba(31, 48, 66, 0.34);
+  }
+  body,
+  .flow-block-page { background: var(--fb-bg); color: var(--fb-ink); }
+  ::-webkit-scrollbar { background: #e9eef4; }
+  ::-webkit-scrollbar-thumb { background: #b7c5d4; }
+  ::-webkit-scrollbar-thumb:hover { background: #8fa2b7; }
+  .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fb-green: #5cff64;
+    --fb-green-dark: #24a32b;
+    --fb-green-soft: #5cff6460;
+    --fb-ink: #edf3f8;
+    --fb-muted: #9aa8b8;
+    --fb-subtle: #687789;
+    --fb-bg: #0d1219;
+    --fb-card: #151c25;
+    --fb-card-raised: #1a222d;
+    --fb-card-hover: #1d2834;
+    --fb-input: #111923;
+    --fb-line: #283442;
+    --fb-line-strong: #384758;
+    --fb-focus: #6d5ef865;
+    --fb-overlay: rgba(3, 7, 12, 0.72);
+    --fb-red: #ff6666;
+    --fb-red-soft: rgba(255, 102, 102, 0.13);
+    --fb-amber: #f2b84b;
+    --fb-amber-soft: rgba(242, 184, 75, 0.14);
+    --fb-blue: #72a8ff;
+    --fb-blue-soft: rgba(114, 168, 255, 0.14);
+    --fb-purple: #bb8cff;
+    --fb-purple-dark: #663ca1;
+    --fb-purple-soft: rgba(187, 140, 255, 0.14);
+    --fb-neutral-soft: rgba(154, 168, 184, 0.12);
+  }
+  body,
+  .flow-block-page { background: var(--fb-bg); color: var(--fb-ink); }
+  ::-webkit-scrollbar { background: #232323; }
+  ::-webkit-scrollbar-thumb { background: #9e9e9e; }
+  ::-webkit-scrollbar-thumb:hover { background: #666; }
+  .fb-tabs button.is-active span { color: #dcffe9; }
+  .fb-status-PAUSADA { color: #b99bff; background: rgba(142, 102, 255, 0.14); }
+  .fb-resolution-confirmation { color: #c8f4d7; }
+  .fb-filter-panel select,
+  .fb-filter-panel input,
+  .fb-dialog input,
+  .fb-dialog select,
+  .fb-dialog textarea,
+  .fb-inline-comment-form input[type="file"],
+  .fb-composer textarea,
+  .fb-attachment-control input { color-scheme: dark; }
+  .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
 }

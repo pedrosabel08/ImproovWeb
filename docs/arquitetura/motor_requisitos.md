@@ -197,3 +197,27 @@ Contrato sugerido:
 - `helpers/pendencias_operacionais_helper.php`: agregação de Pendências.
 - `helpers/flow_block_helper.php` e `FlowBlock/api.php`: Flow Block e HOLD da tarefa.
 - `insereFuncao.php`, `atualizarFuncoesEmAndamento.php` e fluxos especializados: caminhos de alteração de status que precisam convergir para política central.
+
+## Regras centralizadas de produção e Fotográfico
+
+**Confirmada.** Para uma tarefa produtiva linear, o motor localiza a função
+existente imediatamente anterior da mesma imagem. Ela precisa estar em
+`Finalizado`, `Aprovado` ou `Aprovado com ajustes` e ter o arquivo enviado
+(`file_uploaded_at` preenchido e sem upload pendente). A ausência de uma
+função intermediária não interrompe a cadeia; a etapa é simplesmente ignorada.
+Sem predecessora, o requisito é não aplicável. Uma tarefa dispensada permanece
+dispensada.
+
+Alteração e Pré-Finalização preservam suas exceções e requisitos próprios.
+Finalização de `Fachada` e Composição de `Imagem Externa` usam, como
+predecessora, a Modelagem da primeira Fachada cadastrada na obra. A ausência
+dessa Modelagem-base é um bloqueio explícito.
+
+**Confirmada.** O requisito `Fotográfico` consulta diretamente
+`fotografico_plano`, sem depender de `requirements_version`: sem plano é não
+aplicável; plano concluído é atendido; qualquer plano não concluído ou não
+cancelado é pendente. Isso permite avaliar planos reais em checklists legados
+sem migrar ou habilitar os demais requisitos históricos.
+
+No Kanban, requisito de início pendente usa o destaque próprio de requisito;
+vermelho/HOLD fica reservado para HOLD real ou Flow Block bloqueante.

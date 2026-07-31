@@ -14,9 +14,10 @@ function motor_requisitos_item(
     bool $obrigatorio = true,
     string $origem = '',
     ?int $origemId = null,
-    string $urlAcao = ''
+    string $urlAcao = '',
+    array $metadados = []
 ): array {
-    return [
+    return array_merge([
         'codigo' => $codigo,
         'label' => $label,
         'tipo' => $tipo,
@@ -26,7 +27,7 @@ function motor_requisitos_item(
         'origem' => $origem,
         'origem_id' => $origemId,
         'url_acao' => $urlAcao,
-    ];
+    ], $metadados);
 }
 
 function motor_requisitos_resultado(
@@ -43,7 +44,10 @@ function motor_requisitos_resultado(
             'CONFIGURACAO',
             'NAO_ATENDIDO',
             true,
-            'Motor de Requisitos'
+            'Motor de Requisitos',
+            null,
+            '',
+            ['flow_block' => ['action' => 'disabled']]
         );
     }
     $bloqueios = array_values(array_filter($requisitos, static function (array $item): bool {
@@ -77,8 +81,11 @@ function motor_requisitos_resultado(
 function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
 {
     $stmt = $conn->prepare(
-        "SELECT id, requirements_version
+        "SELECT co.id, co.requirements_version, co.responsavel_id,
+                c.nome_colaborador AS responsavel_nome
            FROM checklist_operacional
+           co
+           LEFT JOIN colaborador c ON c.idcolaborador = co.responsavel_id
           WHERE module_key = 'projeto'
             AND entity_type = 'obra'
             AND entity_id = ?
@@ -105,7 +112,8 @@ function motor_requisitos_projeto(
     string $key,
     string $label,
     bool $obrigatorio = true,
-    bool $checklistVersionado = true
+    bool $checklistVersionado = true,
+    ?array $responsavel = null
 ): array {
     if (!$checklistVersionado) {
         return motor_requisitos_item(
@@ -114,7 +122,10 @@ function motor_requisitos_projeto(
             'PROJETO',
             'NAO_APLICAVEL',
             false,
-            'Regra legada do projeto'
+            'Regra legada do projeto',
+            null,
+            '',
+            motor_requisitos_metadados_origem(null, $responsavel)
         );
     }
     $item = $items[$key] ?? null;
@@ -130,8 +141,65 @@ function motor_requisitos_projeto(
         $obrigatorio && $required,
         'Checklist do projeto',
         null,
-        '/ImproovWeb/Dashboard/obra.php'
+        '/ImproovWeb/Dashboard/obra.php',
+        motor_requisitos_metadados_origem(null, $responsavel)
     );
+}
+
+function motor_requisitos_metadados_origem(?array $tarefa = null, ?array $responsavel = null): array
+{
+    $responsavelId = (int) ($tarefa['colaborador_id'] ?? ($responsavel['id'] ?? $responsavel['responsavel_id'] ?? 0));
+    $responsavelNome = (string) ($tarefa['nome_colaborador'] ?? ($responsavel['nome'] ?? $responsavel['responsavel_nome'] ?? ''));
+    $metadados = [
+        'origem_responsavel_id' => $responsavelId ?: null,
+        'origem_responsavel_nome' => $responsavelNome,
+    ];
+    if ($tarefa) {
+        $metadados['origem_tarefa'] = [
+            'id' => (int) ($tarefa['idfuncao_imagem'] ?? 0) ?: null,
+            'nome' => (string) ($tarefa['nome_funcao'] ?? 'Tarefa produtiva'),
+            'imagem_nome' => (string) ($tarefa['imagem_nome'] ?? ''),
+            'responsavel_id' => $responsavelId ?: null,
+            'responsavel_nome' => $responsavelNome,
+            'url' => !empty($tarefa['idfuncao_imagem'])
+                ? '/ImproovWeb/inicio.php?funcao_imagem_id=' . (int) $tarefa['idfuncao_imagem']
+                : '',
+        ];
+    }
+    return $metadados;
+}
+
+function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackResponsavelId = 0): array
+{
+    $mapa = [
+        'briefing' => ['DEPENDENCIA_OUTRA_TAREFA', 'ARQUITETURA'],
+        'kickoff' => ['DEPENDENCIA_OUTRA_TAREFA', 'ARQUITETURA'],
+        'arquivos_tecnicos' => ['ARQUIVO_FALTANTE', 'ARQUITETURA'],
+        'referencias_mood' => ['REFERENCIA_NAO_DEFINIDA', 'GESTAO'],
+        'fotografico' => ['FOTOGRAFICO_FALTANTE', 'GESTAO'],
+        'FUNCAO_ANTERIOR_CONCLUIDA' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
+        'ARQUIVO_FUNCAO_ANTERIOR_ENVIADO' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
+        'ARQUIVO_FINALIZACAO_ENVIADO' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
+        'subtipo_definido' => ['DUVIDA_TECNICA', 'ARQUITETURA'],
+        'arquivos_finais_subtipo' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
+        'render_aprovado' => ['APROVACAO_PENDENTE', 'PRODUCAO'],
+        'pre_alteracao_liberada' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
+        'MODELAGEM_FACHADA_BASE_AUSENTE' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
+        'imagem_base_pronta' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
+    ];
+    $codigo = (string) ($requisito['codigo'] ?? '');
+    if (!isset($mapa[$codigo])) {
+        return [];
+    }
+    [$tipoCodigo, $filaCodigo] = $mapa[$codigo];
+    $responsavelId = (int) ($requisito['origem_responsavel_id'] ?? 0) ?: $fallbackResponsavelId;
+    return [
+        'flow_block_sugestao' => [
+            'tipo_codigo' => $tipoCodigo,
+            'fila_codigo' => $filaCodigo,
+            'responsavel_id' => $responsavelId ?: null,
+        ],
+    ];
 }
 
 function motor_requisitos_politica_funcao_imagem(array $context): ?string
@@ -162,6 +230,9 @@ function motor_requisitos_flow_block_contexto(array $taskContext, array $require
         'requirement_origin_id' => isset($requirement['origem_id']) ? (int) $requirement['origem_id'] : null,
         'requirement_type' => (string) ($requirement['tipo'] ?? ''),
         'requirement_source_url' => (string) ($requirement['url_acao'] ?? ''),
+        'requirement_origin_task' => $requirement['origem_tarefa'] ?? null,
+        'requirement_origin_responsavel_id' => $requirement['origem_responsavel_id'] ?? null,
+        'requirement_origin_responsavel_nome' => (string) ($requirement['origem_responsavel_nome'] ?? ''),
         'requirement_context' => sprintf(
             'Tarefa %s (%s) em %s com requisito pendente: %s.',
             (string) ($taskContext['imagem_nome'] ?? 'sem nome'),
@@ -174,16 +245,32 @@ function motor_requisitos_flow_block_contexto(array $taskContext, array $require
 
 function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $taskContext, array $requirement): array
 {
+    $aliases = array_values(array_filter(array_map('strval', (array) ($requirement['flow_block_aliases'] ?? []))));
+    unset($requirement['flow_block_aliases']);
     $state = (string) ($requirement['estado'] ?? '');
+    if ((string) ($requirement['codigo'] ?? '') === 'CONFIGURACAO_AUSENTE') {
+        $requirement['flow_block'] = ['action' => 'disabled'];
+        return $requirement;
+    }
     if ($state !== 'NAO_ATENDIDO' || empty($taskContext['idfuncao_imagem']) || !flow_block_has_tables($conn)) {
         return $requirement;
     }
 
-    $issue = flow_block_find_active_issue_by_requirement(
-        $conn,
-        (int) $taskContext['idfuncao_imagem'],
-        (string) ($requirement['codigo'] ?? '')
-    );
+    $codes = array_values(array_unique(array_merge([(string) ($requirement['codigo'] ?? '')], $aliases)));
+    $issue = null;
+    foreach ($codes as $code) {
+        if ($code === '') {
+            continue;
+        }
+        $issue = flow_block_find_active_issue_by_requirement(
+            $conn,
+            (int) $taskContext['idfuncao_imagem'],
+            $code
+        );
+        if ($issue) {
+            break;
+        }
+    }
 
     $requirement['flow_block'] = [
         'action' => $issue ? 'open' : 'create',
@@ -200,13 +287,190 @@ function motor_requisitos_predecessora(mysqli $conn, int $imagemId, int $funcaoI
 {
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
-                fi.file_uploaded_at, c.nome_colaborador
+                fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
            FROM funcao_imagem fi
            LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+           JOIN funcao f ON f.idfuncao = fi.funcao_id
+           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
           WHERE fi.imagem_id = ? AND fi.funcao_id = ?
           LIMIT 1"
     );
     $stmt->bind_param('ii', $imagemId, $funcaoId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function motor_requisitos_ordem_producao(): array
+{
+    return [1, 8, 2, 3, 9, 4, 5, 6, 7];
+}
+
+/** Busca a etapa existente imediatamente anterior, ignorando funções ausentes. */
+function motor_requisitos_predecessora_anterior_existente(mysqli $conn, int $imagemId, int $funcaoId): ?array
+{
+    $ordem = motor_requisitos_ordem_producao();
+    $posicao = array_search($funcaoId, $ordem, true);
+    if ($posicao === false) {
+        return null;
+    }
+
+    for ($indice = $posicao - 1; $indice >= 0; $indice--) {
+        $predecessora = motor_requisitos_predecessora($conn, $imagemId, (int) $ordem[$indice]);
+        if ($predecessora) {
+            $predecessora['funcao_id'] = (int) $ordem[$indice];
+            return $predecessora;
+        }
+    }
+    return null;
+}
+
+function motor_requisitos_modelagem_base_fachada(mysqli $conn, int $obraId): ?array
+{
+    $stmt = $conn->prepare(
+        "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id,
+                fi.requires_file_upload, fi.file_uploaded_at, c.nome_colaborador,
+                f.nome_funcao, ico.imagem_nome
+           FROM imagens_cliente_obra ico
+           JOIN funcao_imagem fi
+             ON fi.imagem_id = ico.idimagens_cliente_obra
+            AND fi.funcao_id = 2
+           LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+           JOIN funcao f ON f.idfuncao = fi.funcao_id
+          WHERE ico.obra_id = ?
+            AND LOWER(TRIM(ico.tipo_imagem)) = 'fachada'
+          ORDER BY ico.idimagens_cliente_obra ASC, fi.idfuncao_imagem ASC
+          LIMIT 1"
+    );
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('i', $obraId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function motor_requisitos_aliases_predecessora(?array $predecessora, bool $arquivo): array
+{
+    $funcaoId = (int) ($predecessora['funcao_id'] ?? 0);
+    if ($funcaoId === 2) {
+        return $arquivo ? ['ARQUIVO_FINAL_MODELAGEM_AUSENTE'] : ['MODELAGEM_NAO_CONCLUIDA'];
+    }
+    if ($funcaoId === 3) {
+        return $arquivo ? ['arquivo_composicao'] : ['composicao_concluida'];
+    }
+    if ($funcaoId === 1 && !$arquivo) {
+        return ['caderno_concluido'];
+    }
+    return [];
+}
+
+function motor_requisitos_adicionar_predecessora(array &$requisitos, ?array $predecessora, string $origem, string $urlAcao): void
+{
+    if (!$predecessora) {
+        $requisitos[] = motor_requisitos_item(
+            'FUNCAO_ANTERIOR_CONCLUIDA',
+            'Tarefa produtiva anterior concluida',
+            'PRODUCAO',
+            'NAO_APLICAVEL',
+            false,
+            $origem,
+            null,
+            $urlAcao
+        );
+        return;
+    }
+
+    $origemId = (int) $predecessora['idfuncao_imagem'];
+    $conclusao = motor_requisitos_item(
+        'FUNCAO_ANTERIOR_CONCLUIDA',
+        'Tarefa produtiva anterior concluida',
+        'PRODUCAO',
+        motor_requisitos_estado_predecessora($predecessora),
+        true,
+        $origem,
+        $origemId,
+        $urlAcao,
+        motor_requisitos_metadados_origem($predecessora)
+    );
+    $conclusao['flow_block_aliases'] = motor_requisitos_aliases_predecessora($predecessora, false);
+    $requisitos[] = $conclusao;
+
+    $arquivo = motor_requisitos_item(
+        'ARQUIVO_FUNCAO_ANTERIOR_ENVIADO',
+        'Arquivo da tarefa produtiva anterior enviado',
+        'PRODUCAO',
+        motor_requisitos_estado_arquivo($predecessora),
+        true,
+        'Arquivo da tarefa anterior',
+        $origemId,
+        $urlAcao,
+        motor_requisitos_metadados_origem($predecessora)
+    );
+    $arquivo['flow_block_aliases'] = motor_requisitos_aliases_predecessora($predecessora, true);
+    $requisitos[] = $arquivo;
+}
+
+function motor_requisitos_fotografico(mysqli $conn, int $obraId): array
+{
+    $fotografico = pendencias_operacionais_fotografico_plano_estado($conn, $obraId);
+    return motor_requisitos_item(
+        'fotografico',
+        'Fotografico',
+        'PROJETO',
+        (string) $fotografico['estado'],
+        true,
+        $fotografico['estado'] === 'NAO_APLICAVEL' ? 'Plano fotográfico inexistente' : 'Plano fotográfico',
+        $fotografico['plano_id'] ? (int) $fotografico['plano_id'] : null,
+        '/ImproovWeb/Fotografico/index.php?obra_id=' . $obraId . ($fotografico['plano_id'] ? '&plano_id=' . (int) $fotografico['plano_id'] : ''),
+        motor_requisitos_metadados_origem(null, [
+            'responsavel_id' => $fotografico['responsavel_id'] ?? null,
+            'responsavel_nome' => $fotografico['responsavel_nome'] ?? '',
+        ])
+    );
+}
+
+function motor_requisitos_finalizacao_da_imagem(mysqli $conn, int $imagemId): ?array
+{
+    $stmt = $conn->prepare(
+        "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
+                fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
+           FROM funcao_imagem fi
+           JOIN funcao f ON f.idfuncao = fi.funcao_id
+           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+           LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+          WHERE fi.imagem_id = ? AND fi.funcao_id IN (4, 7)
+          ORDER BY CASE WHEN fi.funcao_id = 4 THEN 0 ELSE 1 END, fi.idfuncao_imagem ASC
+          LIMIT 1"
+    );
+    $stmt->bind_param('i', $imagemId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function motor_requisitos_primeira_composicao_pendente_subtipo(mysqli $conn, int $obraId, int $subtipoId): ?array
+{
+    if ($subtipoId <= 0) return null;
+    $stmt = $conn->prepare(
+        "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
+                fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
+           FROM imagens_cliente_obra ico
+           JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra AND fi.funcao_id = 3
+           JOIN funcao f ON f.idfuncao = fi.funcao_id
+           LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+          WHERE ico.obra_id = ? AND ico.subtipo_id = ?
+            AND fi.colaborador_id <> 15
+            AND NOT (fi.status IN ('Finalizado','Aprovado','Aprovado com ajustes')
+                     AND fi.requires_file_upload = 0 AND fi.file_uploaded_at IS NOT NULL)
+          ORDER BY ico.idimagens_cliente_obra ASC, fi.idfuncao_imagem ASC
+          LIMIT 1"
+    );
+    $stmt->bind_param('ii', $obraId, $subtipoId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -273,31 +537,30 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     $projectItems = $checklistVersionado
         ? motor_requisitos_itens_projeto($conn, (int) $checklist['id'])
         : [];
+    $checklistResponsavel = $checklist ? [
+        'responsavel_id' => $checklist['responsavel_id'] ?? null,
+        'responsavel_nome' => $checklist['responsavel_nome'] ?? '',
+    ] : null;
     $funcaoId = (int) $context['funcao_id'];
     $imagemId = (int) $context['imagem_id'];
     $requisitos = [];
     $taskUrl = '/ImproovWeb/inicio.php?imagem_id=' . $imagemId;
 
     if ($funcaoId === 1) {
-        $requisitos[] = motor_requisitos_projeto($projectItems, 'briefing', 'Briefing', true, $checklistVersionado);
-        $requisitos[] = motor_requisitos_projeto($projectItems, 'kickoff', 'Kickoff', false, $checklistVersionado);
+        $requisitos[] = motor_requisitos_projeto($projectItems, 'briefing', 'Briefing', true, $checklistVersionado, $checklistResponsavel);
+        $requisitos[] = motor_requisitos_projeto($projectItems, 'kickoff', 'Kickoff', false, $checklistVersionado, $checklistResponsavel);
     } elseif ($funcaoId === 8) {
-        $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado);
+        $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado, $checklistResponsavel);
     } elseif ($funcaoId === 2) {
-        $caderno = motor_requisitos_predecessora($conn, $imagemId, 1);
-        $requisitos[] = motor_requisitos_item('caderno_concluido', 'Caderno concluido', 'PRODUCAO', motor_requisitos_estado_predecessora($caderno), true, 'Tarefa Caderno', $caderno ? (int) $caderno['idfuncao_imagem'] : null, $taskUrl);
-        $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado);
+        $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado, $checklistResponsavel);
     } elseif ($funcaoId === 3) {
-        $modelagem = motor_requisitos_predecessora($conn, $imagemId, 2);
-        $requisitos[] = motor_requisitos_item('MODELAGEM_NAO_CONCLUIDA', 'Modelagem concluida', 'PRODUCAO', motor_requisitos_estado_predecessora($modelagem), true, 'Tarefa Modelagem', $modelagem ? (int) $modelagem['idfuncao_imagem'] : null, $taskUrl);
-        $requisitos[] = motor_requisitos_item('ARQUIVO_FINAL_MODELAGEM_AUSENTE', 'Arquivo final de Modelagem', 'PRODUCAO', motor_requisitos_estado_arquivo($modelagem), true, 'Upload da Modelagem', $modelagem ? (int) $modelagem['idfuncao_imagem'] : null, $taskUrl);
-        $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'Referencias', true, $checklistVersionado);
+        $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'Referencias', true, $checklistVersionado, $checklistResponsavel);
     } elseif ($funcaoId === 4 || $funcaoId === 7) {
         $isPlanta = $funcaoId === 7 || trim((string) $context['tipo_imagem']) === 'Planta Humanizada';
         if ($isPlanta) {
-            $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado);
+            $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado, $checklistResponsavel);
             $subtipoId = (int) ($context['subtipo_id'] ?? 0);
-            $requisitos[] = motor_requisitos_item('subtipo_definido', 'Subtipo definido', 'PROJETO', $subtipoId > 0 ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Cadastro da imagem', $imagemId, '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId);
+            $requisitos[] = motor_requisitos_item('subtipo_definido', 'Subtipo definido', 'PROJETO', $subtipoId > 0 ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Cadastro da imagem', $imagemId, '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId, motor_requisitos_metadados_origem(null, $checklistResponsavel));
             if ($subtipoId <= 0) {
                 $estadoArquivos = 'NAO_ATENDIDO';
             } else {
@@ -320,36 +583,116 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
                     ? 'NAO_APLICAVEL'
                     : (((int) ($agg['atendidas'] ?? 0) === $total) ? 'ATENDIDO' : 'NAO_ATENDIDO');
             }
-            $requisitos[] = motor_requisitos_item('arquivos_finais_subtipo', 'Arquivos finais do subtipo', 'PRODUCAO', $estadoArquivos, true, 'Composicoes do subtipo', $subtipoId ?: null, $taskUrl);
+            $composicaoPendente = $estadoArquivos === 'NAO_ATENDIDO'
+                ? motor_requisitos_primeira_composicao_pendente_subtipo($conn, $obraId, $subtipoId)
+                : null;
+            $requisitos[] = motor_requisitos_item('arquivos_finais_subtipo', 'Arquivos finais do subtipo', 'PRODUCAO', $estadoArquivos, true, 'Composicoes do subtipo', $subtipoId ?: null, $taskUrl, motor_requisitos_metadados_origem($composicaoPendente, $checklistResponsavel));
         } else {
-            $composicao = motor_requisitos_predecessora($conn, $imagemId, 3);
-            $requisitos[] = motor_requisitos_item('composicao_concluida', 'Composicao concluida', 'PRODUCAO', motor_requisitos_estado_predecessora($composicao), true, 'Tarefa Composicao', $composicao ? (int) $composicao['idfuncao_imagem'] : null, $taskUrl);
-            $requisitos[] = motor_requisitos_item('arquivo_composicao', 'Arquivo final de Composicao', 'PRODUCAO', motor_requisitos_estado_arquivo($composicao), true, 'Upload da Composicao', $composicao ? (int) $composicao['idfuncao_imagem'] : null, $taskUrl);
-            $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'Referencias', true, $checklistVersionado);
-            $requisitos[] = motor_requisitos_projeto($projectItems, 'fotografico', 'Fotografico', true, $checklistVersionado);
-            $requisitos[count($requisitos) - 1]['url_acao'] = '/ImproovWeb/Fotografico/index.php?obra_id=' . $obraId;
+            $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'Referencias', true, $checklistVersionado, $checklistResponsavel);
+            $requisitos[] = motor_requisitos_fotografico($conn, $obraId);
         }
     } elseif ($funcaoId === 5) {
         $imagemStatusId = (int) ($context['imagem_status_id'] ?? 0);
-        $stmtRender = $conn->prepare("SELECT idrender_alta FROM render_alta WHERE imagem_id = ? AND status_id = ? AND LOWER(status) = 'aprovado' AND excluido_em IS NULL ORDER BY idrender_alta DESC LIMIT 1");
+        $stmtRender = $conn->prepare(
+            "SELECT r.idrender_alta, r.status, r.responsavel_id, c.nome_colaborador
+               FROM render_alta r
+               LEFT JOIN colaborador c ON c.idcolaborador = r.responsavel_id
+              WHERE r.imagem_id = ? AND r.status_id = ? AND r.excluido_em IS NULL
+              ORDER BY r.idrender_alta DESC LIMIT 1"
+        );
         $stmtRender->bind_param('ii', $imagemId, $imagemStatusId);
         $stmtRender->execute();
         $render = $stmtRender->get_result()->fetch_assoc();
         $stmtRender->close();
-        $requisitos[] = motor_requisitos_item('render_aprovado', 'Render aprovado', 'PRODUCAO', $render ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Render', $render ? (int) $render['idrender_alta'] : null, '/ImproovWeb/Render/index.php');
+        $renderAprovado = $render && mb_strtolower((string) ($render['status'] ?? ''), 'UTF-8') === 'aprovado';
+        $requisitos[] = motor_requisitos_item('render_aprovado', 'Render aprovado', 'PRODUCAO', $renderAprovado ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Render', $render ? (int) $render['idrender_alta'] : null, '/ImproovWeb/Render/index.php', motor_requisitos_metadados_origem(null, [
+            'responsavel_id' => $render['responsavel_id'] ?? null,
+            'responsavel_nome' => $render['nome_colaborador'] ?? '',
+        ]));
     } elseif ($funcaoId === 6) {
-        $stmtAlt = $conn->prepare("SELECT pli.id FROM pre_alt_liberacao_itens pli JOIN pre_alt_itens pai ON pai.id = pli.pre_alt_item_id WHERE pai.imagem_id = ? ORDER BY pli.id DESC LIMIT 1");
+        // As liberações atuais possuem um vínculo por item. Os lotes concluídos
+        // antes dessa tabela existir ficaram apenas com o status PLANEJADO;
+        // nesse formato, todos os itens do lote já haviam sido liberados.
+        $stmtAlt = $conn->prepare(
+            "SELECT COALESCE(pli.id, pai.id) AS id,
+                    COALESCE(pai.responsavel_id, pal.responsavel_id, pal.created_by) AS responsavel_id,
+                    c.nome_colaborador AS responsavel_nome
+               FROM pre_alt_itens pai
+               JOIN pre_alt_lote pal ON pal.id = pai.pre_alt_lote_id
+               LEFT JOIN pre_alt_liberacao_itens pli ON pli.pre_alt_item_id = pai.id
+               LEFT JOIN colaborador c ON c.idcolaborador = COALESCE(pai.responsavel_id, pal.responsavel_id, pal.created_by)
+              WHERE pai.imagem_id = ?
+                AND (
+                    pli.id IS NOT NULL
+                    OR (
+                        pal.status = 'PLANEJADO'
+                        AND pai.resultado = 'ALTERACAO'
+                        AND pai.nivel_complexidade BETWEEN 1 AND 5
+                    )
+                )
+              ORDER BY pli.id DESC, pai.id DESC
+              LIMIT 1"
+        );
         $stmtAlt->bind_param('i', $imagemId);
         $stmtAlt->execute();
         $liberacao = $stmtAlt->get_result()->fetch_assoc();
         $stmtAlt->close();
-        $requisitos[] = motor_requisitos_item('pre_alteracao_liberada', 'Item liberado na Pre-Alteracao', 'PRODUCAO', $liberacao ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Pre-Alteracao', $liberacao ? (int) $liberacao['id'] : null, '/ImproovWeb/PreAlteracao/index.php');
+        $requisitos[] = motor_requisitos_item('pre_alteracao_liberada', 'Item liberado na Pre-Alteracao', 'PRODUCAO', $liberacao ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Pre-Alteracao', $liberacao ? (int) $liberacao['id'] : null, '/ImproovWeb/PreAlteracao/index.php', motor_requisitos_metadados_origem(null, $liberacao));
+
+        $finalizacao = motor_requisitos_finalizacao_da_imagem($conn, $imagemId);
+        $requisitos[] = motor_requisitos_item(
+            'ARQUIVO_FINALIZACAO_ENVIADO',
+            'Arquivo da Finalizacao enviado',
+            'PRODUCAO',
+            $finalizacao ? motor_requisitos_estado_arquivo($finalizacao) : 'NAO_ATENDIDO',
+            true,
+            $finalizacao ? 'Finalizacao da imagem' : 'Finalizacao da imagem nao cadastrada',
+            $finalizacao ? (int) $finalizacao['idfuncao_imagem'] : null,
+            $finalizacao ? '/ImproovWeb/inicio.php?funcao_imagem_id=' . (int) $finalizacao['idfuncao_imagem'] : '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId,
+            motor_requisitos_metadados_origem($finalizacao, $checklistResponsavel)
+        );
     }
 
+    // A cadeia produtiva usa a predecessora existente mais próxima. Alteração
+    // e Pré-Finalização preservam suas regras próprias, sem pré-requisito linear.
+    if (!in_array($funcaoId, [1, 6, 9], true)) {
+        $tipoImagem = mb_strtolower(trim((string) ($context['tipo_imagem'] ?? '')), 'UTF-8');
+        $predecessora = null;
+        $origem = 'Tarefa produtiva anterior';
+        $urlPredecessora = $taskUrl;
+
+        $usaModelagemBaseFachada = ($funcaoId === 4 && $tipoImagem === 'fachada')
+            || ($funcaoId === 3 && $tipoImagem === 'imagem externa');
+        if ($usaModelagemBaseFachada) {
+            $predecessora = motor_requisitos_modelagem_base_fachada($conn, $obraId);
+            $origem = 'Modelagem-base da Fachada';
+            if (!$predecessora) {
+                $requisitos[] = motor_requisitos_item(
+                    'MODELAGEM_FACHADA_BASE_AUSENTE',
+                    'Modelagem-base da Fachada cadastrada',
+                    'PRODUCAO',
+                    'NAO_ATENDIDO',
+                    true,
+                    $origem,
+                    null,
+                    '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId
+                );
+            } else {
+                $urlPredecessora = '/ImproovWeb/inicio.php?imagem_id=' . (int) $predecessora['imagem_id'];
+                motor_requisitos_adicionar_predecessora($requisitos, $predecessora, $origem, $urlPredecessora);
+            }
+        } else {
+            $predecessora = motor_requisitos_predecessora_anterior_existente($conn, $imagemId, $funcaoId);
+            motor_requisitos_adicionar_predecessora($requisitos, $predecessora, $origem, $urlPredecessora);
+        }
+    }
+
+    $fallbackResponsavelId = (int) ($checklist['responsavel_id'] ?? 0);
     foreach ($requisitos as &$requisito) {
         if (($requisito['origem'] ?? '') === 'Checklist do projeto') {
             $requisito['url_acao'] = '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId;
         }
+        $requisito = array_merge($requisito, motor_requisitos_sugestao_flow_block($requisito, $fallbackResponsavelId));
         $requisito = motor_requisitos_enriquecer_requisito_flow_block($conn, $context, $requisito);
     }
     unset($requisito);

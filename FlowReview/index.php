@@ -343,6 +343,7 @@ $conn->close();
                                     <button type="button" data-compare-action="zoom-in" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
                                 </div>
                             </header>
+                            <div class="envios-comparison-previews" aria-label="Prévias do envio A"></div>
                             <div class="envios-comparison-viewport">
                                 <div class="envios-comparison-content"></div>
                             </div>
@@ -358,6 +359,7 @@ $conn->close();
                                     <button type="button" data-compare-action="zoom-in" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
                                 </div>
                             </header>
+                            <div class="envios-comparison-previews" aria-label="Prévias do envio B"></div>
                             <div class="envios-comparison-viewport">
                                 <div class="envios-comparison-content"></div>
                             </div>

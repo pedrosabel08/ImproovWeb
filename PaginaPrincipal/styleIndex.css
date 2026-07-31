@@ -25,6 +25,13 @@
   --text-log: #6b7280;
   --text-em: #111827;
 
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
   /* Status imagem (si-*) — cores sólidas para células de tabela */
   --si-p00: #ffc21c;
   --si-r00: #1cf4ff;
@@ -1620,44 +1627,44 @@ span.notif-icon {
   white-space: nowrap;
 }
 .funcao-id-1 {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: #e3f2fd !important;
+  color: #1565c0 !important;
 } /* Caderno */
 .funcao-id-2 {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: #f3e5f5 !important;
+  color: #7b1fa2 !important;
 } /* Modelagem */
 .funcao-id-3 {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #e8f5e9 !important;
+  color: #2e7d32 !important;
 } /* Composição */
 .funcao-id-4 {
-  background: #fff3e0;
-  color: #e65100;
+  background: #fff3e0 !important;
+  color: #e65100 !important;
 } /* Finalização */
 .funcao-id-5 {
-  background: #fce4ec;
-  color: #c62828;
+  background: #fce4ec !important;
+  color: #c62828 !important;
 } /* Pós-produção */
 .funcao-id-6 {
-  background: #fffde7;
-  color: #f57f17;
+  background: #fffde7 !important;
+  color: #f57f17 !important;
 } /* Alteração */
 .funcao-id-7 {
-  background: #e0f7fa;
-  color: #00695c;
+  background: #e0f7fa !important;
+  color: #00695c !important;
 } /* Planta Humanizada */
 .funcao-id-8 {
-  background: #f1f8e9;
-  color: #33691e;
+  background: #f1f8e9 !important;
+  color: #33691e !important;
 } /* Filtro de assets */
 .funcao-id-9 {
-  background: #fbe9e7;
-  color: #bf360c;
+  background: #fbe9e7 !important;
+  color: #bf360c !important;
 } /* Pré-Finalização */
 .funcao-id-11 {
-  background: #fff7e0;
-  color: #ff8f00;
+  background: #fff7e0 !important;
+  color: #ff8f00 !important;
 } /* Escolha de ângulos */
 
 /* Indicador de início no log de alterações */
@@ -7241,7 +7248,7 @@ tr.prod-row-recorde td {
   grid-template-columns: 32px minmax(0, 1fr) auto 16px;
   gap: 7px;
   padding: 7px;
-  color: #e9edf4;
+  color: var(--text-em);
 }
 
 #kanban-section .pendencia-op-icon {
@@ -7253,12 +7260,12 @@ tr.prod-row-recorde td {
 }
 
 #kanban-section .pendencia-op-title strong {
-  color: #edf0f7;
+  color: var(--text-em);
   font-size: 0.74rem;
 }
 
 #kanban-section .pendencia-op-title small {
-  color: #aebcd0;
+  color: var(--text-muted);
   font-size: 0.61rem;
 }
 
@@ -7697,6 +7704,14 @@ tr.prod-row-recorde td {
   box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2) !important;
 }
 
+#kanban-section
+  .kanban-card.kanban-card--requirement-blocked:not(
+    .kanban-card--operational-hold
+  ) {
+  border: 1px solid #8c70e2 !important;
+  box-shadow: 0 0 0 1px rgba(140, 112, 226, 0.2) !important;
+}
+
 #kanban-section .kanban-card.kanban-card--operational-hold {
   border: 1px solid #ef4444 !important;
   box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.24) !important;
@@ -7924,4 +7939,242 @@ tr.prod-row-recorde td {
 }
 #kanban-section .kanban-card > .comments {
   order: 6;
+}
+
+@media (prefers-color-scheme: light) {
+  /* Tema claro do Kanban: preserva as cores dos status sem escurecer o quadro. */
+  body {
+    background: #f8fafc;
+    color: #1f2937;
+  }
+
+  #gif {
+    content: url("../gif/assinatura_preto.gif") !important;
+  }
+
+  main header,
+  main nav {
+    background: #fff !important;
+    color: #253746 !important;
+    border-color: #dce3ea !important;
+  }
+
+  main nav .nav-left button,
+  main nav .nav-right button,
+  main nav .nav-right select {
+    color: #253746 !important;
+  }
+
+  main nav .nav-right button:last-child {
+    color: #fff !important;
+  }
+
+  #kanban-section {
+    background: #f6f8fb;
+  }
+
+  #kanban-section .kanban-box {
+    border: 1px solid #dce3ea;
+    background: #fff !important;
+    box-shadow: 0 4px 14px rgba(28, 47, 68, 0.08);
+  }
+
+  #kanban-section .kanban-box .content,
+  #kanban-section .kanban-box .content:not(:empty) {
+    border-color: #dce3ea;
+    background: #f8fafc;
+  }
+
+  #kanban-section .kanban-box .content:empty::before {
+    background: #f8fafc;
+    outline-color: rgba(100, 116, 139, 0.2);
+  }
+
+  #kanban-section .kanban-box .header {
+    color: #283a4b !important;
+    border-bottom-color: #dce3ea !important;
+    box-shadow: none;
+  }
+
+  #kanban-section #pendencias-flowreview .header {
+    background: #eee8fb !important;
+    color: #493574 !important;
+  }
+  #kanban-section #to-do .header {
+    background: #e2eaf1 !important;
+    color: #283a4b !important;
+  }
+  #kanban-section #hold .header {
+    background: #f7e1d5 !important;
+    color: #7b442e !important;
+  }
+  #kanban-section #em-andamento .header,
+  #kanban-section #in-progress .header {
+    background: #fcf0cf !important;
+    color: #785b13 !important;
+  }
+  #kanban-section #em-revisao .header,
+  #kanban-section #in-review .header {
+    background: #dbf0f3 !important;
+    color: #21636b !important;
+  }
+  #kanban-section #aguardando-direcao .header {
+    background: #e1f1f2 !important;
+    color: #2c6268 !important;
+  }
+  #kanban-section #ajuste .header {
+    background: #f8e1e1 !important;
+    color: #884243 !important;
+  }
+  #kanban-section #aprovado-ajustes .header {
+    background: #ece1f6 !important;
+    color: #65467b !important;
+  }
+  #kanban-section #aprovado .header {
+    background: #e1f2e4 !important;
+    color: #326842 !important;
+  }
+  #kanban-section #concluido .header,
+  #kanban-section #done .header {
+    background: #e5f1da !important;
+    color: #4d6b32 !important;
+  }
+
+  #kanban-section .kanban-box .header::before {
+    background: currentColor !important;
+    box-shadow: none;
+  }
+
+  #kanban-section .kanban-box .header .title span {
+    color: currentColor !important;
+  }
+
+  #kanban-section .kanban-box .header .task-count {
+    border: 0;
+    background: rgba(35, 48, 61, 0.12) !important;
+    color: currentColor !important;
+  }
+
+  #kanban-section .kanban-box-pendencias {
+    background: #f7f2ff !important;
+    box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.12) !important;
+  }
+
+  #kanban-section .pendencia-op-icon {
+    background: #fff;
+    box-shadow: inset 0 0 0 1px var(--module-color, #9b7bff);
+  }
+
+  #kanban-section .pendencia-op-overview,
+  #kanban-section .pendencia-op-group,
+  #kanban-section .pendencia-op-summary,
+  #kanban-section .pendencia-op-item,
+  #kanban-section .pendencia-op-card,
+  #kanban-section .pendencia-op-more,
+  #kanban-section .pendencia-op-modal-row,
+  #kanban-section .pendencia-check-row {
+    background: #fff;
+    color: #263746;
+    border-color: rgba(124, 58, 237, 0.18);
+    box-shadow: none;
+  }
+
+  #kanban-section .pendencia-op-title small,
+  #kanban-section .pendencia-op-main small,
+  #kanban-section .pendencia-op-modal-row span,
+  #kanban-section .pendencia-op-overview span,
+  #kanban-section .pendencia-check-row small {
+    color: #64748b;
+  }
+
+  #kanban-section .pendencia-op-meta span {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  #kanban-section .pendencia-op-card-main:hover {
+    background: #f8fafc;
+  }
+
+  #kanban-section .pendencia-op-badges span {
+    background: #fff;
+  }
+
+  #kanban-section .kanban-card {
+    background: #fff !important;
+    color: #263746;
+    box-shadow: 0 1px 3px rgba(28, 47, 68, 0.08);
+  }
+
+  #kanban-section .kanban-card h5,
+  #kanban-section.kanban--comfortable .kanban-card h5,
+  #kanban-section.kanban--compact .kanban-card h5 {
+    color: #1f2937 !important;
+  }
+
+  #kanban-section .kanban-card .card-owner,
+  #kanban-section .kanban-card .card-owner span,
+  #kanban-section .kanban-card .card-log span,
+  #kanban-section .kanban-card .card-footer,
+  #kanban-section .kanban-card .comments {
+    color: #64748b !important;
+  }
+
+  #kanban-section .funcao-id-1 {
+    background: #e3f1ff !important;
+    border-color: #89bce7 !important;
+    color: #155b93 !important;
+  }
+  #kanban-section .funcao-id-2 {
+    background: #e4f4e5 !important;
+    border-color: #8bc79a !important;
+    color: #2e6d3e !important;
+  }
+  #kanban-section .funcao-id-3 {
+    background: #fff0d8 !important;
+    border-color: #e5bb70 !important;
+    color: #86530c !important;
+  }
+  #kanban-section .funcao-id-4 {
+    background: #eee5f7 !important;
+    border-color: #b794d1 !important;
+    color: #65407e !important;
+  }
+  #kanban-section .funcao-id-5 {
+    background: #f9e1e1 !important;
+    border-color: #df9797 !important;
+    color: #923c3c !important;
+  }
+  #kanban-section .funcao-id-6 {
+    background: #def2f1 !important;
+    border-color: #83c6c4 !important;
+    color: #246d6c !important;
+  }
+  #kanban-section .funcao-id-7 {
+    background: #e0e8fb !important;
+    border-color: #94a8da !important;
+    color: #3d528d !important;
+  }
+  #kanban-section .funcao-id-8 {
+    background: #f7ead5 !important;
+    border-color: #d9b77d !important;
+    color: #76501d !important;
+  }
+  #kanban-section .funcao-id-9 {
+    background: #e8f1df !important;
+    border-color: #a7c58b !important;
+    color: #416d2d !important;
+  }
+  #kanban-section .funcao-id-11 {
+    background: #f3e5ed !important;
+    border-color: #d7a6bc !important;
+    color: #793c58 !important;
+  }
+
+  .toastify {
+    border-radius: var(--radius-sm) !important;
+    font-family: "Inter", sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+  }
 }

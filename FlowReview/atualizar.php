@@ -65,6 +65,9 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
             ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
+            ))
           )
           AND o.status_obra = 0
         ORDER BY data_aprovacao DESC";
@@ -114,6 +117,9 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
             ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
+            ))
           )
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
@@ -161,6 +167,9 @@ try {
             ))
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
+            ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
           )
         ORDER BY data_aprovacao DESC";
@@ -212,6 +221,9 @@ try {
             ))
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
+            ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
           )
           AND o.idobra IN (
@@ -266,6 +278,9 @@ try {
             ))
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Ajuste'
+            ))
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
           )
           AND o.idobra IN (

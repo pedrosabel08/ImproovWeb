@@ -423,6 +423,29 @@ try {
         $task = flow_block_task($conn, $taskId);
         if (!$task || !flow_block_can_access_task($task)) flow_block_json_response(['ok' => false, 'message' => 'Você não pode bloquear esta tarefa.'], 403);
         if (!$typeId || $description === '') flow_block_json_response(['ok' => false, 'message' => 'Tipo e observação são obrigatórios.'], 422);
+        if ($requirementCode !== '' && (!$queueId || !$responsibleId)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Fila responsável e responsável são obrigatórios para impedimento de requisito.'], 422);
+        }
+        if ($requirementCode !== '') {
+            $typeValid = $conn->prepare('SELECT id FROM flow_issue_tipo WHERE id = ? AND ativo = 1');
+            $typeValid->bind_param('i', $typeId);
+            $typeValid->execute();
+            $typeOk = (bool) $typeValid->get_result()->fetch_row();
+            $typeValid->close();
+            $queueValid = $conn->prepare('SELECT id FROM flow_issue_fila WHERE id = ? AND ativo = 1');
+            $queueValid->bind_param('i', $queueId);
+            $queueValid->execute();
+            $queueOk = (bool) $queueValid->get_result()->fetch_row();
+            $queueValid->close();
+            $responsibleValid = $conn->prepare('SELECT idcolaborador FROM colaborador WHERE idcolaborador = ? AND ativo = 1');
+            $responsibleValid->bind_param('i', $responsibleId);
+            $responsibleValid->execute();
+            $responsibleOk = (bool) $responsibleValid->get_result()->fetch_row();
+            $responsibleValid->close();
+            if (!$typeOk || !$queueOk || !$responsibleOk) {
+                flow_block_json_response(['ok' => false, 'message' => 'Tipo, fila ou responsável inválido para o impedimento.'], 422);
+            }
+        }
         if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) $urgency = 'NORMAL';
         $beforeStatusOriginal = (string) ($task['status'] ?? '');
         if ($beforeStatusOriginal !== '' && !in_array($beforeStatusOriginal, ['Em andamento', 'HOLD', 'Não iniciado'], true)) {

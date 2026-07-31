@@ -1329,12 +1329,21 @@ function abrirFormularioFlowBlockHold(
   if (!conteudo || !modalTitle) return;
 
   const requirement = options.requirement || null;
-  const permaneceNaoIniciado = String(card.dataset.status || "").trim() === "Não iniciado";
+  const permaneceNaoIniciado =
+    String(card.dataset.status || "").trim() === "Não iniciado";
   const introducao = permaneceNaoIniciado
     ? "A tarefa permanecerá em Não iniciado. O impedimento será registrado no Flow Block sem mover a tarefa para HOLD."
     : "A tarefa ficará em HOLD automaticamente quando o Impedimento for criado.";
   const requirementContext =
     requirement?.flow_block?.context?.requirement_context || "";
+  const origemTarefa = requirement?.origem_tarefa || null;
+  const origemResponsavel =
+    origemTarefa?.responsavel_nome ||
+    requirement?.origem_responsavel_nome ||
+    "";
+  const origemTarefaTexto = origemTarefa?.nome
+    ? `${origemTarefa.nome}${origemTarefa.imagem_nome ? ` · ${origemTarefa.imagem_nome}` : ""}`
+    : "";
   const contextoRequisito = requirement
     ? `<div class="flow-block-hold-context">
          <strong>Contexto do requisito</strong>
@@ -1342,6 +1351,8 @@ function abrirFormularioFlowBlockHold(
            <div><dt>Requisito</dt><dd>${escapeKanbanText(requirement.label || "Requisito")}</dd></div>
            <div><dt>Código</dt><dd>${escapeKanbanText(requirement.codigo || "-")}</dd></div>
            <div><dt>Origem</dt><dd>${escapeKanbanText(requirement.tipo || "-")} · ${escapeKanbanText(requirement.origem || "-")}</dd></div>
+           ${origemTarefaTexto ? `<div><dt>Tarefa anterior/origem</dt><dd>${escapeKanbanText(origemTarefaTexto)}</dd></div>` : ""}
+           ${origemResponsavel ? `<div><dt>Responsável</dt><dd>${escapeKanbanText(origemResponsavel)}</dd></div>` : ""}
            <div><dt>Contexto</dt><dd>${escapeKanbanText(requirementContext)}</dd></div>
          </dl>
        </div>`
@@ -1351,6 +1362,8 @@ function abrirFormularioFlowBlockHold(
         `Requisito: ${requirement.label || "Requisito"}`,
         `Código: ${requirement.codigo || "-"}`,
         `Origem: ${requirement.tipo || "-"} · ${requirement.origem || "-"}`,
+        origemTarefaTexto ? `Tarefa anterior/origem: ${origemTarefaTexto}` : "",
+        origemResponsavel ? `Responsável: ${origemResponsavel}` : "",
         requirementContext,
       ]
         .filter(Boolean)
@@ -1374,8 +1387,8 @@ function abrirFormularioFlowBlockHold(
     ${contextoRequisito}
     <label>Tipo <select data-field="tipo_id" required><option value="">Carregando tipos…</option></select></label>
     <div class="flow-block-hold-grid">
-      <label>Fila responsável <select data-field="fila_id"><option value="">Não definida</option></select></label>
-      <label>Responsável <select data-field="responsavel_id"><option value="">Não definido</option></select></label>
+      <label>Fila responsável <select data-field="fila_id" required><option value="">Selecione a fila</option></select></label>
+      <label>Responsável <select data-field="responsavel_id" required><option value="">Selecione o responsável</option></select></label>
       <label>Urgência <select data-field="urgencia"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
     </div>
     <label>Observação <textarea data-field="descricao" rows="7" maxlength="5000" placeholder="O que impede a continuidade da tarefa?" required>${escapeKanbanText(descricaoInicial)}</textarea></label>
@@ -1383,7 +1396,13 @@ function abrirFormularioFlowBlockHold(
   `;
   conteudo.insertBefore(form, conteudo.querySelector(".buttons"));
 
-  const fillSelect = (field, items, firstLabel) => {
+  const fillSelect = (
+    field,
+    items,
+    firstLabel,
+    suggestedValue = null,
+    suggestedCode = "",
+  ) => {
     const select = form.querySelector(`[data-field="${field}"]`);
     if (!select) return;
     select.innerHTML =
@@ -1394,6 +1413,12 @@ function abrirFormularioFlowBlockHold(
             `<option value="${item.id}">${String(item.nome || "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char])}</option>`,
         )
         .join("");
+    const suggestedItem = suggestedCode
+      ? items.find(
+          (item) => String(item.codigo || "").toUpperCase() === suggestedCode,
+        )
+      : items.find((item) => Number(item.id) === Number(suggestedValue));
+    if (suggestedItem) select.value = String(suggestedItem.id);
   };
 
   fetch("FlowBlock/api.php?action=options")
@@ -1403,9 +1428,27 @@ function abrirFormularioFlowBlockHold(
         throw new Error(
           data.message || "Não foi possível carregar os campos do Impedimento.",
         );
-      fillSelect("tipo_id", data.types || [], "Selecione o tipo");
-      fillSelect("fila_id", data.queues || [], "Não definida");
-      fillSelect("responsavel_id", data.collaborators || [], "Não definido");
+      const sugestao = requirement?.flow_block_sugestao || {};
+      fillSelect(
+        "tipo_id",
+        data.types || [],
+        "Selecione o tipo",
+        null,
+        sugestao.tipo_codigo || "",
+      );
+      fillSelect(
+        "fila_id",
+        data.queues || [],
+        "Selecione a fila",
+        null,
+        sugestao.fila_codigo || "",
+      );
+      fillSelect(
+        "responsavel_id",
+        data.collaborators || [],
+        "Selecione o responsável",
+        sugestao.responsavel_id || null,
+      );
     })
     .catch((error) => {
       const select = form.querySelector('[data-field="tipo_id"]');
@@ -1424,12 +1467,18 @@ function abrirFormularioFlowBlockHold(
     .querySelector(".flow-block-create")
     .addEventListener("click", async () => {
       const typeId = Number(form.querySelector('[data-field="tipo_id"]').value);
+      const queueId = Number(
+        form.querySelector('[data-field="fila_id"]').value,
+      );
+      const responsibleId = Number(
+        form.querySelector('[data-field="responsavel_id"]').value,
+      );
       const description = form
         .querySelector('[data-field="descricao"]')
         .value.trim();
-      if (!typeId || !description) {
+      if (!typeId || !queueId || !responsibleId || !description) {
         Toastify({
-          text: "Informe o tipo e a observação do Impedimento.",
+          text: "Informe o tipo, a fila responsável, o responsável e a observação do Impedimento.",
           duration: 3000,
           gravity: "top",
           position: "left",
@@ -1447,20 +1496,14 @@ function abrirFormularioFlowBlockHold(
           body: JSON.stringify({
             funcao_imagem_id: Number(card.dataset.id),
             tipo_id: typeId,
-            fila_id:
-              Number(form.querySelector('[data-field="fila_id"]').value) ||
-              null,
-            responsavel_id:
-              Number(
-                form.querySelector('[data-field="responsavel_id"]').value,
-              ) || null,
+            fila_id: queueId,
+            responsavel_id: responsibleId,
             urgencia: form.querySelector('[data-field="urgencia"]').value,
             descricao: description,
             requirement_code: requirement?.codigo || "",
             requirement_name: requirement?.label || "",
             requirement_origin: requirement?.origem || "",
-            requirement_origin_id:
-              Number(requirement?.origem_id || 0) || null,
+            requirement_origin_id: Number(requirement?.origem_id || 0) || null,
             requirement_type: requirement?.tipo || "",
             requirement_source_url: requirement?.url_acao || "",
             requirement_context:
@@ -1502,7 +1545,10 @@ function formatarTempoFlowBlock(data) {
   if (!data) return "";
   const inicio = new Date(String(data).replace(" ", "T"));
   if (Number.isNaN(inicio.getTime())) return "";
-  const minutos = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 60000));
+  const minutos = Math.max(
+    0,
+    Math.floor((Date.now() - inicio.getTime()) / 60000),
+  );
   const dias = Math.floor(minutos / 1440);
   const horas = Math.floor((minutos % 1440) / 60);
   const mins = minutos % 60;
@@ -1519,13 +1565,16 @@ function abrirReplanejamentoFlowBlock(card) {
 
   const prazoAnterior = String(card.dataset.prazo || "").slice(0, 10);
   const holdDesde = card.dataset.flowBlockHoldDesde || "";
-  const prazoData = prazoAnterior ? new Date(`${prazoAnterior}T00:00:00`) : null;
-  const prazoVencido = prazoData && prazoData.getTime() < new Date().setHours(0, 0, 0, 0);
+  const prazoData = prazoAnterior
+    ? new Date(`${prazoAnterior}T00:00:00`)
+    : null;
+  const prazoVencido =
+    prazoData && prazoData.getTime() < new Date().setHours(0, 0, 0, 0);
   const contextoPrazo = prazoVencido
     ? `Prazo vencido há ${formatarTempoFlowBlock(prazoAnterior)}.`
     : prazoAnterior
       ? "O prazo anterior ainda não venceu, mas a continuidade exige replanejamento."
-      : "A tarefa não possuía prazo definido."
+      : "A tarefa não possuía prazo definido.";
   const contextoHold = holdDesde
     ? `Em HOLD há ${formatarTempoFlowBlock(holdDesde)}.`
     : "";
@@ -1562,33 +1611,61 @@ function abrirReplanejamentoFlowBlock(card) {
     card.classList.remove("selected");
   };
   form.querySelector(".flow-block-cancel").addEventListener("click", close);
-  form.querySelector(".flow-block-continue").addEventListener("click", async () => {
-    const deadline = form.querySelector('[data-field="prazo"]').value;
-    const note = form.querySelector('[data-field="observacao"]').value.trim();
-    if (!deadline) {
-      Toastify({ text: "Informe o novo prazo para continuar a tarefa.", duration: 3000, gravity: "top", position: "left", backgroundColor: "#d94b4b" }).showToast();
-      return;
-    }
-    const button = form.querySelector(".flow-block-continue");
-    button.disabled = true;
-    button.textContent = "Reprogramando…";
-    try {
-      const response = await fetch("FlowBlock/api.php?action=continue_task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ funcao_imagem_id: Number(card.dataset.id), prazo: deadline, observacao: note }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.message || "Não foi possível continuar a tarefa.");
-      close();
-      carregarDados(colaborador_id);
-      Toastify({ text: "Tarefa reprogramada e movida para Em andamento.", duration: 3500, gravity: "top", position: "left", backgroundColor: "#129117" }).showToast();
-    } catch (error) {
-      button.disabled = false;
-      button.innerHTML = '<i class="ri-play-circle-line"></i> Confirmar e continuar';
-      Toastify({ text: error.message, duration: 4000, gravity: "top", position: "left", backgroundColor: "#d94b4b" }).showToast();
-    }
-  });
+  form
+    .querySelector(".flow-block-continue")
+    .addEventListener("click", async () => {
+      const deadline = form.querySelector('[data-field="prazo"]').value;
+      const note = form.querySelector('[data-field="observacao"]').value.trim();
+      if (!deadline) {
+        Toastify({
+          text: "Informe o novo prazo para continuar a tarefa.",
+          duration: 3000,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "#d94b4b",
+        }).showToast();
+        return;
+      }
+      const button = form.querySelector(".flow-block-continue");
+      button.disabled = true;
+      button.textContent = "Reprogramando…";
+      try {
+        const response = await fetch("FlowBlock/api.php?action=continue_task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            funcao_imagem_id: Number(card.dataset.id),
+            prazo: deadline,
+            observacao: note,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok)
+          throw new Error(
+            data.message || "Não foi possível continuar a tarefa.",
+          );
+        close();
+        carregarDados(colaborador_id);
+        Toastify({
+          text: "Tarefa reprogramada e movida para Em andamento.",
+          duration: 3500,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "#129117",
+        }).showToast();
+      } catch (error) {
+        button.disabled = false;
+        button.innerHTML =
+          '<i class="ri-play-circle-line"></i> Confirmar e continuar';
+        Toastify({
+          text: error.message,
+          duration: 4000,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "#d94b4b",
+        }).showToast();
+      }
+    });
 
   cardModal.classList.add("active");
   card.classList.add("selected");
@@ -1960,7 +2037,7 @@ function processarDados(data) {
 
     // adiciona bloqueado se necessário
     if (liberado === "0" && !holdMovel) {
-      card.classList.add("bloqueado", "kanban-card--operational-hold");
+      card.classList.add("bloqueado");
     }
 
     // if (cardEmHold) {
@@ -2105,18 +2182,21 @@ function processarDados(data) {
         : "";
 
     const flowBlockIssueCount = Number(item.flow_block_issues_abertas || 0);
-    const flowBlockPrincipalStatus = String(item.flow_block_issue_principal_status || "");
-    const flowBlockAwaitingConfirmation = flowBlockPrincipalStatus === "RESOLVIDA";
+    const flowBlockPrincipalStatus = String(
+      item.flow_block_issue_principal_status || "",
+    );
+    const flowBlockAwaitingConfirmation =
+      flowBlockPrincipalStatus === "RESOLVIDA";
     const flowBlockPaused = flowBlockPrincipalStatus === "PAUSADA";
-    const flowBlockReadyToContinue = Number(item.flow_block_pronta_para_continuar || 0) === 1;
-    const flowBlockIssueHtml =
-      flowBlockReadyToContinue
-        ? `<div class="flow-block-card-ready" title="Todas as Issues foram encerradas. Reprograme a tarefa para continuar.">
+    const flowBlockReadyToContinue =
+      Number(item.flow_block_pronta_para_continuar || 0) === 1;
+    const flowBlockIssueHtml = flowBlockReadyToContinue
+      ? `<div class="flow-block-card-ready" title="Todas as Issues foram encerradas. Reprograme a tarefa para continuar.">
              <span><i class="ri-checkbox-circle-line"></i> Tudo resolvido</span>
              <small>Replanejamento obrigatório</small>
              <button type="button" class="flow-block-continue-task"><i class="ri-play-circle-line"></i> Continuar tarefa</button>
            </div>`
-        : flowBlockIssueCount > 0
+      : flowBlockIssueCount > 0
         ? `<button type="button" class="flow-block-card-type${flowBlockAwaitingConfirmation ? " is-resolved" : ""}${flowBlockPaused ? " is-paused" : ""}${Number(item.flow_block_cobranca_atrasada || 0) && !flowBlockAwaitingConfirmation ? " is-overdue" : ""}" data-issue-id="${item.flow_block_issue_principal_id || ""}" title="${flowBlockAwaitingConfirmation ? "Confirmar resposta da Issue" : "Abrir Issue principal"}">
              <span><i class="${flowBlockAwaitingConfirmation ? "ri-checkbox-circle-line" : "ri-error-warning-line"}"></i> ${flowBlockAwaitingConfirmation ? "Issue resolvida" : item.flow_block_motivo_principal || "Não classificada"}</span>
              ${flowBlockAwaitingConfirmation ? `<small>Confirmar resposta${item.flow_block_motivo_principal ? ` · ${item.flow_block_motivo_principal}` : ""}</small>` : flowBlockPaused ? `<small>Pausada${item.flow_block_proxima_cobranca_em ? ` até ${flowBlockShortDeadline(item.flow_block_proxima_cobranca_em)}` : ""}</small>` : flowBlockIssueCount > 1 ? `<small>+${flowBlockIssueCount - 1} impedimento${flowBlockIssueCount > 2 ? "s" : ""}</small>` : ""}
@@ -2143,7 +2223,8 @@ function processarDados(data) {
       card.classList.add("kanban-card--requirement-blocked");
     }
     if (atrasada) card.classList.add("kanban-card--overdue");
-    if (tempoClass === "tempo-ruim") card.classList.add("kanban-card--sla-critical");
+    if (tempoClass === "tempo-ruim")
+      card.classList.add("kanban-card--sla-critical");
     if (tempoClass && tempoClass.includes("aten")) {
       card.classList.add("kanban-card--sla-warning");
     }
@@ -2153,7 +2234,8 @@ function processarDados(data) {
            <i class="ri-pause-circle-line"></i><span>HOLD${holdReason ? ` · ${escapeKanbanText(holdReason)}` : ""}</span>
          </div>`
       : "";
-    if (tipo === "imagem" && imgSrc) card.classList.add("kanban-card--with-thumb");
+    if (tipo === "imagem" && imgSrc)
+      card.classList.add("kanban-card--with-thumb");
     const responsavel = String(item.nome_colaborador || "").trim();
     const initials = responsavel
       .split(/\s+/)
@@ -2247,7 +2329,9 @@ function processarDados(data) {
       Number(item.flow_block_issues_abertas || 0),
     );
     card.dataset.flowBlockHoldDesde = item.flow_block_hold_desde || "";
-    card.dataset.flowBlockReadyToContinue = flowBlockReadyToContinue ? "1" : "0";
+    card.dataset.flowBlockReadyToContinue = flowBlockReadyToContinue
+      ? "1"
+      : "0";
 
     card.addEventListener("click", () => {
       document
@@ -2312,7 +2396,9 @@ function processarDados(data) {
       });
     }
 
-    const flowBlockContinueTask = card.querySelector(".flow-block-continue-task");
+    const flowBlockContinueTask = card.querySelector(
+      ".flow-block-continue-task",
+    );
     if (flowBlockContinueTask) {
       flowBlockContinueTask.addEventListener("click", (event) => {
         event.preventDefault();
@@ -3827,12 +3913,9 @@ function atualizarTaskCount() {
 
     // Esconder colunas vazias (ajuste, aprovado, aprovado-ajustes)
     if (
-      [
-        "ajuste",
-        "aprovado",
-        "aprovado-ajustes",
-        "aguardando-direcao",
-      ].includes(box.id)
+      ["ajuste", "aprovado", "aprovado-ajustes", "aguardando-direcao"].includes(
+        box.id,
+      )
     ) {
       box.style.display = count === 0 ? "none" : "";
     }
@@ -4349,7 +4432,8 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
                       ? "ri-error-warning-line"
                       : "ri-subtract-line";
                 const flowBlockAction =
-                  estado === "NAO_ATENDIDO"
+                  estado === "NAO_ATENDIDO" &&
+                  requisito.flow_block?.action !== "disabled"
                     ? requisito.flow_block?.issue_url
                       ? `<a class="tp-requirement-action is-primary" href="${escapeKanbanText(requisito.flow_block.issue_url)}"><i class="ri-forbid-2-line"></i> Abrir Flow Block</a>`
                       : `<button type="button" class="tp-requirement-action is-primary" data-requirement-index="${index}"><i class="ri-forbid-2-line"></i> Registrar impedimento</button>`
@@ -4365,15 +4449,21 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
                       : estado === "DISPENSADO"
                         ? "Dispensado"
                         : "Não aplicável";
+                const origemTarefa = requisito.origem_tarefa || null;
+                const origemDetalhe = origemTarefa?.nome
+                  ? ` · ${origemTarefa.nome}${origemTarefa.responsavel_nome ? ` · ${origemTarefa.responsavel_nome}` : ""}`
+                  : requisito.origem_responsavel_nome
+                    ? ` · ${requisito.origem_responsavel_nome}`
+                    : "";
                 return `
                   <div class="tp-requirement-row state-${estado.toLowerCase()}">
                     <i class="${icon}"></i>
                     <span>
                       <strong>${escapeKanbanText(requisito.label || "Requisito")}</strong>
-                      <small>${escapeKanbanText(requisito.tipo || "")} · ${escapeKanbanText(requisito.origem || "")}</small>
+                      <small>${escapeKanbanText(requisito.tipo || "")} · ${escapeKanbanText(requisito.origem || "")}${escapeKanbanText(origemDetalhe)}</small>
                     </span>
                     <em>${statusLabel}</em>
-                    <div class="tp-requirement-actions">${flowBlockAction}${sourceAction}</div>
+                    <div class="tp-requirement-actions">${flowBlockAction}</div>
                   </div>`;
               })
               .join("")}
@@ -5528,11 +5618,9 @@ function preencherFiltros() {
       const posicaoA = ordemStatus.indexOf(a);
       const posicaoB = ordemStatus.indexOf(b);
 
-      const ordemA =
-        posicaoA === -1 ? ordemStatus.length : posicaoA;
+      const ordemA = posicaoA === -1 ? ordemStatus.length : posicaoA;
 
-      const ordemB =
-        posicaoB === -1 ? ordemStatus.length : posicaoB;
+      const ordemB = posicaoB === -1 ? ordemStatus.length : posicaoB;
 
       return (
         ordemA - ordemB ||
@@ -5552,24 +5640,16 @@ function preencherFiltros() {
     });
 
   // Restaura as seleções anteriores
-  filtroObra
-    .querySelectorAll('input[type="checkbox"]')
-    .forEach((checkbox) => {
-      if (
-        checkbox.value &&
-        obrasSelecionadas.has(checkbox.value)
-      ) {
-        checkbox.checked = true;
-      }
-    });
+  filtroObra.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+    if (checkbox.value && obrasSelecionadas.has(checkbox.value)) {
+      checkbox.checked = true;
+    }
+  });
 
   filtroFuncao
     .querySelectorAll('input[type="checkbox"]')
     .forEach((checkbox) => {
-      if (
-        checkbox.value &&
-        funcoesSelecionadas.has(checkbox.value)
-      ) {
+      if (checkbox.value && funcoesSelecionadas.has(checkbox.value)) {
         checkbox.checked = true;
       }
     });
@@ -5577,10 +5657,7 @@ function preencherFiltros() {
   filtroStatus
     .querySelectorAll('input[type="checkbox"]')
     .forEach((checkbox) => {
-      if (
-        checkbox.value &&
-        statusSelecionados.has(checkbox.value)
-      ) {
+      if (checkbox.value && statusSelecionados.has(checkbox.value)) {
         checkbox.checked = true;
       }
     });
@@ -5887,7 +5964,10 @@ function restaurarCardModalPadrao() {
   if (!cardModal) return;
   cardModal.querySelector("#flow-block-hold-form")?.remove();
   cardModal.querySelector("#flow-block-replan-form")?.remove();
-  cardModal.classList.remove("flow-block-hold-active", "flow-block-replan-active");
+  cardModal.classList.remove(
+    "flow-block-hold-active",
+    "flow-block-replan-active",
+  );
 }
 
 // Fechar modal
@@ -6329,306 +6409,313 @@ const colunas = document.querySelectorAll(
 // apenas o arrastar e soltar fica indisponível até o carregamento normal.
 if (typeof Sortable !== "undefined") {
   colunas.forEach((col) => {
-  new Sortable(col, {
-    group: "kanban",
-    animation: 150,
-    ghostClass: "sortable-ghost",
-    filter: ".no-drag",
-    preventOnFilter: false,
-    touchStartThreshold: 10, // move 10px antes de iniciar o drag
-    onMove: function (evt) {
-      const fromId = evt.from.closest(".kanban-box")?.id;
-      const toId = evt.to.closest(".kanban-box")?.id;
-      const dragged = evt.dragged;
-      if (
-        fromId === "pendencias-flowreview" ||
-        toId === "pendencias-flowreview" ||
-        dragged?.classList?.contains("pendencia-flowreview-card")
-      ) {
-        return false;
-      }
-      const imagemEmHold = dragged?.dataset?.imagemEmHold === "1";
-      const requiresFileUpload = dragged?.dataset?.requiresFileUpload === "1";
-      const holdMovel = fromId === "hold" && !imagemEmHold;
-
-      if (imagemEmHold) return false;
-      if (
-        fromId === "hold" &&
-        Number(dragged?.dataset?.flowBlockIssues || 0) > 0
-      )
-        return false;
-
-      if (toId === "in-progress" && requiresFileUpload) return false;
-
-      // A tarefa continua navegável e pode ser reorganizada. Requisitos
-      // pendentes só são barrados na tentativa de iniciar a execução.
-      if (
-        toId === "in-progress" &&
-        dragged?.dataset?.liberado === "0" &&
-        !holdMovel
-      )
-        return true;
-
-      if (toId === "ajuste") return false;
-
-      if (toId === "to-do" && fromId !== "to-do") return false;
-
-      if (fromId === "em-andamento" && toId === "to-do") return false;
-
-      return true; // caso contrário, libera o movimento
-    },
-    onEnd: (evt) => {
-      const card = evt.item;
-      const deColuna = evt.from.closest(".kanban-box");
-      const novaColuna = evt.to.closest(".kanban-box");
-      const novoIndex = evt.newIndex;
-      const imagemEmHold = card?.dataset?.imagemEmHold === "1";
-      const requiresFileUpload = card?.dataset?.requiresFileUpload === "1";
-      const holdMovel = deColuna?.id === "hold" && !imagemEmHold;
-
-      if (imagemEmHold) {
-        evt.from.appendChild(card);
-        alert("Esta função não pode ser movida porque a imagem está em HOLD.");
-        return;
-      }
-
-      if (
-        novaColuna?.id === "in-progress" &&
-        card.dataset.liberado === "0" &&
-        !holdMovel
-      ) {
-        evt.from.appendChild(card);
-        const motivos = String(card.dataset.requirementBlockReasons || "")
-          .split("||")
-          .map((motivo) => motivo.trim())
-          .filter(Boolean);
-        alert(
-          motivos.length
-            ? `Esta função ainda não pode iniciar por:\n- ${motivos.join("\n- ")}`
-            : "Esta função ainda não foi liberada.",
-        );
-        return;
-      }
-
-      if (novaColuna?.id === "in-progress" && requiresFileUpload) {
-        evt.from.appendChild(card);
-        alert(
-          "Existe arquivo pendente da etapa anterior. Envie o arquivo final antes de mover para Em andamento.",
-        );
-        return;
-      }
-
-      if (novaColuna?.id === "hold" && deColuna?.id !== "hold") {
-        abrirFormularioFlowBlockHold(card, evt.from, evt.oldIndex);
-        return;
-      }
-
-      // Se houver pendências ao mover para 'Em andamento', apenas avisamos
-      // e impedimos a abertura do modal de card (cardModal). O movimento continua.
-      let bloquearAberturaModal = false;
-      if (novaColuna?.id === "in-progress") {
-        const qtdPendentes = document.querySelectorAll(
-          '.kanban-card.tarefa-imagem[data-requires-file-upload="1"]',
-        ).length;
-        if (qtdPendentes > 0) {
-          Swal.fire({
-            icon: "warning",
-            title: "Atenção",
-            text: `Existem ${qtdPendentes} card(s) com arquivo pendente.`,
-          });
-          bloquearAberturaModal = true;
-        }
-      }
-
-      console.log(
-        `Card movido de ${deColuna.id} para ${novaColuna.id}, índice: ${novoIndex}`,
-      );
-
-      // Só abre modal se mudou de coluna e não estivermos bloqueando a abertura
-      if (deColuna.id !== novaColuna.id) {
+    new Sortable(col, {
+      group: "kanban",
+      animation: 150,
+      ghostClass: "sortable-ghost",
+      filter: ".no-drag",
+      preventOnFilter: false,
+      touchStartThreshold: 10, // move 10px antes de iniciar o drag
+      onMove: function (evt) {
+        const fromId = evt.from.closest(".kanban-box")?.id;
+        const toId = evt.to.closest(".kanban-box")?.id;
+        const dragged = evt.dragged;
         if (
-          typeof bloquearAberturaModal !== "undefined" &&
-          bloquearAberturaModal
+          fromId === "pendencias-flowreview" ||
+          toId === "pendencias-flowreview" ||
+          dragged?.classList?.contains("pendencia-flowreview-card")
         ) {
-          // Não abre o cardModal por enquanto — apenas mantém o card movido.
-          card.classList.remove("selected");
+          return false;
+        }
+        const imagemEmHold = dragged?.dataset?.imagemEmHold === "1";
+        const requiresFileUpload = dragged?.dataset?.requiresFileUpload === "1";
+        const holdMovel = fromId === "hold" && !imagemEmHold;
+
+        if (imagemEmHold) return false;
+        if (
+          fromId === "hold" &&
+          Number(dragged?.dataset?.flowBlockIssues || 0) > 0
+        )
+          return false;
+
+        if (toId === "in-progress" && requiresFileUpload) return false;
+
+        // A tarefa continua navegável e pode ser reorganizada. Requisitos
+        // pendentes só são barrados na tentativa de iniciar a execução.
+        if (
+          toId === "in-progress" &&
+          dragged?.dataset?.liberado === "0" &&
+          !holdMovel
+        )
+          return true;
+
+        if (toId === "ajuste") return false;
+
+        if (toId === "to-do" && fromId !== "to-do") return false;
+
+        if (fromId === "em-andamento" && toId === "to-do") return false;
+
+        return true; // caso contrário, libera o movimento
+      },
+      onEnd: (evt) => {
+        const card = evt.item;
+        const deColuna = evt.from.closest(".kanban-box");
+        const novaColuna = evt.to.closest(".kanban-box");
+        const novoIndex = evt.newIndex;
+        const imagemEmHold = card?.dataset?.imagemEmHold === "1";
+        const requiresFileUpload = card?.dataset?.requiresFileUpload === "1";
+        const holdMovel = deColuna?.id === "hold" && !imagemEmHold;
+
+        if (imagemEmHold) {
+          evt.from.appendChild(card);
+          alert(
+            "Esta função não pode ser movida porque a imagem está em HOLD.",
+          );
           return;
         }
-        cardSelecionado = card;
 
-        // Armazena coluna de origem para uso em enviarImagens (bloqueio de comentários)
-        window._cardVeioDe = deColuna.id || "";
-
-        idfuncao_imagem = card.getAttribute("data-id");
-        idimagem = card.getAttribute("data-id-imagem");
-        titulo = card.querySelector("h5")?.innerText || "";
-        subtitulo = card.getAttribute("data-funcao_nome");
-        obra = card.getAttribute("data-obra_nome");
-        nome_status = card.getAttribute("data-nome_status");
-        statusAnterior = card.getAttribute("data-status-anterior");
-
-        const avisoStatusAnterior = cardModal.querySelector(
-          ".modal-item.statusAnterior",
-        );
-
-        if (avisoStatusAnterior) {
-          avisoStatusAnterior.hidden =
-            statusAnterior !== "Aprovado com ajustes";
-        }
-        console.log(statusAnterior, avisoStatusAnterior?.style.display);
-
-        // Preenche os campos comuns
-        modalPrazo.value = card.dataset.prazo || "";
-        modalObs.value = card.dataset.observacao || "";
-
-        // ==== UNIFIED PAIR HANDLING ====
-        const _parTipo = card.dataset.parTipo || "";
-        const _idSecundaria = card.dataset.idSecundaria || "";
-        const _funcaoIdSecundaria = card.dataset.funcaoIdSecundaria || "";
-        const _nomeSecundaria = card.dataset.nomeSecundaria || "";
-        const _parRepresentative = card.dataset.parRepresentative || "primary";
-
-        // For in-review + primary representative:
-        // primary → Finalizado (immediate), upload will set secondary → Em aprovação
         if (
-          _parTipo &&
-          novaColuna.id === "in-review" &&
-          _parRepresentative === "primary"
+          novaColuna?.id === "in-progress" &&
+          card.dataset.liberado === "0" &&
+          !holdMovel
         ) {
-          $.ajax({
-            type: "POST",
-            url: "insereFuncao.php",
-            data: {
-              imagem_id: card.dataset.idImagem,
-              funcao_id: card.dataset.idFuncao,
-              status: "Finalizado",
-            },
-          });
-          // Redirect the file upload to the secondary function
-          idfuncao_imagem = _idSecundaria || idfuncao_imagem;
-          subtitulo = _nomeSecundaria || subtitulo;
+          evt.from.appendChild(card);
+          const motivos = String(card.dataset.requirementBlockReasons || "")
+            .split("||")
+            .map((motivo) => motivo.trim())
+            .filter(Boolean);
+          alert(
+            motivos.length
+              ? `Esta função ainda não pode iniciar por:\n- ${motivos.join("\n- ")}`
+              : "Esta função ainda não foi liberada.",
+          );
+          return;
         }
 
-        // ==== END UNIFIED PAIR HANDLING ====
-
-        // Reset modal: mostra tudo inicialmente
-        restaurarCardModalPadrao();
-        document.querySelector(".modalPrazo").style.display = "flex";
-        document.querySelector(".modalObs").style.display = "flex";
-        document.querySelector(".modalUploads").style.display = "flex";
-        document.querySelector(".buttons").style.display = "flex";
-
-        // Limpa listas de arquivos ao abrir o modal
-        imagensSelecionadas = [];
-        arquivosFinais = [];
-        renderizarLista(imagensSelecionadas, "fileListPrevia");
-        renderizarLista(arquivosFinais, "fileListFinal");
-
-        // Ativar modal
-        cardModal.classList.add("active");
-
-        cardSelecionado.classList.add("selected");
-        configurarDropzone(
-          "drop-area-previa",
-          "fileElemPrevia",
-          "fileListPrevia",
-          imagensSelecionadas,
-        );
-        configurarDropzone(
-          "drop-area-final",
-          "fileElemFinal",
-          "fileListFinal",
-          arquivosFinais,
-        );
-        // Garantir que as sub-etapas (prévia / arquivo final) estejam visíveis por padrão
-        const etapaPreviaEl = document.getElementById("etapaPrevia");
-        const etapaFinalEl = document.getElementById("etapaFinal");
-        if (etapaPreviaEl) etapaPreviaEl.style.display = "";
-        if (etapaFinalEl) etapaFinalEl.style.display = "";
-
-        // Ajusta modal de acordo com a coluna de destino
-        switch (novaColuna.id) {
-          case "hold":
-            // Apenas observação e botões
-            document.querySelector(".modalPrazo").style.display = "none";
-            document.querySelector(".modalUploads").style.display = "none";
-            break;
-          case "in-progress":
-            // Apenas observação e botões
-            document.querySelector(".modalUploads").style.display = "none";
-            break;
-          case "in-review": // "Em aprovação"
-            // Mostra ambos inputs de arquivo (prévia e arquivo final)
-            document.querySelector(".modalPrazo").style.display = "none";
-            document.querySelector(".modalObs").style.display = "none";
-            document.querySelector(".modalUploads").style.display = "flex";
-            document.querySelector(".buttons").style.display = "none";
-            // // Em aprovação: somente envio de PRÉVIA (esconde envio de arquivo final)
-            // if (etapaPreviaEl) etapaPreviaEl.style.display = '';
-            // if (etapaFinalEl) etapaFinalEl.style.display = 'none';
-            break;
-          case "aguardando-direcao":
-            document.querySelector(".modalUploads").style.display = "none";
-            break;
-          case "done": // "Finalizado"
-            // Mostra prazo, observação e botões
-            document.querySelector(".modalPrazo").style.display = "flex";
-            document.querySelector(".modalObs").style.display = "flex";
-            document.querySelector(".modalUploads").style.display = "flex";
-            // // Finalizado: somente envio do ARQUIVO FINAL (esconde prévias)
-            // if (etapaPreviaEl) etapaPreviaEl.style.display = 'none';
-            // if (etapaFinalEl) etapaFinalEl.style.display = '';
-            break;
-          default:
-            // padrão: tudo visível
-            break;
+        if (novaColuna?.id === "in-progress" && requiresFileUpload) {
+          evt.from.appendChild(card);
+          alert(
+            "Existe arquivo pendente da etapa anterior. Envie o arquivo final antes de mover para Em andamento.",
+          );
+          return;
         }
 
-        // ✅ Sobrescreve se for tarefa-criada (regra final)
-        if (card.classList.contains("tarefa-criada")) {
+        if (novaColuna?.id === "hold" && deColuna?.id !== "hold") {
+          abrirFormularioFlowBlockHold(card, evt.from, evt.oldIndex);
+          return;
+        }
+
+        // Se houver pendências ao mover para 'Em andamento', apenas avisamos
+        // e impedimos a abertura do modal de card (cardModal). O movimento continua.
+        let bloquearAberturaModal = false;
+        if (novaColuna?.id === "in-progress") {
+          const qtdPendentes = document.querySelectorAll(
+            '.kanban-card.tarefa-imagem[data-requires-file-upload="1"]',
+          ).length;
+          if (qtdPendentes > 0) {
+            Swal.fire({
+              icon: "warning",
+              title: "Atenção",
+              text: `Existem ${qtdPendentes} card(s) com arquivo pendente.`,
+            });
+            bloquearAberturaModal = true;
+          }
+        }
+
+        console.log(
+          `Card movido de ${deColuna.id} para ${novaColuna.id}, índice: ${novoIndex}`,
+        );
+
+        // Só abre modal se mudou de coluna e não estivermos bloqueando a abertura
+        if (deColuna.id !== novaColuna.id) {
+          if (
+            typeof bloquearAberturaModal !== "undefined" &&
+            bloquearAberturaModal
+          ) {
+            // Não abre o cardModal por enquanto — apenas mantém o card movido.
+            card.classList.remove("selected");
+            return;
+          }
+          cardSelecionado = card;
+
+          // Armazena coluna de origem para uso em enviarImagens (bloqueio de comentários)
+          window._cardVeioDe = deColuna.id || "";
+
+          idfuncao_imagem = card.getAttribute("data-id");
+          idimagem = card.getAttribute("data-id-imagem");
+          titulo = card.querySelector("h5")?.innerText || "";
+          subtitulo = card.getAttribute("data-funcao_nome");
+          obra = card.getAttribute("data-obra_nome");
+          nome_status = card.getAttribute("data-nome_status");
+          statusAnterior = card.getAttribute("data-status-anterior");
+
+          const avisoStatusAnterior = cardModal.querySelector(
+            ".modal-item.statusAnterior",
+          );
+
+          if (avisoStatusAnterior) {
+            avisoStatusAnterior.hidden =
+              statusAnterior !== "Aprovado com ajustes";
+          }
+          console.log(statusAnterior, avisoStatusAnterior?.style.display);
+
+          // Preenche os campos comuns
+          modalPrazo.value = card.dataset.prazo || "";
+          modalObs.value = card.dataset.observacao || "";
+
+          // ==== UNIFIED PAIR HANDLING ====
+          const _parTipo = card.dataset.parTipo || "";
+          const _idSecundaria = card.dataset.idSecundaria || "";
+          const _funcaoIdSecundaria = card.dataset.funcaoIdSecundaria || "";
+          const _nomeSecundaria = card.dataset.nomeSecundaria || "";
+          const _parRepresentative =
+            card.dataset.parRepresentative || "primary";
+
+          // For in-review + primary representative:
+          // primary → Finalizado (immediate), upload will set secondary → Em aprovação
+          if (
+            _parTipo &&
+            novaColuna.id === "in-review" &&
+            _parRepresentative === "primary"
+          ) {
+            $.ajax({
+              type: "POST",
+              url: "insereFuncao.php",
+              data: {
+                imagem_id: card.dataset.idImagem,
+                funcao_id: card.dataset.idFuncao,
+                status: "Finalizado",
+              },
+            });
+            // Redirect the file upload to the secondary function
+            idfuncao_imagem = _idSecundaria || idfuncao_imagem;
+            subtitulo = _nomeSecundaria || subtitulo;
+          }
+
+          // ==== END UNIFIED PAIR HANDLING ====
+
+          // Reset modal: mostra tudo inicialmente
+          restaurarCardModalPadrao();
           document.querySelector(".modalPrazo").style.display = "flex";
           document.querySelector(".modalObs").style.display = "flex";
+          document.querySelector(".modalUploads").style.display = "flex";
           document.querySelector(".buttons").style.display = "flex";
-          document.querySelector(".modalUploads").style.display = "none";
-          document.querySelector(".statusAnterior").style.display = "none";
+
+          // Limpa listas de arquivos ao abrir o modal
+          imagensSelecionadas = [];
+          arquivosFinais = [];
+          renderizarLista(imagensSelecionadas, "fileListPrevia");
+          renderizarLista(arquivosFinais, "fileListFinal");
+
+          // Ativar modal
+          cardModal.classList.add("active");
+
+          cardSelecionado.classList.add("selected");
+          configurarDropzone(
+            "drop-area-previa",
+            "fileElemPrevia",
+            "fileListPrevia",
+            imagensSelecionadas,
+          );
+          configurarDropzone(
+            "drop-area-final",
+            "fileElemFinal",
+            "fileListFinal",
+            arquivosFinais,
+          );
+          // Garantir que as sub-etapas (prévia / arquivo final) estejam visíveis por padrão
+          const etapaPreviaEl = document.getElementById("etapaPrevia");
+          const etapaFinalEl = document.getElementById("etapaFinal");
+          if (etapaPreviaEl) etapaPreviaEl.style.display = "";
+          if (etapaFinalEl) etapaFinalEl.style.display = "";
+
+          // Ajusta modal de acordo com a coluna de destino
+          switch (novaColuna.id) {
+            case "hold":
+              // Apenas observação e botões
+              document.querySelector(".modalPrazo").style.display = "none";
+              document.querySelector(".modalUploads").style.display = "none";
+              break;
+            case "in-progress":
+              // Apenas observação e botões
+              document.querySelector(".modalUploads").style.display = "none";
+              break;
+            case "in-review": // "Em aprovação"
+              // Mostra ambos inputs de arquivo (prévia e arquivo final)
+              document.querySelector(".modalPrazo").style.display = "none";
+              document.querySelector(".modalObs").style.display = "none";
+              document.querySelector(".modalUploads").style.display = "flex";
+              document.querySelector(".buttons").style.display = "none";
+              // // Em aprovação: somente envio de PRÉVIA (esconde envio de arquivo final)
+              // if (etapaPreviaEl) etapaPreviaEl.style.display = '';
+              // if (etapaFinalEl) etapaFinalEl.style.display = 'none';
+              break;
+            case "aguardando-direcao":
+              document.querySelector(".modalUploads").style.display = "none";
+              break;
+            case "done": // "Finalizado"
+              // Mostra prazo, observação e botões
+              document.querySelector(".modalPrazo").style.display = "flex";
+              document.querySelector(".modalObs").style.display = "flex";
+              document.querySelector(".modalUploads").style.display = "flex";
+              // // Finalizado: somente envio do ARQUIVO FINAL (esconde prévias)
+              // if (etapaPreviaEl) etapaPreviaEl.style.display = 'none';
+              // if (etapaFinalEl) etapaFinalEl.style.display = '';
+              break;
+            default:
+              // padrão: tudo visível
+              break;
+          }
+
+          // ✅ Sobrescreve se for tarefa-criada (regra final)
+          if (card.classList.contains("tarefa-criada")) {
+            document.querySelector(".modalPrazo").style.display = "flex";
+            document.querySelector(".modalObs").style.display = "flex";
+            document.querySelector(".buttons").style.display = "flex";
+            document.querySelector(".modalUploads").style.display = "none";
+            document.querySelector(".statusAnterior").style.display = "none";
+          }
+
+          // Atualiza título do modal: nome da imagem quando há uploads, senão "Editar Card"
+          const _modalTitleDrag = document.getElementById("modalCardTitle");
+          if (_modalTitleDrag) {
+            _modalTitleDrag.textContent = card.classList.contains(
+              "tarefa-criada",
+            )
+              ? "Editar Card"
+              : titulo || "Editar Card";
+          }
+
+          // Posicionar modal ao lado da coluna de destino
+          const rect = novaColuna.getBoundingClientRect();
+          const modalWidth = cardModal.offsetWidth;
+          const modalHeight = cardModal.offsetHeight;
+
+          let left = rect.right + 10;
+          let top = rect.top - 120; // sobe 120px
+
+          if (left + modalWidth > window.innerWidth) {
+            left = rect.left - modalWidth - 10;
+          }
+
+          if (top < 10) {
+            top = 10;
+          }
+
+          if (top + modalHeight > window.innerHeight) {
+            top = window.innerHeight - modalHeight - 10;
+          }
+
+          cardModal.style.left = `${left}px`;
+          cardModal.style.top = `${top}px`;
         }
-
-        // Atualiza título do modal: nome da imagem quando há uploads, senão "Editar Card"
-        const _modalTitleDrag = document.getElementById("modalCardTitle");
-        if (_modalTitleDrag) {
-          _modalTitleDrag.textContent = card.classList.contains("tarefa-criada")
-            ? "Editar Card"
-            : titulo || "Editar Card";
-        }
-
-        // Posicionar modal ao lado da coluna de destino
-        const rect = novaColuna.getBoundingClientRect();
-        const modalWidth = cardModal.offsetWidth;
-        const modalHeight = cardModal.offsetHeight;
-
-        let left = rect.right + 10;
-        let top = rect.top - 120; // sobe 120px
-
-        if (left + modalWidth > window.innerWidth) {
-          left = rect.left - modalWidth - 10;
-        }
-
-        if (top < 10) {
-          top = 10;
-        }
-
-        if (top + modalHeight > window.innerHeight) {
-          top = window.innerHeight - modalHeight - 10;
-        }
-
-        cardModal.style.left = `${left}px`;
-        cardModal.style.top = `${top}px`;
-      }
-    },
-  });
+      },
+    });
   });
 } else {
-  console.warn("Sortable não foi carregado; o arrastar e soltar está indisponível.");
+  console.warn(
+    "Sortable não foi carregado; o arrastar e soltar está indisponível.",
+  );
 }
 
 function enviarImagens() {

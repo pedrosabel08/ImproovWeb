@@ -942,6 +942,8 @@ img {
   z-index: 1;
   background-color: var(--bg-body);
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 #indiceSelect {
@@ -1723,6 +1725,8 @@ p.imagem_nome {
   border: 1px solid #d9dde5;
   border-radius: 8px;
   background: #121212;
+  display: flex;
+  flex-direction: column;
 }
 
 .envios-comparison-side-toolbar {
@@ -1768,10 +1772,51 @@ p.imagem_nome {
   cursor: pointer;
 }
 
+.envios-comparison-previews {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 9px;
+  overflow-x: auto;
+  background: #eef1f5;
+  border-top: 1px solid #d9dde5;
+}
+
+.envios-comparison-previews[hidden] {
+  display: none !important;
+}
+
+.envios-comparison-preview {
+  width: 62px;
+  height: 46px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: #20242b;
+  color: #fff;
+  cursor: pointer;
+}
+
+.envios-comparison-preview:hover,
+.envios-comparison-preview.is-selected {
+  border-color: #2563eb;
+}
+
+.envios-comparison-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .envios-comparison-viewport {
   position: relative;
-  height: calc(100vh - 210px);
-  min-height: 420px;
+  height: calc(100vh - 276px);
+  min-height: 260px;
+  flex: 1 1 auto;
   overflow: hidden;
   display: flex;
   align-items: center;

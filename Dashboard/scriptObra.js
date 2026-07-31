@@ -7571,7 +7571,7 @@ function atualizarResumoImagens(imagens) {
     "#imagens-totais .imagens-totais-texto",
   );
 
-  const antecipadas = document.getElementById("antecipadas");
+  const antecipadas = document.getElementById("imagens-antecipadas");
 
   const antecipadasFiltradas = listaImagens.filter((imagem) => {
     return Number(imagem?.antecipada) === 1 || imagem?.antecipada === true;
@@ -7582,7 +7582,10 @@ function atualizarResumoImagens(imagens) {
   }
 
   if (antecipadas) {
-    antecipadas.textContent = formatarNumeroResumo(antecipadasFiltradas);
+    antecipadas.hidden = antecipadasFiltradas === 0;
+    antecipadas.textContent = antecipadasFiltradas
+      ? `${formatarNumeroResumo(antecipadasFiltradas)} ${antecipadasFiltradas === 1 ? "antecipada" : "antecipadas"}`
+      : "";
   }
 
   // A tabela pode estar filtrada, mas o dashboard continua exibindo todos

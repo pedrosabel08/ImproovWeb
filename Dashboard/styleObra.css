@@ -10478,15 +10478,15 @@ tr#linha-porcentagem {
   display: none !important;
 }
 .obra-dashboard {
-  --dashboard-border: #2a3a4e;
-  --dashboard-surface: #101d2d;
-  --dashboard-surface-hover: #15283d;
+  --dashboard-border: #d7e2ec;
+  --dashboard-surface: #ffffff;
+  --dashboard-surface-hover: #f5f9fc;
   margin: 14px 0 18px;
   padding: 16px;
   border: 1px solid var(--dashboard-border);
   border-radius: 12px;
-  background: linear-gradient(145deg, #0c1827, #101d2d);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+  background: linear-gradient(145deg, #ffffff, #f5f9fc);
+  box-shadow: 0 10px 26px rgba(35, 55, 75, 0.1);
 }
 .obra-dashboard-head,
 .obra-dashboard-detail-head {
@@ -10500,7 +10500,7 @@ tr#linha-porcentagem {
 }
 .obra-dashboard-eyebrow,
 .obra-dashboard-detail-head > div > span {
-  color: #7e9bb9;
+  color: #54708a;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -10509,17 +10509,17 @@ tr#linha-porcentagem {
 .obra-dashboard h2,
 .obra-dashboard h3 {
   margin: 3px 0 0;
-  color: #edf4fd;
+  color: #1f2d3d;
   font-size: 17px;
 }
 .obra-dashboard-hint,
 .obra-dashboard-detail-head small {
-  color: #91a4ba;
+  color: #6d8093;
   font-size: 12px;
 }
 .obra-dashboard-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(145px, 1fr));
+  grid-template-columns: repeat(3, minmax(145px, 1fr));
   gap: 10px;
 }
 .obra-dashboard-card {
@@ -10529,10 +10529,10 @@ tr#linha-porcentagem {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  border: 1px solid #263a50;
+  border: 1px solid #d7e2ec;
   border-radius: 10px;
   background: var(--dashboard-surface);
-  color: #e8f1fb;
+  color: #253546;
   text-align: left;
 }
 button.obra-dashboard-card {
@@ -10546,7 +10546,7 @@ button.obra-dashboard-card {
 }
 button.obra-dashboard-card:hover,
 button.obra-dashboard-card:focus-visible {
-  border-color: #4e91cf;
+  border-color: #72a8d6;
   background: var(--dashboard-surface-hover);
   outline: 0;
 }
@@ -10554,9 +10554,9 @@ button.obra-dashboard-card:active {
   transform: translateY(1px);
 }
 .obra-dashboard-card.is-selected {
-  border-color: #4e9ddd;
-  background: #152c45;
-  box-shadow: inset 0 0 0 1px rgba(102, 183, 246, 0.25);
+  border-color: #72a8d6;
+  background: #eef7ff;
+  box-shadow: inset 0 0 0 1px rgba(114, 168, 214, 0.18);
 }
 .obra-dashboard-card-icon {
   display: grid;
@@ -10568,24 +10568,24 @@ button.obra-dashboard-card:active {
   font-size: 15px;
 }
 .obra-dashboard-card-icon.is-blue {
-  color: #78b7ee;
-  background: #1b42622e;
+  color: #2779b8;
+  background: #e3f2fd;
 }
 .obra-dashboard-card-icon.is-amber {
-  color: #f5bd62;
-  background: #8756103b;
+  color: #b7791f;
+  background: #fff3d6;
 }
 .obra-dashboard-card-icon.is-violet {
-  color: #bb9bff;
-  background: #56399b36;
+  color: #7652b8;
+  background: #f0e9ff;
 }
 .obra-dashboard-card-icon.is-green {
-  color: #68d391;
-  background: #1d6b4140;
+  color: #29865b;
+  background: #def4e8;
 }
 .obra-dashboard-card-icon.is-cyan {
-  color: #6bd5e9;
-  background: #155c6d42;
+  color: #167b92;
+  background: #dff5f8;
 }
 .obra-dashboard-card-content {
   display: flex;
@@ -10593,37 +10593,37 @@ button.obra-dashboard-card:active {
   flex: 1;
   flex-direction: column;
   gap: 3px;
-  color: #9aacc0;
+  color: #65778a;
   font-size: 12px;
 }
 .obra-dashboard-card-content strong {
-  color: #f4f8fc;
+  color: #1f2d3d;
   font-size: 22px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .obra-dashboard-card-content small {
   overflow: hidden;
-  color: #8ea2b7;
+  color: #617489;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .obra-dashboard-card-chevron {
-  color: #7891a9;
+  color: #6c8298;
   font-size: 11px;
   transition: transform 0.25s ease;
 }
 .obra-dashboard-card.is-selected .obra-dashboard-card-chevron {
-  color: #8ec8f6;
+  color: #397fb8;
   transform: rotate(180deg);
 }
 .obra-dashboard-details {
   margin-top: 12px;
   overflow: hidden;
-  border: 1px solid #263a50;
+  border: 1px solid #d7e2ec;
   border-radius: 10px;
-  background: #0c1928;
+  background: #ffffff;
   animation: obraDashboardOpen 0.28s ease both;
 }
 .obra-dashboard-details[hidden],
@@ -10635,7 +10635,7 @@ button.obra-dashboard-card:active {
 }
 .obra-dashboard-detail-head {
   padding-bottom: 13px;
-  border-bottom: 1px solid #22364c;
+  border-bottom: 1px solid #e1e8ef;
 }
 .obra-dashboard-detail-head h3 {
   font-size: 16px;
@@ -10661,13 +10661,13 @@ button.obra-dashboard-card:active {
 .obra-dashboard-detail .imagem-tipo-item:focus-visible {
   border-radius: 6px;
   outline: 0;
-  background: #172b40;
+  background: #f1f7fc;
 }
 .obra-dashboard-detail .imagem-tipo-nome {
-  color: #d7e4f1;
+  color: #31465a;
 }
 .obra-dashboard-detail .imagem-tipo-total {
-  color: #e9f2fb;
+  color: #1f2d3d;
 }
 .obra-dashboard-pending-summary {
   display: flex;
@@ -10678,21 +10678,21 @@ button.obra-dashboard-card:active {
 .obra-dashboard-pending-summary span {
   padding: 4px 7px;
   border-radius: 99px;
-  background: #172b40;
-  color: #aac0d7;
+  background: #edf4fa;
+  color: #526d86;
   font-size: 11px;
 }
 .obra-dashboard-pending-summary .is-critical {
-  color: #ffb0b7;
-  background: #6a293535;
+  color: #b52a37;
+  background: #fff0f1;
 }
 .obra-dashboard-pending-summary .is-overdue {
-  color: #ffd08a;
-  background: #704c2038;
+  color: #99611a;
+  background: #fff6e7;
 }
 .obra-dashboard-pending-summary .is-sla {
-  color: #8ce7b0;
-  background: #1a6a4138;
+  color: #287451;
+  background: #e9f8ef;
 }
 .obra-dashboard-pending-list {
   display: grid;
@@ -10700,10 +10700,10 @@ button.obra-dashboard-card:active {
   padding-top: 12px;
 }
 .obra-dashboard-pending-group {
-  border: 1px solid #23394f;
+  border: 1px solid #d6e1eb;
   border-radius: 8px;
   overflow: hidden;
-  background: #101f30;
+  background: #fbfdff;
 }
 .obra-dashboard-pending-group-toggle {
   display: flex;
@@ -10712,8 +10712,8 @@ button.obra-dashboard-card:active {
   justify-content: space-between;
   padding: 10px 12px;
   border: 0;
-  background: #13253a;
-  color: #dceafa;
+  background: #f2f7fb;
+  color: #334a61;
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -10727,7 +10727,7 @@ button.obra-dashboard-card:active {
   min-width: 0;
 }
 .obra-dashboard-pending-group-toggle > .fa-chevron-down {
-  color: #7f9ab6;
+  color: #637f9b;
   transition: transform 0.25s ease;
 }
 .obra-dashboard-pending-group.is-open
@@ -10741,54 +10741,54 @@ button.obra-dashboard-card:active {
   font-size: 14px;
 }
 .obra-dashboard-pending-group.pending-group--critical {
-  border-color: #7c2f3c;
+  border-color: #e6a0aa;
 }
 .obra-dashboard-pending-group.pending-group--critical .obra-dashboard-pending-group-toggle {
-  background: #3a1d28;
-  color: #ffd9df;
+  background: #fff1f3;
+  color: #9f2432;
 }
 .pending-group--critical .pending-group-icon {
-  color: #ff7b8d;
+  color: #cf3e51;
 }
 .obra-dashboard-pending-group.pending-group--overdue {
-  border-color: #805d28;
+  border-color: #e8c889;
 }
 .obra-dashboard-pending-group.pending-group--overdue .obra-dashboard-pending-group-toggle {
-  background: #3d2a16;
-  color: #ffebc6;
+  background: #fff8e9;
+  color: #805215;
 }
 .pending-group--overdue .pending-group-icon {
-  color: #ffc15f;
+  color: #c98a24;
 }
 .obra-dashboard-pending-group.pending-group--today {
-  border-color: #246283;
+  border-color: #93cae5;
 }
 .obra-dashboard-pending-group.pending-group--today .obra-dashboard-pending-group-toggle {
-  background: #153445;
-  color: #d7f2ff;
+  background: #edf9ff;
+  color: #24607d;
 }
 .pending-group--today .pending-group-icon {
-  color: #65cdf8;
+  color: #2585b5;
 }
 .obra-dashboard-pending-group.pending-group--tomorrow {
-  border-color: #4c458a;
+  border-color: #b9afe6;
 }
 .obra-dashboard-pending-group.pending-group--tomorrow .obra-dashboard-pending-group-toggle {
-  background: #29254d;
-  color: #e6e0ff;
+  background: #f5f2ff;
+  color: #55468b;
 }
 .pending-group--tomorrow .pending-group-icon {
-  color: #aea2ff;
+  color: #7564c5;
 }
 .obra-dashboard-pending-group.pending-group--upcoming {
-  border-color: #2f6f5e;
+  border-color: #9acdb8;
 }
 .obra-dashboard-pending-group.pending-group--upcoming .obra-dashboard-pending-group-toggle {
-  background: #17382f;
-  color: #d7f8ea;
+  background: #effaf4;
+  color: #2b7050;
 }
 .pending-group--upcoming .pending-group-icon {
-  color: #6ce0af;
+  color: #35986c;
 }
 .obra-dashboard-pending-group-content {
   display: grid;
@@ -10815,11 +10815,11 @@ button.obra-dashboard-card:active {
   display: grid;
   gap: 6px;
   padding: 11px;
-  border: 1px solid #2a4057;
+  border: 1px solid #d7e3ed;
   border-left: 3px solid #4d9ad8;
   border-radius: 7px;
   color: inherit;
-  background: #102236;
+  background: #ffffff;
   text-decoration: none;
   transition:
     background-color 0.18s ease,
@@ -10827,7 +10827,7 @@ button.obra-dashboard-card:active {
 }
 .obra-dashboard-pending-item:hover {
   border-color: #63aee9;
-  background: #152d45;
+  background: #f3f9fe;
 }
 .obra-dashboard-pending-item.is-critical {
   border-left-color: #f15f70;
@@ -10844,21 +10844,21 @@ button.obra-dashboard-card:active {
 }
 .obra-dashboard-pending-item h4 {
   margin: 0;
-  color: #eff6ff;
+  color: #22364b;
   font-size: 13px;
 }
 .obra-dashboard-pending-item small {
-  color: #9db1c5;
+  color: #64788d;
   font-size: 11px;
 }
 .obra-dashboard-pending-item .sla-label {
   font-weight: 700;
 }
 .obra-dashboard-pending-item.is-critical .sla-label {
-  color: #ff9da8;
+  color: #c94150;
 }
 .obra-dashboard-pending-item.is-overdue .sla-label {
-  color: #f8c26f;
+  color: #bd7a22;
 }
 #dashboardEntregasHost .entregas-container {
   display: block !important;
@@ -10930,4 +10930,73 @@ button.obra-dashboard-card:active {
   .obra-dashboard-card {
     min-height: 62px;
   }
+}
+
+/* Preferência escura do sistema: mantém o visual original da tela da obra. */
+@media (prefers-color-scheme: dark) {
+  .obra-dashboard {
+    --dashboard-border: #2a3a4e;
+    --dashboard-surface: #101d2d;
+    --dashboard-surface-hover: #15283d;
+    background: linear-gradient(145deg, #0c1827, #101d2d);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+  }
+  .obra-dashboard-eyebrow,
+  .obra-dashboard-detail-head > div > span { color: #7e9bb9; }
+  .obra-dashboard h2,
+  .obra-dashboard h3 { color: #edf4fd; }
+  .obra-dashboard-hint,
+  .obra-dashboard-detail-head small { color: #91a4ba; }
+  .obra-dashboard-card {
+    border-color: #263a50;
+    background: var(--dashboard-surface);
+    color: #e8f1fb;
+  }
+  button.obra-dashboard-card:hover,
+  button.obra-dashboard-card:focus-visible { border-color: #4e91cf; background: var(--dashboard-surface-hover); }
+  .obra-dashboard-card.is-selected { border-color: #4e9ddd; background: #152c45; box-shadow: inset 0 0 0 1px rgba(102, 183, 246, 0.25); }
+  .obra-dashboard-card-icon.is-blue { color: #78b7ee; background: #1b42622e; }
+  .obra-dashboard-card-icon.is-amber { color: #f5bd62; background: #8756103b; }
+  .obra-dashboard-card-icon.is-violet { color: #bb9bff; background: #56399b36; }
+  .obra-dashboard-card-icon.is-green { color: #68d391; background: #1d6b4140; }
+  .obra-dashboard-card-icon.is-cyan { color: #6bd5e9; background: #155c6d42; }
+  .obra-dashboard-card-content { color: #9aacc0; }
+  .obra-dashboard-card-content strong { color: #f4f8fc; }
+  .obra-dashboard-card-content small { color: #8ea2b7; }
+  .obra-dashboard-card-chevron { color: #7891a9; }
+  .obra-dashboard-card.is-selected .obra-dashboard-card-chevron { color: #8ec8f6; }
+  .obra-dashboard-details { border-color: #263a50; background: #0c1928; }
+  .obra-dashboard-detail-head { border-bottom-color: #22364c; }
+  .obra-dashboard-detail .imagem-tipo-item:hover,
+  .obra-dashboard-detail .imagem-tipo-item:focus-visible { background: #172b40; }
+  .obra-dashboard-detail .imagem-tipo-nome { color: #d7e4f1; }
+  .obra-dashboard-detail .imagem-tipo-total { color: #e9f2fb; }
+  .obra-dashboard-pending-summary span { background: #172b40; color: #aac0d7; }
+  .obra-dashboard-pending-summary .is-critical { color: #ffb0b7; background: #6a293535; }
+  .obra-dashboard-pending-summary .is-overdue { color: #ffd08a; background: #704c2038; }
+  .obra-dashboard-pending-summary .is-sla { color: #8ce7b0; background: #1a6a4138; }
+  .obra-dashboard-pending-group { border-color: #23394f; background: #101f30; }
+  .obra-dashboard-pending-group-toggle { background: #13253a; color: #dceafa; }
+  .obra-dashboard-pending-group-toggle > .fa-chevron-down { color: #7f9ab6; }
+  .obra-dashboard-pending-group.pending-group--critical { border-color: #7c2f3c; }
+  .obra-dashboard-pending-group.pending-group--critical .obra-dashboard-pending-group-toggle { background: #3a1d28; color: #ffd9df; }
+  .pending-group--critical .pending-group-icon { color: #ff7b8d; }
+  .obra-dashboard-pending-group.pending-group--overdue { border-color: #805d28; }
+  .obra-dashboard-pending-group.pending-group--overdue .obra-dashboard-pending-group-toggle { background: #3d2a16; color: #ffebc6; }
+  .pending-group--overdue .pending-group-icon { color: #ffc15f; }
+  .obra-dashboard-pending-group.pending-group--today { border-color: #246283; }
+  .obra-dashboard-pending-group.pending-group--today .obra-dashboard-pending-group-toggle { background: #153445; color: #d7f2ff; }
+  .pending-group--today .pending-group-icon { color: #65cdf8; }
+  .obra-dashboard-pending-group.pending-group--tomorrow { border-color: #4c458a; }
+  .obra-dashboard-pending-group.pending-group--tomorrow .obra-dashboard-pending-group-toggle { background: #29254d; color: #e6e0ff; }
+  .pending-group--tomorrow .pending-group-icon { color: #aea2ff; }
+  .obra-dashboard-pending-group.pending-group--upcoming { border-color: #2f6f5e; }
+  .obra-dashboard-pending-group.pending-group--upcoming .obra-dashboard-pending-group-toggle { background: #17382f; color: #d7f8ea; }
+  .pending-group--upcoming .pending-group-icon { color: #6ce0af; }
+  .obra-dashboard-pending-item { border-color: #2a4057; background: #102236; }
+  .obra-dashboard-pending-item:hover { border-color: #63aee9; background: #152d45; }
+  .obra-dashboard-pending-item h4 { color: #eff6ff; }
+  .obra-dashboard-pending-item small { color: #9db1c5; }
+  .obra-dashboard-pending-item.is-critical .sla-label { color: #ff9da8; }
+  .obra-dashboard-pending-item.is-overdue .sla-label { color: #f8c26f; }
 }

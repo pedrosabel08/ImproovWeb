@@ -1017,12 +1017,15 @@ foreach ($funcoes as $funcao) {
         $liberada = false;
     }
 
-    $avaliacaoRequisitos = motor_requisitos_resultado(false, [], $liberada);
+    // A sequência acima permanece apenas como contexto do card legado. Para
+    // tarefas ainda não iniciadas, a decisão efetiva é sempre do motor central.
+    $legadoMotor = !$imagemEmHold;
+    $avaliacaoRequisitos = motor_requisitos_resultado(false, [], $legadoMotor);
     if ((string) ($funcao['status'] ?? '') === 'Não iniciado') {
         $avaliacaoRequisitos = motor_requisitos_avaliar_funcao_imagem(
             $conn,
             (int) $funcao['idfuncao_imagem'],
-            $liberada
+            $legadoMotor
         );
         $liberada = (bool) $avaliacaoRequisitos['elegivel'];
     }

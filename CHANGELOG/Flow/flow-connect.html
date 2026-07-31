@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flow Connect — Visão Geral</title>
+
+    <style>
+      :root {
+        --paper: #ffffff;
+        --text: #000000;
+        --muted: #555555;
+        --line: #cfcfcf;
+        --soft: #f5f5f5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #e9e9e9;
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        padding: 24px;
+      }
+
+      .page {
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto;
+        padding: 13mm 14mm 12mm;
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: 0 14px 38px rgba(0, 0, 0, 0.14);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--text);
+        font-size: 29px;
+        line-height: 1;
+        letter-spacing: -0.045em;
+      }
+
+      .subtitle {
+        max-width: 620px;
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.5;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 104px;
+        padding: 8px 11px;
+        border: 1px solid var(--text);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text);
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .definition {
+        display: grid;
+        grid-template-columns: 38px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: transparent;
+      }
+
+      .definition-icon {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--text);
+        border-radius: 9px;
+        background: transparent;
+        color: var(--text);
+        font-weight: 900;
+        font-size: 16px;
+      }
+
+      .definition h2,
+      .section-title {
+        margin: 0;
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .definition p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 10.5px;
+        line-height: 1.45;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 7px;
+      }
+
+      .section-heading::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: var(--line);
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 850;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: 1.05fr 24px 1.35fr 24px 1fr;
+        align-items: stretch;
+        gap: 6px;
+      }
+
+      .flow-card {
+        padding: 10px 11px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: transparent;
+      }
+
+      .flow-card.primary {
+        border: 2px solid var(--text);
+        background: transparent;
+      }
+
+      .flow-card h3 {
+        margin: 0 0 4px;
+        color: var(--text);
+        font-size: 10.5px;
+      }
+
+      .flow-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 10.5px;
+        line-height: 1.4;
+      }
+
+      .arrow {
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .two-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .event-card {
+        min-height: 112px;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: transparent;
+      }
+
+      .event-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 7px;
+      }
+
+      .event-icon {
+        width: 27px;
+        height: 27px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: transparent;
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .event-card h3 {
+        margin: 0;
+        color: var(--text);
+        font-size: 11px;
+      }
+
+      .event-card p {
+        margin: 1px 0 0;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .event-card ul,
+      .compact-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .event-card li,
+      .compact-list li {
+        position: relative;
+        padding-left: 9px;
+        color: var(--muted);
+        font-size: 9px;
+        line-height: 1.3;
+      }
+
+      .event-card li::before,
+      .compact-list li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 5px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--text);
+      }
+
+      .responsibilities {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 7px;
+      }
+
+      .responsibility {
+        padding: 9px 8px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: transparent;
+      }
+
+      .responsibility strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--text);
+        font-size: 9px;
+      }
+
+      .responsibility span {
+        display: block;
+        color: var(--muted);
+        font-size: 8px;
+        line-height: 1.35;
+      }
+
+      .principles {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 10px;
+      }
+
+      .principles-box,
+      .vision-box {
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: transparent;
+        color: var(--text);
+      }
+
+      .principles-box h3,
+      .vision-box h3 {
+        margin: 0 0 7px;
+        font-size: 10px;
+      }
+
+      .vision-box p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 9px;
+        line-height: 1.5;
+      }
+
+      .principles-box .compact-list {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      @media print {
+        html,
+        body {
+          width: 210mm;
+          height: 297mm;
+          background: #ffffff;
+        }
+
+        body {
+          padding: 0;
+        }
+
+        .page {
+          width: 210mm;
+          height: 297mm;
+          margin: 0;
+          box-shadow: none;
+          page-break-after: avoid;
+          page-break-inside: avoid;
+        }
+
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+
+      @media screen and (max-width: 900px) {
+        body {
+          padding: 12px;
+        }
+
+        .page {
+          width: 100%;
+          height: auto;
+          min-height: 100vh;
+          gap: 18px;
+        }
+
+        .flow {
+          grid-template-columns: 1fr;
+        }
+
+        .arrow {
+          transform: rotate(90deg);
+        }
+
+        .two-columns,
+        .principles {
+          grid-template-columns: 1fr;
+        }
+
+        .responsibilities {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="page">
+      <header>
+        <div>
+          <h1>Flow Connect</h1>
+          <p class="subtitle">
+            A camada central de comunicação do Flow, responsável por transformar
+            eventos do sistema em notificações, alertas, cobranças e
+            escalonamentos enviados à pessoa certa, no momento certo.
+          </p>
+        </div>
+
+        <div class="badge">Central de Comunicação</div>
+      </header>
+
+      <section class="definition">
+        <div class="definition-icon">FC</div>
+
+        <div>
+          <h2>Definição</h2>
+          <p>
+            O Flow Connect é um serviço independente que recebe todos os eventos
+            gerados pelos módulos do Flow, valida as regras de comunicação,
+            identifica os destinatários, define prioridade, canal e momento do
+            envio, além de registrar todo o histórico. Nenhum módulo envia
+            mensagens diretamente ao Slack: toda comunicação passa
+            obrigatoriamente pelo Flow Connect.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2 class="section-title">Fluxo recomendado</h2>
+        </div>
+
+        <div class="flow">
+          <div class="flow-card">
+            <h3>Módulos do Flow</h3>
+            <p>
+              Fotográfico, Kanban, Review, Render, Pendências, Aprovações e
+              demais processos.
+            </p>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="flow-card primary">
+            <h3>Flow Connect</h3>
+            <p>
+              Recebe o evento, valida regras, resolve destinatários, escolhe
+              template, agenda ou envia e registra o histórico.
+            </p>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="flow-card">
+            <h3>Canais de comunicação</h3>
+            <p>
+              Slack como canal inicial, com possibilidade futura de e-mail,
+              push, WhatsApp, Teams ou notificações internas.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2 class="section-title">Tipos de eventos</h2>
+        </div>
+
+        <div class="two-columns">
+          <article class="event-card immediate">
+            <div class="event-header">
+              <div class="event-icon">⚡</div>
+              <div>
+                <h3>Eventos imediatos</h3>
+                <p>Disparados quando uma ação acontece no sistema.</p>
+              </div>
+            </div>
+
+            <ul>
+              <li>Tarefa iniciada ou concluída</li>
+              <li>Arquivo enviado</li>
+              <li>Aprovação solicitada</li>
+              <li>Comentário recebido</li>
+              <li>Render finalizado</li>
+              <li>Pendência resolvida</li>
+              <li>Impedimento registrado</li>
+              <li>Plano fotográfico publicado</li>
+            </ul>
+          </article>
+
+          <article class="event-card temporal">
+            <div class="event-header">
+              <div class="event-icon">◷</div>
+              <div>
+                <h3>Eventos temporais</h3>
+                <p>
+                  Gerados pela passagem do tempo e processados via cron ou
+                  scheduler.
+                </p>
+              </div>
+            </div>
+
+            <ul>
+              <li>SLA próximo do vencimento</li>
+              <li>SLA vencido</li>
+              <li>Pendência sem movimentação</li>
+              <li>Aprovação aguardando resposta</li>
+              <li>Arquivo não enviado</li>
+              <li>Cobrança periódica</li>
+              <li>Escalonamento ao gestor</li>
+              <li>Resumos diários ou semanais</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2 class="section-title">Responsabilidades centrais</h2>
+        </div>
+
+        <div class="responsibilities">
+          <div class="responsibility">
+            <strong>Receber eventos</strong>
+            <span>Registrar tudo o que exige comunicação.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Resolver destinatários</strong>
+            <span>Determinar responsáveis, gestores e canais.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Aplicar regras</strong>
+            <span>Prioridade, horário, recorrência e escalonamento.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Padronizar mensagens</strong>
+            <span>Templates consistentes para cada evento.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Evitar duplicações</strong>
+            <span>Garantir idempotência e controle de reenvios.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Agrupar comunicações</strong>
+            <span>Reduzir ruído e impedir excesso de alertas.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Registrar histórico</strong>
+            <span>Manter rastreabilidade de envios e falhas.</span>
+          </div>
+
+          <div class="responsibility">
+            <strong>Suportar novos canais</strong>
+            <span>Expandir sem alterar os módulos de origem.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2 class="section-title">Princípios e visão</h2>
+        </div>
+
+        <div class="principles">
+          <div class="principles-box">
+            <h3>Princípios</h3>
+
+            <ul class="compact-list">
+              <li>Todo evento relevante passa pelo Flow Connect.</li>
+              <li>Os módulos não conhecem Slack, e-mail ou outros canais.</li>
+              <li>
+                O Flow informa o que aconteceu; o Flow Connect decide se,
+                quando, para quem e como comunicar.
+              </li>
+              <li>Regras de cobrança e escalonamento ficam centralizadas.</li>
+              <li>Comunicações devem ser úteis, rastreáveis e sem spam.</li>
+            </ul>
+          </div>
+
+          <div class="vision-box">
+            <h3>Visão</h3>
+
+            <p>
+              O Flow Connect será a central operacional de comunicação do
+              ecossistema Flow. Seu papel é conectar pessoas, processos e
+              módulos, garantindo que nenhuma informação importante dependa de
+              acompanhamento manual e que cada colaborador receba a comunicação
+              correta no momento adequado.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

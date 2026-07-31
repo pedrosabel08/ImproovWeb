@@ -668,7 +668,10 @@ try {
 				$text = sprintf('%s assinou o contrato de %s.', $person, $monthName);
 			}
 		}
-		slack_send_webhook($SLACK_WEBHOOK_CONTRATOS_URL, $text);
+		require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+		$flowConnectLogs = [];
+		$flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'contratos', 'contratos.documento.status_atualizado', 'documento', (string) ($docIdResolved ?: $docToken), $text, null, 'SLACK_WEBHOOK_CONTRATOS_URL', 'contrato:' . sha1((string) $docToken) . ':status:' . $status . ':v1', $flowConnectLogs);
+		if (!flow_connect_legacy_should_bypass('contratos', $flowConnectEventId)) slack_send_webhook($SLACK_WEBHOOK_CONTRATOS_URL, $text);
 	}
 
 	if ($currentStatus === null) {

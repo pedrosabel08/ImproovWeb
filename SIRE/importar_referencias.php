@@ -169,7 +169,7 @@ function sire_notify_slack_user(PDO $pdo, int $usuarioId, string $mensagem): boo
 
     try {
         $stmt = $pdo->prepare(
-            "SELECT nome_slack
+            "SELECT nome_slack, idcolaborador
              FROM usuario
              WHERE idusuario = :idusuario
                AND nome_slack IS NOT NULL
@@ -178,7 +178,8 @@ function sire_notify_slack_user(PDO $pdo, int $usuarioId, string $mensagem): boo
         );
         $stmt->bindValue(':idusuario', $usuarioId, PDO::PARAM_INT);
         $stmt->execute();
-        $slackUserId = trim((string) $stmt->fetchColumn());
+        $row = $stmt->fetch();
+        $slackUserId = trim((string) ($row['nome_slack'] ?? ''));
     } catch (Throwable $e) {
         sire_log('Slack: erro ao buscar usuário ' . $usuarioId . ': ' . $e->getMessage(), 'WARN');
         return false;
@@ -188,6 +189,14 @@ function sire_notify_slack_user(PDO $pdo, int $usuarioId, string $mensagem): boo
         sire_log('Slack: usuário ' . $usuarioId . ' sem nome_slack.', 'WARN');
         return false;
     }
+
+    require_once __DIR__ . '/../conexaoMain.php';
+    require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+    $flowConnectConn = conectarBanco();
+    $flowConnectLogs = [];
+    $flowConnectEventId = flow_connect_publish_legacy_immediate($flowConnectConn, 'sire', 'sire.importacao_referencias.falhou', 'sire_importacao', sha1($mensagem), $mensagem, (int) ($row['idcolaborador'] ?? 0), null, 'sire:' . sha1($mensagem) . ':v1', $flowConnectLogs);
+    $flowConnectConn->close();
+    if (flow_connect_legacy_should_bypass('sire', $flowConnectEventId)) return true;
 
     $payload = [
         'channel' => $slackUserId,

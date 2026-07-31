@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/../config/secure_env.php';
+require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 improov_load_env_once();
 
 if (!function_exists('_mencao_normalize_name')) {
@@ -134,12 +135,11 @@ if (!function_exists('_mencao_resolve_slack_user')) {
  * @param int|null $remetente_id  idcolaborador of sender (skipped to avoid self-DM)
  * @return array   ['enviados' => int, 'ignorados' => int, 'logs' => string[]]
  */
-function enviarSlackMencoes($conn, $mencionados, $nomeRemetente, $nomeFuncao, $nomeImagem, $nomeObra, $remetente_id = null): array
+function enviarSlackMencoes($conn, $mencionados, $nomeRemetente, $nomeFuncao, $nomeImagem, $nomeObra, $remetente_id = null, array $flowConnectContext = []): array
 {
     if (empty($mencionados)) return ['enviados' => 0, 'ignorados' => 0, 'logs' => ['mencoes_vazias']];
 
     $token = getenv('SLACK_TOKEN') ?: null;
-    if (!$token) return ['enviados' => 0, 'ignorados' => 0, 'logs' => ['sem_slack_token']];
 
     $link = 'https://improov.com.br/flow/ImproovWeb/FlowReview/index.php'
         . ($nomeObra ? '?obra_nome=' . rawurlencode($nomeObra) : '');
@@ -154,9 +154,37 @@ function enviarSlackMencoes($conn, $mencionados, $nomeRemetente, $nomeFuncao, $n
     $sent     = [];
     $enviados = 0;
     $ignorados = 0;
+    $flowConnectEventos = 0;
     foreach ($mencionados as $mid) {
         $mid = intval($mid);
         if (!$mid || in_array($mid, $sent, true)) { $ignorados++; continue; }
+
+        $mentionIds = is_array($flowConnectContext['mencao_ids'] ?? null) ? $flowConnectContext['mencao_ids'] : [];
+        $event = \FlowConnect\Application\FlowReviewEventFactory::mention(array_merge($flowConnectContext, [
+            'mencao_id' => isset($mentionIds[$mid]) ? (int)$mentionIds[$mid] : null,
+            'mencionado_id' => $mid,
+            'autor_id' => $remetente_id ? (int)$remetente_id : 0,
+            'autor_nome' => (string)$nomeRemetente,
+            'funcao_nome' => (string)$nomeFuncao,
+            'imagem_nome' => (string)$nomeImagem,
+            'obra_nome' => (string)$nomeObra,
+            'flow_review_url' => flow_connect_config()['flow_review']['url'],
+            'producer' => 'FlowReview/mencao_slack_helper.php',
+        ]));
+        $flowConnectEventId = flow_connect_publish_if_enabled($conn, 'mention', $event, $logs);
+        if ($flowConnectEventId > 0) {
+            $flowConnectEventos++;
+        }
+        if (flow_connect_should_bypass_legacy('mention', $flowConnectEventId)) {
+            $logs[] = "legacy_slack_bypassed_colab={$mid}:event={$flowConnectEventId}";
+            $sent[] = $mid;
+            continue;
+        }
+        if (!$token) {
+            $logs[] = "sem_slack_token_colab={$mid}";
+            $sent[] = $mid;
+            continue;
+        }
 
         $userId = _mencao_resolve_slack_user($conn, $mid, $token, $logs);
         if ($userId) {
@@ -168,5 +196,5 @@ function enviarSlackMencoes($conn, $mencionados, $nomeRemetente, $nomeFuncao, $n
         $sent[] = $mid;
     }
 
-    return ['enviados' => $enviados, 'ignorados' => $ignorados, 'logs' => $logs];
+    return ['enviados' => $enviados, 'ignorados' => $ignorados, 'flow_connect_eventos' => $flowConnectEventos, 'logs' => $logs];
 }

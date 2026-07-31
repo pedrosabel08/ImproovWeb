@@ -64,6 +64,10 @@ if ($success) {
 
         if ($slackWebhookUrl) {
             $slackMessage = ['text' => "A imagem $nomeImagem foi feita a pós."];
+            require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+            $flowConnectLogs = [];
+            $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'pos_producao', 'pos.imagem.finalizada', 'pos_producao', $idPos, (string) $slackMessage['text'], null, 'SLACK_WEBHOOK_POS_URL', "pos:{$idPos}:status:{$newStatus}:v1", $flowConnectLogs);
+            if (!flow_connect_legacy_should_bypass('pos_producao', $flowConnectEventId)) {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $slackWebhookUrl);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -75,6 +79,7 @@ if ($success) {
                 error_log('toggle_status_pos: Erro Slack: ' . curl_error($ch));
             }
             curl_close($ch);
+            }
         }
     }
 }

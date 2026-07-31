@@ -1,6 +1,7 @@
 import os
 import hashlib
 import json
+import base64
 import pymysql
 import subprocess
 from datetime import datetime
@@ -136,6 +137,32 @@ def send_webhook_message(message):
     except Exception as e:
         log_and_print(f"Excecao ao enviar webhook: {e}", "error")
     return False
+
+
+def flow_connect_publish_immediate(event_key, responsavel_id, message, webhook=False):
+    """Publica no outbox PHP e informa se o modo active assumiu o envio."""
+    payload = {
+        "module": "render",
+        "event_type": "render.job.transicao",
+        "entity_type": "render_job",
+        "entity_id": str(event_key),
+        "message": message,
+        "recipient_collaborator_id": None if webhook else int(responsavel_id or 0),
+        "webhook_env": "SLACK_WEBHOOK_URL" if webhook else None,
+        "idempotency_key": "render:%s:%s:v1" % (event_key, "channel" if webhook else "responsible"),
+    }
+    bridge = os.path.normpath(os.path.join(script_dir, "..", "FlowConnect", "scripts", "publish_legacy_event.php"))
+    try:
+        encoded = base64.b64encode(json.dumps(payload, ensure_ascii=False).encode("utf-8")).decode("ascii")
+        result = subprocess.run(["php", bridge, encoded], capture_output=True, text=True, timeout=15)
+        if result.returncode != 0:
+            log_and_print("Flow Connect nao aceitou evento Render.", "warning")
+            return False
+        data = json.loads(result.stdout.strip() or "{}")
+        return bool(data.get("bypass_legacy"))
+    except Exception as exc:
+        log_and_print(f"Flow Connect indisponivel para Render: {exc}", "warning")
+        return False
 
 
 def get_user_id_by_name(user_name):
@@ -325,7 +352,7 @@ def send_transition_notifications(
     if claim_attempt_event(
         cursor, attempt_id, "SLACK_CANAL", channel_key, {"message": message}
     ):
-        if send_webhook_message(message):
+        if flow_connect_publish_immediate(channel_key, None, message, webhook=True) or send_webhook_message(message):
             log_and_print(f"Slack enviado para o canal ({image_name}).")
         else:
             release_attempt_event(cursor, attempt_id, "SLACK_CANAL", channel_key)
@@ -349,7 +376,7 @@ def send_transition_notifications(
             {"message": message, "user_id": user_id},
         ):
             continue
-        if send_dm_to_user(user_id, message):
+        if flow_connect_publish_immediate(dm_key, responsavel_id, message) or send_dm_to_user(user_id, message):
             log_and_print(f"Slack DM enviada para colaborador {responsavel_id}.")
         else:
             release_attempt_event(cursor, attempt_id, "SLACK_DM", dm_key)

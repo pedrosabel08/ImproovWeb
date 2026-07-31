@@ -841,6 +841,11 @@ function send_slack_notification_for_colaborador($colaborador_id, array $meta, $
     $statusText = $ok ? 'enviado com sucesso' : 'falhou ao enviar';
     $text = "Olá {$mention}, o arquivo *{$original}* foi {$statusText}. Destino: `{$remote_path}`";
 
+    require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+    $flowConnectLogs = [];
+    $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'upload_worker', 'arquivo.upload.worker_status', 'upload_job', (string) ($meta['job_id'] ?? sha1($original . '|' . $remote_path)), $text, (int) $colaborador_id, null, 'upload_worker:' . sha1(json_encode([$meta['job_id'] ?? null, $original, $remote_path, $ok])) . ':v1', $flowConnectLogs);
+    if (flow_connect_legacy_should_bypass('upload_worker', $flowConnectEventId)) return true;
+
     // We must DM the user (no channels). Resolve user ID if nome_slack isn't already an ID.
     $userId = null;
     if ($looksLikeUserId) {

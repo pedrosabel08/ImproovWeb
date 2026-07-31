@@ -200,7 +200,11 @@ function fotografico_enviar_notificacoes_pendentes(mysqli $conn): void
             $message = '*' . (string) ($notification['titulo'] ?? 'Atualizacao do fotografico') . "*\n"
                 . (string) ($notification['mensagem'] ?? '') . "\n"
                 . 'Abrir plano: https://improov/ImproovWeb/Fotografico/index.php?plano_id=' . $planId;
-            fotografico_slack_enviar_dm($conn, (int) ($notification['recipient_id'] ?? 0), $message);
+            require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+            $flowConnectLogs = [];
+            $recipientId = (int) ($notification['recipient_id'] ?? 0);
+            $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'fotografico', 'fotografico.plano.notificacao', 'fotografico_plano', $planId, $message, $recipientId, null, 'fotografico:plano:' . $planId . ':chave:' . (string) ($notification['key'] ?? '') . ':recipient:' . $recipientId . ':v1', $flowConnectLogs);
+            if (!flow_connect_legacy_should_bypass('fotografico', $flowConnectEventId)) fotografico_slack_enviar_dm($conn, $recipientId, $message);
         } catch (Throwable $error) {
             error_log('[Fotografico/Slack] falha apos commit: ' . $error->getMessage());
         }

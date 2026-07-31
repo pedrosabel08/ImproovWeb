@@ -19,6 +19,7 @@ require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 
 use phpseclib3\Net\SFTP;
 use Dotenv\Dotenv;
@@ -335,11 +336,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($is_animacao_review) {
             $stmtAnimContext = $conn->prepare(
-                "SELECT fa.status, fa.colaborador_id, fa.funcao_id, fun.nome_funcao, i.imagem_nome, u.nome_slack
+                "SELECT fa.status, fa.colaborador_id, fa.funcao_id, fun.nome_funcao, i.imagem_nome, u.nome_slack,
+                        i.idimagens_cliente_obra AS imagem_id, o.idobra AS obra_id,
+                        COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra) AS obra_nome
                  FROM funcao_animacao fa
                  LEFT JOIN funcao fun ON fun.idfuncao = fa.funcao_id
                  LEFT JOIN animacao a ON a.idanimacao = fa.animacao_id
                  LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = a.imagem_id
+                 LEFT JOIN obra o ON o.idobra = i.obra_id
                  LEFT JOIN colaborador c ON c.idcolaborador = fa.colaborador_id
                  LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
                  WHERE fa.id = ?
@@ -393,13 +397,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtAnimHist->close();
                 exit;
             }
+            $historicoAnimacaoId = (int)$conn->insert_id;
             $stmtAnimHist->close();
 
-            if (!empty($animContext['nome_slack'])) {
+            $flowConnectAnimationEvent = \FlowConnect\Application\FlowReviewEventFactory::task([
+                'funcao_animacao_id' => (int)$funcao_animacao_id,
+                'funcao_id' => (int)($animContext['funcao_id'] ?? 0),
+                'imagem_id' => (int)($animContext['imagem_id'] ?? $imagem_id),
+                'obra_id' => (int)($animContext['obra_id'] ?? 0),
+                'colaborador_responsavel_id' => (int)$colaborador_id,
+                'revisor_id' => (int)$responsavel,
+                'historico_aprovacao_id' => $historicoAnimacaoId,
+                'status_anterior' => (string)$status_anterior,
+                'status_novo' => (string)$status,
+                'decisao' => (string)$tipoRevisao,
+                'tipo_fluxo' => 'animacao',
+                'imagem_nome' => (string)$imagem_nome_animacao,
+                'funcao_nome' => (string)$nome_funcao_animacao,
+                'obra_nome' => (string)($animContext['obra_nome'] ?? ''),
+                'revisor_nome' => (string)$nome_responsavel,
+                'flow_review_url' => flow_connect_config()['flow_review']['url'],
+                'producer' => 'FlowReview/revisarTarefa.php',
+            ]);
+            $flowConnectAnimationEventId = flow_connect_publish_if_enabled($conn, 'task', $flowConnectAnimationEvent, $resultadoFinal['logs']);
+
+            if (!empty($animContext['nome_slack']) && !flow_connect_should_bypass_legacy('task', $flowConnectAnimationEventId)) {
                 $slackLog = [];
                 $mensagemAnimacao = "A {$nome_funcao_animacao} da imagem {$imagem_nome_animacao} foi revisada por {$nome_responsavel}. Status: {$status}.";
                 enviarNotificacaoSlack($animContext['nome_slack'], $mensagemAnimacao, $slackLog);
                 $resultadoFinal['logs'] = array_merge($resultadoFinal['logs'], $slackLog);
+            } elseif (flow_connect_should_bypass_legacy('task', $flowConnectAnimationEventId)) {
+                $resultadoFinal['logs'][] = 'Slack animação legado ignorado pelo Flow Connect event=' . $flowConnectAnimationEventId;
             }
 
             notifyFlowReviewUpdate($conn, 'approval.changed', [
@@ -427,15 +455,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $imagem_id_context = $imagem_id ? (int)$imagem_id : null;
         $colaborador_id_context = 0;
         $status_funcao_context = null;
-        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id, fi.colaborador_id, fi.status
+        $obra_id_context = 0;
+        $obra_nome_context = '';
+        $imagem_nome_context = (string)$imagem_nome;
+        $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id, fi.colaborador_id, fi.status,
+                ico.imagem_nome, o.idobra, COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra)
             FROM funcao_imagem fi
             LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
+            LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+            LEFT JOIN obra o ON o.idobra = ico.obra_id
             WHERE fi.idfuncao_imagem = ?
             LIMIT 1");
         if ($stmtFuncaoContext) {
             $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
             $stmtFuncaoContext->execute();
-            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context);
+            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context, $imagem_nome_context, $obra_id_context, $obra_nome_context);
             $stmtFuncaoContext->fetch();
             $stmtFuncaoContext->close();
             if ($imagem_id_context_db) {
@@ -500,6 +534,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status_ant_dir = $status_funcao_context ?: "Em aprovação";
             $novoHistoricoDirecao = false;
             $historicoDirecaoId = 0;
+            $flowConnectDirectionEventId = 0;
 
             $conn->begin_transaction();
             try {
@@ -600,6 +635,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Aprovacao de direcao nao foi confirmada no banco.');
                 }
 
+                if ($novoHistoricoDirecao) {
+                    $flowConnectDirectionContext = [
+                        'historico_direcao_id' => (int)$historicoDirecaoId,
+                        'funcao_imagem_id' => (int)$idfuncao_imagem,
+                        'funcao_id' => (int)$funcao_id_context,
+                        'imagem_id' => (int)$imagem_id_context,
+                        'obra_id' => (int)$obra_id_context,
+                        'colaborador_responsavel_id' => (int)$colaborador_id,
+                        'revisor_id' => (int)$responsavel,
+                        'status_anterior' => (string)$status_ant_dir,
+                        'status_novo' => (string)$status_dir,
+                        'decisao' => (string)$tipoRevisao,
+                        'tipo_fluxo' => 'imagem',
+                        'imagem_nome' => (string)$imagem_nome_context,
+                        'funcao_nome' => (string)($nome_funcao_db ?: $nome_funcao),
+                        'obra_nome' => (string)$obra_nome_context,
+                        'revisor_nome' => (string)$nome_responsavel,
+                        'flow_review_url' => flow_connect_config()['flow_review']['url'],
+                        'producer' => 'FlowReview/revisarTarefa.php',
+                    ];
+                    $flowConnectTaskToDirection = \FlowConnect\Application\FlowReviewEventFactory::taskSentToDirection($flowConnectDirectionContext);
+                    $flowConnectTaskToDirectionId = flow_connect_publish_if_enabled($conn, 'direction', $flowConnectTaskToDirection, $resultadoFinal['logs']);
+                    $flowConnectDirectionEvent = \FlowConnect\Application\FlowReviewEventFactory::direction($flowConnectDirectionContext);
+                    if ($flowConnectTaskToDirectionId > 0) {
+                        $stmtFlowCause = $conn->prepare('SELECT event_uuid FROM flow_connect_events WHERE id=? LIMIT 1');
+                        if ($stmtFlowCause) {
+                            $stmtFlowCause->bind_param('i', $flowConnectTaskToDirectionId);
+                            $stmtFlowCause->execute();
+                            $stmtFlowCause->bind_result($flowConnectCauseUuid);
+                            if ($stmtFlowCause->fetch()) {
+                                $flowConnectDirectionEvent['causation_event_uuid'] = $flowConnectCauseUuid;
+                            }
+                            $stmtFlowCause->close();
+                        }
+                    }
+                    $flowConnectDirectionEventId = flow_connect_publish_if_enabled($conn, 'direction', $flowConnectDirectionEvent, $resultadoFinal['logs']);
+                }
+
                 $conn->commit();
             } catch (Throwable $e) {
                 $conn->rollback();
@@ -616,7 +689,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'decision' => $tipoRevisao,
             ]);
 
-            if ($novoHistoricoDirecao) {
+            if ($novoHistoricoDirecao && !flow_connect_should_bypass_legacy('direction', $flowConnectDirectionEventId)) {
                 $stmtDirSlack = $conn->prepare(
                     "SELECT u.nome_slack FROM usuario u WHERE u.idcolaborador IN (21, 2) AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
                 );
@@ -628,6 +701,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     enviarNotificacaoSlack($rowSlack['nome_slack'], $mensagemDirecao, $resultadoFinal['logs']);
                 }
                 $stmtDirSlack->close();
+            } elseif ($novoHistoricoDirecao) {
+                $resultadoFinal['logs'][] = 'Slack direção legado ignorado pelo Flow Connect event=' . $flowConnectDirectionEventId;
             }
 
             $resultadoFinal['success']          = true;
@@ -701,6 +776,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         entregas_pendencias_ensure_schema($conn);
         aprovacao_interna_ensure_schema($conn);
+        $flowConnectTaskEventId = 0;
+        $historicoAprovacaoId = 0;
         $conn->begin_transaction();
 
         if (
@@ -1440,19 +1517,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conn->rollback();
                     $resultadoFinal['success'] = false;
                     $resultadoFinal['message'] = 'Erro no envio SFTP. Status da tarefa não foi alterado. Tente novamente.';
-                    $stmtSlackErr = $conn->prepare(
-                        "SELECT u.nome_slack FROM usuario u
-                     JOIN colaborador c ON u.idcolaborador = c.idcolaborador
-                     WHERE c.nome_colaborador IN ('Pedro Sabel', 'Andre L. de Souza')
-                       AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
-                    );
-                    $stmtSlackErr->execute();
-                    $resSlackErr = $stmtSlackErr->get_result();
-                    $msgErroSftp = "\u26a0\ufe0f Falha no envio SFTP: *{$imagem_resumida}* ({$nome_funcao}). Status da tarefa *n\u00e3o foi alterado*. Verifique a conex\u00e3o com o servidor.";
-                    while ($rowErr = $resSlackErr->fetch_assoc()) {
-                        enviarNotificacaoSlack($rowErr['nome_slack'], $msgErroSftp, $resultadoFinal['logs']);
+                    $ultimoErroSftp = !empty($resultadoFinal['logs']) ? (string)end($resultadoFinal['logs']) : 'sftp_upload_failed';
+                    $flowConnectSftpEvent = \FlowConnect\Application\FlowReviewEventFactory::sftpFailure([
+                        'funcao_imagem_id' => (int)$idfuncao_imagem,
+                        'funcao_id' => (int)$funcao_id_context,
+                        'imagem_id' => (int)($imagem_id_context ?: $imagem_id),
+                        'obra_id' => (int)$obra_id_context,
+                        'actor_id' => (int)$responsavel,
+                        'operacao' => 'envio_arquivo_revisado',
+                        'operation_id' => 'review_' . (int)$idfuncao_imagem . '_historico_' . (int)$historico_id . '_status_' . normalize_name((string)$status),
+                        'tentativa' => $sftp_action !== null ? 2 : 1,
+                        'erro_tecnico_seguro' => flow_connect_safe_error($ultimoErroSftp, 'sftp_upload_failed'),
+                        'tipo_fluxo' => 'imagem',
+                        'imagem_nome' => (string)($imagem_nome_context ?: $imagem_nome),
+                        'funcao_nome' => (string)($nome_funcao_db ?: $nome_funcao),
+                        'obra_nome' => (string)($nomenclatura_obra ?: $obra_nome_context),
+                        'flow_review_url' => flow_connect_config()['flow_review']['url'],
+                        'producer' => 'FlowReview/revisarTarefa.php',
+                    ]);
+                    $flowConnectSftpEventId = flow_connect_publish_if_enabled($conn, 'sftp', $flowConnectSftpEvent, $resultadoFinal['logs']);
+                    if (!flow_connect_should_bypass_legacy('sftp', $flowConnectSftpEventId)) {
+                        $stmtSlackErr = $conn->prepare(
+                            "SELECT u.nome_slack FROM usuario u
+                         JOIN colaborador c ON u.idcolaborador = c.idcolaborador
+                         WHERE c.nome_colaborador IN ('Pedro Sabel', 'Andre L. de Souza')
+                           AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
+                        );
+                        $stmtSlackErr->execute();
+                        $resSlackErr = $stmtSlackErr->get_result();
+                        $msgErroSftp = "\u26a0\ufe0f Falha no envio SFTP: *{$imagem_resumida}* ({$nome_funcao}). Status da tarefa *n\u00e3o foi alterado*. Verifique a conex\u00e3o com o servidor.";
+                        while ($rowErr = $resSlackErr->fetch_assoc()) {
+                            enviarNotificacaoSlack($rowErr['nome_slack'], $msgErroSftp, $resultadoFinal['logs']);
+                        }
+                        $stmtSlackErr->close();
+                    } else {
+                        $resultadoFinal['logs'][] = 'Slack SFTP legado ignorado pelo Flow Connect event=' . $flowConnectSftpEventId;
                     }
-                    $stmtSlackErr->close();
                     echo json_encode($resultadoFinal);
                     $conn->close();
                     exit;
@@ -1460,6 +1560,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // ─────────────────────────────────────────────────────────────────────
             }
         }
+
+        $flowConnectTaskEvent = \FlowConnect\Application\FlowReviewEventFactory::task([
+            'funcao_imagem_id' => (int)$idfuncao_imagem,
+            'funcao_id' => (int)$funcao_id_context,
+            'imagem_id' => (int)($imagem_id_context ?: $imagem_id),
+            'obra_id' => (int)$obra_id_context,
+            'colaborador_responsavel_id' => (int)$colaborador_id,
+            'revisor_id' => (int)$responsavel,
+            'historico_aprovacao_id' => (int)$historicoAprovacaoId,
+            'historico_id' => $historico_id ? (int)$historico_id : null,
+            'idempotency_historico_id' => $historico_id ? (int)$historico_id : (int)$historicoAprovacaoId,
+            'status_anterior' => (string)$status_anterior,
+            'status_novo' => (string)$status,
+            'decisao' => (string)$tipoRevisao,
+            'tipo_fluxo' => 'imagem',
+            'imagem_nome' => (string)($imagem_nome_context ?: $imagem_nome),
+            'funcao_nome' => (string)($nome_funcao_db ?: $nome_funcao),
+            'obra_nome' => (string)($nomenclatura_obra ?: $obra_nome_context),
+            'revisor_nome' => (string)$nome_responsavel,
+            'flow_review_url' => flow_connect_config()['flow_review']['url'],
+            'producer' => 'FlowReview/revisarTarefa.php',
+        ]);
+        $flowConnectTaskEventId = flow_connect_publish_if_enabled($conn, 'task', $flowConnectTaskEvent, $resultadoFinal['logs']);
 
         // Commit: BD confirmado (SFTP enviado, conflito pendente ou SFTP não necessário)
         $conn->commit();
@@ -1476,6 +1599,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($sftp_action !== null) {
             $resultadoFinal['logs'][] = 'Slack: notificação pulada (resolução de conflito SFTP).';
+        } elseif (flow_connect_should_bypass_legacy('task', $flowConnectTaskEventId)) {
+            $resultadoFinal['logs'][] = 'Slack revisão legado ignorado pelo Flow Connect event=' . $flowConnectTaskEventId;
         } else {
             // Slack envio final — busca paginada de usuários e envia notificação
             $normalizedTargets = array_map('normalize_name', $nome_colaboradores);

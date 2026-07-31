@@ -62,7 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'text' => "*$colaborador_nome* respondeu o questionário: \n✅ *Finalizado:* $finalizado\n*⏳ Hoje:* $hoje\n*🚧 Bloqueio:* $bloqueio"
             ];
 
+            require_once __DIR__ . '/FlowConnect/bootstrap.php';
+            $flowConnectLogs = [];
+            $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'respostas_diarias', 'resposta_diaria.questionario.respondido', 'resposta_diaria', (string) $stmt->insert_id, (string) $mensagem['text'], null, 'SLACK_WEBHOOK_DAILY_URL', 'resposta_diaria:' . (int) $stmt->insert_id . ':v1', $flowConnectLogs);
             // Enviar a mensagem usando cURL
+            if (!flow_connect_legacy_should_bypass('respostas_diarias', $flowConnectEventId)) {
             $ch = curl_init($slack_webhook_url);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($mensagem));
@@ -77,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 error_log('[submit_respostas.php] Slack error: ' . curl_error($ch));
             }
             curl_close($ch);
+            }
 
             echo json_encode(['success' => true, 'message' => 'Respostas enviadas com sucesso.']);
         } else {

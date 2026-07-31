@@ -39,6 +39,7 @@ header('Content-Type: application/json; charset=utf-8');
 $slackToken = getenv('SLACK_TOKEN') ?: ($_ENV['SLACK_TOKEN'] ?? null);
 
 require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 $conn = conectarBanco();
 
 $log = [];
@@ -48,10 +49,12 @@ $sqlBreach = "
     SELECT
         fi.idfuncao_imagem,
         fi.funcao_id,
+        fi.imagem_id,
         fun.nome_funcao,
         i.imagem_nome,
         o.nome_obra,
         o.nomenclatura,
+        o.idobra AS obra_id,
         sf.limite_horas,
         TIMESTAMPDIFF(HOUR, ha.data_aprovacao, NOW()) AS horas_em_aprovacao,
         ha.data_aprovacao AS sla_inicio
@@ -183,15 +186,9 @@ function enviarSlack(string $channel, string $mensagem, string $token): array
     return $data ?? ['ok' => false, 'error' => 'empty response'];
 }
 
-// Build a real_name → member_id cache so we only call users.list once
+// Cache legado inicializado apenas se algum evento não estiver em active.
 $slackIdCache = [];
-if ($slackToken) {
-    foreach ($approverSlackIds as $realName) {
-        $memberId = resolverSlackUserId($realName, $slackToken);
-        $slackIdCache[$realName] = $memberId;
-        $log[] = 'Lookup "' . $realName . '" → ' . ($memberId ?? 'NÃO ENCONTRADO');
-    }
-}
+$slackCacheReady = false;
 
 $notificados = 0;
 foreach ($breachedTasks as $task) {
@@ -203,6 +200,37 @@ foreach ($breachedTasks as $task) {
 
     $mensagem = "🚨 *SLA de aprovação excedido* — {$nomeFuncao} | _{$imagemNome}_ ({$nomeObra})"
               . "\n> Há *{$horas}h* em aprovação (limite: {$limite}h). Por favor, revise a tarefa no FlowReview.";
+
+    $flowConnectSlaEvent = \FlowConnect\Application\FlowReviewEventFactory::slaExceeded([
+        'funcao_imagem_id' => (int)$task['idfuncao_imagem'],
+        'funcao_id' => (int)$task['funcao_id'],
+        'imagem_id' => (int)$task['imagem_id'],
+        'obra_id' => (int)$task['obra_id'],
+        'funcao_nome' => (string)$nomeFuncao,
+        'imagem_nome' => (string)$imagemNome,
+        'obra_nome' => (string)$nomeObra,
+        'tempo_em_aprovacao' => $horas,
+        'limite_sla' => $limite,
+        'nivel' => 1,
+        'janela_referencia' => gmdate('Y-m-d'),
+        'flow_review_url' => flow_connect_config()['flow_review']['url'],
+        'producer' => 'FlowReview/sla_check_cron.php',
+    ]);
+    $flowConnectSlaEventId = flow_connect_publish_if_enabled($conn, 'sla', $flowConnectSlaEvent, $log);
+    if (flow_connect_should_bypass_legacy('sla', $flowConnectSlaEventId)) {
+        $log[] = "Slack SLA legado ignorado pelo Flow Connect event={$flowConnectSlaEventId}.";
+        $notificados++;
+        continue;
+    }
+
+    if (!$slackCacheReady && $slackToken) {
+        foreach ($approverSlackIds as $realName) {
+            $memberId = resolverSlackUserId($realName, $slackToken);
+            $slackIdCache[$realName] = $memberId;
+            $log[] = 'Lookup "' . $realName . '" → ' . ($memberId ?? 'NÃO ENCONTRADO');
+        }
+        $slackCacheReady = true;
+    }
 
     foreach ($approverSlackIds as $realName) {
         $memberId = $slackIdCache[$realName] ?? null;

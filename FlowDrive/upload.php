@@ -1396,7 +1396,12 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                                 if ($nomeSlack) {
                                                     // prefer token-based chat.postMessage when FLOW_TOKEN is set
                                                     $text = "$notifMsg2: $nome_imagem\nAcesse: https://improov.com.br/flow/ImproovWeb/inicio.php";
-                                                    if (!empty($FLOW_TOKEN)) {
+                                                    require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+                                                    $flowConnectLogs = [];
+                                                    $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'flowdrive', 'arquivo.upload.status', 'funcao_imagem', (string) $funcaoImagemId, $text, (int) $colabId, null, 'flowdrive:funcao:' . (int) $funcaoImagemId . ':arquivo:' . sha1((string) $nome_imagem) . ':status:' . sha1((string) $notifMsg2) . ':v1', $flowConnectLogs);
+                                                    if (flow_connect_legacy_should_bypass('flowdrive', $flowConnectEventId)) {
+                                                        $ok = true;
+                                                    } elseif (!empty($FLOW_TOKEN)) {
                                                         $ok = send_slack_token_message($FLOW_TOKEN, $nomeSlack, $text, $log);
                                                         if (!$ok) {
                                                             // Per request: do NOT fallback to webhook/channel — only token-based person messages

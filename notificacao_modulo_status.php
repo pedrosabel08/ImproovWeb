@@ -253,9 +253,10 @@ if ($affected > 0) {
         $targets = ['Pedro Sabel', 'Andre L. de Souza'];
         $targetsNorm = array_map('normalize_name', $targets);
         $slackNameMap = [];
+        $slackCollaboratorMap = [];
 
         $placeholders = implode(',', array_fill(0, count($targets), '?'));
-        $sqlUsers = "SELECT nome_usuario, nome_slack FROM usuario WHERE nome_usuario IN ($placeholders)";
+        $sqlUsers = "SELECT idcolaborador, nome_usuario, nome_slack FROM usuario WHERE nome_usuario IN ($placeholders)";
         $stmtTargets = $conn->prepare($sqlUsers);
         if ($stmtTargets) {
             $types = str_repeat('s', count($targets));
@@ -266,6 +267,7 @@ if ($affected > 0) {
                 $key = normalize_name($row['nome_usuario'] ?? '');
                 if ($key) {
                     $slackNameMap[$key] = $row['nome_slack'] ?: $row['nome_usuario'];
+                    $slackCollaboratorMap[$key] = (int) ($row['idcolaborador'] ?? 0);
                 }
             }
             $stmtTargets->close();
@@ -282,7 +284,11 @@ if ($affected > 0) {
             }
             $debugLogs[] = 'target=' . $targetLabel . ' candidate=' . $candidate . ' resolvedId=' . ($userId ?? 'null');
             if ($userId) {
-                $sent = slack_send_dm($slackToken, $userId, $mensagem);
+                require_once __DIR__ . '/FlowConnect/bootstrap.php';
+                $flowConnectLogs = [];
+                $collaboratorId = (int) ($slackCollaboratorMap[$norm] ?? 0);
+                $flowConnectEventId = $collaboratorId > 0 ? flow_connect_publish_legacy_immediate($conn, 'notificacoes_internas', 'notificacao.interna.visualizada', 'notificacao', (string) $id, $mensagem, $collaboratorId, null, 'notificacao:' . (int) $id . ':acao:' . $action . ':colaborador:' . $collaboratorId . ':v1', $flowConnectLogs) : 0;
+                $sent = flow_connect_legacy_should_bypass('notificacoes_internas', $flowConnectEventId) || slack_send_dm($slackToken, $userId, $mensagem);
                 $debugLogs[] = 'sent_to=' . $userId . ' ok=' . ($sent ? '1' : '0');
                 if (!$sent) {
                     log_notificacao_modulo('slack_send_failed', [

@@ -106,6 +106,11 @@ try {
         $original = $original_name ?: '';
         $text = "Novo fotográfico da obra: {$obra_label}, confira!";
 
+        require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+        $flowConnectLogs = [];
+        $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'fotografico', 'fotografico.registro.criado', 'fotografico_registro', sha1($obra_label . '|' . $original . '|' . $colaborador_id), $text, (int) $colaborador_id, null, 'fotografico:registro:' . sha1($obra_label . '|' . $original) . ':colaborador:' . (int) $colaborador_id . ':v1', $flowConnectLogs);
+        if (flow_connect_legacy_should_bypass('fotografico', $flowConnectEventId)) return true;
+
         $payload = json_encode(['channel' => $userId, 'text' => $text]);
         $apiUrl = getenv('SLACK_API_URL') ?: 'https://slack.com/api/chat.postMessage';
         $opts = [

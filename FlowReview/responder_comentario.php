@@ -46,11 +46,15 @@ if ($stmt->affected_rows > 0) {
     // Salva menções da resposta
     if (!empty($mencionados)) {
         $stmtMencao = $conn->prepare("INSERT INTO mencoes (resposta_id, mencionado_id) VALUES (?, ?)");
+        $mencaoIdsFlowConnect = [];
         foreach ($mencionados as $mid) {
             $mid = intval($mid);
             if ($mid > 0) {
                 $stmtMencao->bind_param('ii', $resposta_id, $mid);
                 $stmtMencao->execute();
+                if (!isset($mencaoIdsFlowConnect[$mid])) {
+                    $mencaoIdsFlowConnect[$mid] = (int)$conn->insert_id;
+                }
             }
         }
         $stmtMencao->close();
@@ -58,7 +62,9 @@ if ($stmt->affected_rows > 0) {
         // Slack DM para cada mencionado
         require_once __DIR__ . '/mencao_slack_helper.php';
         $stmtCtx = $conn->prepare(
-            "SELECT fun.nome_funcao, ico.imagem_nome, o.nome_obra
+            "SELECT fun.nome_funcao, ico.imagem_nome, o.nome_obra,
+                    fi.idfuncao_imagem, fi.funcao_id,
+                    ico.idimagens_cliente_obra AS imagem_id, o.idobra AS obra_id
              FROM comentarios_imagem c
              INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
              INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
@@ -78,7 +84,17 @@ if ($stmt->affected_rows > 0) {
             $ctxMencao['nome_funcao'] ?? '',
             $ctxMencao['imagem_nome'] ?? '',
             $ctxMencao['nome_obra'] ?? '',
-            $responsavel
+            $responsavel,
+            [
+                'comentario_id' => (int)$comentario_id,
+                'resposta_id' => (int)$resposta_id,
+                'mencao_ids' => $mencaoIdsFlowConnect,
+                'comentario' => (string)$texto,
+                'funcao_imagem_id' => isset($ctxMencao['idfuncao_imagem']) ? (int)$ctxMencao['idfuncao_imagem'] : null,
+                'funcao_id' => isset($ctxMencao['funcao_id']) ? (int)$ctxMencao['funcao_id'] : null,
+                'imagem_id' => isset($ctxMencao['imagem_id']) ? (int)$ctxMencao['imagem_id'] : null,
+                'obra_id' => isset($ctxMencao['obra_id']) ? (int)$ctxMencao['obra_id'] : null,
+            ]
         );
     }
 

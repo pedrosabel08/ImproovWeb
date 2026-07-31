@@ -141,10 +141,15 @@ if (!is_array($mencionados)) {
 
 if (!empty($mencionados)) {
     $stmtInsert = $conn->prepare("INSERT INTO mencoes (comentario_id, mencionado_id) VALUES (?, ?)");
+    $mencaoIdsFlowConnect = [];
 
     foreach ($mencionados as $mencionado_id) {
+        $mencionado_id = intval($mencionado_id);
         $stmtInsert->bind_param("ii", $comentario_id, $mencionado_id);
         $stmtInsert->execute();
+        if ($mencionado_id > 0 && !isset($mencaoIdsFlowConnect[$mencionado_id])) {
+            $mencaoIdsFlowConnect[$mencionado_id] = (int)$conn->insert_id;
+        }
     }
 
     $stmtInsert->close();
@@ -154,7 +159,10 @@ if (!empty($mencionados)) {
     $ctxMencao = null;
     if ($ap_imagem_id) {
         $stmtCtx = $conn->prepare(
-            "SELECT COALESCE(fun.nome_funcao, funa.nome_funcao) AS nome_funcao, ico.imagem_nome, o.nome_obra
+            "SELECT COALESCE(fun.nome_funcao, funa.nome_funcao) AS nome_funcao, ico.imagem_nome, o.nome_obra,
+                    fi.idfuncao_imagem, fa.id AS funcao_animacao_id,
+                    COALESCE(fi.funcao_id, fa.funcao_id) AS funcao_id,
+                    ico.idimagens_cliente_obra AS imagem_id, o.idobra AS obra_id
              FROM historico_aprovacoes_imagens hai
              LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
              LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
@@ -177,7 +185,18 @@ if (!empty($mencionados)) {
         $ctxMencao['nome_funcao'] ?? '',
         $ctxMencao['imagem_nome'] ?? '',
         $ctxMencao['nome_obra'] ?? '',
-        $responsavel
+        $responsavel,
+        [
+            'comentario_id' => (int)$comentario_id,
+            'resposta_id' => null,
+            'mencao_ids' => $mencaoIdsFlowConnect,
+            'comentario' => (string)$texto,
+            'funcao_imagem_id' => isset($ctxMencao['idfuncao_imagem']) ? (int)$ctxMencao['idfuncao_imagem'] : null,
+            'funcao_animacao_id' => isset($ctxMencao['funcao_animacao_id']) ? (int)$ctxMencao['funcao_animacao_id'] : null,
+            'funcao_id' => isset($ctxMencao['funcao_id']) ? (int)$ctxMencao['funcao_id'] : null,
+            'imagem_id' => isset($ctxMencao['imagem_id']) ? (int)$ctxMencao['imagem_id'] : null,
+            'obra_id' => isset($ctxMencao['obra_id']) ? (int)$ctxMencao['obra_id'] : null,
+        ]
     );
 }
 

@@ -117,7 +117,7 @@ function notificarPedroSlack(mysqli $conn, string $mensagem): void
     if (empty($slackToken)) return;
 
     $stmt = $conn->prepare(
-        "SELECT u.nome_slack FROM usuario u
+        "SELECT u.nome_slack, u.idcolaborador FROM usuario u
          JOIN colaborador c ON c.idcolaborador = u.idcolaborador
          WHERE c.nome_colaborador LIKE '%Sabel%'
            AND u.nome_slack IS NOT NULL AND u.nome_slack != ''
@@ -130,6 +130,11 @@ function notificarPedroSlack(mysqli $conn, string $mensagem): void
 
     $slackId = $row['nome_slack'] ?? null;
     if (!$slackId) return;
+
+    require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+    $flowConnectLogs = [];
+    $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'pre_alteracao', 'pre_alteracao.planejamento_liberado', 'pre_alteracao', sha1($mensagem), $mensagem, (int) ($row['idcolaborador'] ?? 0), null, 'pre_alteracao:' . sha1($mensagem) . ':v1', $flowConnectLogs);
+    if (flow_connect_legacy_should_bypass('pre_alteracao', $flowConnectEventId)) return;
 
     $ch = curl_init('https://slack.com/api/chat.postMessage');
     curl_setopt_array($ch, [

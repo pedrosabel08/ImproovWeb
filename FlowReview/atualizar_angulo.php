@@ -11,6 +11,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/ws_notify.php';
+require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 
 $logs = [];
 $slackToken = getenv('SLACK_TOKEN') ?: null;
@@ -813,18 +814,24 @@ $status_funcao_atual = '';
 $imagem_nome = '';
 $status_nome = '';
 $path_angulo = '';
+$funcao_nome = '';
+$obra_id = 0;
+$obra_nome = '';
 
 if (
-    $st = $conn->prepare("SELECT f.funcao_id, f.colaborador_id, f.status, i.imagem_nome, s.nome_status
+    $st = $conn->prepare("SELECT f.funcao_id, f.colaborador_id, f.status, i.imagem_nome, s.nome_status,
+            fun.nome_funcao, o.idobra, COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra)
         FROM funcao_imagem f
         JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         JOIN status_imagem s ON s.idstatus = i.status_id
+        LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+        JOIN obra o ON o.idobra = i.obra_id
         WHERE f.idfuncao_imagem = ? AND f.imagem_id = ?
         LIMIT 1")
 ) {
     $st->bind_param('ii', $funcao_imagem_id, $imagem_id);
     $st->execute();
-    $st->bind_result($funcao_id, $colaborador_id, $status_funcao_atual, $imagem_nome, $status_nome);
+    $st->bind_result($funcao_id, $colaborador_id, $status_funcao_atual, $imagem_nome, $status_nome, $funcao_nome, $obra_id, $obra_nome);
     $st->fetch();
     $st->close();
 }
@@ -879,6 +886,8 @@ if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
     }
 }
 
+$flowConnectAngleEventId = 0;
+$historicoAprovacaoId = 0;
 $conn->begin_transaction();
 try {
     if ($acao === 'ajustes') {
@@ -949,8 +958,32 @@ try {
         if (!$insHist->execute()) {
             throw new Exception('Erro ao inserir histórico: ' . $insHist->error);
         }
+        $historicoAprovacaoId = (int)$conn->insert_id;
         $insHist->close();
     }
+
+    $flowConnectAngleEvent = \FlowConnect\Application\FlowReviewEventFactory::angle([
+        'angulo_id' => null,
+        'historico_id' => (int)$historico_id,
+        'historico_aprovacao_id' => $historicoAprovacaoId,
+        'funcao_imagem_id' => (int)$funcao_imagem_id,
+        'imagem_id' => (int)$imagem_id,
+        'obra_id' => (int)$obra_id,
+        'funcao_id' => (int)$funcao_id,
+        'colaborador_responsavel_id' => (int)$colaborador_id,
+        'revisor_id' => (int)$respHist,
+        'status_anterior' => (string)$statusAnterior,
+        'status_novo' => (string)$histStatusNovo,
+        'decisao' => (string)$acao,
+        'observacao' => (string)$observacao,
+        'tipo_fluxo' => 'imagem',
+        'imagem_nome' => (string)$imagem_nome,
+        'funcao_nome' => (string)$funcao_nome,
+        'obra_nome' => (string)$obra_nome,
+        'flow_review_url' => flow_connect_config()['flow_review']['url'],
+        'producer' => 'FlowReview/atualizar_angulo.php',
+    ]);
+    $flowConnectAngleEventId = flow_connect_publish_if_enabled($conn, 'angle', $flowConnectAngleEvent, $logs);
 
     $conn->commit();
 } catch (Throwable $e) {
@@ -967,16 +1000,21 @@ if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
     $vpsInserido = is_array($resultUploads) ? (bool)($resultUploads['vps'] ?? false) : false;
 }
 
-$uidSlack = null;
-if ($colaborador_id) {
-    $uidSlack = resolve_slack_user_id_by_colaborador($conn, (int)$colaborador_id, $slackToken, $logs);
-}
-if ($uidSlack) {
+$legacyAngleBypassed = flow_connect_should_bypass_legacy('angle', $flowConnectAngleEventId);
+if ($legacyAngleBypassed) {
+    $logs[] = 'legacy_slack_bypassed:event=' . $flowConnectAngleEventId;
+} else {
+    $uidSlack = null;
+    if ($colaborador_id) {
+        $uidSlack = resolve_slack_user_id_by_colaborador($conn, (int)$colaborador_id, $slackToken, $logs);
+    }
+    if ($uidSlack) {
     $msg = $mensagemSlack;
     if ($observacao !== '') {
         $msg .= "\nObservação: {$observacao}";
     }
-    slack_post_message($slackToken, $uidSlack, $msg, $logs);
+        slack_post_message($slackToken, $uidSlack, $msg, $logs);
+    }
 }
 
 $response = [

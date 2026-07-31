@@ -1789,6 +1789,8 @@ body {
   width: min(520px, 96vw);
   min-height: 0;
   max-height: 90vh;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
 }
 .add-reference-form {
   display: flex;

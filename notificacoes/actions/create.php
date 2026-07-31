@@ -6,6 +6,7 @@ require_once __DIR__ . '/../_common.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     notificacaoJsonResponse(false, 'Método não permitido.', 405);
 }
+notificacaoRequirePermission('notification.create');
 
 $titulo = trim((string)($_POST['titulo'] ?? ''));
 $mensagem = notificacaoSanitizeHtml($_POST['mensagem'] ?? '');
@@ -30,6 +31,7 @@ $version_bump = isset($_POST['version_bump']);
 $version_type = trim((string)($_POST['version_type'] ?? 'patch'));
 $version_manual = trim((string)($_POST['version_manual'] ?? ''));
 $version_desc = trim((string)($_POST['version_desc'] ?? ''));
+$modulo_id = (int)($_POST['modulo_id'] ?? 0) ?: null;
 
 if ($titulo === '' || $mensagem === '') {
     notificacaoJsonResponse(false, [
@@ -58,6 +60,21 @@ if (!in_array($segmentacao_tipo, $allowedSeg, true)) {
 $cta_label = $cta_label === '' ? null : $cta_label;
 $cta_url = $cta_url === '' ? null : $cta_url;
 $payload_json = $payload_json === '' ? null : $payload_json;
+$versao_publicacao = notificacaoCurrentVersion();
+
+if (!notificacaoWorkflowReady($conn) || !notificacaoModulesTableExists($conn)) {
+    notificacaoJsonResponse(false, 'A migration do fluxo de aprovação de notificações ainda não foi aplicada.', 422);
+}
+
+if ($modulo_id !== null) {
+    $stmtModulo = $conn->prepare('SELECT id FROM notificacoes_modulos WHERE id = ? AND ativo = 1');
+    if (!$stmtModulo) notificacaoJsonResponse(false, 'Não foi possível validar o módulo relacionado.', 500);
+    $stmtModulo->bind_param('i', $modulo_id);
+    $stmtModulo->execute();
+    $validModulo = $stmtModulo->get_result()->num_rows === 1;
+    $stmtModulo->close();
+    if (!$validModulo) notificacaoJsonResponse(false, 'Módulo relacionado inválido.', 422);
+}
 
 try {
     if (notificacaoNormalizeUploads('arquivos') && !notificacaoAnexosTableExists($conn)) {
@@ -77,8 +94,10 @@ if ($segmentacao_tipo === 'funcao') {
     $alvoIds = $_POST['obra_ids'] ?? [];
 }
 
-$sql = "INSERT INTO notificacoes (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em, fim_em, fixa, fechavel, exige_confirmacao, cta_label, cta_url, payload_json, criado_por)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+$status_publicacao = 'RASCUNHO';
+$ativa = 0;
+$sql = "INSERT INTO notificacoes (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em, fim_em, fixa, fechavel, exige_confirmacao, cta_label, cta_url, payload_json, criado_por, modulo_id, versao_publicacao, status_publicacao)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -88,7 +107,7 @@ if (!$stmt) {
 
 $criado_por = (int)($_SESSION['idusuario'] ?? 0);
 $stmt->bind_param(
-    'sssssiissiiisssi',
+    'sssssiissiiisssiiss',
     $titulo,
     $mensagem,
     $tipo,
@@ -104,7 +123,10 @@ $stmt->bind_param(
     $cta_label,
     $cta_url,
     $payload_json,
-    $criado_por
+    $criado_por,
+    $modulo_id,
+    $versao_publicacao,
+    $status_publicacao
 );
 
 $conn->begin_transaction();
@@ -118,7 +140,8 @@ try {
     $stmt = null;
 
     notificacaoInsertAttachments($conn, $notificacaoId, $attachments);
-    replaceTargetsAndRecipients($conn, $notificacaoId, $segmentacao_tipo, $alvoIds);
+    notificacaoReplaceTargets($conn, $notificacaoId, $segmentacao_tipo, $alvoIds);
+    notificacaoRegistrarHistorico($conn, $notificacaoId, 'CRIADA', null, $status_publicacao);
     $conn->commit();
 } catch (Throwable $e) {
     if ($stmt) $stmt->close();

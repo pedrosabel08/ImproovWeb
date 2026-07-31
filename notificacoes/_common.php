@@ -491,3 +491,157 @@ function notificacaoInsertAttachments($conn, $notificacaoId, $attachments)
     }
     $stmt->close();
 }
+
+/**
+ * Fluxo de publicacao das notificacoes. A instalacao anterior possuia apenas
+ * o flag `ativa`; estes helpers mantem os registros legados funcionais e
+ * concentram as regras usadas pelos endpoints administrativos.
+ */
+function notificacaoWorkflowReady($conn)
+{
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    $result = $conn->query("SHOW COLUMNS FROM notificacoes LIKE 'status_publicacao'");
+    $ready = $result && $result->num_rows > 0;
+    return $ready;
+}
+
+function notificacaoModulesTableExists($conn)
+{
+    static $exists = null;
+    if ($exists !== null) return $exists;
+    $result = $conn->query("SHOW TABLES LIKE 'notificacoes_modulos'");
+    $exists = $result && $result->num_rows > 0;
+    return $exists;
+}
+
+function notificacaoHistoricoTableExists($conn)
+{
+    static $exists = null;
+    if ($exists !== null) return $exists;
+    $result = $conn->query("SHOW TABLES LIKE 'notificacoes_historico'");
+    $exists = $result && $result->num_rows > 0;
+    return $exists;
+}
+
+function notificacaoCan($permission)
+{
+    // O projeto ainda usa administradores (nivel 1), sem ACL granular.
+    // A verificacao fica centralizada para uma futura migration de permissoes.
+    return (int)($_SESSION['nivel_acesso'] ?? 0) === 1;
+}
+
+function notificacaoRequirePermission($permission)
+{
+    if (!notificacaoCan($permission)) {
+        notificacaoJsonResponse(false, 'Acesso negado para esta ação.', 403);
+    }
+}
+
+function notificacaoCurrentVersion()
+{
+    if (!defined('APP_VERSION')) {
+        $versionFile = __DIR__ . '/../config/version.php';
+        if (is_file($versionFile)) require_once $versionFile;
+    }
+    return defined('APP_VERSION') && APP_VERSION !== '' ? (string)APP_VERSION : 'dev';
+}
+
+function notificacaoStatusEfetivo(array $notificacao)
+{
+    $status = strtoupper(trim((string)($notificacao['status_publicacao'] ?? '')));
+    if (in_array($status, ['RASCUNHO', 'AGUARDANDO_APROVACAO', 'APROVADA', 'PUBLICADA', 'REJEITADA', 'ENCERRADA'], true)) {
+        return $status;
+    }
+    // Compatibilidade: notificacoes antigas ativas ja estavam em producao.
+    return !empty($notificacao['ativa']) ? 'PUBLICADA' : 'ENCERRADA';
+}
+
+function notificacaoStatusLabel($status)
+{
+    $labels = [
+        'RASCUNHO' => 'Rascunho',
+        'AGUARDANDO_APROVACAO' => 'Aguardando aprovação',
+        'APROVADA' => 'Aprovada',
+        'PUBLICADA' => 'Publicada',
+        'REJEITADA' => 'Rejeitada',
+        'ENCERRADA' => 'Encerrada',
+    ];
+    return $labels[$status] ?? $status;
+}
+
+function notificacaoGetModules($conn)
+{
+    if (!notificacaoModulesTableExists($conn)) return [];
+    $modules = [];
+    $res = $conn->query('SELECT id, codigo, nome, url, icone, ativo FROM notificacoes_modulos WHERE ativo = 1 ORDER BY nome');
+    while ($res && ($row = $res->fetch_assoc())) $modules[] = $row;
+    return $modules;
+}
+
+function notificacaoReplaceTargets($conn, $notificacaoId, $segmentacaoTipo, $alvoIds)
+{
+    $notificacaoId = (int)$notificacaoId;
+    $alvoIds = is_array($alvoIds) ? array_values(array_filter(array_map('intval', $alvoIds))) : [];
+    $stmtDel = $conn->prepare('DELETE FROM notificacoes_alvos WHERE notificacao_id = ?');
+    if ($stmtDel) {
+        $stmtDel->bind_param('i', $notificacaoId);
+        $stmtDel->execute();
+        $stmtDel->close();
+    }
+    if ($segmentacaoTipo === 'geral' || !$alvoIds) return;
+    $stmtIns = $conn->prepare('INSERT INTO notificacoes_alvos (notificacao_id, tipo, alvo_id) VALUES (?, ?, ?)');
+    if (!$stmtIns) throw new RuntimeException('Não foi possível salvar a segmentação.');
+    foreach ($alvoIds as $alvoId) {
+        $stmtIns->bind_param('isi', $notificacaoId, $segmentacaoTipo, $alvoId);
+        if (!$stmtIns->execute()) {
+            $stmtIns->close();
+            throw new RuntimeException('Não foi possível salvar a segmentação.');
+        }
+    }
+    $stmtIns->close();
+}
+
+function notificacaoPublishRecipients($conn, $notificacaoId, $segmentacaoTipo)
+{
+    $stmtTargets = $conn->prepare('SELECT alvo_id FROM notificacoes_alvos WHERE notificacao_id = ? AND tipo = ?');
+    $alvoIds = [];
+    if ($stmtTargets) {
+        $stmtTargets->bind_param('is', $notificacaoId, $segmentacaoTipo);
+        $stmtTargets->execute();
+        $resTargets = $stmtTargets->get_result();
+        while ($resTargets && ($row = $resTargets->fetch_assoc())) $alvoIds[] = (int)$row['alvo_id'];
+        $stmtTargets->close();
+    }
+    $stmtDel = $conn->prepare('DELETE FROM notificacoes_destinatarios WHERE notificacao_id = ?');
+    if ($stmtDel) {
+        $stmtDel->bind_param('i', $notificacaoId);
+        $stmtDel->execute();
+        $stmtDel->close();
+    }
+    $userIds = computeRecipientUserIds($conn, $segmentacaoTipo, $alvoIds);
+    if (!$userIds) return 0;
+    $stmtIns = $conn->prepare('INSERT INTO notificacoes_destinatarios (notificacao_id, usuario_id) VALUES (?, ?)');
+    if (!$stmtIns) throw new RuntimeException('Não foi possível gerar os destinatários.');
+    foreach ($userIds as $userId) {
+        $stmtIns->bind_param('ii', $notificacaoId, $userId);
+        if (!$stmtIns->execute()) {
+            $stmtIns->close();
+            throw new RuntimeException('Não foi possível gerar os destinatários.');
+        }
+    }
+    $stmtIns->close();
+    return count($userIds);
+}
+
+function notificacaoRegistrarHistorico($conn, $notificacaoId, $acao, $deStatus, $paraStatus, $motivo = null)
+{
+    if (!notificacaoHistoricoTableExists($conn)) return;
+    $usuarioId = (int)($_SESSION['idusuario'] ?? 0) ?: null;
+    $stmt = $conn->prepare('INSERT INTO notificacoes_historico (notificacao_id, acao, status_anterior, status_novo, motivo, criado_por) VALUES (?, ?, ?, ?, ?, ?)');
+    if ($stmt) {
+        $stmt->bind_param('issssi', $notificacaoId, $acao, $deStatus, $paraStatus, $motivo, $usuarioId);
+        $stmt->execute();
+        $stmt->close();
+    }
+}

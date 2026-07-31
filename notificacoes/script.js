@@ -178,6 +178,14 @@ function escapeHtml(str) {
         .replaceAll("'", '&#039;');
 }
 
+async function abrirPreviaNotificacao(notificacaoId) {
+    const response = await fetch(`actions/preview.php?id=${encodeURIComponent(notificacaoId)}`, { headers: { Accept: 'application/json' } });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.ok || !json.data) throw new Error(json.message || 'Não foi possível carregar a prévia.');
+    if (!window.FlowNotificationRenderer) throw new Error('Componente de prévia não carregado.');
+    window.FlowNotificationRenderer.open(json.data, { preview: true });
+}
+
 const NOTIFICACAO_MAX_ARQUIVOS = 10;
 const NOTIFICACAO_MAX_TAMANHO_ARQUIVO = 10 * 1024 * 1024;
 const NOTIFICACAO_MAX_TAMANHO_TOTAL = 40 * 1024 * 1024;
@@ -290,6 +298,16 @@ document.addEventListener('click', async (e) => {
         }
         return;
     }
+
+    const previewBtn = e.target.closest('[data-action="preview"]');
+    if (previewBtn) {
+        try {
+            await abrirPreviaNotificacao(previewBtn.getAttribute('data-id'));
+        } catch (error) {
+            toastNotificacao(error.message || 'Erro ao abrir prévia.', 'error');
+        }
+        return;
+    }
 });
 
 document.addEventListener('input', (e) => {
@@ -304,6 +322,19 @@ document.addEventListener('input', (e) => {
 
 document.addEventListener('submit', (e) => {
     const form = e.target;
+    if (form.matches('[data-workflow-action]')) {
+        e.preventDefault();
+        const action = form.getAttribute('data-workflow-action');
+        if (action === 'rejeitar') {
+            const motivo = window.prompt('Motivo da rejeição / ajustes necessários:');
+            if (!motivo || !motivo.trim()) return;
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = 'motivo_rejeicao'; input.value = motivo.trim();
+            form.appendChild(input);
+        }
+        enviarFormularioNotificacao(form);
+        return;
+    }
     if (!form.matches('[data-async-action]')) return;
     e.preventDefault();
     enviarFormularioNotificacao(form);

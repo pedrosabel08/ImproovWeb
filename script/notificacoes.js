@@ -719,6 +719,11 @@ function formatarTamanhoNotificacao(bytes) {
 }
 
 function abrirModalNotificacaoModulo(notificacao, onClose) {
+  // O componente compartilhado tambem alimenta a prévia administrativa.
+  // Mantemos o render legado abaixo apenas como fallback para cache antigo.
+  if (window.FlowNotificationRenderer) {
+    return window.FlowNotificationRenderer.open(notificacao, { onClose: onClose });
+  }
   const modalId = "noti-modal-modulo";
   let modal = document.getElementById(modalId);
 

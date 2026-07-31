@@ -1015,6 +1015,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
     <script src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
+    <script src="<?php echo asset_url('notificacoes/render.js'); ?>"></script>
     <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptColabDashboard.js'); ?>"></script>

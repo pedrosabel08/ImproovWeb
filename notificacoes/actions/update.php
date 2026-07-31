@@ -5,6 +5,7 @@ require_once __DIR__ . '/../_common.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     notificacaoJsonResponse(false, 'Método não permitido.', 405);
 }
+notificacaoRequirePermission('notification.edit');
 
 $id = (int)($_POST['id'] ?? 0);
 if ($id <= 0) {
@@ -30,6 +31,7 @@ $version_bump = isset($_POST['version_bump']);
 $version_type = trim((string)($_POST['version_type'] ?? 'patch'));
 $version_manual = trim((string)($_POST['version_manual'] ?? ''));
 $version_desc = trim((string)($_POST['version_desc'] ?? ''));
+$modulo_id = (int)($_POST['modulo_id'] ?? 0) ?: null;
 
 if ($titulo === '' || $mensagem === '') {
     notificacaoJsonResponse(false, 'Título e mensagem são obrigatórios.', 422);
@@ -39,6 +41,20 @@ if (!in_array($tipo, ['info', 'warning', 'danger', 'success'], true)) $tipo = 'i
 if (!in_array($canal, ['banner', 'toast', 'modal', 'card'], true)) $canal = 'banner';
 if (!in_array($segmentacao_tipo, ['geral', 'funcao', 'pessoa', 'projeto'], true)) $segmentacao_tipo = 'geral';
 
+if (!notificacaoWorkflowReady($conn) || !notificacaoModulesTableExists($conn)) {
+    notificacaoJsonResponse(false, 'A migration do fluxo de aprovação de notificações ainda não foi aplicada.', 422);
+}
+
+if ($modulo_id !== null) {
+    $stmtModulo = $conn->prepare('SELECT id FROM notificacoes_modulos WHERE id = ? AND ativo = 1');
+    if (!$stmtModulo) notificacaoJsonResponse(false, 'Não foi possível validar o módulo relacionado.', 500);
+    $stmtModulo->bind_param('i', $modulo_id);
+    $stmtModulo->execute();
+    $validModulo = $stmtModulo->get_result()->num_rows === 1;
+    $stmtModulo->close();
+    if (!$validModulo) notificacaoJsonResponse(false, 'Módulo relacionado inválido.', 422);
+}
+
 $alvoIds = $segmentacao_tipo === 'funcao' ? ($_POST['funcao_ids'] ?? []) : ($segmentacao_tipo === 'pessoa' ? ($_POST['usuario_ids'] ?? []) : ($segmentacao_tipo === 'projeto' ? ($_POST['obra_ids'] ?? []) : []));
 
 try {
@@ -47,14 +63,26 @@ try {
     }
     $attachments = notificacaoSaveUploadedFiles('arquivos');
     $conn->begin_transaction();
-    $stmt = $conn->prepare('UPDATE notificacoes SET titulo = ?, mensagem = ?, tipo = ?, canal = ?, segmentacao_tipo = ?, prioridade = ?, ativa = ?, inicio_em = ?, fim_em = ?, fixa = ?, fechavel = ?, exige_confirmacao = ?, cta_label = ?, cta_url = ?, payload_json = ? WHERE id = ?');
+    $stmtBefore = $conn->prepare('SELECT status_publicacao, ativa FROM notificacoes WHERE id = ? FOR UPDATE');
+    if (!$stmtBefore) throw new RuntimeException('Não foi possível localizar a notificação.');
+    $stmtBefore->bind_param('i', $id);
+    $stmtBefore->execute();
+    $before = $stmtBefore->get_result()->fetch_assoc();
+    $stmtBefore->close();
+    if (!$before) throw new RuntimeException('Notificação não encontrada.');
+    $statusAnterior = notificacaoStatusEfetivo($before);
+    $statusNovo = 'RASCUNHO';
+    $ativa = 0;
+    $versao_publicacao = notificacaoCurrentVersion();
+    $stmt = $conn->prepare('UPDATE notificacoes SET titulo = ?, mensagem = ?, tipo = ?, canal = ?, segmentacao_tipo = ?, prioridade = ?, ativa = ?, inicio_em = ?, fim_em = ?, fixa = ?, fechavel = ?, exige_confirmacao = ?, cta_label = ?, cta_url = ?, payload_json = ?, modulo_id = ?, versao_publicacao = ?, status_publicacao = ?, motivo_rejeicao = NULL WHERE id = ?');
     if (!$stmt) throw new RuntimeException('Erro ao preparar atualização.');
-    $stmt->bind_param('sssssiissiiisssi', $titulo, $mensagem, $tipo, $canal, $segmentacao_tipo, $prioridade, $ativa, $inicio_em, $fim_em, $fixa, $fechavel, $exige_confirmacao, $cta_label, $cta_url, $payload_json, $id);
+    $stmt->bind_param('sssssiissiiisssissi', $titulo, $mensagem, $tipo, $canal, $segmentacao_tipo, $prioridade, $ativa, $inicio_em, $fim_em, $fixa, $fechavel, $exige_confirmacao, $cta_label, $cta_url, $payload_json, $modulo_id, $versao_publicacao, $statusNovo, $id);
     if (!$stmt->execute()) throw new RuntimeException('Erro ao atualizar notificação.');
     $stmt->close();
     $stmt = null;
     notificacaoInsertAttachments($conn, $id, $attachments);
-    replaceTargetsAndRecipients($conn, $id, $segmentacao_tipo, $alvoIds);
+    notificacaoReplaceTargets($conn, $id, $segmentacao_tipo, $alvoIds);
+    notificacaoRegistrarHistorico($conn, $id, 'EDITADA', $statusAnterior, $statusNovo);
     $conn->commit();
 } catch (Throwable $e) {
     if (isset($stmt) && $stmt) $stmt->close();

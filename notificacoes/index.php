@@ -18,6 +18,8 @@ $flashErr = $_GET['err'] ?? null;
 $tableReady = true;
 
 $usuarios = getAllUsuarios($conn);
+$modulos = notificacaoGetModules($conn);
+$versaoAtual = notificacaoCurrentVersion();
 
 $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
 $editRow = null;
@@ -83,10 +85,13 @@ $segmentacaoLabel = function ($tipo) {
 
 
 $notificacoes = [];
-$sqlList = "SELECT n.*,
+$sqlList = "SELECT n.*, m.nome AS modulo_nome, m.codigo AS modulo_codigo,
+                  u.nome_usuario AS criado_por_nome,
                   COALESCE(x.total, 0) AS dest_total,
                   COALESCE(x.vistos, 0) AS dest_vistos
            FROM notificacoes n
+           LEFT JOIN notificacoes_modulos m ON m.id = n.modulo_id
+           LEFT JOIN usuario u ON u.idusuario = n.criado_por
            LEFT JOIN (
              SELECT notificacao_id,
                     COUNT(*) AS total,
@@ -131,6 +136,7 @@ if ($resVer === false) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>" />
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalNotificacoes.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>" />
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
@@ -173,62 +179,46 @@ if ($resVer === false) {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Status</th>
                         <th>Título</th>
-                        <th>Tipo</th>
-                        <th>Canal</th>
+                        <th>Versão</th>
+                        <th>Módulo</th>
                         <th>Segmentação</th>
-                        <th>Prioridade</th>
-                        <th>Janela</th>
-                        <th>Leitura</th>
+                        <th>Status</th>
+                        <th>Criado por</th>
+                        <th>Data</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($notificacoes)): ?>
                         <tr>
-                            <td colspan="10" class="small">Nenhuma notificação ainda.</td>
+                            <td colspan="8" class="small">Nenhuma notificação ainda.</td>
                         </tr>
                     <?php endif; ?>
 
                     <?php foreach ($notificacoes as $n): ?>
+                        <?php $statusWorkflow = notificacaoStatusEfetivo($n); ?>
                         <tr>
-                            <td><?= (int)$n['id'] ?></td>
-                            <td>
-                                <?php if ((int)$n['ativa'] === 1): ?>
-                                    <span class="status-badge s-ativo">ativa</span>
-                                <?php else: ?>
-                                    <span class="status-badge s-inativo">inativa</span>
-                                <?php endif; ?>
-                            </td>
                             <td>
                                 <div><?= h($n['titulo']) ?></div>
-                                <div class="small">Criado em: <?= h($n['criado_em'] ?? '') ?></div>
+                                <?php if (!empty($n['motivo_rejeicao']) && $statusWorkflow === 'REJEITADA'): ?><div class="small">Motivo: <?= h($n['motivo_rejeicao']) ?></div><?php endif; ?>
                             </td>
-                            <td><span class="status-badge s-info"><?= h($n['tipo']) ?></span></td>
-                            <td><span class="status-badge s-info"><?= h($n['canal']) ?></span></td>
+                            <td><span class="status-badge s-info">FLOW <?= h($n['versao_publicacao'] ?? $versaoAtual) ?></span></td>
+                            <td><?= h($n['modulo_nome'] ?? '-') ?></td>
                             <td>
                                 <span class="status-badge s-info"><?= h($segmentacaoLabel($n['segmentacao_tipo'] ?? 'geral')) ?></span>
                             </td>
-                            <td><?= (int)$n['prioridade'] ?></td>
-                            <td class="small">
-                                <div>Início: <?= h($n['inicio_em'] ?? '-') ?></div>
-                                <div>Fim: <?= h($n['fim_em'] ?? '-') ?></div>
-                            </td>
-                            <td class="small">
-                                <div><b><?= (int)($n['dest_vistos'] ?? 0) ?></b> / <?= (int)($n['dest_total'] ?? 0) ?> vistos</div>
-                                <button class="btn-row neutral" type="button" data-action="status" data-id="<?= (int)$n['id'] ?>"><i class="fa-solid fa-eye"></i> Ver status</button>
-                            </td>
+                            <td><span class="status-badge status-workflow status-workflow--<?= strtolower(str_replace('_', '-', $statusWorkflow)) ?>"><?= h(notificacaoStatusLabel($statusWorkflow)) ?></span></td>
+                            <td><?= h($n['criado_por_nome'] ?? '-') ?></td>
+                            <td class="small"><?= h($n['criado_em'] ?? '-') ?></td>
                             <td>
                                 <div class="inline">
-                                    <a class="btn-row neutral" href="index.php?edit=<?= (int)$n['id'] ?>#modal"><i class="fa-solid fa-pen"></i> Editar</a>
-
-                                    <form method="POST" action="actions/toggle.php" style="display:inline;" data-async-action>
-                                        <input type="hidden" name="id" value="<?= (int)$n['id'] ?>" />
-                                        <input type="hidden" name="ativa" value="<?= (int)$n['ativa'] ?>" />
-                                        <button class="btn-row neutral" type="submit"><?= ((int)$n['ativa'] === 1) ? 'Desativar' : 'Ativar' ?></button>
-                                    </form>
+                                    <button class="btn-row neutral" type="button" data-action="preview" data-id="<?= (int)$n['id'] ?>"><i class="fa-solid fa-eye"></i> Prévia</button>
+                                    <?php if (in_array($statusWorkflow, ['RASCUNHO', 'REJEITADA', 'PUBLICADA'], true)): ?><a class="btn-row neutral" href="index.php?edit=<?= (int)$n['id'] ?>#modal"><i class="fa-solid fa-pen"></i> Editar</a><?php endif; ?>
+                                    <?php if (in_array($statusWorkflow, ['RASCUNHO', 'REJEITADA'], true)): ?><form method="POST" action="actions/workflow.php" style="display:inline;" data-workflow-action="enviar_aprovacao"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>" /><input type="hidden" name="acao" value="enviar_aprovacao" /><button class="btn-row neutral" type="submit">Enviar para aprovação</button></form><?php endif; ?>
+                                    <?php if ($statusWorkflow === 'AGUARDANDO_APROVACAO'): ?><form method="POST" action="actions/workflow.php" style="display:inline;" data-workflow-action="aprovar"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>" /><input type="hidden" name="acao" value="aprovar" /><button class="btn-row neutral" type="submit">Aprovar</button></form><form method="POST" action="actions/workflow.php" style="display:inline;" data-workflow-action="rejeitar"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>" /><input type="hidden" name="acao" value="rejeitar" /><button class="btn-row danger" type="submit">Rejeitar</button></form><?php endif; ?>
+                                    <?php if ($statusWorkflow === 'APROVADA'): ?><form method="POST" action="actions/workflow.php" style="display:inline;" data-workflow-action="publicar"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>" /><input type="hidden" name="acao" value="publicar" /><button class="btn-row neutral" type="submit">Publicar</button></form><?php endif; ?>
+                                    <?php if ($statusWorkflow === 'PUBLICADA'): ?><form method="POST" action="actions/workflow.php" style="display:inline;" data-workflow-action="encerrar"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>" /><input type="hidden" name="acao" value="encerrar" /><button class="btn-row neutral" type="submit">Encerrar</button></form><button class="btn-row neutral" type="button" data-action="status" data-id="<?= (int)$n['id'] ?>">Leituras</button><?php endif; ?>
 
                                     <form method="POST" action="actions/delete.php" style="display:inline;" onsubmit="confirmDelete(event);">
                                         <input type="hidden" name="id" value="<?= (int)$n['id'] ?>" />
@@ -293,6 +283,32 @@ if ($resVer === false) {
                             <div id="mensagem-quill-editor" aria-label="Mensagem da notificação"></div>
                         </div>
 
+                        <div class="grid">
+                            <div class="row">
+                                <label>Versão da publicação</label>
+                                <div class="readonly-field">FLOW <?= h($versaoAtual) ?></div>
+                                <div class="small">A versão atual do Flow será vinculada ao salvar.</div>
+                            </div>
+                            <div class="row">
+                                <label>Módulo relacionado (opcional)</label>
+                                <?php $moduloSelecionado = (int)($editRow['modulo_id'] ?? 0); ?>
+                                <select id="f_modulo" name="modulo_id">
+                                    <option value="">Nenhum módulo</option>
+                                    <?php foreach ($modulos as $modulo): ?>
+                                        <option value="<?= (int)$modulo['id'] ?>" <?= (int)$modulo['id'] === $moduloSelecionado ? 'selected' : '' ?>><?= h($modulo['nome']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <label class="checkbox"><input type="checkbox" name="exige_confirmacao" <?= (($editRow['exige_confirmacao'] ?? 0) ? 'checked' : '') ?> /> Exige confirmação de leitura</label>
+                        </div>
+
+                        <details class="advanced-settings">
+                            <summary>Configurações avançadas</summary>
+                            <div class="advanced-settings__content">
+
                         <div class="grid-3">
                             <div class="row">
                                 <label>Tipo</label>
@@ -320,7 +336,6 @@ if ($resVer === false) {
                                     <label class="checkbox"><input type="checkbox" name="ativa" <?= (($editRow['ativa'] ?? 1) ? 'checked' : '') ?> /> Ativa</label>
                                     <label class="checkbox"><input type="checkbox" name="fixa" <?= (($editRow['fixa'] ?? 0) ? 'checked' : '') ?> /> Fixa</label>
                                     <label class="checkbox"><input type="checkbox" name="fechavel" <?= (($editRow['fechavel'] ?? 1) ? 'checked' : '') ?> /> Fechável</label>
-                                    <label class="checkbox"><input type="checkbox" name="exige_confirmacao" <?= (($editRow['exige_confirmacao'] ?? 0) ? 'checked' : '') ?> /> Exige confirmação</label>
                                 </div>
                             </div>
                         </div>
@@ -346,6 +361,9 @@ if ($resVer === false) {
                                 <input id="f_cta_url" type="text" name="cta_url" maxlength="500" value="<?= h($editRow['cta_url'] ?? '') ?>" />
                             </div>
                         </div>
+
+                            </div>
+                        </details>
 
                         <div class="row">
                             <label>Segmentação</label>
@@ -408,10 +426,13 @@ if ($resVer === false) {
                             <div class="small">Destinatários do projeto são calculados por colaboradores que possuem funções na obra.</div>
                         </div>
 
-                        <div class="row">
+                        <details class="advanced-settings">
+                            <summary>Payload avançado</summary>
+                            <div class="advanced-settings__content row">
                             <label>Payload JSON (opcional)</label>
                             <textarea id="f_payload" name="payload_json" placeholder='{"versao":"3.2.0","arquivo_id":123}'><?= h($editRow['payload_json'] ?? '') ?></textarea>
-                        </div>
+                            </div>
+                        </details>
 
                         <div class="row">
                             <label>Arquivo (PDF ou imagem) (opcional)</label>
@@ -551,10 +572,10 @@ if ($resVer === false) {
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="<?php echo asset_url('render.js'); ?>"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
-    <?php include '../css/modalSessao.php'; ?>
 </body>
 
 </html>

@@ -165,15 +165,22 @@ if ($id <= 0 || $idusuario <= 0) {
     exit;
 }
 
+$set = 'd.visto_em = COALESCE(d.visto_em, NOW())';
 if ($action === 'confirmado') {
-    $sql = "UPDATE notificacoes_destinatarios
-            SET confirmado_em = NOW(), visto_em = COALESCE(visto_em, NOW())
-            WHERE notificacao_id = ? AND usuario_id = ?";
-} else {
-    $sql = "UPDATE notificacoes_destinatarios
-            SET visto_em = COALESCE(visto_em, NOW())
-            WHERE notificacao_id = ? AND usuario_id = ?";
+    $set = 'd.confirmado_em = NOW(), d.visto_em = COALESCE(d.visto_em, NOW())';
+} elseif ($action === 'dispensado') {
+    $set = 'd.dispensado_em = NOW(), d.visto_em = COALESCE(d.visto_em, NOW())';
+} elseif ($action !== 'visto') {
+    echo json_encode(['ok' => false, 'message' => 'Ação inválida']);
+    exit;
 }
+
+$sql = "UPDATE notificacoes_destinatarios d
+        JOIN notificacoes n ON n.id = d.notificacao_id
+        SET $set
+        WHERE d.notificacao_id = ? AND d.usuario_id = ?
+          AND n.ativa = 1
+          AND COALESCE(NULLIF(n.status_publicacao, ''), CASE WHEN n.ativa = 1 THEN 'PUBLICADA' ELSE 'ENCERRADA' END) = 'PUBLICADA'";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {

@@ -108,12 +108,17 @@ while ($row = $notificacao_result->fetch_assoc()) {
 
 // Buscar notificações do novo módulo (por usuário)
 $notificacoes_modulo = [];
-$notificacao_modulo_sql = "SELECT n.id, n.titulo, n.mensagem, n.tipo, n.canal, n.exige_confirmacao,
-                                        n.cta_label, n.cta_url, n.arquivo_path, n.arquivo_nome, n.criado_em
+$notificacao_modulo_sql = "SELECT n.id, n.titulo, n.mensagem, n.tipo, n.canal, n.exige_confirmacao, n.fixa, n.fechavel,
+                                        n.cta_label, n.cta_url, n.arquivo_path, n.arquivo_nome, n.criado_em,
+                                        n.versao_publicacao, m.codigo AS modulo_codigo, m.nome AS modulo_nome,
+                                        m.url AS modulo_url, m.icone AS modulo_icone
                                                         FROM notificacoes n
                                                         JOIN notificacoes_destinatarios d ON d.notificacao_id = n.id
+                                                        LEFT JOIN notificacoes_modulos m ON m.id = n.modulo_id
                                                         WHERE d.usuario_id = ?
                                                             AND n.ativa = 1
+                                                            AND COALESCE(NULLIF(n.status_publicacao, ''), CASE WHEN n.ativa = 1 THEN 'PUBLICADA' ELSE 'ENCERRADA' END) = 'PUBLICADA'
+                                                            AND d.dispensado_em IS NULL
                                                             AND (n.inicio_em IS NULL OR n.inicio_em <= NOW())
                                                             AND (n.fim_em IS NULL OR n.fim_em >= NOW())
                                                             AND (

@@ -2158,7 +2158,9 @@ function syncModernTaskRows() {
     const row = section.querySelector(`[data-task-key="${cfg.key}"]`);
     const noteRow = section.querySelector(`[data-note-key="${cfg.key}"]`);
     const active =
-      visibleKeys.has(cfg.key) && modernFuncoesState.activeKeys.has(cfg.key);
+      visibleKeys.has(cfg.key) &&
+      (modernFuncoesState.mode !== "animacao" ||
+        modernFuncoesState.activeKeys.has(cfg.key));
     if (row) row.hidden = !active;
     if (noteRow && !active) noteRow.hidden = true;
     if (active) count++;
@@ -2169,50 +2171,6 @@ function syncModernTaskRows() {
 
   const empty = document.getElementById("allocationTasksEmpty");
   if (empty) empty.hidden = count > 0;
-
-  const addMenu = document.getElementById("allocationAddMenu");
-  const addWrap = section.querySelector(".allocation-add-wrap");
-  const missingConfigs = modernVisibleFuncoesConfig().filter(
-    (cfg) => !modernFuncoesState.activeKeys.has(cfg.key),
-  );
-  if (addWrap) {
-    addWrap.hidden =
-      (!!modernFuncoesState.visibleKeysOverride &&
-        modernFuncoesState.mode !== "animacao") ||
-      missingConfigs.length === 0;
-  }
-  if (addMenu) {
-    if (
-      modernFuncoesState.visibleKeysOverride &&
-      modernFuncoesState.mode !== "animacao"
-    ) {
-      addMenu.hidden = true;
-    }
-    addMenu.innerHTML = "";
-    missingConfigs.forEach((cfg) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "alloc-add-option";
-      btn.textContent =
-        modernFuncoesState.mode === "animacao" && cfg.key === "finalizacao"
-          ? "Anima\u00e7\u00e3o"
-          : cfg.label;
-      btn.addEventListener("click", () => {
-        modernFuncoesState.activeKeys.add(cfg.key);
-        addMenu.hidden = true;
-        syncModernTaskRows();
-        document.getElementById(cfg.selectId)?.focus();
-      });
-      addMenu.appendChild(btn);
-    });
-    if (!addMenu.children.length) {
-      const emptyOption = document.createElement("span");
-      emptyOption.className = "alloc-add-empty";
-      emptyOption.textContent =
-        "Todas as fun\u00e7\u00f5es j\u00e1 est\u00e3o vis\u00edveis.";
-      addMenu.appendChild(emptyOption);
-    }
-  }
 }
 
 function setupModernFuncoesModal() {
@@ -2299,28 +2257,6 @@ function setupModernFuncoesModal() {
   taskTop.className = "allocation-section-head";
   taskTop.innerHTML =
     '<div><h3>Tarefas e respons\u00e1veis (<span id="allocationTaskCount">0</span>)</h3></div>';
-  const addWrap = document.createElement("div");
-  addWrap.className = "allocation-add-wrap";
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.id = "allocationAddFunctionBtn";
-  addBtn.className = "allocation-add-btn";
-  addBtn.innerHTML =
-    '<i class="fa-solid fa-plus"></i><span>Adicionar fun\u00e7\u00e3o</span>';
-  const addMenu = document.createElement("div");
-  addMenu.id = "allocationAddMenu";
-  addMenu.className = "allocation-add-menu";
-  addMenu.hidden = true;
-  addBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    addMenu.hidden = !addMenu.hidden;
-  });
-  document.addEventListener("click", (event) => {
-    if (!addWrap.contains(event.target)) addMenu.hidden = true;
-  });
-  addWrap.appendChild(addBtn);
-  addWrap.appendChild(addMenu);
-  taskTop.appendChild(addWrap);
 
   const table = document.createElement("div");
   table.className = "allocation-task-table";

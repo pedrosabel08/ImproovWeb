@@ -1524,6 +1524,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'imagem_id' => (int)($imagem_id_context ?: $imagem_id),
                         'obra_id' => (int)$obra_id_context,
                         'actor_id' => (int)$responsavel,
+                        'revisor_nome' => (string)$nome_responsavel,
                         'operacao' => 'envio_arquivo_revisado',
                         'operation_id' => 'review_' . (int)$idfuncao_imagem . '_historico_' . (int)$historico_id . '_status_' . normalize_name((string)$status),
                         'tentativa' => $sftp_action !== null ? 2 : 1,

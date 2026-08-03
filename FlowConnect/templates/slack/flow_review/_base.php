@@ -37,6 +37,15 @@ if (!function_exists('flow_connect_tpl_link')) {
     }
 }
 
+if (!function_exists('flow_connect_tpl_title_with_actor')) {
+    function flow_connect_tpl_title_with_actor(string $title, array $payload): string
+    {
+        $actorName = trim((string) ($payload['revisor_nome'] ?? $payload['autor_nome'] ?? ''));
+        if ($actorName === '') return $title;
+        return rtrim($title, ". \t\n\r\0\x0B") . ' por *' . flow_connect_tpl_escape($actorName) . '*';
+    }
+}
+
 if (!function_exists('flow_connect_tpl_message')) {
     function flow_connect_tpl_message(string $title, array $payload, string $detail = ''): array
     {

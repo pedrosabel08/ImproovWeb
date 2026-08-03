@@ -1,5 +1,5 @@
 <?php
 return static function (array $p): array {
     $obs = flow_connect_tpl_truncate($p['observacao'] ?? '', 500);
-    return flow_connect_tpl_message('✅ Ângulo escolhido com ajustes.', $p, $obs !== '' ? '> ' . flow_connect_tpl_escape($obs) : '');
+    return flow_connect_tpl_message(flow_connect_tpl_title_with_actor('✅ Ângulo escolhido com ajustes.', $p), $p, $obs !== '' ? '> ' . flow_connect_tpl_escape($obs) : '');
 };

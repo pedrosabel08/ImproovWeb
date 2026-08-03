@@ -17,13 +17,46 @@ function flow_connect_test_templates_retry_sla(): void
         'funcao_nome' => 'Finalização', 'observacao' => str_repeat('x', 700),
         'flow_review_url' => 'https://example.test/review', 'operacao' => 'upload', 'tentativa' => 1,
         'erro_tecnico_seguro' => 'timeout', 'tempo_em_aprovacao' => 30, 'limite_sla' => 24,
-        'message' => 'Mensagem imediata <teste>',
+        'message' => 'Mensagem imediata <teste>', 'revisor_nome' => 'Rafael <Teste>',
     ];
     foreach ($templates as $template) {
         $result = $renderer->render($template, ['payload' => $payload]);
         fc_assert(trim($result['text']) !== '', "template {$template} rendered");
         fc_assert(strpos($result['text'], '<Autor & Cia>') === false, "template {$template} escapes user content");
     }
+
+    $actorTemplates = [
+        'angle_chosen', 'angle_chosen_with_adjustments', 'angle_adjustment_requested',
+        'task_approved', 'task_adjustment_requested', 'task_approved_with_adjustments', 'task_rejected',
+        'direction_validation_requested', 'sftp_failed',
+    ];
+    foreach ($actorTemplates as $template) {
+        $result = $renderer->render($template, ['payload' => $payload]);
+        fc_assert(
+            strpos($result['text'], '*Rafael &lt;Teste&gt;*') !== false,
+            "template {$template} identifies the reviewer"
+        );
+    }
+
+    $taskAdjustmentText = $renderer->render('task_adjustment_requested', ['payload' => $payload])['text'];
+    fc_assert(strpos($taskAdjustmentText, '🛠️ Ajuste solicitado na tarefa por *Rafael &lt;Teste&gt;*') !== false, 'task adjustment identifies who requested it in its title');
+    fc_assert(strpos($taskAdjustmentText, 'Ação registrada por') === false, 'task adjustment has no separate actor line');
+    fc_assert(
+        strpos($renderer->render('task_approved', ['payload' => $payload])['text'], '✅ Tarefa aprovada por *Rafael &lt;Teste&gt;*') !== false,
+        'task approval identifies its reviewer in its title'
+    );
+    fc_assert(
+        strpos($renderer->render('direction_validation_requested', ['payload' => $payload])['text'], '⏳ Validação da direção solicitada por *Rafael &lt;Teste&gt;*') !== false,
+        'direction validation identifies its reviewer in its title'
+    );
+    fc_assert_same(
+        1,
+        substr_count($renderer->render('mention_created', ['payload' => $payload])['text'], 'Autor &amp; Cia'),
+        'mention identifies its author once'
+    );
+
+    $slaResult = $renderer->render('approval_sla_exceeded', ['payload' => array_diff_key($payload, ['revisor_nome' => true, 'autor_nome' => true])]);
+    fc_assert(strpos($slaResult['text'], 'Ação registrada por') === false, 'SLA event does not invent an actor');
 
     $retry = new RetryPolicy();
     fc_assert_same('SENT', $retry->decide(['ok' => true], 0)['status'], 'success sent');

@@ -950,6 +950,17 @@ try {
         throw new Exception('Responsável inválido para histórico.');
     }
 
+    $revisorNome = '';
+    if ($stReviewer = $conn->prepare('SELECT nome_colaborador FROM colaborador WHERE idcolaborador = ? LIMIT 1')) {
+        $stReviewer->bind_param('i', $respHist);
+        $stReviewer->execute();
+        $stReviewer->bind_result($revisorNomeDb);
+        if ($stReviewer->fetch()) {
+            $revisorNome = (string)$revisorNomeDb;
+        }
+        $stReviewer->close();
+    }
+
     $histStatusNovo = ($acao === 'escolhido') ? 'Aprovado' : $statusNovo;
     if ($insHist = $conn->prepare('INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)')) {
         $sa = $statusAnterior ?? '';
@@ -972,6 +983,7 @@ try {
         'funcao_id' => (int)$funcao_id,
         'colaborador_responsavel_id' => (int)$colaborador_id,
         'revisor_id' => (int)$respHist,
+        'revisor_nome' => $revisorNome,
         'status_anterior' => (string)$statusAnterior,
         'status_novo' => (string)$histStatusNovo,
         'decisao' => (string)$acao,

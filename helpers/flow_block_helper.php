@@ -285,6 +285,43 @@ if (!function_exists('flow_block_publish')) {
     }
 }
 
+if (!function_exists('flow_block_publish_operational_lifecycle')) {
+    /** Flow Connect is observational here: a publication failure never rolls back an Issue. */
+    function flow_block_publish_operational_lifecycle(mysqli $conn, array $issue, string $action, ?int $actorId = null): void
+    {
+        $issueId = (int) ($issue['id'] ?? 0);
+        if ($issueId <= 0) return;
+        require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+        $cycleId = '';
+        $cycle = $conn->prepare('SELECT id FROM flow_issue_ciclo WHERE issue_id=? ORDER BY id DESC LIMIT 1');
+        if ($cycle) {
+            $cycle->bind_param('i', $issueId); $cycle->execute();
+            $row = $cycle->get_result()->fetch_assoc(); $cycle->close();
+            $cycleId = (string) ($row['id'] ?? '');
+        }
+        if ($cycleId === '') return;
+        $logs = [];
+        $payload = [
+            'cycle_id' => $cycleId,
+            'titulo' => 'Bloqueio ' . ((string) ($issue['codigo'] ?? ('#' . $issueId))),
+            'responsavel_id' => (int) ($issue['responsavel_colaborador_id'] ?? 0) ?: null,
+            'responsavel_cobranca_id' => (int) ($issue['responsavel_colaborador_id'] ?? 0) ?: null,
+            'started_at' => (string) ($issue['criado_em'] ?? ''),
+            'due_at' => (string) ($issue['proxima_cobranca_em'] ?? $issue['sla_atendimento_em'] ?? ''),
+            'sla_seconds' => 7200,
+            'funcao_imagem_id' => (int) ($issue['funcao_imagem_id'] ?? 0) ?: null,
+            'descricao' => (string) ($issue['descricao'] ?? ''),
+            'origin_url' => 'FlowBlock/index.php?issue=' . $issueId,
+            'business_timezone' => 'America/Sao_Paulo',
+        ];
+        if ($action === 'pausada' || $action === 'retomada') {
+            \FlowConnect\Application\OperationalCycleRepository::recordLifecycle($conn, 'flow_block', 'flow_block.bloqueio.v1', $action === 'pausada' ? 'pausada' : 'criada', 'flow_issue', $issueId, $payload);
+            return;
+        }
+        flow_connect_publish_operational_pending($conn, 'flow_block', 'flow_block.bloqueio.v1', $action, 'flow_issue', $issueId, $payload, $actorId, $logs);
+    }
+}
+
 if (!function_exists('flow_block_publish_mention')) {
     /**
      * The WebSocket payload intentionally contains identifiers only.  The

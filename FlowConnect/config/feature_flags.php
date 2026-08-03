@@ -45,3 +45,22 @@ if (!function_exists('flow_connect_should_bypass_legacy')) {
         return $publishedEventId > 0 && flow_connect_review_mode($family) === 'active';
     }
 }
+
+/** Policies operacionais novas permanecem desligadas sem configuracao explicita. */
+if (!function_exists('flow_connect_operational_mode')) {
+    function flow_connect_operational_mode(string $moduleKey, string $policyKey): string
+    {
+        $normalize = static fn(string $value): string => strtoupper(preg_replace('/[^A-Z0-9]+/', '_', strtoupper($value)) ?? '');
+        $specific = getenv('FLOW_CONNECT_POLICY_' . $normalize($moduleKey) . '_' . $normalize($policyKey) . '_MODE');
+        if ($specific !== false && trim((string) $specific) !== '') return flow_connect_normalize_mode($specific);
+        $module = getenv('FLOW_CONNECT_' . $normalize($moduleKey) . '_MODE');
+        return $module !== false && trim((string) $module) !== '' ? flow_connect_normalize_mode($module) : 'off';
+    }
+}
+
+if (!function_exists('flow_connect_operational_should_bypass')) {
+    function flow_connect_operational_should_bypass(string $moduleKey, string $policyKey, int $publishedEventId): bool
+    {
+        return $publishedEventId > 0 && flow_connect_operational_mode($moduleKey, $policyKey) === 'active';
+    }
+}

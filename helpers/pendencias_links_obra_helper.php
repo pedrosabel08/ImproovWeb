@@ -145,6 +145,7 @@ function pendencias_links_obra_abrir(
             (obra_id, tipo_link, origem, status_id, entrega_id, responsavel_id, status, concluida_em, concluida_por)
          VALUES (?, ?, ?, ?, ?, ?, 'aberta', NULL, NULL)
          ON DUPLICATE KEY UPDATE
+            id = LAST_INSERT_ID(id),
             origem = VALUES(origem),
             status_id = VALUES(status_id),
             entrega_id = VALUES(entrega_id),
@@ -161,6 +162,15 @@ function pendencias_links_obra_abrir(
     $stmt->execute();
     $id = (int) $conn->insert_id;
     $stmt->close();
+
+    if ($id > 0) {
+        require_once dirname(__DIR__) . '/FlowConnect/bootstrap.php';
+        $logs = [];
+        flow_connect_publish_operational_pending($conn, 'links', 'links.pendencia.v1', 'criada', 'pendencias_links_obra', $id, [
+            'cycle_id' => (string) $id, 'titulo' => 'Link ' . $tipoLink . ' pendente', 'responsavel_id' => $responsavelId,
+            'descricao' => 'Link pendente da obra #' . $obraId,
+        ], null, $logs);
+    }
 
     return $id > 0 ? $id : null;
 }
@@ -225,6 +235,19 @@ function pendencias_links_obra_concluir_por_campo(
     $stmt->execute();
     $affected = (int) $stmt->affected_rows;
     $stmt->close();
+
+    if ($affected > 0) {
+        $lookup = $conn->prepare('SELECT id, responsavel_id FROM pendencias_links_obra WHERE obra_id=? AND tipo_link=? LIMIT 1');
+        if ($lookup) {
+            $lookup->bind_param('is', $obraId, $tipoLink); $lookup->execute(); $pending = $lookup->get_result()->fetch_assoc(); $lookup->close();
+            if ($pending) {
+                require_once dirname(__DIR__) . '/FlowConnect/bootstrap.php'; $logs = [];
+                flow_connect_publish_operational_pending($conn, 'links', 'links.pendencia.v1', 'resolvida', 'pendencias_links_obra', (int) $pending['id'], [
+                    'cycle_id' => (string) $pending['id'], 'titulo' => 'Link ' . $tipoLink . ' pendente', 'responsavel_id' => (int) $pending['responsavel_id'],
+                ], $colaboradorId, $logs);
+            }
+        }
+    }
 
     return $affected;
 }

@@ -42,6 +42,10 @@ require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 $conn = conectarBanco();
 
+$businessTimezone = new DateTimeZone((string) (flow_connect_config()['operational']['business_timezone'] ?? 'America/Sao_Paulo'));
+$businessNow = (new DateTimeImmutable('now', $businessTimezone))->format('Y-m-d H:i:s');
+$businessNowSql = $conn->real_escape_string($businessNow);
+
 $log = [];
 
 // ── 1. Find breached tasks ──────────────────────────────────────────────────
@@ -56,7 +60,7 @@ $sqlBreach = "
         o.nomenclatura,
         o.idobra AS obra_id,
         sf.limite_horas,
-        TIMESTAMPDIFF(HOUR, ha.data_aprovacao, NOW()) AS horas_em_aprovacao,
+        TIMESTAMPDIFF(HOUR, ha.data_aprovacao, '{$businessNowSql}') AS horas_em_aprovacao,
         ha.data_aprovacao AS sla_inicio
     FROM funcao_imagem fi
     JOIN sla_funcao sf ON sf.funcao_id = fi.funcao_id
@@ -72,7 +76,7 @@ $sqlBreach = "
     JOIN historico_aprovacoes ha ON ha.id = ha_latest.max_id
     WHERE fi.status = 'Em aprovação'
       AND o.status_obra = 0
-      AND TIMESTAMPDIFF(HOUR, ha.data_aprovacao, NOW()) >= sf.limite_horas
+      AND TIMESTAMPDIFF(HOUR, ha.data_aprovacao, '{$businessNowSql}') >= sf.limite_horas
     ORDER BY horas_em_aprovacao DESC
 ";
 
@@ -212,7 +216,7 @@ foreach ($breachedTasks as $task) {
         'tempo_em_aprovacao' => $horas,
         'limite_sla' => $limite,
         'nivel' => 1,
-        'janela_referencia' => gmdate('Y-m-d'),
+        'janela_referencia' => (new DateTimeImmutable($businessNow, $businessTimezone))->format('Y-m-d'),
         'flow_review_url' => flow_connect_config()['flow_review']['url'],
         'producer' => 'FlowReview/sla_check_cron.php',
     ]);

@@ -16,20 +16,53 @@ if (!isset($_SESSION['nivel_acesso']) || !in_array((int) $_SESSION['nivel_acesso
     header('Location: ../index.html');
     exit();
 }
+
+// Carrega conexão com o banco antes de executar atualizações de logs
+include '../conexaoMain.php';
+$conn = conectarBanco();
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('./style.css'); ?>&contracts=<?php echo filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <title>Contratos</title>
 </head>
+
 <body>
     <?php include __DIR__ . '/../sidebar.php'; ?>
     <main class="contratos-main" aria-label="Central de contratos">
@@ -94,7 +127,9 @@ if (!isset($_SESSION['nivel_acesso']) || !in_array((int) $_SESSION['nivel_acesso
                         </tr>
                     </thead>
                     <tbody id="contratos-body">
-                        <tr><td colspan="6" class="table-empty">Carregando contratos…</td></tr>
+                        <tr>
+                            <td colspan="6" class="table-empty">Carregando contratos…</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -104,7 +139,11 @@ if (!isset($_SESSION['nivel_acesso']) || !in_array((int) $_SESSION['nivel_acesso
     <div id="menu-acoes" class="actions-menu" hidden></div>
     <div id="history-modal" class="history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="history-title">
         <div class="history-dialog">
-            <header><div><span class="eyebrow">Acompanhamento</span><h2 id="history-title">Histórico do contrato</h2></div><button id="history-close" class="icon-button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></header>
+            <header>
+                <div><span class="eyebrow">Acompanhamento</span>
+                    <h2 id="history-title">Histórico do contrato</h2>
+                </div><button id="history-close" class="icon-button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </header>
             <div id="history-content" class="history-content"></div>
         </div>
     </div>
@@ -114,4 +153,5 @@ if (!isset($_SESSION['nivel_acesso']) || !in_array((int) $_SESSION['nivel_acesso
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
+
 </html>

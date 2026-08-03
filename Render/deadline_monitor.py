@@ -4,7 +4,7 @@ import json
 import base64
 import pymysql
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from ftplib import FTP
 import requests
 import logging
@@ -75,9 +75,9 @@ def publish_render_update(event, payload):
     try:
         message = {"version": 1, "event": event, "ts": int(datetime.now().timestamp())}
         message.update(payload)
-        redis.Redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379"), socket_connect_timeout=1).publish(
-            "render:updated", json.dumps(message, ensure_ascii=False)
-        )
+        redis.Redis.from_url(
+            os.getenv("REDIS_URL", "redis://127.0.0.1:6379"), socket_connect_timeout=1
+        ).publish("render:updated", json.dumps(message, ensure_ascii=False))
     except Exception as exc:
         log_and_print(f"Falha ao publicar evento Render: {exc}", "debug")
 
@@ -149,12 +149,21 @@ def flow_connect_publish_immediate(event_key, responsavel_id, message, webhook=F
         "message": message,
         "recipient_collaborator_id": None if webhook else int(responsavel_id or 0),
         "webhook_env": "SLACK_WEBHOOK_URL" if webhook else None,
-        "idempotency_key": "render:%s:%s:v1" % (event_key, "channel" if webhook else "responsible"),
+        "idempotency_key": "render:%s:%s:v1"
+        % (event_key, "channel" if webhook else "responsible"),
     }
-    bridge = os.path.normpath(os.path.join(script_dir, "..", "FlowConnect", "scripts", "publish_legacy_event.php"))
+    bridge = os.path.normpath(
+        os.path.join(
+            script_dir, "..", "FlowConnect", "scripts", "publish_legacy_event.php"
+        )
+    )
     try:
-        encoded = base64.b64encode(json.dumps(payload, ensure_ascii=False).encode("utf-8")).decode("ascii")
-        result = subprocess.run(["php", bridge, encoded], capture_output=True, text=True, timeout=15)
+        encoded = base64.b64encode(
+            json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        ).decode("ascii")
+        result = subprocess.run(
+            ["php", bridge, encoded], capture_output=True, text=True, timeout=15
+        )
         if result.returncode != 0:
             log_and_print("Flow Connect nao aceitou evento Render.", "warning")
             return False
@@ -162,6 +171,71 @@ def flow_connect_publish_immediate(event_key, responsavel_id, message, webhook=F
         return bool(data.get("bypass_legacy"))
     except Exception as exc:
         log_and_print(f"Flow Connect indisponivel para Render: {exc}", "warning")
+        return False
+
+
+def flow_connect_publish_render_pending(
+    cursor, attempt_id, render_id, imagem_id, responsavel_id, image_name
+):
+    """Publica a pendência temporal uma vez por tentativa real de render.
+
+    O monitor contínuo é a fonte operacional. `script.py` permanece legado e
+    não publica este contrato, evitando dois ciclos para a mesma transição.
+    """
+    cursor.execute(
+        "SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id=%s AND funcao_id=4 AND status='Em aprovação' ORDER BY idfuncao_imagem DESC LIMIT 1",
+        (imagem_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return False
+    task_id = int(row[0])
+    cycle_id = str(
+        attempt_id or ("render:%s:task:%s" % (render_id or imagem_id, task_id))
+    )
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    due = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    payload = {
+        "entity_type": "funcao_imagem",
+        "entity_id": str(task_id),
+        "operational": {
+            "module_key": "render",
+            "policy_key": "render.aprovacao.v1",
+            "action": "criada",
+            "payload": {
+                "cycle_id": cycle_id,
+                "pendencia_id": task_id,
+                "responsavel_id": int(responsavel_id or 0) or None,
+                "started_at": now,
+                "due_at": due,
+                "sla_seconds": 3600,
+                "imagem_id": int(imagem_id or 0) or None,
+                "titulo": "Aprovação de render · %s" % (image_name or "Imagem"),
+                "origin_url": "FlowReview/index.php",
+                "business_timezone": "America/Sao_Paulo",
+            },
+        },
+    }
+    bridge = os.path.normpath(
+        os.path.join(
+            script_dir, "..", "FlowConnect", "scripts", "publish_legacy_event.php"
+        )
+    )
+    try:
+        encoded = base64.b64encode(
+            json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        ).decode("ascii")
+        result = subprocess.run(
+            ["php", bridge, encoded], capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            log_and_print(
+                "Flow Connect nao aceitou ciclo temporal do Render.", "warning"
+            )
+            return False
+        return bool(json.loads(result.stdout.strip() or "{}").get("bypass_legacy"))
+    except Exception as exc:
+        log_and_print(f"Flow Connect indisponivel para ciclo Render: {exc}", "warning")
         return False
 
 
@@ -176,9 +250,7 @@ def get_user_id_by_name(user_name):
         response = requests.get(url, headers=headers, timeout=15)
         data = response.json()
         if not data.get("ok"):
-            log_and_print(
-                f"Erro na API users.list: {data.get('error')}", "error"
-            )
+            log_and_print(f"Erro na API users.list: {data.get('error')}", "error")
             return None
         for member in data.get("members", []):
             if (
@@ -282,7 +354,12 @@ def claim_attempt_event(cursor, attempt_id, event_type, key, data=None):
             (tentativa_id, tipo, chave, dados_json)
         VALUES (%s, %s, %s, %s)
         """,
-        (attempt_id, event_type, str(key)[:120], json.dumps(data or {}, ensure_ascii=False)),
+        (
+            attempt_id,
+            event_type,
+            str(key)[:120],
+            json.dumps(data or {}, ensure_ascii=False),
+        ),
     )
     return cursor.rowcount == 1
 
@@ -352,7 +429,9 @@ def send_transition_notifications(
     if claim_attempt_event(
         cursor, attempt_id, "SLACK_CANAL", channel_key, {"message": message}
     ):
-        if flow_connect_publish_immediate(channel_key, None, message, webhook=True) or send_webhook_message(message):
+        if flow_connect_publish_immediate(
+            channel_key, None, message, webhook=True
+        ) or send_webhook_message(message):
             log_and_print(f"Slack enviado para o canal ({image_name}).")
         else:
             release_attempt_event(cursor, attempt_id, "SLACK_CANAL", channel_key)
@@ -376,7 +455,9 @@ def send_transition_notifications(
             {"message": message, "user_id": user_id},
         ):
             continue
-        if flow_connect_publish_immediate(dm_key, responsavel_id, message) or send_dm_to_user(user_id, message):
+        if flow_connect_publish_immediate(
+            dm_key, responsavel_id, message
+        ) or send_dm_to_user(user_id, message):
             log_and_print(f"Slack DM enviada para colaborador {responsavel_id}.")
         else:
             release_attempt_event(cursor, attempt_id, "SLACK_DM", dm_key)
@@ -1038,7 +1119,9 @@ def process_deadline_job(
         # antigo a cada sincronizacao. Nenhum dado do Render/POS e alterado.
         return True
 
-    status_id = linked_render[2] if linked_render and linked_render[2] else current_status_id
+    status_id = (
+        linked_render[2] if linked_render and linked_render[2] else current_status_id
+    )
 
     # ─────────────────────────────────────────────────────────────────────
     # Proteção contra reprocessamento de jobs antigos
@@ -1460,6 +1543,15 @@ def process_deadline_job(
             msg = None
 
         if msg:
+            if status_custom == "Em aprovaÃ§Ã£o":
+                flow_connect_publish_render_pending(
+                    cursor,
+                    attempt_context["id"] if strict_attempt else None,
+                    render_id,
+                    imagem_id,
+                    resp_id,
+                    image_name_db,
+                )
             send_transition_notifications(
                 cursor,
                 attempt_context["id"] if strict_attempt else None,
@@ -1470,7 +1562,11 @@ def process_deadline_job(
             )
 
         # Atualizar função e imagem
-    if process_state_update and status_custom in ("Em aprovação", "Em andamento") and funcao_id:
+    if (
+        process_state_update
+        and status_custom in ("Em aprovação", "Em andamento")
+        and funcao_id
+    ):
         # cursor.execute("""
         #     UPDATE funcao_imagem
         #     SET status = 'Finalizado', prazo = NOW()

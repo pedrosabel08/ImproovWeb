@@ -45,6 +45,17 @@ final class RecipientResolver
             case 'review_channel':
                 $channel = trim((string) ($this->config['flow_review']['review_channel_id'] ?? ''));
                 return $channel === '' ? [] : [['destination_kind' => 'CHANNEL', 'external_id' => $channel, 'collaborator_id' => null]];
+            case 'operational_pending_audience':
+                $ids = [
+                    (int) ($payload['responsavel_id'] ?? 0),
+                    (int) ($payload['responsavel_cobranca_id'] ?? 0),
+                ];
+                $moduleKey = (string) ($payload['module_key'] ?? '');
+                $ids = array_merge($ids, $this->config['operational']['manager_roles'][$moduleKey] ?? []);
+                break;
+            case 'sla_overdue_webhook':
+                $envKey = (string) ($this->config['operational']['overdue_webhook_env'] ?? '');
+                return $envKey === '' ? [] : [['destination_kind' => 'WEBHOOK', 'external_id' => $envKey, 'collaborator_id' => null]];
         }
 
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));

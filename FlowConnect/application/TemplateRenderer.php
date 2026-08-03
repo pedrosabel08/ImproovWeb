@@ -14,7 +14,8 @@ final class TemplateRenderer
             throw new RuntimeException('flow_connect_template_code_invalid');
         }
         require_once dirname(__DIR__) . '/templates/slack/flow_review/_base.php';
-        $path = dirname(__DIR__) . '/templates/slack/flow_review/' . $templateCode . '.php';
+        $path = dirname(__DIR__) . '/templates/slack/operational/' . $templateCode . '.php';
+        if (!is_file($path)) $path = dirname(__DIR__) . '/templates/slack/flow_review/' . $templateCode . '.php';
         if (!is_file($path)) {
             throw new RuntimeException('flow_connect_template_not_found');
         }

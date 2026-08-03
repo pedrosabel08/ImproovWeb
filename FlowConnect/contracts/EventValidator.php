@@ -9,13 +9,29 @@ use InvalidArgumentException;
 final class EventValidator
 {
     private const REQUIRED = [
-        'event_type', 'event_version', 'source_module', 'entity_type', 'entity_id',
-        'actor_id', 'occurred_at', 'event_uuid', 'correlation_id',
-        'causation_event_uuid', 'idempotency_key', 'payload', 'metadata',
+        'event_type',
+        'event_version',
+        'source_module',
+        'entity_type',
+        'entity_id',
+        'actor_id',
+        'occurred_at',
+        'event_uuid',
+        'correlation_id',
+        'causation_event_uuid',
+        'idempotency_key',
+        'payload',
+        'metadata',
     ];
 
     private const PRODUCER_FORBIDDEN = [
-        'text', 'blocks', 'attachments', 'webhook', 'channel_id', 'slack_user_id', 'token',
+        'text',
+        'blocks',
+        'attachments',
+        'webhook',
+        'channel_id',
+        'slack_user_id',
+        'token',
     ];
 
     public static function validate(array $event): void
@@ -50,10 +66,14 @@ final class EventValidator
         self::assertNoForbiddenFields($event['payload']);
         self::assertNoForbiddenFields($event['metadata']);
 
-        $definitions = array_merge(require dirname(__DIR__) . '/config/events/flow_review.php', require dirname(__DIR__) . '/config/events/immediate_legacy.php');
+        $definitions = array_merge(
+            require dirname(__DIR__) . '/config/events/flow_review.php',
+            require dirname(__DIR__) . '/config/events/immediate_legacy.php',
+            require dirname(__DIR__) . '/config/events/operational_pending.php'
+        );
         $definition = $definitions[$event['event_type']] ?? null;
         if ($definition === null) {
-            throw new InvalidArgumentException('Evento FlowReview não catalogado: ' . $event['event_type']);
+            throw new InvalidArgumentException('Evento Flow Connect não catalogado: ' . $event['event_type']);
         }
         foreach ($definition['required_payload'] ?? [] as $field) {
             if (!array_key_exists($field, $event['payload'])) {

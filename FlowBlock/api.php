@@ -499,6 +499,7 @@ try {
         }
         flow_block_notify($conn, $responsibleId ?? 0, $taskId, "$code foi atribuída a você no Flow Block.");
         $conn->commit();
+        flow_block_publish_operational_lifecycle($conn, fb_get_issue($conn, $issueId) ?: ['id' => $issueId], 'criada', $actorId);
         flow_block_publish($issueId, $taskId, 'issue_created');
         flow_block_json_response(['ok' => true, 'id' => $issueId, 'codigo' => $code, 'existing' => false, 'task_status_changed' => $taskStatusChanged]);
     }
@@ -699,6 +700,7 @@ try {
         ];
         flow_block_add_activity($conn, $issueId, $updatingPause ? 'PAUSA_ATUALIZADA' : 'PAUSADA', $reason, $pauseMetadata);
         $conn->commit();
+        flow_block_publish_operational_lifecycle($conn, fb_get_issue($conn, $issueId) ?: $issue, 'pausada', $actorId);
         if ($effectiveResponsibleId && $effectiveResponsibleId !== (int) ($issue['responsavel_colaborador_id'] ?? 0)) {
             flow_block_notify($conn, $effectiveResponsibleId, (int) $issue['funcao_imagem_id'], $issue['codigo'] . ' foi reatribuída durante a atualização da pausa.');
         }
@@ -760,6 +762,8 @@ try {
             flow_block_notify($conn, (int) $issue['tarefa_colaborador_id'], (int) $issue['funcao_imagem_id'], $issue['codigo'] . ' foi cancelada. A tarefa permanece em HOLD até ser reprogramada.');
         }
         $conn->commit();
+        $lifecycleAction = $target === 'ABERTA' ? 'criada' : ($target === 'RESOLVIDA' ? 'resolvida' : 'cancelada');
+        flow_block_publish_operational_lifecycle($conn, fb_get_issue($conn, $issueId) ?: $issue, $lifecycleAction, $actorId);
         flow_block_publish($issueId, (int) $issue['funcao_imagem_id'], $target === 'RESOLVIDA' ? 'issue.resolved_waiting_confirmation' : ($target === 'ABERTA' ? 'issue.reopened' : 'issue.cancelled'));
         flow_block_json_response(['ok' => true]);
     }

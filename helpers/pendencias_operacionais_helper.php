@@ -273,6 +273,7 @@ function pendencias_operacionais_sync_items(mysqli $conn, int $checklistId, arra
 
 function pendencias_operacionais_update_checklist_status(mysqli $conn, int $checklistId): void
 {
+    $before = pendencias_operacionais_find_checklist_by_id($conn, $checklistId);
     $stmtCount = $conn->prepare(
         "SELECT
             SUM(CASE WHEN required = 1 AND done = 0 THEN 1 ELSE 0 END) AS pendentes
@@ -295,6 +296,43 @@ function pendencias_operacionais_update_checklist_status(mysqli $conn, int $chec
         $stmtUpdate->execute();
         $stmtUpdate->close();
     }
+    if (($before['status'] ?? '') !== $status && in_array($status, ['concluido', 'cancelado'], true)) {
+        pendencias_operacionais_flow_connect_lifecycle($conn, $before ?: [], $status === 'concluido' ? 'resolvida' : 'cancelada');
+    }
+}
+
+function pendencias_operacionais_find_checklist_by_id(mysqli $conn, int $checklistId): ?array
+{
+    $stmt = $conn->prepare('SELECT * FROM checklist_operacional WHERE id=? LIMIT 1');
+    if (!$stmt) return null;
+    $stmt->bind_param('i', $checklistId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function pendencias_operacionais_flow_connect_lifecycle(mysqli $conn, array $checklist, string $action): void
+{
+    if ($checklist === []) return;
+    require_once dirname(__DIR__) . '/FlowConnect/bootstrap.php';
+    $module = (string) ($checklist['module_key'] ?? '');
+    $id = (int) ($checklist['id'] ?? 0);
+    $entityId = (string) ($checklist['entity_id'] ?? $id);
+    $logs = [];
+    flow_connect_publish_operational_pending($conn, $module, $module . '.checklist.v1', $action, 'checklist_operacional', $id, [
+        'cycle_id' => (string) ($checklist['sla_start_at'] ?? $id),
+        'titulo' => 'Checklist ' . $module . ' #' . $entityId,
+        'responsavel_id' => isset($checklist['responsavel_id']) ? (int) $checklist['responsavel_id'] : null,
+        'started_at' => (string) ($checklist['sla_start_at'] ?? $checklist['created_at'] ?? ''),
+        'due_at' => (string) ($checklist['due_at'] ?? ''),
+        'sla_seconds' => $module === 'imagem' ? 4 * 3600 : 24 * 3600,
+        'obra_id' => (int) ($checklist['obra_id'] ?? 0) ?: null,
+        'pendencia_id' => $id,
+        'origin_url' => 'Pendencias/index.php?checklist_id=' . $id,
+        'business_timezone' => 'America/Sao_Paulo',
+        'descricao' => 'Checklist operacional vinculado à entidade ' . $entityId,
+    ], null, $logs);
 }
 
 function pendencias_operacionais_ensure_project_checklist(mysqli $conn, int $obraId, ?int $responsavelId = null): ?int
@@ -329,6 +367,8 @@ function pendencias_operacionais_ensure_project_checklist(mysqli $conn, int $obr
     pendencias_operacionais_sync_items($conn, $checklistId, pendencias_operacionais_project_items());
     pendencias_operacionais_sync_fotografico_requirement($conn, $obraId, false);
     pendencias_operacionais_update_checklist_status($conn, $checklistId);
+    $created = pendencias_operacionais_find_checklist_by_id($conn, $checklistId);
+    pendencias_operacionais_flow_connect_lifecycle($conn, $created ?: [], 'criada');
     return $checklistId;
 }
 

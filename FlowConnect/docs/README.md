@@ -20,6 +20,17 @@
 
 Em `active`, o produtor só ignora o envio legado correspondente quando a persistência da outbox retornou um ID válido. Falha de persistência usa o legado como fallback e evita perda silenciosa.
 
+## Scheduler operacional temporal
+
+O motor de ciclos operacionais fica separado dos workers de evento e entrega: ele confirma a origem, registra marcos idempotentes e inclui eventos na outbox. Nunca chama Slack nem o webhook de atrasos.
+
+```powershell
+php FlowConnect/workers/operational_scheduler_worker.php --once
+php FlowConnect/workers/operational_scheduler_worker.php --daemon
+```
+
+Em `--daemon`, a rodada atual termina antes de respeitar `SIGTERM`/`SIGINT`; nenhuma nova rodada é iniciada e nenhum lock é mantido durante a espera. Sem trabalho, aguarda `FLOW_CONNECT_OPERATIONAL_SCHEDULER_IDLE_SECONDS` (padrão: 1). Falhas de conexão recebem backoff de até 30 segundos.
+
 ## Eventos e contratos
 
 | Evento | Produtor real | Payload principal | Idempotência | Destinatário | Saída padrão |

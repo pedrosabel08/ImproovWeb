@@ -101,6 +101,24 @@ if (!function_exists('flow_connect_publish_legacy_immediate')) {
     }
 }
 
+if (!function_exists('flow_connect_publish_operational_pending')) {
+    function flow_connect_publish_operational_pending(mysqli $conn, string $moduleKey, string $policyKey, string $action, string $entityType, string|int $entityId, array $payload, ?int $actorId = null, array &$logs = []): int
+    {
+        $mode = flow_connect_operational_mode($moduleKey, $policyKey);
+        if ($mode === 'off') return 0;
+        $event = \FlowConnect\Application\OperationalPendingEventFactory::lifecycle($moduleKey, $action, $entityType, $entityId, $payload, $policyKey, $actorId);
+        $event['metadata']['flow_connect_mode'] = $mode;
+        try {
+            $eventId = flow_connect_publish_in_transaction($conn, $event);
+            \FlowConnect\Application\OperationalCycleRepository::recordLifecycle($conn, $moduleKey, $policyKey, $action, $entityType, $entityId, $event['payload']);
+            return $eventId;
+        } catch (Throwable $e) {
+            $logs[] = 'flow_connect_operational_publish_failed:' . flow_connect_safe_error($e->getMessage());
+            return 0;
+        }
+    }
+}
+
 if (!function_exists('flow_connect_legacy_should_bypass')) {
     function flow_connect_legacy_should_bypass(string $module, int $publishedEventId): bool
     {

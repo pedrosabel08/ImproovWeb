@@ -9,6 +9,7 @@ require_once __DIR__ . '/TemplateRetrySlaTest.php';
 require_once __DIR__ . '/StaticArchitectureTest.php';
 require_once __DIR__ . '/TestModeConfigTest.php';
 require_once __DIR__ . '/WorkerDaemonTest.php';
+require_once __DIR__ . '/OperationalPendingTest.php';
 
 $tests = [
     'event_contracts' => 'flow_connect_test_event_contracts',
@@ -17,6 +18,7 @@ $tests = [
     'static_architecture' => 'flow_connect_test_static_architecture',
     'test_mode_config' => 'flow_connect_test_test_mode_config',
     'worker_daemon' => 'flow_connect_test_worker_daemon',
+    'operational_pending' => 'flow_connect_test_operational_pending',
 ];
 $failed = [];
 foreach ($tests as $name => $test) {

@@ -25,7 +25,8 @@ final class EventPlanner
     {
         $this->definitions = array_merge(
             require dirname(__DIR__) . '/config/events/flow_review.php',
-            require dirname(__DIR__) . '/config/events/immediate_legacy.php'
+            require dirname(__DIR__) . '/config/events/immediate_legacy.php',
+            require dirname(__DIR__) . '/config/events/operational_pending.php'
         );
         $this->notifications = new NotificationRepository($conn);
         $this->deliveries = new DeliveryRepository($conn, (int) ($config['claim_ttl_seconds'] ?? 300));
@@ -38,78 +39,65 @@ final class EventPlanner
     public function plan(array $event): array
     {
         $definition = $this->definitions[$event['event_type']] ?? null;
-        if ($definition === null) {
-            throw new RuntimeException('flow_connect_event_definition_missing');
-        }
+        if ($definition === null) throw new RuntimeException('flow_connect_event_definition_missing');
         $producerMode = strtolower((string) ($event['metadata']['flow_connect_mode'] ?? 'shadow'));
-        $recipientStrategy = (string) $definition['recipient_strategy'];
-        if (($event['payload']['tipo_fluxo'] ?? null) === 'animacao' && str_starts_with((string) $event['event_type'], 'review.tarefa.')) {
-            $recipientStrategy = 'animation_responsible';
-        }
-        $configuredDeliveryMode = (string) $definition['delivery_mode'];
-        // Shadow preserva eventos que nunca deveriam comunicar. Para os
-        // demais, cria a mesma delivery lógica do modo ativo e o worker é
-        // responsável por bloquear a chamada externa.
-        $deliveryMode = $producerMode === 'shadow' && !in_array($configuredDeliveryMode, ['HISTORY_ONLY', 'SUPPRESSED'], true)
-            ? 'SHADOW'
-            : $configuredDeliveryMode;
-        $rendered = $this->templates->render((string) $definition['template'], $event);
-        $plan = [
-            'event_id' => (int) $event['id'],
-            'notification_key' => $event['event_uuid'] . ':' . $definition['template'] . ':v1',
-            'severity' => $definition['severity'],
-            'category' => $definition['category'],
-            'delivery_mode' => $deliveryMode,
-            'template_code' => $definition['template'],
-            'recipient_strategy' => $recipientStrategy,
-            'payload' => ['event_type' => $event['event_type'], 'entity_type' => $event['entity_type'], 'entity_id' => $event['entity_id']],
-        ];
+        $strategy = (string) $definition['recipient_strategy'];
+        if (($event['payload']['tipo_fluxo'] ?? null) === 'animacao' && str_starts_with((string) $event['event_type'], 'review.tarefa.')) $strategy = 'animation_responsible';
+        $configuredMode = (string) $definition['delivery_mode'];
+        $deliveryMode = $producerMode === 'shadow' && !in_array($configuredMode, ['HISTORY_ONLY', 'SUPPRESSED'], true) ? 'SHADOW' : $configuredMode;
 
         $this->conn->begin_transaction();
         try {
-            $notificationId = $this->notifications->create($plan);
-            $deliveryIds = [];
-            if (!in_array($deliveryMode, ['HISTORY_ONLY', 'SUPPRESSED'], true)) {
-                $logicalRecipients = $this->recipients->resolveForEvent($recipientStrategy, $event);
-                if ($logicalRecipients === []) {
-                    $this->deadLetters->record((int) $event['id'], $notificationId, null, 'recipient_not_resolved', ['strategy' => $recipientStrategy]);
-                }
-                foreach ($logicalRecipients as $recipient) {
-                    $collaboratorId = $recipient['collaborator_id'] ?? null;
-                    $slackUserId = $recipient['external_id'] ?? null;
-                    if ($collaboratorId) {
-                        $identity = $this->identities->findActiveByCollaborator((int) $collaboratorId);
-                        $slackUserId = $identity['slack_user_id'] ?? null;
-                    }
-                    $destinationKey = $collaboratorId
-                        ? 'slack:collaborator:' . (int) $collaboratorId
-                        : 'slack:channel:' . (string) $slackUserId;
-                    // A delivery lógica é igual em shadow e active; o worker
-                    // decide se pode chamar o canal externo.
-                    $status = $slackUserId ? 'PENDING' : 'UNRESOLVED';
-                    $deliveryId = $this->deliveries->create([
-                        'notification_id' => $notificationId,
-                        'destination_kind' => $recipient['destination_kind'],
-                        'destination_key' => $destinationKey,
-                        'collaborator_id' => $collaboratorId,
-                        'slack_user_id' => $slackUserId,
-                        'rendered_text' => $rendered['text'],
-                        'rendered_blocks' => $rendered['blocks'],
-                        'status' => $status,
-                    ]);
-                    $deliveryIds[] = $deliveryId;
-                    if (!$slackUserId) {
-                        $this->deadLetters->record((int) $event['id'], $notificationId, $deliveryId, 'slack_identity_unresolved', ['collaborator_id' => $collaboratorId]);
-                    }
-                }
+            $primary = $this->createNotification($event, $definition, $deliveryMode, (string) $definition['template'], $strategy, '');
+            $notificationIds = [$primary['notification_id']];
+            $deliveryIds = $primary['delivery_ids'];
+            $milestone = (string) ($event['payload']['milestone'] ?? '');
+            if (in_array($milestone, $definition['overdue_webhook_milestones'] ?? [], true)) {
+                $secondary = $this->createNotification($event, $definition, $deliveryMode, (string) $definition['overdue_webhook_template'], 'sla_overdue_webhook', ':overdue-webhook');
+                $notificationIds[] = $secondary['notification_id'];
+                $deliveryIds = array_merge($deliveryIds, $secondary['delivery_ids']);
             }
             $this->applyScheduleEffects($event);
             $this->conn->commit();
-            return ['notification_id' => $notificationId, 'delivery_ids' => $deliveryIds, 'delivery_mode' => $deliveryMode, 'template' => $definition['template']];
+            return ['notification_id' => $primary['notification_id'], 'notification_ids' => $notificationIds, 'delivery_ids' => $deliveryIds, 'delivery_mode' => $deliveryMode, 'template' => $definition['template']];
         } catch (\Throwable $e) {
             $this->conn->rollback();
             throw $e;
         }
+    }
+
+    private function createNotification(array $event, array $definition, string $deliveryMode, string $template, string $strategy, string $suffix): array
+    {
+        $rendered = $this->templates->render($template, $event);
+        $notificationId = $this->notifications->create([
+            'event_id' => (int) $event['id'], 'notification_key' => $event['event_uuid'] . ':' . $template . ':v1' . $suffix,
+            'severity' => $definition['severity'], 'category' => $definition['category'], 'delivery_mode' => $deliveryMode,
+            'template_code' => $template, 'recipient_strategy' => $strategy,
+            'payload' => ['event_type' => $event['event_type'], 'entity_type' => $event['entity_type'], 'entity_id' => $event['entity_id']],
+        ]);
+        $deliveryIds = [];
+        if (in_array($deliveryMode, ['HISTORY_ONLY', 'SUPPRESSED'], true)) return ['notification_id' => $notificationId, 'delivery_ids' => $deliveryIds];
+        $recipients = $strategy === 'sla_overdue_webhook' ? $this->recipients->resolve($strategy, $event) : $this->recipients->resolveForEvent($strategy, $event);
+        if ($recipients === []) $this->deadLetters->record((int) $event['id'], $notificationId, null, 'recipient_not_resolved', ['strategy' => $strategy]);
+        foreach ($recipients as $recipient) {
+            $collaboratorId = $recipient['collaborator_id'] ?? null;
+            $kind = (string) $recipient['destination_kind'];
+            $externalId = $recipient['external_id'] ?? null;
+            $slackUserId = $externalId;
+            if ($collaboratorId) $slackUserId = ($this->identities->findActiveByCollaborator((int) $collaboratorId)['slack_user_id'] ?? null);
+            $destinationKey = $collaboratorId ? 'slack:collaborator:' . (int) $collaboratorId : ($kind === 'WEBHOOK' ? (string) $externalId : 'slack:channel:' . (string) $slackUserId);
+            $resolved = $kind === 'WEBHOOK' ? trim((string) getenv((string) $externalId)) !== '' : (bool) $slackUserId;
+            $deliveryId = $this->deliveries->create([
+                'notification_id' => $notificationId, 'destination_kind' => $kind, 'destination_key' => $destinationKey,
+                'collaborator_id' => $collaboratorId, 'slack_user_id' => $kind === 'WEBHOOK' ? null : $slackUserId,
+                'rendered_text' => $rendered['text'], 'rendered_blocks' => $rendered['blocks'], 'status' => $resolved ? 'PENDING' : 'UNRESOLVED',
+            ]);
+            $deliveryIds[] = $deliveryId;
+            if (!$resolved) $this->deadLetters->record((int) $event['id'], $notificationId, $deliveryId,
+                $kind === 'WEBHOOK' ? 'webhook_destination_unresolved' : 'slack_identity_unresolved',
+                $kind === 'WEBHOOK' ? ['destination' => 'sla_overdue_webhook'] : ['collaborator_id' => $collaboratorId]);
+        }
+        return ['notification_id' => $notificationId, 'delivery_ids' => $deliveryIds];
     }
 
     private function applyScheduleEffects(array $event): void

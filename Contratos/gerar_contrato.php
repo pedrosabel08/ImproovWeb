@@ -38,6 +38,7 @@ if (!$colaboradorId) {
 
 require_once __DIR__ . '/services/ContratoDataService.php';
 require_once __DIR__ . '/services/ContratoDateService.php';
+require_once __DIR__ . '/services/ContratoManagementService.php';
 require_once __DIR__ . '/services/ContratoQualificacaoService.php';
 require_once __DIR__ . '/services/Clausula1Service.php';
 require_once __DIR__ . '/services/Clausula17Service.php';
@@ -91,6 +92,13 @@ function buscarContratoId(mysqli $conn, int $colaboradorId, string $competencia)
 }
 
 try {
+    $managementService = new ContratoManagementService($conn);
+    $competencia = $competencia ?: $managementService->getCompetenciaAtual();
+    if (!$managementService->isCompetenciaValida($competencia) || !$managementService->isCompetenciaAtual($competencia)) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Contratos só podem ser gerados novamente para a competência vigente.']);
+        exit;
+    }
     // Criar pasta por mês/ano de vigência (ex: gerados/2026_01_Janeiro)
     $competenciaForDir = $competencia ?: (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m');
     $dt = DateTimeImmutable::createFromFormat('Y-m', $competenciaForDir) ?: DateTimeImmutable::createFromFormat('Y-m-d', $competenciaForDir) ?: new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));

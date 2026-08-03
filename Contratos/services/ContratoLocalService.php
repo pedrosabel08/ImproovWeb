@@ -43,7 +43,7 @@ class ContratoLocalService
         $qualificacao = $this->qualificacaoService->buildQualificacaoCompleta($colab);
         $clausula1 = $this->clausula1Service->buildClausula1($colaboradorId, $funcoes);
         $clausula = $this->clausula17Service->buildClausula17($funcoes, $colaboradorId);
-        $datas = $this->dateService->getInicioFimPrazo();
+        $datas = $this->dateService->getInicioFimPrazoPorCompetencia($competencia);
         $competenciaInfo = $this->dateService->getCompetenciaInfo($competencia);
 
         $nomeArquivoBase = 'CONTRATO_' . ($colab['nome_colaborador'] ?? 'COLABORADOR') . '_' . $competenciaInfo['mes_nome'] . '_' . $competenciaInfo['ano'];

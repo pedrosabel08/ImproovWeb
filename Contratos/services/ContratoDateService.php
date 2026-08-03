@@ -23,6 +23,19 @@ class ContratoDateService
         ];
     }
 
+    public function getInicioFimPrazoPorCompetencia(string $competencia): array
+    {
+        if (!preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $competencia)) {
+            throw new InvalidArgumentException('Competência inválida.');
+        }
+        $tz = new DateTimeZone('America/Sao_Paulo');
+        $inicio = DateTimeImmutable::createFromFormat('!Y-m', $competencia, $tz);
+        if (!$inicio) {
+            throw new InvalidArgumentException('Competência inválida.');
+        }
+        return $this->getInicioFimPrazo($inicio);
+    }
+
     public function formatDataPtBr(DateTimeInterface $dt): string
     {
         $meses = [

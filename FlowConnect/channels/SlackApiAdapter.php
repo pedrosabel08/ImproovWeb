@@ -6,9 +6,7 @@ namespace FlowConnect\Channels;
 
 final class SlackApiAdapter implements ChannelAdapter
 {
-    public function __construct(private array $config)
-    {
-    }
+    public function __construct(private array $config) {}
 
     public function send(array $delivery): array
     {
@@ -83,7 +81,7 @@ final class SlackApiAdapter implements ChannelAdapter
 
     private function sendWebhook(array $delivery): array
     {
-        $envKey = trim((string) ($delivery['slack_user_id'] ?? ''));
+        $envKey = self::webhookEnvKey($delivery);
         $url = $envKey === '' ? '' : trim((string) getenv($envKey));
         if ($url === '') return $this->failure('missing_webhook_destination', 'Webhook Slack ausente.', true, null);
         $ch = curl_init($url);
@@ -96,5 +94,22 @@ final class SlackApiAdapter implements ChannelAdapter
         if ($errno !== 0) return $this->failure('transport_error', substr($error, 0, 180), false, $status ?: null);
         if ($status < 200 || $status >= 300) return $this->failure('webhook_rejected', 'Webhook Slack recusou a entrega.', $status >= 400 && $status < 500, $status ?: null);
         return ['ok' => true, 'http_status' => $status ?: 200, 'provider_message_id' => null, 'error_code' => null, 'safe_error' => null, 'permanent' => false];
+    }
+
+    /**
+     * Entregas antigas guardavam a chave do ambiente em slack_user_id e
+     * destination_key no formato slack:channel:<CHAVE>. As novas usam
+     * destination_key diretamente. Aceitar ambos evita quebrar a fila já
+     * persistida e mantém a chave fora do payload da notificação.
+     */
+    public static function webhookEnvKey(array $delivery): string
+    {
+        $key = trim((string) ($delivery['destination_key'] ?? ''));
+        $legacyPrefix = 'slack:channel:';
+        if (str_starts_with($key, $legacyPrefix)) {
+            $key = substr($key, strlen($legacyPrefix));
+        }
+
+        return $key !== '' ? $key : trim((string) ($delivery['slack_user_id'] ?? ''));
     }
 }

@@ -9,9 +9,7 @@ use RuntimeException;
 
 final class EventRepository
 {
-    public function __construct(private mysqli $conn, private int $claimTtlSeconds = 300)
-    {
-    }
+    public function __construct(private mysqli $conn, private int $claimTtlSeconds = 300) {}
 
     public function claimPending(int $limit, string $workerId): array
     {
@@ -39,6 +37,36 @@ final class EventRepository
             }
             $this->conn->commit();
             return $events;
+        } catch (\Throwable $e) {
+            $this->conn->rollback();
+            throw $e;
+        }
+    }
+
+    /** Explicit diagnostic/test claim; keeps the normal FIFO queue untouched. */
+    public function claimPendingById(int $eventId, string $workerId): array
+    {
+        if ($eventId <= 0) return [];
+        $this->conn->begin_transaction();
+        try {
+            $stmt = $this->conn->prepare("SELECT * FROM flow_connect_events WHERE id=? AND status='PENDING' FOR UPDATE SKIP LOCKED");
+            $stmt->bind_param('i', $eventId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$row) {
+                $this->conn->commit();
+                return [];
+            }
+            $ttl = max(30, $this->claimTtlSeconds);
+            $safeWorker = $this->conn->real_escape_string($workerId);
+            $update = $this->conn->prepare("UPDATE flow_connect_events SET status='PROCESSING', claimed_by=?, claimed_at=UTC_TIMESTAMP(6), claim_expires_at=DATE_ADD(UTC_TIMESTAMP(6), INTERVAL {$ttl} SECOND), processing_started_at=COALESCE(processing_started_at,UTC_TIMESTAMP(6)) WHERE id=? AND status='PENDING'");
+            $update->bind_param('si', $safeWorker, $eventId);
+            $update->execute();
+            $claimed = $update->affected_rows === 1;
+            $update->close();
+            $this->conn->commit();
+            return $claimed ? [$this->hydrate($row)] : [];
         } catch (\Throwable $e) {
             $this->conn->rollback();
             throw $e;

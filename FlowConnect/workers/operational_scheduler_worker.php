@@ -13,6 +13,7 @@ use FlowConnect\Application\WorkerLoop;
 $options = flow_connect_cli_options($argv);
 $daemon = (bool) $options['daemon'];
 $limit = max(1, min(200, (int) $options['limit']));
+$onlyCycleId = $options['cycle_id'];
 $verbose = (bool) $options['verbose'];
 $config = flow_connect_config();
 $timezone = new DateTimeZone((string) $config['operational']['business_timezone']);
@@ -22,7 +23,7 @@ $provider = new OperationalStateProvider();
 $backoffSeconds = 1;
 
 /** A scheduler only appends events/milestones; delivery remains a separate worker. */
-$runBatch = static function () use ($limit, $policy, $provider, $timezone, $verbose, &$backoffSeconds): int {
+$runBatch = static function () use ($limit, $onlyCycleId, $policy, $provider, $timezone, $verbose, &$backoffSeconds): int {
     try {
         $conn = conectarBanco();
         $table = $conn->query("SHOW TABLES LIKE 'flow_connect_pending_cycles'");
@@ -34,12 +35,15 @@ $runBatch = static function () use ($limit, $policy, $provider, $timezone, $verb
         $conn->begin_transaction();
         // Lock only the short read/append transaction.  No lock survives an
         // idle wait and the unique milestone key makes a repeated scan safe.
-        $rows = $conn->query("SELECT * FROM flow_connect_pending_cycles WHERE status IN ('ACTIVE','PAUSED') AND due_at IS NOT NULL ORDER BY due_at ASC LIMIT {$limit} FOR UPDATE SKIP LOCKED");
+        $onlyCycleSql = $onlyCycleId === null ? '' : " AND cycle_id='" . $conn->real_escape_string($onlyCycleId) . "'";
+        $rows = $conn->query("SELECT * FROM flow_connect_pending_cycles WHERE status IN ('ACTIVE','PAUSED') AND due_at IS NOT NULL{$onlyCycleSql} ORDER BY due_at ASC LIMIT {$limit} FOR UPDATE SKIP LOCKED");
         $fired = 0;
         while ($rows && ($cycle = $rows->fetch_assoc())) {
             $module = (string) $cycle['module_key'];
             $policyKey = (string) $cycle['policy_key'];
-            if (flow_connect_operational_mode($module, $policyKey) === 'off') continue;
+            $cycleContext = json_decode((string) ($cycle['context_json'] ?? '{}'), true) ?: [];
+            $cycleMode = ($cycleContext['shadow_fixture'] ?? false) === true ? 'shadow' : flow_connect_operational_mode($module, $policyKey);
+            if ($cycleMode === 'off') continue;
 
             $current = $provider->inspect($conn, $cycle);
             $state = (string) ($current['state'] ?? 'UNKNOWN');
@@ -65,7 +69,7 @@ $runBatch = static function () use ($limit, $policy, $provider, $timezone, $verb
             }
             if ($state !== 'ACTIVE') continue; // PAUSED or unknown: never charge stale state.
 
-            $context = json_decode((string) ($cycle['context_json'] ?? '{}'), true) ?: [];
+            $context = $cycleContext;
             foreach (['responsavel_id', 'responsavel_cobranca_id', 'due_at', 'origin_url'] as $key) {
                 if (array_key_exists($key, $current) && $current[$key] !== null && $current[$key] !== '') $context[$key] = $current[$key];
             }
@@ -76,7 +80,7 @@ $runBatch = static function () use ($limit, $policy, $provider, $timezone, $verb
             foreach ($policy->dueMilestones($start, $due, $now) as $milestone) {
                 $id = (int) $cycle['id'];
                 $event = OperationalPendingEventFactory::milestone($cycle, $milestone, $context);
-                $event['metadata']['flow_connect_mode'] = flow_connect_operational_mode($module, $policyKey);
+                $event['metadata']['flow_connect_mode'] = $cycleMode;
                 try {
                     $eventId = flow_connect_publish_in_transaction($conn, $event);
                     $uuid = (string) $event['event_uuid'];
@@ -108,5 +112,7 @@ $runBatch = static function () use ($limit, $policy, $provider, $timezone, $verb
 };
 
 $keepRunning = flow_connect_daemon_keep_running();
-$idleWait = static function () use (&$backoffSeconds, $idleSeconds): void { usleep(max($idleSeconds, $backoffSeconds) * 1000000); };
+$idleWait = static function () use (&$backoffSeconds, $idleSeconds): void {
+    usleep(max($idleSeconds, $backoffSeconds) * 1000000);
+};
 (new WorkerLoop())->run($daemon, $runBatch, $keepRunning, $idleWait);

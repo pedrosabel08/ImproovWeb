@@ -821,7 +821,7 @@ body::-webkit-scrollbar-track {
 .imageWrapper {
   position: relative;
   padding: 6px;
-  background-color: var(--sb-label);
+  background-color: rgba(17, 23, 37, 0.96);
   width: 100px;
   height: 100px;
   border-radius: 8px;

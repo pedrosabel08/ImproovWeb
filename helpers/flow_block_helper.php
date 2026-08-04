@@ -301,9 +301,17 @@ if (!function_exists('flow_block_publish_operational_lifecycle')) {
         }
         if ($cycleId === '') return;
         $logs = [];
+        $creatorId = (int) ($issue['criado_por_colaborador_id'] ?? 0) ?: null;
+        $creatorName = trim((string) ($issue['criador_nome'] ?? ''));
+        if ($creatorName === '') {
+            $creatorName = 'colaborador não identificado';
+        }
+        $issueCode = (string) ($issue['codigo'] ?? ('#' . $issueId));
         $payload = [
             'cycle_id' => $cycleId,
-            'titulo' => 'Bloqueio ' . ((string) ($issue['codigo'] ?? ('#' . $issueId))),
+            'titulo' => 'Bloqueio ' . $issueCode . ' · aberto por ' . $creatorName,
+            'criador_id' => $creatorId,
+            'criador_nome' => $creatorName,
             'responsavel_id' => (int) ($issue['responsavel_colaborador_id'] ?? 0) ?: null,
             'responsavel_cobranca_id' => (int) ($issue['responsavel_colaborador_id'] ?? 0) ?: null,
             'started_at' => (string) ($issue['criado_em'] ?? ''),

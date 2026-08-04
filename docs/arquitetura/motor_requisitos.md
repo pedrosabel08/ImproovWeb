@@ -81,9 +81,7 @@ Ele não consulta Briefing, referências, Fotográfico, arquivos técnicos, arqu
 
 ### Flow Block
 
-**Confirmada.** A API atual permite criar Flow Block somente para tarefa em `Em andamento` ou `HOLD`. Ao criar, altera `funcao_imagem.status` para `HOLD`. A retomada exige ausência de Issues bloqueantes, resolução confirmada ou cancelamento e novo prazo.
-
-**Pendente.** A documentação de Flow Block prevê Issue para tarefa em `Não iniciado`, mantendo-a nesse estado. Isso ainda não é suportado pela API atual.
+**Confirmada.** A API permite criar Flow Block para tarefa em qualquer status. Ao criar uma Issue bloqueante, altera `funcao_imagem.status` para `HOLD` quando a tarefa ainda não está nesse estado. A retomada exige ausência de Issues bloqueantes, resolução confirmada ou cancelamento e novo prazo.
 
 ### Aplicação das regras
 
@@ -133,7 +131,7 @@ Contrato sugerido:
 | Transição                      | Regra pretendida                                            | Estado                                                             |
 | ------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------ |
 | `Não iniciado -> Em andamento` | Todos os requisitos de início obrigatórios atendidos.       | **Pendente**: não há guarda central.                               |
-| `Em andamento -> HOLD`         | Impedimento real registrado por Flow Block.                 | **Confirmada** no fluxo Flow Block; há caminhos legados paralelos. |
+| `Qualquer status -> HOLD`      | Impedimento real registrado por Flow Block.                 | **Confirmada** no fluxo Flow Block; há caminhos legados paralelos. |
 | `HOLD -> Em andamento`         | Sem Issue bloqueante, resposta confirmada e replanejamento. | **Confirmada** em `FlowBlock/api.php`.                             |
 | `Em andamento -> Em aprovação` | Entrega/arquivo da própria etapa conforme regra da função.  | **Pendente**: não há política unificada.                           |
 

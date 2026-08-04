@@ -37,9 +37,9 @@ Origens possíveis:
 
 ## Regras
 
-- Tarefas em Não iniciado também podem possuir Flow Block.
-- Se ainda não iniciou, permanece em Não iniciado bloqueada.
-- Se já iniciou, permanece em HOLD até replanejamento.
+- Tarefas em qualquer status podem possuir Flow Block.
+- Ao registrar uma Issue bloqueante, a tarefa passa para HOLD, exceto quando já estiver nesse status.
+- A tarefa permanece em HOLD até que o bloqueio seja resolvido, confirmado e replanejado.
 
 ## Responsabilidade
 

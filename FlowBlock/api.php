@@ -302,7 +302,9 @@ try {
 
     if ($action === 'tasks') {
         $search = trim((string) ($_GET['search'] ?? ''));
-        $where = "fi.status IN ('Em andamento','HOLD')";
+        // Um impedimento pode ser identificado em qualquer etapa da tarefa.
+        // A busca não deve limitar quais tarefas podem receber uma Issue.
+        $where = '1=1';
         $types = '';
         $values = [];
         if (!flow_block_is_manager()) {
@@ -448,9 +450,6 @@ try {
         }
         if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) $urgency = 'NORMAL';
         $beforeStatusOriginal = (string) ($task['status'] ?? '');
-        if ($beforeStatusOriginal !== '' && !in_array($beforeStatusOriginal, ['Em andamento', 'HOLD', 'Não iniciado'], true)) {
-            flow_block_json_response(['ok' => false, 'message' => 'A Issue só pode ser aberta em tarefa em andamento, HOLD ou Não iniciado.'], 422);
-        }
         if ($requirementCode !== '') {
             $existingIssue = flow_block_find_active_issue_by_requirement($conn, $taskId, $requirementCode);
             if ($existingIssue) {
@@ -490,7 +489,7 @@ try {
             'requirement_context' => $requirementContext,
         ]);
         $taskStatusChanged = false;
-        if ($beforeStatus === 'Em andamento') {
+        if ($beforeStatus !== 'HOLD') {
             $hold = $conn->prepare("UPDATE funcao_imagem SET status='HOLD', observacao=? WHERE idfuncao_imagem=?");
             $hold->bind_param('si', $description, $taskId);
             $hold->execute();

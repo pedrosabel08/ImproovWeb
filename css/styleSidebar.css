@@ -1,434 +1,281 @@
-/* Estilo básico da sidebar */
-@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap");
 
 :root {
   --sb-bg: #12121e;
-  --sb-bg-hover: rgba(255, 255, 255, 0.06);
-  --sb-accent: #6377ef;
-  --sb-icon: #9495dd;
-  --sb-text: #c2c8e7;
-  --sb-label: #5a6080;
-  --sb-divider: rgba(255, 255, 255, 0.08);
-  --sb-shadow: 0 0 16px rgba(0, 0, 0, 0.5);
-  --sb-scroll: rgba(255, 255, 255, 0.12);
-  --sb-transition: width 0.3s ease;
+  --sb-panel: #1a1a2a;
+  --sb-hover: rgba(255, 255, 255, 0.07);
+  --sb-accent: #7487ff;
+  --sb-icon: #aeb5dc;
+  --sb-text: #e6e9fa;
+  --sb-muted: #8d94ba;
+  --sb-divider: rgba(255, 255, 255, 0.1);
+  --sb-shadow: 12px 0 30px rgba(0, 0, 0, 0.26);
 }
 
-body {
-  margin: 0;
-  padding: 0;
-}
-
-/* ── GIF logo ──────────────────────────────────────────────── */
-#gif {
-  content: url("../gif/assinatura_branco.gif");
-}
-
-/* ── Base ──────────────────────────────────────────────────── */
 .sidebar {
-  height: 100vh;
-  background-color: var(--sb-bg);
-  color: var(--sb-text);
   position: fixed;
-  top: 0;
-  left: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  transition: var(--sb-transition);
-  box-shadow: var(--sb-shadow);
-  font-size: 12px;
   z-index: 1000;
-}
-
-/* ── Modo completo ─────────────────────────────────────────── */
-.sidebar.complete {
-  width: 200px;
-  overflow-y: auto;
-}
-
-.sidebar.complete::-webkit-scrollbar,
-.drawer-body.is-open::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sidebar.complete::-webkit-scrollbar-thumb,
-.drawer-body.is-open::-webkit-scrollbar-thumb {
-  background-color: var(--sb-scroll);
-  border-radius: 10px;
-}
-
-.sidebar.complete::-webkit-scrollbar-track,
-.drawer-body.is-open::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-
-/* ── Modo mini ─────────────────────────────────────────────── */
-.sidebar.mini {
-  width: 60px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.sidebar.mini::-webkit-scrollbar {
-  display: none;
-}
-
-.sidebar.mini i.favorite-icon {
-  margin-left: 8px;
-}
-
-.sidebar.mini label {
-  display: none;
-}
-
-.sidebar.mini ul.division {
-  border-top: 1px solid var(--sb-divider);
-}
-
-.sidebar.mini ul.division:first-of-type {
-  border-top: none;
-}
-
-/* ── Listas ────────────────────────────────────────────────── */
-.sidebar ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sidebar ul li {
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-}
-
-.sidebar ul li a {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 64px;
   color: var(--sb-text);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border-left: 3px solid transparent;
-  padding-left: 4px;
-  border-radius: 4px;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-  padding: 15px;
+  font: 600 13px/1.2 "Nunito", sans-serif;
+  pointer-events: none;
 }
 
-.sidebar ul li a:hover {
-  background: var(--sb-bg-hover);
-  border-left-color: var(--sb-accent);
-  color: var(--sb-accent);
-}
-
-.sidebar ul li a:hover i {
-  color: var(--sb-accent);
-}
-
-.sidebar ul li a i {
-  color: var(--sb-icon);
-  font-size: 13px;
-  transition: color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.sidebar.mini li.obra {
-  padding: 15px;
-}
-
-li.obra {
-  padding: 0 15px !important;
-}
-
-a.obra-item {
-  width: 100%;
-}
-
-/* ── Divisões / categorias ─────────────────────────────────── */
-ul.division {
+.sidebar-rail {
   position: relative;
-}
-
-ul.division label {
-  display: block;
-  padding: 8px 12px 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sb-label);
-  background: transparent;
-  transform: none;
-}
-
-/* ── Botão menu ────────────────────────────────────────────── */
-button {
-  all: unset;
-}
-
-button#menuButton {
-  margin: 15px auto;
-}
-
-button#menuButton i {
-  font-size: 18px;
-}
-
-button#menuButton:active {
-  transform: scale(0.9);
-}
-
-/* ── Obras ─────────────────────────────────────────────────── */
-.obra {
+  z-index: 2;
   display: flex;
+  width: 64px;
+  height: 100%;
+  flex-direction: column;
   align-items: center;
-  gap: 40px;
+  background: var(--sb-bg);
+  box-shadow: 2px 0 14px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
 }
 
-#obras-list .obra-item {
-  flex: 1;
-}
-
-#obras-list .favorite-icon {
+.sidebar-brand,
+.sidebar-profile-link,
+.sidebar-rail-button,
+.sidebar-panel-close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  place-items: center;
+  background: transparent;
+  color: var(--sb-icon);
   cursor: pointer;
-  color: #555;
-  transition: color 0.15s;
+  text-decoration: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
-#obras-list .favorite-icon:hover {
-  color: gold;
+.sidebar-brand { margin: 10px 0 16px; }
+.sidebar-brand:hover,
+.sidebar-profile-link:hover,
+.sidebar-rail-button:hover,
+.sidebar-rail-button[aria-expanded="true"] {
+  background: var(--sb-hover);
+  color: var(--sb-accent);
 }
 
-.sidebar-package-label {
-  padding: 8px 15px 2px !important;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sb-label);
-  opacity: 0.85;
-}
+.sidebar-brand img { width: 32px; height: 32px; object-fit: contain; }
+.sidebar-brand img { content: url("../gif/assinatura_branco.gif"); }
+.sidebar-rail-button i,
+.sidebar-profile-link i { font-size: 17px; }
+.sidebar-rail-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.favorite-icon.favorited {
-  color: gold;
-}
+.sidebar-rail-menu { display: grid; width: 100%; gap: 7px; justify-items: center; }
+.sidebar-profile-link { margin-top: auto; margin-bottom: 12px; }
 
-/* ── Gaveta obras inativas ─────────────────────────────────── */
-.drawer-toggle {
-  all: unset;
+.sidebar-panel {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 64px;
   display: flex;
+  width: 296px;
+  max-width: calc(100vw - 64px);
+  flex-direction: column;
+  visibility: hidden;
+  transform: translateX(-14px);
+  opacity: 0;
+  background: var(--sb-panel);
+  box-shadow: var(--sb-shadow);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
+
+.sidebar.is-open .sidebar-panel {
+  visibility: visible;
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-panel-header {
+  display: flex;
+  min-height: 64px;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding: 8px 12px 4px;
-  cursor: pointer;
-  box-sizing: border-box;
+  padding: 0 12px 0 20px;
+  border-bottom: 1px solid var(--sb-divider);
 }
 
-.drawer-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sb-label);
-}
+.sidebar-panel-header h2,
+.sidebar-panel-section h3 { margin: 0; font: 800 16px/1.2 "Nunito", sans-serif; color: var(--sb-text); }
+.sidebar-panel-close { width: 34px; height: 34px; border-radius: 9px; font-size: 16px; }
+.sidebar-panel-close:hover { background: var(--sb-hover); color: var(--sb-accent); }
 
-.drawer-chevron {
-  font-size: 9px;
-  color: var(--sb-label);
-  transition: transform 0.25s ease;
-}
+.sidebar-panel-section { min-height: 0; padding: 17px 12px 12px; }
+.sidebar-panel-section > h3 { padding: 0 8px 10px; color: var(--sb-muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
 
-.drawer-toggle[aria-expanded="true"] .drawer-chevron {
-  transform: rotate(90deg);
-}
+.sidebar-panel-links,
+.sidebar-project-results,
+.sidebar-project-quick ul { margin: 0; padding: 0; list-style: none; }
 
-.sidebar.mini .drawer-label {
-  display: none;
-}
-
-.sidebar.mini .drawer-toggle {
-  justify-content: center;
-  padding: 8px 0 4px;
-}
-
-.drawer-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-}
-
-.drawer-body.is-open {
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-/* ── Span no modo mini / completo ──────────────────────────── */
-.sidebar.mini .division span {
-  display: none;
-}
-
-.sidebar.mini .division li a {
-  justify-content: center;
-}
-
-.sidebar.complete .division span {
-  display: inline;
-  opacity: 1;
-  width: auto;
-  transition: opacity 0.2s ease 0.1s;
-}
-
-.sidebar .obra-onboarding .obra-item {
-  border-left-color: rgba(245, 158, 11, 0.7);
-}
-
-.sidebar .sidebar-onboarding-badge {
+.sidebar-panel-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.sidebar-panel-links li { min-width: 0; }
+.sidebar-panel-links a {
+  position: relative;
+  display: flex;
+  min-height: 42px;
   align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: 999px;
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.sidebar.complete .division .sidebar-onboarding-badge {
-  display: inline-flex;
-  width: auto;
-  min-height: 18px;
-  padding: 0 7px;
-  margin-left: auto;
-  margin-right: 34px;
-}
-
-.sidebar.mini .division .sidebar-onboarding-badge {
-  display: block;
-  position: absolute;
-  right: 9px;
-  bottom: 9px;
-  width: 8px;
-  height: 8px;
-  padding: 0;
+  gap: 9px;
+  padding: 0 10px;
   overflow: hidden;
-  border: 0;
-  box-shadow: 0 0 0 2px rgba(18, 18, 30, 0.85);
-  color: transparent;
+  border-radius: 9px;
+  color: var(--sb-text);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-/* ===== SIDEBAR BADGE =====
-   Badge is always absolute-positioned (out of flow) so it never
-   pushes text or icons. Complete mode: floats to the right edge.
-   Mini mode: floats top-right of the icon.
-*/
+.sidebar-panel-links a:hover { background: var(--sb-hover); color: var(--sb-accent); }
+.sidebar-panel-links a i { width: 15px; color: var(--sb-icon); text-align: center; }
+.sidebar-panel-links a:hover i { color: var(--sb-accent); }
+.sidebar-panel-links a span:not(.sidebar-badge) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .sidebar .sidebar-badge {
-  display: inline-block;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #ffffff;
-  font-weight: 700;
-  text-align: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-}
-
-.sidebar .sidebar-badge.is-small {
+  display: inline-grid;
+  position: absolute;
+  top: 5px;
+  right: 5px;
   min-width: 16px;
   height: 16px;
-  line-height: 16px;
-  font-size: 11px;
-  padding: 0 5px;
-}
-
-/* Both modes: badge is always suspended / absolute, never inline */
-.sidebar ul li {
-  position: relative;
-}
-.sidebar ul li a {
-  position: relative;
-}
-
-/* Shared absolute positioning for both mini and complete */
-.sidebar .sidebar-badge {
-  position: absolute;
-  margin-left: 0;
-  z-index: 5;
-}
-
-/* complete: badge hovers to the right of the text label */
-.sidebar.complete .sidebar-badge {
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  min-width: 20px;
-  height: 20px;
-  line-height: 20px;
-  font-size: 12px;
-  padding: 0 6px;
-}
-
-/* mini: badge hovers to the top-right of the icon */
-.sidebar.mini ul li {
-  position: relative;
-}
-.sidebar.mini li a {
-  justify-content: center;
-}
-.sidebar.mini .sidebar-badge {
-  left: calc(45% + 10px);
-  top: 35%;
-  transform: translateY(-50%);
-  min-width: 15px;
-  height: 15px;
-  line-height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  place-items: center;
+  background: #ef4444;
+  color: #fff;
   font-size: 10px;
-  padding: 0 5px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.32);
 }
+.sidebar .sidebar-badge--warning { background: #f59e0b; color: #1d1b13; }
+.sidebar .sidebar-badge--offset { right: 27px; }
+.sidebar .sidebar-badge[aria-hidden="true"]:empty { display: none; }
 
-/* Hide empty badges (JS toggles aria-hidden) */
-.sidebar .sidebar-badge[aria-hidden="true"]:empty {
-  display: none;
+.sidebar-project-panel { display: flex; flex: 1; flex-direction: column; overflow: hidden; }
+.sidebar-project-search {
+  display: flex;
+  height: 40px;
+  align-items: center;
+  gap: 9px;
+  margin: 0 8px 10px;
+  padding: 0 11px;
+  border: 1px solid var(--sb-divider);
+  border-radius: 9px;
+  color: var(--sb-muted);
+  background: rgba(0, 0, 0, 0.12);
 }
+.sidebar-project-search:focus-within { border-color: var(--sb-accent); box-shadow: 0 0 0 3px rgba(116, 135, 255, 0.15); }
+.sidebar-project-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--sb-text); font: inherit; }
+.sidebar-project-search input::placeholder { color: var(--sb-muted); }
 
-/* Color variants */
-.sidebar .sidebar-badge--green {
-  background: #10b981;
+.sidebar-search-hint { margin: 0 8px 12px; color: var(--sb-muted); font-size: 12px; line-height: 1.4; }
+.sidebar-search-results { display: grid; gap: 4px; margin: 0; padding: 0 8px; list-style: none; overflow-y: auto; }
+.sidebar-search-results a,
+.sidebar-search-results .obra-item {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 9px;
+  border-radius: 8px;
+  color: var(--sb-text);
+  text-decoration: none;
 }
+.sidebar-search-results a:hover,
+.sidebar-search-results .obra-item:hover { background: var(--sb-hover); color: var(--sb-accent); }
+.sidebar-search-results i { width: 16px; color: var(--sb-icon); text-align: center; }
+.sidebar-search-results .obra { display: flex; min-width: 0; align-items: center; gap: 7px; }
+.sidebar-search-results .favorite-icon { color: #737b9f; cursor: pointer; }
+.sidebar-search-results .favorite-icon:hover,
+.sidebar-search-results .favorite-icon.favorited { color: #f6c344; }
 
-.sidebar .sidebar-badge--warning {
-  background: #f59e0b;
-  color: #111827;
+.sidebar-project-filters { display: flex; gap: 5px; margin: 0 8px 10px; }
+.sidebar-project-filters button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--sb-divider);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--sb-muted);
+  cursor: pointer;
+  font: 700 11px/1 "Nunito", sans-serif;
 }
+.sidebar-project-filters button:hover,
+.sidebar-project-filters button.is-active { border-color: rgba(116, 135, 255, .55); background: rgba(116, 135, 255, .14); color: var(--sb-text); }
 
-/* ── Modo claro via media query ────────────────────────────── */
+.sidebar-project-quick { display: grid; gap: 12px; padding: 0 8px; }
+.sidebar-project-quick:empty { display: none; }
+.sidebar-project-quick-title { margin: 0 0 4px; color: var(--sb-muted); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.sidebar-project-quick li,
+.sidebar-project-results .obra { display: flex; min-width: 0; align-items: center; gap: 7px; }
+.sidebar-project-quick .favorite-icon,
+.sidebar-project-results .favorite-icon { width: 16px; flex: 0 0 16px; color: #737b9f; cursor: pointer; text-align: center; }
+.sidebar-project-quick .favorite-icon:hover,
+.sidebar-project-results .favorite-icon:hover,
+.sidebar .favorite-icon.favorited { color: #f6c344; }
+.sidebar-project-quick .obra-item,
+.sidebar-project-results .obra-item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  padding: 7px 8px;
+  overflow: hidden;
+  border-radius: 7px;
+  color: var(--sb-text);
+  text-decoration: none;
+}
+.sidebar-project-quick .obra-item:hover,
+.sidebar-project-results .obra-item:hover { background: var(--sb-hover); color: var(--sb-accent); }
+.sidebar-project-quick .obra-item > span:first-child,
+.sidebar-project-results .obra-item > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar .obra-onboarding .obra-item { border-left: 2px solid #f59e0b; }
+
+.sidebar-project-results { display: none; min-height: 0; flex: 1; padding: 4px 8px; overflow-y: auto; scrollbar-color: rgba(255,255,255,.18) transparent; scrollbar-width: thin; }
+.sidebar-project-panel.is-searching .sidebar-project-results { display: block; }
+.sidebar-project-panel.is-searching .sidebar-project-quick { display: none; }
+.sidebar-project-panel.is-browsing .sidebar-project-results { display: block; }
+.sidebar-project-panel.is-browsing .sidebar-project-quick { display: none; }
+.sidebar-project-results .sidebar-package-label,
+.sidebar-project-results .sidebar-project-status-label { padding: 9px 0 4px; color: var(--sb-muted); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.sidebar-project-results .sidebar-project-status-label { margin-top: 6px; border-top: 1px solid var(--sb-divider); }
+.sidebar-project-results .obra[hidden],
+.sidebar-project-results .sidebar-package-label[hidden],
+.sidebar-project-results .sidebar-project-status-label[hidden] { display: none; }
+.sidebar-project-empty { margin: 18px 8px; color: var(--sb-muted); font-weight: 600; text-align: center; }
+
 @media (prefers-color-scheme: light) {
-  :root {
-    --sb-bg: #ffffff;
-    --sb-bg-hover: rgba(92, 107, 192, 0.08);
-    --sb-accent: #5c6bc0;
-    --sb-icon: #5c6bc0;
-    --sb-text: #2d2d2d;
-    --sb-label: #9e9e9e;
-    --sb-divider: rgba(0, 0, 0, 0.08);
-    --sb-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    --sb-scroll: rgba(0, 0, 0, 0.15);
-  }
+  :root { --sb-bg: #fff; --sb-panel: #fbfbff; --sb-hover: rgba(92,107,192,.09); --sb-accent: #5267d8; --sb-icon: #58628e; --sb-text: #20243a; --sb-muted: #777f9e; --sb-divider: rgba(35,44,81,.12); --sb-shadow: 12px 0 30px rgba(28,33,58,.16); }
+  .sidebar-brand img { content: url("../gif/assinatura_preto.gif"); }
+}
 
-  #gif {
-    content: url("../gif/assinatura_preto.gif");
-  }
+@media (max-width: 767px) {
+  .sidebar { top: auto; right: 0; width: auto; height: 62px; }
+  .sidebar-rail { width: 100%; height: 62px; flex-direction: row; justify-content: space-around; box-shadow: 0 -2px 14px rgba(0,0,0,.34); }
+  .sidebar-brand { width: 40px; height: 40px; margin: 0; }
+  .sidebar-brand img { width: 27px; height: 27px; }
+  .sidebar-rail-menu { display: flex; width: auto; gap: 3px; }
+  .sidebar-rail-button { width: 42px; height: 42px; }
+  .sidebar-profile-link { width: 40px; height: 40px; margin: 0; }
+  .sidebar-panel { top: auto; right: 0; bottom: 62px; left: 0; width: auto; max-width: none; max-height: min(68vh, 560px); transform: translateY(14px); box-shadow: 0 -12px 30px rgba(0,0,0,.27); }
+  .sidebar.is-open .sidebar-panel { transform: translateY(0); }
+  .sidebar-panel-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
-  .sidebar.complete::-webkit-scrollbar-track,
-  .drawer-body.is-open::-webkit-scrollbar-track {
-    background-color: #f1f1f1;
-  }
+@media (max-width: 390px) {
+  .sidebar-brand { display: none; }
+  .sidebar-rail { justify-content: center; }
+  .sidebar-rail-menu { flex: 1; justify-content: space-evenly; }
 }

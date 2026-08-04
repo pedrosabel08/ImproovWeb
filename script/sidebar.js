@@ -1,227 +1,463 @@
-const sidebar = document.querySelector(".sidebar");
-const body = document.querySelector("body");
+function initImproovSidebar() {
+  if (window.__improovSidebarInitialized) return;
+  window.__improovSidebarInitialized = true;
 
-function expandSidebar() {
-  sidebar.classList.remove("mini");
-  sidebar.classList.add("complete");
-}
+  var sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
 
-function collapseSidebar() {
-  sidebar.classList.remove("complete");
-  sidebar.classList.add("mini");
-}
-
-// Desktop: hover para expandir/recolher
-sidebar.addEventListener("mouseenter", function () {
-  if (sidebar && !("ontouchstart" in window)) {
-    if (sidebar.classList.contains("mini")) expandSidebar();
-  }
-});
-
-sidebar.addEventListener("mouseleave", function () {
-  if (sidebar && !("ontouchstart" in window)) {
-    if (sidebar.classList.contains("complete")) collapseSidebar();
-  }
-});
-
-// Mobile: primeiro toque expande; toque fora recolhe
-sidebar.addEventListener(
-  "touchstart",
-  function (e) {
-    if (sidebar.classList.contains("mini")) {
-      expandSidebar();
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  },
-  { passive: false },
-);
-
-document.addEventListener(
-  "touchstart",
-  function (e) {
-    if (sidebar.classList.contains("complete") && !sidebar.contains(e.target)) {
-      collapseSidebar();
-    }
-  },
-  { passive: true },
-);
-
-document.addEventListener("DOMContentLoaded", () => {
-  const basePath =
+  var basePath =
     window.location.pathname.includes("/flow/ImproovWeb/") ||
     window.location.pathname.includes("/flow/ImproovWeb")
       ? "/flow/ImproovWeb/"
       : "/ImproovWeb/";
+  var railButtons = Array.from(
+    sidebar.querySelectorAll("[data-sidebar-panel]"),
+  );
+  var sections = Array.from(sidebar.querySelectorAll("[data-sidebar-section]"));
+  var panel = sidebar.querySelector(".sidebar-panel");
+  var panelTitle = sidebar.querySelector("[data-sidebar-panel-title]");
+  var closeButton = sidebar.querySelector(".sidebar-panel-close");
+  var projectPanel = sidebar.querySelector(".sidebar-project-panel");
+  var projectSearch = document.getElementById("sidebar-project-search");
+  var projectResults = document.getElementById("obras-list");
+  var projectQuick = document.getElementById("sidebar-project-quick");
+  var projectEmpty = document.getElementById("sidebar-project-empty");
+  var projectViewButtons = Array.from(
+    sidebar.querySelectorAll("[data-project-view]"),
+  );
+  var globalSearch = document.getElementById("sidebar-global-search");
+  var globalResults = document.getElementById("sidebar-global-results");
+  var globalEmpty = document.getElementById("sidebar-global-empty");
+  var globalHint = document.getElementById("sidebar-search-hint");
+  var favoriteKey = "favoritos";
+  var recentKey = "improov_sidebar_recent_obras";
+  var maxRecent = 5;
 
-  const normalizeSidebarLinks = () => {
-    const links = document.querySelectorAll(".sidebar a[href]");
-
-    links.forEach((link) => {
-      // Obra items possuem redirecionamento dedicado com estado no localStorage.
+  function normalizeSidebarLinks() {
+    sidebar.querySelectorAll("a[href]").forEach(function (link) {
       if (link.classList.contains("obra-item")) return;
-
-      const rawHref = link.getAttribute("href");
-      if (!rawHref || rawHref.startsWith("#") || rawHref.startsWith("javascript:")) {
+      var rawHref = link.getAttribute("href");
+      if (
+        !rawHref ||
+        rawHref.startsWith("#") ||
+        rawHref.startsWith("javascript:")
+      )
         return;
-      }
 
-      let parsed;
       try {
-        parsed = new URL(rawHref, window.location.origin);
+        var parsed = new URL(rawHref, window.location.origin);
+        var match = parsed.pathname.match(/^\/(?:flow\/)?ImproovWeb\/?(.*)$/i);
+        if (!match) return;
+        link.setAttribute(
+          "href",
+          window.location.origin +
+            basePath +
+            (match[1] || "").replace(/^\/+/, "") +
+            parsed.search +
+            parsed.hash,
+        );
       } catch (_) {
-        return;
+        // Mantém o href original se ele não puder ser normalizado.
       }
-
-      const match = parsed.pathname.match(/^\/(?:flow\/)?ImproovWeb\/?(.*)$/i);
-      if (!match) return;
-
-      const relativePath = (match[1] || "").replace(/^\/+/, "");
-      const normalizedUrl =
-        window.location.origin +
-        basePath +
-        relativePath +
-        parsed.search +
-        parsed.hash;
-
-      link.setAttribute("href", normalizedUrl);
     });
-  };
+  }
+
+  function readIds(key) {
+    try {
+      var values = JSON.parse(localStorage.getItem(key));
+      return Array.isArray(values) ? values.map(String) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function writeIds(key, values) {
+    localStorage.setItem(key, JSON.stringify(values));
+  }
+
+  function allowedProjectIds() {
+    return Array.from(
+      projectResults
+        ? projectResults.querySelectorAll("[data-sidebar-project]")
+        : [],
+    ).map(function (item) {
+      return String(item.dataset.obraId);
+    });
+  }
+
+  function projectItemById(id) {
+    if (!projectResults) return null;
+    return (
+      Array.from(
+        projectResults.querySelectorAll("[data-sidebar-project]"),
+      ).find(function (item) {
+        return String(item.dataset.obraId) === String(id);
+      }) || null
+    );
+  }
+
+  function setFavoriteState(item, isFavorite) {
+    if (!item) return;
+    item.querySelectorAll(".favorite-icon").forEach(function (icon) {
+      icon.classList.toggle("favorited", isFavorite);
+      icon.setAttribute(
+        "aria-label",
+        isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos",
+      );
+    });
+  }
+
+  function syncFavoriteIndicators() {
+    var favoriteIds = readIds(favoriteKey);
+    sidebar.querySelectorAll("[data-sidebar-project]").forEach(function (item) {
+      setFavoriteState(item, favoriteIds.includes(String(item.dataset.obraId)));
+    });
+  }
+
+  function quickProjectClone(item) {
+    var clone = item.cloneNode(true);
+    clone.removeAttribute("hidden");
+    clone.classList.add("sidebar-project-quick-item");
+    clone.querySelectorAll(".sidebar-badge").forEach(function (badge) {
+      badge.remove();
+    });
+    return clone;
+  }
+
+  function renderQuickProjects() {
+    if (!projectQuick || !projectResults) return;
+    var favorites = readIds(favoriteKey);
+    var recents = readIds(recentKey);
+    var groups = [
+      { title: "Favoritas", ids: favorites },
+      {
+        title: "Recentes",
+        ids: recents.filter(function (id) {
+          return !favorites.includes(id);
+        }),
+      },
+    ];
+
+    projectQuick.replaceChildren();
+    groups.forEach(function (group) {
+      var items = group.ids.map(projectItemById).filter(Boolean);
+      if (!items.length) return;
+      var container = document.createElement("section");
+      var title = document.createElement("p");
+      var list = document.createElement("ul");
+      title.className = "sidebar-project-quick-title";
+      title.textContent = group.title;
+      items.forEach(function (item) {
+        list.appendChild(quickProjectClone(item));
+      });
+      container.append(title, list);
+      projectQuick.appendChild(container);
+    });
+
+    if (!projectQuick.children.length) {
+      var hint = document.createElement("p");
+      hint.className = "sidebar-project-empty";
+      hint.textContent = "Busque uma obra ou marque-a como favorita.";
+      projectQuick.appendChild(hint);
+    }
+  }
+
+  function clearProjectSearch() {
+    if (!projectSearch || !projectPanel || !projectResults) return;
+    projectSearch.value = "";
+    projectPanel.classList.remove("is-searching");
+    projectResults.querySelectorAll("[hidden]").forEach(function (item) {
+      item.hidden = false;
+    });
+    projectEmpty.hidden = true;
+  }
+
+  function setProjectView(view) {
+    if (!projectPanel || !projectResults) return;
+    clearProjectSearch();
+    var showAll = view === "all";
+    projectPanel.classList.toggle("is-browsing", showAll);
+    projectViewButtons.forEach(function (button) {
+      button.classList.toggle("is-active", button.dataset.projectView === view);
+    });
+    if (!showAll) renderQuickProjects();
+  }
+
+  function filterProjects(query) {
+    if (!projectResults || !projectPanel || !projectEmpty) return;
+    var normalized = query.trim().toLocaleLowerCase("pt-BR");
+    var projects = Array.from(
+      projectResults.querySelectorAll("[data-sidebar-project]"),
+    );
+    var labels = Array.from(
+      projectResults.querySelectorAll(
+        ".sidebar-package-label, .sidebar-project-status-label",
+      ),
+    );
+    projectPanel.classList.toggle("is-searching", Boolean(normalized));
+    if (normalized) projectPanel.classList.remove("is-browsing");
+
+    if (!normalized) {
+      clearProjectSearch();
+      return;
+    }
+
+    labels.forEach(function (label) {
+      label.hidden = true;
+    });
+    var matches = 0;
+    projects.forEach(function (item) {
+      var name =
+        (item.querySelector(".obra-item") || item).dataset.name ||
+        item.textContent;
+      var isMatch = name.toLocaleLowerCase("pt-BR").includes(normalized);
+      item.hidden = !isMatch;
+      if (!isMatch) return;
+      matches += 1;
+
+      var previous = item.previousElementSibling;
+      while (previous) {
+        if (
+          previous.classList.contains("sidebar-package-label") ||
+          previous.classList.contains("sidebar-project-status-label")
+        ) {
+          previous.hidden = false;
+          if (previous.classList.contains("sidebar-project-status-label"))
+            break;
+        }
+        previous = previous.previousElementSibling;
+      }
+    });
+    projectEmpty.hidden = matches !== 0;
+  }
+
+  function createGlobalResult(link) {
+    var item = document.createElement("li");
+    var clone = link.cloneNode(true);
+    clone.querySelectorAll(".sidebar-badge").forEach(function (badge) {
+      badge.remove();
+    });
+    item.appendChild(clone);
+    return item;
+  }
+
+  function createGlobalProjectResult(project) {
+    var item = project.cloneNode(true);
+    item.removeAttribute("hidden");
+    item.classList.add("sidebar-search-project");
+    item.querySelectorAll(".sidebar-badge").forEach(function (badge) {
+      badge.remove();
+    });
+    return item;
+  }
+
+  function renderGlobalSearch(query) {
+    if (!globalResults || !globalEmpty || !globalHint) return;
+    var normalized = query.trim().toLocaleLowerCase("pt-BR");
+    globalResults.replaceChildren();
+    globalHint.hidden = Boolean(normalized);
+    globalEmpty.hidden = true;
+    if (!normalized) return;
+
+    var shown = 0;
+    var seenRoutes = {};
+    Array.from(sidebar.querySelectorAll(".sidebar-panel-links a")).forEach(
+      function (link) {
+        if (shown >= 12) return;
+        var label = (
+          link.getAttribute("title") ||
+          link.textContent ||
+          ""
+        ).trim();
+        var route = link.getAttribute("href") || label;
+        if (
+          seenRoutes[route] ||
+          !label.toLocaleLowerCase("pt-BR").includes(normalized)
+        )
+          return;
+        seenRoutes[route] = true;
+        globalResults.appendChild(createGlobalResult(link));
+        shown += 1;
+      },
+    );
+
+    var seenProjects = {};
+    Array.from(
+      projectResults
+        ? projectResults.querySelectorAll("[data-sidebar-project]")
+        : [],
+    ).forEach(function (project) {
+      if (shown >= 24 || seenProjects[project.dataset.obraId]) return;
+      var link = project.querySelector(".obra-item");
+      var name = (link && link.dataset.name) || project.textContent || "";
+      if (!name.toLocaleLowerCase("pt-BR").includes(normalized)) return;
+      seenProjects[project.dataset.obraId] = true;
+      globalResults.appendChild(createGlobalProjectResult(project));
+      shown += 1;
+    });
+
+    globalEmpty.hidden = shown !== 0;
+  }
+
+  function clearGlobalSearch() {
+    if (!globalSearch) return;
+    globalSearch.value = "";
+    renderGlobalSearch("");
+  }
+
+  function closePanel() {
+    sidebar.classList.remove("is-open");
+    panel.setAttribute("aria-hidden", "true");
+    railButtons.forEach(function (button) {
+      button.setAttribute("aria-expanded", "false");
+    });
+    sections.forEach(function (section) {
+      section.hidden = true;
+    });
+    clearProjectSearch();
+    clearGlobalSearch();
+  }
+
+  function openPanel(name) {
+    var section = sidebar.querySelector(
+      '[data-sidebar-section="' + name + '"]',
+    );
+    var button = sidebar.querySelector('[data-sidebar-panel="' + name + '"]');
+    if (!section || !button) return;
+    var isCurrent = sidebar.classList.contains("is-open") && !section.hidden;
+    if (isCurrent) {
+      closePanel();
+      return;
+    }
+
+    sections.forEach(function (item) {
+      item.hidden = item !== section;
+    });
+    railButtons.forEach(function (item) {
+      item.setAttribute("aria-expanded", String(item === button));
+    });
+    sidebar.classList.add("is-open");
+    panel.setAttribute("aria-hidden", "false");
+    panelTitle.textContent = button.textContent.trim();
+    clearProjectSearch();
+    if (name === "obras") renderQuickProjects();
+    if (name === "busca" && globalSearch) globalSearch.focus();
+  }
+
+  function toggleFavorite(id) {
+    var favorites = readIds(favoriteKey);
+    var position = favorites.indexOf(String(id));
+    if (position === -1) favorites.unshift(String(id));
+    else favorites.splice(position, 1);
+    writeIds(favoriteKey, favorites);
+    syncFavoriteIndicators();
+    renderQuickProjects();
+  }
+
+  function rememberRecent(id) {
+    var recents = readIds(recentKey).filter(function (recentId) {
+      return recentId !== String(id);
+    });
+    recents.unshift(String(id));
+    writeIds(recentKey, recents.slice(0, maxRecent));
+  }
+
+  function selectProject(link) {
+    var obraId = link.dataset.id;
+    if (!obraId) return;
+    localStorage.setItem("obraId", obraId);
+    localStorage.setItem("obraNome", link.dataset.name || "");
+    rememberRecent(obraId);
+    window.location.href = window.location.origin + basePath + "Dashboard/obra";
+  }
 
   normalizeSidebarLinks();
-
+  var knownProjects = allowedProjectIds();
   if (Array.isArray(window.IMPROOV_ALLOWED_OBRA_IDS)) {
-    const allowedObraIds = window.IMPROOV_ALLOWED_OBRA_IDS.map(String);
-    const selectedObraId = localStorage.getItem("obraId");
-    if (selectedObraId && !allowedObraIds.includes(String(selectedObraId))) {
+    var allowed = window.IMPROOV_ALLOWED_OBRA_IDS.map(String);
+    [favoriteKey, recentKey].forEach(function (key) {
+      writeIds(
+        key,
+        readIds(key).filter(function (id) {
+          return allowed.includes(id);
+        }),
+      );
+    });
+    var selectedObraId = localStorage.getItem("obraId");
+    if (selectedObraId && !allowed.includes(String(selectedObraId))) {
       localStorage.removeItem("obraId");
       localStorage.removeItem("obraNome");
     }
-  }
-
-  const favoritosList = document.getElementById("favoritos");
-  const obrasList = document.getElementById("obras-list");
-
-  const rememberOriginalPosition = (obraItem) => {
-    if (!obraItem || obraItem.__sidebarOriginalParent) return;
-    obraItem.__sidebarOriginalParent = obraItem.parentElement;
-    obraItem.__sidebarOriginalNext = obraItem.nextElementSibling;
-  };
-
-  const restoreOriginalPosition = (obraItem) => {
-    if (!obraItem) return;
-    const parent = obraItem.__sidebarOriginalParent || obrasList;
-    const next = obraItem.__sidebarOriginalNext;
-
-    if (parent && next && next.parentElement === parent) {
-      parent.insertBefore(obraItem, next);
-    } else if (parent) {
-      parent.appendChild(obraItem);
-    } else if (obrasList) {
-      obrasList.appendChild(obraItem);
-    }
-  };
-
-  const checkFavoritesVisibility = () => {
-    if (favoritosList.children.length === 1) {
-      // Só contém o <label>, considera vazia
-      favoritosList.style.display = "none";
-    } else {
-      favoritosList.style.display = "block";
-    }
-  };
-
-  // Função para carregar os favoritos do localStorage
-  const loadFavorites = () => {
-    const favoritos = JSON.parse(localStorage.getItem("favoritos")) || [];
-
-    favoritos.forEach((id) => {
-      const obra = obrasList.querySelector(`.obra i[data-id="${id}"]`);
-      if (obra) {
-        // Marca a obra como favoritada
-        obra.classList.add("favorited");
-        // Move a obra para a lista de favoritos
-        const obraItem = obra.parentElement;
-        rememberOriginalPosition(obraItem);
-        favoritosList.appendChild(obraItem);
-      }
+  } else {
+    [favoriteKey, recentKey].forEach(function (key) {
+      writeIds(
+        key,
+        readIds(key).filter(function (id) {
+          return knownProjects.includes(id);
+        }),
+      );
     });
-    checkFavoritesVisibility();
-  };
+  }
+  syncFavoriteIndicators();
 
-  // Função para salvar os favoritos no localStorage
-  const saveFavorite = (id) => {
-    let favoritos = JSON.parse(localStorage.getItem("favoritos")) || [];
-    if (!favoritos.includes(id)) {
-      favoritos.push(id);
-      localStorage.setItem("favoritos", JSON.stringify(favoritos));
-    }
-  };
-
-  // Função para remover dos favoritos no localStorage
-  const removeFavorite = (id) => {
-    let favoritos = JSON.parse(localStorage.getItem("favoritos")) || [];
-    favoritos = favoritos.filter((fav) => fav !== id);
-    localStorage.setItem("favoritos", JSON.stringify(favoritos));
-  };
-
-  // Evento de clique para favoritar/desfavoritar
-  document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("favorite-icon")) {
-      const icon = e.target;
-      const obraId = icon.getAttribute("data-id");
-      const obraItem = icon.parentElement;
-
-      if (icon.classList.contains("favorited")) {
-        // Remover dos favoritos
-        icon.classList.remove("favorited");
-        removeFavorite(obraId);
-        restoreOriginalPosition(obraItem); // Move de volta para a lista original
-      } else {
-        // Adicionar aos favoritos
-        icon.classList.add("favorited");
-        saveFavorite(obraId);
-        rememberOriginalPosition(obraItem);
-        favoritosList.appendChild(obraItem); // Move para a lista de favoritos
-      }
-      checkFavoritesVisibility();
-    }
+  railButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      openPanel(button.dataset.sidebarPanel);
+    });
   });
-
-  // Carrega os favoritos ao inicializar
-  loadFavorites();
-
-  // ── Gaveta: obras inativas ────────────────────────────────
-  const inativasToggle = document.getElementById("obras-inativas-toggle");
-  const inativasBody = document.getElementById("obras-inativas-body");
-
-  if (inativasToggle && inativasBody) {
-    inativasToggle.addEventListener("click", function (e) {
-      e.stopPropagation();
-      const isOpen = inativasBody.classList.toggle("is-open");
-      inativasToggle.setAttribute("aria-expanded", String(isOpen));
+  closeButton.addEventListener("click", closePanel);
+  projectSearch.addEventListener("input", function () {
+    filterProjects(projectSearch.value);
+  });
+  projectViewButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      setProjectView(button.dataset.projectView);
+    });
+  });
+  if (globalSearch) {
+    globalSearch.addEventListener("input", function () {
+      renderGlobalSearch(globalSearch.value);
     });
   }
 
-  const obraItems = document.querySelectorAll(".obra-item");
+  document.addEventListener("click", function (event) {
+    var favoriteIcon = event.target.closest(".favorite-icon");
+    if (favoriteIcon && sidebar.contains(favoriteIcon)) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleFavorite(favoriteIcon.dataset.id);
+      return;
+    }
 
-  obraItems.forEach((item) => {
-    item.addEventListener("click", function (event) {
-      event.preventDefault(); // Impede o comportamento padrão do link
+    var projectLink = event.target.closest(".obra-item");
+    if (projectLink && sidebar.contains(projectLink)) {
+      event.preventDefault();
+      selectProject(projectLink);
+      return;
+    }
 
-      // Obtém os atributos data-id e data-name do elemento clicado
-      const obraId = this.getAttribute("data-id");
-
-      // Salva o data-id no localStorage
-      if (obraId) {
-        localStorage.setItem("obraId", obraId);
-        localStorage.setItem("obraNome", this.getAttribute("data-name"));
-      }
-
-      // Redireciona para o caminho correto dependendo do contexto
-      // (ex.: local `/ImproovWeb/` ou em `/flow/ImproovWeb/`).
-      window.location.href =
-        window.location.origin + basePath + "Dashboard/obra";
-    });
+    if (
+      sidebar.classList.contains("is-open") &&
+      !sidebar.contains(event.target)
+    )
+      closePanel();
   });
-});
+
+  document.addEventListener("keydown", function (event) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      openPanel("busca");
+      return;
+    }
+    if (event.key === "Escape" && sidebar.classList.contains("is-open"))
+      closePanel();
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initImproovSidebar, {
+    once: true,
+  });
+} else {
+  initImproovSidebar();
+}

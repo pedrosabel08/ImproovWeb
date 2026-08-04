@@ -53,6 +53,16 @@ final class RecipientResolver
                 $moduleKey = (string) ($payload['module_key'] ?? '');
                 $ids = array_merge($ids, $this->config['operational']['manager_roles'][$moduleKey] ?? []);
                 break;
+            case 'pending_summary_audience':
+                $ids = [(int) ($payload['collaborator_id'] ?? 0)];
+                $summary = $this->config['operational']['pending_summary'] ?? [];
+                if (!empty($summary['include_managers'])) {
+                    $ids = array_merge($ids, $summary['manager_collaborator_ids'] ?? []);
+                }
+                break;
+            case 'summary_owner':
+                $ids = [(int) ($payload['collaborator_id'] ?? 0)];
+                break;
             case 'sla_overdue_webhook':
                 $envKey = (string) ($this->config['operational']['overdue_webhook_env'] ?? '');
                 return $envKey === '' ? [] : [['destination_kind' => 'WEBHOOK', 'external_id' => $envKey, 'collaborator_id' => null]];

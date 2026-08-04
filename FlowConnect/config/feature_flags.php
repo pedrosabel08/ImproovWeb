@@ -39,6 +39,23 @@ if (!function_exists('flow_connect_review_mode')) {
     }
 }
 
+if (!function_exists('flow_connect_pending_summary_mode')) {
+    function flow_connect_pending_summary_mode(): string
+    {
+        $specific = getenv('FLOW_CONNECT_PENDING_SUMMARY_MODE');
+        if ($specific !== false && trim((string) $specific) !== '') {
+            return flow_connect_normalize_mode($specific);
+        }
+        foreach (['FLOW_CONNECT_MODE', 'FLOW_CONNECT_OPERATIONAL_MODE'] as $generalKey) {
+            $general = getenv($generalKey);
+            if ($general !== false && trim((string) $general) !== '') {
+                return flow_connect_normalize_mode($general);
+            }
+        }
+        return 'off';
+    }
+}
+
 if (!function_exists('flow_connect_should_bypass_legacy')) {
     function flow_connect_should_bypass_legacy(string $family, int $publishedEventId = 0): bool
     {

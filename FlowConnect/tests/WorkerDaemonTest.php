@@ -13,6 +13,7 @@ function flow_connect_test_worker_daemon(): void
     fc_assert_same(55, $daemonOptions['limit'], 'daemon keeps configured batch limit');
     fc_assert_same(237, flow_connect_cli_options(['worker.php', '--once', '--event-id=237'])['event_id'], 'explicit event id is parsed for isolated shadow validation');
     fc_assert_same('shadow-render:356946:v1', flow_connect_cli_options(['worker.php', '--once', '--cycle-id=shadow-render:356946:v1'])['cycle_id'], 'explicit cycle id is parsed for isolated scheduler validation');
+    fc_assert_same(21, flow_connect_cli_options(['worker.php', '--once', '--collaborator-id=21'])['collaborator_id'], 'collaborator filter is parsed for isolated pending-summary validation');
     try {
         flow_connect_cli_options(['worker.php', '--once', '--daemon']);
         fc_assert(false, 'once and daemon cannot be used together');

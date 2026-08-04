@@ -15,6 +15,15 @@ if (!function_exists('flow_connect_env_list')) {
     }
 }
 
+if (!function_exists('flow_connect_env_bool')) {
+    function flow_connect_env_bool(string $key, bool $default = false): bool
+    {
+        $raw = getenv($key);
+        if ($raw === false || trim((string) $raw) === '') return $default;
+        return in_array(strtolower(trim((string) $raw)), ['1', 'true', 'yes', 'on'], true);
+    }
+}
+
 return [
     'environment' => getenv('APP_ENV') ?: 'local',
     'claim_ttl_seconds' => max(30, (int) (getenv('FLOW_CONNECT_CLAIM_TTL_SECONDS') ?: 300)),
@@ -53,5 +62,17 @@ return [
         ],
         'overdue_webhook_env' => 'FLOW_CONNECT_SLA_OVERDUE_WEBHOOK_URL',
         'upload_summary_times' => array_values(array_filter(array_map('trim', explode(',', (string) (getenv('FLOW_CONNECT_UPLOAD_SUMMARY_TIMES') ?: '09:00,13:00,17:00'))))),
+        'pending_summary' => [
+            'times' => array_values(array_filter(array_map('trim', explode(',', (string) (getenv('FLOW_CONNECT_PENDING_SUMMARY_TIMES') ?: '08:15,10:15,12:15,14:15,16:15,18:15'))))),
+            'mode' => flow_connect_pending_summary_mode(),
+            'origin_url' => getenv('FLOW_CONNECT_PENDING_SUMMARY_ORIGIN_URL') ?: 'https://improov/ImproovWeb/PaginaPrincipal/',
+            'preview_limit_per_module' => max(1, min(10, (int) (getenv('FLOW_CONNECT_PENDING_SUMMARY_PREVIEW_LIMIT') ?: 3))),
+            'normal_max' => max(1, (int) (getenv('FLOW_CONNECT_PENDING_SUMMARY_NORMAL_MAX') ?: 5)),
+            'attention_max' => max(1, (int) (getenv('FLOW_CONNECT_PENDING_SUMMARY_ATTENTION_MAX') ?: 10)),
+            'include_managers' => flow_connect_env_bool('FLOW_CONNECT_PENDING_SUMMARY_INCLUDE_MANAGERS', false),
+            'manager_collaborator_ids' => flow_connect_env_list('FLOW_CONNECT_PENDING_SUMMARY_MANAGER_COLLABORATOR_IDS'),
+            // Cobranças não têm responsável persistido na tabela atual; a fila é configurada por ambiente.
+            'cobranca_collaborator_ids' => flow_connect_env_list('FLOW_CONNECT_PENDING_SUMMARY_COBRANCA_COLLABORATOR_IDS'),
+        ],
     ],
 ];

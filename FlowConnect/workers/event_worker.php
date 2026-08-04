@@ -31,6 +31,20 @@ try {
                 $plan = $planner->plan($event);
                 $events->markProcessed((int) $event['id']);
                 flow_connect_cli_log("event={$event['id']} processed mode={$plan['delivery_mode']} notification={$plan['notification_id']}", (bool) $options['verbose']);
+                if (($event['event_type'] ?? '') === 'pending.summary.ready') {
+                    $payload = $event['payload'] ?? [];
+                    flow_connect_cli_log(
+                        'pending_summary'
+                        . ' window=' . (string) ($payload['window_key'] ?? '-')
+                        . ' collaborator=' . (int) ($payload['collaborator_id'] ?? 0)
+                        . ' total=' . (int) ($payload['total_pending'] ?? 0)
+                        . ' modules=' . (int) ($payload['total_modules'] ?? 0)
+                        . ' event_uuid=' . (string) ($event['event_uuid'] ?? '-')
+                        . ' notification_id=' . (int) $plan['notification_id']
+                        . ' status=PLANNED',
+                        true
+                    );
+                }
             } catch (Throwable $e) {
                 $safe = flow_connect_safe_error($e->getMessage(), 'event_planning_failed');
                 $dead = ((int) ($event['failure_count'] ?? 0) + 1) >= 3;

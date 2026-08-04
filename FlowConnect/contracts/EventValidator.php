@@ -69,7 +69,8 @@ final class EventValidator
         $definitions = array_merge(
             require dirname(__DIR__) . '/config/events/flow_review.php',
             require dirname(__DIR__) . '/config/events/immediate_legacy.php',
-            require dirname(__DIR__) . '/config/events/operational_pending.php'
+            require dirname(__DIR__) . '/config/events/operational_pending.php',
+            require dirname(__DIR__) . '/config/events/pending_summary.php'
         );
         $definition = $definitions[$event['event_type']] ?? null;
         if ($definition === null) {
@@ -78,6 +79,22 @@ final class EventValidator
         foreach ($definition['required_payload'] ?? [] as $field) {
             if (!array_key_exists($field, $event['payload'])) {
                 throw new InvalidArgumentException("Payload de {$event['event_type']} sem {$field}.");
+            }
+        }
+
+        if ($event['event_type'] === 'pending.summary.ready') {
+            $payload = $event['payload'];
+            if ((int) ($payload['collaborator_id'] ?? 0) <= 0) {
+                throw new InvalidArgumentException('Payload de pending.summary.ready sem collaborator_id válido.');
+            }
+            if (trim((string) ($payload['generated_at'] ?? '')) === '' || trim((string) ($payload['window_key'] ?? '')) === '') {
+                throw new InvalidArgumentException('Payload de pending.summary.ready sem janela ou timestamp.');
+            }
+            if (!is_array($payload['modules']) || (int) ($payload['total_pending'] ?? -1) < 0 || (int) ($payload['total_modules'] ?? -1) < 0) {
+                throw new InvalidArgumentException('Payload de pending.summary.ready com totais inválidos.');
+            }
+            if (!in_array((string) ($payload['priority_level'] ?? ''), ['NONE', 'NORMAL', 'ATTENTION', 'CRITICAL'], true)) {
+                throw new InvalidArgumentException('Payload de pending.summary.ready com priority_level inválido.');
             }
         }
 

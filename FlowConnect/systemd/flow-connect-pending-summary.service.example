@@ -1,0 +1,10 @@
+[Unit]
+Description=Flow Connect consolidated pending summary (shadow)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/ImproovWeb
+ExecStart=/usr/bin/php FlowConnect/workers/pending_summary_worker.php --once --verbose
+User=www-data
+Group=www-data

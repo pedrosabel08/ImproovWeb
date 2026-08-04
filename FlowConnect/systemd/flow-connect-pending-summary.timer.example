@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Flow Connect pending summary window checker
+
+[Timer]
+# Every five minutes lets the worker read FLOW_CONNECT_PENDING_SUMMARY_TIMES from .env.
+# Its window idempotency makes repeated ticks safe and avoids a daemon.
+OnCalendar=*-*-* *:0/5:00
+Persistent=true
+Unit=flow-connect-pending-summary.service
+
+[Install]
+WantedBy=timers.target

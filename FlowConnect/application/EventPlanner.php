@@ -26,7 +26,8 @@ final class EventPlanner
         $this->definitions = array_merge(
             require dirname(__DIR__) . '/config/events/flow_review.php',
             require dirname(__DIR__) . '/config/events/immediate_legacy.php',
-            require dirname(__DIR__) . '/config/events/operational_pending.php'
+            require dirname(__DIR__) . '/config/events/operational_pending.php',
+            require dirname(__DIR__) . '/config/events/pending_summary.php'
         );
         $this->notifications = new NotificationRepository($conn);
         $this->deliveries = new DeliveryRepository($conn, (int) ($config['claim_ttl_seconds'] ?? 300));

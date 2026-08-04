@@ -34,7 +34,7 @@ $sql = "SELECT fi.idfuncao_imagem, fi.colaborador_id, fi.prazo, i.imagem_nome, f
         JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra=fi.imagem_id
         JOIN obra o ON o.idobra=i.obra_id
         LEFT JOIN funcao fun ON fun.idfuncao=fi.funcao_id
-        WHERE fi.requires_file_upload=1 AND fi.file_uploaded_at IS NULL AND fi.colaborador_id IS NOT NULL
+        WHERE fi.requires_file_upload=1 AND fi.file_uploaded_at IS NULL AND fi.colaborador_id IS NOT NULL AND o.status_obra = 0
         ORDER BY COALESCE(fi.prazo,fi.idfuncao_imagem) ASC";
 $rows = $conn->query($sql);
 $byRecipient = [];

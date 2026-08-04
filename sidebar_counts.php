@@ -175,6 +175,98 @@ if ($preAltTablesReady) {
     }
 }
 
+// Notificações internas pendentes, agrupadas pelo módulo de origem.
+// O bloco é opcional para manter a sidebar compatível com bases sem a migração de notificações.
+$notification_modules = [];
+$notificationUserId = (int) ($_SESSION['idusuario'] ?? 0);
+$notificationTables = [];
+$notificationTablesResult = $conn->query(
+    "SELECT table_name AS table_name
+     FROM information_schema.tables
+     WHERE table_schema = DATABASE()
+       AND table_name IN ('notificacoes', 'notificacoes_destinatarios', 'notificacoes_modulos')"
+);
+if ($notificationTablesResult) {
+    while ($tableRow = $notificationTablesResult->fetch_assoc()) {
+        // Alguns drivers devolvem as colunas do information_schema em maiúsculas.
+        $tableName = $tableRow['table_name'] ?? $tableRow['TABLE_NAME'] ?? null;
+        if ($tableName !== null) {
+            $notificationTables[] = $tableName;
+        }
+    }
+}
+
+$notificationModuleColumn = false;
+$notificationColumnResult = $conn->query(
+    "SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'notificacoes'
+       AND column_name = 'modulo_id'
+     LIMIT 1"
+);
+if ($notificationColumnResult) {
+    $notificationModuleColumn = $notificationColumnResult->num_rows > 0;
+}
+$notificationPublicationClause = "";
+$notificationStatusColumnResult = $conn->query(
+    "SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'notificacoes'
+       AND column_name = 'status_publicacao'
+     LIMIT 1"
+);
+if ($notificationStatusColumnResult && $notificationStatusColumnResult->num_rows > 0) {
+    $notificationPublicationClause = "
+                          AND COALESCE(NULLIF(n.status_publicacao, ''), 'PUBLICADA') = 'PUBLICADA'";
+}
+
+if (
+    $notificationUserId > 0
+    && $notificationModuleColumn
+    && count(array_intersect($notificationTables, ['notificacoes', 'notificacoes_destinatarios', 'notificacoes_modulos'])) === 3
+) {
+    $notificationSql = "SELECT
+                            m.codigo AS modulo_codigo,
+                            m.nome AS modulo_nome,
+                            m.url AS modulo_url,
+                            m.icone AS modulo_icone,
+                            COUNT(*) AS total
+                        FROM notificacoes n
+                        JOIN notificacoes_destinatarios d ON d.notificacao_id = n.id
+                        LEFT JOIN notificacoes_modulos m ON m.id = n.modulo_id
+                        WHERE d.usuario_id = ?
+                          AND n.ativa = 1
+                          AND d.dispensado_em IS NULL
+                          AND (n.inicio_em IS NULL OR n.inicio_em <= NOW())
+                          AND (n.fim_em IS NULL OR n.fim_em >= NOW())" . $notificationPublicationClause . "
+                          AND (
+                              (n.exige_confirmacao = 1 AND d.confirmado_em IS NULL)
+                              OR (n.exige_confirmacao = 0 AND d.visto_em IS NULL)
+                          )
+                        GROUP BY m.id, m.codigo, m.nome, m.url, m.icone
+                        ORDER BY total DESC, m.nome ASC";
+    $notificationStmt = $conn->prepare($notificationSql);
+    if ($notificationStmt) {
+        $notificationStmt->bind_param('i', $notificationUserId);
+        if ($notificationStmt->execute()) {
+            $notificationResult = $notificationStmt->get_result();
+            while ($notificationResult && ($notificationRow = $notificationResult->fetch_assoc())) {
+                $notificationCode = trim((string) ($notificationRow['modulo_codigo'] ?? ''));
+                $notification_modules[] = [
+                    'codigo' => $notificationCode !== '' ? $notificationCode : 'GERAL',
+                    'nome' => trim((string) ($notificationRow['modulo_nome'] ?? '')) ?: 'Notificações gerais',
+                    'url' => trim((string) ($notificationRow['modulo_url'] ?? '')) ?: 'notificacoes',
+                    'icone' => trim((string) ($notificationRow['modulo_icone'] ?? '')) ?: 'fa-bell',
+                    'total' => (int) ($notificationRow['total'] ?? 0),
+                ];
+            }
+        }
+        $notificationStmt->close();
+    }
+}
+
 $modules = [
     'entregas' => $total_ready,
     'entregas_pendencias' => $total_pendencias_entrega,
@@ -188,4 +280,9 @@ $modules = [
     }, 0)
 ];
 
-echo json_encode(['ok' => true, 'counts_by_obra' => $counts_by_obra, 'modules' => $modules]);
+echo json_encode([
+    'ok' => true,
+    'counts_by_obra' => $counts_by_obra,
+    'modules' => $modules,
+    'notification_modules' => $notification_modules,
+]);

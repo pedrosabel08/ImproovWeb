@@ -20,7 +20,9 @@
     var closeButton = sidebar.querySelector(".sidebar-panel-close");
     var projectPanel = sidebar.querySelector(".sidebar-project-panel");
     var projectSearch = sidebar.querySelector("#sidebar-project-search");
-    var projectResults = sidebar.querySelector("#obras-list");
+    var projectResults =
+      sidebar.querySelector("[data-project-results]") ||
+      sidebar.querySelector("#obras-list");
     var projectQuick = sidebar.querySelector("#sidebar-project-quick");
     var projectEmpty = sidebar.querySelector("#sidebar-project-empty");
     var projectViews = Array.from(
@@ -73,10 +75,17 @@
       );
     }
 
+    function projectId(item) {
+      var link = item && item.querySelector(".obra-item");
+      return String(
+        (item && item.dataset.obraId) || (link && link.dataset.id) || "",
+      );
+    }
+
     function projectById(id) {
       return (
         projects().find(function (item) {
-          return String(item.dataset.obraId) === String(id);
+          return projectId(item) === String(id);
         }) || null
       );
     }
@@ -87,7 +96,7 @@
         .querySelectorAll("[data-sidebar-project]")
         .forEach(function (item) {
           item.querySelectorAll(".favorite-icon").forEach(function (icon) {
-            var active = favorites.includes(String(item.dataset.obraId));
+            var active = favorites.includes(projectId(item));
             icon.classList.toggle("favorited", active);
             icon.setAttribute(
               "aria-label",

@@ -19,7 +19,9 @@ function initImproovSidebar() {
   var closeButton = sidebar.querySelector(".sidebar-panel-close");
   var projectPanel = sidebar.querySelector(".sidebar-project-panel");
   var projectSearch = document.getElementById("sidebar-project-search");
-  var projectResults = document.getElementById("obras-list");
+  var projectResults =
+    sidebar.querySelector("[data-project-results]") ||
+    document.getElementById("obras-list");
   var projectQuick = document.getElementById("sidebar-project-quick");
   var projectEmpty = document.getElementById("sidebar-project-empty");
   var projectViewButtons = Array.from(
@@ -85,13 +87,20 @@ function initImproovSidebar() {
     });
   }
 
+  function projectId(item) {
+    var link = item && item.querySelector(".obra-item");
+    return String(
+      (item && item.dataset.obraId) || (link && link.dataset.id) || "",
+    );
+  }
+
   function projectItemById(id) {
     if (!projectResults) return null;
     return (
       Array.from(
         projectResults.querySelectorAll("[data-sidebar-project]"),
       ).find(function (item) {
-        return String(item.dataset.obraId) === String(id);
+      return projectId(item) === String(id);
       }) || null
     );
   }
@@ -110,7 +119,7 @@ function initImproovSidebar() {
   function syncFavoriteIndicators() {
     var favoriteIds = readIds(favoriteKey);
     sidebar.querySelectorAll("[data-sidebar-project]").forEach(function (item) {
-      setFavoriteState(item, favoriteIds.includes(String(item.dataset.obraId)));
+      setFavoriteState(item, favoriteIds.includes(projectId(item)));
     });
   }
 

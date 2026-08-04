@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+// session_start();
 if (!isset($_SESSION['idusuario'])) {
     // Redirecionar para a página de login se não estiver autenticado
     header("Location: login.php");
@@ -136,7 +136,9 @@ $conn->close();
                     <?php if (!empty($userData['thumb'])): ?>
                         <img id="avatarPreview" src="<?php echo htmlspecialchars($userData['thumb']); ?>" alt="Avatar" />
                     <?php else: ?>
-                        <div id="avatarPreview" class="avatar-initial"><?php echo (!empty($userData['nome_usuario'])?htmlspecialchars(mb_strtoupper(mb_substr($userData['nome_usuario'],0,1,'UTF-8'))):''); ?></div>
+                        <div id="avatarPreview" class="avatar-initial">
+                            <?php echo (!empty($userData['nome_usuario']) ? htmlspecialchars(mb_strtoupper(mb_substr($userData['nome_usuario'], 0, 1, 'UTF-8'))) : ''); ?>
+                        </div>
                     <?php endif; ?>
                 </div>
                 <div class="avatar-actions">
@@ -219,38 +221,37 @@ $conn->close();
                 <legend>Cadastro CNPJ</legend>
                 <div class="form-group">
                     <label for="cnpj">CNPJ:</label>
-                    <input type="text" id="cnpj" name="cnpj" value="<?php echo htmlspecialchars($userData['cnpj']); ?>"
-                        >
+                    <input type="text" id="cnpj" name="cnpj" value="<?php echo htmlspecialchars($userData['cnpj']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="nome_empresarial">Nome empresarial:</label>
                     <input type="text" id="nome_empresarial" name="nome_empresarial"
-                        value="<?php echo htmlspecialchars($userData['nome_empresarial']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['nome_empresarial']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="nome_fantasia">Nome fantasia:</label>
                     <input type="text" id="nome_fantasia" name="nome_fantasia"
-                        value="<?php echo htmlspecialchars($userData['nome_fantasia']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['nome_fantasia']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="cep_cnpj">CEP:</label>
                     <input type="number" id="cep_cnpj" name="cep_cnpj" onkeyup="buscaEnderecoCNPJ(this.value);"
-                        value="<?php echo htmlspecialchars($userData['cep_cnpj']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['cep_cnpj']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="bairro_cnpj">Bairro:</label>
                     <input type="text" id="bairro_cnpj" name="bairro_cnpj"
-                        value="<?php echo htmlspecialchars($userData['bairro_cnpj']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['bairro_cnpj']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="uf_cnpj">UF:</label>
                     <input type="text" id="uf_cnpj" name="uf_cnpj"
-                        value="<?php echo htmlspecialchars($userData['uf_cnpj']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['uf_cnpj']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="localidade_cnpj">Localidade:</label>
                     <input type="text" id="localidade_cnpj" name="localidade_cnpj"
-                        value="<?php echo htmlspecialchars($userData['localidade_cnpj']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['localidade_cnpj']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="rua_cnpj">Rua:</label>
@@ -260,7 +261,7 @@ $conn->close();
                 <div class="form-group">
                     <label for="numero_cnpj">N°:</label>
                     <input type="number" id="numero_cnpj" name="numero_cnpj"
-                        value="<?php echo htmlspecialchars($userData['numero_cnpj']); ?>" >
+                        value="<?php echo htmlspecialchars($userData['numero_cnpj']); ?>">
                 </div>
                 <div class="form-group">
                     <label for="complemento_cnpj">Complemento:</label>

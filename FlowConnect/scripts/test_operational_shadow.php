@@ -32,9 +32,9 @@ if ($kind === 'arquivo') {
     $event = \FlowConnect\Contracts\EventEnvelope::normalize([
         'event_type' => 'arquivo.upload_pendente.resumo', 'source_module' => 'arquivo', 'entity_type' => 'funcao_imagem', 'entity_id' => (string) $collaboratorId,
         'idempotency_key' => 'operacional:arquivo:upload-pendente:test:' . $cycleId,
-        'payload' => $payload + ['titulo' => 'Arquivos pendentes de upload', 'itens' => [
-            ['titulo' => 'Teste · arquivo pendente 1', 'entity_id' => 'test-1'],
-            ['titulo' => 'Teste · arquivo pendente 2', 'entity_id' => 'test-2'],
+        'payload' => $payload + ['titulo' => 'Arquivos pendentes de upload', 'total' => 2, 'obras_total' => 1, 'resumo_compacto' => false, 'origin_url' => 'https://improov.com.br/flow/ImproovWeb/inicio.php', 'itens' => [
+            ['imagem_nome' => 'Imagem teste 1', 'funcao_nome' => 'Função teste 1', 'titulo' => 'Imagem teste 1 — Função teste 1 — arquivo pendente', 'entity_id' => 'test-1'],
+            ['imagem_nome' => 'Imagem teste 2', 'funcao_nome' => 'Função teste 2', 'titulo' => 'Imagem teste 2 — Função teste 2 — arquivo pendente', 'entity_id' => 'test-2'],
         ]],
         'metadata' => ['policy_key' => 'upload_pendente.resumo.v1', 'flow_connect_mode' => 'shadow', 'producer' => 'test_operational_shadow.php'],
     ]);

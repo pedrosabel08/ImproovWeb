@@ -25,5 +25,15 @@ function flow_connect_test_operational_pending(): void
 
     $renderer = new TemplateRenderer();
     fc_assert(strpos($renderer->render('operational_pending_milestone', ['payload' => ['titulo' => 'Teste', 'milestone' => 'EXPIRED']])['text'], 'vencida') !== false, 'milestone template renders');
-    fc_assert(strpos($renderer->render('file_upload_pending_summary', ['payload' => ['itens' => array_fill(0, 6, ['titulo' => 'Item'])]])['text'], 'Item') !== false, 'upload summary template renders');
+    $fileSummary = $renderer->render('file_upload_pending_summary', ['payload' => ['total' => 2, 'itens' => [['titulo' => 'Imagem · Função · arquivo pendente']], 'origin_url' => 'https://improov.com.br/flow/ImproovWeb/inicio.php']])['text'];
+    fc_assert(strpos($fileSummary, 'Imagem · Função · arquivo pendente') !== false, 'upload summary template renders details');
+    fc_assert(strpos($fileSummary, 'Abrir pendências') !== false, 'upload summary includes pending link');
+    $compactSummary = $renderer->render('file_upload_pending_summary', [
+        'payload' => [
+            'total' => 6,
+            'resumo_compacto' => true,
+            'itens' => [['titulo' => 'Item']],
+        ],
+    ])['text'];
+    fc_assert(strpos($compactSummary, 'Verifique agora') !== false && strpos($compactSummary, 'Item') === false, 'upload summary compacts larger queues');
 }

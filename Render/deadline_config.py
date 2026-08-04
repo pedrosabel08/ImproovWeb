@@ -5,7 +5,11 @@ import socket
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # The Render bridge can still use process environment variables.
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_ENV = BASE_DIR / ".env"

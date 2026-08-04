@@ -54,6 +54,23 @@ class DeadlineRepository:
     def require_schema(self) -> None:
         with self.database.transaction() as cursor:
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS deadline_job_progress (
+                    deadline_job_id CHAR(24) NOT NULL,
+                    deadline_job_progress DECIMAL(6,2) NULL,
+                    deadline_task_progress DECIMAL(6,2) NULL,
+                    deadline_task_render_status TEXT NULL,
+                    deadline_task_render_summary VARCHAR(255) NULL,
+                    deadline_task_elapsed VARCHAR(64) NULL,
+                    deadline_task_time_remaining VARCHAR(64) NULL,
+                    deadline_estimated_time_remaining VARCHAR(64) NULL,
+                    source_worker_id VARCHAR(255) NULL,
+                    observed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (deadline_job_id),
+                    INDEX idx_deadline_job_progress_observed (observed_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            cursor.execute("""
                 SELECT TABLE_NAME
                 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_SCHEMA = DATABASE()
@@ -128,6 +145,57 @@ class DeadlineRepository:
             raise RuntimeError(
                 "Migration do worker Deadline ausente ou incompleta: "
                 + ", ".join(details)
+            )
+
+    def upsert_job_progress(
+        self,
+        job_id: str,
+        aggregate_result,
+        aggregate: dict,
+        tasks_result,
+        tasks: dict,
+        worker_id: str,
+    ) -> None:
+        """Persist the latest Deadline progress read by the local worker."""
+        aggregate_ok = bool(aggregate_result.success)
+        tasks_ok = bool(tasks_result.success)
+        with self.database.transaction() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO deadline_job_progress (
+                    deadline_job_id, deadline_job_progress, deadline_task_progress,
+                    deadline_task_render_status, deadline_task_render_summary,
+                    deadline_task_elapsed, deadline_task_time_remaining,
+                    deadline_estimated_time_remaining, source_worker_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    deadline_job_progress = IF(%s, VALUES(deadline_job_progress), deadline_job_progress),
+                    deadline_task_progress = IF(%s, VALUES(deadline_task_progress), deadline_task_progress),
+                    deadline_task_render_status = IF(%s, VALUES(deadline_task_render_status), deadline_task_render_status),
+                    deadline_task_render_summary = IF(%s, VALUES(deadline_task_render_summary), deadline_task_render_summary),
+                    deadline_task_elapsed = IF(%s, VALUES(deadline_task_elapsed), deadline_task_elapsed),
+                    deadline_task_time_remaining = IF(%s, VALUES(deadline_task_time_remaining), deadline_task_time_remaining),
+                    deadline_estimated_time_remaining = IF(%s, VALUES(deadline_estimated_time_remaining), deadline_estimated_time_remaining),
+                    source_worker_id = VALUES(source_worker_id), observed_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    job_id,
+                    aggregate.get("job_progress") if aggregate_ok else None,
+                    tasks.get("task_progress") if tasks_ok else None,
+                    tasks.get("task_render_status") if tasks_ok else None,
+                    tasks.get("task_render_summary") if tasks_ok else None,
+                    tasks.get("task_elapsed") if tasks_ok else None,
+                    tasks.get("task_time_remaining") if tasks_ok else None,
+                    aggregate.get("estimated_time_remaining") if aggregate_ok else None,
+                    worker_id,
+                    aggregate_ok,
+                    tasks_ok,
+                    tasks_ok,
+                    tasks_ok,
+                    tasks_ok,
+                    tasks_ok,
+                    aggregate_ok,
+                ),
             )
 
     def heartbeat(

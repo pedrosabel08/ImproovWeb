@@ -9,7 +9,13 @@ RENDER_DIR = Path(__file__).resolve().parents[1]
 if str(RENDER_DIR) not in sys.path:
     sys.path.insert(0, str(RENDER_DIR))
 
-from deadline_client import CommandResult, DeadlineClient
+from deadline_client import (
+    CommandResult,
+    DeadlineClient,
+    parse_job_tasks_progress,
+    parse_task_render_status,
+    parse_task_progress,
+)
 from deadline_repository import build_observation_plan
 from deadline_worker import DeadlineWorker, first_submission_plan
 from deadline_domain import (
@@ -269,6 +275,76 @@ class DeadlineWorkerAcceptanceTests(unittest.TestCase):
         self.assertFalse(missing_result.success)
         self.assertTrue(missing_result.not_found)
         self.assertEqual(data, {})
+
+    def test_task_progress_is_normalized_and_preserves_real_zero(self):
+        self.assertEqual(
+            parse_task_progress(
+                "JobProgress=0%\nEstimatedJobTimeRemaining=00d 00h 12m 30s"
+            ),
+            {
+                "job_progress": 0.0,
+                "estimated_time_remaining": "00d 00h 12m 30s",
+            },
+        )
+        self.assertEqual(
+            parse_task_progress("JobProgress=100 %\nEstimatedJobTimeRemaining="),
+            {"job_progress": 100.0, "estimated_time_remaining": None},
+        )
+        self.assertEqual(
+            parse_task_progress("JobProgress=not available"),
+            {"job_progress": None, "estimated_time_remaining": None},
+        )
+        self.assertEqual(
+            parse_task_progress("JobProgress=0%\nEstimatedJobTimeRemaining=??d ??h ??m ??s"),
+            {"job_progress": 0.0, "estimated_time_remaining": None},
+        )
+
+        self.assertEqual(
+            parse_job_tasks_progress(
+                "[0_0-0]\nProgress=71.16 %\nTaskRenderStatus=Frame 0 - Rendering pass 16 (elapsed: 0:28:57, left: 0:20:37) - 56.5%\n\n[1_1-1]\nProgress=100 %"
+            ),
+            {
+                "task_progress": 85.58,
+                "task_render_status": "Frame 0 - Rendering pass 16 (elapsed: 0:28:57, left: 0:20:37) - 56.5%",
+                "task_render_summary": "Frame 0 - Rendering pass 16",
+                "task_elapsed": "0:28:57",
+                "task_time_remaining": "0:20:37",
+            },
+        )
+        self.assertEqual(
+            parse_job_tasks_progress("TaskProgress=42 %"),
+            {
+                "task_progress": 42.0,
+                "task_render_status": None,
+                "task_render_summary": None,
+                "task_elapsed": None,
+                "task_time_remaining": None,
+            },
+        )
+        self.assertEqual(
+            parse_task_render_status("TaskRenderStatus sem tempo"),
+            {
+                "task_render_status": "TaskRenderStatus sem tempo",
+                "task_render_summary": "TaskRenderStatus sem tempo",
+                "task_elapsed": None,
+                "task_time_remaining": None,
+            },
+        )
+
+        client = DeadlineClient("deadlinecommand")
+        with patch.object(
+            client,
+            "run",
+            return_value=CommandResult(
+                True, "JobProgress=42%\nEstimatedJobTimeRemaining=00d 00h 25m 10s"
+            ),
+        ):
+            result, progress = client.get_task_progress(JOB_A)
+        self.assertTrue(result.success)
+        self.assertEqual(
+            progress,
+            {"job_progress": 42.0, "estimated_time_remaining": "00d 00h 25m 10s"},
+        )
 
     def test_case_05_deadline_failure_uses_required_backoff(self):
         self.assertEqual(

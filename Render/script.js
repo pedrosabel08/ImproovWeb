@@ -141,27 +141,6 @@ function updateKpiCard(cardKey, metric, config) {
   renderSparkline(config.sparkId, metric.series);
 }
 
-function updateTopResponsavel(highlight) {
-  const top =
-    highlight && highlight.top_responsavel ? highlight.top_responsavel : {};
-  const total = parseInt(top.total || 0, 10);
-  const sentiment = top.sentiment || "neutral";
-  const card = document.getElementById("renderTopResponsavelCard");
-  if (card) {
-    card.classList.remove("is-positive", "is-negative", "is-neutral");
-    card.classList.add(`is-${sentiment}`);
-  }
-  setText("renderKpiTopNome", top.nome_colaborador || "Sem dados");
-  setText(
-    "renderKpiTopTotal",
-    `${total} render${total === 1 ? "" : "s"} aprovado${total === 1 ? "" : "s"}`,
-  );
-  setText(
-    "renderKpiTopDelta",
-    `${formatSigned(top.change || 0, "%")} vs periodo anterior`,
-  );
-}
-
 function loadRenderKpis() {
   if (!document.getElementById("renderKpiGrid")) return;
   setRenderKpiLoading(true);
@@ -207,7 +186,6 @@ function loadRenderKpis() {
         plural: "renders/dia",
         valueSuffix: "/dia",
       });
-      updateTopResponsavel(response.highlight);
       updateRenderKpiPeriodLabel(response.period);
     },
     error: function (xhr, status, error) {
@@ -284,9 +262,11 @@ function initRenderKpis() {
 
 function renderObraFilter() {
   const selected = $("#filterObra").val();
-  const obras = renderFilterOptions?.obras || [
-    ...new Set(allRenders.map((r) => r.obra_nomenclatura).filter(Boolean)),
-  ].sort();
+  const obras =
+    renderFilterOptions?.obras ||
+    [
+      ...new Set(allRenders.map((r) => r.obra_nomenclatura).filter(Boolean)),
+    ].sort();
   $("#filterObra").empty().append('<option value="">Todas as Obras</option>');
   obras.forEach((nome) => {
     $("#filterObra").append($("<option>").val(nome).text(nome));
@@ -298,12 +278,14 @@ function renderObraFilter() {
 
 function renderCollaboratorFilter() {
   const selected = $("#filterColaborador").val();
-  const colaboradores = renderFilterOptions?.colaboradores || [
-    ...new Set(allRenders.map((r) => r.nome_colaborador).filter(Boolean)),
-  ].sort();
-  $("#filterColaborador").empty().append(
-    '<option value="">Todos os Responsáveis</option>',
-  );
+  const colaboradores =
+    renderFilterOptions?.colaboradores ||
+    [
+      ...new Set(allRenders.map((r) => r.nome_colaborador).filter(Boolean)),
+    ].sort();
+  $("#filterColaborador")
+    .empty()
+    .append('<option value="">Todos os Responsáveis</option>');
   colaboradores.forEach((nome) => {
     $("#filterColaborador").append($("<option>").val(nome).text(nome));
   });
@@ -314,10 +296,12 @@ function renderCollaboratorFilter() {
 
 function renderStatusFilter() {
   const selected = $("#filterStatus").val();
-  const status = renderFilterOptions?.status || [
-    ...new Set(allRenders.map((r) => r.status).filter(Boolean)),
-  ].sort();
-  $("#filterStatus").empty().append('<option value="">Todos os Status</option>');
+  const status =
+    renderFilterOptions?.status ||
+    [...new Set(allRenders.map((r) => r.status).filter(Boolean))].sort();
+  $("#filterStatus")
+    .empty()
+    .append('<option value="">Todos os Status</option>');
   status.forEach((nome) => {
     $("#filterStatus").append($("<option>").val(nome).text(nome));
   });
@@ -328,12 +312,12 @@ function renderStatusFilter() {
 
 function renderStatusImagemFilter() {
   const selected = $("#filterStatusImagem").val();
-  const statusImagens = renderFilterOptions?.statusImagem || [
-    ...new Set(allRenders.map((r) => r.nome_status).filter(Boolean)),
-  ].sort();
-  $("#filterStatusImagem").empty().append(
-    '<option value="">Todos os Status Imagem</option>',
-  );
+  const statusImagens =
+    renderFilterOptions?.statusImagem ||
+    [...new Set(allRenders.map((r) => r.nome_status).filter(Boolean))].sort();
+  $("#filterStatusImagem")
+    .empty()
+    .append('<option value="">Todos os Status Imagem</option>');
   statusImagens.forEach((nome) => {
     $("#filterStatusImagem").append($("<option>").val(nome).text(nome));
   });
@@ -397,9 +381,99 @@ function formatDateShort(dateStr) {
   if (isNaN(d)) return "—";
   return d.toLocaleDateString("pt-BR", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;",
+    };
+    return entities[character];
+  });
+}
+
+function normalizeDeadlineProgress(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+  const progress = Number(value);
+  return Number.isFinite(progress) && progress >= 0 && progress <= 100
+    ? progress
+    : null;
+}
+
+function formatDeadlineProgress(progress) {
+  const rounded = Math.round(progress * 10) / 10;
+  return Number.isInteger(rounded)
+    ? String(rounded)
+    : rounded.toLocaleString("pt-BR");
+}
+
+function deadlineProgressTone(progress) {
+  if (progress <= 25) return "is-gray";
+  if (progress <= 60) return "is-blue";
+  if (progress <= 90) return "is-orange";
+  if (progress < 100) return "is-yellow";
+  return "is-green";
+}
+
+function formatDeadlineTaskDuration(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.includes("?")) return "";
+  const parts = raw.split(":").map((part) => Number(part));
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
+    return escapeHtml(raw);
+  }
+  const [hours, minutes, seconds] = parts;
+  const formatted = [];
+  if (hours > 0) formatted.push(`${hours}h`);
+  if (minutes > 0 || hours > 0) formatted.push(`${minutes}m`);
+  formatted.push(`${seconds}s`);
+  return formatted.join(" ");
+}
+
+function renderDeadlineProgress(render) {
+  const progress = normalizeDeadlineProgress(
+    render.deadline_task_progress ?? render.deadline_job_progress,
+  );
+  const tooltipId = `deadlineProgressTooltip-${render.idrender_alta}`;
+  if (progress === null) {
+    return `
+      <div class="deadline-progress is-unavailable" tabindex="0" aria-describedby="${tooltipId}" aria-label="Progresso do Deadline indisponível">
+        <div class="deadline-progress-track" aria-hidden="true"><span class="deadline-progress-fill"></span></div>
+        <span class="deadline-progress-value">—</span>
+        <span class="deadline-progress-tooltip" id="${tooltipId}" role="tooltip">Progresso indisponível no Deadline</span>
+      </div>`;
+  }
+
+  const percentage = formatDeadlineProgress(progress);
+  const eta = String(render.deadline_estimated_time_remaining || "").trim();
+  const taskSummary = String(
+    render.deadline_task_render_summary ||
+      render.deadline_task_render_status ||
+      "",
+  ).trim();
+  const elapsed = formatDeadlineTaskDuration(render.deadline_task_elapsed);
+  const remaining = formatDeadlineTaskDuration(
+    render.deadline_task_time_remaining,
+  );
+  const taskTimes =
+    elapsed || remaining
+      ? `<span class="deadline-progress-time-grid"><span><small>Decorrido</small><b>${elapsed || "—"}</b></span><span><small>Restante estimado</small><b>${remaining || "—"}</b></span></span>`
+      : "";
+  return `
+    <div class="deadline-progress ${deadlineProgressTone(progress)}" tabindex="0" aria-describedby="${tooltipId}" aria-label="Progresso do Deadline: ${percentage}% concluído">
+      <div class="deadline-progress-track" aria-hidden="true"><progress class="deadline-progress-fill" max="100" value="${progress}"></progress></div>
+      <span class="deadline-progress-value">${percentage}%</span>
+      <span class="deadline-progress-tooltip" id="${tooltipId}" role="tooltip"><strong>Progresso do Deadline</strong><span>${percentage}% concluído</span>${taskTimes}${eta ? `<span>Tempo restante estimado: ${escapeHtml(eta)}</span>` : ""}</span>
+    </div>`;
 }
 
 function renderCards(renders) {
@@ -425,6 +499,11 @@ function renderCards(renders) {
     const sc = getStatusBadgeClass(render.status);
     const ico = getStatusIcon(render.status);
     const dateLabel = formatDateShort(render.data);
+    const isInProgress =
+      String(render.status || "")
+        .trim()
+        .toLowerCase() === "em andamento";
+    const deadlineProgress = isInProgress ? renderDeadlineProgress(render) : "";
     const obra = render.obra_nomenclatura || "—";
     const colab = render.nome_colaborador || "—";
 
@@ -434,6 +513,7 @@ function renderCards(renders) {
           <img loading="lazy" decoding="async" src="${imgUrl}" alt="" class="loading"
                onload="this.classList.remove('loading')">
         </div>
+        ${deadlineProgress}
         <div class="card-body">
           <p class="card-title" title="${render.imagem_nome}">${render.imagem_nome}</p>
           <div class="card-meta-row">
@@ -471,6 +551,47 @@ $("#renderGrid")
     const idrender_alta = $(this).data("id");
     editRender(idrender_alta);
   });
+
+function positionDeadlineProgressTooltip(element) {
+  const tooltip = element.querySelector(".deadline-progress-tooltip");
+  if (!tooltip) return;
+  tooltip.style.setProperty("--deadline-tooltip-shift", "0px");
+  const target = element.getBoundingClientRect();
+  const tooltipWidth = tooltip.offsetWidth;
+  const viewportPadding = 12;
+  const centeredLeft = target.left + target.width / 2 - tooltipWidth / 2;
+  const minShift = viewportPadding - centeredLeft;
+  const maxShift =
+    window.innerWidth - viewportPadding - (centeredLeft + tooltipWidth);
+  const shift = minShift > 0 ? minShift : maxShift < 0 ? maxShift : 0;
+  tooltip.style.setProperty(
+    "--deadline-tooltip-shift",
+    `${Math.round(shift)}px`,
+  );
+}
+
+$("#renderGrid")
+  .off("mouseenter.deadlineProgress focusin.deadlineProgress")
+  .on(
+    "mouseenter.deadlineProgress focusin.deadlineProgress",
+    ".deadline-progress",
+    function () {
+      positionDeadlineProgressTooltip(this);
+    },
+  )
+  .off("keydown.deadlineProgress")
+  .on("keydown.deadlineProgress", ".deadline-progress", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    $(this).closest(".render-card").trigger("click");
+  });
+
+window.addEventListener("resize", () => {
+  document
+    .querySelectorAll(".deadline-progress:hover, .deadline-progress:focus")
+    .forEach(positionDeadlineProgressTooltip);
+});
+
 function loadRenders(page) {
   page = page || 1;
   const requestSequence = ++renderRequestSequence;

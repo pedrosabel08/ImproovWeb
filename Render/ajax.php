@@ -23,6 +23,174 @@ function render_current_colaborador_id(): int
 }
 
 /**
+ * Reads cached Deadline progress once for each unique job shown in a listing.
+ *
+ * The local worker owns command execution and parsing. A direct Python bridge is
+ * retained only as a development fallback when the shared cache is not installed.
+ */
+function render_deadline_progress_for_jobs($conn, array $rawJobIds): array
+{
+    $progressByJob = [];
+    foreach ($rawJobIds as $rawJobId) {
+        $jobId = deadline_flow_valid_job_id((string) $rawJobId);
+        if ($jobId !== null) {
+            $progressByJob[$jobId] = [
+                'deadline_job_progress' => null,
+                'deadline_task_progress' => null,
+                'deadline_task_render_status' => null,
+                'deadline_task_render_summary' => null,
+                'deadline_task_elapsed' => null,
+                'deadline_task_time_remaining' => null,
+                'deadline_estimated_time_remaining' => null,
+            ];
+        }
+    }
+
+    if (!$progressByJob) {
+        return $progressByJob;
+    }
+
+    // O worker local, na rede do Deadline, preenche este cache no banco.
+    // O VPS apenas lê os dados compartilhados e não acessa o repositório.
+    $jobIds = array_keys($progressByJob);
+    $placeholders = implode(',', array_fill(0, count($jobIds), '?'));
+    $cacheStmt = $conn->prepare(
+        "SELECT deadline_job_id, deadline_job_progress, deadline_task_progress,
+                deadline_task_render_status, deadline_task_render_summary,
+                deadline_task_elapsed, deadline_task_time_remaining,
+                deadline_estimated_time_remaining
+         FROM deadline_job_progress
+         WHERE deadline_job_id IN ($placeholders)"
+    );
+    if ($cacheStmt) {
+        $types = str_repeat('s', count($jobIds));
+        $bind = [$types];
+        foreach ($jobIds as $index => $jobId) {
+            $bind[] = &$jobIds[$index];
+        }
+        call_user_func_array([$cacheStmt, 'bind_param'], $bind);
+        if ($cacheStmt->execute()) {
+            $cacheResult = $cacheStmt->get_result();
+            while ($item = $cacheResult->fetch_assoc()) {
+                $jobId = (string) $item['deadline_job_id'];
+                if (isset($progressByJob[$jobId])) {
+                    $progressByJob[$jobId] = [
+                        'deadline_job_progress' => is_numeric($item['deadline_job_progress'])
+                            ? (float) $item['deadline_job_progress'] : null,
+                        'deadline_task_progress' => is_numeric($item['deadline_task_progress'])
+                            ? (float) $item['deadline_task_progress'] : null,
+                        'deadline_task_render_status' => $item['deadline_task_render_status'] ?: null,
+                        'deadline_task_render_summary' => $item['deadline_task_render_summary'] ?: null,
+                        'deadline_task_elapsed' => $item['deadline_task_elapsed'] ?: null,
+                        'deadline_task_time_remaining' => $item['deadline_task_time_remaining'] ?: null,
+                        'deadline_estimated_time_remaining' => $item['deadline_estimated_time_remaining'] ?: null,
+                    ];
+                }
+            }
+            $cacheStmt->close();
+            return $progressByJob;
+        }
+        $cacheStmt->close();
+    } else {
+        error_log('[Render] Deadline progress cache is not available; using direct bridge fallback.');
+    }
+
+    if (!function_exists('proc_open')) {
+        error_log('[Render] Deadline progress unavailable: proc_open is disabled in PHP.');
+        return $progressByJob;
+    }
+
+    $python = getenv('DEADLINE_PYTHON') ?: 'python';
+    $bridge = __DIR__ . DIRECTORY_SEPARATOR . 'deadline_progress.py';
+    if (!is_file($bridge)) {
+        error_log('[Render] Deadline progress bridge was not found.');
+        return $progressByJob;
+    }
+
+    $pipes = [];
+    $process = @proc_open(
+        [$python, $bridge],
+        [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ],
+        $pipes,
+        __DIR__
+    );
+    if (!is_resource($process)) {
+        error_log('[Render] Deadline progress bridge could not be started.');
+        return $progressByJob;
+    }
+
+    fwrite($pipes[0], json_encode(['job_ids' => array_keys($progressByJob)]));
+    fclose($pipes[0]);
+    $stdout = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+    $exitCode = proc_close($process);
+
+    $payload = json_decode($stdout, true);
+    if ($exitCode !== 0 || !is_array($payload)) {
+        $details = trim((string) $stderr);
+        if ($details !== '') {
+            $details = preg_replace('/\s+/', ' ', $details);
+            $details = substr($details, 0, 500);
+        }
+        error_log(
+            '[Render] Deadline progress query failed. exit=' . (string) $exitCode
+            . ($details !== '' ? ' stderr=' . $details : '')
+        );
+        return $progressByJob;
+    }
+
+    $results = is_array($payload['results'] ?? null) ? $payload['results'] : [];
+    foreach ($progressByJob as $jobId => $fallback) {
+        $item = $results[$jobId] ?? null;
+        if (!is_array($item)) {
+            continue;
+        }
+        $progress = $item['job_progress'] ?? null;
+        $progressByJob[$jobId] = [
+            'deadline_job_progress' => is_numeric($progress) ? (float) $progress : null,
+            'deadline_task_progress' => is_numeric($item['task_progress'] ?? null)
+                ? (float) $item['task_progress']
+                : null,
+            'deadline_task_render_status' => !empty($item['task_render_status'])
+                ? (string) $item['task_render_status']
+                : null,
+            'deadline_task_render_summary' => !empty($item['task_render_summary'])
+                ? (string) $item['task_render_summary']
+                : null,
+            'deadline_task_elapsed' => !empty($item['task_elapsed'])
+                ? (string) $item['task_elapsed']
+                : null,
+            'deadline_task_time_remaining' => !empty($item['task_time_remaining'])
+                ? (string) $item['task_time_remaining']
+                : null,
+            'deadline_estimated_time_remaining' => !empty($item['estimated_time_remaining'])
+                ? (string) $item['estimated_time_remaining']
+                : null,
+        ];
+    }
+
+    if (!empty($payload['errors']) || trim($stderr) !== '') {
+        $details = trim((string) $stderr);
+        if ($details !== '') {
+            $details = preg_replace('/\s+/', ' ', $details);
+            $details = substr($details, 0, 500);
+        }
+        error_log(
+            '[Render] One or more Deadline progress queries are unavailable.'
+            . ($details !== '' ? ' stderr=' . $details : '')
+        );
+    }
+
+    return $progressByJob;
+}
+
+/**
  * Finaliza a etapa de Finalizacao da imagem quando o render e enviado para a Pos.
  * Esta operacao deve ocorrer dentro da mesma transacao da aprovacao do render.
  */
@@ -385,94 +553,6 @@ function render_kpi_sent_daily($conn, $startAt, $endAt)
     return render_kpi_fetch_daily($conn, $sql, 'ss', $startAt, $endAt);
 }
 
-function render_kpi_top_responsavel($conn, $startAt, $endAt, $previousStartAt, $previousEndAt)
-{
-    $sql = "
-        SELECT
-            r.responsavel_id,
-            COALESCE(c.nome_colaborador, 'Sem responsavel') AS nome_colaborador,
-            COUNT(*) AS total
-        FROM (
-            SELECT lr.render_id, lr.data AS event_date
-            FROM log_render lr
-            WHERE LOWER(TRIM(lr.status_novo)) = 'aprovado'
-              AND lr.data BETWEEN ? AND ?
-            UNION
-            SELECT ra.idrender_alta AS render_id, ra.data AS event_date
-            FROM render_alta ra
-            WHERE ra.status = 'Aprovado'
-              AND ra.data BETWEEN ? AND ?
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM log_render lr2
-                  WHERE lr2.render_id = ra.idrender_alta
-                    AND LOWER(TRIM(lr2.status_novo)) = 'aprovado'
-              )
-        ) k
-        INNER JOIN render_alta r ON r.idrender_alta = k.render_id
-        LEFT JOIN colaborador c ON r.responsavel_id = c.idcolaborador
-        GROUP BY r.responsavel_id, c.nome_colaborador
-        ORDER BY total DESC, nome_colaborador ASC
-        LIMIT 1
-    ";
-
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        return ['nome_colaborador' => 'Sem dados', 'total' => 0, 'previous' => 0, 'change' => 0, 'sentiment' => 'neutral'];
-    }
-    $stmt->bind_param('ssss', $startAt, $endAt, $startAt, $endAt);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if (!$row) {
-        return ['nome_colaborador' => 'Sem dados', 'total' => 0, 'previous' => 0, 'change' => 0, 'sentiment' => 'neutral'];
-    }
-
-    $responsavelId = $row['responsavel_id'];
-    $previousSql = "
-        SELECT COUNT(*) AS total
-        FROM (
-            SELECT lr.render_id, lr.data AS event_date
-            FROM log_render lr
-            WHERE LOWER(TRIM(lr.status_novo)) = 'aprovado'
-              AND lr.data BETWEEN ? AND ?
-            UNION
-            SELECT ra.idrender_alta AS render_id, ra.data AS event_date
-            FROM render_alta ra
-            WHERE ra.status = 'Aprovado'
-              AND ra.data BETWEEN ? AND ?
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM log_render lr2
-                  WHERE lr2.render_id = ra.idrender_alta
-                    AND LOWER(TRIM(lr2.status_novo)) = 'aprovado'
-              )
-        ) k
-        INNER JOIN render_alta r ON r.idrender_alta = k.render_id
-        WHERE " . ($responsavelId === null ? 'r.responsavel_id IS NULL' : 'r.responsavel_id = ?') . "
-    ";
-
-    if ($responsavelId === null) {
-        $previous = render_kpi_scalar($conn, $previousSql, 'ssss', $previousStartAt, $previousEndAt, $previousStartAt, $previousEndAt);
-    } else {
-        $previous = render_kpi_scalar($conn, $previousSql, 'ssssi', $previousStartAt, $previousEndAt, $previousStartAt, $previousEndAt, (int) $responsavelId);
-    }
-
-    $total = (int) ($row['total'] ?? 0);
-    $change = render_kpi_percent_change($total, $previous);
-    $sentiment = $total === $previous ? 'neutral' : ($total > $previous ? 'positive' : 'negative');
-
-    return [
-        'nome_colaborador' => $row['nome_colaborador'],
-        'total' => $total,
-        'previous' => $previous,
-        'change' => $change,
-        'diff' => $total - $previous,
-        'sentiment' => $sentiment,
-    ];
-}
-
 // Lidar com as ações de AJAX
 if (isset($_GET['action'])) {
     switch ($_GET['action']) {
@@ -530,15 +610,6 @@ if (isset($_GET['action'])) {
                         render_kpi_daily_average($sent, $days),
                         render_kpi_daily_average($sentPrevious, $days),
                         render_kpi_date_series($current['from'], $days, $sentDaily)
-                    ),
-                ],
-                'highlight' => [
-                    'top_responsavel' => render_kpi_top_responsavel(
-                        $conn,
-                        $current['start_at'],
-                        $current['end_at'],
-                        $previous['start_at'],
-                        $previous['end_at']
                     ),
                 ],
             ]);
@@ -631,6 +702,23 @@ LIMIT $limit OFFSET $offset";
                 $renders[] = $row;
             }
             $stmt->close();
+
+            $progressByJob = render_deadline_progress_for_jobs(
+                $conn,
+                array_column($renders, 'deadline_job_id')
+            );
+            foreach ($renders as &$render) {
+                $jobId = deadline_flow_valid_job_id((string) ($render['deadline_job_id'] ?? ''));
+                $progress = $jobId !== null ? ($progressByJob[$jobId] ?? null) : null;
+                $render['deadline_job_progress'] = $progress['deadline_job_progress'] ?? null;
+                $render['deadline_task_progress'] = $progress['deadline_task_progress'] ?? null;
+                $render['deadline_task_render_status'] = $progress['deadline_task_render_status'] ?? null;
+                $render['deadline_task_render_summary'] = $progress['deadline_task_render_summary'] ?? null;
+                $render['deadline_task_elapsed'] = $progress['deadline_task_elapsed'] ?? null;
+                $render['deadline_task_time_remaining'] = $progress['deadline_task_time_remaining'] ?? null;
+                $render['deadline_estimated_time_remaining'] = $progress['deadline_estimated_time_remaining'] ?? null;
+            }
+            unset($render);
 
             $filterOptions = null;
             if ($page === 1) {

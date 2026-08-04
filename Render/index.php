@@ -94,7 +94,10 @@ $conn->close();
         <div class="page-header">
             <div class="page-header-left">
                 <img src="../gif/assinatura_preto.gif" alt="Improov" class="page-header-logo" id="gif">
-                <h1 class="page-title">Renders</h1>
+                <div class="page-title-wrap">
+                    <h1 class="page-title">Renders</h1>
+                    <span class="page-subtitle">Biblioteca de jobs de render</span>
+                </div>
             </div>
             <div class="results-summary">
                 <span class="results-badge" id="resultsBadge">
@@ -200,17 +203,6 @@ $conn->close();
 
         <!-- Render Grid + Load More (scrollable area) -->
         <div class="grid-scroll-area">
-            <section class="period-highlight" id="renderTopResponsavelCard" aria-label="Destaque do periodo">
-                <div class="period-highlight-icon"><i class="fa-solid fa-trophy"></i></div>
-                <div class="period-highlight-body">
-                    <span>Destaque do periodo</span>
-                    <strong id="renderKpiTopNome">Sem dados</strong>
-                </div>
-                <div class="period-highlight-metric">
-                    <strong id="renderKpiTopTotal">0 renders aprovados</strong>
-                    <span id="renderKpiTopDelta">vs periodo anterior</span>
-                </div>
-            </section>
             <div id="renderGrid" class="render-grid">
                 <!-- Skeleton placeholders shown while loading -->
                 <?php for ($i = 0; $i < 8; $i++): ?>

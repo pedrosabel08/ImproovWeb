@@ -11,7 +11,7 @@ import time
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from deadline_client import DeadlineClient
+from deadline_client import DeadlineClient, parse_job_tasks_progress
 from deadline_config import SETTINGS
 from deadline_db import Database
 from deadline_domain import (
@@ -268,6 +268,27 @@ class DeadlineWorker:
             if not task_result.success:
                 self.logger.warning("active job tasks could not be read", extra=context)
                 task_data = {}
+            aggregate_result, aggregate_progress = self.client.get_task_progress(
+                attempt["deadline_job_id"]
+            )
+            task_progress = (
+                parse_job_tasks_progress(task_result.output)
+                if task_result.success
+                else {}
+            )
+            try:
+                self.repository.upsert_job_progress(
+                    attempt["deadline_job_id"],
+                    aggregate_result,
+                    aggregate_progress,
+                    task_result,
+                    task_progress,
+                    self.settings.worker_id,
+                )
+            except Exception:
+                self.logger.exception(
+                    "deadline progress cache update failed", extra=context
+                )
             target = state_from_deadline(job_data, task_data)
             fingerprint = self.observation_fingerprint(target, job_data, task_data)
             plan = self.repository.observe_deadline_state(

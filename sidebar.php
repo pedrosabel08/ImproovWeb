@@ -65,7 +65,7 @@ if (!function_exists('improov_sidebar_render_obra_item')) {
         $emOnboarding = isset($obra['status_obra']) && (int) $obra['status_obra'] === 2;
         $classe = trim('obra ' . ($emOnboarding ? 'obra-onboarding ' : '') . $extraClass);
 
-        echo '<li class="' . htmlspecialchars($classe, ENT_QUOTES, 'UTF-8') . '">';
+        echo '<li class="' . htmlspecialchars($classe, ENT_QUOTES, 'UTF-8') . '" data-sidebar-project data-obra-id="' . $id . '">';
         echo '<i class="fa fa-star favorite-icon" data-id="' . $id . '" title="' . $nome . '"></i>';
         echo '<a title="' . $nome . '" href="#" class="obra-item" data-id="' . $id . '" data-name="' . $nome . '">';
         echo '<span>' . $nome . '</span>';
@@ -151,7 +151,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
 </head>
 
 <body>
-    <div class="sidebar mini">
+    <template id="sidebar-legacy-template"><div class="sidebar mini">
         <!-- <button id="menuButton">
             <i class="fa-solid fa-bars"></i>
         </button> -->
@@ -329,9 +329,153 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             class="fa-solid fa-id-card"></i><span>Informações</span></a></li>
             </ul>
         </ul>
-    </div>
+    </div></template>
 
     <!-- Upload Badge — barra inferior fixa de progresso de upload -->
+    <aside class="sidebar" aria-label="Navegação principal">
+        <nav class="sidebar-rail" aria-label="Grupos de navegação">
+            <a class="sidebar-brand" title="Página Principal" href="https://improov.com.br/flow/ImproovWeb/inicio.php" aria-label="Página Principal">
+                <img id="gif" src="https://improov.com.br/flow/ImproovWeb/gif/assinatura_preto.gif" alt="Improov">
+            </a>
+            <div class="sidebar-rail-menu">
+                <button class="sidebar-rail-button" type="button" data-sidebar-panel="busca" aria-label="Buscar no Flow" aria-controls="sidebar-panel-busca" aria-expanded="false" title="Buscar no Flow"><i class="fa-solid fa-magnifying-glass"></i><span>Buscar no Flow</span></button>
+                <button class="sidebar-rail-button" type="button" data-sidebar-panel="producao" aria-label="Produção" aria-controls="sidebar-panel-producao" aria-expanded="false" title="Produção"><i class="fa-solid fa-clapperboard"></i><span>Produção</span></button>
+                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                    <button class="sidebar-rail-button" type="button" data-sidebar-panel="gestao" aria-label="Gestão" aria-controls="sidebar-panel-gestao" aria-expanded="false" title="Gestão"><i class="fa-solid fa-chart-pie"></i><span>Gestão</span></button>
+                <?php endif; ?>
+                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 5)): ?>
+                    <button class="sidebar-rail-button" type="button" data-sidebar-panel="financeiro" aria-label="Financeiro" aria-controls="sidebar-panel-financeiro" aria-expanded="false" title="Financeiro"><i class="fa-solid fa-wallet"></i><span>Financeiro</span></button>
+                <?php endif; ?>
+                <button class="sidebar-rail-button" type="button" data-sidebar-panel="ferramentas" aria-label="Ferramentas" aria-controls="sidebar-panel-ferramentas" aria-expanded="false" title="Ferramentas"><i class="fa-solid fa-screwdriver-wrench"></i><span>Ferramentas</span></button>
+                <button class="sidebar-rail-button" type="button" data-sidebar-panel="obras" aria-label="<?= htmlspecialchars($__sidebarProjectLabel); ?>" aria-controls="sidebar-panel-obras" aria-expanded="false" title="<?= htmlspecialchars($__sidebarProjectLabel); ?>"><i class="fa-solid fa-building"></i><span><?= htmlspecialchars($__sidebarProjectLabel); ?></span></button>
+                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                    <button class="sidebar-rail-button" type="button" data-sidebar-panel="alertas" aria-label="Caixa de alertas" aria-controls="sidebar-panel-alertas" aria-expanded="false" title="Caixa de alertas"><i class="fa-solid fa-bell"></i><span>Caixa de alertas</span></button>
+                <?php endif; ?>
+            </div>
+            <a class="sidebar-profile-link" title="Informações do usuário" href="https://improov.com.br/flow/ImproovWeb/infos.php" aria-label="Informações do usuário"><i class="fa-solid fa-id-card"></i></a>
+        </nav>
+
+        <div class="sidebar-panel" aria-hidden="true">
+            <div class="sidebar-panel-header">
+                <h2 data-sidebar-panel-title>Navegação</h2>
+                <button class="sidebar-panel-close" type="button" aria-label="Fechar menu"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <section class="sidebar-panel-section sidebar-search-panel" id="sidebar-panel-busca" data-sidebar-section="busca" aria-labelledby="sidebar-panel-busca-title" hidden>
+                <h3 id="sidebar-panel-busca-title">Buscar no Flow</h3>
+                <label class="sidebar-project-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sidebar-global-search" type="search" autocomplete="off" placeholder="Telas, módulos e projetos..."></label>
+                <p class="sidebar-search-hint" id="sidebar-search-hint">Digite para encontrar módulos e projetos permitidos.</p>
+                <ul class="sidebar-search-results" id="sidebar-global-results" aria-live="polite"></ul>
+                <p class="sidebar-project-empty" id="sidebar-global-empty" hidden>Nenhum resultado encontrado.</p>
+            </section>
+
+            <section class="sidebar-panel-section" id="sidebar-panel-producao" data-sidebar-section="producao" aria-labelledby="sidebar-panel-producao-title" hidden>
+                <h3 id="sidebar-panel-producao-title">Produção</h3>
+                <ul class="sidebar-panel-links">
+                    <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span>Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
+                    <li><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-ban"></i><span>Flow Block</span></a></li>
+                    <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-cube"></i><span>Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
+                    <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-film"></i><span>Lista Pós-Produção</span><span class="sidebar-badge" data-module="pos_producao" aria-hidden="true"></span></a></li>
+                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?><li><a title="Planejamento Fotográfico" href="<?php echo htmlspecialchars(improov_sidebar_url('Fotografico'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-camera-retro"></i><span>Fotográfico</span></a></li><?php endif; ?>
+                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+                        <li><a title="Flow Drive" href="https://improov.com.br/flow/ImproovWeb/FlowDrive"><i class="fas fa-file"></i><span>Flow Drive</span></a></li>
+                        <li><a title="Pré-Alteração" href="https://improov.com.br/flow/ImproovWeb/PreAlteracao"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Pré-Alteração</span><span class="sidebar-badge" data-module="pre_alt_analise" aria-hidden="true"></span></a></li>
+                    <?php endif; ?>
+                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 2 || in_array($_SESSION['idcolaborador'] ?? null, [7, 34, 37, 44]))): ?><li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span>Lista Alteração</span></a></li><?php endif; ?>
+                    <li><a title="TV - Produção por Função" href="https://improov.com.br/flow/ImproovWeb/TvDashboard" target="_blank"><i class="fa-solid fa-tv"></i><span>TV Dashboard</span></a></li>
+                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?><li><a title="Entregas" href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-module-link="entregas" data-default-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-truck-fast"></i><span>Entregas</span><span class="sidebar-badge" data-module="entregas" aria-hidden="true"></span><span class="sidebar-badge sidebar-badge--warning sidebar-badge--offset" data-module="entregas" aria-hidden="true"></span></a></li><?php endif; ?>
+                </ul>
+            </section>
+
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                <section class="sidebar-panel-section" id="sidebar-panel-gestao" data-sidebar-section="gestao" aria-labelledby="sidebar-panel-gestao-title" hidden>
+                    <h3 id="sidebar-panel-gestao-title">Gestão</h3>
+                    <ul class="sidebar-panel-links">
+                        <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span>Gestão</span></a></li>
+                        <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i class="fa-solid fa-gauge-high"></i><span>Tela Gerencial</span></a></li>
+                        <li><a title="Configurar Metas - TV" href="https://improov.com.br/flow/ImproovWeb/AdminMetas"><i class="fa-solid fa-bullseye"></i><span>Metas TV</span></a></li>
+                        <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i class="fa-solid fa-route"></i><span>Flow Track</span></a></li>
+                        <li><a title="Colaboradores" href="https://improov.com.br/flow/ImproovWeb/Colaborador"><i class="fa-solid fa-users"></i><span>Colaboradores</span></a></li>
+                        <li><a title="Atividade do Sistema" href="https://improov.com.br/flow/ImproovWeb/Atividade"><i class="fa-solid fa-chart-simple"></i><span>Atividade</span></a></li>
+                        <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></a></li>
+                        <li><a title="Dashboard Operacional" href="https://improov.com.br/flow/ImproovWeb/Dashboard/Operacional"><i class="fa-solid fa-chart-area"></i><span>Dashboard Operacional</span></a></li>
+                        <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-sitemap"></i><span>Projetos</span></a></li>
+                        <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+                    </ul>
+                </section>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 5)): ?>
+                <section class="sidebar-panel-section" id="sidebar-panel-financeiro" data-sidebar-section="financeiro" aria-labelledby="sidebar-panel-financeiro-title" hidden>
+                    <h3 id="sidebar-panel-financeiro-title">Financeiro</h3>
+                    <ul class="sidebar-panel-links">
+                        <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></a></li>
+                        <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i class="fas fa-money-bill-wave"></i><span>Pagamento</span></a></li>
+                        <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos"><i class="fa-solid fa-file-contract"></i><span>Contratos</span></a></li>
+                    </ul>
+                </section>
+            <?php endif; ?>
+
+            <section class="sidebar-panel-section" id="sidebar-panel-ferramentas" data-sidebar-section="ferramentas" aria-labelledby="sidebar-panel-ferramentas-title" hidden>
+                <h3 id="sidebar-panel-ferramentas-title">Ferramentas</h3>
+                <ul class="sidebar-panel-links">
+                    <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
+                        <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span>Mapa Compatib.</span></a></li>
+                        <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span>SIRE</span></a></li>
+                    <?php endif; ?>
+                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                        <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
+                        <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i class="fas fa-paperclip"></i><span>Flow Referências</span></a></li>
+                    <?php endif; ?>
+                </ul>
+            </section>
+
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                <section class="sidebar-panel-section" id="sidebar-panel-alertas" data-sidebar-section="alertas" aria-labelledby="sidebar-panel-alertas-title" hidden>
+                    <h3 id="sidebar-panel-alertas-title">Caixa de alertas</h3>
+                    <ul class="sidebar-panel-links">
+                        <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
+                        <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span>Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
+                        <li><a title="Entregas" href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-module-link="entregas" data-default-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-truck-fast"></i><span>Entregas</span><span class="sidebar-badge" data-module="entregas" aria-hidden="true"></span></a></li>
+                        <li><a title="Pré-Alteração" href="https://improov.com.br/flow/ImproovWeb/PreAlteracao"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Pré-Alteração</span><span class="sidebar-badge" data-module="pre_alt_analise" aria-hidden="true"></span></a></li>
+                    </ul>
+                </section>
+            <?php endif; ?>
+
+            <section class="sidebar-panel-section sidebar-project-panel" id="sidebar-panel-obras" data-sidebar-section="obras" aria-labelledby="sidebar-panel-obras-title" hidden>
+                <h3 id="sidebar-panel-obras-title"><?= htmlspecialchars($__sidebarProjectLabel); ?></h3>
+                <label class="sidebar-project-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sidebar-project-search" type="search" autocomplete="off" placeholder="Buscar obra..."></label>
+                <div class="sidebar-project-filters" role="group" aria-label="Exibir projetos">
+                    <button type="button" class="is-active" data-project-view="quick">Fixados e recentes</button>
+                    <button type="button" data-project-view="all">Todos</button>
+                </div>
+                <div class="sidebar-project-quick" id="sidebar-project-quick" aria-live="polite"></div>
+                <p class="sidebar-project-empty" id="sidebar-project-empty" hidden>Nenhuma obra encontrada.</p>
+                <ul class="sidebar-project-results" id="obras-list" aria-label="Resultados de obras">
+                    <?php if ($__sidebarProjectMode === 'gestao'): ?>
+                        <?php foreach (improov_sidebar_obras_por_pacote($obras) as $grupoPacote): ?>
+                            <li class="sidebar-package-label"><span><?= htmlspecialchars($grupoPacote['label']); ?></span></li>
+                            <?php foreach ($grupoPacote['obras'] as $obra): ?><?php improov_sidebar_render_obra_item($obra); ?><?php endforeach; ?>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($obras as $obra): ?><?php improov_sidebar_render_obra_item($obra); ?><?php endforeach; ?>
+                    <?php endif; ?>
+                    <?php if ($__sidebarShowInactive && !empty($obras_inativas)): ?>
+                        <li class="sidebar-project-status-label"><span><?= htmlspecialchars($__sidebarInactiveLabel); ?></span></li>
+                        <?php if ($__sidebarProjectMode === 'gestao'): ?>
+                            <?php foreach (improov_sidebar_obras_por_pacote($obras_inativas) as $grupoPacote): ?>
+                                <li class="sidebar-package-label"><span><?= htmlspecialchars($grupoPacote['label']); ?></span></li>
+                                <?php foreach ($grupoPacote['obras'] as $obra): ?><?php improov_sidebar_render_obra_item($obra, 'inativa'); ?><?php endforeach; ?>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach ($obras_inativas as $obra): ?><?php improov_sidebar_render_obra_item($obra, 'inativa'); ?><?php endforeach; ?>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </ul>
+            </section>
+        </div>
+    </aside>
+
     <div id="upload-badge-bar" class="upload-badge-bar">
         <div class="upload-badge-header">
             <span class="upload-badge-header-title">
@@ -354,6 +498,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
 <script src="<?php echo asset_url($__basePath . 'assets/js/flow-block-mentions.js'); ?>&fbm=<?php echo filemtime(__DIR__ . '/assets/js/flow-block-mentions.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-badge.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/sidebar-counts.js'); ?>"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/flow-shell.js'); ?>&sidebar=<?php echo filemtime(__DIR__ . '/assets/js/flow-shell.js'); ?>"></script>
 
 <script>
     // Cache-busting didático:

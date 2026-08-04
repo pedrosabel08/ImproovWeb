@@ -30,37 +30,41 @@
       if (!data) return;
       if (data.modules) {
         Object.keys(data.modules).forEach(function (k) {
-          var el = document.querySelector(
-            '.sidebar-badge[data-module="' + k + '"]'
-          );
-          if (el) setBadge(el, data.modules[k]);
+          document
+            .querySelectorAll('.sidebar-badge[data-module="' + k + '"]')
+            .forEach(function (el) {
+              setBadge(el, data.modules[k]);
+            });
         });
 
         var entregasPendencias = parseInt(data.modules.entregas_pendencias) || 0;
-        var entregasBadge = document.querySelector(
+        var entregasBadges = document.querySelectorAll(
           '.sidebar-badge[data-module="entregas"]'
         );
-        var entregasLink = document.querySelector(
+        var entregasLinks = document.querySelectorAll(
           '[data-module-link="entregas"]'
         );
 
         if (entregasPendencias > 0) {
-          setBadge(entregasBadge, 0);
-          if (entregasLink) {
+          entregasBadges.forEach(function (badge) { setBadge(badge, 0); });
+          entregasLinks.forEach(function (entregasLink) {
             var pendingHref = entregasLink.getAttribute("data-pending-href");
             if (pendingHref) entregasLink.setAttribute("href", pendingHref);
-          }
-        } else if (entregasLink) {
-          var defaultHref = entregasLink.getAttribute("data-default-href");
-          if (defaultHref) entregasLink.setAttribute("href", defaultHref);
+          });
+        } else {
+          entregasLinks.forEach(function (entregasLink) {
+            var defaultHref = entregasLink.getAttribute("data-default-href");
+            if (defaultHref) entregasLink.setAttribute("href", defaultHref);
+          });
         }
       }
       if (data.counts_by_obra) {
         Object.keys(data.counts_by_obra).forEach(function (obraId) {
-          var el = document.querySelector(
-            '.sidebar-badge[data-obra-id="' + obraId + '"]'
-          );
-          if (el) setBadge(el, data.counts_by_obra[obraId]);
+          document
+            .querySelectorAll('.sidebar-badge[data-obra-id="' + obraId + '"]')
+            .forEach(function (el) {
+              setBadge(el, data.counts_by_obra[obraId]);
+            });
         });
       }
     } catch (e) {

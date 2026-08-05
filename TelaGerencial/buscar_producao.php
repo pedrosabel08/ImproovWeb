@@ -1,6 +1,7 @@
 <?php
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
+require_once __DIR__ . '/helpers/finalizacao_completa.php';
 // Ajusta sql_mode para evitar erros com ONLY_FULL_GROUP_BY em consultas complexas
 // (remove temporariamente ONLY_FULL_GROUP_BY para esta sessão)
 $conn->query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
@@ -280,6 +281,28 @@ $stmt->bind_param(
 $stmt->execute();
 $result = $stmt->get_result();
 $dadosMesAtual = $result->fetch_all(MYSQLI_ASSOC);
+
+// Finalização Completa usa a mesma lista histórica de tarefas novas que a
+// tabela por função. Isso evita que os totais por colaborador e por função
+// sejam calculados por regras diferentes.
+$tarefasFinalizacaoCompleta = tela_gerencial_finalizacao_completa_nao_pagas($conn, $mes, $anoSelecionado);
+$finalizacaoCompletaPorColaborador = tela_gerencial_agrupar_finalizacao_completa_por_colaborador($tarefasFinalizacaoCompleta);
+$dadosMesAtual = array_values(array_filter(
+  $dadosMesAtual,
+  static fn(array $linha): bool => !(
+    (int) ($linha['funcao_id'] ?? 0) === 4
+    && ($linha['nome_funcao'] ?? '') === 'Finalização Completa'
+  )
+));
+
+foreach ($finalizacaoCompletaPorColaborador as $linhaFinalizacao) {
+  $linhaFinalizacao['imagens_concat'] = implode('|||', array_map(
+    static fn(array $imagem): string => $imagem['imagem_id'] . ':::' . $imagem['imagem_nome'] . ':::0',
+    $linhaFinalizacao['imagens']
+  ));
+  unset($linhaFinalizacao['imagens']);
+  $dadosMesAtual[] = $linhaFinalizacao;
+}
 
 $tarefasFinalizacao = [];
 foreach ($dadosMesAtual as $linha) {

@@ -11,6 +11,8 @@ function _buildRecordBar(qtd, recorde) {
 // ---- Produção por colaborador: filtro por colaborador ao clicar em "Função" ----
 let _prodFiltroColab = "";
 let _prodFiltroMenuEl = null;
+let _buscaProducaoSequencia = 0;
+let _buscaFuncaoSequencia = 0;
 
 function _getProdRows() {
   return Array.from(document.querySelectorAll("#tabelaProducao tbody tr"));
@@ -205,6 +207,7 @@ function formatarMoeda(valor) {
 function buscarDados() {
   const mes = document.getElementById("mes").value;
   const ano = document.getElementById("ano")?.value || new Date().getFullYear();
+  const requisicao = ++_buscaProducaoSequencia;
   const nomeMeses = [
     "Janeiro",
     "Fevereiro",
@@ -223,6 +226,7 @@ function buscarDados() {
   fetch("buscar_producao.php?mes=" + mes + "&ano=" + encodeURIComponent(ano))
     .then((res) => res.json())
     .then((dados) => {
+      if (requisicao !== _buscaProducaoSequencia) return;
       const tabela = document.querySelector("#tabelaProducao tbody");
       tabela.innerHTML = ""; // limpa
 
@@ -533,12 +537,14 @@ function buscarDadosFuncao() {
     document.getElementById("mes")?.value ||
     (new Date().getMonth() + 1).toString().padStart(2, "0");
   const ano = document.getElementById("ano")?.value || new Date().getFullYear();
+  const requisicao = ++_buscaFuncaoSequencia;
 
   fetch(
     `buscar_producao_funcao.php?mes=${parseInt(mes, 10)}&ano=${encodeURIComponent(ano)}`,
   )
     .then((res) => res.json())
     .then((data) => {
+      if (requisicao !== _buscaFuncaoSequencia) return;
       const tabela = document.querySelector("#tabelaFuncao tbody");
       tabela.innerHTML = ""; // limpa
 

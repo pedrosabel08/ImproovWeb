@@ -1,6 +1,7 @@
 <?php
 include __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
+require_once __DIR__ . '/helpers/finalizacao_completa.php';
 
 $conn->query("SET SESSION group_concat_max_len = 1048576");
 
@@ -872,6 +873,12 @@ if ($mes) {
   foreach ($dados as $linha) {
     $naoPagasIndexado[$linha['nome_funcao']] = (int)$linha['quantidade'];
   }
+
+  // A métrica de novas Finalizações Completas vem da mesma fonte da tabela
+  // por colaborador. Não considera o status atual de obra/colaborador.
+  $naoPagasIndexado['Finalização Completa'] = count(
+    tela_gerencial_finalizacao_completa_nao_pagas($conn, $mesInt, $anoSelecionado)
+  );
 
   // Reconstrói $dados garantindo que todas as funções apareçam, mesmo com produção zero
   $funcoesOrdem = ['Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização Completa', 'Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'];

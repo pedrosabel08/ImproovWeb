@@ -1,16 +1,13 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/pagamento_auth.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Não autenticado.']);
-    exit;
-}
+pagamento_require_gestor(true);
 
 include __DIR__ . '/../conexao.php';
 include __DIR__ . '/../conexaoMain.php';
@@ -98,7 +95,8 @@ try {
     echo json_encode($resp);
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    error_log('Payment addendum generation failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Não foi possível gerar o adendo.']);
 }
 
 $conn->close();

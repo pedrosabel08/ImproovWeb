@@ -4,6 +4,8 @@
  * Only works when an adendo_pendente entry exists in the session.
  */
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(false);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

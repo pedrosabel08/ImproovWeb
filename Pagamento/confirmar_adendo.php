@@ -1,16 +1,13 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/pagamento_auth.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Não autenticado.']);
-    exit;
-}
+pagamento_require_gestor(true);
 
 $raw  = file_get_contents('php://input');
 $data = json_decode($raw, true) ?: [];

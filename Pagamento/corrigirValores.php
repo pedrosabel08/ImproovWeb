@@ -1,5 +1,7 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(true);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -21,7 +23,7 @@ $conn->begin_transaction();
 try {
     $stmt = $conn->prepare("UPDATE funcao_imagem SET valor = ? WHERE idfuncao_imagem = ?");
     if (!$stmt) {
-        throw new Exception('Erro no prepare: ' . $conn->error);
+        throw new Exception('Falha ao preparar a correção de valores.');
     }
 
     $atualizados = 0;
@@ -31,6 +33,9 @@ try {
 
         if ($id <= 0 || $valorNovo === null) {
             continue;
+        }
+        if (!is_finite($valorNovo) || $valorNovo < 0) {
+            throw new InvalidArgumentException('Valor de correção inválido.');
         }
 
         $stmt->bind_param('di', $valorNovo, $id);
@@ -45,7 +50,9 @@ try {
     echo json_encode(['success' => true, 'atualizados' => $atualizados]);
 } catch (Exception $e) {
     $conn->rollback();
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    error_log('Payment value correction failed: ' . $e->getMessage());
+    http_response_code($e instanceof InvalidArgumentException ? 422 : 500);
+    echo json_encode(['success' => false, 'error' => $e instanceof InvalidArgumentException ? $e->getMessage() : 'Não foi possível corrigir os valores.']);
 }
 
 $conn->close();

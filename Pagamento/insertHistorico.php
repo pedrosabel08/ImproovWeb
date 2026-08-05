@@ -1,12 +1,24 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(true);
 require_once __DIR__ . '/../conexao.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 
 if (isset($data['ids']) && is_array($data['ids'])) {
-    $colaborador_id = intval($data['colaborador_id']);
-    $data_pagamento = date('Y-m'); // Formato Ano-Mês para o agrupamento
+    $colaborador_id = intval($data['colaborador_id'] ?? 0);
+    $mes = intval($data['mes'] ?? 0);
+    $ano = intval($data['ano'] ?? 0);
+    $data_pagamento = ($mes >= 1 && $mes <= 12 && $ano >= 2000)
+        ? sprintf('%04d-%02d', $ano, $mes)
+        : date('Y-m');
+
+    if ($colaborador_id <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Colaborador inválido.']);
+        exit;
+    }
 
     foreach ($data['ids'] as $item) {
         $funcao_id = intval($conn->real_escape_string($item['funcao_id']));
@@ -15,7 +27,8 @@ if (isset($data['ids']) && is_array($data['ids'])) {
         $sql = "INSERT INTO historico_pagamento (colaborador_id, funcao_id, data_pagamento) 
                 VALUES ('$colaborador_id', '$funcao_id', CURDATE())";
         if (!$conn->query($sql)) {
-            echo json_encode(['success' => false, 'error' => 'Erro ao inserir histórico: ' . $conn->error]);
+            error_log('Pagamento history insert failed: ' . $conn->error);
+            echo json_encode(['success' => false, 'error' => 'Não foi possível atualizar o histórico de pagamento.']);
             $conn->close();
             exit;
         }
@@ -26,7 +39,8 @@ if (isset($data['ids']) && is_array($data['ids'])) {
                        ON DUPLICATE KEY UPDATE total_imagens = total_imagens + 1";
 
         if (!$conn->query($sql_update)) {
-            echo json_encode(['success' => false, 'error' => 'Erro ao atualizar resumo: ' . $conn->error]);
+            error_log('Pagamento summary update failed: ' . $conn->error);
+            echo json_encode(['success' => false, 'error' => 'Não foi possível atualizar o resumo de pagamento.']);
             $conn->close();
             exit;
         }

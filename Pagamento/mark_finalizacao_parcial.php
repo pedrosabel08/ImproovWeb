@@ -26,6 +26,8 @@
  *    GET /Pagamento/mark_finalizacao_parcial.php?colaborador_id=123&data_pagamento=2025-12-08
  */
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(true);
 require_once __DIR__ . '/../conexao.php';
 
 $input = $_SERVER['REQUEST_METHOD'] === 'POST' ? json_decode(file_get_contents('php://input'), true) : $_GET;
@@ -325,7 +327,8 @@ try {
 } catch (Throwable $e) {
     $conn->rollback();
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    error_log('Partial payment registration failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Não foi possível registrar a finalização parcial.']);
 }
 
 ?>

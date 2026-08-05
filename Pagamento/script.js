@@ -4,6 +4,81 @@ function formatarDataAtual() {
   return dataAtual.toLocaleDateString("pt-BR", opcoes);
 }
 
+const pagamentoCsrfToken = document.querySelector('meta[name="pagamento-csrf"]')?.content || "";
+const pagamentoFetch = window.fetch.bind(window);
+window.fetch = function (input, init = {}) {
+  const method = String(init.method || "GET").toUpperCase();
+  if (pagamentoCsrfToken && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const headers = new Headers(init.headers || {});
+    headers.set("X-CSRF-Token", pagamentoCsrfToken);
+    init.headers = headers;
+  }
+  return pagamentoFetch(input, init).then(async (response) => {
+    if (response.ok) return response;
+
+    let payload = {};
+    try {
+      payload = await response.clone().json();
+    } catch (_) {
+      // Mantém uma mensagem estável quando o servidor retornar HTML ou vazio.
+    }
+
+    const messages = {
+      401: "Sua sessão expirou. Atualize a página e entre novamente.",
+      403: "Você não tem permissão para executar esta ação.",
+      419: "A página ficou desatualizada. Atualize e tente novamente.",
+      422: "Os dados enviados são inválidos.",
+      500: "O servidor não conseguiu concluir a operação.",
+    };
+    const error = new Error(payload.error || payload.message || messages[response.status] || "Não foi possível concluir a operação.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  });
+};
+
+function setPagamentoButtonLoading(button, loading, loadingLabel = "Processando...") {
+  if (!button) return;
+  if (loading) {
+    if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${loadingLabel}`;
+  } else {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    if (button.dataset.originalHtml) {
+      button.innerHTML = button.dataset.originalHtml;
+      delete button.dataset.originalHtml;
+    }
+  }
+}
+
+function pagamentoVisibleCheckboxes(selector = ".pagamento-checkbox") {
+  return Array.from(document.querySelectorAll(selector)).filter((checkbox) => {
+    const row = checkbox.closest("tr");
+    return row && row.offsetParent !== null && !checkbox.disabled;
+  });
+}
+
+function pagamentoSelectedValue(checkbox) {
+  const dataValue = checkbox?.getAttribute("data-valor");
+  if (dataValue !== null && dataValue !== "" && Number.isFinite(Number(dataValue))) {
+    return Number(dataValue);
+  }
+  const valueCell = checkbox?.closest("tr")?.cells?.[3];
+  const raw = valueCell?.textContent || "0";
+  return Number(raw.replace(/[^0-9,.-]+/g, "").replace(/\./g, "").replace(",", ".")) || 0;
+}
+
+function atualizarResumoSelecao() {
+  const summary = document.getElementById("selection-summary");
+  if (!summary) return;
+  const selected = Array.from(document.querySelectorAll(".pagamento-checkbox:checked"));
+  const total = selected.reduce((sum, checkbox) => sum + pagamentoSelectedValue(checkbox), 0);
+  summary.textContent = `${selected.length} ${selected.length === 1 ? "item selecionado" : "itens selecionados"} · ${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   // ====== Resumo (dashboard) ======
   const mesResumo = document.getElementById("mes-resumo");
@@ -241,11 +316,18 @@ document.addEventListener("DOMContentLoaded", function () {
     var colaboradorId = document.getElementById("colaborador").value;
     var mesId = document.getElementById("mes").value;
     var anoId = document.getElementById("ano").value;
+    const tipoFiltros = Array.from(
+      document.querySelectorAll('.tipo-imagem input[type="checkbox"]'),
+    );
+    const haviaFiltroDeTipo = tipoFiltros.some((checkbox) => checkbox.checked);
+    const filtrosDeTipoAtivos = new Set(
+      tipoFiltros.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.name),
+    );
 
     const confirmarPagamentoButton = document.getElementById(
       "confirmar-pagamento",
     );
-    // confirmarPagamentoButton.disabled = true;
+    if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = true;
 
     if (colaboradorId) {
       var url =
@@ -258,6 +340,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (anoId) {
         url += "&ano=" + encodeURIComponent(anoId);
       }
+
+      document.querySelector("#tabela-a-pagar tbody").innerHTML =
+        '<tr><td colspan="7" class="col-center"><i class="fa-solid fa-spinner fa-spin"></i> Carregando tarefas...</td></tr>';
+      document.querySelector("#tabela-pago tbody").innerHTML = "";
 
       fetch(url)
         .then((response) => response.json())
@@ -285,11 +371,11 @@ document.addEventListener("DOMContentLoaded", function () {
           tabelaPago.innerHTML = "";
           let totalValor = 0;
 
-          document
-            .querySelectorAll('.tipo-imagem input[type="checkbox"]')
-            .forEach((checkbox) => {
-              checkbox.checked = false;
-            });
+          tipoFiltros.forEach((checkbox) => {
+            checkbox.checked = haviaFiltroDeTipo
+              ? filtrosDeTipoAtivos.has(checkbox.name)
+              : false;
+          });
 
           data.funcoes.forEach(function (item) {
             var row = document.createElement("tr");
@@ -454,7 +540,8 @@ document.addEventListener("DOMContentLoaded", function () {
               const btnPagar = document.createElement("button");
               btnPagar.textContent = "Pagar";
               btnPagar.className = "btn-pagar-linha";
-              btnPagar.addEventListener("click", function () {
+              btnPagar.addEventListener("click", async function () {
+                if (btnPagar.disabled) return;
                 const colaboradorId = parseInt(
                   document.getElementById("colaborador").value,
                   10,
@@ -475,50 +562,57 @@ document.addEventListener("DOMContentLoaded", function () {
                     ),
                   },
                 ];
-                fetch("updatePagamento.php", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    ids,
-                    colaborador_id: colaboradorId,
-                    mes,
-                    ano,
-                  }),
-                })
-                  .then((r) => r.json())
-                  .then((resp) => {
-                    if (resp.success) {
-                      fetch("insertHistorico.php", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ids,
-                          colaborador_id: colaboradorId,
-                        }),
-                      })
-                        .then((r) => r.json())
-                        .then(() => carregarDadosColab())
-                        .catch(() => carregarDadosColab());
-                    } else {
-                      Swal.fire({
-                        icon: "error",
-                        title: "Erro",
-                        text: "Erro ao registrar pagamento.",
-                        timer: 3000,
-                        timerProgressBar: true,
-                      });
-                    }
-                  })
-                  .catch((err) => {
-                    console.error("Erro ao pagar linha:", err);
-                    Swal.fire({
-                      icon: "error",
-                      title: "Erro",
-                      text: "Erro ao registrar pagamento.",
-                      timer: 3000,
-                      timerProgressBar: true,
-                    });
+                const confirm = await Swal.fire({
+                  title: "Confirmar pagamento",
+                  text: "Registrar o pagamento deste item?",
+                  icon: "question",
+                  showCancelButton: true,
+                  confirmButtonText: "Confirmar",
+                  cancelButtonText: "Cancelar",
+                  confirmButtonColor: "#4f80e1",
+                });
+                if (!confirm.isConfirmed) return;
+
+                setPagamentoButtonLoading(btnPagar, true, "Pagando...");
+                try {
+                  const response = await fetch("updatePagamento.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
                   });
+                  const resp = await response.json();
+                  if (!response.ok || !resp.success) {
+                    throw new Error(resp.error || "Erro ao registrar pagamento.");
+                  }
+
+                  const historicoResponse = await fetch("insertHistorico.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
+                  });
+                  const historico = await historicoResponse.json();
+                  await Swal.fire({
+                    icon: historico.success ? "success" : "warning",
+                    title: historico.success ? "Pagamento registrado" : "Pagamento registrado com alerta",
+                    text: historico.success
+                      ? "O item foi registrado com sucesso."
+                      : "O pagamento foi registrado, mas o histórico legado não pôde ser atualizado.",
+                    timer: 3200,
+                    timerProgressBar: true,
+                  });
+                  carregarDadosColab();
+                } catch (error) {
+                  console.error("Erro ao pagar linha:", error);
+                  await Swal.fire({
+                    icon: "error",
+                    title: "Não foi possível registrar",
+                    text: error.message || "Verifique a conexão e tente novamente.",
+                    timer: 3500,
+                    timerProgressBar: true,
+                  });
+                } finally {
+                  setPagamentoButtonLoading(btnPagar, false);
+                }
               });
               cellAcoes.appendChild(btnPagar);
             }
@@ -538,16 +632,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "");
             const nomeFuncaoBase = normalizeFuncao(item.nome_funcao);
-            document
-              .querySelectorAll('.tipo-imagem input[type="checkbox"]')
-              .forEach((funcaoCheckbox) => {
-                if (normalizeFuncao(funcaoCheckbox.name) === nomeFuncaoBase) {
-                  funcaoCheckbox.checked = true;
-                }
-              });
-          });
+              if (!haviaFiltroDeTipo) {
+                tipoFiltros.forEach((funcaoCheckbox) => {
+                  if (normalizeFuncao(funcaoCheckbox.name) === nomeFuncaoBase) {
+                    funcaoCheckbox.checked = true;
+                  }
+                });
+              }
+            });
 
           contarLinhasTabela();
+          if (haviaFiltroDeTipo) filtrarTabela();
+          if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = false;
 
           // ─── Adendo status widget ────────────────────────────────────────
           const _colabId = parseInt(
@@ -750,6 +846,9 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .catch((error) => {
           console.error("Erro ao carregar dados do colaborador:", error);
+          document.querySelector("#tabela-a-pagar tbody").innerHTML =
+            '<tr><td colspan="7" class="col-center">Não foi possível carregar as tarefas.</td></tr>';
+          if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = true;
         });
     } else {
       document.querySelector("#tabela-a-pagar tbody").innerHTML = "";
@@ -759,59 +858,43 @@ document.addEventListener("DOMContentLoaded", function () {
       // Hide adendo widget when no collaborator selected
       const _widget = document.getElementById("adendo-status-widget");
       if (_widget) _widget.style.display = "none";
+      if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = true;
+      atualizarResumoSelecao();
     }
   }
 
   // Expor para o dashboard
   window.carregarDadosColab = carregarDadosColab;
 
-  document
-    .getElementById("marcar-todos")
-    .addEventListener("click", function (event) {
-      var checkboxes = Array.from(
-        document.querySelectorAll(".pagamento-checkbox"),
-      ).filter((checkbox) => {
-        return checkbox.closest("tr").offsetParent !== null; // Checa se a linha está visível
-      });
-
-      if (event.shiftKey) {
-        // Se a tecla Shift estiver pressionada, marcar/desmarcar todos
-        var allChecked = checkboxes.every((checkbox) => checkbox.checked);
-        checkboxes.forEach(function (checkbox) {
-          checkbox.checked = !allChecked; // Marca/desmarca todos os checkboxes
-          var row = checkbox.closest("tr");
-          if (checkbox.checked) {
-            row.classList.add("row-selected");
-          } else {
-            row.classList.remove("row-selected");
-          }
-        });
-      } else {
-        // Inverte o estado de cada checkbox individualmente
-        checkboxes.forEach(function (checkbox) {
-          checkbox.checked = !checkbox.checked; // Inverte o estado do checkbox
-          var row = checkbox.closest("tr");
-          if (checkbox.checked) {
-            row.classList.add("row-selected");
-          } else {
-            row.classList.remove("row-selected");
-          }
-        });
-      }
-      contarLinhasTabela();
+  document.getElementById("marcar-todos").addEventListener("click", function () {
+    pagamentoVisibleCheckboxes().forEach((checkbox) => {
+      checkbox.checked = true;
+      checkbox.closest("tr")?.classList.add("row-selected");
     });
+    contarLinhasTabela();
+  });
+
+  document.getElementById("desmarcar-todos").addEventListener("click", function () {
+    pagamentoVisibleCheckboxes().forEach((checkbox) => {
+      checkbox.checked = false;
+      checkbox.closest("tr")?.classList.remove("row-selected");
+    });
+    contarLinhasTabela();
+  });
 
   document
     .getElementById("confirmar-pagamento")
     .addEventListener("click", async function () {
+      const button = this;
+      if (button.disabled) return;
       var colaboradorId = parseInt(
         document.getElementById("colaborador").value,
         10,
       );
-      // Confirma TODAS as tarefas visíveis na tabela "A Pagar" (independente de checkbox)
+      // Processa somente os itens selecionados e visíveis em "A Pagar".
       var checkboxes = Array.from(
-        document.querySelectorAll("#tabela-a-pagar .pagamento-checkbox"),
-      ).filter((cb) => !cb.disabled && cb.closest("tr").offsetParent !== null);
+        document.querySelectorAll("#tabela-a-pagar .pagamento-checkbox:checked"),
+      ).filter((cb) => !cb.disabled && cb.closest("tr")?.offsetParent !== null);
       var ids = checkboxes.map((cb) => ({
         id: parseInt(cb.getAttribute("data-id"), 10),
         origem: cb.getAttribute("data-origem"),
@@ -824,7 +907,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (ids.length > 0) {
         const { isConfirmed } = await Swal.fire({
           title: "Confirmar pagamento",
-          text: "Confirmar pagamento para todas as tarefas do mês selecionado deste colaborador?",
+          text: `Confirmar ${ids.length} ${ids.length === 1 ? "item" : "itens"} selecionado(s) deste colaborador?`,
           icon: "question",
           showCancelButton: true,
           confirmButtonText: "Confirmar",
@@ -832,79 +915,50 @@ document.addEventListener("DOMContentLoaded", function () {
           confirmButtonColor: "#4f80e1",
         });
         if (!isConfirmed) return;
+        setPagamentoButtonLoading(button, true, "Confirmando...");
         // include selected month/year so backend can group itens into pagamentos (mes_ref)
         const mes = document.getElementById("mes").value;
         const ano = document.getElementById("ano").value;
-        fetch("updatePagamento.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ids: ids,
-            colaborador_id: colaboradorId,
-            mes: mes,
-            ano: ano,
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              Swal.fire({
-                icon: "success",
-                title: "Sucesso",
-                text: "Pagamentos atualizados com sucesso!",
-                timer: 3000,
-                timerProgressBar: true,
-              });
-              // Inserir no histórico
-              fetch("insertHistorico.php", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  ids: ids,
-                  colaborador_id: colaboradorId,
-                }),
-              })
-                .then((response) => response.json())
-                .then((data) => {
-                  if (data.success) {
-                    Swal.fire({
-                      icon: "success",
-                      title: "Sucesso",
-                      text: "Histórico atualizado com sucesso!",
-                      timer: 3000,
-                      timerProgressBar: true,
-                    });
-                  } else {
-                    Swal.fire({
-                      icon: "error",
-                      title: "Erro",
-                      text: "Erro ao atualizar histórico.",
-                      timer: 3000,
-                      timerProgressBar: true,
-                    });
-                  }
-                })
-                .catch((error) => {
-                  console.error("Erro ao atualizar histórico:", error);
-                });
-              carregarDadosColab();
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Erro",
-                text: "Erro ao atualizar pagamentos.",
-                timer: 3000,
-                timerProgressBar: true,
-              });
-            }
-          })
-          .catch((error) => {
-            console.error("Erro ao confirmar pagamentos:", error);
+        try {
+          const response = await fetch("updatePagamento.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
           });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Não foi possível registrar os pagamentos.");
+          }
+
+          const historicoResponse = await fetch("insertHistorico.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
+          });
+          const historico = await historicoResponse.json();
+
+          await Swal.fire({
+            icon: historico.success ? "success" : "warning",
+            title: historico.success ? "Pagamento registrado" : "Pagamento registrado com alerta",
+            text: historico.success
+              ? `${ids.length} ${ids.length === 1 ? "item foi registrado" : "itens foram registrados"}.`
+              : "O pagamento foi registrado, mas o histórico legado não pôde ser atualizado.",
+            timer: 3200,
+            timerProgressBar: true,
+          });
+          carregarDadosColab();
+        } catch (error) {
+          console.error("Erro ao confirmar pagamentos:", error);
+          await Swal.fire({
+            icon: "error",
+            title: "Não foi possível registrar",
+            text: error.message || "Verifique a conexão e tente novamente.",
+            timer: 3500,
+            timerProgressBar: true,
+          });
+        } finally {
+          setPagamentoButtonLoading(button, false);
+        }
       } else {
         Swal.fire({
           icon: "warning",
@@ -966,7 +1020,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document
     .getElementById("adicionar-valor")
-    .addEventListener("click", function () {
+    .addEventListener("click", async function () {
+      const button = this;
+      if (button.disabled) return;
       // Apenas checkboxes visíveis e marcadas
       var checkboxes = Array.from(
         document.querySelectorAll(".pagamento-checkbox:checked"),
@@ -980,39 +1036,37 @@ document.addEventListener("DOMContentLoaded", function () {
       var valor = document.getElementById("valor").value;
 
       if (ids.length > 0 && valor) {
-        fetch("updateValor.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ids: ids, valor: valor }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              Swal.fire({
-                icon: "success",
-                title: "Sucesso",
-                text: "Valores atualizados com sucesso!",
-                timer: 3000,
-                timerProgressBar: true,
-              });
-              carregarDadosColab();
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Erro",
-                text:
-                  "Erro ao atualizar valores: " +
-                  (data.error || "Erro desconhecido."),
-                timer: 3000,
-                timerProgressBar: true,
-              });
-            }
-          })
-          .catch((error) => {
-            console.error("Erro ao adicionar valores:", error);
+        setPagamentoButtonLoading(button, true, "Atualizando...");
+        try {
+          const response = await fetch("updateValor.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids, valor }),
           });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Erro ao atualizar valores.");
+          }
+          await Swal.fire({
+            icon: "success",
+            title: "Valores atualizados",
+            text: "Os valores selecionados foram atualizados.",
+            timer: 2800,
+            timerProgressBar: true,
+          });
+          carregarDadosColab();
+        } catch (error) {
+          console.error("Erro ao adicionar valores:", error);
+          await Swal.fire({
+            icon: "error",
+            title: "Não foi possível atualizar",
+            text: error.message || "Verifique a conexão e tente novamente.",
+            timer: 3500,
+            timerProgressBar: true,
+          });
+        } finally {
+          setPagamentoButtonLoading(button, false);
+        }
       } else {
         Swal.fire({
           icon: "warning",
@@ -1192,6 +1246,8 @@ function contarLinhasTabela() {
       if (spanCount) spanCount.remove();
     }
   });
+
+  atualizarResumoSelecao();
 }
 
 function filtrarTabela() {
@@ -1588,7 +1644,7 @@ document
       document.getElementById("mes").options[
         document.getElementById("mes").selectedIndex
       ].text;
-    const ano = new Date().getFullYear();
+    const ano = parseInt(document.getElementById("ano").value, 10);
     let currentY = 20;
 
     const title = `Relatório completo de ${colaborador}, ${mesNome} de ${ano}`;
@@ -1829,7 +1885,7 @@ function exportToExcel() {
     document.getElementById("mes").options[
       document.getElementById("mes").selectedIndex
     ].text;
-  const ano = new Date().getFullYear();
+  const ano = parseInt(document.getElementById("ano").value, 10);
 
   // Define o nome do arquivo
   const nomeArquivo = `Relatório_${colaborador}_${mes}_${ano}.xlsx`;

@@ -1,12 +1,9 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/pagamento_auth.php';
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Não autenticado.']);
-    exit;
-}
+pagamento_require_gestor(false);
 
 include __DIR__ . '/../conexao.php';
 
@@ -29,7 +26,8 @@ if ($mode === 'by_id') {
          WHERE a.id = ? LIMIT 1"
     );
     if (!$stmt) {
-        echo json_encode(['success' => false, 'message' => 'Erro: ' . $conn->error]);
+        error_log('Payment addendum status query prepare failed: ' . $conn->error);
+        echo json_encode(['success' => false, 'message' => 'Não foi possível consultar o adendo.']);
         $conn->close();
         exit;
     }
@@ -142,7 +140,8 @@ $stmt = $conn->prepare(
      LIMIT 1"
 );
 if (!$stmt) {
-    echo json_encode(['success' => false, 'message' => 'Erro de consulta: ' . $conn->error]);
+    error_log('Payment addendum status query prepare failed: ' . $conn->error);
+    echo json_encode(['success' => false, 'message' => 'Não foi possível consultar o adendo.']);
     $conn->close();
     exit;
 }

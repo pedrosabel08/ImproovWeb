@@ -384,18 +384,22 @@ function initImproovSidebar() {
   var knownProjects = allowedProjectIds();
   if (Array.isArray(window.IMPROOV_ALLOWED_OBRA_IDS)) {
     var allowed = window.IMPROOV_ALLOWED_OBRA_IDS.map(String);
-    [favoriteKey, recentKey].forEach(function (key) {
-      writeIds(
-        key,
-        readIds(key).filter(function (id) {
-          return allowed.includes(id);
-        }),
-      );
-    });
-    var selectedObraId = localStorage.getItem("obraId");
-    if (selectedObraId && !allowed.includes(String(selectedObraId))) {
-      localStorage.removeItem("obraId");
-      localStorage.removeItem("obraNome");
+    // Há páginas em que a lista de obras ainda não foi carregada quando a
+    // sidebar inicializa. Nesse caso, não apague as preferências locais.
+    if (allowed.length) {
+      [favoriteKey, recentKey].forEach(function (key) {
+        writeIds(
+          key,
+          readIds(key).filter(function (id) {
+            return allowed.includes(id);
+          }),
+        );
+      });
+      var selectedObraId = localStorage.getItem("obraId");
+      if (selectedObraId && !allowed.includes(String(selectedObraId))) {
+        localStorage.removeItem("obraId");
+        localStorage.removeItem("obraNome");
+      }
     }
   } else {
     [favoriteKey, recentKey].forEach(function (key) {

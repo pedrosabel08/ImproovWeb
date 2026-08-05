@@ -309,14 +309,19 @@
     normalizeLinks();
     if (Array.isArray(window.IMPROOV_ALLOWED_OBRA_IDS)) {
       var allowed = window.IMPROOV_ALLOWED_OBRA_IDS.map(String);
-      [favoriteKey, recentKey].forEach(function (key) {
-        saveIds(
-          key,
-          ids(key).filter(function (id) {
-            return allowed.includes(id);
-          }),
-        );
-      });
+      // Algumas telas incluem a sidebar antes de carregar as obras. Não use uma
+      // lista vazia para limpar preferências locais, pois isso apagaria os
+      // favoritos e recentes que poderão ser exibidos em outra tela.
+      if (allowed.length) {
+        [favoriteKey, recentKey].forEach(function (key) {
+          saveIds(
+            key,
+            ids(key).filter(function (id) {
+              return allowed.includes(id);
+            }),
+          );
+        });
+      }
     }
     syncFavorites();
 

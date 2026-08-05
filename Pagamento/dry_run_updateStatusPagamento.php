@@ -1,5 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(false);
 require_once __DIR__ . '/../conexao.php';
 
 $colaborador_id = 21; // default requested
@@ -149,5 +151,6 @@ try {
     echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    error_log('Payment dry-run failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Não foi possível simular o pagamento.']);
 }

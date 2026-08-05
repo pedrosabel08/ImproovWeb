@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(false);
 // Conectar ao banco de dados
 $pdo = new PDO('mysql:host=mysql.improov.com.br;dbname=improov', 'improov', 'Impr00v');
 

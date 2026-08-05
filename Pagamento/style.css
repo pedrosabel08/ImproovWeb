@@ -350,6 +350,20 @@ a {
   flex-wrap: wrap;
 }
 
+.selection-summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .totals-bar {
   display: flex;
   gap: 10px;

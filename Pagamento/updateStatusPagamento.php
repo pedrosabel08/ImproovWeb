@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(true);
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/PagamentoService.php';
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
@@ -13,7 +16,7 @@ $colaborador_id = isset($input['colaborador_id']) ? intval($input['colaborador_i
 $ano = isset($input['ano']) ? intval($input['ano']) : 0;
 $mes = isset($input['mes']) ? intval($input['mes']) : 0;
 $status = isset($input['status']) ? trim($input['status']) : '';
-$usuario_id = isset($input['usuario_id']) ? intval($input['usuario_id']) : null;
+$usuario_id = pagamento_current_user_id();
 
 if (!$colaborador_id || !$ano || !$mes) {
     http_response_code(400);
@@ -21,55 +24,19 @@ if (!$colaborador_id || !$ano || !$mes) {
     exit;
 }
 
-// Normalize status to lowercase to support new workflow values while keeping backwards compatibility
-$status_map = [
-    'PENDENTE' => 'pendente_envio',
-    'ENVIADO' => 'aguardando_retorno',
-    'CONFIRMANDO' => 'aguardando_retorno',
-    'PAGO' => 'pago'
-];
-if (isset($status_map[strtoupper($status)])) {
-    $status = $status_map[strtoupper($status)];
-} else {
-    $status = strtolower($status);
-}
-
-// Allowed statuses for the new flow
-$allowed = ['pendente_envio','aguardando_retorno','validado','adendo_gerado','pago'];
-if (!in_array($status, $allowed)) {
+$status = PagamentoService::normalizarStatus($status);
+if ($status === null) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Status inválido']);
     exit;
 }
 
-$mes_ref = sprintf('%04d-%02d', $ano, $mes);
+$mes_ref = PagamentoService::competencia($mes, $ano);
 
 $conn->begin_transaction();
 try {
-    // Ensure pagamentos row exists
-    $stmt = $conn->prepare("SELECT idpagamento, status FROM pagamentos WHERE colaborador_id = ? AND mes_ref = ? FOR UPDATE");
-    $stmt->bind_param('is', $colaborador_id, $mes_ref);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $pagamento = $res->fetch_assoc();
-    $stmt->close();
-
-    if (!$pagamento) {
-        // create pagamentos row with new initial status name
-        $ins = $conn->prepare("INSERT INTO pagamentos (colaborador_id, mes_ref, status, criado_por) VALUES (?,?, 'pendente_envio', ?)");
-        $ins->bind_param('isi', $colaborador_id, $mes_ref, $usuario_id);
-        $ins->execute();
-        $pagamento_id = $ins->insert_id;
-        $ins->close();
-        // log evento created
-        $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'created'; $d = 'Pagamento criado automaticamente';
-        $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
-        $ev->execute();
-        $ev->close();
-    } else {
-        $pagamento_id = (int)$pagamento['idpagamento'];
-    }
+    $paymentService = new PagamentoService($conn, $usuario_id);
+    $pagamento_id = $paymentService->garantirPagamento($colaborador_id, $mes, $ano);
 
     // Status handling
     // handle new workflow statuses (normalized to lowercase earlier)
@@ -230,5 +197,6 @@ try {
 } catch (Throwable $e) {
     $conn->rollback();
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    error_log('Pagamento status update failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Não foi possível atualizar o status do pagamento.']);
 }

@@ -1,20 +1,16 @@
 <?php
-// Simple setup script to create necessary tables if they don't exist
-// Usage: open this file in browser when logged in and with DB access
-
-// session_start();
-// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-//     http_response_code(403);
-//     echo 'Acesso negado';
-//     exit();
-// }
+// Setup legado mantido apenas para operação administrativa explícita.
+// O schema é documental; este endpoint não deve ser chamado automaticamente.
+require_once __DIR__ . '/../pagamento_auth.php';
+pagamento_require_gestor(true);
 
 require_once __DIR__ . '/../../conexao.php';
 
 $sql = file_get_contents(__DIR__ . '/../schema.sql');
 if ($sql === false) {
     http_response_code(500);
-    echo 'Erro ao ler schema.sql';
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Não foi possível ler o schema.']);
     exit();
 }
 
@@ -26,9 +22,10 @@ foreach ($statements as $stmt) {
     if ($conn->query($stmt) === TRUE) {
         $ok++;
     } else {
-        $err[] = $conn->error;
+        error_log('Pagamento schema setup failed: ' . $conn->error);
+        $err[] = 'Falha ao executar uma instrução do schema.';
     }
 }
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 echo json_encode(['created' => $ok, 'errors' => $err]);

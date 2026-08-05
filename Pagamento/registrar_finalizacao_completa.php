@@ -23,6 +23,8 @@
  *   http://yourhost/Pagamento/registrar_finalizacao_completa.php
  */
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(true);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -38,7 +40,7 @@ if (!$input || empty($input['ids']) || !is_array($input['ids'])) {
 }
 
 $data_pagamento = isset($input['data_pagamento']) ? trim((string)$input['data_pagamento']) : '';
-$usuario_id = isset($input['usuario_id']) ? intval($input['usuario_id']) : null;
+$usuario_id = pagamento_current_user_id();
 
 if ($data_pagamento === '') {
     $data_pagamento = date('Y-m-d');
@@ -198,5 +200,6 @@ try {
 } catch (Throwable $e) {
     if (isset($conn)) $conn->rollback();
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    error_log('Pagamento finalization registration failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Não foi possível registrar a finalização completa.']);
 }

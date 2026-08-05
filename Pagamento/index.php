@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/pagamento_auth.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
 	if ($__p && is_file($__p)) {
@@ -13,7 +14,7 @@ unset($__root, $__p);
 // session_start();
 
 // Verificar se o usuário está logado
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true || !pagamento_is_gestor()) {
 	// Se não estiver logado, redirecionar para a página de login
 	header("Location: ../index.html");
 	exit();
@@ -43,7 +44,7 @@ if ($result_colaboradores->num_rows > 0) {
 	}
 }
 
-include '../conexaoMain.php';
+include __DIR__ . '/../conexaoMain.php';
 
 $conn = conectarBanco();
 
@@ -59,11 +60,12 @@ $conn->close();
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>" />
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 		integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
 		crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -82,7 +84,7 @@ $conn->close();
 
 <body>
 
-	<?php include '../sidebar.php'; ?>
+	<?php include __DIR__ . '/../sidebar.php'; ?>
 
 	<div class="container">
 
@@ -178,13 +180,17 @@ $conn->close();
 
 			<!-- Action toolbar -->
 			<div class="action-toolbar">
-				<button class="btn btn-secondary" id="marcar-todos">
-					<i class="fa-solid fa-check-double"></i> Marcar/Desmarcar Todos
+				<button class="btn btn-secondary" id="marcar-todos" type="button">
+					<i class="fa-solid fa-check-double"></i> Selecionar todos
 				</button>
-				<button class="btn btn-secondary" id="adicionar-valor">
+				<button class="btn btn-secondary" id="desmarcar-todos" type="button">
+					<i class="fa-solid fa-square-xmark"></i> Desmarcar todos
+				</button>
+				<button class="btn btn-secondary" id="adicionar-valor" type="button">
 					<i class="fa-solid fa-plus"></i> Adicionar Valor
 				</button>
-				<input type="text" class="btn-input" id="valor" placeholder="R$ 0,00">
+				<input type="text" class="btn-input" id="valor" placeholder="R$ 0,00" inputmode="decimal">
+				<span class="selection-summary" id="selection-summary" aria-live="polite">0 itens selecionados · R$ 0,00</span>
 			</div>
 
 			<!-- Totals + export -->

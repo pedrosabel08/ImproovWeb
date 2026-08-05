@@ -1,4 +1,9 @@
 <?php
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(true);
+require_once __DIR__ . '/PagamentoService.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
 
@@ -9,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $colaborador_id = isset($data['colaborador_id']) ? intval($data['colaborador_id']) : null;
         $mes = isset($data['mes']) ? intval($data['mes']) : null;
         $ano = isset($data['ano']) ? intval($data['ano']) : null;
-        $usuario_id = isset($data['usuario_id']) ? intval($data['usuario_id']) : null;
+        $usuario_id = pagamento_current_user_id();
 
         // We'll still accept the simple flow (no pagamentos logging) if mes/ano not provided,
         // but prefer to create pagamentos and pagamento_itens when mes+ano+colaborador present.
@@ -19,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mes_ref = sprintf('%04d-%02d', $ano, $mes);
             $conn->begin_transaction();
             try {
+                $paymentService = new PagamentoService($conn, $usuario_id);
                 // Ensure pagamentos row exists
                 $stmt = $conn->prepare("SELECT idpagamento FROM pagamentos WHERE colaborador_id = ? AND mes_ref = ? FOR UPDATE");
                 $stmt->bind_param('is', $colaborador_id, $mes_ref);
@@ -218,6 +224,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
                     } elseif ($origem === 'acompanhamento') {
+                        if ($paymentService->itemExiste($pagamento_id, $origem, $id, null)) {
+                            continue;
+                        }
                         $s = $conn->prepare("SELECT idacompanhamento, IFNULL(valor,0) AS valor FROM acompanhamento WHERE idacompanhamento = ? LIMIT 1");
                         $s->bind_param('i', $id);
                         $s->execute();
@@ -236,7 +245,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $insItem->execute();
                         $valor_total += $valor;
+                        $didAnyNewPayments = true;
                     } elseif ($origem === 'funcao_animacao') {
+                        if ($paymentService->itemExiste($pagamento_id, $origem, $id, null)) {
+                            continue;
+                        }
                         $s = $conn->prepare("SELECT id, IFNULL(valor,0) AS valor FROM funcao_animacao WHERE id = ? LIMIT 1");
                         $s->bind_param('i', $id);
                         $s->execute();
@@ -255,6 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $insItem->execute();
                         $valor_total += $valor;
+                        $didAnyNewPayments = true;
                     }
                 }
 
@@ -288,7 +302,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Throwable $e) {
                 $conn->rollback();
                 http_response_code(500);
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                error_log('Pagamento item update failed: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Não foi possível registrar os itens selecionados.']);
                 exit;
             }
         } else {
@@ -321,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $colaborador_id = intval($data['colaborador_id']);
             $ano = intval($data['ano']);
             $mes = intval($data['mes']);
-            $usuario_id = isset($data['usuario_id']) ? intval($data['usuario_id']) : null;
+            $usuario_id = pagamento_current_user_id();
 
             $mes_ref = sprintf('%04d-%02d', $ano, $mes);
 
@@ -584,7 +599,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Throwable $e) {
                 $conn->rollback();
                 http_response_code(500);
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                error_log('Pagamento legacy update failed: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Não foi possível registrar o pagamento.']);
                 exit;
             }
         }

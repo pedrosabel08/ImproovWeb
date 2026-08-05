@@ -1,6 +1,8 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
+require_once __DIR__ . '/pagamento_auth.php';
+pagamento_require_gestor(false);
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
 
@@ -52,7 +54,8 @@ $sqlColaborador = "
 
 $stmtColaborador = $conn->prepare($sqlColaborador);
 if (!$stmtColaborador) {
-    die(json_encode(["error" => "Falha ao preparar a consulta de colaborador: " . $conn->error]));
+    error_log('Pagamento collaborator query prepare failed: ' . $conn->error);
+    pagamento_json(['success' => false, 'error' => 'Não foi possível carregar o colaborador.'], 500);
 }
 
 $stmtColaborador->bind_param('i', $colaboradorId);
@@ -529,7 +532,8 @@ $stmt = $conn->prepare($sql);
 
 
 if (!$stmt) {
-    die("Erro ao preparar a consulta: " . $conn->error);
+    error_log('Pagamento task query prepare failed: ' . $conn->error);
+    pagamento_json(['success' => false, 'error' => 'Não foi possível carregar as tarefas.'], 500);
 }
 
 // Log para depuração
@@ -573,7 +577,8 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if (!$result) {
-    die("Erro ao executar a consulta: " . $stmt->error);
+    error_log('Pagamento task query execute failed: ' . $stmt->error);
+    pagamento_json(['success' => false, 'error' => 'Não foi possível carregar as tarefas.'], 500);
 }
 
 $funcoes = array();

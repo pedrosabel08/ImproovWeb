@@ -26,9 +26,8 @@ WHERE ico.obra_id = ?
     AND NOT EXISTS (
         SELECT 1
         FROM entregas_itens ei
-        JOIN entregas e ON e.id = ei.entrega_id
-        WHERE ei.imagem_id = ico.idimagens_cliente_obra
-            AND e.status_id = ico.status_id
+        WHERE
+            ei.imagem_id = ico.idimagens_cliente_obra
     );
 ");
 $stmt->bind_param(

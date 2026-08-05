@@ -6348,13 +6348,17 @@ table#tabela-logs tbody tr:hover {
 
 /* Ensure the obra title doesn't wrap and scales responsively */
 #nomenclatura {
-  font-size: clamp(1.25rem, 1.2rem + 2vw, 2.4rem);
+  display: block;
+  width: 100%;
+  min-width: 0;
+
+  font-size: clamp(1.35rem, 1rem + 1vw, 2rem);
+
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1;
-  max-width: 85%;
-  display: block;
+
+  line-height: 1.1;
 }
 
 #importTxtBtn {

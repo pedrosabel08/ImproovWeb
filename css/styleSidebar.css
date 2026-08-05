@@ -551,7 +551,7 @@
   }
 }
 
-@media (max-width: 767px) {
+/* @media (max-width: 767px) {
   .sidebar {
     top: auto;
     right: 0;
@@ -618,4 +618,4 @@
     flex: 1;
     justify-content: space-evenly;
   }
-}
+} */

@@ -1296,7 +1296,8 @@ function prepararModalStatusImagem(linha) {
     } else {
       campo.value = valores[chave];
     }
-    modal.dataset[`original${chave[0].toUpperCase()}${chave.slice(1)}`] = valores[chave];
+    modal.dataset[`original${chave[0].toUpperCase()}${chave.slice(1)}`] =
+      valores[chave];
   });
   modal.querySelectorAll(".modal-field").forEach((field) => {
     field.style.display = "none";
@@ -1611,8 +1612,14 @@ async function alterarStatus(imagemId) {
     const field = document.getElementById(definicao.fieldId);
     const input = document.getElementById(definicao.inputId);
     if (!field || !input || field.style.display !== "block") return;
-    if (String(input.value) !== String(modal.dataset[definicao.original] || "")) {
-      alteracoes.push({ ...definicao, value: input.value, text: input.options?.[input.selectedIndex]?.text || input.value });
+    if (
+      String(input.value) !== String(modal.dataset[definicao.original] || "")
+    ) {
+      alteracoes.push({
+        ...definicao,
+        value: input.value,
+        text: input.options?.[input.selectedIndex]?.text || input.value,
+      });
     }
   });
 
@@ -1627,7 +1634,9 @@ async function alterarStatus(imagemId) {
     return;
   }
 
-  const substatus = alteracoes.find((alteracao) => alteracao.param === "substatus_id");
+  const substatus = alteracoes.find(
+    (alteracao) => alteracao.param === "substatus_id",
+  );
   const holdJustificativa = await solicitarJustificativaHoldIfNeeded(
     Number(substatus?.value || 0),
   );
@@ -1640,7 +1649,9 @@ async function alterarStatus(imagemId) {
 
   const formData = new FormData();
   formData.append("imagem_id", id);
-  alteracoes.forEach((alteracao) => formData.append(alteracao.param, alteracao.value));
+  alteracoes.forEach((alteracao) =>
+    formData.append(alteracao.param, alteracao.value),
+  );
   if (Number(substatus?.value || 0) === 7) {
     formData.append("hold_justificativa", holdJustificativa);
   }
@@ -3405,10 +3416,9 @@ function stringToColor(str) {
   return {
     background: `hsla(${hue}, 70%, 45%, 0.18)`,
     color: `hsl(${hue}, 75%, 70%)`,
-    border: `hsl(${hue}, 70%, 45%)`
+    border: `hsl(${hue}, 70%, 45%)`,
   };
 }
-
 
 function renderAnimacaoAllocationInfo(response) {
   const container = document.getElementById("modalFuncoesInfo");
@@ -7072,11 +7082,17 @@ const OBRA_DASHBOARD = (() => {
   let pendingData = { items: [] };
   const groupOrder = ["Críticas", "Em atraso", "Hoje", "Amanhã", "Próximas"];
   const pendingGroupMeta = {
-    "Críticas": { className: "pending-group--critical", icon: "fa-triangle-exclamation" },
+    Críticas: {
+      className: "pending-group--critical",
+      icon: "fa-triangle-exclamation",
+    },
     "Em atraso": { className: "pending-group--overdue", icon: "fa-clock" },
     Hoje: { className: "pending-group--today", icon: "fa-calendar-day" },
-    "Amanhã": { className: "pending-group--tomorrow", icon: "fa-calendar-plus" },
-    "Próximas": { className: "pending-group--upcoming", icon: "fa-calendar-week" },
+    Amanhã: { className: "pending-group--tomorrow", icon: "fa-calendar-plus" },
+    Próximas: {
+      className: "pending-group--upcoming",
+      icon: "fa-calendar-week",
+    },
   };
   const escape = (value) =>
     String(value ?? "").replace(
@@ -7263,7 +7279,8 @@ const OBRA_DASHBOARD = (() => {
 
         const open =
           name === "Críticas" || name === "Em atraso" || name === "Hoje";
-        const groupMeta = pendingGroupMeta[name] || pendingGroupMeta["Próximas"];
+        const groupMeta =
+          pendingGroupMeta[name] || pendingGroupMeta["Próximas"];
 
         return `
         <section
@@ -12246,7 +12263,6 @@ function carregarEventos(obraId) {
   fetch(`./Calendario/getEventos.php?obraId=${obraId}`)
     .then((res) => res.json())
     .then((data) => {
-
       events = data.map((evento) => {
         delete evento.eventDate;
 
@@ -14740,11 +14756,8 @@ function initComplexidadeModelagemAction() {
   }
 })();
 
-var markInactiveBtn = document.getElementById("markInactiveBtn");
-if (markInactiveBtn) {
-  markInactiveBtn.dataset.packageStatusHandler = "1";
-  markInactiveBtn.textContent = "Concluir Pacote";
-
+var concludePackageBtn = document.getElementById("concludePackageBtn");
+if (concludePackageBtn) {
   function getObraPacoteUrl() {
     const basePath = window.location.pathname.includes("/flow/ImproovWeb/")
       ? "/flow/ImproovWeb/"
@@ -14812,7 +14825,7 @@ if (markInactiveBtn) {
     return Promise.resolve({ isConfirmed: true });
   }
 
-  markInactiveBtn.addEventListener("click", function () {
+  concludePackageBtn.addEventListener("click", function () {
     var _obraId = getCurrentObraId();
     if (!_obraId) {
       showPackageAlert({
@@ -14950,7 +14963,8 @@ if (markInactiveBtn) {
   });
 }
 
-if (markInactiveBtn && !markInactiveBtn.dataset.packageStatusHandler) {
+var markInactiveBtn = document.getElementById("markInactiveBtn");
+if (markInactiveBtn) {
   // Helper: ajusta o texto do botão conforme status atual (0 = ativo, 1 = inativo)
   function setMarkBtnLabelByStatus(status) {
     try {

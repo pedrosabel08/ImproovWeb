@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/pendencias_links_obra_helper.php';
+require_once __DIR__ . '/flow_block_operacional_helper.php';
 
 if (!defined('PENDENCIAS_PROJETO_OK_SLA_HORAS')) {
     define('PENDENCIAS_PROJETO_OK_SLA_HORAS', 24);
@@ -785,6 +786,46 @@ function pendencias_operacionais_add_item(array &$module, array $item): void
     }
 }
 
+/** Anexa o estado derivado de HOLD sem alterar as fontes checklist/link. */
+function pendencias_operacionais_apply_operational_holds(mysqli $conn, array &$modules): void
+{
+    if (!pendencias_operacionais_table_exists($conn, 'flow_issue')) {
+        return;
+    }
+    flow_block_operacional_ensure_schema($conn);
+    $sql = "SELECT op.source_type,op.source_id,i.id issue_id,i.codigo,i.status
+              FROM flow_issue_operacional op
+              JOIN flow_issue i ON i.id=op.issue_id
+             WHERE op.liberado_em IS NULL
+               AND (i.status IN ('ABERTA','AGUARDANDO_ACAO','PAUSADA') OR (i.status='RESOLVIDA' AND i.confirmada_em IS NULL))";
+    $res = $conn->query($sql);
+    if (!$res) return;
+    $holds = [];
+    while ($row = $res->fetch_assoc()) {
+        $holds[(string) $row['source_type'] . ':' . (int) $row['source_id']] = $row;
+    }
+    $res->close();
+    if (!$holds) return;
+    foreach ($modules as &$module) {
+        foreach ($module['items'] as &$item) {
+            $key = (string) ($item['source_type'] ?? '') . ':' . (int) ($item['source_id'] ?? 0);
+            if (!isset($holds[$key])) continue;
+            $hold = $holds[$key];
+            $item['operational_hold'] = true;
+            $item['operational_issue_id'] = (int) $hold['issue_id'];
+            $item['operational_issue_code'] = (string) $hold['codigo'];
+            $item['operational_issue_status'] = (string) $hold['status'];
+            $item['metadata'] = array_merge((array) ($item['metadata'] ?? []), [
+                'operational_hold' => 1,
+                'operational_issue_id' => (int) $hold['issue_id'],
+                'operational_issue_code' => (string) $hold['codigo'],
+            ]);
+        }
+        unset($item);
+    }
+    unset($module);
+}
+
 function pendencias_operacionais_item_from_checklist(array $row, string $moduleKey, string $sourceLabel, string $actionUrl): array
 {
     $sla = pendencias_operacionais_sla_status($row['sla_start_at'] ?? null, $row['due_at'] ?? null);
@@ -1502,6 +1543,8 @@ function pendencias_operacionais_fetch(
             }
         }
     }
+
+    pendencias_operacionais_apply_operational_holds($conn, $modules);
 
     $result = array_values(array_filter($modules, static function (array $module): bool {
         return (int) ($module['total'] ?? 0) > 0;

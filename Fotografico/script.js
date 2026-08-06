@@ -1159,12 +1159,15 @@
         '<div class="foto-empty-small">Nenhuma tentativa registrada.</div>';
   }
   function timeline(id, rows, icon) {
+    const eventLabels = {
+      HOLD_ENCERRADO_POR_ISSUE: "HOLD resolvido após confirmação da Issue",
+    };
     const out = $(id);
     out.replaceChildren();
     rows.forEach((row) => {
       const item = document.createElement("div");
       item.className = "foto-timeline-item";
-      item.innerHTML = `<div class="foto-timeline-icon"><i class="fa-solid ${icon}"></i></div><div><h3>${esc(row.titulo || row.codigo || row.tipo || "Evento")}</h3><small>${when(row.criado_em || row.aberto_em, true)} · ${esc(row.responsavel_nome || row.ator_nome || "")}</small><p>${esc(row.detalhes || "")}</p></div>`;
+      item.innerHTML = `<div class="foto-timeline-icon"><i class="fa-solid ${icon}"></i></div><div><h3>${esc(row.titulo || row.codigo || eventLabels[row.tipo] || row.tipo || "Evento")}</h3><small>${when(row.criado_em || row.aberto_em, true)} · ${esc(row.responsavel_nome || row.ator_nome || "")}</small><p>${esc(row.detalhes || "")}</p></div>`;
       out.append(item);
     });
     if (!out.children.length)
@@ -1173,15 +1176,13 @@
   function renderIssues() {
     const p = state.plan,
       open = (p.pendencias || []).filter((x) => x.status === "ABERTA"),
-      holds = p.holds || [];
+      holds = (p.holds || []).filter((x) => !x.encerrado_em);
     $("fotoIssueStats").innerHTML =
       stat("Pendências abertas", open.length) +
-      stat("Itens em HOLD", holds.filter((x) => !x.encerrado_em).length) +
+      stat("Itens em HOLD", holds.length) +
       stat(
         "Impacto no SLA",
-        holds.some((x) => !x.encerrado_em && Number(x.afeta_sla))
-          ? "Pausado"
-          : "Sem pausa",
+        holds.some((x) => Number(x.afeta_sla)) ? "Pausado" : "Sem pausa",
       ) +
       stat(
         "SLA execução",
@@ -1190,7 +1191,7 @@
       );
     timeline("fotoIssues", open, "fa-circle-exclamation");
     timeline("fotoHolds", holds, "fa-pause");
-    $("fotoOpenHold").hidden = !p.permissions?.manage;
+    $("fotoOpenHold").hidden = false;
   }
   function renderHistory() {
     timeline("fotoHistory", state.plan.eventos || [], "fa-clock-rotate-left");
@@ -1364,17 +1365,86 @@
       "Conferência registrada.",
     );
   };
-  $("fotoOpenHold").onclick = () => $("fotoHoldDialog").showModal();
-  $("fotoConfirmHold").onclick = () => {
-    $("fotoHoldDialog").close();
-    action(
-      "hold_open",
-      {
-        codigo: $("fotoHoldCode").value,
-        detalhes: $("fotoHoldDetails").value.trim(),
-      },
-      "HOLD aberto.",
+  async function loadOperationalHoldOptions() {
+    const response = await fetch(`${root}/FlowBlock/api.php?action=options`, {
+      credentials: "same-origin",
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok)
+      throw new Error(
+        data.message || "Não foi possível carregar as opções da Issue.",
+      );
+
+    const fill = (id, rows, selected) => {
+      const select = $(id);
+      select.innerHTML = rows
+        .map(
+          (row) =>
+            `<option value="${esc(row.id)}"${Number(row.id) === Number(selected) ? " selected" : ""}>${esc(row.nome)}</option>`,
+        )
+        .join("");
+    };
+    fill("fotoHoldIssueType", data.types || []);
+    fill("fotoHoldIssueQueue", data.queues || []);
+    fill(
+      "fotoHoldIssueResponsible",
+      data.collaborators || [],
+      state.plan?.responsavel_execucao_id || state.plan?.responsavel_plano_id,
     );
+  }
+  $("fotoOpenHold").onclick = async () => {
+    if (!state.plan?.id) return;
+    try {
+      await loadOperationalHoldOptions();
+      $("fotoHoldDialog").showModal();
+    } catch (e) {
+      notice(e.message, true);
+    }
+  };
+  $("fotoConfirmHold").onclick = async () => {
+    const typeId = Number($("fotoHoldIssueType").value || 0);
+    const queueId = Number($("fotoHoldIssueQueue").value || 0);
+    const responsibleId = Number($("fotoHoldIssueResponsible").value || 0);
+    const details = $("fotoHoldDetails").value.trim();
+    if (!typeId || !queueId || !responsibleId || !details)
+      return notice(
+        "Informe tipo, fila, responsável e observação do impedimento.",
+        true,
+      );
+    try {
+      const response = await fetch(
+        `${root}/FlowBlock/api.php?action=create_operational`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_type: "fotografico_plano",
+            source_id: Number(state.plan.id),
+            tipo_id: typeId,
+            fila_id: queueId,
+            responsavel_id: responsibleId,
+            urgencia: $("fotoHoldIssueUrgency").value || "NORMAL",
+            descricao: `${$("fotoHoldCode").value}: ${details}`,
+          }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok || !data.ok)
+        throw new Error(data.message || "Não foi possível abrir o HOLD.");
+      $("fotoHoldDialog").close();
+      $("fotoHoldDetails").value = "";
+      notice(`HOLD aberto e ${data.codigo || "Issue"} registrada.`);
+      await loadPlan(state.plan.id);
+      if (data.id && confirm("HOLD aberto. Deseja abrir a Issue agora?"))
+        window.open(
+          `${root}/FlowBlock/issue.php?id=${encodeURIComponent(data.id)}`,
+          "_blank",
+          "noopener",
+        );
+    } catch (e) {
+      notice(e.message, true);
+    }
   };
   $("fotoNewCampaign").onclick = () => {
     const obra = Number(prompt("ID da obra para a nova campanha:"));

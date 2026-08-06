@@ -43,18 +43,22 @@ if (!$conn) {
 $sql = "UPDATE obra SET status_obra = ? WHERE idobra = ?";
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
-    echo json_encode(['success' => false, 'message' => 'Erro no prepare: '. $conn->error]);
+    echo json_encode(['success' => false, 'message' => 'Erro no prepare: ' . $conn->error]);
     exit;
 }
 $stmt->bind_param('ii', $status, $obra_id);
 $ok = $stmt->execute();
 if (!$ok) {
-    echo json_encode(['success' => false, 'message' => 'Erro ao atualizar obra: '. $stmt->error]);
+    echo json_encode(['success' => false, 'message' => 'Erro ao atualizar obra: ' . $stmt->error]);
     $stmt->close();
     exit;
 }
+$updatedRows = $stmt->affected_rows;
 $stmt->close();
 
-echo json_encode(['success' => true, 'message' => 'Status atualizado com sucesso.']);
+if ($updatedRows === 0) {
+    echo json_encode(['success' => false, 'message' => 'Obra n\u00e3o encontrada ou j\u00e1 possui este status.']);
+    exit;
+}
 
-?>
+echo json_encode(['success' => true, 'message' => 'Status atualizado com sucesso.']);

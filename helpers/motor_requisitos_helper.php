@@ -35,8 +35,7 @@ function motor_requisitos_resultado(
     array $requisitos,
     bool $legacyLiberada = true,
     ?string $erroConfiguracao = null
-): array
-{
+): array {
     if ($erroConfiguracao !== null) {
         $requisitos[] = motor_requisitos_item(
             'CONFIGURACAO_AUSENTE',
@@ -178,7 +177,6 @@ function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackRes
         'referencias_mood' => ['REFERENCIA_NAO_DEFINIDA', 'GESTAO'],
         'fotografico' => ['FOTOGRAFICO_FALTANTE', 'GESTAO'],
         'FUNCAO_ANTERIOR_CONCLUIDA' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
-        'ARQUIVO_FUNCAO_ANTERIOR_ENVIADO' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
         'ARQUIVO_FINALIZACAO_ENVIADO' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
         'subtipo_definido' => ['DUVIDA_TECNICA', 'ARQUITETURA'],
         'arquivos_finais_subtipo' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
@@ -398,20 +396,6 @@ function motor_requisitos_adicionar_predecessora(array &$requisitos, ?array $pre
     );
     $conclusao['flow_block_aliases'] = motor_requisitos_aliases_predecessora($predecessora, false);
     $requisitos[] = $conclusao;
-
-    $arquivo = motor_requisitos_item(
-        'ARQUIVO_FUNCAO_ANTERIOR_ENVIADO',
-        'Arquivo da tarefa produtiva anterior enviado',
-        'PRODUCAO',
-        motor_requisitos_estado_arquivo($predecessora),
-        true,
-        'Arquivo da tarefa anterior',
-        $origemId,
-        $urlAcao,
-        motor_requisitos_metadados_origem($predecessora)
-    );
-    $arquivo['flow_block_aliases'] = motor_requisitos_aliases_predecessora($predecessora, true);
-    $requisitos[] = $arquivo;
 }
 
 function motor_requisitos_fotografico(mysqli $conn, int $obraId): array
@@ -554,7 +538,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     } elseif ($funcaoId === 2) {
         $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado, $checklistResponsavel);
     } elseif ($funcaoId === 3) {
-        $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'Referencias', true, $checklistVersionado, $checklistResponsavel);
+        // Composição não depende do requisito de Referências do projeto.
     } elseif ($funcaoId === 4 || $funcaoId === 7) {
         $isPlanta = $funcaoId === 7 || trim((string) $context['tipo_imagem']) === 'Planta Humanizada';
         if ($isPlanta) {

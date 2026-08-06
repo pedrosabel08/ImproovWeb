@@ -108,6 +108,7 @@ $conn->close();
                     <option value="EM_TRIAGEM">Em triagem</option>
                     <option value="AGUARDANDO_CLIENTE">Aguardando cliente</option>
                     <option value="PRONTO_PLANEJAMENTO">Para planejamento</option>
+                    <option value="HOLD">Em HOLD</option>
                 </select>
             </label>
 
@@ -196,6 +197,18 @@ $conn->close();
                     <small id="imagesPlanejamento">0 imagens</small>
                 </header>
                 <div class="kanban-column-body" id="colPlanejamento"></div>
+            </article>
+
+            <article class="kanban-column" data-column="hold">
+                <header class="kanban-column-header">
+                    <div>
+                        <i class="fa-solid fa-pause-circle"></i>
+                        <strong>Em HOLD</strong>
+                    </div>
+                    <span class="column-badge" id="countHold">0 lotes</span>
+                    <small id="imagesHold">0 imagens</small>
+                </header>
+                <div class="kanban-column-body" id="colHold"></div>
             </article>
         </section>
     </main>

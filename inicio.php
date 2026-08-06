@@ -202,7 +202,7 @@ $conn->close();
                         </select>
                         <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
                         <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
-                        <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button>
+                        <!-- <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button> -->
                     </div>
                 </nav>
             </header>

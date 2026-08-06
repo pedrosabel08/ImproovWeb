@@ -10,6 +10,8 @@ if (!flow_block_has_tables($conn)) {
     flow_block_json_response(['ok' => false, 'message' => 'O Flow Block ainda não foi instalado.'], 503);
 }
 
+flow_block_operacional_ensure_schema($conn);
+
 $action = strtolower((string) ($_GET['action'] ?? $_POST['action'] ?? ''));
 $actorId = flow_block_actor_id();
 
@@ -18,7 +20,16 @@ function fb_issue_select(): string
     return "SELECT i.*, t.nome AS tipo_nome, t.codigo AS tipo_codigo, q.nome AS fila_nome,
                    r.nome_colaborador AS responsavel_nome, cr.nome_colaborador AS criador_nome,
                    fi.status AS tarefa_status, fi.colaborador_id AS tarefa_colaborador_id,
-                   f.nome_funcao, ico.idimagens_cliente_obra AS imagem_id, ico.imagem_nome, ico.obra_id, o.nomenclatura, o.nome_obra,
+                   COALESCE(f.nome_funcao, 'Pendência operacional') AS nome_funcao,
+                   ico.idimagens_cliente_obra AS imagem_id,
+                   COALESCE(ico.imagem_nome, op.source_title) AS imagem_nome,
+                   COALESCE(ico.obra_id, op.obra_id) AS obra_id,
+                   COALESCE(o.nomenclatura, op.obra_nome) AS nomenclatura,
+                   o.nome_obra,
+                   op.source_type AS operational_source_type, op.source_id AS operational_source_id,
+                   op.source_title AS operational_source_title, op.source_url AS operational_source_url,
+                   op.source_responsavel_id AS operational_source_responsavel_id,
+                   op.liberado_em AS operational_liberado_em,
                    (SELECT COUNT(*) FROM flow_issue_atividade a WHERE a.issue_id = i.id AND a.tipo = 'COMENTARIO') AS comentarios_count,
                    (SELECT COUNT(*) FROM flow_issue_anexo x WHERE x.issue_id = i.id) AS anexos_count
             FROM flow_issue i
@@ -26,10 +37,11 @@ function fb_issue_select(): string
             LEFT JOIN flow_issue_fila q ON q.id = i.fila_id
             LEFT JOIN colaborador r ON r.idcolaborador = i.responsavel_colaborador_id
             LEFT JOIN colaborador cr ON cr.idcolaborador = i.criado_por_colaborador_id
-            JOIN funcao_imagem fi ON fi.idfuncao_imagem = i.funcao_imagem_id
-            JOIN funcao f ON f.idfuncao = fi.funcao_id
-            JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
-            JOIN obra o ON o.idobra = ico.obra_id";
+            LEFT JOIN flow_issue_operacional op ON op.issue_id = i.id
+            LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem = i.funcao_imagem_id
+            LEFT JOIN funcao f ON f.idfuncao = fi.funcao_id
+            LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+            LEFT JOIN obra o ON o.idobra = ico.obra_id";
 }
 
 function fb_get_issue(mysqli $conn, int $issueId): ?array
@@ -47,6 +59,7 @@ function fb_visible(mysqli $conn, array $issue): bool
 {
     return flow_block_is_manager()
         || (int) $issue['tarefa_colaborador_id'] === flow_block_actor_id()
+        || (int) ($issue['operational_source_responsavel_id'] ?? 0) === flow_block_actor_id()
         || (int) ($issue['responsavel_colaborador_id'] ?? 0) === flow_block_actor_id()
         || (int) $issue['criado_por_colaborador_id'] === flow_block_actor_id()
         || flow_block_actor_was_mentioned($conn, (int) $issue['id']);
@@ -145,10 +158,11 @@ try {
         $values = [];
         $visibility = flow_block_is_manager()
             ? ''
-            : ' (fi.colaborador_id = ? OR i.responsavel_colaborador_id = ? OR i.criado_por_colaborador_id = ? OR EXISTS (SELECT 1 FROM flow_issue_mencao vm WHERE vm.issue_id = i.id AND vm.colaborador_id = ?)) ';
+            : ' (fi.colaborador_id = ? OR op.source_responsavel_id = ? OR i.responsavel_colaborador_id = ? OR i.criado_por_colaborador_id = ? OR EXISTS (SELECT 1 FROM flow_issue_mencao vm WHERE vm.issue_id = i.id AND vm.colaborador_id = ?)) ';
         if ($visibility !== '') {
             $where[] = $visibility;
-            $types .= 'iiii';
+            $types .= 'iiiii';
+            $values[] = $actorId;
             $values[] = $actorId;
             $values[] = $actorId;
             $values[] = $actorId;
@@ -162,9 +176,9 @@ try {
         }
         $search = trim((string) ($_GET['search'] ?? ''));
         if ($search !== '') {
-            $where[] = '(i.codigo LIKE ? OR i.descricao LIKE ? OR ico.imagem_nome LIKE ? OR o.nomenclatura LIKE ? OR o.nome_obra LIKE ?)';
-            $types .= 'sssss';
-            for ($x = 0; $x < 5; $x++) $values[] = '%' . $search . '%';
+            $where[] = '(i.codigo LIKE ? OR i.descricao LIKE ? OR ico.imagem_nome LIKE ? OR op.source_title LIKE ? OR o.nomenclatura LIKE ? OR op.obra_nome LIKE ? OR o.nome_obra LIKE ?)';
+            $types .= 'sssssss';
+            for ($x = 0; $x < 7; $x++) $values[] = '%' . $search . '%';
         }
         foreach (['tipo_id' => 'i.tipo_id', 'fila_id' => 'i.fila_id', 'responsavel_id' => 'i.responsavel_colaborador_id', 'funcao_id' => 'fi.funcao_id', 'obra_id' => 'ico.obra_id', 'imagem_id' => 'ico.idimagens_cliente_obra'] as $key => $column) {
             $value = (int) ($_GET[$key] ?? 0);
@@ -200,7 +214,7 @@ try {
         }
         $whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
 
-        $countSql = 'SELECT COUNT(*) AS total FROM flow_issue i JOIN funcao_imagem fi ON fi.idfuncao_imagem=i.funcao_imagem_id JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=fi.imagem_id JOIN obra o ON o.idobra=ico.obra_id' . $whereSql;
+        $countSql = 'SELECT COUNT(*) AS total FROM flow_issue i LEFT JOIN flow_issue_operacional op ON op.issue_id=i.id LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem=i.funcao_imagem_id LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=fi.imagem_id LEFT JOIN obra o ON o.idobra=ico.obra_id' . $whereSql;
         $countStmt = $conn->prepare($countSql);
         if ($types !== '') $countStmt->bind_param($types, ...$values);
         $countStmt->execute();
@@ -221,9 +235,9 @@ try {
         }
         unset($item);
         $counts = ['TODAS' => 0, 'ABERTA' => 0, 'AGUARDANDO_ACAO' => 0, 'PAUSADA' => 0, 'RESOLVIDA' => 0, 'CANCELADA' => 0, 'MENCIONARAM_VOCE' => 0];
-        $countsSql = 'SELECT i.status, COUNT(*) total FROM flow_issue i JOIN funcao_imagem fi ON fi.idfuncao_imagem=i.funcao_imagem_id' . ($visibility ? ' WHERE ' . $visibility : '') . ' GROUP BY i.status';
+        $countsSql = 'SELECT i.status, COUNT(*) total FROM flow_issue i LEFT JOIN flow_issue_operacional op ON op.issue_id=i.id LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem=i.funcao_imagem_id' . ($visibility ? ' WHERE ' . $visibility : '') . ' GROUP BY i.status';
         $countByStatus = $conn->prepare($countsSql);
-        if ($visibility) $countByStatus->bind_param('iiii', $actorId, $actorId, $actorId, $actorId);
+        if ($visibility) $countByStatus->bind_param('iiiii', $actorId, $actorId, $actorId, $actorId, $actorId);
         $countByStatus->execute();
         foreach ($countByStatus->get_result() as $row) $counts[$row['status']] = (int) $row['total'];
         $countByStatus->close();
@@ -408,6 +422,97 @@ try {
     }
 
     $payload = $_POST ?: flow_block_read_json();
+
+    if ($action === 'create_operational') {
+        $sourceType = trim((string) ($payload['source_type'] ?? ''));
+        $sourceId = (int) ($payload['source_id'] ?? 0);
+        $typeId = (int) ($payload['tipo_id'] ?? 0);
+        $queueId = (int) ($payload['fila_id'] ?? 0) ?: null;
+        $responsibleId = (int) ($payload['responsavel_id'] ?? 0) ?: null;
+        $description = trim((string) ($payload['descricao'] ?? ''));
+        $urgency = strtoupper((string) ($payload['urgencia'] ?? 'NORMAL'));
+        $holdCode = strtoupper(trim((string) ($payload['hold_code'] ?? 'INFORMACAO_INCOMPLETA')));
+
+        $source = flow_block_operacional_source_context($conn, $sourceType, $sourceId);
+        if (!$source || !flow_block_operacional_can_access_source($conn, $source, $actorId)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Pendência não encontrada ou sem permissão para bloqueá-la.'], 403);
+        }
+        $existing = flow_block_operacional_find_active_issue($conn, $sourceType, $sourceId);
+        if ($existing) {
+            flow_block_json_response(['ok' => true, 'id' => (int) $existing['id'], 'codigo' => (string) $existing['codigo'], 'existing' => true]);
+        }
+        if (!$typeId || !$queueId || !$responsibleId || $description === '') {
+            flow_block_json_response(['ok' => false, 'message' => 'Tipo, fila, responsável e observação são obrigatórios.'], 422);
+        }
+        $validType = $conn->prepare('SELECT id FROM flow_issue_tipo WHERE id=? AND ativo=1');
+        $validType->bind_param('i', $typeId);
+        $validType->execute();
+        $typeOk = (bool) $validType->get_result()->fetch_row();
+        $validType->close();
+        $validQueue = $conn->prepare('SELECT id FROM flow_issue_fila WHERE id=? AND ativo=1');
+        $validQueue->bind_param('i', $queueId);
+        $validQueue->execute();
+        $queueOk = (bool) $validQueue->get_result()->fetch_row();
+        $validQueue->close();
+        $validResponsible = $conn->prepare('SELECT idcolaborador FROM colaborador WHERE idcolaborador=? AND ativo=1');
+        $validResponsible->bind_param('i', $responsibleId);
+        $validResponsible->execute();
+        $responsibleOk = (bool) $validResponsible->get_result()->fetch_row();
+        $validResponsible->close();
+        if (!$typeOk || !$queueOk || !$responsibleOk) {
+            flow_block_json_response(['ok' => false, 'message' => 'Tipo, fila ou responsável inválido.'], 422);
+        }
+        if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) $urgency = 'NORMAL';
+
+        $conn->begin_transaction();
+        try {
+            $hold = flow_block_operacional_apply_hold($conn, $source, $holdCode, $description, $actorId);
+            $stmt = $conn->prepare("INSERT INTO flow_issue (funcao_imagem_id,tipo_id,fila_id,responsavel_colaborador_id,descricao,urgencia,status,bloqueante,criado_por_colaborador_id,sla_atendimento_em,proxima_cobranca_em) VALUES (NULL,?,?,?,?,?, 'ABERTA',1,?,DATE_ADD(NOW(), INTERVAL 2 HOUR),DATE_ADD(NOW(), INTERVAL 2 HOUR))");
+            $stmt->bind_param('iiissi', $typeId, $queueId, $responsibleId, $description, $urgency, $actorId);
+            $stmt->execute();
+            $issueId = (int) $stmt->insert_id;
+            $stmt->close();
+            $code = 'ISSUE-' . str_pad((string) $issueId, 4, '0', STR_PAD_LEFT);
+            $codeStmt = $conn->prepare('UPDATE flow_issue SET codigo=? WHERE id=?');
+            $codeStmt->bind_param('si', $code, $issueId);
+            $codeStmt->execute();
+            $codeStmt->close();
+            $cycle = $conn->prepare('INSERT INTO flow_issue_ciclo (issue_id,status_inicial) VALUES (?,?)');
+            $initial = 'HOLD';
+            $cycle->bind_param('is', $issueId, $initial);
+            $cycle->execute();
+            $cycle->close();
+            $link = $conn->prepare('INSERT INTO flow_issue_operacional (issue_id,source_type,source_id,source_title,source_url,obra_id,obra_nome,source_responsavel_id,source_status_before,source_native_hold_id,criado_por) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+            $sourceTitle = (string) $source['title'];
+            $sourceUrl = (string) $source['url'];
+            $obraId = (int) ($source['obra_id'] ?? 0) ?: null;
+            $obraNome = (string) ($source['obra_nome'] ?? '');
+            $sourceResponsible = (int) ($source['responsavel_id'] ?? 0) ?: null;
+            $before = $hold['status_before'];
+            $nativeHold = $hold['native_hold_id'];
+            $link->bind_param('isissisisii', $issueId, $sourceType, $sourceId, $sourceTitle, $sourceUrl, $obraId, $obraNome, $sourceResponsible, $before, $nativeHold, $actorId);
+            $link->execute();
+            $link->close();
+            flow_block_add_activity($conn, $issueId, 'CRIADA', $description, ['operational_source_type' => $sourceType, 'operational_source_id' => $sourceId, 'operational_source_title' => $sourceTitle, 'operational_source_url' => $sourceUrl]);
+            if ($responsibleId !== $actorId) {
+                $notice = $conn->prepare('INSERT INTO notificacoes_gerais (colaborador_id,mensagem,data,lida,funcao_imagem_id) VALUES (?, ?, NOW(), 0, NULL)');
+                if ($notice) {
+                    $message = "$code foi atribuída a você no Flow Block.";
+                    $notice->bind_param('is', $responsibleId, $message);
+                    $notice->execute();
+                    $notice->close();
+                }
+            }
+            $conn->commit();
+        } catch (Throwable $e) {
+            $conn->rollback();
+            throw $e;
+        }
+        flow_block_publish_operational_lifecycle($conn, fb_get_issue($conn, $issueId) ?: ['id' => $issueId], 'criada', $actorId);
+        flow_block_publish($issueId, 0, 'operational_issue_created');
+        flow_block_json_response(['ok' => true, 'id' => $issueId, 'codigo' => $code, 'existing' => false]);
+    }
+
     if ($action === 'create') {
         $taskId = (int) ($payload['funcao_imagem_id'] ?? 0);
         $typeId = (int) ($payload['tipo_id'] ?? 0);
@@ -784,10 +889,14 @@ try {
         $cycle->execute();
         $cycle->close();
         flow_block_add_activity($conn, $issueId, 'RESOLUCAO_CONFIRMADA', $comment ?: 'O dono da tarefa confirmou que pode continuar o trabalho.', ['status_anterior' => 'RESOLVIDA', 'status_novo' => 'CONFIRMADA']);
-        $taskReadyToContinue = flow_block_task_ready_to_continue($conn, (int) $issue['funcao_imagem_id']);
+        $isOperational = !empty($issue['operational_source_type']);
+        if ($isOperational) {
+            flow_block_operacional_release_hold($conn, $issueId, $actorId);
+        }
+        $taskReadyToContinue = $isOperational ? false : flow_block_task_ready_to_continue($conn, (int) $issue['funcao_imagem_id']);
         $conn->commit();
-        flow_block_publish($issueId, (int) $issue['funcao_imagem_id'], 'issue.resolution_confirmed');
-        flow_block_json_response(['ok' => true, 'task_ready_to_continue' => $taskReadyToContinue]);
+        flow_block_publish($issueId, (int) ($issue['funcao_imagem_id'] ?? 0), 'issue.resolution_confirmed');
+        flow_block_json_response(['ok' => true, 'task_ready_to_continue' => $taskReadyToContinue, 'operational_hold_released' => $isOperational]);
     }
 
     if ($action === 'continue_task') {

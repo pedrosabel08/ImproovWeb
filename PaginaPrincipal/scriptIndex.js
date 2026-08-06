@@ -514,10 +514,6 @@ function obterResumoPendenciasOperacionais(data) {
 }
 
 function criarPendenciaOperacionalItem(item, module) {
-  if (item.checklist_id && pendenciaOperacionalUsaChecklistAccordion(module)) {
-    return criarPendenciaOperacionalChecklistCard(item, module);
-  }
-
   const row = document.createElement("button");
   row.type = "button";
   row.className = `pendencia-op-item sla-${item.sla_status || "dentro"}`;
@@ -541,6 +537,9 @@ function criarPendenciaOperacionalItem(item, module) {
     Number(meta.total_itens || meta.total_items || 0) > 0
       ? `<span><i class="ri-file-list-3-line"></i>${Number(meta.total_itens || meta.total_items || 0)}</span>`
       : "";
+  const holdText = item.operational_hold
+    ? `<span class="pendencia-op-hold"><i class="ri-pause-circle-line"></i> HOLD · ${escapeKanbanText(item.operational_issue_code || "Issue")}</span>`
+    : "";
 
   row.innerHTML = `
     <span class="pendencia-op-severity"></span>
@@ -551,6 +550,7 @@ function criarPendenciaOperacionalItem(item, module) {
         <span><i class="ri-user-3-line"></i>${escapeKanbanText(item.responsavel_nome || "-")}</span>
         <span><i class="ri-calendar-line"></i>${escapeKanbanText(due)}</span>
         <span><i class="ri-time-line"></i>${escapeKanbanText(slaLabel)}</span>
+        ${holdText}
         ${extraText}
         ${countText}
       </span>
@@ -559,6 +559,7 @@ function criarPendenciaOperacionalItem(item, module) {
   `;
 
   row.addEventListener("click", () => abrirPendenciaOperacional(item, module));
+  vincularMenuHoldPendencia(row, item, module);
   return row;
 }
 
@@ -932,6 +933,187 @@ function abrirLinkPendenciaOperacional(item, module) {
   window.open(`${base}/${action.replace(/^\/+/, "")}`, "_blank");
 }
 
+const PENDENCIA_HOLD_MODULES = new Set([
+  "projeto",
+  "imagem",
+  "fotografico",
+  "pre_alteracao",
+  "links",
+]);
+let pendenciaHoldContextMenu = null;
+
+function pendenciaPermiteHold(item, module) {
+  return PENDENCIA_HOLD_MODULES.has(
+    String(item?.source_type || module?.key || ""),
+  );
+}
+
+function fecharMenuHoldPendencia() {
+  pendenciaHoldContextMenu?.remove();
+  pendenciaHoldContextMenu = null;
+}
+
+function abrirMenuHoldPendencia(event, item, module) {
+  if (!pendenciaPermiteHold(item, module)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  fecharMenuHoldPendencia();
+  const menu = document.createElement("div");
+  menu.className = "pendencia-op-context-menu";
+  const hasIssue = Number(item.operational_issue_id || 0) > 0;
+  menu.innerHTML = hasIssue
+    ? `<button type="button"><i class="ri-forbid-2-line"></i> Abrir ${escapeKanbanText(item.operational_issue_code || "Issue")}</button>`
+    : `<button type="button"><i class="ri-pause-circle-line"></i> Colocar em HOLD e registrar impedimento</button>`;
+  const left = Math.min(event.clientX || 20, window.innerWidth - 340);
+  const top = Math.min(event.clientY || 20, window.innerHeight - 70);
+  menu.style.left = `${Math.max(8, left)}px`;
+  menu.style.top = `${Math.max(8, top)}px`;
+  menu.querySelector("button")?.addEventListener("click", () => {
+    fecharMenuHoldPendencia();
+    if (hasIssue) {
+      window.open(
+        `FlowBlock/issue.php?id=${encodeURIComponent(item.operational_issue_id)}`,
+        "_blank",
+      );
+      return;
+    }
+    abrirFormularioHoldPendencia(item, module);
+  });
+  document.body.appendChild(menu);
+  pendenciaHoldContextMenu = menu;
+  setTimeout(
+    () =>
+      document.addEventListener("click", fecharMenuHoldPendencia, {
+        once: true,
+      }),
+    0,
+  );
+}
+
+function vincularMenuHoldPendencia(element, item, module) {
+  if (!pendenciaPermiteHold(item, module)) return;
+  element.addEventListener("contextmenu", (event) =>
+    abrirMenuHoldPendencia(event, item, module),
+  );
+  let holdTimer = null;
+  element.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse") return;
+    holdTimer = window.setTimeout(() => {
+      abrirMenuHoldPendencia(event, item, module);
+    }, 550);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((name) =>
+    element.addEventListener(name, () => {
+      if (holdTimer) window.clearTimeout(holdTimer);
+      holdTimer = null;
+    }),
+  );
+}
+
+async function abrirFormularioHoldPendencia(item, module) {
+  const sourceType = String(item.source_type || module.key || "");
+  const sourceId = Number(item.source_id || 0);
+  if (!sourceId) return;
+  let options;
+  try {
+    const response = await fetch("FlowBlock/api.php?action=options");
+    options = await response.json();
+    if (!response.ok || !options.ok)
+      throw new Error(
+        options.message || "Não foi possível carregar o formulário.",
+      );
+  } catch (error) {
+    Toastify({
+      text: error.message,
+      duration: 3500,
+      gravity: "top",
+      backgroundColor: "#d94b4b",
+    }).showToast();
+    return;
+  }
+  const optionHtml = (items, label) =>
+    `<option value="">${label}</option>${(items || []).map((entry) => `<option value="${Number(entry.id)}">${escapeKanbanText(entry.nome || entry.codigo || "")}</option>`).join("")}`;
+  const photoExtra =
+    sourceType === "fotografico"
+      ? `<label>Classificação do HOLD<select id="op-hold-code"><option value="CLIMA">Condição climática</option><option value="INFORMACAO_INCOMPLETA" selected>Informação incompleta</option><option value="ALTERACAO_PLANO">Alteração no plano</option><option value="REAGENDAMENTO">Reagendamento</option></select></label>`
+      : "";
+  await Swal.fire({
+    title: "Colocar pendência em HOLD",
+    html: `<div class="operational-hold-form">
+      <p><strong>${escapeKanbanText(item.title || "Pendência")}</strong><br><small>${escapeKanbanText(item.obra_nome || "")}</small></p>
+      ${photoExtra}
+      <label>Tipo<select id="op-hold-type">${optionHtml(options.types, "Selecione o tipo")}</select></label>
+      <label>Fila responsável<select id="op-hold-queue">${optionHtml(options.queues, "Selecione a fila")}</select></label>
+      <label>Responsável<select id="op-hold-responsible">${optionHtml(options.collaborators, "Selecione o responsável")}</select></label>
+      <label>Urgência<select id="op-hold-urgency"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
+      <label>Observação<textarea id="op-hold-description" rows="5" placeholder="O que impede a continuidade?" required></textarea></label>
+    </div>`,
+    showCancelButton: true,
+    confirmButtonText: "Criar impedimento",
+    cancelButtonText: "Cancelar",
+    focusConfirm: false,
+    didOpen: () => {
+      const suggested = Number(item.responsavel_id || 0);
+      const select = document.getElementById("op-hold-responsible");
+      if (select && suggested) select.value = String(suggested);
+    },
+    preConfirm: async () => {
+      const payload = {
+        source_type: sourceType,
+        source_id: sourceId,
+        tipo_id: Number(document.getElementById("op-hold-type")?.value || 0),
+        fila_id: Number(document.getElementById("op-hold-queue")?.value || 0),
+        responsavel_id: Number(
+          document.getElementById("op-hold-responsible")?.value || 0,
+        ),
+        urgencia: document.getElementById("op-hold-urgency")?.value || "NORMAL",
+        descricao:
+          document.getElementById("op-hold-description")?.value.trim() || "",
+        hold_code:
+          document.getElementById("op-hold-code")?.value ||
+          "INFORMACAO_INCOMPLETA",
+      };
+      if (
+        !payload.tipo_id ||
+        !payload.fila_id ||
+        !payload.responsavel_id ||
+        !payload.descricao
+      ) {
+        Swal.showValidationMessage(
+          "Preencha tipo, fila, responsável e observação.",
+        );
+        return false;
+      }
+      try {
+        const response = await fetch(
+          "FlowBlock/api.php?action=create_operational",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+        const json = await response.json();
+        if (!response.ok || !json.ok)
+          throw new Error(
+            json.message || "Não foi possível criar o impedimento.",
+          );
+        return json;
+      } catch (error) {
+        Swal.showValidationMessage(error.message);
+        return false;
+      }
+    },
+  }).then((result) => {
+    if (!result.isConfirmed || !result.value) return;
+    carregarDados(colaborador_id);
+    window.open(
+      `FlowBlock/issue.php?id=${encodeURIComponent(result.value.id)}`,
+      "_blank",
+    );
+  });
+}
+
 async function salvarChecklistOperacional(checklistId, values) {
   const response = await fetch(
     "PaginaPrincipal/update_checklist_operacional.php",
@@ -946,10 +1128,6 @@ async function salvarChecklistOperacional(checklistId, values) {
     throw new Error(json.message || "Nao foi possivel atualizar o checklist.");
   }
   return json;
-}
-
-function pendenciaOperacionalUsaChecklistAccordion(module) {
-  return ["imagem", "projeto"].includes(String(module?.key || ""));
 }
 
 function pendenciaChecklistPossuiPendencias(items) {
@@ -5902,21 +6080,25 @@ buttons.forEach((btn) => {
 });
 
 const add_task = document.getElementById("add-task");
-add_task.addEventListener("click", () => {
-  const modal = document.getElementById("task-modal");
-  modal.style.display = "flex";
-  modal.classList.add("active");
+if (add_task) {
+  add_task.addEventListener("click", () => {
+    const modal = document.getElementById("task-modal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    modal.classList.add("active");
 
-  // pega id do colaborador no localStorage
-  const selectColab = document.getElementById("task-colab");
-  console.log("colab id:", colaborador_id);
-  if (Number(colaborador_id) === 9 || Number(colaborador_id) === 21) {
-    selectColab.disabled = false; // libera
-  } else {
-    selectColab.disabled = true; // bloqueia
-    selectColab.classList.add("hidden");
-  }
-});
+    // pega id do colaborador no localStorage
+    const selectColab = document.getElementById("task-colab");
+    console.log("colab id:", colaborador_id);
+    if (!selectColab) return;
+    if (Number(colaborador_id) === 9 || Number(colaborador_id) === 21) {
+      selectColab.disabled = false; // libera
+    } else {
+      selectColab.disabled = true; // bloqueia
+      selectColab.classList.add("hidden");
+    }
+  });
+}
 
 const form = document.getElementById("task-form");
 const modal = document.getElementById("task-modal");
@@ -7021,16 +7203,49 @@ function enviarArquivo() {
   xhr.send(formData);
 }
 
+function posicionarModal() {
+  const btnRect = btnFilter.getBoundingClientRect();
+  const modalRect = modalFilter.getBoundingClientRect();
+
+  const margin = 10;
+  const offsetX = 20;
+  const offsetY = 5;
+
+  let left = btnRect.left + btnRect.width / 2 - modalRect.width / 2 - offsetX;
+
+  let top = btnRect.bottom + offsetY;
+
+  left = Math.max(
+    margin,
+    Math.min(left, window.innerWidth - modalRect.width - margin),
+  );
+
+  if (top + modalRect.height > window.innerHeight - margin) {
+    top = btnRect.top - modalRect.height - offsetY;
+  }
+
+  top = Math.max(
+    margin,
+    Math.min(top, window.innerHeight - modalRect.height - margin),
+  );
+
+  modalFilter.style.left = `${left}px`;
+  modalFilter.style.top = `${top}px`;
+}
+
 const btnFilter = document.getElementById("filter");
 const modalFilter = document.getElementById("modalFilter");
 
 btnFilter.addEventListener("click", function (e) {
-  e.stopPropagation(); // impede que o clique no botão feche o modal
-  modalFilter.classList.add("active");
+  e.stopPropagation();
 
-  const rect = btnFilter.getBoundingClientRect();
-  modalFilter.style.left = `${rect.left + rect.width / 2 - modalFilter.offsetWidth / 2}px`;
-  modalFilter.style.top = `${rect.bottom + 5}px`; // 5px de espaçamento
+  modalFilter.classList.toggle("active");
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      posicionarModal();
+    });
+  });
 });
 
 // Fecha modal ao clicar fora ou pressionar Esc
@@ -7078,15 +7293,20 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   btn.addEventListener("click", function (e) {
     e.stopPropagation();
 
-    // Fecha todos antes
-    document
-      .querySelectorAll(".dropdown-content")
-      .forEach((dc) => dc.classList.remove("show"));
-
-    // Pega o dropdown-content mais próximo do botão clicado
     const dropdown =
       this.closest(".dropdown").querySelector(".dropdown-content");
-    dropdown.classList.toggle("show");
+
+    const estavaAberto = dropdown.classList.contains("show");
+
+    // Fecha todos
+    document.querySelectorAll(".dropdown-content").forEach((dc) => {
+      dc.classList.remove("show");
+    });
+
+    // Só abre se anteriormente estava fechado
+    if (!estavaAberto) {
+      dropdown.classList.add("show");
+    }
   });
 });
 

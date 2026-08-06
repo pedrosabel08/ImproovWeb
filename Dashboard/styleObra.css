@@ -6314,11 +6314,19 @@ table#tabela-logs tbody tr:hover {
 /* End sidebar styles */
 
 #editImagesBtn {
-  background-color: red;
+  background-color: #dc3545;
+}
+
+#plannedQueueBtn {
+  background-color: #6f42c1;
 }
 
 #addImagem {
   background-color: #0056b3;
+}
+
+#importTxtBtn {
+  background-color: #0d9488;
 }
 
 #editArquivos {
@@ -6327,6 +6335,10 @@ table#tabela-logs tbody tr:hover {
 
 #addFollowup {
   background-color: #ff9100;
+}
+
+#concludePackageBtn {
+  background-color: #198754;
 }
 
 #markInactiveBtn {
@@ -6340,6 +6352,10 @@ table#tabela-logs tbody tr:hover {
 
 #btnLiberarModelagem {
   background-color: #4caccf;
+}
+
+#modelagemComplexidadeBtn {
+  background-color: #7c3aed;
 }
 
 #btnNotificarObra {

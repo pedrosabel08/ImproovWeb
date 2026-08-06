@@ -611,6 +611,7 @@ textarea:focus {
   border: 1px solid var(--f-border);
   border-radius: 8px;
   padding: 18px;
+  margin: auto;
 }
 .foto-dialog::backdrop {
   background: #020814bb;
@@ -1284,6 +1285,7 @@ textarea:focus {
   color: var(--f-text);
   background: #0c1929;
   box-shadow: 0 20px 65px #000b;
+  margin: auto;
 }
 .foto-checklist-dialog::backdrop {
   background: #0009;

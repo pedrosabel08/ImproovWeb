@@ -1,10 +1,13 @@
 <?php
+
 /**
  * Shared domain rules for Flow Block.
  *
  * An Issue is intentionally scoped to one funcao_imagem.  HOLD is a derived
  * task state, never an independently editable workflow in this module.
  */
+
+require_once __DIR__ . '/flow_block_operacional_helper.php';
 
 if (!function_exists('flow_block_active_statuses')) {
     function flow_block_active_statuses(): array
@@ -183,6 +186,10 @@ if (!function_exists('flow_block_can_resolve_issue')) {
 if (!function_exists('flow_block_can_confirm_resolution')) {
     function flow_block_can_confirm_resolution(array $issue): bool
     {
+        if (!empty($issue['operational_source_type'])) {
+            return flow_block_is_manager()
+                || (int) ($issue['criado_por_colaborador_id'] ?? 0) === flow_block_actor_id();
+        }
         return flow_block_is_manager()
             || (int) ($issue['tarefa_colaborador_id'] ?? 0) === flow_block_actor_id();
     }
@@ -227,7 +234,7 @@ if (!function_exists('flow_block_add_activity')) {
 if (!function_exists('flow_block_notify')) {
     function flow_block_notify(mysqli $conn, int $recipientId, int $taskId, string $message): void
     {
-        if ($recipientId <= 0 || $recipientId === flow_block_actor_id()) {
+        if ($recipientId <= 0 || $taskId <= 0 || $recipientId === flow_block_actor_id()) {
             return;
         }
         $stmt = $conn->prepare(
@@ -295,8 +302,10 @@ if (!function_exists('flow_block_publish_operational_lifecycle')) {
         $cycleId = '';
         $cycle = $conn->prepare('SELECT id FROM flow_issue_ciclo WHERE issue_id=? ORDER BY id DESC LIMIT 1');
         if ($cycle) {
-            $cycle->bind_param('i', $issueId); $cycle->execute();
-            $row = $cycle->get_result()->fetch_assoc(); $cycle->close();
+            $cycle->bind_param('i', $issueId);
+            $cycle->execute();
+            $row = $cycle->get_result()->fetch_assoc();
+            $cycle->close();
             $cycleId = (string) ($row['id'] ?? '');
         }
         if ($cycleId === '') return;

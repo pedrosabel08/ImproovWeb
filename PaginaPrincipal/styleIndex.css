@@ -1431,6 +1431,60 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
   justify-content: flex-end;
 }
 
+.pendencia-op-hold {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.pendencia-op-context-menu {
+  position: fixed;
+  z-index: 10050;
+  min-width: 280px;
+  padding: 6px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
+}
+
+.pendencia-op-context-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: transparent;
+  color: #991b1b;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pendencia-op-context-menu button:hover {
+  background: #fef2f2;
+}
+
+.operational-hold-form {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+.operational-hold-form label {
+  display: grid;
+  gap: 4px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+.operational-hold-form select,
+.operational-hold-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 8px;
+  font: inherit;
+}
+
 .pendencia-op-check-save {
   min-height: 32px;
   padding: 0 12px;
@@ -3239,30 +3293,28 @@ form#task-form button {
 /* ====== MODAL FILTER ====== */
 #modalFilter {
   position: fixed;
-  top: 60px;
-  right: 16px;
-  width: 280px !important;
-  height: auto;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-  display: none;
-  z-index: 900;
+  box-sizing: border-box;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 #modalFilter.active {
-  display: block;
   animation: filterSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 @keyframes filterSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.97);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 

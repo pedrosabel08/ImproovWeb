@@ -4,11 +4,15 @@ function formatarDataAtual() {
   return dataAtual.toLocaleDateString("pt-BR", opcoes);
 }
 
-const pagamentoCsrfToken = document.querySelector('meta[name="pagamento-csrf"]')?.content || "";
+const pagamentoCsrfToken =
+  document.querySelector('meta[name="pagamento-csrf"]')?.content || "";
 const pagamentoFetch = window.fetch.bind(window);
 window.fetch = function (input, init = {}) {
   const method = String(init.method || "GET").toUpperCase();
-  if (pagamentoCsrfToken && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+  if (
+    pagamentoCsrfToken &&
+    ["POST", "PUT", "PATCH", "DELETE"].includes(method)
+  ) {
     const headers = new Headers(init.headers || {});
     headers.set("X-CSRF-Token", pagamentoCsrfToken);
     init.headers = headers;
@@ -30,17 +34,27 @@ window.fetch = function (input, init = {}) {
       422: "Os dados enviados são inválidos.",
       500: "O servidor não conseguiu concluir a operação.",
     };
-    const error = new Error(payload.error || payload.message || messages[response.status] || "Não foi possível concluir a operação.");
+    const error = new Error(
+      payload.error ||
+        payload.message ||
+        messages[response.status] ||
+        "Não foi possível concluir a operação.",
+    );
     error.status = response.status;
     error.payload = payload;
     throw error;
   });
 };
 
-function setPagamentoButtonLoading(button, loading, loadingLabel = "Processando...") {
+function setPagamentoButtonLoading(
+  button,
+  loading,
+  loadingLabel = "Processando...",
+) {
   if (!button) return;
   if (loading) {
-    if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+    if (!button.dataset.originalHtml)
+      button.dataset.originalHtml = button.innerHTML;
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${loadingLabel}`;
@@ -63,21 +77,320 @@ function pagamentoVisibleCheckboxes(selector = ".pagamento-checkbox") {
 
 function pagamentoSelectedValue(checkbox) {
   const dataValue = checkbox?.getAttribute("data-valor");
-  if (dataValue !== null && dataValue !== "" && Number.isFinite(Number(dataValue))) {
+  if (
+    dataValue !== null &&
+    dataValue !== "" &&
+    Number.isFinite(Number(dataValue))
+  ) {
     return Number(dataValue);
   }
   const valueCell = checkbox?.closest("tr")?.cells?.[3];
   const raw = valueCell?.textContent || "0";
-  return Number(raw.replace(/[^0-9,.-]+/g, "").replace(/\./g, "").replace(",", ".")) || 0;
+  return (
+    Number(
+      raw
+        .replace(/[^0-9,.-]+/g, "")
+        .replace(/\./g, "")
+        .replace(",", "."),
+    ) || 0
+  );
 }
 
 function atualizarResumoSelecao() {
   const summary = document.getElementById("selection-summary");
   if (!summary) return;
-  const selected = Array.from(document.querySelectorAll(".pagamento-checkbox:checked"));
-  const total = selected.reduce((sum, checkbox) => sum + pagamentoSelectedValue(checkbox), 0);
+  const selected = Array.from(
+    document.querySelectorAll(".pagamento-checkbox:checked"),
+  );
+  const total = selected.reduce(
+    (sum, checkbox) => sum + pagamentoSelectedValue(checkbox),
+    0,
+  );
   summary.textContent = `${selected.length} ${selected.length === 1 ? "item selecionado" : "itens selecionados"} · ${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
 }
+
+/* Estrutura visual da tela principal. Os elementos com IDs legados são apenas
+ * reposicionados para que os endpoints e os fluxos existentes permaneçam iguais. */
+document.addEventListener(
+  "DOMContentLoaded",
+  function prepararPagamentoRedesenhado() {
+    const header = document.querySelector(".page-header");
+    const filters = document.querySelector(".filters");
+    const workspace = document.querySelector(".table-scroll-area");
+    const tableUnpaid = document.getElementById("tabela-a-pagar");
+    const tablePaid = document.getElementById("tabela-pago");
+    const typeFilters = document.querySelector(".tipo-imagem");
+    const info = document.getElementById("info-colaborador");
+    const resumo = document.getElementById("resumo-pagamentos");
+    const oldToolbar = document.querySelector(".action-toolbar");
+    const oldConfirm = document.querySelector(".confirm-payment-row");
+    const oldTotals = document.querySelector(".totals-bar")?.parentElement;
+    if (
+      !header ||
+      !filters ||
+      !workspace ||
+      !tableUnpaid ||
+      !tablePaid ||
+      !typeFilters
+    )
+      return;
+
+    header.classList.add("payment-header");
+    const logo = header.querySelector("#gif");
+    const statusButton = header.querySelector("#btn-ver-status-geral");
+    header.replaceChildren();
+    const heading = document.createElement("div");
+    heading.className = "payment-heading";
+    if (logo) heading.append(logo);
+    heading.insertAdjacentHTML(
+      "beforeend",
+      '<div><span class="page-kicker">/ Flow</span><h1 class="page-title">Pagamento</h1></div>',
+    );
+    header.append(heading);
+    if (statusButton) {
+      statusButton.innerHTML =
+        '<i class="fa-regular fa-file-lines"></i> Status geral dos adendos';
+      header.append(statusButton);
+    }
+
+    filters.classList.add("competencia-bar");
+    const resultBadge =
+      header.querySelector(".results-badge") || document.createElement("span");
+    resultBadge.className = "competencia-count";
+    resultBadge.innerHTML =
+      '<i class="fa-solid fa-layer-group"></i> <span id="total-imagens">0</span> itens na competência';
+    filters.append(resultBadge);
+
+    const statusWidget = document.getElementById("adendo-status-widget");
+    const generateAdendo = document.getElementById("generate-adendo");
+    const generateLista = document.getElementById("generate-lista");
+    const generateExcel = document.getElementById("generate-excel");
+    const adendoInfo = document.getElementById("btn-adendo-info");
+    const financial = document.createElement("section");
+    financial.className = "financial-summary";
+    financial.innerHTML =
+      '<div class="financial-metrics"><div class="summary-metric"><span class="summary-label">Total da competência</span><strong id="totalValor">R$ 0,00</strong><small><span id="total-itens-resumo">0</span> itens</small></div><div class="summary-metric pending"><span class="summary-label">Pendente</span><strong id="totalValorNaoPago">R$ 0,00</strong><small><span id="total-imagens-nao-pagas">0</span> itens</small></div><div class="summary-metric paid"><span class="summary-label">Pago</span><strong id="totalValorPago">R$ 0,00</strong><small><span id="total-imagens-pagas">0</span> itens</small></div></div>';
+    const documentArea = document.createElement("div");
+    documentArea.className = "adendo-summary";
+    documentArea.innerHTML =
+      '<i class="fa-regular fa-file-lines adendo-summary-icon"></i><div class="adendo-copy"></div><div class="adendo-actions"></div>';
+    const copy = documentArea.querySelector(".adendo-copy");
+    if (statusWidget) {
+      statusWidget.style.display = "flex";
+      copy.append(statusWidget);
+    } else
+      copy.innerHTML =
+        "<strong>Adendo</strong><span>Selecione uma competência</span>";
+    const actions = documentArea.querySelector(".adendo-actions");
+    if (adendoInfo) {
+      adendoInfo.classList.add("btn", "btn-secondary");
+      adendoInfo.innerHTML = '<i class="fa-regular fa-eye"></i> Ver adendo';
+      actions.append(adendoInfo);
+    }
+    const docActions = document.createElement("div");
+    docActions.className = "document-actions";
+    docActions.innerHTML =
+      '<button class="btn btn-secondary" type="button" id="btn-document-actions">Outras ações <i class="fa-solid fa-chevron-down"></i></button><div class="document-actions-menu"></div>';
+    const docMenu = docActions.querySelector(".document-actions-menu");
+    [generateLista, generateExcel, generateAdendo]
+      .filter(Boolean)
+      .forEach((button) => {
+        button.className = "document-action";
+        docMenu.append(button);
+      });
+    actions.append(docActions);
+    financial.append(documentArea);
+    filters.insertAdjacentElement("afterend", financial);
+
+    const unpaidWrap = document.createElement("div");
+    unpaidWrap.className = "table-wrap";
+    unpaidWrap.append(tableUnpaid);
+    const paidWrap = document.createElement("div");
+    paidWrap.className = "table-wrap";
+    paidWrap.append(tablePaid);
+    const divergenceTable = document.createElement("table");
+    divergenceTable.id = "tabela-divergencias";
+    divergenceTable.className = "data-table";
+    divergenceTable.innerHTML =
+      "<thead><tr><th>Tarefa / imagem</th><th>Função</th><th>Valor atual</th><th>Valor esperado</th><th>Situação</th><th>Ações</th></tr></thead><tbody></tbody>";
+    const divergenceWrap = document.createElement("div");
+    divergenceWrap.className = "table-wrap";
+    divergenceWrap.append(divergenceTable);
+    tableUnpaid.querySelector("thead").innerHTML =
+      '<tr><th class="col-checkbox"><input type="checkbox" id="selecionar-visiveis" aria-label="Selecionar itens elegíveis visíveis"></th><th>Tarefa / imagem</th><th>Função</th><th>Valor</th><th>Situação financeira</th><th class="col-center">Ações</th></tr>';
+    tablePaid.querySelector("thead").innerHTML =
+      "<tr><th>Tarefa / imagem</th><th>Função</th><th>Valor pago</th><th>Tipo</th><th>Data do pagamento</th><th>Detalhes</th></tr>";
+
+    const tabs = document.createElement("div");
+    tabs.className = "payment-tabs";
+    tabs.innerHTML =
+      '<button class="payment-tab is-active" type="button" data-payment-tab="a-pagar">A pagar <span id="tab-count-a-pagar">0</span></button><button class="payment-tab" type="button" data-payment-tab="pagos">Pagos <span id="tab-count-pagos">0</span></button><button class="payment-tab" type="button" data-payment-tab="divergencias">Divergências <span class="is-danger" id="tab-count-divergencias">0</span></button>';
+    const compact = document.createElement("div");
+    compact.className = "compact-filters";
+    compact.innerHTML =
+      '<label class="search-filter"><i class="fa-solid fa-magnifying-glass"></i><input id="busca-pagamento" type="search" placeholder="Buscar tarefa ou imagem..."></label><div class="function-filter"><button class="compact-filter-button" id="btn-funcoes" type="button">Funções <span id="funcoes-count">(0)</span> <i class="fa-solid fa-chevron-down"></i></button></div><button class="compact-filter-button is-disabled" type="button" title="Aguardando identificação confiável da obra pelo backend">Obra <i class="fa-solid fa-chevron-down"></i></button><label class="toggle-filter"><input id="somente-divergencias" type="checkbox"><span></span> Somente divergências</label><button class="btn btn-secondary" id="limpar-filtros" type="button"><i class="fa-regular fa-trash-can"></i> Limpar filtros</button>';
+    compact.querySelector(".function-filter").append(typeFilters);
+    typeFilters.id = "funcoes-popover";
+    const panels = document.createElement("div");
+    panels.className = "payment-panels";
+    [
+      ["a-pagar", unpaidWrap],
+      ["pagos", paidWrap],
+      ["divergencias", divergenceWrap],
+    ].forEach(([name, wrap], index) => {
+      const panel = document.createElement("section");
+      panel.className = `table-section payment-tab-panel${index ? "" : " is-active"}`;
+      panel.dataset.paymentPanel = name;
+      panel.append(wrap);
+      panels.append(panel);
+    });
+    const actionBar = document.createElement("div");
+    actionBar.className = "selection-action-bar";
+    actionBar.id = "selection-action-bar";
+    actionBar.hidden = true;
+    const selectAll = document.createElement("button");
+    selectAll.id = "marcar-todos";
+    selectAll.hidden = true;
+    actionBar.append(selectAll);
+    const addValue = oldToolbar?.querySelector("#adicionar-valor");
+    const clear = oldToolbar?.querySelector("#desmarcar-todos");
+    const amount = oldToolbar?.querySelector("#valor");
+    const confirm = oldConfirm?.querySelector("#confirmar-pagamento");
+    const summary = oldToolbar?.querySelector("#selection-summary");
+    actionBar.innerHTML +=
+      '<div><strong id="selection-summary">0 itens selecionados · R$ 0,00</strong></div><div class="selection-actions"></div>';
+    const selectionActions = actionBar.querySelector(".selection-actions");
+    [addValue, clear, confirm]
+      .filter(Boolean)
+      .forEach((button) => selectionActions.append(button));
+    if (addValue)
+      addValue.innerHTML = '<i class="fa-solid fa-pen"></i> Adicionar valor';
+    if (clear)
+      clear.innerHTML = '<i class="fa-solid fa-xmark"></i> Limpar seleção';
+    if (confirm) {
+      confirm.classList.remove("btn-success");
+      confirm.classList.add("btn-primary");
+      confirm.innerHTML =
+        '<i class="fa-solid fa-credit-card"></i> Confirmar pagamento';
+    }
+    if (amount) {
+      amount.hidden = true;
+      actionBar.append(amount);
+    }
+    if (summary) summary.remove();
+    oldToolbar?.remove();
+    oldConfirm?.remove();
+    oldTotals?.remove();
+    workspace.replaceChildren(tabs, compact, panels, actionBar, info, resumo);
+
+    const setTab = (name) => {
+      tabs
+        .querySelectorAll(".payment-tab")
+        .forEach((tab) =>
+          tab.classList.toggle("is-active", tab.dataset.paymentTab === name),
+        );
+      panels
+        .querySelectorAll(".payment-tab-panel")
+        .forEach((panel) =>
+          panel.classList.toggle(
+            "is-active",
+            panel.dataset.paymentPanel === name,
+          ),
+        );
+      if (name !== "a-pagar") {
+        document
+          .querySelectorAll(".pagamento-checkbox:checked")
+          .forEach((cb) => {
+            cb.checked = false;
+            cb.closest("tr")?.classList.remove("row-selected");
+          });
+        atualizarResumoSelecao();
+      }
+    };
+    tabs.addEventListener("click", (event) => {
+      const tab = event.target.closest(".payment-tab");
+      if (tab) setTab(tab.dataset.paymentTab);
+    });
+    document
+      .getElementById("btn-document-actions")
+      ?.addEventListener("click", () => docActions.classList.toggle("is-open"));
+    document.addEventListener("click", (event) => {
+      if (!docActions.contains(event.target))
+        docActions.classList.remove("is-open");
+    });
+    document
+      .getElementById("btn-funcoes")
+      ?.addEventListener("click", () =>
+        typeFilters.classList.toggle("is-open"),
+      );
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".function-filter"))
+        typeFilters.classList.remove("is-open");
+    });
+    document
+      .getElementById("adicionar-valor")
+      ?.addEventListener("click", () => {
+        if (amount) {
+          amount.hidden = !amount.hidden;
+          if (!amount.hidden) amount.focus();
+        }
+      });
+    const search = document.getElementById("busca-pagamento"),
+      divergencesOnly = document.getElementById("somente-divergencias");
+    const applyVisualFilters = () => {
+      const needle = (search?.value || "").trim().toLocaleLowerCase("pt-BR");
+      const selectedFunctions = Array.from(
+        typeFilters.querySelectorAll("input:checked"),
+      ).map((input) => input.name.toLocaleLowerCase("pt-BR"));
+      [tableUnpaid, tablePaid, divergenceTable].forEach((table) =>
+        table.querySelectorAll("tbody tr").forEach((row) => {
+          const functionName = (
+            row.dataset.functionName ||
+            row.children[2]?.textContent ||
+            row.children[1]?.textContent ||
+            ""
+          ).toLocaleLowerCase("pt-BR");
+          const matchesSearch =
+            !needle ||
+            row.textContent.toLocaleLowerCase("pt-BR").includes(needle);
+          const matchesFunction =
+            !selectedFunctions.length ||
+            selectedFunctions.some((fn) => functionName.includes(fn));
+          const matchesDivergence =
+            !divergencesOnly?.checked || row.dataset.divergence === "1";
+          row.style.display =
+            matchesSearch && matchesFunction && matchesDivergence ? "" : "none";
+        }),
+      );
+      const count = selectedFunctions.length;
+      document.getElementById("funcoes-count").textContent = `(${count})`;
+      contarLinhasTabela();
+    };
+    search?.addEventListener("input", applyVisualFilters);
+    divergencesOnly?.addEventListener("change", applyVisualFilters);
+    typeFilters.addEventListener("change", applyVisualFilters);
+    document.getElementById("limpar-filtros")?.addEventListener("click", () => {
+      if (search) search.value = "";
+      if (divergencesOnly) divergencesOnly.checked = false;
+      typeFilters
+        .querySelectorAll("input")
+        .forEach((input) => (input.checked = false));
+      applyVisualFilters();
+    });
+    document
+      .getElementById("selecionar-visiveis")
+      ?.addEventListener("change", (event) => {
+        pagamentoVisibleCheckboxes(
+          "#tabela-a-pagar .pagamento-checkbox",
+        ).forEach((cb) => {
+          cb.checked = event.target.checked;
+          cb.closest("tr")?.classList.toggle("row-selected", cb.checked);
+        });
+        contarLinhasTabela();
+      });
+    window.pagamentoAplicarFiltrosVisuais = applyVisualFilters;
+  },
+);
 
 document.addEventListener("DOMContentLoaded", function () {
   // ====== Resumo (dashboard) ======
@@ -321,7 +634,9 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     const haviaFiltroDeTipo = tipoFiltros.some((checkbox) => checkbox.checked);
     const filtrosDeTipoAtivos = new Set(
-      tipoFiltros.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.name),
+      tipoFiltros
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.name),
     );
 
     const confirmarPagamentoButton = document.getElementById(
@@ -578,22 +893,36 @@ document.addEventListener("DOMContentLoaded", function () {
                   const response = await fetch("updatePagamento.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
+                    body: JSON.stringify({
+                      ids,
+                      colaborador_id: colaboradorId,
+                      mes,
+                      ano,
+                    }),
                   });
                   const resp = await response.json();
                   if (!response.ok || !resp.success) {
-                    throw new Error(resp.error || "Erro ao registrar pagamento.");
+                    throw new Error(
+                      resp.error || "Erro ao registrar pagamento.",
+                    );
                   }
 
                   const historicoResponse = await fetch("insertHistorico.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
+                    body: JSON.stringify({
+                      ids,
+                      colaborador_id: colaboradorId,
+                      mes,
+                      ano,
+                    }),
                   });
                   const historico = await historicoResponse.json();
                   await Swal.fire({
                     icon: historico.success ? "success" : "warning",
-                    title: historico.success ? "Pagamento registrado" : "Pagamento registrado com alerta",
+                    title: historico.success
+                      ? "Pagamento registrado"
+                      : "Pagamento registrado com alerta",
                     text: historico.success
                       ? "O item foi registrado com sucesso."
                       : "O pagamento foi registrado, mas o histórico legado não pôde ser atualizado.",
@@ -606,7 +935,8 @@ document.addEventListener("DOMContentLoaded", function () {
                   await Swal.fire({
                     icon: "error",
                     title: "Não foi possível registrar",
-                    text: error.message || "Verifique a conexão e tente novamente.",
+                    text:
+                      error.message || "Verifique a conexão e tente novamente.",
                     timer: 3500,
                     timerProgressBar: true,
                   });
@@ -632,18 +962,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "");
             const nomeFuncaoBase = normalizeFuncao(item.nome_funcao);
-              if (!haviaFiltroDeTipo) {
-                tipoFiltros.forEach((funcaoCheckbox) => {
-                  if (normalizeFuncao(funcaoCheckbox.name) === nomeFuncaoBase) {
-                    funcaoCheckbox.checked = true;
-                  }
-                });
-              }
-            });
+            if (!haviaFiltroDeTipo) {
+              tipoFiltros.forEach((funcaoCheckbox) => {
+                if (normalizeFuncao(funcaoCheckbox.name) === nomeFuncaoBase) {
+                  funcaoCheckbox.checked = true;
+                }
+              });
+            }
+          });
 
           contarLinhasTabela();
           if (haviaFiltroDeTipo) filtrarTabela();
-          if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = false;
+          if (confirmarPagamentoButton)
+            confirmarPagamentoButton.disabled = false;
 
           // ─── Adendo status widget ────────────────────────────────────────
           const _colabId = parseInt(
@@ -848,7 +1179,8 @@ document.addEventListener("DOMContentLoaded", function () {
           console.error("Erro ao carregar dados do colaborador:", error);
           document.querySelector("#tabela-a-pagar tbody").innerHTML =
             '<tr><td colspan="7" class="col-center">Não foi possível carregar as tarefas.</td></tr>';
-          if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = true;
+          if (confirmarPagamentoButton)
+            confirmarPagamentoButton.disabled = true;
         });
     } else {
       document.querySelector("#tabela-a-pagar tbody").innerHTML = "";
@@ -866,21 +1198,25 @@ document.addEventListener("DOMContentLoaded", function () {
   // Expor para o dashboard
   window.carregarDadosColab = carregarDadosColab;
 
-  document.getElementById("marcar-todos").addEventListener("click", function () {
-    pagamentoVisibleCheckboxes().forEach((checkbox) => {
-      checkbox.checked = true;
-      checkbox.closest("tr")?.classList.add("row-selected");
+  document
+    .getElementById("marcar-todos")
+    .addEventListener("click", function () {
+      pagamentoVisibleCheckboxes().forEach((checkbox) => {
+        checkbox.checked = true;
+        checkbox.closest("tr")?.classList.add("row-selected");
+      });
+      contarLinhasTabela();
     });
-    contarLinhasTabela();
-  });
 
-  document.getElementById("desmarcar-todos").addEventListener("click", function () {
-    pagamentoVisibleCheckboxes().forEach((checkbox) => {
-      checkbox.checked = false;
-      checkbox.closest("tr")?.classList.remove("row-selected");
+  document
+    .getElementById("desmarcar-todos")
+    .addEventListener("click", function () {
+      pagamentoVisibleCheckboxes().forEach((checkbox) => {
+        checkbox.checked = false;
+        checkbox.closest("tr")?.classList.remove("row-selected");
+      });
+      contarLinhasTabela();
     });
-    contarLinhasTabela();
-  });
 
   document
     .getElementById("confirmar-pagamento")
@@ -893,7 +1229,9 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       // Processa somente os itens selecionados e visíveis em "A Pagar".
       var checkboxes = Array.from(
-        document.querySelectorAll("#tabela-a-pagar .pagamento-checkbox:checked"),
+        document.querySelectorAll(
+          "#tabela-a-pagar .pagamento-checkbox:checked",
+        ),
       ).filter((cb) => !cb.disabled && cb.closest("tr")?.offsetParent !== null);
       var ids = checkboxes.map((cb) => ({
         id: parseInt(cb.getAttribute("data-id"), 10),
@@ -923,23 +1261,37 @@ document.addEventListener("DOMContentLoaded", function () {
           const response = await fetch("updatePagamento.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
+            body: JSON.stringify({
+              ids,
+              colaborador_id: colaboradorId,
+              mes,
+              ano,
+            }),
           });
           const data = await response.json();
           if (!response.ok || !data.success) {
-            throw new Error(data.error || "Não foi possível registrar os pagamentos.");
+            throw new Error(
+              data.error || "Não foi possível registrar os pagamentos.",
+            );
           }
 
           const historicoResponse = await fetch("insertHistorico.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano }),
+            body: JSON.stringify({
+              ids,
+              colaborador_id: colaboradorId,
+              mes,
+              ano,
+            }),
           });
           const historico = await historicoResponse.json();
 
           await Swal.fire({
             icon: historico.success ? "success" : "warning",
-            title: historico.success ? "Pagamento registrado" : "Pagamento registrado com alerta",
+            title: historico.success
+              ? "Pagamento registrado"
+              : "Pagamento registrado com alerta",
             text: historico.success
               ? `${ids.length} ${ids.length === 1 ? "item foi registrado" : "itens foram registrados"}.`
               : "O pagamento foi registrado, mas o histórico legado não pôde ser atualizado.",
@@ -2396,3 +2748,248 @@ function escHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/* Adaptador de linhas: a API ainda entrega a mesma estrutura; somente a
+ * apresentação das colunas muda conforme a aba ativa. */
+document.addEventListener(
+  "DOMContentLoaded",
+  function ativarTabelaPagamentoRedesenhada() {
+    const unpaid = document.getElementById("tabela-a-pagar");
+    const paid = document.getElementById("tabela-pago");
+    const divergence = document.getElementById("tabela-divergencias");
+    if (!unpaid || !paid || !divergence) return;
+    const money = (value) =>
+      (Number(value) || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+    const visibleRows = (table) =>
+      Array.from(table.querySelectorAll("tbody tr")).filter(
+        (row) => row.children.length > 1,
+      );
+    const paymentState = (checkbox, row) => {
+      const value = Number(checkbox?.dataset.valor || 0);
+      if (value <= 0) return "Sem valor definido";
+      if (row.dataset.divergence === "1") return "Divergência";
+      const partial = Number(checkbox?.dataset.pagoParcialCount || 0) > 0;
+      return partial ? "Parcial" : "Pendente";
+    };
+    const statusBadge = (label) =>
+      `<span class="payment-state state-${label.toLocaleLowerCase("pt-BR").replace(/[^a-z]/g, "")}">${label}</span>`;
+    const transformUnpaid = (row) => {
+      if (row.dataset.redesigned === "unpaid" || row.children.length < 7)
+        return;
+      const cells = Array.from(row.children);
+      const [name, , role, value, checkboxCell, , actionCell] = cells;
+      const checkbox = checkboxCell.querySelector(".pagamento-checkbox");
+      const rawValue =
+        Number(
+          checkbox?.dataset.valor ||
+            value.textContent
+              .replace(/[^0-9,.-]+/g, "")
+              .replace(/\./g, "")
+              .replace(",", "."),
+        ) || 0;
+      if (checkbox && rawValue <= 0) {
+        checkbox.disabled = true;
+        checkbox.checked = false;
+        checkbox.title = "Defina um valor antes de confirmar o pagamento.";
+      }
+      row.dataset.functionName = role.textContent.trim();
+      const task = document.createElement("td");
+      task.className = "task-cell";
+      task.innerHTML = `<strong>${name.textContent.trim()}</strong><small>${row.dataset.obra || ""}</small>`;
+      const roleCell = document.createElement("td");
+      roleCell.textContent = role.textContent.trim();
+      const valueCell = document.createElement("td");
+      valueCell.className = "col-numeric";
+      valueCell.textContent = money(rawValue);
+      const stateCell = document.createElement("td");
+      stateCell.className = "financial-state-cell";
+      stateCell.innerHTML = statusBadge(paymentState(checkbox, row));
+      const newAction = document.createElement("td");
+      newAction.className = "col-center row-actions";
+      const originalAction = actionCell.querySelector("button");
+      if (originalAction && rawValue > 0) {
+        originalAction.classList.add("row-action-menu");
+        originalAction.title = "Pagar item";
+        originalAction.innerHTML =
+          '<i class="fa-solid fa-ellipsis-vertical"></i>';
+        newAction.append(originalAction);
+      } else {
+        const correction = document.createElement("button");
+        correction.type = "button";
+        correction.className = "row-action-menu";
+        correction.title = "Adicionar valor";
+        correction.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
+        correction.addEventListener("click", () => {
+          document.getElementById("adicionar-valor")?.click();
+          document.getElementById("valor")?.focus();
+        });
+        newAction.append(correction);
+      }
+      row.replaceChildren(
+        checkboxCell,
+        task,
+        roleCell,
+        valueCell,
+        stateCell,
+        newAction,
+      );
+      row.dataset.redesigned = "unpaid";
+    };
+    const transformPaid = (row) => {
+      if (row.dataset.redesigned === "paid" || row.children.length < 6) return;
+      const cells = Array.from(row.children);
+      const [name, , role, value, checkboxCell, date] = cells;
+      const checkbox = checkboxCell.querySelector(".pagamento-checkbox");
+      const rawValue = Number(checkbox?.dataset.valor || 0);
+      row.dataset.functionName = role.textContent.trim();
+      const task = document.createElement("td");
+      task.className = "task-cell";
+      task.innerHTML = `<strong>${name.textContent.trim()}</strong><small>${row.dataset.obra || ""}</small>`;
+      const roleCell = document.createElement("td");
+      roleCell.textContent = role.textContent.trim();
+      const amount = document.createElement("td");
+      amount.className = "col-numeric";
+      amount.textContent = money(rawValue);
+      // A API atual não entrega um tipo de pagamento canônico (Integral,
+      // Complemento ou Ajuste); não inferir este dado apenas no frontend.
+      const type = document.createElement("td");
+      type.textContent = "—";
+      const dateCell = document.createElement("td");
+      dateCell.textContent = date.textContent.trim() || "—";
+      const details = document.createElement("td");
+      details.innerHTML = '<span class="details-muted">—</span>';
+      row.replaceChildren(task, roleCell, amount, type, dateCell, details);
+      row.dataset.redesigned = "paid";
+    };
+    const syncDivergences = () => {
+      const legacy = document.getElementById("painel-divergencias");
+      if (!legacy) return;
+      const legacyRows = Array.from(legacy.querySelectorAll("tbody tr"));
+      const tbody = divergence.querySelector("tbody");
+      tbody.replaceChildren();
+      legacyRows.forEach((legacyRow) => {
+        const cells = Array.from(legacyRow.children);
+        if (cells.length < 5) return;
+        const row = document.createElement("tr");
+        row.dataset.divergence = "1";
+        row.dataset.functionName = cells[1].textContent.trim();
+        const action = cells[4].querySelector("button");
+        row.innerHTML = `<td class="task-cell"><strong>${cells[0].textContent.trim()}</strong></td><td>${cells[1].textContent.trim()}</td><td>${cells[2].textContent.trim()}</td><td>${cells[3].textContent.trim()}</td><td>${statusBadge("Divergência")}</td><td></td>`;
+        if (action) row.lastElementChild.append(action);
+        tbody.append(row);
+        visibleRows(unpaid)
+          .filter((unpaidRow) =>
+            unpaidRow.textContent.includes(cells[0].textContent.trim()),
+          )
+          .forEach((unpaidRow) => {
+            unpaidRow.dataset.divergence = "1";
+            const state = unpaidRow.querySelector(".financial-state-cell");
+            if (state) state.innerHTML = statusBadge("Divergência");
+          });
+      });
+      legacy.remove();
+      atualizarContadoresPagamento();
+    };
+    const transform = () => {
+      visibleRows(unpaid).forEach(transformUnpaid);
+      visibleRows(paid).forEach(transformPaid);
+      if (
+        !document.getElementById("funcoes-popover")?.dataset.initialized &&
+        (visibleRows(unpaid).length || visibleRows(paid).length)
+      ) {
+        document
+          .querySelectorAll("#funcoes-popover input")
+          .forEach((input) => (input.checked = false));
+        document.getElementById("funcoes-popover").dataset.initialized = "1";
+      }
+      syncDivergences();
+      atualizarContadoresPagamento();
+      window.pagamentoAplicarFiltrosVisuais?.();
+    };
+    const observer = new MutationObserver(transform);
+    observer.observe(unpaid.querySelector("tbody"), { childList: true });
+    observer.observe(paid.querySelector("tbody"), { childList: true });
+    const legacyPanelObserver = new MutationObserver(() => {
+      if (document.getElementById("painel-divergencias")) transform();
+    });
+    legacyPanelObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+    document.addEventListener("change", (event) => {
+      if (event.target.matches(".pagamento-checkbox"))
+        atualizarContadoresPagamento();
+    });
+    window.atualizarContadoresPagamento =
+      function atualizarContadoresPagamento() {
+        const allUnpaid = visibleRows(unpaid),
+          allPaid = visibleRows(paid),
+          allRows = [...allUnpaid, ...allPaid];
+        const total = allRows.reduce((sum, row) => {
+          const checkbox = row.querySelector(".pagamento-checkbox");
+          const value = checkbox
+            ? Number(checkbox.dataset.valor || 0)
+            : Number(
+                row.children[2]?.textContent
+                  .replace(/[^0-9,.-]+/g, "")
+                  .replace(/\./g, "")
+                  .replace(",", "."),
+              );
+          return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+        const unpaidTotal = allUnpaid.reduce(
+          (sum, row) =>
+            sum +
+            (Number(
+              row.querySelector(".pagamento-checkbox")?.dataset.valor || 0,
+            ) || 0),
+          0,
+        );
+        const paidTotal = Math.max(0, total - unpaidTotal);
+        const set = (id, content) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = content;
+        };
+        set("total-imagens", allRows.length);
+        set("total-itens-resumo", allRows.length);
+        set("totalValor", money(total));
+        set("total-imagens-nao-pagas", allUnpaid.length);
+        set("totalValorNaoPago", money(unpaidTotal));
+        set("total-imagens-pagas", allPaid.length);
+        set("totalValorPago", money(paidTotal));
+        set("tab-count-a-pagar", allUnpaid.length);
+        set("tab-count-pagos", allPaid.length);
+        set("tab-count-divergencias", visibleRows(divergence).length);
+        const selected = Array.from(
+          unpaid.querySelectorAll(".pagamento-checkbox:checked"),
+        ).filter(
+          (cb) => !cb.disabled && cb.closest("tr")?.offsetParent !== null,
+        );
+        const selectedTotal = selected.reduce(
+          (sum, cb) => sum + (Number(cb.dataset.valor || 0) || 0),
+          0,
+        );
+        set(
+          "selection-summary",
+          `${selected.length} ${selected.length === 1 ? "item selecionado" : "itens selecionados"} · ${money(selectedTotal)}`,
+        );
+        const bar = document.getElementById("selection-action-bar");
+        if (bar) bar.hidden = selected.length === 0;
+        const selectAll = document.getElementById("selecionar-visiveis");
+        if (selectAll) {
+          const eligible = pagamentoVisibleCheckboxes(
+            "#tabela-a-pagar .pagamento-checkbox",
+          );
+          selectAll.checked =
+            eligible.length > 0 && eligible.every((cb) => cb.checked);
+          selectAll.indeterminate = selected.length > 0 && !selectAll.checked;
+        }
+      };
+    window.contarLinhasTabela = window.atualizarContadoresPagamento;
+    window.filtrarTabela = () => window.pagamentoAplicarFiltrosVisuais?.();
+    setTimeout(transform, 0);
+  },
+);

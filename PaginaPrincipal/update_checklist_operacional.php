@@ -80,30 +80,35 @@ try {
         throw new RuntimeException('Nao foi possivel atualizar itens.');
     }
 
+    $stmtMode = $conn->prepare(
+        'SELECT update_mode FROM checklist_operacional_item WHERE checklist_id = ? AND item_key = ? LIMIT 1'
+    );
+    if (!$stmtMode) {
+        throw new RuntimeException('Nao foi possivel consultar itens do checklist.');
+    }
+
     foreach ($items as $itemKey => $doneValue) {
         $itemKey = trim((string) $itemKey);
         if ($itemKey === '') {
             continue;
         }
+
+        // Alguns clientes ainda enviam todos os itens do checklist. Requisitos
+        // automaticos nao podem ser editados manualmente, mas tambem nao devem
+        // impedir o salvamento dos demais campos enviados na mesma requisicao.
+        $stmtMode->bind_param('is', $checklistId, $itemKey);
+        $stmtMode->execute();
+        $modeRow = $stmtMode->get_result()->fetch_assoc();
+        if (!$modeRow || strtoupper((string) ($modeRow['update_mode'] ?? '')) === 'AUTOMATICO') {
+            continue;
+        }
+
         $done = !empty($doneValue) ? 1 : 0;
         $stmt->bind_param('iiiiis', $done, $done, $actor, $done, $checklistId, $itemKey);
         $stmt->execute();
-        if ($stmt->affected_rows === 0) {
-            $stmtMode = $conn->prepare(
-                'SELECT update_mode FROM checklist_operacional_item WHERE checklist_id = ? AND item_key = ? LIMIT 1'
-            );
-            if ($stmtMode) {
-                $stmtMode->bind_param('is', $checklistId, $itemKey);
-                $stmtMode->execute();
-                $modeRow = $stmtMode->get_result()->fetch_assoc();
-                $stmtMode->close();
-                if (($modeRow['update_mode'] ?? '') === 'AUTOMATICO') {
-                    throw new DomainException('O requisito Fotografico e atualizado automaticamente.');
-                }
-            }
-        }
     }
     $stmt->close();
+    $stmtMode->close();
 
     pendencias_operacionais_update_checklist_status($conn, $checklistId);
     $conn->commit();

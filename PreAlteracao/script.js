@@ -35,6 +35,13 @@
         "Triagens concluídas e liberadas para o próximo passo aparecem aqui.",
       icon: "fa-calendar-check",
     },
+    HOLD: {
+      col: "hold",
+      label: "Em HOLD",
+      emptyTitle: "Nenhum lote em HOLD",
+      emptyText: "Lotes bloqueados por uma Issue do Flow Block aparecem aqui.",
+      icon: "fa-pause-circle",
+    },
   };
 
   const PRIORIDADE_META = {
@@ -98,16 +105,19 @@
     triagem: document.getElementById("colTriagem"),
     aguardando: document.getElementById("colAguardando"),
     planejamento: document.getElementById("colPlanejamento"),
+    hold: document.getElementById("colHold"),
   };
   const counts = {
     triagem: document.getElementById("countTriagem"),
     aguardando: document.getElementById("countAguardando"),
     planejamento: document.getElementById("countPlanejamento"),
+    hold: document.getElementById("countHold"),
   };
   const imageCounts = {
     triagem: document.getElementById("imagesTriagem"),
     aguardando: document.getElementById("imagesAguardando"),
     planejamento: document.getElementById("imagesPlanejamento"),
+    hold: document.getElementById("imagesHold"),
   };
 
   let state = {
@@ -544,6 +554,7 @@
       planejamento: lista.filter(
         (l) => l.lote_status === "PRONTO_PLANEJAMENTO",
       ),
+      hold: lista.filter((l) => l.lote_status === "HOLD"),
     };
 
     Object.entries(grouped).forEach(([key, lotes]) => {
@@ -787,6 +798,106 @@
     }
   }
 
+  async function abrirHoldOperacionalPreAlt(lote) {
+    if (!lote?.lote_id) return;
+    try {
+      const optionsResponse = await fetch(
+        "../FlowBlock/api.php?action=options",
+      );
+      const options = await optionsResponse.json();
+      if (!optionsResponse.ok || !options.ok)
+        throw new Error(
+          options.message || "Não foi possível carregar o formulário.",
+        );
+      const choices = (items, label) =>
+        `<option value="">${label}</option>${(items || []).map((x) => `<option value="${Number(x.id)}">${escHtml(x.nome || x.codigo || "")}</option>`).join("")}`;
+      const result = await Swal.fire({
+        title: "Colocar lote em HOLD",
+        html: `<div class="operational-hold-form">
+          <p><strong>${escHtml(lote.nomenclatura || "Lote")}</strong></p>
+          <label>Tipo<select id="prealt-hold-type">${choices(options.types, "Selecione o tipo")}</select></label>
+          <label>Fila responsável<select id="prealt-hold-queue">${choices(options.queues, "Selecione a fila")}</select></label>
+          <label>Responsável<select id="prealt-hold-responsible">${choices(options.collaborators, "Selecione o responsável")}</select></label>
+          <label>Urgência<select id="prealt-hold-urgency"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
+          <label>Observação<textarea id="prealt-hold-description" rows="5" required></textarea></label>
+        </div>`,
+        showCancelButton: true,
+        confirmButtonText: "Criar impedimento",
+        cancelButtonText: "Cancelar",
+        didOpen: () => {
+          const select = document.getElementById("prealt-hold-responsible");
+          if (select && lote.responsavel_id)
+            select.value = String(lote.responsavel_id);
+        },
+        preConfirm: async () => {
+          const payload = {
+            source_type: "pre_alteracao",
+            source_id: Number(lote.lote_id),
+            tipo_id: Number(
+              document.getElementById("prealt-hold-type")?.value || 0,
+            ),
+            fila_id: Number(
+              document.getElementById("prealt-hold-queue")?.value || 0,
+            ),
+            responsavel_id: Number(
+              document.getElementById("prealt-hold-responsible")?.value || 0,
+            ),
+            urgencia:
+              document.getElementById("prealt-hold-urgency")?.value || "NORMAL",
+            descricao:
+              document
+                .getElementById("prealt-hold-description")
+                ?.value.trim() || "",
+          };
+          if (
+            !payload.tipo_id ||
+            !payload.fila_id ||
+            !payload.responsavel_id ||
+            !payload.descricao
+          ) {
+            Swal.showValidationMessage(
+              "Preencha tipo, fila, responsável e observação.",
+            );
+            return false;
+          }
+          const response = await fetch(
+            "../FlowBlock/api.php?action=create_operational",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            },
+          );
+          const json = await response.json();
+          if (!response.ok || !json.ok) {
+            Swal.showValidationMessage(
+              json.message || "Não foi possível criar o impedimento.",
+            );
+            return false;
+          }
+          return json;
+        },
+      });
+      if (result.isConfirmed && result.value) {
+        await carregarLotes();
+        fecharModal();
+        window.open(
+          `../FlowBlock/issue.php?id=${encodeURIComponent(result.value.id)}`,
+          "_blank",
+        );
+      }
+    } catch (error) {
+      window
+        .Toastify?.({
+          text: error.message,
+          duration: 3500,
+          gravity: "top",
+          backgroundColor: "#d94b4b",
+        })
+        ?.showToast();
+    }
+  }
+
   function renderModal(lote, itens) {
     const resumo = buildResumo(itens);
     refs.paModalTitle.textContent = lote.nomenclatura || "Lote";
@@ -811,6 +922,9 @@
       <button type="button" class="modal-review-btn" ${lote.link_review ? "" : "disabled"} id="modalReviewBtn">
         <i class="fa-solid fa-arrow-up-right-from-square"></i> Review Studio
       </button>
+      <button type="button" class="modal-review-btn" ${lote.lote_status === "HOLD" ? "disabled" : ""} id="modalHoldBtn">
+        <i class="fa-solid fa-pause-circle"></i> Colocar em HOLD
+      </button>
     `;
     refs.paModalActions
       .querySelector("#modalUploadProjetoBtn")
@@ -828,6 +942,9 @@
         if (lote.link_review)
           window.open(lote.link_review, "_blank", "noopener");
       });
+    refs.paModalActions
+      .querySelector("#modalHoldBtn")
+      ?.addEventListener("click", () => abrirHoldOperacionalPreAlt(lote));
 
     refs.paModalBody.innerHTML = `
       <div class="modal-summary">
@@ -889,9 +1006,10 @@
   }
 
   function isClientPending(item) {
-    return !isReleased(item) && (
-      item?.resultado === "AGUARDANDO_CLIENTE" ||
-      Number(item?.necessita_retorno || 0) === 1
+    return (
+      !isReleased(item) &&
+      (item?.resultado === "AGUARDANDO_CLIENTE" ||
+        Number(item?.necessita_retorno || 0) === 1)
     );
   }
 
@@ -1061,7 +1179,10 @@
       itemIds.includes(Number(item.item_id)),
     );
     if (selectedItems.some(isReleased)) {
-      toast("Imagens já liberadas não podem receber novas interações.", "#F59E0B");
+      toast(
+        "Imagens já liberadas não podem receber novas interações.",
+        "#F59E0B",
+      );
       return;
     }
     if (tipo === "RETORNO" && !selectedItems.every(isClientPending)) {
@@ -1132,7 +1253,9 @@
     div.dataset.itemId = item.item_id;
     div.dataset.imagemId = item.imagem_id || item.item_id;
     div.dataset.nome = item.nome || "";
-    div.dataset.resultado = released ? "liberada" : resultadoFilterValue(resultado);
+    div.dataset.resultado = released
+      ? "liberada"
+      : resultadoFilterValue(resultado);
 
     div.innerHTML = `
       <header class="modal-item-header">
@@ -1156,14 +1279,17 @@
 
     if (!released) {
       wireItem(div, item);
-      div.querySelector("[data-upload-image]")?.addEventListener("click", () => {
-        openTriagemUploadModal("imagem", item);
-      });
+      div
+        .querySelector("[data-upload-image]")
+        ?.addEventListener("click", () => {
+          openTriagemUploadModal("imagem", item);
+        });
       div
         .querySelector(".client-item-select")
         ?.addEventListener("change", (event) => {
           const itemId = Number(event.currentTarget.value);
-          if (event.currentTarget.checked) state.clientItemSelection.add(itemId);
+          if (event.currentTarget.checked)
+            state.clientItemSelection.add(itemId);
           else state.clientItemSelection.delete(itemId);
           syncClientInteractionSelectionUi();
         });

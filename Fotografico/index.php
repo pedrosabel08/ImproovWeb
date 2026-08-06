@@ -20,7 +20,7 @@ $asset = static fn(string $file): string => rawurlencode((string) (@filemtime(__
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Planejamento Fotográfico</title>
+    <title>Fotográfico</title>
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=<?= $asset('style.css') ?>">
@@ -202,6 +202,11 @@ $asset = static fn(string $file): string => rawurlencode((string) (@filemtime(__
                     <option value="INFORMACAO_INCOMPLETA">Informação incompleta</option>
                     <option value="ALTERACAO_PLANO">Alteração no plano</option>
                     <option value="REAGENDAMENTO">Reagendamento</option>
+                </select></label><label class="foto-field">Tipo da Issue<select id="fotoHoldIssueType"></select></label><label class="foto-field">Fila<select id="fotoHoldIssueQueue"></select></label><label class="foto-field">Responsável pelo impedimento<select id="fotoHoldIssueResponsible"></select></label><label class="foto-field">Urgência<select id="fotoHoldIssueUrgency">
+                    <option value="NORMAL">Normal</option>
+                    <option value="BAIXA">Baixa</option>
+                    <option value="ALTA">Alta</option>
+                    <option value="CRITICA">Crítica</option>
                 </select></label><label class="foto-field">Observação<textarea id="fotoHoldDetails" rows="4"></textarea></label>
             <div class="foto-actions"><button value="cancel" class="foto-btn foto-btn-ghost">Cancelar</button><button type="button" class="foto-btn foto-btn-danger" id="fotoConfirmHold">Abrir HOLD</button></div>
         </form>

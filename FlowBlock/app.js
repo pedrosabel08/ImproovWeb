@@ -528,7 +528,7 @@
       `
             : "";
       const confirmationCta = awaitingConfirmation
-        ? `<section class="fb-resolution-confirmation"><i class="ri-checkbox-circle-line"></i><div><strong>A pendência foi marcada como resolvida.</strong><p>Confirme se a resposta ou o material recebido é suficiente. A tarefa continuará em HOLD até ser replanejada.</p></div>${issue.can_confirm_resolution ? '<div class="fb-resolution-confirmation-actions"><button class="fb-button fb-button--ghost" data-transition="ABERTA">Reabrir Issue</button><button class="fb-button fb-button--primary" data-confirm-resolution>Entendi, confirmar resolução</button></div>' : '<span class="fb-secondary">Aguardando confirmação do dono da tarefa.</span>'}</section>`
+        ? `<section class="fb-resolution-confirmation"><i class="ri-checkbox-circle-line"></i><div><strong>A pendência foi marcada como resolvida.</strong><p>${issue.operational_source_type ? "Confirme se a resposta é suficiente para liberar o HOLD operacional." : "Confirme se a resposta ou o material recebido é suficiente. A tarefa continuará em HOLD até ser replanejada."}</p></div>${issue.can_confirm_resolution ? '<div class="fb-resolution-confirmation-actions"><button class="fb-button fb-button--ghost" data-transition="ABERTA">Reabrir Issue</button><button class="fb-button fb-button--primary" data-confirm-resolution>Entendi, confirmar resolução</button></div>' : `<span class="fb-secondary">Aguardando confirmação de ${issue.operational_source_type ? "quem abriu a Issue ou da gestão" : "quem criou a Issue"}.</span>`}</section>`
         : "";
       const taskReadyNotice =
         !awaitingConfirmation &&
@@ -547,7 +547,10 @@
       const mentionOptions = await api("options").catch(() => ({
         collaborators: [],
       }));
-      root.innerHTML = `<a class="fb-back" href="index.php${location.search.includes("from=") ? "?" + decodeURIComponent(new URLSearchParams(location.search).get("from")).replace(/^\?/, "") : ""}"><i class="ri-arrow-left-line"></i> Flow Block</a><header class="fb-detail-header"><div><div><h1>${esc(issue.codigo)} <span class="fb-pill fb-status-${issue.status}">${statusLabel(issue.status)}</span></h1></div><p class="fb-detail-meta">${esc(issue.imagem_nome)} · ${esc(issue.nome_funcao)} · ${esc(issue.nomenclatura || issue.nome_obra || "—")} · bloqueada há ${esc(issue.tempo_bloqueado)}</p>${deadline}</div><div class="fb-detail-actions">${actions}</div></header>${confirmationCta}${taskReadyNotice}<div class="fb-detail-grid"><section><div class="fb-timeline"><h2 class="fb-section-title"><i class="ri-git-commit-line"></i> Timeline</h2><div class="fb-timeline-list">${renderTimeline(activities, attachmentsByActivity) || '<p class="fb-secondary">Sem eventos.</p>'}</div></div><form class="fb-composer" id="comment-form"><h2>Adicionar comentário</h2><div class="fb-mention-field"><textarea id="comment-content" rows="4" placeholder="Escreva um comentário. Digite @ para mencionar alguém."></textarea><div class="fb-mention-picker" id="comment-mention-picker" hidden></div></div><div class="fb-attachment-control"><i class="ri-attachment-2"></i><input type="file" id="comment-file" accept=".pdf,.dwg,.dxf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.zip,.txt" multiple></div><footer><button class="fb-button fb-button--primary">Enviar</button></footer></form></section><aside class="fb-details-panel"><h2>Detalhes da Issue</h2>${detailItem("Tipo", issue.tipo_nome)}${detailItem("Observação", issue.descricao)}${detailItem("Criado por", issue.criador_nome)}${detailItem("Fila responsável", issue.fila_nome || "Não definida")}${detailItem("Responsável", issue.responsavel_nome || "Não definido")}${detailItem("Urgência", urgencyLabel(issue.urgencia))}${detailItem("Aberta em", fmtDate(issue.criado_em))}${detailItem("Última atualização", fmtDate(issue.atualizado_em))}${detailItem("Próxima cobrança", issue.proxima_cobranca_em ? fmtDate(issue.proxima_cobranca_em) : "—")}<a class="fb-detail-task" href="../inicio.php?funcao_imagem_id=${issue.funcao_imagem_id}"><i class="ri-external-link-line"></i> Tarefa relacionada</a></aside></div>`;
+      const originLink = issue.operational_source_type
+        ? `<a class="fb-detail-task" href="../${esc(issue.operational_source_url || "PaginaPrincipal/")}"><i class="ri-external-link-line"></i> Abrir pendência relacionada</a>`
+        : `<a class="fb-detail-task" href="../inicio.php?funcao_imagem_id=${issue.funcao_imagem_id}"><i class="ri-external-link-line"></i> Tarefa relacionada</a>`;
+      root.innerHTML = `<a class="fb-back" href="index.php${location.search.includes("from=") ? "?" + decodeURIComponent(new URLSearchParams(location.search).get("from")).replace(/^\?/, "") : ""}"><i class="ri-arrow-left-line"></i> Flow Block</a><header class="fb-detail-header"><div><div><h1>${esc(issue.codigo)} <span class="fb-pill fb-status-${issue.status}">${statusLabel(issue.status)}</span></h1></div><p class="fb-detail-meta">${esc(issue.imagem_nome)} · ${esc(issue.nome_funcao)} · ${esc(issue.nomenclatura || issue.nome_obra || "—")} · bloqueada há ${esc(issue.tempo_bloqueado)}</p>${deadline}</div><div class="fb-detail-actions">${actions}</div></header>${confirmationCta}${taskReadyNotice}<div class="fb-detail-grid"><section><div class="fb-timeline"><h2 class="fb-section-title"><i class="ri-git-commit-line"></i> Timeline</h2><div class="fb-timeline-list">${renderTimeline(activities, attachmentsByActivity) || '<p class="fb-secondary">Sem eventos.</p>'}</div></div><form class="fb-composer" id="comment-form"><h2>Adicionar comentário</h2><div class="fb-mention-field"><textarea id="comment-content" rows="4" placeholder="Escreva um comentário. Digite @ para mencionar alguém."></textarea><div class="fb-mention-picker" id="comment-mention-picker" hidden></div></div><div class="fb-attachment-control"><i class="ri-attachment-2"></i><input type="file" id="comment-file" accept=".pdf,.dwg,.dxf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.zip,.txt" multiple></div><footer><button class="fb-button fb-button--primary">Enviar</button></footer></form></section><aside class="fb-details-panel"><h2>Detalhes da Issue</h2>${detailItem("Tipo", issue.tipo_nome)}${detailItem("Observação", issue.descricao)}${detailItem("Criado por", issue.criador_nome)}${detailItem("Fila responsável", issue.fila_nome || "Não definida")}${detailItem("Responsável", issue.responsavel_nome || "Não definido")}${detailItem("Urgência", urgencyLabel(issue.urgencia))}${detailItem("Aberta em", fmtDate(issue.criado_em))}${detailItem("Última atualização", fmtDate(issue.atualizado_em))}${detailItem("Próxima cobrança", issue.proxima_cobranca_em ? fmtDate(issue.proxima_cobranca_em) : "—")}${originLink}</aside></div>`;
       const contextLinks = document.createElement("div");
       contextLinks.innerHTML = `<a class="fb-detail-task" href="index.php?image_id=${issue.imagem_id}"><i class="ri-image-line"></i> Issues da imagem</a><a class="fb-detail-task" href="index.php?obra_id=${issue.obra_id}"><i class="ri-building-line"></i> Issues da obra</a>`;
       $(".fb-details-panel").appendChild(contextLinks);
@@ -609,7 +612,9 @@
         ?.addEventListener("click", async () => {
           if (
             !confirm(
-              "Confirmar que a resolução é suficiente? A tarefa continuará em HOLD até ser replanejada.",
+              issue.operational_source_type
+                ? "Confirmar que a resolução é suficiente e liberar o HOLD operacional?"
+                : "Confirmar que a resolução é suficiente? A tarefa continuará em HOLD até ser replanejada.",
             )
           )
             return;
@@ -619,7 +624,9 @@
               body: { id: issue.id },
             });
             notify(
-              "Resolução confirmada. A tarefa permanece em HOLD até ser replanejada.",
+              issue.operational_source_type
+                ? "Resolução confirmada e HOLD operacional liberado."
+                : "Resolução confirmada. A tarefa permanece em HOLD até ser replanejada.",
               "success",
             );
             load();

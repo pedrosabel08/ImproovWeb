@@ -181,7 +181,7 @@ function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackRes
         'subtipo_definido' => ['DUVIDA_TECNICA', 'ARQUITETURA'],
         'arquivos_finais_subtipo' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
         'render_aprovado' => ['APROVACAO_PENDENTE', 'PRODUCAO'],
-        'pre_alteracao_liberada' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
+        'entrega_registrada_etapa_atual' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
         'MODELAGEM_FACHADA_BASE_AUSENTE' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
         'imagem_base_pronta' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
     ];
@@ -437,6 +437,59 @@ function motor_requisitos_finalizacao_da_imagem(mysqli $conn, int $imagemId): ?a
     return $row ?: null;
 }
 
+function motor_requisitos_entrega_registrada_na_etapa(mysqli $conn, int $obraId, int $imagemId, int $statusId): ?array
+{
+    if ($obraId <= 0 || $imagemId <= 0 || $statusId <= 0) {
+        return null;
+    }
+
+    // Entregas comuns vinculam a imagem em entregas_itens. P00 possui versões
+    // próprias, mas segue a mesma regra: a entrega precisa estar registrada na
+    // etapa atual da imagem.
+    $stmt = $conn->prepare(
+        "SELECT e.id AS entrega_id, ei.id AS entrega_item_id, e.data_prevista
+           FROM entregas e
+           JOIN entregas_itens ei ON ei.entrega_id = e.id
+          WHERE e.obra_id = ?
+            AND e.status_id = ?
+            AND ei.imagem_id = ?
+            AND (e.arquivada IS NULL OR e.arquivada = 0)
+          ORDER BY e.id DESC, ei.id DESC
+          LIMIT 1"
+    );
+    if ($stmt) {
+        $stmt->bind_param('iii', $obraId, $statusId, $imagemId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($row) {
+            return $row;
+        }
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT e.id AS entrega_id, v.id AS entrega_item_id, e.data_prevista
+           FROM entregas e
+           JOIN entregas_p00_versoes v ON v.entrega_id = e.id
+          WHERE e.obra_id = ?
+            AND e.status_id = ?
+            AND v.imagem_id = ?
+            AND COALESCE(e.tipo_entrega, 'PADRAO') = 'P00'
+            AND (e.arquivada IS NULL OR e.arquivada = 0)
+          ORDER BY e.id DESC, v.id DESC
+          LIMIT 1"
+    );
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('iii', $obraId, $statusId, $imagemId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row ?: null;
+}
+
 function motor_requisitos_primeira_composicao_pendente_subtipo(mysqli $conn, int $obraId, int $subtipoId): ?array
 {
     if ($subtipoId <= 0) return null;
@@ -491,10 +544,12 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status,
                 f.nome_funcao,
-                ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id, ico.status_id AS imagem_status_id
+                ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id,
+                ico.status_id AS imagem_status_id, si.nome_status AS imagem_status_nome
            FROM funcao_imagem fi
            JOIN funcao f ON f.idfuncao = fi.funcao_id
            JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+           LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
           WHERE fi.idfuncao_imagem = ?
           LIMIT 1"
     );
@@ -594,34 +649,24 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             'responsavel_nome' => $render['nome_colaborador'] ?? '',
         ]));
     } elseif ($funcaoId === 6) {
-        // As liberações atuais possuem um vínculo por item. Os lotes concluídos
-        // antes dessa tabela existir ficaram apenas com o status PLANEJADO;
-        // nesse formato, todos os itens do lote já haviam sido liberados.
-        $stmtAlt = $conn->prepare(
-            "SELECT COALESCE(pli.id, pai.id) AS id,
-                    COALESCE(pai.responsavel_id, pal.responsavel_id, pal.created_by) AS responsavel_id,
-                    c.nome_colaborador AS responsavel_nome
-               FROM pre_alt_itens pai
-               JOIN pre_alt_lote pal ON pal.id = pai.pre_alt_lote_id
-               LEFT JOIN pre_alt_liberacao_itens pli ON pli.pre_alt_item_id = pai.id
-               LEFT JOIN colaborador c ON c.idcolaborador = COALESCE(pai.responsavel_id, pal.responsavel_id, pal.created_by)
-              WHERE pai.imagem_id = ?
-                AND (
-                    pli.id IS NOT NULL
-                    OR (
-                        pal.status = 'PLANEJADO'
-                        AND pai.resultado = 'ALTERACAO'
-                        AND pai.nivel_complexidade BETWEEN 1 AND 5
-                    )
-                )
-              ORDER BY pli.id DESC, pai.id DESC
-              LIMIT 1"
+        $entrega = motor_requisitos_entrega_registrada_na_etapa(
+            $conn,
+            $obraId,
+            $imagemId,
+            (int) ($context['imagem_status_id'] ?? 0)
         );
-        $stmtAlt->bind_param('i', $imagemId);
-        $stmtAlt->execute();
-        $liberacao = $stmtAlt->get_result()->fetch_assoc();
-        $stmtAlt->close();
-        $requisitos[] = motor_requisitos_item('pre_alteracao_liberada', 'Item liberado na Pre-Alteracao', 'PRODUCAO', $liberacao ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Pre-Alteracao', $liberacao ? (int) $liberacao['id'] : null, '/ImproovWeb/PreAlteracao/index.php', motor_requisitos_metadados_origem(null, $liberacao));
+        $etapa = trim((string) ($context['imagem_status_nome'] ?? ''));
+        $requisitos[] = motor_requisitos_item(
+            'entrega_registrada_etapa_atual',
+            'Entrega registrada para a imagem na etapa atual',
+            'ENTREGA',
+            $entrega ? 'ATENDIDO' : 'NAO_ATENDIDO',
+            true,
+            $etapa !== '' ? 'Entregas da etapa ' . $etapa : 'Entregas da etapa atual',
+            $entrega ? (int) $entrega['entrega_id'] : null,
+            '/ImproovWeb/Entregas/index.php?obra_id=' . $obraId,
+            motor_requisitos_metadados_origem(null, $checklistResponsavel)
+        );
 
         $finalizacao = motor_requisitos_finalizacao_da_imagem($conn, $imagemId);
         $requisitos[] = motor_requisitos_item(

@@ -8,7 +8,7 @@
 4. Instale as dependências:
 
    ```powershell
-   C:\Users\usuario\AppData\Local\Programs\Python\Python313\python.exe -m pip install -r requirements-deadline-worker.txt
+   C:\Users\usuario\AppData\Local\Python\bin\python.exe -m pip install -r requirements-deadline-worker.txt
    ```
 
 5. Confirme que a conta que executará o processo consegue chamar

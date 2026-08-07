@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $idfuncao_imagem = (int) $_POST['idfuncao_imagem'];
     $actorColaboradorId = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
     $actorUsuarioId = isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null;
+    $confirmarPendencias = !empty($_POST['confirmar_pendencias']);
 
     $prazoAnterior  = null;
     $statusAnterior = null;
@@ -48,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
         $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idfuncao_imagem);
-        if (!$evaluation['elegivel']) {
+        if (!$evaluation['elegivel'] && !$confirmarPendencias) {
             http_response_code(422);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([

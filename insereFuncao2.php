@@ -29,6 +29,7 @@ $data = $_POST;
 $imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : null;
 $status_id = isset($data['status_id']) ? (int)$data['status_id'] : null;
 $blockedEvaluation = null;
+$confirmarPendencias = !empty($data['confirmar_pendencias']);
 
 $funcao_ids = [
     'Caderno' => 1,
@@ -110,7 +111,7 @@ try {
                 $stmtCurrent->close();
                 if ($current && strcasecmp((string) $current['status'], 'Não iniciado') === 0) {
                     $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, (int) $current['idfuncao_imagem']);
-                    if (!$blockedEvaluation['elegivel']) {
+                    if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                         throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
                     }
                 }
@@ -217,7 +218,10 @@ try {
     if ($e instanceof DomainException) {
         http_response_code(422);
     }
-    echo json_encode(['error' => 'Erro ao executar a transação: ' . $e->getMessage()]);
+    echo json_encode([
+        'error' => 'Erro ao executar a transação: ' . $e->getMessage(),
+        'avaliacao' => $blockedEvaluation,
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 $conn->close();

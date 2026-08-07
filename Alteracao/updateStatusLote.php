@@ -14,6 +14,7 @@ if (!$payload || !isset($payload['funcao_ids']) || !is_array($payload['funcao_id
 $funcaoIds = array_values(array_unique(array_map('intval', $payload['funcao_ids'])));
 $statusDestino = trim((string)$payload['status']);
 $atribuirLogado = !empty($payload['atribuir_logado']);
+$confirmarPendencias = !empty($payload['confirmar_pendencias']);
 $usuarioLogadoId = $_SESSION['idcolaborador'] ?? null;
 $blockedEvaluation = null;
 
@@ -37,7 +38,7 @@ try {
             $stmtAtual->close();
             if ($atual && strcasecmp((string) $atual['status'], 'Não iniciado') === 0) {
                 $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcaoId);
-                if (!$blockedEvaluation['elegivel']) {
+                if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                     throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
                 }
             }
@@ -61,7 +62,7 @@ try {
     if ($e instanceof DomainException) {
         http_response_code(422);
     }
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage(), 'avaliacao' => $blockedEvaluation]);
 }
 
 $conn->close();

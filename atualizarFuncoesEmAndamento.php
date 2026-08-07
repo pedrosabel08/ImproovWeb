@@ -77,6 +77,7 @@ $actorColaboradorId = (int) ($_SESSION['idcolaborador'] ?? 0);
 $actorUsuarioId = (int) ($_SESSION['idusuario'] ?? 0);
 $today = (new DateTimeImmutable('today'))->format('Y-m-d');
 $blockedEvaluation = null;
+$confirmarPendencias = !empty($payload['confirmar_pendencias']);
 
 try {
     $conn->begin_transaction();
@@ -169,7 +170,7 @@ try {
 
         if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0) {
             $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
-            if (!$blockedEvaluation['elegivel']) {
+            if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                 throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
             }
         }

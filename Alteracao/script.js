@@ -691,7 +691,19 @@ function inicializarDragAndDrop() {
   });
 }
 
-function atualizarStatusLote(ids, statusDestino) {
+function mensagemPendenciasParaConfirmacao(avaliacao) {
+  const pendencias = Array.isArray(avaliacao?.bloqueios)
+    ? avaliacao.bloqueios
+        .map((item) => item?.label)
+        .filter(Boolean)
+    : [];
+  const detalhes = pendencias.length
+    ? `\n\nPendências: ${pendencias.join(", ")}.`
+    : "";
+  return `Esta tarefa possui pendências ativas.${detalhes}\n\nDeseja continuar e colocá-la em andamento?`;
+}
+
+function atualizarStatusLote(ids, statusDestino, confirmarPendencias = false) {
   const atribuirLogado = normalizarStatus(statusDestino) === "em andamento";
 
   fetch("updateStatusLote.php", {
@@ -701,11 +713,21 @@ function atualizarStatusLote(ids, statusDestino) {
       funcao_ids: ids,
       status: statusDestino,
       atribuir_logado: atribuirLogado,
+      confirmar_pendencias: confirmarPendencias,
     }),
   })
     .then((r) => r.json())
     .then((data) => {
       if (!data.success) {
+        if (
+          atribuirLogado &&
+          data.avaliacao &&
+          !confirmarPendencias &&
+          window.confirm(mensagemPendenciasParaConfirmacao(data.avaliacao))
+        ) {
+          atualizarStatusLote(ids, statusDestino, true);
+          return;
+        }
         Toastify({
           text: data.message || "Erro ao atualizar status.",
           duration: 3200,
@@ -1984,6 +2006,7 @@ buildConferenceModalShell();
 document
   .getElementById("salvar_funcoes")
   .addEventListener("click", function () {
+    const saveButton = this;
     if (!idImagemSelecionada) {
       Toastify({
         text: "Nenhuma imagem selecionada",
@@ -2007,6 +2030,7 @@ document
       status: document.getElementById("status_alteracao").value || "",
       prazo: document.getElementById("prazo_alteracao").value || "",
       observacao: document.getElementById("obs_alteracao").value || "",
+      confirmar_pendencias: saveButton.dataset.confirmarPendencias === "1" ? 1 : 0,
     };
 
     $.ajax({
@@ -2014,6 +2038,7 @@ document
       url: "../insereFuncao.php",
       data: dados,
       success: function () {
+        delete saveButton.dataset.confirmarPendencias;
         Toastify({
           text: "Dados salvos com sucesso!",
           duration: 3000,
@@ -2030,6 +2055,16 @@ document
         recarregarAlteracao();
       },
       error: function (jqXHR, textStatus, errorThrown) {
+        const payload = jqXHR.responseJSON || {};
+        if (
+          payload.avaliacao &&
+          dados.confirmar_pendencias !== 1 &&
+          window.confirm(mensagemPendenciasParaConfirmacao(payload.avaliacao))
+        ) {
+          saveButton.dataset.confirmarPendencias = "1";
+          saveButton.click();
+          return;
+        }
         console.error("Erro ao salvar:", textStatus, errorThrown);
         Toastify({
           text: "Erro ao salvar dados.",

@@ -90,6 +90,7 @@ $origemPrazo = isset($data['source'])
     : (isset($data['origem']) ? emptyToNull($data['origem']) : 'insereFuncao');
 $actorColaboradorId = intToNull($_SESSION['idcolaborador'] ?? null);
 $actorUsuarioId = intToNull($_SESSION['idusuario'] ?? null);
+$confirmarPendencias = !empty($data['confirmar_pendencias']);
 
 if ($funcao_id === null && (isset($data['status_alteracao']) || isset($data['prazo_alteracao']) || isset($data['obs_alteracao']) || isset($data['alteracao_id']))) {
     $funcao_id = 6;
@@ -131,7 +132,7 @@ try {
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
         $avaliacaoInicio = motor_requisitos_avaliar_funcao_imagem($conn, $existingFuncaoImagemId);
-        if (!$avaliacaoInicio['elegivel']) {
+        if (!$avaliacaoInicio['elegivel'] && !$confirmarPendencias) {
             $conn->rollback();
             http_response_code(422);
             echo json_encode([

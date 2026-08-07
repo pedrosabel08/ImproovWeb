@@ -6144,12 +6144,23 @@ let cardSelecionado = null;
 
 function restaurarCardModalPadrao() {
   if (!cardModal) return;
+  delete cardModal.dataset.confirmarPendencias;
   cardModal.querySelector("#flow-block-hold-form")?.remove();
   cardModal.querySelector("#flow-block-replan-form")?.remove();
   cardModal.classList.remove(
     "flow-block-hold-active",
     "flow-block-replan-active",
   );
+}
+
+function mensagemConfirmacaoPendencias(avaliacao) {
+  const pendencias = Array.isArray(avaliacao?.bloqueios)
+    ? avaliacao.bloqueios.map((item) => item?.label).filter(Boolean)
+    : [];
+  const detalhes = pendencias.length
+    ? `\n\nPendências: ${pendencias.join(", ")}.`
+    : "";
+  return `Esta tarefa possui pendências ativas.${detalhes}\n\nDeseja continuar e colocá-la em andamento?`;
 }
 
 // Fechar modal
@@ -6250,6 +6261,8 @@ document.getElementById("salvarModal").addEventListener("click", () => {
       status: statusMap[cardSelecionado.closest(".kanban-box").id] || null,
       prazo: modalPrazo.value,
       observacao: modalObs.value,
+      confirmar_pendencias:
+        cardModal.dataset.confirmarPendencias === "1" ? 1 : 0,
     };
 
     const isAnimacaoCard = cardSelecionado.dataset.isAnimacao === "1";
@@ -6296,6 +6309,7 @@ document.getElementById("salvarModal").addEventListener("click", () => {
           backgroundColor: "green",
           stopOnFocus: true,
         }).showToast();
+        delete cardModal.dataset.confirmarPendencias;
         cardModal.classList.remove("active");
 
         // ==== UNIFIED PAIR: also update secondary function (only when primary is representative) ====
@@ -6314,6 +6328,7 @@ document.getElementById("salvarModal").addEventListener("click", () => {
               funcao_id: cardSelecionado.dataset.funcaoIdSecundaria,
               status: dados.status,
               prazo: dados.prazo || "",
+              confirmar_pendencias: dados.confirmar_pendencias,
             },
           });
         }
@@ -6468,8 +6483,34 @@ document.getElementById("salvarModal").addEventListener("click", () => {
           console.error("Erro na lógica pós-salvar:", e);
         }
       },
-      error: function (jqXHR, textStatus, errorThrown) {
-        console.error("Erro ao salvar dados: " + textStatus, errorThrown);
+      error: async function (jqXHR, textStatus, errorThrown) {
+        const payload = jqXHR.responseJSON || {};
+
+        if (payload.avaliacao && dados.confirmar_pendencias !== 1) {
+          const result = await Swal.fire({
+            icon: "warning",
+            title: "Pendências encontradas",
+            html: mensagemConfirmacaoPendencias(payload.avaliacao).replace(
+              /\n/g,
+              "<br>",
+            ),
+            showCancelButton: true,
+            confirmButtonText: "Continuar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            reverseButtons: true,
+          });
+
+          if (result.isConfirmed) {
+            cardModal.dataset.confirmarPendencias = "1";
+            document.getElementById("salvarModal").click();
+            return;
+          }
+        }
+
+        console.error("Erro ao salvar dados:", textStatus, errorThrown);
+
         Toastify({
           text: "Erro ao salvar dados.",
           duration: 3000,
@@ -6639,7 +6680,7 @@ if (typeof Sortable !== "undefined") {
 
         return true; // caso contrário, libera o movimento
       },
-      onEnd: (evt) => {
+      onEnd: async function (evt) {
         const card = evt.item;
         const deColuna = evt.from.closest(".kanban-box");
         const novaColuna = evt.to.closest(".kanban-box");
@@ -6647,39 +6688,57 @@ if (typeof Sortable !== "undefined") {
         const imagemEmHold = card?.dataset?.imagemEmHold === "1";
         const requiresFileUpload = card?.dataset?.requiresFileUpload === "1";
         const holdMovel = deColuna?.id === "hold" && !imagemEmHold;
+        delete cardModal.dataset.confirmarPendencias;
 
         if (imagemEmHold) {
           evt.from.appendChild(card);
-          alert(
-            "Esta função não pode ser movida porque a imagem está em HOLD.",
-          );
+
+          Swal.fire({
+            icon: "warning",
+            title: "Movimentação bloqueada",
+            text: "Esta função não pode ser movida porque a imagem está em HOLD.",
+            confirmButtonText: "OK",
+            confirmButtonColor: "#3085d6",
+          });
+
           return;
         }
 
-        if (
-          novaColuna?.id === "in-progress" &&
-          card.dataset.liberado === "0" &&
-          !holdMovel
-        ) {
-          evt.from.appendChild(card);
+        if (novaColuna?.id === "in-progress" && !holdMovel) {
           const motivos = String(card.dataset.requirementBlockReasons || "")
             .split("||")
             .map((motivo) => motivo.trim())
             .filter(Boolean);
-          alert(
-            motivos.length
-              ? `Esta função ainda não pode iniciar por:\n- ${motivos.join("\n- ")}`
-              : "Esta função ainda não foi liberada.",
-          );
-          return;
-        }
 
-        if (novaColuna?.id === "in-progress" && requiresFileUpload) {
-          evt.from.appendChild(card);
-          alert(
-            "Existe arquivo pendente da etapa anterior. Envie o arquivo final antes de mover para Em andamento.",
-          );
-          return;
+          if (requiresFileUpload) {
+            motivos.push("Arquivo pendente da etapa anterior");
+          }
+
+          if (motivos.length > 0) {
+            const result = await Swal.fire({
+              icon: "warning",
+              title: "Pendências ativas",
+              html: `
+        <p>Esta tarefa possui as seguintes pendências:</p>
+        <ul style="text-align:left; margin:10px 0 0 20px;">
+          ${motivos.map((m) => `<li>${m}</li>`).join("")}
+        </ul>
+        <p style="margin-top:15px;">Deseja continuar e colocá-la em andamento?</p>
+      `,
+              showCancelButton: true,
+              confirmButtonText: "Sim, continuar",
+              cancelButtonText: "Cancelar",
+              confirmButtonColor: "#3085d6",
+              cancelButtonColor: "#d33",
+            });
+
+            if (!result.isConfirmed) {
+              evt.from.appendChild(card);
+              return;
+            }
+
+            cardModal.dataset.confirmarPendencias = "1";
+          }
         }
 
         if (novaColuna?.id === "hold" && deColuna?.id !== "hold") {
@@ -6687,37 +6746,12 @@ if (typeof Sortable !== "undefined") {
           return;
         }
 
-        // Se houver pendências ao mover para 'Em andamento', apenas avisamos
-        // e impedimos a abertura do modal de card (cardModal). O movimento continua.
-        let bloquearAberturaModal = false;
-        if (novaColuna?.id === "in-progress") {
-          const qtdPendentes = document.querySelectorAll(
-            '.kanban-card.tarefa-imagem[data-requires-file-upload="1"]',
-          ).length;
-          if (qtdPendentes > 0) {
-            Swal.fire({
-              icon: "warning",
-              title: "Atenção",
-              text: `Existem ${qtdPendentes} card(s) com arquivo pendente.`,
-            });
-            bloquearAberturaModal = true;
-          }
-        }
-
         console.log(
           `Card movido de ${deColuna.id} para ${novaColuna.id}, índice: ${novoIndex}`,
         );
 
-        // Só abre modal se mudou de coluna e não estivermos bloqueando a abertura
+        // O modal permite revisar prazo e observação antes de confirmar o novo status.
         if (deColuna.id !== novaColuna.id) {
-          if (
-            typeof bloquearAberturaModal !== "undefined" &&
-            bloquearAberturaModal
-          ) {
-            // Não abre o cardModal por enquanto — apenas mantém o card movido.
-            card.classList.remove("selected");
-            return;
-          }
           cardSelecionado = card;
 
           // Armazena coluna de origem para uso em enviarImagens (bloqueio de comentários)

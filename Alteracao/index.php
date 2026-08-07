@@ -320,7 +320,7 @@ $conn->close();
         </div>
     </div>
 
-    <script src="<?php echo asset_url('script.js') . '&altconf=20260629-approval-upload'; ?>"></script>
+    <script src="<?php echo asset_url('script.js') . '&altconf=20260807-pendencias-entrega'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

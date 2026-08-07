@@ -1,6 +1,6 @@
 param(
     [string]$ServiceName = "FlowDeadlineWorker",
-    [string]$PythonPath = "C:\Users\usuario\AppData\Local\Programs\Python\Python313\python.exe",
+    [string]$PythonPath = "C:\Users\usuario\AppData\Local\Python\bin\python.exe",
     [Parameter(Mandatory = $true)]
     [string]$NssmPath
 )

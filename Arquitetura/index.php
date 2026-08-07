@@ -277,7 +277,7 @@ if ($result_imagens->num_rows > 0) {
 
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="<?php echo asset_url('script.js'); ?>"></script>
+<script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
 
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>

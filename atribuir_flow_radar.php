@@ -11,6 +11,7 @@ $obras_inativas = obterObras($conn, 1);
 $data = json_decode(file_get_contents('php://input'), true);
 $colaborador_id = isset($data['colaborador_id']) ? (int)$data['colaborador_id'] : 0;
 $funcao_imagem_id = isset($data['funcao_imagem_id']) ? (int)$data['funcao_imagem_id'] : 0;
+$confirmarPendencias = !empty($data['confirmar_pendencias']);
 
 if (!$colaborador_id || !$funcao_imagem_id) {
     echo json_encode(['error' => 'Parâmetros obrigatórios: colaborador_id e funcao_imagem_id']);
@@ -32,7 +33,7 @@ try {
     }
     if ($res && strcasecmp((string) ($res['status'] ?? ''), 'Não iniciado') === 0) {
         $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcao_imagem_id);
-        if (!$evaluation['elegivel']) {
+        if (!$evaluation['elegivel'] && !$confirmarPendencias) {
             http_response_code(422);
             echo json_encode([
                 'error' => 'A tarefa possui requisitos pendentes para iniciar.',

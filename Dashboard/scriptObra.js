@@ -8212,6 +8212,7 @@ document
       obs_filtro: document.getElementById("obs_filtro").value || "",
       textos: textos,
       status_id: document.getElementById("opcao_status").value || "",
+      confirmar_pendencias: 0,
     };
 
     const loadingBar = document.getElementById("loadingBar");
@@ -8234,6 +8235,21 @@ document
           }).showToast();
         },
         error: function (jqXHR, textStatus, errorThrown) {
+          const avaliacao = jqXHR.responseJSON?.avaliacao;
+          const pendencias = Array.isArray(avaliacao?.bloqueios)
+            ? avaliacao.bloqueios.map((item) => item?.label).filter(Boolean)
+            : [];
+          if (
+            avaliacao &&
+            dados.confirmar_pendencias !== 1 &&
+            window.confirm(
+              `Esta tarefa possui pendências ativas.${pendencias.length ? `\n\nPendências: ${pendencias.join(", ")}.` : ""}\n\nDeseja continuar e colocá-la em andamento?`,
+            )
+          ) {
+            dados.confirmar_pendencias = 1;
+            enviarFormulario();
+            return;
+          }
           console.error("Erro ao salvar dados: " + textStatus, errorThrown);
           Toastify({
             text: "Erro ao salvar dados.",

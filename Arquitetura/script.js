@@ -88,11 +88,36 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var formData = new FormData(this);
 
-        fetch('update_funcao_caderno.php', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.text())
+        const enviarCaderno = (dados, confirmarPendencias = false) => {
+            if (confirmarPendencias) {
+                dados.set('confirmar_pendencias', '1');
+            }
+
+            return fetch('update_funcao_caderno.php', {
+                method: 'POST',
+                body: dados
+            })
+                .then(async response => {
+                    if (response.ok) return response.text();
+
+                    const payload = await response.json().catch(() => ({}));
+                    const pendencias = Array.isArray(payload?.avaliacao?.bloqueios)
+                        ? payload.avaliacao.bloqueios.map(item => item?.label).filter(Boolean)
+                        : [];
+                    if (
+                        payload.avaliacao &&
+                        !confirmarPendencias &&
+                        window.confirm(
+                            `Esta tarefa possui pendências ativas.${pendencias.length ? `\n\nPendências: ${pendencias.join(', ')}.` : ''}\n\nDeseja continuar e colocá-la em andamento?`
+                        )
+                    ) {
+                        return enviarCaderno(dados, true);
+                    }
+                    throw new Error(payload.message || 'Não foi possível salvar a tarefa.');
+                });
+        };
+
+        enviarCaderno(formData)
             .then(data => {
 
                 document.getElementById('modalFiltro').style.display = 'none';

@@ -7,7 +7,7 @@ if %errorlevel% equ 0 (
     exit /b
 )
 
-set "PYTHON=C:\Users\usuario\AppData\Local\Programs\Python\Python313\python.exe"
+set "PYTHON=C:\Users\usuario\AppData\Local\Python\bin\python.exe"
 if not exist "%PYTHON%" (
     echo Python nao encontrado em %PYTHON%.
     exit /b 1

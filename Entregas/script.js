@@ -414,8 +414,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
                 </div>
               `;
-                        
-                        // ${!isConcluida ? `<button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>` : ""}
+
+    // ${!isConcluida ? `<button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>` : ""}
     return card;
   }
 
@@ -1289,7 +1289,10 @@ document.addEventListener("DOMContentLoaded", () => {
           entregaModal.classList.remove("is-open");
       }
 
+      if (!modalToClose || modalToClose.id !== "entregaModal") return;
+
       entregaAtualId = null;
+      entregaDados = null;
       if (modalReviewBatches) {
         modalReviewBatches.innerHTML = "";
         modalReviewBatches.style.display = "none";
@@ -2109,13 +2112,202 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnAdicionarSelecionadas = document.getElementById(
     "btnAdicionarSelecionadas",
   );
+  const selectionSearchInput = document.getElementById("buscarImagens");
+  const selectionStats = document.getElementById("selecionar_imagens_stats");
+  const selectionFooterSummary = document.getElementById(
+    "selectionFooterSummary",
+  );
+  const selectionState = {
+    all: [],
+    available: [],
+    assigned: [],
+    filteredAvailable: [],
+    filteredAssigned: [],
+    search: "",
+    selectedIds: new Set(),
+  };
 
-  async function carregarImagensParaSelecao(
-    obraId,
-    statusId,
-    existingIds = [],
-    limit = 1000,
-  ) {
+  function resetSelectionModal() {
+    selectionState.all = [];
+    selectionState.available = [];
+    selectionState.assigned = [];
+    selectionState.filteredAvailable = [];
+    selectionState.filteredAssigned = [];
+    selectionState.search = "";
+    selectionState.selectedIds.clear();
+    if (selectionSearchInput) selectionSearchInput.value = "";
+    if (selectionStats) selectionStats.innerHTML = "";
+    if (selectionFooterSummary)
+      selectionFooterSummary.textContent = "Nenhuma imagem selecionada";
+    if (btnAdicionarSelecionadas) {
+      btnAdicionarSelecionadas.disabled = true;
+      btnAdicionarSelecionadas.innerHTML =
+        '<i class="fa-solid fa-check"></i> Adicionar selecionadas';
+    }
+    if (selecionarContainer) {
+      selecionarContainer.innerHTML =
+        '<p class="selection-empty-state">Selecione uma entrega para carregar imagens.</p>';
+    }
+  }
+
+  function updateSelectionControls() {
+    if (!selecionarContainer) return;
+
+    const selectedCount = selectionState.selectedIds.size;
+    const availableCheckboxes = Array.from(
+      selecionarContainer.querySelectorAll(
+        ".selection-image-checkbox:not(:disabled)",
+      ),
+    );
+    const allVisibleSelected =
+      availableCheckboxes.length > 0 &&
+      availableCheckboxes.every((checkbox) => checkbox.checked);
+    const selectAllButton = selecionarContainer.querySelector(
+      "[data-selection-action=select-all]",
+    );
+
+    if (selectAllButton) {
+      selectAllButton.textContent = allVisibleSelected
+        ? "Desmarcar todas"
+        : "Selecionar todas";
+    }
+
+    if (btnAdicionarSelecionadas) {
+      btnAdicionarSelecionadas.disabled = selectedCount === 0;
+      btnAdicionarSelecionadas.innerHTML = `<i class="fa-solid fa-check"></i> ${
+        selectedCount > 0
+          ? `Adicionar ${selectedCount} ${selectedCount === 1 ? "imagem" : "imagens"}`
+          : "Adicionar selecionadas"
+      }`;
+    }
+
+    if (selectionFooterSummary) {
+      selectionFooterSummary.textContent =
+        selectedCount > 0
+          ? `${selectedCount} ${selectedCount === 1 ? "imagem selecionada" : "imagens selecionadas"}`
+          : "Nenhuma imagem selecionada";
+    }
+  }
+
+  function renderSelectionStats() {
+    if (!selectionStats) return;
+
+    const availableCount = selectionState.available.length;
+    const assignedCount = selectionState.assigned.length;
+    selectionStats.innerHTML = `
+      <div class="selection-stat is-primary">
+        <strong>${availableCount}</strong>
+        <span>${availableCount === 1 ? "disponível" : "disponíveis"}</span>
+      </div>
+      <div class="selection-stat">
+        <strong>${assignedCount}</strong>
+        <span>${assignedCount === 1 ? "já atribuída" : "já atribuídas"}</span>
+      </div>
+    `;
+  }
+
+  function renderSelectionRows(images, assigned = false) {
+    return images
+      .map((img) => {
+        const imageId = Number(img.id);
+        const imageName = escapeHtml(img.nome || "Imagem sem nome");
+
+        if (assigned) {
+          return `
+            <div class="selection-image-row is-assigned" title="Imagem já atribuída neste status">
+              <span class="selection-readonly-icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
+              <span class="selection-image-name">${imageName}</span>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="selection-image-row is-available">
+            <input class="selection-image-checkbox" type="checkbox" name="selecionar_imagem_ids[]" value="${imageId}" id="sel-img-${imageId}"${selectionState.selectedIds.has(String(imageId)) ? " checked" : ""}>
+            <label class="selection-image-name" for="sel-img-${imageId}">${imageName}</label>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function renderImagensParaSelecao() {
+    if (!selecionarContainer) return;
+
+    const search = selectionState.search.trim().toLocaleLowerCase("pt-BR");
+    const matchesSearch = (img) =>
+      !search ||
+      String(img.nome || "").toLocaleLowerCase("pt-BR").includes(search);
+
+    selectionState.filteredAvailable = selectionState.available.filter(matchesSearch);
+    selectionState.filteredAssigned = selectionState.assigned.filter(matchesSearch);
+
+    renderSelectionStats();
+    selecionarContainer.innerHTML = "";
+
+    if (!selectionState.all.length) {
+      selecionarContainer.innerHTML = `
+        <div class="selection-empty-state">
+          <i class="fa-regular fa-image" aria-hidden="true"></i>
+          <strong>Nenhuma imagem encontrada</strong>
+          <span>${search ? "Tente buscar por outro nome." : "Não há imagens para estes critérios."}</span>
+        </div>
+      `;
+      updateSelectionControls();
+      return;
+    }
+
+    if (selectionState.filteredAvailable.length) {
+      const availableGroup = document.createElement("section");
+      availableGroup.className = "selection-image-group is-available";
+      availableGroup.innerHTML = `
+        <div class="selection-group-heading">
+          <div class="selection-group-title">
+            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+            <h3>Disponíveis</h3>
+            <span class="selection-group-count">${selectionState.available.length} ${selectionState.available.length === 1 ? "imagem" : "imagens"}</span>
+          </div>
+          <button type="button" class="selection-select-all" data-selection-action="select-all">Selecionar todas</button>
+        </div>
+        <div class="selection-image-list">${renderSelectionRows(selectionState.filteredAvailable)}</div>
+      `;
+      selecionarContainer.appendChild(availableGroup);
+    }
+
+    if (selectionState.filteredAssigned.length) {
+      const assignedGroup = document.createElement("details");
+      assignedGroup.className = "selection-image-group is-assigned";
+      assignedGroup.open = Boolean(search);
+      assignedGroup.innerHTML = `
+        <summary class="selection-assigned-summary">
+          <span class="selection-group-title">
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            <h3>Já atribuídas neste status</h3>
+          </span>
+          <span class="selection-group-count">${selectionState.assigned.length} ${selectionState.assigned.length === 1 ? "imagem" : "imagens"}</span>
+        </summary>
+        <div class="selection-image-list">${renderSelectionRows(selectionState.filteredAssigned, true)}</div>
+      `;
+      selecionarContainer.appendChild(assignedGroup);
+    }
+
+    if (
+      !selectionState.filteredAvailable.length &&
+      !selectionState.filteredAssigned.length
+    ) {
+      selecionarContainer.innerHTML = `
+        <div class="selection-empty-state">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <strong>Nenhuma imagem encontrada</strong>
+          <span>Tente buscar por outro nome.</span>
+        </div>
+      `;
+    }
+
+    updateSelectionControls();
+  }
+
+  async function carregarImagensParaSelecao(obraId, statusId, limit = 1000) {
     if (!obraId || !statusId) {
       selecionarContainer.innerHTML = "<p>Obra ou status inválido.</p>";
       return;
@@ -2126,29 +2318,79 @@ document.addEventListener("DOMContentLoaded", () => {
         BASE + `get_imagens.php?obra_id=${obraId}&status_id=${statusId}`,
       );
       const imgs = await res.json();
-      const container = selecionarContainer;
-      container.innerHTML = "";
-
-      // Filtrar imagens que já estão na entrega
-      const existingSet = new Set(existingIds.map((id) => Number(id)));
-      const filtered = imgs.filter((img) => !existingSet.has(Number(img.id)));
-
-      if (!filtered.length) {
-        container.innerHTML =
-          "<p>Nenhuma imagem disponível para adicionar (todas já presentes ou não existem).</p>";
-        return;
-      }
-
-      filtered.slice(0, limit).forEach((img) => {
-        const div = document.createElement("div");
-        div.classList.add("checkbox-item");
-        div.innerHTML = `\n                    <input type="checkbox" name="selecionar_imagem_ids[]" value="${img.id}" id="sel-img-${img.id}">\n                    <label for="sel-img-${img.id}"><span>${img.nome}</span></label>\n                `;
-        container.appendChild(div);
-      });
+      const filtered = Array.isArray(imgs) ? imgs.slice(0, limit) : [];
+      selectionState.all = filtered;
+      selectionState.available = filtered.filter(
+        (img) => !Number(img.ja_atribuida),
+      );
+      selectionState.assigned = filtered.filter((img) =>
+        Number(img.ja_atribuida),
+      );
+      renderImagensParaSelecao();
     } catch (err) {
       console.error("Erro ao carregar imagens para seleção:", err);
-      selecionarContainer.innerHTML = "<p>Erro ao carregar imagens.</p>";
+      selectionState.all = [];
+      selectionState.available = [];
+      selectionState.assigned = [];
+      selectionState.selectedIds.clear();
+      renderSelectionStats();
+      selecionarContainer.innerHTML =
+        '<div class="selection-empty-state"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><strong>Não foi possível carregar as imagens</strong><span>Tente novamente.</span></div>';
+      updateSelectionControls();
     }
+  }
+
+  if (selectionSearchInput) {
+    selectionSearchInput.addEventListener("input", () => {
+      selectionState.search = selectionSearchInput.value;
+      renderImagensParaSelecao();
+    });
+  }
+
+  if (modalSelecionar) {
+    modalSelecionar.addEventListener("keydown", (event) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        selectionSearchInput?.focus();
+      }
+    });
+  }
+
+  if (selecionarContainer) {
+    selecionarContainer.addEventListener("change", (event) => {
+      if (event.target.matches(".selection-image-checkbox")) {
+        const imageId = String(event.target.value);
+        if (event.target.checked) selectionState.selectedIds.add(imageId);
+        else selectionState.selectedIds.delete(imageId);
+        updateSelectionControls();
+      }
+    });
+
+    selecionarContainer.addEventListener("click", (event) => {
+      const selectAllButton = event.target.closest(
+        "[data-selection-action=select-all]",
+      );
+      if (!selectAllButton) return;
+
+      const checkboxes = Array.from(
+        selecionarContainer.querySelectorAll(
+          ".selection-image-checkbox:not(:disabled)",
+        ),
+      );
+      const shouldCheck =
+        !checkboxes.length ||
+        !checkboxes.every((checkbox) => checkbox.checked);
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = shouldCheck;
+        const imageId = String(checkbox.value);
+        if (shouldCheck) selectionState.selectedIds.add(imageId);
+        else selectionState.selectedIds.delete(imageId);
+      });
+      updateSelectionControls();
+    });
   }
 
   if (btnAdicionarImagem) {
@@ -2169,14 +2411,9 @@ document.addEventListener("DOMContentLoaded", () => {
         entregaDados.id_status ||
         null;
 
-      // construir lista de existing ids
-      const existingIds = (entregaDados.itens || []).map((it) =>
-        Number(it.imagem_id || it.imagemId || it.id),
-      );
-
-      // abrir modal e carregar imagens
+      resetSelectionModal();
       if (modalSelecionar) modalSelecionar.classList.add("is-open");
-      await carregarImagensParaSelecao(obraId, statusId, existingIds);
+      await carregarImagensParaSelecao(obraId, statusId);
     });
   }
 
@@ -2188,8 +2425,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       const checked = Array.from(
-        document.querySelectorAll(
-          '#selecionar_imagens_container input[type="checkbox"]:checked',
+        selecionarContainer.querySelectorAll(
+          ".selection-image-checkbox:checked",
         ),
       );
       if (checked.length === 0) {

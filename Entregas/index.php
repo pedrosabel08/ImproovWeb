@@ -340,23 +340,40 @@ $conn->close();
 
     <!-- ====== Modal: Selecionar Imagens ====== -->
     <div id="modalSelecionarImagens" class="modal">
-        <div class="modal-content">
+        <div class="modal-content modal-selection-content">
             <div class="modal-header">
-                <h2 class="modal-title">
-                    <i class="fa-solid fa-images" style="color:var(--accent);margin-right:8px;"></i>Selecionar Imagens
-                </h2>
-                <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+                <div class="selection-modal-heading">
+                    <span class="selection-modal-icon" aria-hidden="true"><i class="fa-solid fa-images"></i></span>
+                    <div>
+                        <h2 class="modal-title">Adicionar imagens</h2>
+                        <p class="selection-modal-subtitle">Escolha as imagens que farão parte desta entrega.</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close fecharModal" aria-label="Fechar seleção de imagens">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body modal-selection-body">
+                <div class="selection-toolbar">
+                    <label class="selection-search" for="buscarImagens">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <input type="search" id="buscarImagens" aria-label="Buscar imagem" placeholder="Buscar imagem..." autocomplete="off">
+                        <kbd>Ctrl K</kbd>
+                    </label>
+                </div>
+                <div id="selecionar_imagens_stats" class="selection-stats" aria-live="polite"></div>
                 <div id="selecionar_imagens_container" class="imagens-container">
-                    <p style="margin:0;color:var(--text-muted);">Selecione uma entrega para carregar imagens.</p>
+                    <p class="selection-empty-state">Selecione uma entrega para carregar imagens.</p>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
-                <button type="button" class="btn-action btn-primary" id="btnAdicionarSelecionadas">
-                    <i class="fa-solid fa-check"></i> Adicionar Selecionadas
-                </button>
+            <div class="modal-footer selection-footer">
+                <span id="selectionFooterSummary" class="selection-footer-summary">Nenhuma imagem selecionada</span>
+                <div class="selection-footer-actions">
+                    <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
+                    <button type="button" class="btn-action btn-primary" id="btnAdicionarSelecionadas" disabled>
+                        <i class="fa-solid fa-check"></i> Adicionar selecionadas
+                    </button>
+                </div>
             </div>
         </div>
     </div>

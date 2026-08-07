@@ -128,15 +128,6 @@ a {
   all: unset;
   cursor: pointer;
 }
-.container {
-  grid-column: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px 24px;
-  min-height: 100vh;
-  overflow-y: auto;
-}
 
 .page-header {
   display: flex;
@@ -218,6 +209,10 @@ a {
   flex-direction: column;
   gap: 12px;
   padding-bottom: 24px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .checkbox-filter-group {
@@ -1515,8 +1510,16 @@ a {
   border: 0;
 }
 .container {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+
+  height: 100vh;
+  min-height: 0;
+
   gap: 12px;
   padding: 18px 20px 14px;
+
   overflow: hidden;
 }
 .payment-header {

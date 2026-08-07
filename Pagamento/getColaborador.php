@@ -659,6 +659,35 @@ foreach ($funcoes as &$f) {
         continue; // pula o cálculo geral abaixo
     }
 
+    // Pós-produção de animação tem valor fixo. Registros antigos foram
+    // criados com o default zero, portanto normalizamos a resposta para que
+    // a tela e o pagamento usem o valor correto.
+    // if (($f['origem'] ?? '') === 'funcao_animacao' && $funcId === 5) {
+    //     $valorPadrao = 100.00;
+    //     $f['valor']           = $valorPadrao;
+    //     $f['valor_tarifado']  = $valorPadrao;
+    //     $f['valor_esperado']  = $valorPadrao;
+    //     $f['valor_exibido']   = $valorPadrao;
+    //     $f['custo']           = $valorPadrao;
+    //     $f['valor_aprovado']  = 1;
+    //     $f['tem_divergencia'] = false;
+    //     continue;
+    // }
+
+    // Para animações, o valor exibido deve ser exatamente o valor salvo em
+    // funcao_animacao. O tarifado de funcao_colaborador não se aplica aqui e
+    // poderia substituir um valor existente (por exemplo, 100) por 0.
+    if (($f['origem'] ?? '') === 'funcao_animacao') {
+        $valorAnimacao = $valorBruto ?? 0.0;
+        $f['valor_tarifado']  = $tarifado;
+        $f['valor_esperado']  = $valorAnimacao;
+        $f['valor_exibido']   = $valorAnimacao;
+        $f['custo']           = $valorAnimacao;
+        $f['valor_aprovado']  = 1;
+        $f['tem_divergencia'] = false;
+        continue;
+    }
+
     // valor_esperado = sempre o valor CHEIO de funcao_colaborador
     // O banco deve guardar o valor inteiro; o 50% é só exibição.
     $valorEsperado = $tarifado;

@@ -39,8 +39,8 @@ try {
         if ($origem === 'funcao_imagem') {
             // Função 6 mantém a regra existente de soma; as demais substituem.
             $sql = $funcaoId === 6
-                ? 'UPDATE funcao_imagem SET valor = valor + ? WHERE idfuncao_imagem = ?'
-                : 'UPDATE funcao_imagem SET valor = ? WHERE idfuncao_imagem = ?';
+                ? 'UPDATE funcao_imagem SET valor = valor + ?, valor_aprovado = 1 WHERE idfuncao_imagem = ?'
+                : 'UPDATE funcao_imagem SET valor = ?, valor_aprovado = 1 WHERE idfuncao_imagem = ?';
         } elseif ($origem === 'acompanhamento') {
             $sql = 'UPDATE acompanhamento SET valor = ? WHERE idacompanhamento = ?';
         } elseif ($origem === 'funcao_animacao') {

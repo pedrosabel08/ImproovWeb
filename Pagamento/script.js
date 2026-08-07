@@ -274,7 +274,9 @@ document.addEventListener(
         '<i class="fa-solid fa-credit-card"></i> Confirmar pagamento';
     }
     if (amount) {
-      amount.hidden = true;
+      // O campo acompanha a barra de seleção e fica disponível assim que
+      // qualquer tarefa for marcada.
+      amount.hidden = false;
       actionBar.append(amount);
     }
     if (summary) summary.remove();
@@ -330,10 +332,7 @@ document.addEventListener(
     document
       .getElementById("adicionar-valor")
       ?.addEventListener("click", () => {
-        if (amount) {
-          amount.hidden = !amount.hidden;
-          if (!amount.hidden) amount.focus();
-        }
+        amount?.focus();
       });
     const search = document.getElementById("busca-pagamento"),
       divergencesOnly = document.getElementById("somente-divergencias");
@@ -625,14 +624,18 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("mes").addEventListener("change", carregarDadosColab);
   document.getElementById("ano").addEventListener("change", carregarDadosColab);
 
+  let requisicaoColaboradorAtual = 0;
+
   function carregarDadosColab() {
+    // Ignora respostas de uma seleção anterior caso o usuário alterne
+    // rapidamente entre colaboradores.
+    const requisicaoAtual = ++requisicaoColaboradorAtual;
     var colaboradorId = document.getElementById("colaborador").value;
     var mesId = document.getElementById("mes").value;
     var anoId = document.getElementById("ano").value;
     const tipoFiltros = Array.from(
       document.querySelectorAll('.tipo-imagem input[type="checkbox"]'),
     );
-    const haviaFiltroDeTipo = tipoFiltros.some((checkbox) => checkbox.checked);
     const filtrosDeTipoAtivos = new Set(
       tipoFiltros
         .filter((checkbox) => checkbox.checked)
@@ -663,6 +666,7 @@ document.addEventListener("DOMContentLoaded", function () {
       fetch(url)
         .then((response) => response.json())
         .then((data) => {
+          if (requisicaoAtual !== requisicaoColaboradorAtual) return;
           var infoColaborador = document.getElementById("info-colaborador");
           var colaborador = data.dadosColaborador;
           if (colaborador) {
@@ -687,9 +691,7 @@ document.addEventListener("DOMContentLoaded", function () {
           let totalValor = 0;
 
           tipoFiltros.forEach((checkbox) => {
-            checkbox.checked = haviaFiltroDeTipo
-              ? filtrosDeTipoAtivos.has(checkbox.name)
-              : false;
+            checkbox.checked = filtrosDeTipoAtivos.has(checkbox.name);
           });
 
           data.funcoes.forEach(function (item) {
@@ -953,26 +955,13 @@ document.addEventListener("DOMContentLoaded", function () {
               row.classList.add("checked");
             }
 
-            const normalizeFuncao = (s) =>
-              (s || "")
-                .toString()
-                .replace(/\s*-\s*.*/g, "")
-                .trim()
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "");
-            const nomeFuncaoBase = normalizeFuncao(item.nome_funcao);
-            if (!haviaFiltroDeTipo) {
-              tipoFiltros.forEach((funcaoCheckbox) => {
-                if (normalizeFuncao(funcaoCheckbox.name) === nomeFuncaoBase) {
-                  funcaoCheckbox.checked = true;
-                }
-              });
-            }
           });
 
           contarLinhasTabela();
-          if (haviaFiltroDeTipo) filtrarTabela();
+          // Reaplica somente filtros escolhidos pelo usuário. Antes, as
+          // funções eram marcadas automaticamente e acabavam ocultando as
+          // linhas de outro colaborador após a troca.
+          window.pagamentoAplicarFiltrosVisuais?.();
           if (confirmarPagamentoButton)
             confirmarPagamentoButton.disabled = false;
 
@@ -1176,6 +1165,7 @@ document.addEventListener("DOMContentLoaded", function () {
           // ────────────────────────────────────────────────────────────────
         })
         .catch((error) => {
+          if (requisicaoAtual !== requisicaoColaboradorAtual) return;
           console.error("Erro ao carregar dados do colaborador:", error);
           document.querySelector("#tabela-a-pagar tbody").innerHTML =
             '<tr><td colspan="7" class="col-center">Não foi possível carregar as tarefas.</td></tr>';
@@ -1385,9 +1375,15 @@ document.addEventListener("DOMContentLoaded", function () {
         funcao_id: cb.getAttribute("funcao"),
       }));
 
-      var valor = document.getElementById("valor").value;
+      // Aceita o formato usado no campo brasileiro (ex.: 1.234,56) e envia
+      // um número normalizado para o endpoint.
+      var valorRaw = document.getElementById("valor").value.trim();
+      valorRaw = valorRaw.replace(/R\$\s?/gi, "").trim();
+      var valor = valorRaw.includes(",")
+        ? valorRaw.replace(/\./g, "").replace(",", ".")
+        : valorRaw;
 
-      if (ids.length > 0 && valor) {
+      if (ids.length > 0 && valor && Number.isFinite(Number(valor))) {
         setPagamentoButtonLoading(button, true, "Atualizando...");
         try {
           const response = await fetch("updateValor.php", {
@@ -1406,6 +1402,7 @@ document.addEventListener("DOMContentLoaded", function () {
             timer: 2800,
             timerProgressBar: true,
           });
+          document.getElementById("valor").value = "";
           carregarDadosColab();
         } catch (error) {
           console.error("Erro ao adicionar valores:", error);
@@ -2790,11 +2787,6 @@ document.addEventListener(
               .replace(/\./g, "")
               .replace(",", "."),
         ) || 0;
-      if (checkbox && rawValue <= 0) {
-        checkbox.disabled = true;
-        checkbox.checked = false;
-        checkbox.title = "Defina um valor antes de confirmar o pagamento.";
-      }
       row.dataset.functionName = role.textContent.trim();
       const task = document.createElement("td");
       task.className = "task-cell";
@@ -2810,7 +2802,9 @@ document.addEventListener(
       const newAction = document.createElement("td");
       newAction.className = "col-center row-actions";
       const originalAction = actionCell.querySelector("button");
-      if (originalAction && rawValue > 0) {
+      // O valor zero não impede a confirmação. A tarefa pode ser paga
+      // individualmente ou em lote, mesmo quando ainda não recebeu valor.
+      if (originalAction) {
         originalAction.classList.add("row-action-menu");
         originalAction.title = "Pagar item";
         originalAction.innerHTML =

@@ -1,4 +1,5 @@
--- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
+
+- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
 --
 -- Host: 72.60.137.192    Database: flowdb
 -- ------------------------------------------------------
@@ -137,20 +138,34 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `log_alteracoes_nao_iniciado_trigger` AFTER INSERT ON `funcao_imagem` FOR EACH ROW BEGIN
-        INSERT INTO log_alteracoes (
-            funcao_imagem_id,
-            status_anterior,
-            status_novo,
-            data,
-            colaborador_id
-        ) VALUES (
-            NEW.idfuncao_imagem,
-            NULL,
-            NEW.status,
-            NOW(),
-            NEW.colaborador_id
-        );
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `log_alteracoes_nao_iniciado_trigger` AFTER INSERT ON `funcao_imagem` FOR EACH ROW BEGIN
+
+        INSERT INTO log_alteracoes (
+
+            funcao_imagem_id,
+
+            status_anterior,
+
+            status_novo,
+
+            data,
+
+            colaborador_id
+
+        ) VALUES (
+
+            NEW.idfuncao_imagem,
+
+            NULL,
+
+            NEW.status,
+
+            NOW(),
+
+            NEW.colaborador_id
+
+        );
+
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -166,34 +181,62 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_ifp_sync_funcao_imagem_insert` AFTER INSERT ON `funcao_imagem` FOR EACH ROW BEGIN
-    INSERT INTO imagem_funcao_planejada (
-        imagem_id,
-        funcao_id,
-        funcao_imagem_id,
-        ordem,
-        obrigatoria,
-        status,
-        origem
-    ) VALUES (
-        NEW.imagem_id,
-        NEW.funcao_id,
-        NEW.idfuncao_imagem,
-        999,
-        1,
-        CASE
-            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
-            ELSE 'INICIADO'
-        END,
-        'EXECUCAO'
-    )
-    ON DUPLICATE KEY UPDATE
-        funcao_imagem_id = VALUES(funcao_imagem_id),
-        status = CASE
-            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
-            ELSE 'INICIADO'
-        END,
-        updated_at = CURRENT_TIMESTAMP;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_ifp_sync_funcao_imagem_insert` AFTER INSERT ON `funcao_imagem` FOR EACH ROW BEGIN
+
+    INSERT INTO imagem_funcao_planejada (
+
+        imagem_id,
+
+        funcao_id,
+
+        funcao_imagem_id,
+
+        ordem,
+
+        obrigatoria,
+
+        status,
+
+        origem
+
+    ) VALUES (
+
+        NEW.imagem_id,
+
+        NEW.funcao_id,
+
+        NEW.idfuncao_imagem,
+
+        999,
+
+        1,
+
+        CASE
+
+            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
+
+            ELSE 'INICIADO'
+
+        END,
+
+        'EXECUCAO'
+
+    )
+
+    ON DUPLICATE KEY UPDATE
+
+        funcao_imagem_id = VALUES(funcao_imagem_id),
+
+        status = CASE
+
+            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
+
+            ELSE 'INICIADO'
+
+        END,
+
+        updated_at = CURRENT_TIMESTAMP;
+
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -522,48 +565,90 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_ifp_sync_funcao_imagem_update` AFTER UPDATE ON `funcao_imagem` FOR EACH ROW BEGIN
-    IF OLD.imagem_id <> NEW.imagem_id OR OLD.funcao_id <> NEW.funcao_id THEN
-        UPDATE imagem_funcao_planejada
-        SET
-            funcao_imagem_id = NULL,
-            status = CASE
-                WHEN origem = 'EXECUCAO' THEN 'CANCELADO'
-                ELSE 'TODO'
-            END,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE imagem_id = OLD.imagem_id
-          AND funcao_id = OLD.funcao_id
-          AND funcao_imagem_id = OLD.idfuncao_imagem;
-    END IF;
-
-    INSERT INTO imagem_funcao_planejada (
-        imagem_id,
-        funcao_id,
-        funcao_imagem_id,
-        ordem,
-        obrigatoria,
-        status,
-        origem
-    ) VALUES (
-        NEW.imagem_id,
-        NEW.funcao_id,
-        NEW.idfuncao_imagem,
-        999,
-        1,
-        CASE
-            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
-            ELSE 'INICIADO'
-        END,
-        'EXECUCAO'
-    )
-    ON DUPLICATE KEY UPDATE
-        funcao_imagem_id = VALUES(funcao_imagem_id),
-        status = CASE
-            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
-            ELSE 'INICIADO'
-        END,
-        updated_at = CURRENT_TIMESTAMP;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_ifp_sync_funcao_imagem_update` AFTER UPDATE ON `funcao_imagem` FOR EACH ROW BEGIN
+
+    IF OLD.imagem_id <> NEW.imagem_id OR OLD.funcao_id <> NEW.funcao_id THEN
+
+        UPDATE imagem_funcao_planejada
+
+        SET
+
+            funcao_imagem_id = NULL,
+
+            status = CASE
+
+                WHEN origem = 'EXECUCAO' THEN 'CANCELADO'
+
+                ELSE 'TODO'
+
+            END,
+
+            updated_at = CURRENT_TIMESTAMP
+
+        WHERE imagem_id = OLD.imagem_id
+
+          AND funcao_id = OLD.funcao_id
+
+          AND funcao_imagem_id = OLD.idfuncao_imagem;
+
+    END IF;
+
+
+
+    INSERT INTO imagem_funcao_planejada (
+
+        imagem_id,
+
+        funcao_id,
+
+        funcao_imagem_id,
+
+        ordem,
+
+        obrigatoria,
+
+        status,
+
+        origem
+
+    ) VALUES (
+
+        NEW.imagem_id,
+
+        NEW.funcao_id,
+
+        NEW.idfuncao_imagem,
+
+        999,
+
+        1,
+
+        CASE
+
+            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
+
+            ELSE 'INICIADO'
+
+        END,
+
+        'EXECUCAO'
+
+    )
+
+    ON DUPLICATE KEY UPDATE
+
+        funcao_imagem_id = VALUES(funcao_imagem_id),
+
+        status = CASE
+
+            WHEN LOWER(TRIM(COALESCE(NEW.status, ''))) IN ('cancelado', 'não se aplica', 'nao se aplica') THEN 'CANCELADO'
+
+            ELSE 'INICIADO'
+
+        END,
+
+        updated_at = CURRENT_TIMESTAMP;
+
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -579,18 +664,30 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'IGNORE_SPACE,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_ifp_sync_funcao_imagem_delete` AFTER DELETE ON `funcao_imagem` FOR EACH ROW BEGIN
-    UPDATE imagem_funcao_planejada
-    SET
-        funcao_imagem_id = NULL,
-        status = CASE
-            WHEN origem = 'EXECUCAO' THEN 'CANCELADO'
-            ELSE 'TODO'
-        END,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE imagem_id = OLD.imagem_id
-      AND funcao_id = OLD.funcao_id
-      AND funcao_imagem_id = OLD.idfuncao_imagem;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_ifp_sync_funcao_imagem_delete` AFTER DELETE ON `funcao_imagem` FOR EACH ROW BEGIN
+
+    UPDATE imagem_funcao_planejada
+
+    SET
+
+        funcao_imagem_id = NULL,
+
+        status = CASE
+
+            WHEN origem = 'EXECUCAO' THEN 'CANCELADO'
+
+            ELSE 'TODO'
+
+        END,
+
+        updated_at = CURRENT_TIMESTAMP
+
+    WHERE imagem_id = OLD.imagem_id
+
+      AND funcao_id = OLD.funcao_id
+
+      AND funcao_imagem_id = OLD.idfuncao_imagem;
+
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;

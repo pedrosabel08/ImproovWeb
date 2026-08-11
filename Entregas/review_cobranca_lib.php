@@ -556,6 +556,7 @@ function entregas_review_fetch_batches_for_entrega(mysqli $conn, int $entregaId)
             LEFT JOIN review_batch_items rbi ON rbi.review_batch_id = rb.id
             LEFT JOIN cobranca_review cr ON cr.review_batch_id = rb.id
             WHERE rb.entrega_id = ?
+              AND (cr.id IS NOT NULL OR rb.status <> 'RESOLVED')
             GROUP BY
                 rb.id,
                 rb.entrega_id,

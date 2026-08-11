@@ -805,6 +805,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const batches = Array.isArray(data.review_batches)
       ? data.review_batches
       : [];
+    const isEfEntrega = Number(data.status_id || 0) === 6;
+    const deliveryPreAltButton =
+      isEfEntrega && !batches.length
+        ? `
+          <button class="btn-action btn-review-pre-alt" data-delivery-pre-alt="1" type="button">
+            <i class="fa-solid fa-code-branch"></i> Adicionar entrega à Pré-Alteração
+          </button>
+        `
+        : "";
     const summary =
       data.review_batches_summary || summarizeReviewBatches(batches);
 
@@ -843,6 +852,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 `;
               })
               .join("");
+            const preAltButton = isEfEntrega
+              ? `
+                  <button class="btn-action btn-review-pre-alt" data-review-batch-id="${batch.id}" type="button">
+                    <i class="fa-solid fa-code-branch"></i> Adicionar à Pré-Alteração
+                  </button>
+                `
+              : "";
 
             const noteText = batch.last_action_note
               ? `<div class="review-batch-note">${escapeHtml(batch.last_action_note)}</div>`
@@ -877,7 +893,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   ${resolvedText}
                 </div>
                 <div class="review-batch-actions">
-                  ${actionButtons || `<span class="review-batch-empty-inline">Sem ações disponíveis</span>`}
+                  ${actionButtons}${preAltButton || (!actionButtons ? `<span class="review-batch-empty-inline">Sem ações disponíveis</span>` : "")}
                 </div>
               </div>
             `;
@@ -892,7 +908,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="review-batches-eyebrow"><i class="fa-solid fa-bell"></i> Cobrança de review</span>
             <h3 class="review-batches-title">Lotes aguardando retorno do cliente</h3>
           </div>
-          ${summaryHtml}
+          <div class="review-batches-header-actions">
+            ${summaryHtml}
+            ${deliveryPreAltButton}
+          </div>
         </div>
         <div class="review-batches-list">${listHtml}</div>
       </div>
@@ -1256,6 +1275,51 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function adicionarLotePreAlteracao(reviewBatchId = 0, entregaId = 0) {
+    const confirmation = await Swal.fire({
+      icon: "question",
+      title: "Adicionar à Pré-Alteração?",
+      text: "O lote será disponibilizado para triagem sem encerrar o review nem criar pendência.",
+      showCancelButton: true,
+      confirmButtonText: "Adicionar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#7c3aed",
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    try {
+      const res = await fetch(BASE + "adicionar_lote_pre_alteracao.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          entregaId
+            ? { entrega_id: entregaId }
+            : { review_batch_id: reviewBatchId },
+        ),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Não foi possível adicionar o lote.");
+      }
+
+      Toastify({
+        text: "Lote adicionado à Pré-Alteração.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#7c3aed" },
+      }).showToast();
+    } catch (err) {
+      console.error("Erro ao adicionar lote à Pré-Alteração:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Falha ao adicionar lote",
+        text: err.message || "Ocorreu um erro inesperado.",
+      });
+    }
+  }
+
   // fechar modal: single handler for all buttons with class .fecharModal
   // Instead of closing based only on existence of a modal element,
   // close the closest modal container to the clicked button so other
@@ -1345,6 +1409,27 @@ document.addEventListener("DOMContentLoaded", () => {
           if (label) label.textContent = "Ver imagens";
         }
 
+        return;
+      }
+
+      const preAltBtn = e.target.closest(".btn-review-pre-alt");
+      const deliveryPreAltBtn = e.target.closest("[data-delivery-pre-alt]");
+      if (deliveryPreAltBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const entregaId = Number(entregaDados?.id || entregaAtualId || 0);
+        if (entregaId) await adicionarLotePreAlteracao(0, entregaId);
+        return;
+      }
+
+      if (preAltBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const reviewBatchId = parseInt(
+          preAltBtn.dataset.reviewBatchId || "0",
+          10,
+        );
+        if (reviewBatchId) await adicionarLotePreAlteracao(reviewBatchId);
         return;
       }
 
@@ -2118,7 +2203,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "selectionFooterSummary",
   );
   const selecaoModalTitulo = document.getElementById("selecaoModalTitulo");
-  const selecaoModalSubtitulo = document.getElementById("selecaoModalSubtitulo");
+  const selecaoModalSubtitulo = document.getElementById(
+    "selecaoModalSubtitulo",
+  );
   const btnSelecionarImagensNova = document.getElementById(
     "btnSelecionarImagensNova",
   );
@@ -2165,8 +2252,7 @@ document.addEventListener("DOMContentLoaded", () => {
       selectionFooterSummary.textContent = "Nenhuma imagem selecionada";
     if (btnAdicionarSelecionadas) {
       btnAdicionarSelecionadas.disabled = true;
-      btnAdicionarSelecionadas.innerHTML =
-        `<i class="fa-solid fa-check"></i> ${context === "nova" ? "Usar imagens selecionadas" : "Adicionar selecionadas"}`;
+      btnAdicionarSelecionadas.innerHTML = `<i class="fa-solid fa-check"></i> ${context === "nova" ? "Usar imagens selecionadas" : "Adicionar selecionadas"}`;
     }
     if (selecionarContainer) {
       selecionarContainer.innerHTML =
@@ -2198,7 +2284,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnAdicionarSelecionadas) {
       btnAdicionarSelecionadas.disabled = selectedCount === 0;
-      const actionLabel = selectionState.context === "nova" ? "Usar" : "Adicionar";
+      const actionLabel =
+        selectionState.context === "nova" ? "Usar" : "Adicionar";
       btnAdicionarSelecionadas.innerHTML = `<i class="fa-solid fa-check"></i> ${
         selectedCount > 0
           ? `${actionLabel} ${selectedCount} ${selectedCount === 1 ? "imagem" : "imagens"}`
@@ -2242,12 +2329,18 @@ document.addEventListener("DOMContentLoaded", () => {
       .map((img) => {
         const imageId = Number(img.id);
         const imageName = escapeHtml(img.nome || "Imagem sem nome");
+        const isAntecipada = Number(img.antecipada) === 1;
+        const antecipadaClass = isAntecipada ? " is-antecipada" : "";
+        const antecipadaBadge = isAntecipada
+          ? '<span class="selection-antecipada-badge"><i class="fa-solid fa-forward" aria-hidden="true"></i> Antecipada</span>'
+          : "";
 
         if (mode === "hold") {
           return `
-            <div class="selection-image-row is-hold" title="Imagem em HOLD e indisponível para seleção">
+            <div class="selection-image-row is-hold${antecipadaClass}" title="Imagem em HOLD e indisponível para seleção">
               <span class="selection-readonly-icon" aria-hidden="true"><i class="fa-solid fa-pause"></i></span>
               <span class="selection-image-name">${imageName}</span>
+              ${antecipadaBadge}
               <span class="selection-hold-badge">HOLD</span>
             </div>
           `;
@@ -2255,17 +2348,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (mode === "assigned") {
           return `
-            <div class="selection-image-row is-assigned" title="Imagem já atribuída neste status">
+            <div class="selection-image-row is-assigned${antecipadaClass}" title="Imagem já atribuída neste status">
               <span class="selection-readonly-icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
               <span class="selection-image-name">${imageName}</span>
+              ${antecipadaBadge}
             </div>
           `;
         }
 
         return `
-          <div class="selection-image-row is-available">
+          <div class="selection-image-row is-available${antecipadaClass}">
             <input class="selection-image-checkbox" type="checkbox" name="selecionar_imagem_ids[]" value="${imageId}" id="sel-img-${imageId}"${selectionState.selectedIds.has(String(imageId)) ? " checked" : ""}>
             <label class="selection-image-name" for="sel-img-${imageId}">${imageName}</label>
+            ${antecipadaBadge}
           </div>
         `;
       })
@@ -2278,10 +2373,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const search = selectionState.search.trim().toLocaleLowerCase("pt-BR");
     const matchesSearch = (img) =>
       !search ||
-      String(img.nome || "").toLocaleLowerCase("pt-BR").includes(search);
+      String(img.nome || "")
+        .toLocaleLowerCase("pt-BR")
+        .includes(search);
 
-    selectionState.filteredAvailable = selectionState.available.filter(matchesSearch);
-    selectionState.filteredAssigned = selectionState.assigned.filter(matchesSearch);
+    selectionState.filteredAvailable =
+      selectionState.available.filter(matchesSearch);
+    selectionState.filteredAssigned =
+      selectionState.assigned.filter(matchesSearch);
     selectionState.filteredHold = selectionState.hold.filter(matchesSearch);
 
     renderSelectionStats();
@@ -2383,10 +2482,12 @@ document.addEventListener("DOMContentLoaded", () => {
       selectionState.available = filtered.filter(
         (img) => Number(img.substatus_id) !== 7 && !Number(img.ja_atribuida),
       );
-      selectionState.assigned = filtered.filter((img) =>
-        Number(img.substatus_id) !== 7 && Number(img.ja_atribuida),
+      selectionState.assigned = filtered.filter(
+        (img) => Number(img.substatus_id) !== 7 && Number(img.ja_atribuida),
       );
-      selectionState.hold = filtered.filter((img) => Number(img.substatus_id) === 7);
+      selectionState.hold = filtered.filter(
+        (img) => Number(img.substatus_id) === 7,
+      );
       renderImagensParaSelecao();
     } catch (err) {
       console.error("Erro ao carregar imagens para seleção:", err);
@@ -2412,10 +2513,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (modalSelecionar) {
     modalSelecionar.addEventListener("keydown", (event) => {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "k"
-      ) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         event.stopPropagation();
         selectionSearchInput?.focus();
@@ -2445,8 +2543,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ),
       );
       const shouldCheck =
-        !checkboxes.length ||
-        !checkboxes.every((checkbox) => checkbox.checked);
+        !checkboxes.length || !checkboxes.every((checkbox) => checkbox.checked);
       checkboxes.forEach((checkbox) => {
         checkbox.checked = shouldCheck;
         const imageId = String(checkbox.value);
@@ -2488,7 +2585,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!container || !hiddenInputs) return;
 
     hiddenInputs.innerHTML = Array.from(novaEntregaImagemIds)
-      .map((id) => `<input type="hidden" name="imagem_ids[]" value="${escapeHtml(id)}">`)
+      .map(
+        (id) =>
+          `<input type="hidden" name="imagem_ids[]" value="${escapeHtml(id)}">`,
+      )
       .join("");
 
     container.classList.toggle("has-selection", novaEntregaImagemIds.size > 0);
@@ -2520,11 +2620,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function commitNovaEntregaSelection() {
     novaEntregaImagemIds.clear();
-    selectionState.selectedIds.forEach((id) => novaEntregaImagemIds.add(String(id)));
+    selectionState.selectedIds.forEach((id) =>
+      novaEntregaImagemIds.add(String(id)),
+    );
     novaEntregaImagemNomes.clear();
     selectionState.all.forEach((img) => {
       if (novaEntregaImagemIds.has(String(img.id))) {
-        novaEntregaImagemNomes.set(String(img.id), img.nome || `Imagem #${img.id}`);
+        novaEntregaImagemNomes.set(
+          String(img.id),
+          img.nome || `Imagem #${img.id}`,
+        );
       }
     });
     renderNovaEntregaImagemSummary();

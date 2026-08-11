@@ -69,7 +69,7 @@ try {
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
           )
-          AND o.status_obra = 0
+          AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 5) {
     $sql = "SELECT
@@ -121,6 +121,7 @@ try {
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
           )
+          AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
     $sql = "SELECT
@@ -172,6 +173,7 @@ try {
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
           )
+          AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
   } else {
     // Se for colaborador não-admin, limitar por obras associadas ao colaborador.
@@ -232,6 +234,7 @@ try {
               JOIN funcao_imagem f2 ON f2.imagem_id = i2.idimagens_cliente_obra
               WHERE f2.colaborador_id IN (8, 40, 23)
           )
+          AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
     } else {
       $sql = "SELECT
@@ -289,6 +292,7 @@ try {
               JOIN funcao_imagem f2 ON f2.imagem_id = i2.idimagens_cliente_obra
               WHERE f2.colaborador_id = ?
           )
+          AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
     }
   }
@@ -365,7 +369,7 @@ try {
         LEFT JOIN status_imagem s ON i.status_id = s.idstatus
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE fa.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
-          AND o.status_obra = 0";
+          AND o.status_obra = 0 AND i.substatus_id <> 7";
 
   $animParams = [];
   $animTypes = '';

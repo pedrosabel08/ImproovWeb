@@ -817,13 +817,24 @@ document
 // Metric cards — click para filtrar tabela
 document.querySelectorAll(".metric-card").forEach(function (card) {
   card.addEventListener("click", function () {
-    var filterType = this.dataset.filter;
+    const jaAtivo = this.classList.contains("metric-card--active");
+
+    // Remove o estado ativo de todos
     document.querySelectorAll(".metric-card").forEach(function (c) {
       c.classList.remove("metric-card--active");
     });
-    this.classList.add("metric-card--active");
+
     resetarFiltrosBar();
-    aplicarFiltroCard(filterType);
+
+    // Se já estava ativo, apenas remove o filtro
+    if (jaAtivo) {
+      aplicarFiltroCard(null); // ou sua função para mostrar tudo
+      return;
+    }
+
+    // Caso contrário, ativa o card e aplica o filtro
+    this.classList.add("metric-card--active");
+    aplicarFiltroCard(this.dataset.filter);
   });
 });
 

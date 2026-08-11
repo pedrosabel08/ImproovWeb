@@ -261,7 +261,8 @@ header button#openModalBtnRender {
   min-width: 0;
   background: var(--bg-body);
   color: var(--text-primary);
-  height: 100dvh;
+  height: 100vh;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -282,20 +283,34 @@ header button#openModalBtnRender {
 }
 
 .tabela-container {
-  flex: 1 1 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
   min-height: 0;
-  margin: 12px auto 0;
-  max-height: none;
-  overflow: auto;
-  padding: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 40px;
   scroll-padding-bottom: 84px;
-  width: calc(100% - 40px);
-  max-width: calc(100vw - 80px);
+  width: 100%;
 }
 
 .tabulator-cell {
   padding: 8px 10px !important;
   text-align: center !important;
+}
+
+.tabulator .tabulator-footer .tabulator-footer-contents {
+  background: var(--bg-surface-alt) !important;
+}
+
+.tabulator .tabulator-footer {
+  border: none !important;
+}
+
+.tabulator .tabulator-footer .tabulator-page {
+  color: var(--text-primary);
 }
 
 table {
@@ -964,7 +979,6 @@ nav {
   border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  margin: 12px 0;
   min-width: 260px;
   max-width: 340px;
   box-shadow: var(--shadow-card);

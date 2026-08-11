@@ -7,6 +7,8 @@
 ob_start();
 ini_set('display_errors', '0');
 require_once __DIR__ . '/FlowReview/ws_notify.php';
+require_once __DIR__ . '/FlowReview/pdf_approval_helpers.php';
+require_once __DIR__ . '/config/secure_env.php';
 $_enqueue_errors = [];
 $results = []; // inicializa cedo para o shutdown handler
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
@@ -333,6 +335,7 @@ for ($i = 0; $i < $total; $i++) {
     $meta['id'] = $id;
     $meta['uploaded_at'] = date('c');
     $meta['post'] = $_POST;
+    $meta['pdf_approval_deferred'] = pdf_approval_is_deferred_pdf($_POST['nome_funcao'] ?? '', $ext);
     $meta['tipo_tarefa'] = $tipo_tarefa;
     $meta['funcao_animacao_id'] = $tipo_tarefa === 'animacao' && $funcao_animacao_id > 0 ? $funcao_animacao_id : null;
     $meta['animacao_id'] = $tipo_tarefa === 'animacao' && $animacao_id > 0 ? $animacao_id : null;
@@ -359,6 +362,7 @@ for ($i = 0; $i < $total; $i++) {
     // Insert initial log row into arquivo_log with status 'enfileirado' (use existing table schema)
     try {
         require_once __DIR__ . '/conexao.php';
+        pdf_approval_ensure_schema($conn);
         $colaborador_id = isset($_POST['idcolaborador']) ? (int)$_POST['idcolaborador'] : null;
         $tipo = resolveLogFileTypeUploadEnqueue($ext, $tipo_tarefa);
         $status = 'enfileirado';
@@ -470,18 +474,33 @@ for ($i = 0; $i < $total; $i++) {
         }
 
         // 2) Se função for Caderno/Filtro de assets: colocar em aprovação
-        $func_lower = mb_strtolower($nome_funcao, 'UTF-8');
-        if ($tipo_tarefa !== 'animacao' && !empty($dataIdFuncoes) && in_array($func_lower, ['caderno', 'filtro de assets'])) {
+        if ($tipo_tarefa !== 'animacao' && !empty($dataIdFuncoes) && pdf_approval_is_deferred_function($nome_funcao)) {
             foreach ($dataIdFuncoes as $fidIndex => $fid) {
                 $fidInt = (int)$fid;
-                $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?");
+                $pdfEmAprovacao = $extLower === 'pdf';
+                $stmt = $conn->prepare(
+                    $pdfEmAprovacao
+                        ? "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 0, file_uploaded_at = NOW() WHERE idfuncao_imagem = ?"
+                        : "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?"
+                );
                 if ($stmt) {
                     $stmt->bind_param('i', $fidInt);
                     if (@$stmt->execute()) {
                         $arquivoLogId = isset($logIds[$fidIndex]) ? (int)$logIds[$fidIndex] : null;
+                        $historicoPdfId = null;
+                        if ($extLower === 'pdf' && $arquivoLogId > 0) {
+                            $historicoPdfId = pdf_approval_link_history(
+                                $conn,
+                                $fidInt,
+                                $arquivoLogId,
+                                isset($colaborador_id) ? (int)$colaborador_id : null
+                            );
+                            pdf_approval_link_status_log($conn, $fidInt, $arquivoLogId);
+                        }
                         notifyFlowReviewUpdate($conn, 'media.created', [
                             'funcao_imagem_id' => $fidInt,
                             'arquivo_log_id' => $arquivoLogId,
+                            'historico_aprovacao_id' => $historicoPdfId,
                             'versao' => $revisao ?? null,
                             'media_count' => 1,
                             'actor_id' => $colaborador_id ?? null,
@@ -563,7 +582,7 @@ if (!empty($_sftpTasks)) {
             require_once __DIR__ . '/vendor/autoload.php';
         }
         $vpsCfg  = improov_sftp_config('IMPROOV_VPS_SFTP');
-        $vpsBase = rtrim((string)(getenv('IMPROOV_VPS_SFTP_REMOTE_PATH') ?: ''), '/');
+        $vpsBase = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
         if ($vpsBase === '') throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido');
         $vpsStaging = $vpsBase . '/uploads/staging';
 

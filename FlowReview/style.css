@@ -946,7 +946,8 @@ img {
   box-sizing: border-box;
 }
 
-#indiceSelect {
+#indiceSelect,
+#pdfHistorySelect {
   border: none;
   border-radius: 6px;
   padding: 5px 10px;
@@ -2225,7 +2226,7 @@ nav.breadcrumb-nav {
   background: #ffffff;
   border-bottom: 1px solid #e6eaf2;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 /* Old absolute-positioned sub-elements — neutralised */
@@ -3638,7 +3639,8 @@ nav.breadcrumb-nav a {
     height: 26px !important;
   }
 
-  #indiceSelect {
+  #indiceSelect,
+  #pdfHistorySelect {
     order: 3;
     flex: 1;
     min-width: 80px;

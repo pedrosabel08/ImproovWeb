@@ -3157,7 +3157,13 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       });
       const radios = document.querySelectorAll('input[name="decision"]');
 
-      const { historico, imagens, pdf } = response;
+      const { historico, imagens, pdf: pdfResponse, pdfs: pdfsResponse } = response;
+      const pdfsDisponiveis = Array.isArray(pdfsResponse) && pdfsResponse.length
+        ? pdfsResponse
+        : pdfResponse
+          ? [pdfResponse]
+          : [];
+      const pdf = pdfsDisponiveis[0] || null;
       const item = historico[0];
 
       currentFuncaoContext = item || null;
@@ -3453,9 +3459,43 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
 
       // Clona e substitui select
       let indiceSelect = document.getElementById("indiceSelect");
+      document.getElementById("pdfHistorySelect")?.remove();
       indiceSelect = indiceSelect.cloneNode(true);
       document.getElementById("indiceSelect").replaceWith(indiceSelect);
       indiceSelect.innerHTML = "";
+
+      if (pdfsDisponiveis.length > 1) {
+        const pdfHistorySelect = document.createElement("select");
+        pdfHistorySelect.id = "pdfHistorySelect";
+        pdfHistorySelect.setAttribute("aria-label", "Envios anteriores do PDF");
+        pdfHistorySelect.title = "Envios anteriores do PDF";
+
+        pdfsDisponiveis.forEach((pdfItem, index) => {
+          const option = document.createElement("option");
+          option.value = String(pdfItem.id);
+          const prefix = index === 0 ? "PDF atual" : `Envio anterior ${index}`;
+          option.textContent = `${prefix} — ${pdfItem.nome_arquivo || `PDF ${pdfItem.id}`}`;
+          pdfHistorySelect.appendChild(option);
+        });
+
+        pdfHistorySelect.addEventListener("change", () => {
+          const selected = pdfsDisponiveis.find(
+            (pdfItem) => String(pdfItem.id) === pdfHistorySelect.value,
+          );
+          if (!selected) return;
+          const rawUrl = `../FlowDrive/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(selected.id))}&raw=1`;
+          const downloadUrl = `../FlowDrive/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(selected.id))}&raw=1&download=1`;
+          mostrarPdfCompleto(
+            rawUrl,
+            downloadUrl,
+            selected.nome_arquivo || `PDF ${selected.id}`,
+            selected.id,
+          );
+          pdfShownOnce = true;
+        });
+
+        indiceSelect.insertAdjacentElement("beforebegin", pdfHistorySelect);
+      }
 
       const imagensAgrupadas = imagens.reduce((acc, img) => {
         if (!acc[img.indice_envio]) acc[img.indice_envio] = [];

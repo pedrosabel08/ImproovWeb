@@ -17,9 +17,12 @@ require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/approval_media_schema.php';
+require_once __DIR__ . '/pdf_approval_helpers.php';
 require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+
+pdf_approval_ensure_schema($conn);
 
 use phpseclib3\Net\SFTP;
 use Dotenv\Dotenv;
@@ -827,8 +830,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $status_anterior = $status_funcao_context ?: "Em aprovação";
-            $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel);
+            $pdfLog = pdf_approval_latest_log($conn, (int)$idfuncao_imagem);
+            $pdfLogStatus = pdf_approval_normalize_name($pdfLog['status'] ?? '');
+            $pdfLogId = in_array($pdfLogStatus, [
+                'enfileirado', 'processando', 'aguardando aprovacao',
+                'falha vps', 'publicacao enfileirada', 'publicando nas', 'falha publicacao'
+            ], true) ? (int)($pdfLog['id'] ?? 0) : 0;
+
+            if ($pdfLogId > 0) {
+                $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel, arquivo_log_id) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("issiii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel, $pdfLogId);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel);
+            }
             $stmt->execute();
             $historicoAprovacaoId = (int)$conn->insert_id;
             $stmt->close();
@@ -870,6 +885,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
+            $pdfPublicacaoEnfileirada = false;
+            if (
+                $pdfLogId > 0
+                && $status === 'Aprovado'
+                && pdf_approval_is_deferred_function($nome_funcao_db ?: $nome_funcao)
+            ) {
+                pdf_approval_update_log_rows($conn, [$pdfLogId], 'publicacao_enfileirada');
+                $pdfPublicacaoEnfileirada = true;
+                $resultadoFinal['logs'][] = "PDF id={$pdfLogId} enfileirado para publicação no NAS após aprovação.";
+            }
             $isAlteracaoHumanizadaRender = (
                 (int)$funcao_id_context === 6
                 && stripos((string)$tipo_imagem_nome, 'humanizada') !== false
@@ -1588,6 +1613,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Commit: BD confirmado (SFTP enviado, conflito pendente ou SFTP não necessário)
         $conn->commit();
+
+        if (!empty($pdfPublicacaoEnfileirada)) {
+            pdf_approval_kick_worker();
+        }
 
         // Slack envio final — só na 1ª chamada (não reenvia na resolução de conflito SFTP)
         notifyFlowReviewUpdate($conn, 'approval.changed', [

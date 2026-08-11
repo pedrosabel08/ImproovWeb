@@ -24,7 +24,7 @@
             },
             "time": "2024-07-20T21:45:45+00:00",
             "type": "library",
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "psr-4": {
                     "GrahamCampbell\\ResultType\\": "src/"
@@ -89,7 +89,7 @@
             },
             "time": "2024-05-08T12:36:18+00:00",
             "type": "library",
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "psr-4": {
                     "ParagonIE\\ConstantTime\\": "src/"
@@ -162,7 +162,7 @@
             },
             "time": "2020-10-15T08:29:30+00:00",
             "type": "library",
-            "installation-source": "source",
+            "installation-source": "dist",
             "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
@@ -221,7 +221,7 @@
                     "dev-master": "1.9-dev"
                 }
             },
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "psr-4": {
                     "PhpOption\\": "src/PhpOption/"
@@ -298,7 +298,7 @@
             },
             "time": "2025-06-15T09:59:26+00:00",
             "type": "library",
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "files": [
                     "phpseclib/bootstrap.php"
@@ -411,7 +411,7 @@
                     "name": "symfony/polyfill"
                 }
             },
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "files": [
                     "bootstrap.php"
@@ -493,7 +493,7 @@
                     "name": "symfony/polyfill"
                 }
             },
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "files": [
                     "bootstrap.php"
@@ -570,7 +570,7 @@
                     "name": "symfony/polyfill"
                 }
             },
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "files": [
                     "bootstrap.php"
@@ -651,7 +651,7 @@
             },
             "time": "2024-06-26T08:18:40+00:00",
             "type": "library",
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "psr-0": {
                     "ICal": "src/"
@@ -738,7 +738,7 @@
                     "dev-master": "5.6-dev"
                 }
             },
-            "installation-source": "source",
+            "installation-source": "dist",
             "autoload": {
                 "psr-4": {
                     "Dotenv\\": "src/"

@@ -32,6 +32,8 @@ function vpl_log($msg)
 }
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../config/secure_env.php';
+require_once __DIR__ . '/../FlowReview/pdf_approval_helpers.php';
 
 $idlog = isset($_GET['idlog']) ? intval($_GET['idlog']) : 0;
 if ($idlog <= 0) {
@@ -41,7 +43,8 @@ if ($idlog <= 0) {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT id, tipo, caminho, nome_arquivo FROM arquivo_log WHERE id = ? LIMIT 1");
+pdf_approval_ensure_schema($conn);
+$stmt = $conn->prepare("SELECT id, tipo, caminho, caminho_vps, caminho_nas, status, nome_arquivo FROM arquivo_log WHERE id = ? LIMIT 1");
 if (!$stmt) {
     http_response_code(500);
     echo 'Erro interno.';
@@ -101,7 +104,13 @@ if ((isset($_GET['raw']) ? (int) $_GET['raw'] : 0) === 1) {
         $filename .= '.pdf';
     }
 
-    $path = vpl_map_path((string) ($row['caminho'] ?? ''));
+    $pendingStatuses = ['aguardando aprovacao', 'publicacao enfileirada', 'publicando nas', 'falha vps', 'falha publicacao'];
+    $isPendingVps = in_array(pdf_approval_normalize_name($row['status'] ?? ''), $pendingStatuses, true)
+        && !empty($row['caminho_vps']);
+    $rawPath = $isPendingVps
+        ? (string)($row['caminho_vps'] ?? $row['caminho'] ?? '')
+        : (string)($row['caminho_nas'] ?? $row['caminho'] ?? '');
+    $path = $isPendingVps ? $rawPath : vpl_map_path($rawPath);
     vpl_log('caminho mapeado: ' . $path);
 
     // 1. Arquivo local -----------------------------------------------------------
@@ -120,10 +129,10 @@ if ((isset($_GET['raw']) ? (int) $_GET['raw'] : 0) === 1) {
 
     vpl_log('arquivo local nao encontrado, buscando via SFTP: ' . $path);
 
-    // Configuracao SFTP
-    require_once __DIR__ . '/../config/secure_env.php';
+    // Configuração SFTP: pendentes são lidos do VPS; históricos publicados,
+    // do NAS. Registros antigos continuam usando o caminho legado.
     try {
-        $cfg = improov_sftp_config();
+        $cfg = improov_sftp_config($isPendingVps ? 'IMPROOV_VPS_SFTP' : 'IMPROOV_SFTP');
     } catch (\Exception $e) {
         vpl_log('erro na configuracao SFTP: ' . $e->getMessage());
         http_response_code(500);
@@ -327,49 +336,90 @@ $downloadHref = $self . '?idlog=' . urlencode((string) $idlog) . '&raw=1&downloa
 </html>
 
 <style>
-/* Styles mínimos para o overlay de carregamento (isolados para evitar conflitos) */
-.vpl-pdf-loading{position:fixed;left:0;top:52px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(11,18,32,0.6);z-index:9999}
-.vpl-pdf-loading[aria-hidden="true"]{display:none}
-.vpl-pdf-loading-box{background:#0b1220;border:1px solid rgba(255,255,255,0.06);padding:18px 22px;border-radius:10px;color:#e6eef8;min-width:280px;max-width:480px;box-shadow:0 6px 18px rgba(0,0,0,0.45);text-align:left}
-.vpl-pdf-loading-title{font-size:14px;margin-bottom:10px}
-.vpl-pdf-progress{height:8px;background:#1f2937;border-radius:6px;overflow:hidden}
-.vpl-pdf-progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#06b6d4);width:0;transition:width .3s ease}
+    /* Styles mínimos para o overlay de carregamento (isolados para evitar conflitos) */
+    .vpl-pdf-loading {
+        position: fixed;
+        left: 0;
+        top: 52px;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(11, 18, 32, 0.6);
+        z-index: 9999
+    }
+
+    .vpl-pdf-loading[aria-hidden="true"] {
+        display: none
+    }
+
+    .vpl-pdf-loading-box {
+        background: #0b1220;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 18px 22px;
+        border-radius: 10px;
+        color: #e6eef8;
+        min-width: 280px;
+        max-width: 480px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+        text-align: left
+    }
+
+    .vpl-pdf-loading-title {
+        font-size: 14px;
+        margin-bottom: 10px
+    }
+
+    .vpl-pdf-progress {
+        height: 8px;
+        background: #1f2937;
+        border-radius: 6px;
+        overflow: hidden
+    }
+
+    .vpl-pdf-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2563eb, #06b6d4);
+        width: 0;
+        transition: width .3s ease
+    }
 </style>
 
 <script>
-(function(){
-    var iframe = document.querySelector('iframe');
-    var overlay = document.getElementById('vpl-pdf-loading');
-    var fill = overlay && overlay.querySelector('.vpl-pdf-progress-fill');
-    if (!iframe || !overlay || !fill) return;
+    (function() {
+        var iframe = document.querySelector('iframe');
+        var overlay = document.getElementById('vpl-pdf-loading');
+        var fill = overlay && overlay.querySelector('.vpl-pdf-progress-fill');
+        if (!iframe || !overlay || !fill) return;
 
-    var progress = 0;
-    overlay.setAttribute('aria-hidden','false');
+        var progress = 0;
+        overlay.setAttribute('aria-hidden', 'false');
 
-    // anima progress até 90% enquanto carrega
-    var ticker = setInterval(function(){
-        if (progress < 90) {
-            progress += Math.ceil(Math.random()*6);
-            if (progress > 90) progress = 90;
-            fill.style.width = progress + '%';
-        }
-    }, 300);
+        // anima progress até 90% enquanto carrega
+        var ticker = setInterval(function() {
+            if (progress < 90) {
+                progress += Math.ceil(Math.random() * 6);
+                if (progress > 90) progress = 90;
+                fill.style.width = progress + '%';
+            }
+        }, 300);
 
-    // quando iframe terminar de carregar, completa e remove overlay
-    iframe.addEventListener('load', function(){
-        clearInterval(ticker);
-        fill.style.width = '100%';
-        setTimeout(function(){
-            overlay.setAttribute('aria-hidden','true');
-        }, 350);
-    });
-
-    // fallback: timeout para remover overlay caso algo falhe (20s)
-    setTimeout(function(){
-        if (overlay.getAttribute('aria-hidden') === 'false') {
+        // quando iframe terminar de carregar, completa e remove overlay
+        iframe.addEventListener('load', function() {
             clearInterval(ticker);
-            overlay.setAttribute('aria-hidden','true');
-        }
-    }, 20000);
-})();
+            fill.style.width = '100%';
+            setTimeout(function() {
+                overlay.setAttribute('aria-hidden', 'true');
+            }, 350);
+        });
+
+        // fallback: timeout para remover overlay caso algo falhe (20s)
+        setTimeout(function() {
+            if (overlay.getAttribute('aria-hidden') === 'false') {
+                clearInterval(ticker);
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+        }, 20000);
+    })();
 </script>

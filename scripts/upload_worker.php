@@ -5,6 +5,7 @@
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/secure_env.php';
+require_once __DIR__ . '/../FlowReview/pdf_approval_helpers.php';
 
 use phpseclib3\Net\SFTP;
 use phpseclib3\Exception\UnableToConnectException;
@@ -13,9 +14,12 @@ use Predis\Client as PredisClient;
 $baseDir = __DIR__ . '/../uploads/staging';
 $processedDir = __DIR__ . '/../uploads/sent';
 $failedDir = __DIR__ . '/../uploads/failed';
+$approvalDir = __DIR__ . '/../uploads/aprovacao_pdf';
 
 if (!is_dir($processedDir)) mkdir($processedDir, 0777, true);
 if (!is_dir($failedDir)) mkdir($failedDir, 0777, true);
+if (!is_dir($approvalDir)) mkdir($approvalDir, 0777, true);
+pdf_approval_ensure_schema($conn);
 
 // Config SFTP
 try {
@@ -641,6 +645,122 @@ function update_log_entries_status(array $logIds = null, string $status = '', $c
     $stmt->close();
 }
 
+function upload_deferred_pdf_to_vps(string $localFile, array $meta, string $jobId, string $nomeFinal, string $nasPath): ?array
+{
+    try {
+        $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
+        $vpsBase = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
+        if ($vpsBase === '') throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido');
+
+        $safeJob = preg_replace('/[^A-Za-z0-9_.-]/', '_', $jobId);
+        $remoteDir = $vpsBase . '/uploads/aprovacao_pdf/' . $safeJob;
+        $remoteFile = $remoteDir . '/' . basename($nomeFinal);
+        $remoteMeta = $remoteDir . '/' . $safeJob . '.json';
+        $sftp = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
+        if (!$sftp->login($vpsCfg['user'], $vpsCfg['pass'])) throw new RuntimeException('Falha de login no VPS para PDF pendente');
+        if (!ensure_remote_dir_recursive($sftp, $remoteDir)) throw new RuntimeException('Não foi possível criar o diretório persistente no VPS');
+        if (!$sftp->put($remoteFile, $localFile, SFTP::SOURCE_LOCAL_FILE)) throw new RuntimeException('Falha ao copiar PDF pendente para o VPS');
+
+        $meta['staged_path'] = $remoteFile;
+        $meta['pending_vps_path'] = $remoteFile;
+        $meta['remote_path'] = $nasPath;
+        $meta['nome_final'] = $nomeFinal;
+        $meta['pdf_approval_state'] = 'aguardando_aprovacao';
+        if (!$sftp->put($remoteMeta, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))) throw new RuntimeException('PDF copiado, mas os metadados não foram persistidos no VPS');
+        return ['file' => $remoteFile, 'data' => $meta];
+    } catch (Throwable $e) {
+        error_log('[upload_worker] PDF pendente VPS: ' . $e->getMessage());
+        return null;
+    }
+}
+
+function persist_deferred_pdf_pending(string $processingMeta, string $staged, array &$meta, string $jobId, string $nomeFinal, string $nasPath, string $tipo, string $approvalDir): bool
+{
+    global $conn;
+    $logIds = array_map('intval', $meta['log_ids'] ?? []);
+
+    if (DIRECTORY_SEPARATOR === '\\') {
+        $remote = upload_deferred_pdf_to_vps($staged, $meta, $jobId, $nomeFinal, $nasPath);
+        if (!$remote) {
+            pdf_approval_update_log_rows($conn, $logIds, 'falha_vps', $staged, null, $nasPath, $nomeFinal, $tipo);
+            return false;
+        }
+        $meta = $remote['data'];
+        pdf_approval_update_log_rows($conn, $logIds, 'aguardando_aprovacao', $remote['file'], $remote['file'], $nasPath, $nomeFinal, $tipo);
+        @unlink($staged);
+        @unlink($processingMeta);
+        return true;
+    }
+
+    $safeJob = preg_replace('/[^A-Za-z0-9_.-]/', '_', $jobId);
+    $pendingDir = rtrim($approvalDir, '/\\') . DIRECTORY_SEPARATOR . $safeJob;
+    if (!is_dir($pendingDir) && !@mkdir($pendingDir, 0777, true) && !is_dir($pendingDir)) return false;
+    $pendingFile = $pendingDir . DIRECTORY_SEPARATOR . basename($nomeFinal);
+    $pendingMeta = $pendingDir . DIRECTORY_SEPARATOR . $safeJob . '.json';
+    $vpsBase = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
+    $pendingRemoteFile = $vpsBase !== '' ? $vpsBase . '/uploads/aprovacao_pdf/' . $safeJob . '/' . basename($nomeFinal) : $pendingFile;
+    if (!@rename($staged, $pendingFile)) return false;
+
+    $meta['staged_path'] = $pendingFile;
+    $meta['pending_vps_path'] = $pendingRemoteFile;
+    $meta['remote_path'] = $nasPath;
+    $meta['nome_final'] = $nomeFinal;
+    $meta['pdf_approval_state'] = 'aguardando_aprovacao';
+    writeMeta($pendingMeta, $meta);
+    if ($processingMeta !== $pendingMeta) @unlink($processingMeta);
+    pdf_approval_update_log_rows($conn, $logIds, 'aguardando_aprovacao', $pendingRemoteFile, $pendingRemoteFile, $nasPath, $nomeFinal, $tipo);
+    return true;
+}
+
+function process_approved_pdf_publications(): int
+{
+    global $conn, $ftp_host, $ftp_port, $ftp_user, $ftp_pass;
+    if (!isset($conn) || !pdf_approval_ensure_schema($conn)) return 0;
+    $rows = [];
+    $res = $conn->query("SELECT al.id, al.funcao_imagem_id, al.caminho, al.caminho_vps, al.caminho_nas, al.nome_arquivo, al.colaborador_id FROM arquivo_log al JOIN funcao_imagem fi ON fi.idfuncao_imagem = al.funcao_imagem_id WHERE UPPER(al.tipo) = 'PDF' AND al.status IN ('publicacao_enfileirada', 'falha_publicacao') AND fi.status = 'Aprovado' ORDER BY al.id ASC LIMIT 20");
+    if ($res) { while ($row = $res->fetch_assoc()) $rows[] = $row; $res->free(); }
+
+    $processed = 0;
+    foreach ($rows as $row) {
+        $logId = (int)$row['id'];
+        $claim = $conn->prepare("UPDATE arquivo_log SET status = 'publicando_nas' WHERE id = ? AND status IN ('publicacao_enfileirada', 'falha_publicacao')");
+        if (!$claim) continue;
+        $claim->bind_param('i', $logId);
+        $claim->execute();
+        $claimed = $claim->affected_rows === 1;
+        $claim->close();
+        if (!$claimed) continue;
+
+        $source = (string)($row['caminho_vps'] ?: $row['caminho']);
+        $target = (string)($row['caminho_nas'] ?? '');
+        $tempFile = null;
+        try {
+            if ($target === '') throw new RuntimeException('caminho_nas não foi definido para o PDF');
+            if (!is_file($source)) {
+                $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
+                $tempFile = tempnam(sys_get_temp_dir(), 'pdf_approval_');
+                $vps = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
+                if (!$tempFile || !$vps->login($vpsCfg['user'], $vpsCfg['pass']) || !$vps->get($source, $tempFile)) throw new RuntimeException('não foi possível baixar o PDF pendente do VPS');
+            }
+            $sftpError = null;
+            $sftp = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $sftpError);
+            if (!$sftp) throw new RuntimeException($sftpError ?: 'não foi possível conectar ao NAS');
+            if (!ensure_remote_dir_recursive($sftp, dirname($target))) throw new RuntimeException('não foi possível preparar o diretório do NAS');
+            [$ok, $message] = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $tempFile ?: $source, $target, $ftp_port);
+            if (!$ok) throw new RuntimeException($message);
+            pdf_approval_update_log_rows($conn, [$logId], 'publicado', to_windows_access_path($target), (string)($row['caminho_vps'] ?: $source), $target, (string)$row['nome_arquivo'], 'PDF', date('Y-m-d H:i:s'));
+            mark_funcao_upload_quitado(['tipo_tarefa' => 'imagem', 'dataIdFuncoes' => [(int)$row['funcao_imagem_id']], 'post' => ['idcolaborador' => (int)$row['colaborador_id']]]);
+            $processed++;
+        } catch (Throwable $e) {
+            error_log("[upload_worker] publicação PDF id={$logId} falhou: " . $e->getMessage());
+            pdf_approval_update_log_rows($conn, [$logId], 'falha_publicacao', $source, (string)($row['caminho_vps'] ?: $source), $target, (string)$row['nome_arquivo'], 'PDF');
+        } finally {
+            if ($tempFile && is_file($tempFile)) @unlink($tempFile);
+        }
+    }
+    return $processed;
+}
+
 function mark_funcao_upload_quitado(array $meta): void
 {
     global $conn, $redis;
@@ -949,6 +1069,9 @@ function send_slack_notification_for_colaborador($colaborador_id, array $meta, $
 
 // Process loop (single run or daemon loop)
 do {
+    // Publicações aprovadas usam o mesmo worker para copiar VPS -> NAS.
+    process_approved_pdf_publications();
+
     // Considere jobs pendentes e jobs já "claimed" (.json.processing and variants)
     $metaFiles = array_merge(
         glob($baseDir . '/*.json') ?: [],
@@ -1321,6 +1444,29 @@ do {
         $meta['nome_final'] = $nome_final;
         $meta['tipo'] = $tipo;
         writeMeta($processingMeta, $meta);
+
+        // PDFs de Caderno/Filtro ficam no VPS até a aprovação. O caminho do
+        // NAS é preparado e persistido, mas o arquivo não é enviado nesta etapa.
+        if (!empty($meta['pdf_approval_deferred']) && strtoupper($tipo) === 'PDF') {
+            $pendingOk = persist_deferred_pdf_pending(
+                $processingMeta,
+                $staged,
+                $meta,
+                $jobId,
+                $nome_final,
+                $remote_path,
+                $tipo,
+                $approvalDir
+            );
+            if ($pendingOk) {
+                worker_log("PDF {$jobId} mantido no VPS aguardando aprovação.", 'SUCCESS');
+                publishProgress($redis, $jobId, 100, 'awaiting_approval', 'PDF armazenado no VPS aguardando aprovação');
+            } else {
+                worker_log("PDF {$jobId} não foi persistido no VPS; mantendo job para retry.", 'WARN');
+                publishProgress($redis, $jobId, 0, 'retry', 'Falha ao persistir PDF no VPS');
+            }
+            continue;
+        }
 
         // retry loop with exponential backoff between attempts
         $maxAttempts = 5;

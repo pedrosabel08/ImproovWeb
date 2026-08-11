@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/approval_media_schema.php';
+require_once __DIR__ . '/pdf_approval_helpers.php';
 
 function ensureConcluidoColsHistorico(mysqli $conn): bool
 {
@@ -35,6 +36,7 @@ if (!isset($conn) || (isset($conn->connect_error) && $conn->connect_error)) {
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     ensureConcluidoColsHistorico($conn);
     fr_approval_media_ensure_schema($conn);
+    pdf_approval_ensure_schema($conn);
 
     $idFuncaoSelecionada = (int)($_GET['ajid'] ?? 0);
     $tipoTarefa = strtolower((string)($_GET['tipo_tarefa'] ?? 'imagem'));
@@ -140,6 +142,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     }
 
     $pdf = null;
+    $pdfs = [];
     if (!$isAnimacao) {
         try {
             $sqlInfo = "SELECT
@@ -163,9 +166,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
                 $statusUlt = function_exists('mb_strtolower')
                     ? mb_strtolower((string)($info['status_ultimo'] ?? ''), 'UTF-8')
                     : strtolower((string)($info['status_ultimo'] ?? ''));
-                $statusAtual = function_exists('mb_strtolower')
-                    ? mb_strtolower((string)($info['status_atual'] ?? ''), 'UTF-8')
-                    : strtolower((string)($info['status_atual'] ?? ''));
+                $statusUltNormalizado = pdf_approval_normalize_name($statusUlt);
+                $statusAtualNormalizado = pdf_approval_normalize_name($info['status_atual'] ?? '');
 
                 $funcaoId = isset($info['funcao_id']) ? intval($info['funcao_id']) : 0;
                 $isCadernoOuFiltro = in_array($funcaoId, [1, 8], true);
@@ -177,21 +179,25 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
                     'aprovado com ajustes',
                     'aprovado com ajuste',
                     'aprovado_com_ajustes',
-                    'aprovado_com_ajuste'
+                    'aprovado_com_ajuste',
+                    'aprovado',
+                    'finalizado'
                 ];
-                $isEmAprovacao = in_array(trim($statusUlt), $possibleStatuses, true) || in_array(trim($statusAtual), $possibleStatuses, true);
+                $isEmAprovacao = in_array($statusUltNormalizado, $possibleStatuses, true) || in_array($statusAtualNormalizado, $possibleStatuses, true);
 
                 $funcaoImagemId = isset($info['idfuncao_imagem']) ? intval($info['idfuncao_imagem']) : 0;
-                if ($isCadernoOuFiltro && $isEmAprovacao) {
-                    $sqlPdf = "SELECT id, nome_arquivo, caminho
+                if ($isCadernoOuFiltro) {
+                    $sqlPdf = "SELECT id, nome_arquivo, caminho, caminho_vps, caminho_nas, status, publicado_em
                                FROM arquivo_log
                                WHERE funcao_imagem_id = $funcaoImagemId
                                  AND UPPER(tipo) = 'PDF'
-                               ORDER BY id DESC
-                               LIMIT 1";
+                               ORDER BY id DESC";
                     $pdfRes = $conn->query($sqlPdf);
-                    if ($pdfRes && $pdfRes->num_rows > 0) {
-                        $pdf = $pdfRes->fetch_assoc();
+                    if ($pdfRes) {
+                        while ($pdfRow = $pdfRes->fetch_assoc()) {
+                            $pdfs[] = $pdfRow;
+                        }
+                        $pdf = $pdfs[0] ?? null;
                     }
                 }
             }
@@ -300,7 +306,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     echo json_encode([
         'historico' => $historico,
         'imagens' => $imagens,
-        'pdf' => $pdf
+        'pdf' => $pdf,
+        'pdfs' => $pdfs
     ]);
 }
 

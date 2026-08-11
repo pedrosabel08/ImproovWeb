@@ -371,6 +371,18 @@
     });
     document.addEventListener("keydown", function (event) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        var imageSelectionModal = document.getElementById("modalSelecionarImagens");
+        if (imageSelectionModal && imageSelectionModal.classList.contains("is-open")) {
+          event.preventDefault();
+          return;
+        }
+
+        var openModal = document.querySelector(".modal.is-open");
+        if (openModal) {
+          event.preventDefault();
+          return;
+        }
+
         event.preventDefault();
         openPanel("busca");
       }

@@ -10,9 +10,28 @@ $obra_id = isset($_GET['obra_id']) ? (int) $_GET['obra_id'] : 0;
 $status_id = isset($_GET['status_id']) ? (int) $_GET['status_id'] : 0;
 $data_recebimento = isset($_GET['data_recebimento']) ? trim((string) $_GET['data_recebimento']) : '';
 
-if ($obra_id <= 0 || $status_id <= 0 || !entregas_valid_date($data_recebimento)) {
-    echo json_encode(['success' => false, 'msg' => 'Dados invalidos para calcular o prazo.']);
+if ($obra_id <= 0 || $status_id <= 0) {
+    echo json_encode(['success' => false, 'msg' => 'Obra e etapa sao obrigatorias para consultar o prazo.']);
     $conn->close();
+    exit;
+}
+
+if ($data_recebimento !== '' && !entregas_valid_date($data_recebimento)) {
+    echo json_encode(['success' => false, 'msg' => 'Data de recebimento invalida.']);
+    $conn->close();
+    exit;
+}
+
+if ($data_recebimento === '') {
+    $regra = entregas_obter_regra_prazo($conn, $obra_id, $status_id);
+    $conn->close();
+
+    if (!$regra) {
+        echo json_encode(['success' => false, 'msg' => 'Prazo nao configurado para esta obra e etapa.']);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'data_prevista' => null] + $regra);
     exit;
 }
 

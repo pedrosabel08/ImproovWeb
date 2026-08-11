@@ -13,6 +13,7 @@ $stmt = $conn->prepare("SELECT
         ico.idimagens_cliente_obra AS id,
         ico.imagem_nome AS nome,
         ico.antecipada,
+        ico.substatus_id,
         EXISTS (
             SELECT 1
             FROM entregas_itens ei
@@ -27,7 +28,6 @@ $stmt = $conn->prepare("SELECT
             ?,
             CASE WHEN ? = 2 THEN 1 ELSE ? END
         )
-        AND (ico.substatus_id IS NULL OR ico.substatus_id <> 7)
     ORDER BY ja_atribuida ASC, ico.imagem_nome ASC, ico.idimagens_cliente_obra ASC
 ");
 

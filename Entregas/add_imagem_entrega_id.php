@@ -44,13 +44,18 @@ try {
     $resolvidaPor = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
 
     // Prepara statements
-    $sel = $conn->prepare("SELECT idimagens_cliente_obra FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? AND obra_id = ?");
+    $sel = $conn->prepare("SELECT idimagens_cliente_obra
+                           FROM imagens_cliente_obra
+                           WHERE idimagens_cliente_obra = ?
+                             AND obra_id = ?
+                             AND status_id IN (?, CASE WHEN ? = 2 THEN 1 ELSE ? END)
+                             AND (substatus_id IS NULL OR substatus_id <> 7)");
     $ins = $conn->prepare("INSERT INTO entregas_itens (entrega_id, imagem_id, status) VALUES (?, ?, 'Pendente')");
     $check = $conn->prepare("SELECT id FROM entregas_itens WHERE entrega_id = ? AND imagem_id = ? LIMIT 1");
 
     foreach ($imagem_ids as $imgId) {
         // opcional: checar se imagem pertence à mesma obra da entrega
-        $sel->bind_param('ii', $imgId, $ent['obra_id']);
+        $sel->bind_param('iiiii', $imgId, $ent['obra_id'], $ent['status_id'], $ent['status_id'], $ent['status_id']);
         $sel->execute();
         $r = $sel->get_result();
         if ($r->num_rows === 0) {

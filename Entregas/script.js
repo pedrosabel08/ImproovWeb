@@ -2117,24 +2117,48 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectionFooterSummary = document.getElementById(
     "selectionFooterSummary",
   );
+  const selecaoModalTitulo = document.getElementById("selecaoModalTitulo");
+  const selecaoModalSubtitulo = document.getElementById("selecaoModalSubtitulo");
+  const btnSelecionarImagensNova = document.getElementById(
+    "btnSelecionarImagensNova",
+  );
+  const novaEntregaImagemIds = new Set();
+  const novaEntregaImagemNomes = new Map();
   const selectionState = {
     all: [],
     available: [],
     assigned: [],
+    hold: [],
     filteredAvailable: [],
     filteredAssigned: [],
+    filteredHold: [],
     search: "",
     selectedIds: new Set(),
+    context: "entrega",
   };
 
-  function resetSelectionModal() {
+  function resetSelectionModal(context = "entrega", selectedIds = []) {
     selectionState.all = [];
     selectionState.available = [];
     selectionState.assigned = [];
+    selectionState.hold = [];
     selectionState.filteredAvailable = [];
     selectionState.filteredAssigned = [];
+    selectionState.filteredHold = [];
     selectionState.search = "";
     selectionState.selectedIds.clear();
+    selectionState.context = context;
+    selectedIds.forEach((id) => selectionState.selectedIds.add(String(id)));
+    if (selecaoModalTitulo) {
+      selecaoModalTitulo.textContent =
+        context === "nova" ? "Selecionar imagens" : "Adicionar imagens";
+    }
+    if (selecaoModalSubtitulo) {
+      selecaoModalSubtitulo.textContent =
+        context === "nova"
+          ? "Escolha as imagens que farão parte da nova entrega."
+          : "Escolha as imagens que farão parte desta entrega.";
+    }
     if (selectionSearchInput) selectionSearchInput.value = "";
     if (selectionStats) selectionStats.innerHTML = "";
     if (selectionFooterSummary)
@@ -2142,7 +2166,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnAdicionarSelecionadas) {
       btnAdicionarSelecionadas.disabled = true;
       btnAdicionarSelecionadas.innerHTML =
-        '<i class="fa-solid fa-check"></i> Adicionar selecionadas';
+        `<i class="fa-solid fa-check"></i> ${context === "nova" ? "Usar imagens selecionadas" : "Adicionar selecionadas"}`;
     }
     if (selecionarContainer) {
       selecionarContainer.innerHTML =
@@ -2174,10 +2198,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnAdicionarSelecionadas) {
       btnAdicionarSelecionadas.disabled = selectedCount === 0;
+      const actionLabel = selectionState.context === "nova" ? "Usar" : "Adicionar";
       btnAdicionarSelecionadas.innerHTML = `<i class="fa-solid fa-check"></i> ${
         selectedCount > 0
-          ? `Adicionar ${selectedCount} ${selectedCount === 1 ? "imagem" : "imagens"}`
-          : "Adicionar selecionadas"
+          ? `${actionLabel} ${selectedCount} ${selectedCount === 1 ? "imagem" : "imagens"}`
+          : selectionState.context === "nova"
+            ? "Usar imagens selecionadas"
+            : "Adicionar selecionadas"
       }`;
     }
 
@@ -2204,15 +2231,29 @@ document.addEventListener("DOMContentLoaded", () => {
         <span>${assignedCount === 1 ? "já atribuída" : "já atribuídas"}</span>
       </div>
     `;
+    const holdStat = document.createElement("div");
+    holdStat.className = "selection-stat is-hold";
+    holdStat.innerHTML = `<strong>${selectionState.hold.length}</strong><span>em HOLD</span>`;
+    selectionStats.appendChild(holdStat);
   }
 
-  function renderSelectionRows(images, assigned = false) {
+  function renderSelectionRows(images, mode = "available") {
     return images
       .map((img) => {
         const imageId = Number(img.id);
         const imageName = escapeHtml(img.nome || "Imagem sem nome");
 
-        if (assigned) {
+        if (mode === "hold") {
+          return `
+            <div class="selection-image-row is-hold" title="Imagem em HOLD e indisponível para seleção">
+              <span class="selection-readonly-icon" aria-hidden="true"><i class="fa-solid fa-pause"></i></span>
+              <span class="selection-image-name">${imageName}</span>
+              <span class="selection-hold-badge">HOLD</span>
+            </div>
+          `;
+        }
+
+        if (mode === "assigned") {
           return `
             <div class="selection-image-row is-assigned" title="Imagem já atribuída neste status">
               <span class="selection-readonly-icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
@@ -2241,6 +2282,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     selectionState.filteredAvailable = selectionState.available.filter(matchesSearch);
     selectionState.filteredAssigned = selectionState.assigned.filter(matchesSearch);
+    selectionState.filteredHold = selectionState.hold.filter(matchesSearch);
 
     renderSelectionStats();
     selecionarContainer.innerHTML = "";
@@ -2286,14 +2328,32 @@ document.addEventListener("DOMContentLoaded", () => {
           </span>
           <span class="selection-group-count">${selectionState.assigned.length} ${selectionState.assigned.length === 1 ? "imagem" : "imagens"}</span>
         </summary>
-        <div class="selection-image-list">${renderSelectionRows(selectionState.filteredAssigned, true)}</div>
+        <div class="selection-image-list">${renderSelectionRows(selectionState.filteredAssigned, "assigned")}</div>
       `;
       selecionarContainer.appendChild(assignedGroup);
     }
 
+    if (selectionState.filteredHold.length) {
+      const holdGroup = document.createElement("section");
+      holdGroup.className = "selection-image-group is-hold";
+      holdGroup.innerHTML = `
+        <div class="selection-group-heading">
+          <div class="selection-group-title">
+            <i class="fa-solid fa-pause" aria-hidden="true"></i>
+            <h3>HOLD</h3>
+            <span class="selection-group-count">${selectionState.hold.length} ${selectionState.hold.length === 1 ? "imagem" : "imagens"}</span>
+          </div>
+          <span class="selection-group-count">Não selecionável</span>
+        </div>
+        <div class="selection-image-list">${renderSelectionRows(selectionState.filteredHold, "hold")}</div>
+      `;
+      selecionarContainer.appendChild(holdGroup);
+    }
+
     if (
       !selectionState.filteredAvailable.length &&
-      !selectionState.filteredAssigned.length
+      !selectionState.filteredAssigned.length &&
+      !selectionState.filteredHold.length
     ) {
       selecionarContainer.innerHTML = `
         <div class="selection-empty-state">
@@ -2321,17 +2381,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const filtered = Array.isArray(imgs) ? imgs.slice(0, limit) : [];
       selectionState.all = filtered;
       selectionState.available = filtered.filter(
-        (img) => !Number(img.ja_atribuida),
+        (img) => Number(img.substatus_id) !== 7 && !Number(img.ja_atribuida),
       );
       selectionState.assigned = filtered.filter((img) =>
-        Number(img.ja_atribuida),
+        Number(img.substatus_id) !== 7 && Number(img.ja_atribuida),
       );
+      selectionState.hold = filtered.filter((img) => Number(img.substatus_id) === 7);
       renderImagensParaSelecao();
     } catch (err) {
       console.error("Erro ao carregar imagens para seleção:", err);
       selectionState.all = [];
       selectionState.available = [];
       selectionState.assigned = [];
+      selectionState.hold = [];
+      selectionState.filteredHold = [];
       selectionState.selectedIds.clear();
       renderSelectionStats();
       selecionarContainer.innerHTML =
@@ -2354,6 +2417,7 @@ document.addEventListener("DOMContentLoaded", () => {
         event.key.toLowerCase() === "k"
       ) {
         event.preventDefault();
+        event.stopPropagation();
         selectionSearchInput?.focus();
       }
     });
@@ -2411,29 +2475,113 @@ document.addEventListener("DOMContentLoaded", () => {
         entregaDados.id_status ||
         null;
 
-      resetSelectionModal();
+      resetSelectionModal("entrega");
       if (modalSelecionar) modalSelecionar.classList.add("is-open");
       await carregarImagensParaSelecao(obraId, statusId);
     });
   }
 
   // handler do botão 'Adicionar Selecionadas'
+  function renderNovaEntregaImagemSummary() {
+    const container = document.getElementById("imagens_container");
+    const hiddenInputs = document.getElementById("novas_entrega_imagem_ids");
+    if (!container || !hiddenInputs) return;
+
+    hiddenInputs.innerHTML = Array.from(novaEntregaImagemIds)
+      .map((id) => `<input type="hidden" name="imagem_ids[]" value="${escapeHtml(id)}">`)
+      .join("");
+
+    container.classList.toggle("has-selection", novaEntregaImagemIds.size > 0);
+    if (!novaEntregaImagemIds.size) {
+      container.innerHTML =
+        '<p class="selection-empty-state">Nenhuma imagem selecionada. Use o botão acima para escolher as imagens.</p>';
+      return;
+    }
+
+    const selectedIds = Array.from(novaEntregaImagemIds);
+    const visibleIds = selectedIds.slice(0, 8);
+    const extraCount = selectedIds.length - visibleIds.length;
+    const rows = visibleIds
+      .map((id) => {
+        const name = novaEntregaImagemNomes.get(String(id)) || `Imagem #${id}`;
+        return `<div class="new-delivery-selected-row"><i class="fa-solid fa-check"></i><span>${escapeHtml(name)}</span></div>`;
+      })
+      .join("");
+
+    container.innerHTML = `
+      <div class="new-delivery-selection-count">
+        <i class="fa-solid fa-images"></i>
+        ${selectedIds.length} ${selectedIds.length === 1 ? "imagem selecionada" : "imagens selecionadas"}
+      </div>
+      ${rows}
+      ${extraCount > 0 ? `<div class="new-delivery-selected-row"><i class="fa-solid fa-ellipsis"></i><span>Mais ${extraCount} ${extraCount === 1 ? "imagem" : "imagens"}</span></div>` : ""}
+    `;
+  }
+
+  function commitNovaEntregaSelection() {
+    novaEntregaImagemIds.clear();
+    selectionState.selectedIds.forEach((id) => novaEntregaImagemIds.add(String(id)));
+    novaEntregaImagemNomes.clear();
+    selectionState.all.forEach((img) => {
+      if (novaEntregaImagemIds.has(String(img.id))) {
+        novaEntregaImagemNomes.set(String(img.id), img.nome || `Imagem #${img.id}`);
+      }
+    });
+    renderNovaEntregaImagemSummary();
+  }
+
+  async function abrirSeletorNovaEntrega(preselectedIds = []) {
+    const obraId = document.getElementById("obra_id")?.value;
+    const statusId = document.getElementById("status_id")?.value;
+    if (!obraId || !statusId) {
+      alert("Selecione a obra e a etapa antes de escolher as imagens.");
+      return;
+    }
+
+    const ids = preselectedIds.length
+      ? preselectedIds.map((id) => String(id))
+      : Array.from(novaEntregaImagemIds);
+    resetSelectionModal("nova", ids);
+    if (modalSelecionar) modalSelecionar.classList.add("is-open");
+    await carregarImagensParaSelecao(obraId, statusId);
+  }
+
+  window.abrirSeletorNovaEntrega = abrirSeletorNovaEntrega;
+  window.limparSelecaoNovaEntrega = function () {
+    novaEntregaImagemIds.clear();
+    novaEntregaImagemNomes.clear();
+    renderNovaEntregaImagemSummary();
+  };
+
+  if (btnSelecionarImagensNova) {
+    btnSelecionarImagensNova.addEventListener("click", () => {
+      abrirSeletorNovaEntrega();
+    });
+  }
+
   if (btnAdicionarSelecionadas) {
     btnAdicionarSelecionadas.addEventListener("click", async function () {
+      if (selectionState.context === "nova") {
+        if (selectionState.selectedIds.size === 0) {
+          alert("Selecione ao menos uma imagem.");
+          return;
+        }
+        commitNovaEntregaSelection();
+        if (modalSelecionar) modalSelecionar.classList.remove("is-open");
+        return;
+      }
+
       if (!entregaAtualId) {
         alert("Entrega não selecionada.");
         return;
       }
-      const checked = Array.from(
-        selecionarContainer.querySelectorAll(
-          ".selection-image-checkbox:checked",
-        ),
-      );
-      if (checked.length === 0) {
+      const ids = Array.from(selectionState.selectedIds)
+        .map((id) => parseInt(id, 10))
+        .filter((id) => Number.isInteger(id) && id > 0);
+      if (ids.length === 0) {
         alert("Selecione ao menos uma imagem.");
         return;
       }
-      const ids = checked.map((cb) => parseInt(cb.value));
       try {
         const res = await fetch(BASE + "add_imagem_entrega_id.php", {
           method: "POST",
@@ -3211,43 +3359,70 @@ void 0; // anchor — do not remove
 document
   .getElementById("adicionar_entrega")
   .addEventListener("click", function () {
+    document.getElementById("formAdicionarEntrega")?.reset();
+    window.limparSelecaoNovaEntrega?.();
+    atualizarPrazoPrevisto();
     document.getElementById("modalAdicionarEntrega").classList.add("is-open");
   });
 
 document.getElementById("obra_id").addEventListener("change", () => {
-  carregarImagens();
+  window.limparSelecaoNovaEntrega?.();
   atualizarPrazoPrevisto();
 });
 document.getElementById("status_id").addEventListener("change", () => {
-  carregarImagens();
+  window.limparSelecaoNovaEntrega?.();
   atualizarPrazoPrevisto();
 });
 document
   .getElementById("data_recebimento")
   ?.addEventListener("change", atualizarPrazoPrevisto);
 
+let prazoConsultaSequencia = 0;
+
 function atualizarPrazoPrevisto() {
-  const obraId = document.getElementById("obra_id").value;
-  const statusId = document.getElementById("status_id").value;
-  const dataRecebimento = document.getElementById("data_recebimento").value;
+  const consultaAtual = ++prazoConsultaSequencia;
+  const obraId = document.getElementById("obra_id")?.value;
+  const statusId = document.getElementById("status_id")?.value;
+  const dataRecebimento = document.getElementById("data_recebimento")?.value;
   const prazoInput = document.getElementById("prazo");
+  const prazoInfo = document.getElementById("prazo_contratual_info");
 
-  if (!obraId || !statusId || !dataRecebimento || !prazoInput) return;
+  if (!prazoInput || !prazoInfo) return;
 
-  const params = new URLSearchParams({
-    obra_id: obraId,
-    status_id: statusId,
-    data_recebimento: dataRecebimento,
-  });
+  prazoInfo.classList.remove("is-ready", "is-warning");
+  if (!obraId || !statusId) {
+    prazoInfo.textContent = "Selecione a obra e a etapa.";
+    prazoInput.value = "";
+    return;
+  }
+
+  const params = new URLSearchParams({ obra_id: obraId, status_id: statusId });
+  if (dataRecebimento) params.set("data_recebimento", dataRecebimento);
 
   fetch(BASE + `calcular_prazo_entrega.php?${params.toString()}`)
     .then((res) => res.json())
     .then((data) => {
+      if (consultaAtual !== prazoConsultaSequencia) return;
+      if (data && data.success && data.prazo_label) {
+        prazoInfo.textContent = data.prazo_label;
+        prazoInfo.classList.add("is-ready");
+      } else {
+        prazoInfo.textContent =
+          data?.msg || "Prazo não configurado; informe manualmente.";
+        prazoInfo.classList.add("is-warning");
+        prazoInput.value = "";
+      }
+
       if (data && data.success && data.data_prevista) {
         prazoInput.value = data.data_prevista;
       }
     })
-    .catch((err) => console.error("Erro ao calcular prazo previsto:", err));
+    .catch((err) => {
+      if (consultaAtual !== prazoConsultaSequencia) return;
+      prazoInfo.textContent = "Não foi possível consultar o prazo.";
+      prazoInfo.classList.add("is-warning");
+      console.error("Erro ao calcular prazo previsto:", err);
+    });
 }
 
 function carregarImagens() {
@@ -3513,20 +3688,8 @@ async function abrirNovaEntregaParaPendencia(item) {
   }
 
   modal.classList.add("is-open");
-  await carregarImagens();
-
-  let firstSelected = null;
-  imagemIds.forEach((imagemId) => {
-    const checkbox = document.querySelector(
-      `#imagens_container input[name="imagem_ids[]"][value="${cssEscapeValue(imagemId)}"]`,
-    );
-    if (checkbox) {
-      checkbox.checked = true;
-      if (!firstSelected) firstSelected = checkbox;
-    }
-  });
-  if (firstSelected) {
-    firstSelected.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (window.abrirSeletorNovaEntrega) {
+    await window.abrirSeletorNovaEntrega(imagemIds);
   }
   atualizarPrazoPrevisto();
 }
@@ -3605,8 +3768,8 @@ document
             .getElementById("modalAdicionarEntrega")
             .classList.remove("is-open");
           document.getElementById("formAdicionarEntrega").reset();
-          document.getElementById("imagens_container").innerHTML =
-            "<p>Selecione uma obra e uma etapa.</p>";
+          window.limparSelecaoNovaEntrega?.();
+          atualizarPrazoPrevisto();
           atualizarPendenciasEntrega(true);
           if (window.carregarKanban) window.carregarKanban();
           if (window.refreshSidebarCounts) window.refreshSidebarCounts();

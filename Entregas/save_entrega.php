@@ -24,7 +24,9 @@ if (!entregas_valid_date($data_recebimento)) {
 
 $obra_id = (int) $obra_id;
 $status_id = (int) $status_id;
-$imagem_ids = is_array($imagem_ids) ? array_values(array_filter(array_map('intval', $imagem_ids))) : [];
+$imagem_ids = is_array($imagem_ids)
+    ? array_values(array_unique(array_filter(array_map('intval', $imagem_ids))))
+    : [];
 
 entregas_ensure_data_recebimento_schema($conn);
 $calculoPrazo = entregas_calcular_prazo_previsto($conn, $obra_id, $status_id, $data_recebimento);
@@ -43,6 +45,45 @@ $is_p00_delivery = mb_strtoupper(trim($status_code), 'UTF-8') === 'P00';
 if (!$is_p00_delivery && empty($imagem_ids)) {
     echo json_encode(['success' => false, 'msg' => 'Selecione pelo menos uma imagem para criar a entrega.']);
     exit;
+}
+
+if (!$is_p00_delivery && !empty($imagem_ids)) {
+    $validateImage = $conn->prepare(
+        "SELECT ico.idimagens_cliente_obra
+         FROM imagens_cliente_obra ico
+         WHERE ico.idimagens_cliente_obra = ?
+           AND ico.obra_id = ?
+           AND ico.status_id IN (?, CASE WHEN ? = 2 THEN 1 ELSE ? END)
+           AND (ico.substatus_id IS NULL OR ico.substatus_id <> 7)
+           AND NOT EXISTS (
+               SELECT 1
+               FROM entregas_itens ei
+               INNER JOIN entregas e ON e.id = ei.entrega_id
+               WHERE ei.imagem_id = ico.idimagens_cliente_obra
+                 AND e.status_id = ?
+           )
+         LIMIT 1"
+    );
+
+    if (!$validateImage) {
+        echo json_encode(['success' => false, 'msg' => 'Nao foi possivel validar as imagens selecionadas.']);
+        exit;
+    }
+
+    foreach ($imagem_ids as $imagem_id) {
+        $validateImage->bind_param('iiiiii', $imagem_id, $obra_id, $status_id, $status_id, $status_id, $status_id);
+        $validateImage->execute();
+        $valid = $validateImage->get_result()->num_rows > 0;
+        if (!$valid) {
+            $validateImage->close();
+            echo json_encode([
+                'success' => false,
+                'msg' => "A imagem #{$imagem_id} nao pertence a esta obra/etapa ou ja foi atribuida.",
+            ]);
+            exit;
+        }
+    }
+    $validateImage->close();
 }
 
 entregas_pendencias_ensure_schema($conn);

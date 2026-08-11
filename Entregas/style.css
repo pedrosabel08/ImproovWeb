@@ -933,6 +933,115 @@ body {
   resize: vertical;
 }
 
+.delivery-date-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.delivery-contract-deadline {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.delivery-contract-deadline.is-ready {
+  border-color: var(--border-card-hover);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.delivery-contract-deadline.is-warning {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+  color: #b45309;
+}
+
+.delivery-image-picker-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.delivery-image-picker-heading label {
+  margin-bottom: 4px;
+}
+
+.delivery-image-picker-button {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.new-delivery-image-summary {
+  min-height: 62px;
+  max-height: 150px;
+  justify-content: center;
+}
+
+.new-delivery-image-summary.has-selection {
+  justify-content: flex-start;
+}
+
+.new-delivery-selected-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.new-delivery-selected-row i {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.new-delivery-selected-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-delivery-selection-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .delivery-date-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-image-picker-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .delivery-image-picker-button {
+    width: 100%;
+  }
+}
+
 .modal-body select:focus,
 .modal-body input:focus,
 .modal-body textarea:focus {
@@ -2801,6 +2910,10 @@ option.colab-busy {
   border-radius: var(--radius-xl);
 }
 
+#modalSelecionarImagens {
+  z-index: 1100;
+}
+
 #modalSelecionarImagens .modal-header {
   display: flex;
   align-items: flex-start;
@@ -2951,6 +3064,16 @@ option.colab-busy {
   color: var(--accent);
 }
 
+#modalSelecionarImagens .selection-stat.is-hold {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+#modalSelecionarImagens .selection-stat.is-hold strong {
+  color: #b45309;
+}
+
 #modalSelecionarImagens .imagens-container {
   display: flex;
   flex: 1;
@@ -3080,6 +3203,27 @@ option.colab-busy {
   color: var(--text-muted);
   background: var(--bg-surface-alt);
   opacity: 0.68;
+}
+
+#modalSelecionarImagens .selection-image-row.is-hold {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+#modalSelecionarImagens .selection-image-row.is-hold .selection-readonly-icon {
+  color: #b45309;
+}
+
+#modalSelecionarImagens .selection-hold-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 #modalSelecionarImagens .selection-readonly-icon {

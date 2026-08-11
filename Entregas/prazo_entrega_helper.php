@@ -169,9 +169,9 @@ function entregas_buscar_prazo_contratual_still_info(mysqli $conn, int $obraId):
     ];
 }
 
-function entregas_calcular_prazo_previsto(mysqli $conn, int $obraId, int $statusId, string $dataRecebimento): ?array
+function entregas_obter_regra_prazo(mysqli $conn, int $obraId, int $statusId): ?array
 {
-    if ($obraId <= 0 || $statusId <= 0 || !entregas_valid_date($dataRecebimento)) {
+    if ($obraId <= 0 || $statusId <= 0) {
         return null;
     }
 
@@ -184,25 +184,45 @@ function entregas_calcular_prazo_previsto(mysqli $conn, int $obraId, int $status
             return null;
         }
 
-        $diasCorridos = (bool) $prazoContratual['dias_corridos'];
         $dias = (int) $prazoContratual['dias'];
+        $diasCorridos = (bool) $prazoContratual['dias_corridos'];
+        $tipoDia = $diasCorridos ? 'corridos' : 'úteis';
 
         return [
-            'data_prevista' => entregas_calcular_data_prazo($dataRecebimento, $dias, $diasCorridos),
             'tipo_calculo' => 'prazo_contratual_still',
             'dias_uteis' => $dias,
             'dias_corridos' => $diasCorridos,
+            'prazo_label' => "Prazo contratual: {$dias} dias {$tipoDia}",
         ];
     }
 
     $etapasSeteDias = [3, 4, 5, 6, 14, 15];
     if (in_array($statusId, $etapasSeteDias, true) || preg_match('/^(R0[1-5]|EF)$/', $codigoNormalizado)) {
         return [
-            'data_prevista' => entregas_adicionar_dias_uteis($dataRecebimento, 7),
             'tipo_calculo' => 'sete_dias_uteis',
             'dias_uteis' => 7,
+            'dias_corridos' => false,
+            'prazo_label' => 'Prazo da etapa: 7 dias úteis',
         ];
     }
 
     return null;
+}
+
+function entregas_calcular_prazo_previsto(mysqli $conn, int $obraId, int $statusId, string $dataRecebimento): ?array
+{
+    if ($obraId <= 0 || $statusId <= 0 || !entregas_valid_date($dataRecebimento)) {
+        return null;
+    }
+
+    $regra = entregas_obter_regra_prazo($conn, $obraId, $statusId);
+    if ($regra === null) {
+        return null;
+    }
+
+    $dias = (int) ($regra['dias_uteis'] ?? 0);
+    $diasCorridos = (bool) ($regra['dias_corridos'] ?? false);
+    $regra['data_prevista'] = entregas_calcular_data_prazo($dataRecebimento, $dias, $diasCorridos);
+
+    return $regra;
 }

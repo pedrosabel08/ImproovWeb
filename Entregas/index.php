@@ -253,15 +253,26 @@ $conn->close();
                         </select>
                     </div>
                     <div>
-                        <label>Imagens</label>
-                        <div id="imagens_container" class="imagens-container">
-                            <p style="margin:0;color:var(--text-muted);">Selecione uma obra e etapa para listar as
-                                imagens.</p>
+                        <div class="delivery-image-picker-heading">
+                            <label for="btnSelecionarImagensNova">Imagens</label>
+                            <button type="button" class="btn-action btn-secondary delivery-image-picker-button" id="btnSelecionarImagensNova">
+                                <i class="fa-solid fa-images"></i> Selecionar imagens
+                            </button>
                         </div>
+                        <div id="imagens_container" class="imagens-container new-delivery-image-summary" aria-live="polite">
+                            <p class="selection-empty-state">Selecione uma obra e uma etapa para escolher as imagens.</p>
+                        </div>
+                        <div id="novas_entrega_imagem_ids"></div>
                     </div>
-                    <div>
-                        <label>Recebimento</label>
-                        <input type="date" name="data_recebimento" id="data_recebimento" required>
+                    <div class="delivery-date-fields">
+                        <div>
+                            <label for="data_recebimento">Recebimento</label>
+                            <input type="date" name="data_recebimento" id="data_recebimento" required>
+                        </div>
+                        <div>
+                            <label for="prazo_contratual_info">Prazo usado no cálculo</label>
+                            <output id="prazo_contratual_info" class="delivery-contract-deadline" aria-live="polite">Selecione a obra e a etapa.</output>
+                        </div>
                     </div>
                     <div>
                         <label>Prazo previsto</label>
@@ -345,8 +356,8 @@ $conn->close();
                 <div class="selection-modal-heading">
                     <span class="selection-modal-icon" aria-hidden="true"><i class="fa-solid fa-images"></i></span>
                     <div>
-                        <h2 class="modal-title">Adicionar imagens</h2>
-                        <p class="selection-modal-subtitle">Escolha as imagens que farão parte desta entrega.</p>
+                        <h2 class="modal-title" id="selecaoModalTitulo">Adicionar imagens</h2>
+                        <p class="selection-modal-subtitle" id="selecaoModalSubtitulo">Escolha as imagens que farão parte desta entrega.</p>
                     </div>
                 </div>
                 <button type="button" class="modal-close fecharModal" aria-label="Fechar seleção de imagens">

@@ -37,6 +37,11 @@ if ($host === '' || $dbName === '' || $user === '' || $password === '') {
     exit("Variaveis de banco de dados ausentes no arquivo .env.\n");
 }
 
+$mysqldumpExecutable = $env['MYSQLDUMP_PATH'] ?? (dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'mysql' . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'mysqldump.exe');
+if (!is_file($mysqldumpExecutable)) {
+    exit("mysqldump.exe nao foi encontrado. Configure MYSQLDUMP_PATH no .env.\n");
+}
+
 
 // Tabelas que serão incluídas no backup
 $tabelas = ['funcao_imagem', 'obra', 'imagens_cliente_obra', 'acompanhamento_email'];
@@ -49,7 +54,7 @@ $backupFile = __DIR__ . "/backup_tabelas_" . date('Y-m-d_H-i-s') . ".sql";
 $temporaryFile = $backupFile . '.tmp';
 
 // Comando para exportar apenas as tabelas específicas
-$command = "mysqldump --host=$host --port=$port --user=$user --password=$password $dbName " . implode(" ", $tabelas) . " > $temporaryFile";
+$command = '"' . $mysqldumpExecutable . '"' . " --host=$host --port=$port --user=$user --password=$password $dbName " . implode(" ", $tabelas) . " > $temporaryFile";
 
 // Executa o backup
 exec($command, $output, $returnVar);

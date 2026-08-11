@@ -908,6 +908,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isP00ModelagemReview = (
                 in_array($status, ['Aprovado'], true)
                 && $nomeFuncaoLower === 'modelagem'
+                && $tipo_imagem_nome === 'Fachada'
                 && $status_nome_imagem === 'P00'
             );
 

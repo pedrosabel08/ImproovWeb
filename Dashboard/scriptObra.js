@@ -2465,6 +2465,11 @@ function renderModernAllocationModal(response, idImagem) {
   setupModernFuncoesModal();
 
   const isAnimacaoMode = response?.contexto === "animacao";
+  const isSecondaryImage = !isAnimacaoMode &&
+    response?.dependencia_imagem?.tipo_relacao === "secundaria";
+  if (isSecondaryImage) {
+    modernFuncoesState.visibleKeysOverride = new Set(["finalizacao"]);
+  }
   const selectedRow = isAnimacaoMode
     ? document.querySelector(
         `#tabela-animacoes tbody tr[data-animacao-id="${response?.animacao?.idanimacao}"]`,
@@ -2519,7 +2524,9 @@ function renderModernAllocationModal(response, idImagem) {
   if (subtitle) {
     subtitle.textContent = isAnimacaoMode
       ? "Gerencie respons\u00e1veis, prazos e status da anima\u00e7\u00e3o e da p\u00f3s-produ\u00e7\u00e3o."
-      : "Gerencie respons\u00e1veis, prazos e status das fun\u00e7\u00f5es desta imagem.";
+      : isSecondaryImage
+        ? `Ângulo secundário de ${response?.dependencia_imagem?.imagem_principal_nome || "imagem principal"}. Somente Finalização é executada aqui.`
+        : "Gerencie respons\u00e1veis, prazos e status das fun\u00e7\u00f5es desta imagem.";
   }
 
   const thumb = document.getElementById("allocationImageThumb");
@@ -5233,6 +5240,12 @@ function infosObra(obraId) {
       const tipoImagemUnicos = new Set();
       const subtipoUnicos = new Map(); // id -> nome
 
+      window.__obraImagemAngulos = data.imagens.map((image) => ({
+        imagem_id: Number(image.imagem_id),
+        imagem_nome: image.imagem_nome || "",
+        imagem_principal_id: image.imagem_principal_id || null,
+      }));
+
       data.imagens.forEach(function (item) {
         idsImagensObra.push(parseInt(item.imagem_id));
         var row = document.createElement("tr");
@@ -5241,6 +5254,7 @@ function infosObra(obraId) {
         row.setAttribute("data-status-id", item.status_id ?? "");
         row.setAttribute("data-substatus-id", item.substatus_id ?? "");
         row.setAttribute("data-prazo", item.prazo ?? "");
+        row.setAttribute("data-imagem-principal-id", item.imagem_principal_id ?? "");
         row.setAttribute(
           "data-imagem-checklist-pendente",
           item.imagem_checklist_pendente ? "1" : "0",
@@ -5298,10 +5312,24 @@ function infosObra(obraId) {
           subtipoBadge.textContent = item.subtipo_nome;
           cellNomeImagem.appendChild(subtipoBadge);
         }
+        const isSecondaryImage =
+          item.tipo_relacao_imagem === "secundaria" || !!item.imagem_principal_id;
+        if (isSecondaryImage && item.imagem_principal_nome) {
+          const principalBadge = document.createElement("button");
+          principalBadge.type = "button";
+          principalBadge.className = "subtipo-badge imagem-principal-badge";
+          principalBadge.textContent = `Ângulo de: ${displayImageName(item.imagem_principal_nome)}`;
+          principalBadge.title = "Abrir imagem principal";
+          principalBadge.addEventListener("click", (event) => {
+            event.stopPropagation();
+            atualizarModal(item.imagem_principal_id);
+          });
+          cellNomeImagem.appendChild(principalBadge);
+        }
         if (item.imagem_checklist_pendente) {
           const checklistBadge = document.createElement("span");
           checklistBadge.className = "subtipo-badge imagem-checklist-badge";
-          checklistBadge.textContent = "Checklist";
+          checklistBadge.textContent = isSecondaryImage ? "Checklist da principal" : "Checklist";
           cellNomeImagem.appendChild(checklistBadge);
         }
         cellNomeImagem.setAttribute("antecipada", item.antecipada);
@@ -5403,7 +5431,7 @@ function infosObra(obraId) {
           // { col: 'planta', label: 'Planta', funcaoId: 7 }
         ];
 
-        const cfUnificado = item.caderno_filtro_unificado == 1;
+        const cfUnificado = !isSecondaryImage && item.caderno_filtro_unificado == 1;
         const unlinkedFuncoes = new Set(
           Array.isArray(item.planned_unlinked_funcoes)
             ? item.planned_unlinked_funcoes.map(Number)
@@ -5486,14 +5514,20 @@ function infosObra(obraId) {
           }
 
           // Célula normal
-          const colaborador = item[`${coluna.col}_colaborador`] || "-";
-          const status = item[`${coluna.col}_status`] || "-";
+          const inheritedProcess = isSecondaryImage && coluna.funcaoId !== 4;
+          const colaborador = inheritedProcess
+            ? "-"
+            : item[`${coluna.col}_colaborador`] || "-";
+          const status = inheritedProcess
+            ? "Dependente da imagem principal"
+            : item[`${coluna.col}_status`] || "-";
 
           const cellColaborador = document.createElement("td");
           cellColaborador.textContent = colaborador;
           cellColaborador.setAttribute("data-status", status);
           cellColaborador.setAttribute("data-funcao", coluna.col);
           cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
+          if (inheritedProcess) cellColaborador.classList.add("func-cell--dependent");
 
           cellColaborador.addEventListener("mouseenter", (event) => {
             const complexidade =
@@ -5518,6 +5552,7 @@ function infosObra(obraId) {
           row.appendChild(cellColaborador);
 
           if (
+            !inheritedProcess &&
             isPendenteProducao &&
             coluna.funcaoId &&
             unlinkedFuncoes.has(coluna.funcaoId)
@@ -5530,7 +5565,7 @@ function infosObra(obraId) {
             cellColaborador.appendChild(badge);
           }
 
-          applyStyleNone(cellColaborador, null, colaborador);
+          if (!inheritedProcess) applyStyleNone(cellColaborador, null, colaborador);
 
           const statusNormalizado = status.trim().toLowerCase();
           const statusValidos = [
@@ -5549,6 +5584,7 @@ function infosObra(obraId) {
           }
 
           if (
+            !inheritedProcess &&
             !(item.imagem_status === "EF" && item.imagem_sub_status === "EF")
           ) {
             applyStatusStyle(cellColaborador, status, colaborador);
@@ -8407,6 +8443,18 @@ document
 const addImagemModal = document.getElementById("add-imagem");
 const addImagem = document.getElementById("addImagem");
 addImagem.addEventListener("click", function () {
+  const principalSelect = document.getElementById("imagem_principal_id");
+  if (principalSelect) {
+    principalSelect.innerHTML = '<option value="">Ângulo principal (fluxo completo)</option>';
+    (window.__obraImagemAngulos || [])
+      .filter((image) => !image.imagem_principal_id)
+      .forEach((image) => {
+        const option = document.createElement("option");
+        option.value = String(image.imagem_id);
+        option.textContent = displayImageName(image.imagem_nome);
+        principalSelect.appendChild(option);
+      });
+  }
   addImagemModal.style.display = "flex";
 });
 
@@ -10333,6 +10381,7 @@ const EDIT_IMAGES_MODAL = (() => {
     "antecipada",
     "animacao",
     "clima",
+    "imagem_principal_id",
   ];
 
   const state = {
@@ -10517,6 +10566,26 @@ const EDIT_IMAGES_MODAL = (() => {
     return options.join("");
   }
 
+  function buildPrincipalOptions(currentImage) {
+    const currentId = String(currentImage.idimagem);
+    const currentPrincipalId = normalizeValue(
+      "imagem_principal_id",
+      currentImage.imagem_principal_id,
+    );
+    const options = ['<option value="">Ângulo principal (fluxo completo)</option>'];
+    state.images
+      .filter((image) =>
+        String(image.idimagem) !== currentId && !image.imagem_principal_id,
+      )
+      .forEach((image) => {
+        const selected = String(image.idimagem) === currentPrincipalId ? " selected" : "";
+        options.push(
+          `<option value="${escapeEditImagesHtml(image.idimagem)}"${selected}>${escapeEditImagesHtml(displayImageName(image.imagem_nome))}</option>`,
+        );
+      });
+    return options.join("");
+  }
+
   function buildBadge(label) {
     const text = String(label ?? "").trim();
     return text
@@ -10550,6 +10619,7 @@ const EDIT_IMAGES_MODAL = (() => {
               ${buildBadge(formatDateBadge(image.prazo))}
               ${Number(image.antecipada) === 1 ? buildBadge("Antecipada") : ""}
               ${Number(image.animacao) === 1 ? buildBadge("Animação") : ""}
+              ${image.imagem_principal_nome ? buildBadge(`Ângulo de: ${displayImageName(image.imagem_principal_nome)}`) : ""}
             </div>
           </div>
           <i class="fas fa-chevron-down toggle-options"></i>
@@ -10603,6 +10673,15 @@ const EDIT_IMAGES_MODAL = (() => {
             </div>
           </section>
 
+          <section class="image-field-group">
+            <h5>Relação entre ângulos</h5>
+            <div class="image-field-grid">
+              <label>Imagem principal
+                <select data-id="${escapedId}" data-edit-image-field name="imagem_principal_id">${buildPrincipalOptions(image)}</select>
+              </label>
+            </div>
+          </section>
+
         </div>
       </div>
     `;
@@ -10644,6 +10723,7 @@ const EDIT_IMAGES_MODAL = (() => {
       antecipada: values.antecipada === "1" ? "1" : "0",
       animacao: values.animacao === "1" ? "1" : "0",
       clima: values.clima || "",
+      imagem_principal_id: values.imagem_principal_id || null,
     };
   }
 
@@ -11569,6 +11649,7 @@ function submitFormImagem(event) {
   const prazo = document.getElementById("prazo").value;
   const imagem = document.getElementById("nome-imagem").value;
   const tipo = document.getElementById("tipo-imagem").value;
+  const imagem_principal_id = document.getElementById("imagem_principal_id")?.value || "";
 
   const data = {
     opcaoCliente: opcaoCliente,
@@ -11578,6 +11659,7 @@ function submitFormImagem(event) {
     prazo: prazo,
     imagem: imagem,
     tipo: tipo,
+    imagem_principal_id,
   };
 
   fetch("inserir_imagem.php", {
@@ -11589,7 +11671,7 @@ function submitFormImagem(event) {
   })
     .then((response) => response.json())
     .then((result) => {
-      if (result.status === "success") {
+      if (result.success === true || result.status === "success") {
         Toastify({
           text: result.message,
           duration: 3000,

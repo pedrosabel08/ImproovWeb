@@ -931,6 +931,12 @@ $conn->close();
 
                     <label for="tipo-imagem">Tipo da imagem:</label>
                     <input type="text" name="tipo" id="tipo-imagem">
+
+                    <label for="imagem_principal_id">Relação entre ângulos:</label>
+                    <select name="imagem_principal_id" id="imagem_principal_id">
+                        <option value="">Ângulo principal (fluxo completo)</option>
+                    </select>
+                    <small>Selecione uma imagem principal apenas para segundos ou terceiros ângulos.</small>
                     <div class="buttons" style="margin: auto">
                         <button type="submit" id="salvar">Salvar</button>
                     </div>

@@ -508,9 +508,12 @@ function pendencias_operacionais_fetch_image_context(mysqli $conn, int $imagemId
             ico.tipo_imagem,
             ico.subtipo_id,
             ico.substatus_id,
+            ico.imagem_principal_id,
+            principal.imagem_nome AS imagem_principal_nome,
             o.status_obra
          FROM imagens_cliente_obra ico
          LEFT JOIN obra o ON o.idobra = ico.obra_id
+         LEFT JOIN imagens_cliente_obra principal ON principal.idimagens_cliente_obra = ico.imagem_principal_id
          WHERE ico.idimagens_cliente_obra = ?
          LIMIT 1"
     );
@@ -560,6 +563,24 @@ function pendencias_operacionais_sync_image_checklist(mysqli $conn, int $imagemI
     }
 
     $obraId = (int) ($context['obra_id'] ?? 0);
+
+    // Ângulos secundários exibem o checklist da imagem principal. Eles nunca
+    // possuem um checklist próprio aberto, evitando duplicar SLA e totais.
+    $principalId = (int) ($context['imagem_principal_id'] ?? 0);
+    if ($principalId > 0) {
+        $ownChecklist = pendencias_operacionais_find_checklist($conn, 'imagem', 'imagem', $imagemId);
+        if ($ownChecklist && ($ownChecklist['status'] ?? '') === 'aberto') {
+            $stmtCancel = $conn->prepare("UPDATE checklist_operacional SET status = 'cancelado', updated_at = NOW() WHERE id = ?");
+            if ($stmtCancel) {
+                $checklistId = (int) $ownChecklist['id'];
+                $stmtCancel->bind_param('i', $checklistId);
+                $stmtCancel->execute();
+                $stmtCancel->close();
+                pendencias_operacionais_flow_connect_lifecycle($conn, $ownChecklist, 'cancelada');
+            }
+        }
+        return pendencias_operacionais_sync_image_checklist($conn, $principalId);
+    }
     $isActiveObra = !isset($context['status_obra']) || (int) $context['status_obra'] === 0;
     $isTodoSubstatus = (int) ($context['substatus_id'] ?? 0) === 2;
     $shouldHaveChecklist = $obraId > 0 && $isActiveObra && $isTodoSubstatus;
@@ -1566,7 +1587,12 @@ function pendencias_operacionais_image_checklist_for_card(mysqli $conn, int $ima
         return null;
     }
 
-    $row = pendencias_operacionais_find_checklist($conn, 'imagem', 'imagem', $imagemId);
+    $context = pendencias_operacionais_fetch_image_context($conn, $imagemId);
+    if (!$context) {
+        return null;
+    }
+    $sourceImageId = (int) ($context['imagem_principal_id'] ?? 0) ?: $imagemId;
+    $row = pendencias_operacionais_find_checklist($conn, 'imagem', 'imagem', $sourceImageId);
     if (!$row || ($row['status'] ?? '') !== 'aberto') {
         return null;
     }
@@ -1584,5 +1610,9 @@ function pendencias_operacionais_image_checklist_for_card(mysqli $conn, int $ima
     return [
         'checklist_id' => (int) $row['id'],
         'items' => $items,
+        'origem_imagem_id' => $sourceImageId,
+        'origem_imagem_nome' => $sourceImageId === $imagemId
+            ? (string) ($context['imagem_nome'] ?? '')
+            : (string) ($context['imagem_principal_nome'] ?? ''),
     ];
 }

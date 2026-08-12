@@ -3,7 +3,8 @@ header('Content-Type: application/json');
 
 
 require_once __DIR__ . '/../conexao.php';
-require_once __DIR__ . '/planned_function_helpers.php';
+require_once __DIR__ . '/image_dependency_helpers.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 // Verify DB connection (match pattern used in saveImages.php)
 if (!isset($conn) || !$conn) {
@@ -33,6 +34,7 @@ $tipo_imagem = $data['tipo'] ?? null;
 $antecipada = (isset($data['antecipada']) && ($data['antecipada'] == '1' || $data['antecipada'] === 1)) ? 1 : 0;
 $animacao = (isset($data['animacao']) && ($data['animacao'] == '1' || $data['animacao'] === 1)) ? 1 : 0;
 $clima = $data['clima'] ?? '';
+$imagemPrincipalId = dashboard_normalize_principal_id($data['imagem_principal_id'] ?? null);
 
 // Provide default for dias_trabalhados required by DB
 $dias_trabalhados = 0;
@@ -89,20 +91,22 @@ if (!$stmt->execute()) {
 }
 
 $lastId = (int) ($stmt->insert_id ?? $conn->insert_id ?? 0);
-$planning = dashboard_insert_planned_functions_for_image($conn, $lastId, (string) $tipo_imagem);
-$plannedInserted = (int) ($planning['inserted'] ?? 0);
+$relation = dashboard_apply_image_principal($conn, $lastId, $imagemPrincipalId);
+$plannedInserted = (int) (($relation['inserted'] ?? 0));
 
-if (!$planning['success']) {
+if (!$relation['success']) {
     $conn->rollback();
     $stmt->close();
     $conn->close();
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Imagem criada, mas o planejamento falhou: ' . (string) ($planning['message'] ?? $planning['reason'] ?? 'erro desconhecido'),
+        'message' => 'Imagem criada, mas o vínculo/processamento falhou: ' . (string) ($relation['message'] ?? $relation['reason'] ?? 'erro desconhecido'),
     ]);
     exit;
 }
+
+pendencias_operacionais_sync_image_checklist($conn, $lastId);
 
 $conn->commit();
 $stmt->close();
@@ -112,5 +116,6 @@ echo json_encode([
     'success' => true,
     'message' => 'Imagem cadastrada com sucesso!',
     'insert_id' => $lastId,
+    'imagem_principal_id' => $imagemPrincipalId,
     'planned_functions_created' => $plannedInserted,
 ]);

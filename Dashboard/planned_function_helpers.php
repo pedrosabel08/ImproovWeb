@@ -139,7 +139,7 @@ function dashboard_planning_type_rank(?string $imageType): int
 function dashboard_fetch_image_snapshot(mysqli $conn, int $imageId): ?array
 {
     $stmt = $conn->prepare(
-        'SELECT idimagens_cliente_obra AS imagem_id, imagem_nome, tipo_imagem
+        'SELECT idimagens_cliente_obra AS imagem_id, imagem_nome, tipo_imagem, imagem_principal_id
          FROM imagens_cliente_obra
          WHERE idimagens_cliente_obra = ?
          LIMIT 1'
@@ -304,6 +304,8 @@ function dashboard_insert_planned_functions_for_image(mysqli $conn, int $imageId
         return ['success' => true, 'skipped' => true, 'inserted' => 0, 'reason' => 'template_not_found'];
     }
 
+    $image = dashboard_fetch_image_snapshot($conn, $imageId);
+    $isSecondary = !empty($image['imagem_principal_id']);
     $columns = ['imagem_id', 'funcao_id', 'status', 'origem'];
     $selects = ['?', 'item.funcao_id', "'TODO'", "'PLANEJAMENTO'"];
 
@@ -344,6 +346,7 @@ function dashboard_insert_planned_functions_for_image(mysqli $conn, int $imageId
         . '    ON existing.imagem_id = ? '
         . '   AND existing.funcao_id = item.funcao_id '
         . 'WHERE template.idimagem_funcao_template = ? '
+        . ($isSecondary ? '  AND item.funcao_id = 4 ' : '')
         . '  AND item.ativo = 1 '
         . '  AND existing.idimagem_funcao_planejada IS NULL';
 
@@ -425,6 +428,10 @@ function dashboard_upsert_planned_function(
     $image = dashboard_fetch_image_snapshot($conn, $imageId);
     if (!$image) {
         return ['success' => false, 'message' => 'Imagem não encontrada.'];
+    }
+
+    if (!empty($image['imagem_principal_id']) && $functionId !== 4) {
+        return ['success' => false, 'message' => 'Imagens secundarias aceitam somente a funcao Finalizacao.'];
     }
 
     $existing = dashboard_fetch_planned_function_row($conn, $imageId, $functionId);

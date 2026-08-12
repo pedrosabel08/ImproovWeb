@@ -6022,6 +6022,17 @@ table#tabela-logs tbody tr:hover {
   line-height: 1.2;
 }
 
+.imagem-principal-badge {
+  cursor: pointer;
+  font: inherit;
+}
+
+.func-cell--dependent {
+  color: var(--text-muted);
+  font-style: italic;
+  background: rgba(148, 163, 184, 0.08);
+}
+
 .edit-images-shell .conteudo_imagens {
   margin-top: 0;
   border: 0;

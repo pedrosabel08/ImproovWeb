@@ -242,6 +242,9 @@ $sqlImagens = "SELECT
         ico.substatus_id,
         ico.subtipo_id,
         sti.nome AS subtipo_nome,
+        ico.imagem_principal_id,
+        principal.imagem_nome AS imagem_principal_nome,
+        CASE WHEN ico.imagem_principal_id IS NULL THEN 'principal' ELSE 'secundaria' END AS tipo_relacao_imagem,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
         MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
         MAX(CASE WHEN fi.funcao_id = 8 THEN c.nome_colaborador END) AS filtro_colaborador,
@@ -280,6 +283,7 @@ $sqlImagens = "SELECT
     LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
     LEFT JOIN substatus_imagem su ON su.id = ico.substatus_id
     LEFT JOIN subtipo_imagem sti ON sti.id = ico.subtipo_id
+    LEFT JOIN imagens_cliente_obra principal ON principal.idimagens_cliente_obra = ico.imagem_principal_id
     WHERE ico.obra_id = ?
     GROUP BY ico.idimagens_cliente_obra
     ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra
@@ -373,30 +377,34 @@ foreach ($response['imagens'] as &$imageRow) {
     $imageRow['planned_unlinked_funcoes'] = array_keys($unlinked);
 
     // Checklist somente para imagens com status_id 1 ou 2
-    if (in_array($statusId, [1, 2], true)) {
+    if (in_array($statusId, [1, 2], true) || !empty($imageRow['imagem_principal_id'])) {
         pendencias_operacionais_sync_image_checklist($conn, $imagemId);
-
-        $checklistRow = pendencias_operacionais_find_checklist(
-            $conn,
-            'imagem',
-            'imagem',
-            $imagemId
-        );
 
         $checklistCard = pendencias_operacionais_image_checklist_for_card(
             $conn,
             $imagemId
+        );
+        $checklistSourceId = (int) ($checklistCard['origem_imagem_id'] ?? $imagemId);
+        $checklistRow = pendencias_operacionais_find_checklist(
+            $conn,
+            'imagem',
+            'imagem',
+            $checklistSourceId
         );
 
         $imageRow['imagem_checklist_pendente'] = $checklistCard ? 1 : 0;
         $imageRow['imagem_checklist_id'] = $checklistCard['checklist_id'] ?? null;
         $imageRow['imagem_checklist_items'] = $checklistCard['items'] ?? [];
         $imageRow['imagem_checklist_status'] = $checklistRow['status'] ?? null;
+        $imageRow['checklist_origem_imagem_id'] = $checklistCard['origem_imagem_id'] ?? $imagemId;
+        $imageRow['checklist_origem_imagem_nome'] = $checklistCard['origem_imagem_nome'] ?? $imageRow['imagem_nome'];
     } else {
         $imageRow['imagem_checklist_pendente'] = 0;
         $imageRow['imagem_checklist_id'] = null;
         $imageRow['imagem_checklist_items'] = [];
         $imageRow['imagem_checklist_status'] = null;
+        $imageRow['checklist_origem_imagem_id'] = null;
+        $imageRow['checklist_origem_imagem_nome'] = null;
     }
 }
 

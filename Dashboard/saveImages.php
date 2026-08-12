@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php';
-require_once __DIR__ . '/planned_function_helpers.php';
+require_once __DIR__ . '/image_dependency_helpers.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 // Verifica conexão
@@ -67,6 +67,8 @@ foreach ($data as $idx => $image) {
     $animacao = (isset($image['animacao']) && ($image['animacao'] == '1' || $image['animacao'] === 1)) ? 1 : 0;
     $clima = isset($image['clima']) ? $image['clima'] : null;
     $subtipo_id = (isset($image['subtipo_id']) && $image['subtipo_id'] !== '' && $image['subtipo_id'] !== null) ? (int)$image['subtipo_id'] : null;
+    $has_imagem_principal_id = array_key_exists('imagem_principal_id', $image);
+    $imagem_principal_id = dashboard_normalize_principal_id($image['imagem_principal_id'] ?? null);
     $idimagem = isset($image['idimagem']) ? (int)$image['idimagem'] : 0;
 
     if ($idimagem <= 0) {
@@ -108,10 +110,12 @@ foreach ($data as $idx => $image) {
         continue;
     }
 
-    $planning = dashboard_insert_planned_functions_for_image($conn, $idimagem, (string) $tipo_imagem);
-    if (!$planning['success']) {
+    $relation = $has_imagem_principal_id
+        ? dashboard_apply_image_principal($conn, $idimagem, $imagem_principal_id)
+        : dashboard_insert_planned_functions_for_image($conn, $idimagem, (string) $tipo_imagem);
+    if (!$relation['success']) {
         $conn->rollback();
-        $errors[] = "planejamento falhou no item $idx (id $idimagem): " . (string) ($planning['message'] ?? $planning['reason'] ?? 'erro desconhecido');
+        $errors[] = "vínculo/processamento falhou no item $idx (id $idimagem): " . (string) ($relation['message'] ?? $relation['reason'] ?? 'erro desconhecido');
         $success = false;
         continue;
     }

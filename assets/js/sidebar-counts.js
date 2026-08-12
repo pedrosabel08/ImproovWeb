@@ -203,32 +203,25 @@
       var moduleCounts = mergeCentralModuleCounts(data.modules || {}, notificationModules);
       if (data.modules) {
         Object.keys(moduleCounts).forEach(function (k) {
-          var badgeValue = moduleCounts[k];
-          if (k === "entregas") {
-            badgeValue = (parseInt(moduleCounts.entregas) || 0) +
-              (parseInt(moduleCounts.entregas_pendencias) || 0);
-          }
           document
             .querySelectorAll('.sidebar-badge[data-module="' + k + '"]')
             .forEach(function (el) {
+              var badgeValue = moduleCounts[k];
+              if (k === "entregas" && el.closest("[data-sidebar-alert-module]")) {
+                badgeValue = (parseInt(moduleCounts.entregas) || 0) +
+                  (parseInt(moduleCounts.entregas_pendencias) || 0);
+              }
               setBadge(el, badgeValue);
             });
         });
 
         var entregasPendencias =
           parseInt(moduleCounts.entregas_pendencias) || 0;
-        var entregasBadges = document.querySelectorAll(
-          '.sidebar-badge[data-module="entregas"]',
-        );
         var entregasLinks = document.querySelectorAll(
           '[data-module-link="entregas"]',
         );
 
         if (entregasPendencias > 0) {
-          entregasBadges.forEach(function (badge) {
-            if (badge.closest("[data-sidebar-alert-module]")) return;
-            setBadge(badge, 0);
-          });
           entregasLinks.forEach(function (entregasLink) {
             var pendingHref = entregasLink.getAttribute("data-pending-href");
             if (pendingHref) entregasLink.setAttribute("href", pendingHref);

@@ -207,7 +207,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i
                                 class="fa-solid fa-truck-fast"></i><span> Entregas</span><span class="sidebar-badge"
                                 data-module="entregas" aria-hidden="true"></span><span class="sidebar-badge sidebar-badge--warning sidebar-badge--offset"
-                                data-module="entregas" aria-hidden="true"></span></a></li>
+                                data-module="entregas_pendencias" aria-hidden="true"></span></a></li>
                     <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
                 <?php endif; ?>
             </ul>
@@ -383,7 +383,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                     <?php endif; ?>
                     <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 2 || in_array($_SESSION['idcolaborador'] ?? null, [7, 34, 37, 44]))): ?><li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span>Lista Alteração</span></a></li><?php endif; ?>
                     <li><a title="TV - Produção por Função" href="https://improov.com.br/flow/ImproovWeb/TvDashboard" target="_blank"><i class="fa-solid fa-tv"></i><span>TV Dashboard</span></a></li>
-                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?><li><a title="Entregas" href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-module-link="entregas" data-default-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-truck-fast"></i><span>Entregas</span><span class="sidebar-badge" data-module="entregas" aria-hidden="true"></span><span class="sidebar-badge sidebar-badge--warning sidebar-badge--offset" data-module="entregas" aria-hidden="true"></span></a></li><?php endif; ?>
+                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?><li><a title="Entregas" href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-module-link="entregas" data-default-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-truck-fast"></i><span>Entregas</span><span class="sidebar-badge" data-module="entregas" aria-hidden="true"></span><span class="sidebar-badge sidebar-badge--warning sidebar-badge--offset" data-module="entregas_pendencias" aria-hidden="true"></span></a></li><?php endif; ?>
                 </ul>
             </section>
 

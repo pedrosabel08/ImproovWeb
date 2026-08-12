@@ -2465,7 +2465,8 @@ function renderModernAllocationModal(response, idImagem) {
   setupModernFuncoesModal();
 
   const isAnimacaoMode = response?.contexto === "animacao";
-  const isSecondaryImage = !isAnimacaoMode &&
+  const isSecondaryImage =
+    !isAnimacaoMode &&
     response?.dependencia_imagem?.tipo_relacao === "secundaria";
   if (isSecondaryImage) {
     modernFuncoesState.visibleKeysOverride = new Set(["finalizacao"]);
@@ -5254,7 +5255,10 @@ function infosObra(obraId) {
         row.setAttribute("data-status-id", item.status_id ?? "");
         row.setAttribute("data-substatus-id", item.substatus_id ?? "");
         row.setAttribute("data-prazo", item.prazo ?? "");
-        row.setAttribute("data-imagem-principal-id", item.imagem_principal_id ?? "");
+        row.setAttribute(
+          "data-imagem-principal-id",
+          item.imagem_principal_id ?? "",
+        );
         row.setAttribute(
           "data-imagem-checklist-pendente",
           item.imagem_checklist_pendente ? "1" : "0",
@@ -5313,7 +5317,8 @@ function infosObra(obraId) {
           cellNomeImagem.appendChild(subtipoBadge);
         }
         const isSecondaryImage =
-          item.tipo_relacao_imagem === "secundaria" || !!item.imagem_principal_id;
+          item.tipo_relacao_imagem === "secundaria" ||
+          !!item.imagem_principal_id;
         if (isSecondaryImage && item.imagem_principal_nome) {
           const principalBadge = document.createElement("button");
           principalBadge.type = "button";
@@ -5329,7 +5334,9 @@ function infosObra(obraId) {
         if (item.imagem_checklist_pendente) {
           const checklistBadge = document.createElement("span");
           checklistBadge.className = "subtipo-badge imagem-checklist-badge";
-          checklistBadge.textContent = isSecondaryImage ? "Checklist da principal" : "Checklist";
+          checklistBadge.textContent = isSecondaryImage
+            ? "Checklist da principal"
+            : "Checklist";
           cellNomeImagem.appendChild(checklistBadge);
         }
         cellNomeImagem.setAttribute("antecipada", item.antecipada);
@@ -5431,7 +5438,8 @@ function infosObra(obraId) {
           // { col: 'planta', label: 'Planta', funcaoId: 7 }
         ];
 
-        const cfUnificado = !isSecondaryImage && item.caderno_filtro_unificado == 1;
+        const cfUnificado =
+          !isSecondaryImage && item.caderno_filtro_unificado == 1;
         const unlinkedFuncoes = new Set(
           Array.isArray(item.planned_unlinked_funcoes)
             ? item.planned_unlinked_funcoes.map(Number)
@@ -5527,7 +5535,8 @@ function infosObra(obraId) {
           cellColaborador.setAttribute("data-status", status);
           cellColaborador.setAttribute("data-funcao", coluna.col);
           cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
-          if (inheritedProcess) cellColaborador.classList.add("func-cell--dependent");
+          if (inheritedProcess)
+            cellColaborador.classList.add("func-cell--dependent");
 
           cellColaborador.addEventListener("mouseenter", (event) => {
             const complexidade =
@@ -5565,7 +5574,8 @@ function infosObra(obraId) {
             cellColaborador.appendChild(badge);
           }
 
-          if (!inheritedProcess) applyStyleNone(cellColaborador, null, colaborador);
+          if (!inheritedProcess)
+            applyStyleNone(cellColaborador, null, colaborador);
 
           const statusNormalizado = status.trim().toLowerCase();
           const statusValidos = [
@@ -8445,7 +8455,8 @@ const addImagem = document.getElementById("addImagem");
 addImagem.addEventListener("click", function () {
   const principalSelect = document.getElementById("imagem_principal_id");
   if (principalSelect) {
-    principalSelect.innerHTML = '<option value="">Ângulo principal (fluxo completo)</option>';
+    principalSelect.innerHTML =
+      '<option value="">Ângulo principal (fluxo completo)</option>';
     (window.__obraImagemAngulos || [])
       .filter((image) => !image.imagem_principal_id)
       .forEach((image) => {
@@ -10379,8 +10390,6 @@ const EDIT_IMAGES_MODAL = (() => {
     "tipo_imagem",
     "subtipo_id",
     "antecipada",
-    "animacao",
-    "clima",
     "imagem_principal_id",
   ];
 
@@ -10389,6 +10398,9 @@ const EDIT_IMAGES_MODAL = (() => {
     originals: new Map(),
     changedFieldsByImage: new Map(),
     openImageId: null,
+    subtipos: [],
+    filterSubtipos: [],
+    filters: { search: "", type: "", subtipo: "", anticipated: false },
   };
 
   function el(id) {
@@ -10420,10 +10432,14 @@ const EDIT_IMAGES_MODAL = (() => {
   }
 
   function getOriginalValues(image) {
-    return fields.reduce((values, field) => {
+    const values = fields.reduce((values, field) => {
       values[field] = normalizeValue(field, image[field]);
       return values;
     }, {});
+    // Preserve legacy values that remain required by the save endpoint.
+    values.animacao = normalizeValue("animacao", image.animacao);
+    values.clima = normalizeValue("clima", image.clima);
+    return values;
   }
 
   function readFieldValue(input) {
@@ -10498,7 +10514,15 @@ const EDIT_IMAGES_MODAL = (() => {
       );
     }
 
-    if (saveBtn) saveBtn.disabled = pendingChanges === 0;
+    if (changedImagesCount) {
+      changedImagesCount.hidden = changedImages === 0;
+    }
+    if (saveBtn) {
+      saveBtn.disabled = pendingChanges === 0;
+      saveBtn.textContent = pendingChanges
+        ? `Salvar ${formatCount(pendingChanges, "alteração", "alterações")}`
+        : "Salvar alterações";
+    }
   }
 
   function updateHeaderState(imageId) {
@@ -10509,8 +10533,26 @@ const EDIT_IMAGES_MODAL = (() => {
     const indicator = card.querySelector("[data-change-indicator]");
 
     card.classList.toggle("image-item--changed", count > 0);
+    updateCardMetadata(imageId);
+    const antecipada = Boolean(
+      card.querySelector('[name="antecipada"]')?.checked,
+    );
+    card.classList.toggle("image-item--antecipada", antecipada);
+    const titleRow = card.querySelector(".image-title-row");
+    let anticipatedBadge = card.querySelector(".image-anticipated-badge");
+    if (antecipada && !anticipatedBadge && titleRow) {
+      anticipatedBadge = document.createElement("span");
+      anticipatedBadge.className = "image-anticipated-badge";
+      anticipatedBadge.innerHTML =
+        '<i class="fa-solid fa-bolt" aria-hidden="true"></i> Antecipada';
+      titleRow
+        .querySelector("h4")
+        ?.insertAdjacentElement("afterend", anticipatedBadge);
+    } else if (!antecipada) {
+      anticipatedBadge?.remove();
+    }
     if (indicator) {
-      indicator.textContent = count > 0 ? `Alterada (${count})` : "";
+      indicator.textContent = count > 0 ? "Alterado" : "";
       indicator.hidden = count === 0;
     }
   }
@@ -10543,7 +10585,12 @@ const EDIT_IMAGES_MODAL = (() => {
       const title = card.querySelector(".titulo_imagem");
 
       card.classList.toggle("image-item--open", isOpen);
-      if (content) content.style.display = isOpen ? "block" : "none";
+      if (content) {
+        content.style.display = isOpen ? "block" : "none";
+        card.style.height = isOpen
+          ? `${(title?.offsetHeight || 0) + content.scrollHeight}px`
+          : "";
+      }
       if (title) title.setAttribute("aria-expanded", isOpen ? "true" : "false");
       if (icon) {
         icon.classList.toggle("fa-chevron-up", isOpen);
@@ -10572,13 +10619,17 @@ const EDIT_IMAGES_MODAL = (() => {
       "imagem_principal_id",
       currentImage.imagem_principal_id,
     );
-    const options = ['<option value="">Ângulo principal (fluxo completo)</option>'];
+    const options = [
+      '<option value="">Ângulo principal (fluxo completo)</option>',
+    ];
     state.images
-      .filter((image) =>
-        String(image.idimagem) !== currentId && !image.imagem_principal_id,
+      .filter(
+        (image) =>
+          String(image.idimagem) !== currentId && !image.imagem_principal_id,
       )
       .forEach((image) => {
-        const selected = String(image.idimagem) === currentPrincipalId ? " selected" : "";
+        const selected =
+          String(image.idimagem) === currentPrincipalId ? " selected" : "";
         options.push(
           `<option value="${escapeEditImagesHtml(image.idimagem)}"${selected}>${escapeEditImagesHtml(displayImageName(image.imagem_nome))}</option>`,
         );
@@ -10586,15 +10637,89 @@ const EDIT_IMAGES_MODAL = (() => {
     return options.join("");
   }
 
-  function buildBadge(label) {
+  function formatMetadataDate(value) {
+    if (!value) return "Sem prazo";
+    const [year, month, day] = String(value).split("-");
+    return year && month && day
+      ? `Prazo ${day}/${month}/${year}`
+      : `Prazo ${value}`;
+  }
+
+  function buildTypeOptions(currentType) {
+    const types = [
+      ...new Set(
+        state.images
+          .map((image) => String(image.tipo_imagem || "").trim())
+          .filter(Boolean),
+      ),
+    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return ['<option value="">Selecione o tipo</option>']
+      .concat(
+        types.map(
+          (type) =>
+            `<option value="${escapeEditImagesHtml(type)}"${type === currentType ? " selected" : ""}>${escapeEditImagesHtml(type)}</option>`,
+        ),
+      )
+      .join("");
+  }
+
+  function metadataColor(label) {
     const text = String(label ?? "").trim();
-    return text
-      ? `<span class="image-meta-badge">${escapeEditImagesHtml(text)}</span>`
+    return text && typeof stringToColor === "function"
+      ? stringToColor(text)
+      : null;
+  }
+
+  function setMetadataColor(element, label) {
+    const color = metadataColor(label);
+    if (!element || !color) return;
+    element.style.backgroundColor = color.background;
+    element.style.color = color.color;
+    element.style.borderColor = color.border;
+  }
+
+  function updateCardMetadata(imageId) {
+    const card = getImageCard(imageId);
+    if (!card) return;
+    const typeInput = card.querySelector('[name="tipo_imagem"]');
+    const subtypeInput = card.querySelector('[name="subtipo_id"]');
+    const typeBadge = card.querySelector('[data-meta="type"]');
+    const subtypeBadge = card.querySelector('[data-meta="subtype"]');
+    const typeLabel =
+      typeInput?.selectedOptions?.[0]?.textContent?.trim() ||
+      typeInput?.value ||
+      "Sem tipo";
+    const subtypeLabel =
+      subtypeInput?.selectedOptions?.[0]?.textContent?.trim() || "Sem subtipo";
+    if (typeBadge) {
+      typeBadge.textContent = typeLabel;
+      setMetadataColor(typeBadge, typeLabel);
+    }
+    if (subtypeBadge) {
+      subtypeBadge.textContent = subtypeLabel;
+      setMetadataColor(subtypeBadge, subtypeLabel);
+    }
+  }
+
+  function buildBadge(label, metaType = "") {
+    const text = String(label ?? "").trim();
+    if (!text) return "";
+    const color = metadataColor(text);
+    const style =
+      metaType && color
+        ? ` style="background:${color.background};color:${color.color};border-color:${color.border}"`
+        : "";
+    const dataMeta = metaType
+      ? ` data-meta="${escapeEditImagesHtml(metaType)}"`
       : "";
+    const modifier = metaType
+      ? ` image-meta-badge--${escapeEditImagesHtml(metaType)}`
+      : "";
+    return `<span class="image-meta-badge${modifier}"${dataMeta}${style}>${escapeEditImagesHtml(text)}</span>`;
   }
 
   function formatDateBadge(value) {
-    return value ? `Prazo ${value}` : "Sem prazo";
+    return formatMetadataDate(value);
   }
 
   function buildImageCard(image, subtipos) {
@@ -10606,16 +10731,17 @@ const EDIT_IMAGES_MODAL = (() => {
     state.originals.set(String(image.idimagem), original);
 
     return `
-      <div class="image-item" data-image-id="${escapedId}">
+      <div class="image-item${Number(image.antecipada) === 1 ? " image-item--antecipada" : ""}" data-image-id="${escapedId}">
         <button type="button" class="titulo_imagem" aria-expanded="false">
           <div class="image-title-block">
             <div class="image-title-row">
-              <h4>${escapeEditImagesHtml(title)}</h4>
+              <h4 title="${escapeEditImagesHtml(title)}">${escapeEditImagesHtml(title)}</h4>
+              ${Number(image.antecipada) === 1 ? '<span class="image-anticipated-badge"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Antecipada</span>' : ""}
               <span class="image-change-indicator" data-change-indicator hidden></span>
             </div>
             <div class="image-meta-badges">
-              ${buildBadge(image.tipo_imagem || "Sem tipo")}
-              ${buildBadge(currentSubtipoName || "Sem subtipo")}
+              ${buildBadge(image.tipo_imagem || "Sem tipo", "type")}
+              ${buildBadge(currentSubtipoName || "Sem subtipo", "subtype")}
               ${buildBadge(formatDateBadge(image.prazo))}
               ${Number(image.antecipada) === 1 ? buildBadge("Antecipada") : ""}
               ${Number(image.animacao) === 1 ? buildBadge("Animação") : ""}
@@ -10633,7 +10759,7 @@ const EDIT_IMAGES_MODAL = (() => {
                 <input type="text" data-id="${escapedId}" data-edit-image-field name="imagem_nome" value="${escapeEditImagesHtml(original.imagem_nome)}">
               </label>
               <label>Tipo
-                <input type="text" data-id="${escapedId}" data-edit-image-field name="tipo_imagem" value="${escapeEditImagesHtml(original.tipo_imagem)}">
+                <select data-id="${escapedId}" data-edit-image-field name="tipo_imagem">${buildTypeOptions(original.tipo_imagem)}</select>
               </label>
               <label>Subtipo
                 <select data-id="${escapedId}" data-edit-image-field name="subtipo_id">${buildSubtipoOptions(subtipos, original.subtipo_id)}</select>
@@ -10660,15 +10786,8 @@ const EDIT_IMAGES_MODAL = (() => {
             <h5>Características</h5>
             <div class="image-field-grid image-field-grid--compact">
               <label class="image-checkbox-field">
-                <input type="checkbox" data-id="${escapedId}" data-edit-image-field name="antecipada" ${original.antecipada === "1" ? "checked" : ""}>
                 <span>Antecipada</span>
-              </label>
-              <label class="image-checkbox-field">
-                <input type="checkbox" data-id="${escapedId}" data-edit-image-field name="animacao" value="1" ${original.animacao === "1" ? "checked" : ""}>
-                <span>Terá animação</span>
-              </label>
-              <label>Clima
-                <input type="text" data-id="${escapedId}" data-edit-image-field name="clima" value="${escapeEditImagesHtml(original.clima)}">
+                <input type="checkbox" data-id="${escapedId}" data-edit-image-field name="antecipada" aria-label="Antecipada" ${original.antecipada === "1" ? "checked" : ""}>
               </label>
             </div>
           </section>
@@ -10692,22 +10811,132 @@ const EDIT_IMAGES_MODAL = (() => {
     state.originals.clear();
     state.changedFieldsByImage.clear();
     state.openImageId = null;
+    state.filterSubtipos = [];
+    state.filters = { search: "", type: "", subtipo: "", anticipated: false };
     updateGlobalSummary();
   }
 
-  function renderImages(images, subtipos) {
+  function populateFilters() {
+    const typeFilter = el("editImagesTypeFilter");
+    const subtypeFilter = el("editImagesSubtypeFilter");
+    if (!typeFilter || !subtypeFilter) return;
+
+    const types = [
+      ...new Set(
+        state.images
+          .map((image) => String(image.tipo_imagem || "").trim())
+          .filter(Boolean),
+      ),
+    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    typeFilter.innerHTML =
+      '<option value="">Todos os tipos</option>' +
+      types
+        .map(
+          (type) =>
+            `<option value="${escapeEditImagesHtml(type)}">${escapeEditImagesHtml(type)}</option>`,
+        )
+        .join("");
+    subtypeFilter.innerHTML =
+      '<option value="">Todos os subtipos</option>' +
+      state.filterSubtipos
+        .map(
+          (subtipo) =>
+            `<option value="${escapeEditImagesHtml(subtipo.id)}">${escapeEditImagesHtml(subtipo.nome)}</option>`,
+        )
+        .join("");
+  }
+
+  function applyFilters() {
+    const search = state.filters.search.trim().toLocaleLowerCase("pt-BR");
+    const cards = Array.from(
+      el("imageList")?.querySelectorAll(".image-item") || [],
+    );
+    let visible = 0;
+
+    cards.forEach((card) => {
+      const image = state.images.find(
+        (item) => String(item.idimagem) === String(card.dataset.imageId),
+      );
+      if (!image) return;
+      const currentName =
+        card.querySelector('[name="imagem_nome"]')?.value ?? image.imagem_nome;
+      const currentType =
+        card.querySelector('[name="tipo_imagem"]')?.value ?? image.tipo_imagem;
+      const currentSubtype =
+        card.querySelector('[name="subtipo_id"]')?.value ?? image.subtipo_id;
+      const matches =
+        (!search ||
+          String(currentName || "")
+            .toLocaleLowerCase("pt-BR")
+            .includes(search)) &&
+        (!state.filters.type ||
+          String(currentType || "") === state.filters.type) &&
+        (!state.filters.subtipo ||
+          String(currentSubtype || "") === state.filters.subtipo) &&
+        (!state.filters.anticipated ||
+          card.querySelector('[name="antecipada"]')?.checked);
+      card.hidden = !matches;
+      if (matches) visible += 1;
+    });
+
+    const count = el("editImagesResultsCount");
+    if (count) count.textContent = formatCount(visible, "imagem", "imagens");
+    const anticipated = el("editImagesAnticipatedFilter");
+    anticipated?.classList.toggle("is-active", state.filters.anticipated);
+    anticipated?.setAttribute(
+      "aria-pressed",
+      state.filters.anticipated ? "true" : "false",
+    );
+    const hasFilters = Boolean(
+      search ||
+      state.filters.type ||
+      state.filters.subtipo ||
+      state.filters.anticipated,
+    );
+    const clear = el("clearEditImagesFilters");
+    if (clear) clear.hidden = !hasFilters;
+
+    let empty = el("editImagesEmptyState");
+    if (!empty) {
+      empty = document.createElement("div");
+      empty.id = "editImagesEmptyState";
+      empty.className = "edit-images-empty";
+      empty.innerHTML =
+        '<strong>Nenhuma imagem encontrada</strong><span>Tente alterar a busca ou remover algum filtro.</span><button type="button">Limpar filtros</button>';
+      el("imageList")?.appendChild(empty);
+      empty.querySelector("button")?.addEventListener("click", clearFilters);
+    }
+    if (empty) empty.hidden = visible !== 0;
+  }
+
+  function clearFilters() {
+    state.filters = { search: "", type: "", subtipo: "", anticipated: false };
+    [
+      "editImagesSearch",
+      "editImagesTypeFilter",
+      "editImagesSubtypeFilter",
+    ].forEach((id) => {
+      const input = el(id);
+      if (input) input.value = "";
+    });
+    applyFilters();
+  }
+
+  function renderImages(images, subtipos, filterSubtipos = subtipos) {
     const imageList = el("imageList");
     if (!imageList) return;
 
     resetState();
     state.images = Array.isArray(images) ? images : [];
+    state.subtipos = Array.isArray(subtipos) ? subtipos : [];
+    state.filterSubtipos = Array.isArray(filterSubtipos) ? filterSubtipos : [];
     imageList.innerHTML = state.images
-      .map((image) =>
-        buildImageCard(image, Array.isArray(subtipos) ? subtipos : []),
-      )
+      .map((image) => buildImageCard(image, state.subtipos))
       .join("");
 
     if (state.images.length > 0) setAccordionOpen(state.images[0].idimagem);
+    populateFilters();
+    applyFilters();
   }
 
   function buildUpdatePayload(imageId) {
@@ -10721,8 +10950,9 @@ const EDIT_IMAGES_MODAL = (() => {
       tipo_imagem: values.tipo_imagem || "",
       subtipo_id: values.subtipo_id || null,
       antecipada: values.antecipada === "1" ? "1" : "0",
-      animacao: values.animacao === "1" ? "1" : "0",
-      clima: values.clima || "",
+      animacao:
+        state.originals.get(String(imageId))?.animacao === "1" ? "1" : "0",
+      clima: state.originals.get(String(imageId))?.clima || "",
       imagem_principal_id: values.imagem_principal_id || null,
     };
   }
@@ -10745,13 +10975,22 @@ const EDIT_IMAGES_MODAL = (() => {
           if (!r.ok) throw new Error("Erro ao buscar imagens");
           return r.json();
         }),
-        fetch("getSubtipos.php")
+        fetch(`getSubtipos.php?obra_id=${encodeURIComponent(obraId)}`)
           .then((r) => r.json())
+          .then((data) =>
+            Array.isArray(data)
+              ? { options: data, obra: data }
+              : {
+                  options: [...(data.obra || []), ...(data.demais || [])],
+                  obra: data.obra || [],
+                },
+          )
           .catch(() => []),
       ]);
 
-      renderImages(images, subtipos);
+      renderImages(images, subtipos.options || [], subtipos.obra || []);
       el("editImagesModal").style.display = "block";
+      if (state.openImageId) setAccordionOpen(state.openImageId);
     } catch (error) {
       console.error("Erro:", error);
       alert("Não foi possível carregar as imagens.");
@@ -10799,6 +11038,23 @@ const EDIT_IMAGES_MODAL = (() => {
     el("editImagesBtn")?.addEventListener("click", open);
     el("saveChangesBtn")?.addEventListener("click", save);
     el("cancelImagesChangesBtn")?.addEventListener("click", close);
+    el("editImagesSearch")?.addEventListener("input", (event) => {
+      state.filters.search = event.target.value;
+      applyFilters();
+    });
+    el("editImagesTypeFilter")?.addEventListener("change", (event) => {
+      state.filters.type = event.target.value;
+      applyFilters();
+    });
+    el("editImagesSubtypeFilter")?.addEventListener("change", (event) => {
+      state.filters.subtipo = event.target.value;
+      applyFilters();
+    });
+    el("editImagesAnticipatedFilter")?.addEventListener("click", () => {
+      state.filters.anticipated = !state.filters.anticipated;
+      applyFilters();
+    });
+    el("clearEditImagesFilters")?.addEventListener("click", clearFilters);
 
     el("imageList")?.addEventListener("click", (event) => {
       const title = event.target.closest(".titulo_imagem");
@@ -10819,6 +11075,7 @@ const EDIT_IMAGES_MODAL = (() => {
         const input = event.target.closest("[data-edit-image-field]");
         if (!input) return;
         refreshImageChangeState(input.dataset.id);
+        applyFilters();
       });
     });
   }
@@ -11649,7 +11906,8 @@ function submitFormImagem(event) {
   const prazo = document.getElementById("prazo").value;
   const imagem = document.getElementById("nome-imagem").value;
   const tipo = document.getElementById("tipo-imagem").value;
-  const imagem_principal_id = document.getElementById("imagem_principal_id")?.value || "";
+  const imagem_principal_id =
+    document.getElementById("imagem_principal_id")?.value || "";
 
   const data = {
     opcaoCliente: opcaoCliente,

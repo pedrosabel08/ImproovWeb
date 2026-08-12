@@ -788,20 +788,30 @@ $conn->close();
             <div id="editImagesModal" style="display: none;">
                 <div class="modal-content-images edit-images-shell">
                     <div id="modalHeader">
-                        <div class="header">
-                            <h2>Editar Imagens</h2>
-                            <span class="close-modal-images">&times;</span>
+                        <div class="edit-images-titlebar">
+                            <div>
+                                <h2>Editar imagens</h2>
+                                <p id="editImagesResultsCount" class="edit-images-results-count">0 imagens</p>
+                            </div>
+                            <button type="button" class="close-modal-images" aria-label="Fechar edição de imagens" title="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </div>
+                        <div class="edit-images-toolbar" aria-label="Buscar e filtrar imagens">
+                            <label class="edit-images-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="editImagesSearch" type="search" placeholder="Buscar imagem..." autocomplete="off"></label>
+                            <select id="editImagesTypeFilter" class="edit-images-filter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option></select>
+                            <select id="editImagesSubtypeFilter" class="edit-images-filter" aria-label="Filtrar por subtipo"><option value="">Todos os subtipos</option></select>
+                            <button type="button" id="editImagesAnticipatedFilter" class="edit-images-filter-chip" aria-pressed="false"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Antecipadas</button>
+                            <button type="button" id="clearEditImagesFilters" class="edit-images-clear-filters" hidden>Limpar filtros</button>
                         </div>
                     </div>
                     <div id="imageList"></div>
                     <div class="edit-images-footer">
                         <div class="edit-images-summary" aria-live="polite">
-                            <strong id="changedImagesCount">0 imagens alteradas</strong>
+                            <strong id="changedImagesCount" hidden>0 imagens alteradas</strong>
                             <span>•</span>
                             <strong id="pendingChangesCount">0 alterações pendentes</strong>
                         </div>
                         <div class="edit-images-actions">
-                            <button type="button" id="cancelImagesChangesBtn" class="edit-images-btn edit-images-btn-secondary">Cancelar</button>
+                            <button type="button" id="cancelImagesChangesBtn" class="edit-images-btn edit-images-btn-secondary">Descartar</button>
                             <button type="button" id="saveChangesBtn" class="edit-images-btn edit-images-btn-primary" disabled>Salvar alterações</button>
                         </div>
                     </div>

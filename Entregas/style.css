@@ -140,6 +140,13 @@
   box-sizing: border-box;
 }
 
+.toastify {
+  border-radius: var(--radius-sm) !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
 body {
   margin: 0;
   font-family:

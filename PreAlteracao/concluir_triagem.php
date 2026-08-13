@@ -22,7 +22,30 @@ $loteId = isset($input['lote_id']) ? (int) $input['lote_id'] : 0;
 $dataTriagem = isset($input['data_triagem']) ? trim((string) $input['data_triagem']) : '';
 $prazoEf = isset($input['prazo_ef']) ? trim((string) $input['prazo_ef']) : '';
 $prazoAlteracao = isset($input['prazo_alteracao']) ? trim((string) $input['prazo_alteracao']) : '';
+$prazoRetornoEf = isset($input['prazo_retorno_ef']) ? trim((string) $input['prazo_retorno_ef']) : '';
 $observacao = isset($input['observacao']) ? trim((string) $input['observacao']) : '';
+
+function pre_alt_observacao_retorno_ef(array $itens, string $observacao): string
+{
+    $linhas = [
+        'Retorno da Pré-Alteração para EF — ajustes solicitados pelo cliente. Não reenviar para aprovação.',
+    ];
+
+    if ($observacao !== '') {
+        $linhas[] = '';
+        $linhas[] = 'Observação complementar: ' . $observacao;
+    }
+
+    $linhas[] = '';
+    $linhas[] = 'Instruções por imagem:';
+    foreach ($itens as $item) {
+        $nome = trim((string) ($item['imagem_nome'] ?? ('Imagem ' . ($item['imagem_id'] ?? ''))));
+        $acao = trim((string) ($item['acao'] ?? ''));
+        $linhas[] = '- ' . $nome . ': ' . ($acao !== '' ? $acao : 'Sem instrução adicional registrada na triagem.');
+    }
+
+    return implode("\n", $linhas);
+}
 
 if ($loteId <= 0 || !entregas_valid_date($dataTriagem)) {
     http_response_code(400);
@@ -66,12 +89,17 @@ try {
 
     $totalEf = (int) $summary['grupos']['ef']['total'];
     $totalAlteracao = (int) $summary['grupos']['alteracao']['total'];
+    $totalRetornoEf = (int) $summary['grupos']['retorno_ef']['total'];
+    $totalSemAlteracaoOrigemEf = (int) $summary['grupos']['sem_alteracao_origem_ef']['total'];
 
     if ($totalEf > 0 && !entregas_valid_date($prazoEf)) {
         throw new RuntimeException('Informe um prazo EF valido.');
     }
     if ($totalAlteracao > 0 && !entregas_valid_date($prazoAlteracao)) {
         throw new RuntimeException('Informe um prazo de alteracao valido.');
+    }
+    if ($totalRetornoEf > 0 && !entregas_valid_date($prazoRetornoEf)) {
+        throw new RuntimeException('Informe um prazo de retorno para EF válido.');
     }
 
     $obraId = (int) $summary['lote']['obra_id'];
@@ -81,14 +109,23 @@ try {
 
     $itensEf = $summary['grupos']['ef']['itens'];
     $itensAlteracao = $summary['grupos']['alteracao']['itens'];
+    $itensRetornoEf = $summary['grupos']['retorno_ef']['itens'];
+    $itensSemAlteracaoOrigemEf = $summary['grupos']['sem_alteracao_origem_ef']['itens'];
     $idsEf = array_map(static fn(array $item): int => (int) $item['imagem_id'], $itensEf);
     $idsAlteracao = array_map(static fn(array $item): int => (int) $item['imagem_id'], $itensAlteracao);
+    $idsRetornoEf = array_map(static fn(array $item): int => (int) $item['imagem_id'], $itensRetornoEf);
 
     $entregaEfId = $totalEf > 0
         ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusEf, $dataTriagem, $prazoEf, $idsEf, $observacaoEntrega)
         : null;
     $entregaAlteracaoId = $totalAlteracao > 0
         ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusAlteracao, $dataTriagem, $prazoAlteracao, $idsAlteracao, $observacaoEntrega)
+        : null;
+    $observacaoRetornoEf = $totalRetornoEf > 0
+        ? pre_alt_observacao_retorno_ef($itensRetornoEf, $observacao)
+        : null;
+    $entregaRetornoEfId = $totalRetornoEf > 0
+        ? pre_alt_criar_entrega_conclusao($conn, $obraId, 6, $dataTriagem, $prazoRetornoEf, $idsRetornoEf, $observacaoRetornoEf)
         : null;
 
     $responsavelId = (int) $_SESSION['idcolaborador'];
@@ -100,7 +137,8 @@ try {
     if (!$stmtLiberacao) {
         throw new RuntimeException('Nao foi possivel registrar a liberacao parcial.');
     }
-    $stmtLiberacao->bind_param('isiisi', $loteId, $dataTriagem, $entregaEfId, $entregaAlteracaoId, $observacao, $responsavelId);
+    $entregaEfLiberacaoId = $entregaRetornoEfId ?: $entregaEfId;
+    $stmtLiberacao->bind_param('isiisi', $loteId, $dataTriagem, $entregaEfLiberacaoId, $entregaAlteracaoId, $observacao, $responsavelId);
     $stmtLiberacao->execute();
     $liberacaoId = (int) $stmtLiberacao->insert_id;
     $stmtLiberacao->close();
@@ -123,11 +161,26 @@ try {
         $stmtLiberacaoItem->bind_param('iiiis', $liberacaoId, $itemId, $entregaAlteracaoId, $statusAlteracao, $prazoAlteracao);
         $stmtLiberacaoItem->execute();
     }
+    foreach ($itensRetornoEf as $item) {
+        $itemId = (int) $item['item_id'];
+        $stmtLiberacaoItem->bind_param('iiiis', $liberacaoId, $itemId, $entregaRetornoEfId, $statusEf, $prazoRetornoEf);
+        $stmtLiberacaoItem->execute();
+    }
+    foreach ($itensSemAlteracaoOrigemEf as $item) {
+        $itemId = (int) $item['item_id'];
+        $entregaOrigemId = (int) ($item['entrega_origem_id'] ?? 0);
+        if ($entregaOrigemId <= 0) {
+            throw new RuntimeException('A imagem aprovada não possui entrega EF de origem para registrar a liberação.');
+        }
+        $stmtLiberacaoItem->bind_param('iiiis', $liberacaoId, $itemId, $entregaOrigemId, $statusEf, $dataTriagem);
+        $stmtLiberacaoItem->execute();
+    }
     $stmtLiberacaoItem->close();
 
     $stmtUpdateImagem = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?');
+    $stmtUpdateImagemRetornoEf = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ?, substatus_id = 2, prazo = ? WHERE idimagens_cliente_obra = ?');
     $stmtEvento = $conn->prepare('INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)');
-    if (!$stmtUpdateImagem) {
+    if (!$stmtUpdateImagem || !$stmtUpdateImagemRetornoEf) {
         throw new RuntimeException('Nao foi possivel preparar a atualizacao das imagens.');
     }
 
@@ -163,7 +216,24 @@ try {
         }
     }
 
+    foreach ($itensRetornoEf as $item) {
+        $imagemId = (int) $item['imagem_id'];
+        $nivel = (int) $item['nivel_complexidade'];
+        $funcaoId = pre_alt_upsert_funcao_alteracao($conn, $imagemId, $prazoRetornoEf);
+        // TO-DO (2) devolve a imagem para producao sem entrar em RVW (6).
+        $stmtUpdateImagemRetornoEf->bind_param('isi', $statusEf, $prazoRetornoEf, $imagemId);
+        $stmtUpdateImagemRetornoEf->execute();
+        alteracoes_upsert_registro($conn, $funcaoId, $statusEf, $dataTriagem, $nivel);
+
+        if ($stmtEvento) {
+            $descricao = trim((string) $item['imagem_nome']) . ' - Retorno à EF - alteração solicitada N' . $nivel;
+            $stmtEvento->bind_param('sssii', $descricao, $prazoRetornoEf, $tipoEvento, $obraId, $responsavelId);
+            $stmtEvento->execute();
+        }
+    }
+
     $stmtUpdateImagem->close();
+    $stmtUpdateImagemRetornoEf->close();
     if ($stmtEvento) {
         $stmtEvento->close();
     }
@@ -218,15 +288,17 @@ try {
         'LIBERACAO_PARCIAL',
         'itens_liberados',
         null,
-        (string) ($totalEf + $totalAlteracao),
+        (string) ($totalEf + $totalAlteracao + $totalRetornoEf + $totalSemAlteracaoOrigemEf),
         $observacao !== '' ? $observacao : null,
         null,
         pre_alt_batch_id(),
         [
             'liberacao_id' => $liberacaoId,
             'data_triagem' => $dataTriagem,
-            'entrega_ef_id' => $entregaEfId,
+            'entrega_ef_id' => $entregaEfLiberacaoId,
             'entrega_alteracao_id' => $entregaAlteracaoId,
+            'entrega_retorno_ef_id' => $entregaRetornoEfId,
+            'sem_alteracao_na_entrega_origem' => $totalSemAlteracaoOrigemEf,
             'status_id_anterior' => (int) $summary['lote']['status_id'],
             'status_id_final' => $statusLoteFinal,
             'totais' => $summary['totais'],
@@ -261,8 +333,9 @@ try {
         'entregas' => [
             'ef' => $entregaEfId,
             'alteracao' => $entregaAlteracaoId,
+            'retorno_ef' => $entregaRetornoEfId,
         ],
-        'liberadas_agora' => $totalEf + $totalAlteracao,
+        'liberadas_agora' => $totalEf + $totalAlteracao + $totalRetornoEf + $totalSemAlteracaoOrigemEf,
         'liberadas_acumuladas' => $totalLiberadas,
         'restantes' => $totalRestantes,
         'lote_status' => $statusLote,

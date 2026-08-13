@@ -2050,6 +2050,8 @@
     const totais = resumo.totais || {};
     const grupoEf = resumo.grupos?.ef || {};
     const grupoAlt = resumo.grupos?.alteracao || {};
+    const grupoRetornoEf = resumo.grupos?.retorno_ef || {};
+    const grupoSemAlteracaoOrigemEf = resumo.grupos?.sem_alteracao_origem_ef || {};
     const niveis = totais.niveis || {};
     const canSubmit = Boolean(resumo.eligible);
 
@@ -2084,6 +2086,25 @@
     const altHtml =
       Number(grupoAlt.total || 0) > 0
         ? entregaResumo("Entrega Alteração", grupoAlt, "prazo_alteracao")
+        : "";
+
+    const retornoEfHtml =
+      Number(grupoRetornoEf.total || 0) > 0
+        ? entregaResumo(
+            "Retorno à EF",
+            grupoRetornoEf,
+            "prazo_retorno_ef",
+            "As imagens voltarão para EF sem novo envio ao Flow Review.",
+          )
+        : "";
+    const semAlteracaoOrigemEfHtml =
+      Number(grupoSemAlteracaoOrigemEf.total || 0) > 0
+        ? `
+          <section class="conclusao-pendencias is-warning">
+            <strong>Imagens sem alteração</strong>
+            <span>${plural(grupoSemAlteracaoOrigemEf.total || 0, "imagem permanecerá", "imagens permanecerão")} na entrega EF original, sem criar nova entrega.</span>
+          </section>
+        `
         : "";
 
     refs.conclusaoBody.innerHTML = `
@@ -2124,7 +2145,10 @@
       <section class="conclusao-entregas">
         ${efHtml}
         ${altHtml}
+        ${retornoEfHtml}
       </section>
+
+      ${semAlteracaoOrigemEfHtml}
 
       <label class="conclusao-observacao">
         <span>Observação</span>
@@ -2142,10 +2166,10 @@
       });
   }
 
-  function entregaResumo(titulo, grupo, inputName) {
+  function entregaResumo(titulo, grupo, inputName, aviso = "") {
     const niveis = grupo.niveis || {};
     const nivelHtml =
-      inputName === "prazo_alteracao"
+      (inputName === "prazo_alteracao" || inputName === "prazo_retorno_ef")
         ? `<div class="conclusao-niveis">${[1, 2, 3, 4, 5].map((n) => `<span>N${n} <strong>${niveis[n] || 0}</strong></span>`).join("")}</div>`
         : "";
     return `
@@ -2155,6 +2179,7 @@
           <strong>${escHtml(grupo.status_nome || "Etapa")} - ${plural(grupo.total || 0, "imagem", "imagens")}</strong>
         </div>
         ${nivelHtml}
+        ${aviso ? `<small>${escHtml(aviso)}</small>` : ""}
         <label>
           <span>Prazo</span>
           <input type="date" name="${escHtml(inputName)}" value="${escHtml(grupo.prazo || "")}" required>
@@ -2180,6 +2205,8 @@
       prazo_ef: form.querySelector("[name='prazo_ef']")?.value || "",
       prazo_alteracao:
         form.querySelector("[name='prazo_alteracao']")?.value || "",
+      prazo_retorno_ef:
+        form.querySelector("[name='prazo_retorno_ef']")?.value || "",
       observacao: form.querySelector("[name='observacao']")?.value || "",
     };
 

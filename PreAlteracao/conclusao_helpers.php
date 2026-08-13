@@ -104,7 +104,9 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
         "SELECT
             pai.id AS item_id,
             pai.imagem_id,
+            pai.entrega_id AS entrega_origem_id,
             ico.imagem_nome,
+            pai.acao,
             pai.resultado,
             pai.nivel_complexidade,
             pai.necessita_retorno,
@@ -134,6 +136,7 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
     while ($row = $resultItens->fetch_assoc()) {
         $row['item_id'] = (int) $row['item_id'];
         $row['imagem_id'] = (int) $row['imagem_id'];
+        $row['entrega_origem_id'] = isset($row['entrega_origem_id']) ? (int) $row['entrega_origem_id'] : null;
         $row['nivel_complexidade'] = $row['nivel_complexidade'] !== null ? (int) $row['nivel_complexidade'] : null;
         $row['necessita_retorno'] = (int) $row['necessita_retorno'];
         $row['reanalise_pos_retorno'] = (int) ($row['reanalise_pos_retorno'] ?? 0);
@@ -153,7 +156,9 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
     $incompletas = [];
     $aprovadas = [];
     $alteracoes = [];
+    $retornosEf = [];
     $niveis = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+    $retornoParaEf = (int) ($lote['status_id'] ?? 0) === 6;
 
     if (in_array(($lote['status'] ?? ''), ['PLANEJADO', 'CANCELADO'], true)) {
         $pendencias[] = 'Este lote ja foi planejado.';
@@ -197,7 +202,11 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
                 continue;
             }
 
-            $alteracoes[] = $item;
+            if ($retornoParaEf) {
+                $retornosEf[] = $item;
+            } else {
+                $alteracoes[] = $item;
+            }
             $niveis[$item['nivel_complexidade']]++;
             continue;
         }
@@ -211,7 +220,7 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
         $remanescentes[] = $nomeImagem . ': resultado de triagem invalido.';
     }
 
-    if (!empty($itens) && empty($aprovadas) && empty($alteracoes) && !in_array(($lote['status'] ?? ''), ['PLANEJADO', 'CANCELADO'], true)) {
+    if (!empty($itens) && empty($aprovadas) && empty($alteracoes) && empty($retornosEf) && !in_array(($lote['status'] ?? ''), ['PLANEJADO', 'CANCELADO'], true)) {
         $pendencias[] = 'Nenhuma imagem esta pronta para EF ou alteracao.';
     }
 
@@ -235,10 +244,13 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
     $prazoAlteracao = (!empty($alteracoes) && $statusAlteracao !== null)
         ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], $statusAlteracao, $dataTriagem)
         : null;
+    $prazoRetornoEf = !empty($retornosEf)
+        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], 6, $dataTriagem)
+        : null;
 
     return [
         'success' => true,
-        'eligible' => empty($pendencias) && (!empty($aprovadas) || !empty($alteracoes)),
+        'eligible' => empty($pendencias) && (!empty($aprovadas) || !empty($alteracoes) || !empty($retornosEf)),
         'pendencias' => array_values(array_unique($pendencias)),
         'remanescentes' => array_values(array_unique($remanescentes)),
         'data_triagem' => $dataTriagem,
@@ -250,6 +262,7 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
             'status_id' => $statusAtual,
             'status_nome' => (string) ($lote['status_nome'] ?? ''),
             'status' => (string) ($lote['status'] ?? ''),
+            'retorno_para_ef' => $retornoParaEf,
             'data_resolvida_cliente' => $lote['lote_resolvido_em']
                 ? substr((string) $lote['lote_resolvido_em'], 0, 10)
                 : (string) ($lote['data_finalizacao_cliente'] ?? ''),
@@ -257,18 +270,19 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
         'totais' => [
             'imagens' => count($itens),
             'liberadas' => count($liberadas),
-            'prontas' => count($aprovadas) + count($alteracoes),
+            'prontas' => count($aprovadas) + count($alteracoes) + count($retornosEf),
             'restantes' => count($itens) - count($liberadas),
             'pendentes' => count($aguardando) + count($incompletas),
             'aguardando' => count($aguardando),
             'incompletas' => count($incompletas),
             'aprovadas' => count($aprovadas),
-            'alteracoes' => count($alteracoes),
+            'alteracoes' => count($alteracoes) + count($retornosEf),
+            'retornos_ef' => count($retornosEf),
             'niveis' => $niveis,
         ],
         'grupos' => [
             'ef' => [
-                'total' => count($aprovadas),
+                'total' => $retornoParaEf ? 0 : count($aprovadas),
                 'status_id' => 6,
                 'status_nome' => pre_alt_status_nome($conn, 6),
                 'prazo' => $prazoEf,
@@ -278,7 +292,7 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
                         'imagem_id' => $item['imagem_id'],
                         'imagem_nome' => $item['imagem_nome'],
                     ];
-                }, $aprovadas),
+                }, $retornoParaEf ? [] : $aprovadas),
             ],
             'alteracao' => [
                 'total' => count($alteracoes),
@@ -294,6 +308,33 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
                         'nivel_complexidade' => $item['nivel_complexidade'],
                     ];
                 }, $alteracoes),
+            ],
+            'retorno_ef' => [
+                'total' => count($retornosEf),
+                'status_id' => 6,
+                'status_nome' => pre_alt_status_nome($conn, 6),
+                'prazo' => $prazoRetornoEf,
+                'niveis' => $niveis,
+                'itens' => array_map(static function (array $item): array {
+                    return [
+                        'item_id' => $item['item_id'],
+                        'imagem_id' => $item['imagem_id'],
+                        'imagem_nome' => $item['imagem_nome'],
+                        'nivel_complexidade' => $item['nivel_complexidade'],
+                        'acao' => $item['acao'],
+                    ];
+                }, $retornosEf),
+            ],
+            'sem_alteracao_origem_ef' => [
+                'total' => $retornoParaEf ? count($aprovadas) : 0,
+                'itens' => $retornoParaEf ? array_map(static function (array $item): array {
+                    return [
+                        'item_id' => $item['item_id'],
+                        'imagem_id' => $item['imagem_id'],
+                        'imagem_nome' => $item['imagem_nome'],
+                        'entrega_origem_id' => $item['entrega_origem_id'],
+                    ];
+                }, $aprovadas) : [],
             ],
         ],
     ];

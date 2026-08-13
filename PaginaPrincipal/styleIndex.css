@@ -900,7 +900,6 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
 .kanban-card
   :is(.pending-file-ribbon, .pending-render-ribbon, .pending-checklist-ribbon) {
   position: absolute;
-  z-index: 2;
   top: 10px;
   left: -1px;
 

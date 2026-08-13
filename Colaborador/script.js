@@ -1,5 +1,21 @@
 let dataTable = null;
 
+function atualizarNivelFinalizacao() {
+  const funcoesSelecionadas = $("#funcaoSelect option:selected");
+  const possuiFinalizacao = funcoesSelecionadas.toArray().some((option) => {
+    return option.dataset.finalizacao === "1";
+  });
+  const grupoNivel = document.getElementById("nivelFinalizacaoGroup");
+  const selectNivel = document.getElementById("nivelFinalizacao");
+
+  grupoNivel.hidden = !possuiFinalizacao;
+  selectNivel.required = possuiFinalizacao;
+
+  if (!possuiFinalizacao) {
+    selectNivel.value = "";
+  }
+}
+
 function showToast(message, type = "info") {
   const colors = { success: "#10b981", error: "#ef4444", info: "#4f80e1" };
   Toastify({
@@ -98,6 +114,9 @@ function abrirModalEdicao(idusuario) {
         data.usuario.nivel_acesso ?? "";
 
       $("#cargoSelect").val(data.cargos).trigger("change");
+      $("#funcaoSelect").val(data.funcoes).trigger("change");
+      $("#nivelFinalizacao").val(data.nivel_finalizacao ?? "");
+      atualizarNivelFinalizacao();
 
       const ativo = parseInt(data.usuario.ativo) === 1;
       const btnToggle = document.getElementById("btnToggleStatus");
@@ -124,6 +143,9 @@ function abrirModalNovo() {
   document.getElementById("idusuario").value = "";
   document.getElementById("idcolaborador").value = "";
   $("#cargoSelect").val([]).trigger("change");
+  $("#funcaoSelect").val([]).trigger("change");
+  $("#nivelFinalizacao").val("");
+  atualizarNivelFinalizacao();
 }
 
 function fecharModal() {
@@ -215,6 +237,14 @@ $(document).ready(function () {
     dropdownParent: $("#modal"),
   });
 
+  $("#funcaoSelect").select2({
+    placeholder: "Selecione as funcoes",
+    allowClear: true,
+    dropdownParent: $("#modal"),
+  });
+
+  $("#funcaoSelect").on("change", atualizarNivelFinalizacao);
+
   $("#btnAdicionar").on("click", function () {
     abrirModalNovo();
   });
@@ -254,7 +284,17 @@ $("#form").on("submit", function (e) {
     senha: $("#senha").val(),
     nivel_acesso: $("#nivel_acesso").val(),
     cargos: $("#cargoSelect").val(),
+    funcoes: $("#funcaoSelect").val(),
+    nivel_finalizacao: $("#nivelFinalizacao").val(),
   };
+
+  if (
+    document.getElementById("nivelFinalizacao").required &&
+    !formData.nivel_finalizacao
+  ) {
+    showToast("Selecione o nivel de finalizacao.", "error");
+    return;
+  }
 
   $.ajax({
     type: "POST",

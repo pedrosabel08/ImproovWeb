@@ -42,9 +42,29 @@ while ($row = $result_cargos->fetch_assoc()) {
     $cargos[] = $row['cargo_id']; // Armazena o ID do cargo
 }
 
+$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao
+                FROM funcao_colaborador fc
+                WHERE fc.colaborador_id = ?";
+
+$stmt_funcoes = $conn->prepare($sql_funcoes);
+$stmt_funcoes->bind_param("i", $usuario['idcolaborador']);
+$stmt_funcoes->execute();
+$result_funcoes = $stmt_funcoes->get_result();
+
+$funcoes = [];
+$nivel_finalizacao = null;
+while ($row = $result_funcoes->fetch_assoc()) {
+    $funcoes[] = (int) $row['funcao_id'];
+    if ($row['nivel_finalizacao'] !== null) {
+        $nivel_finalizacao = (int) $row['nivel_finalizacao'];
+    }
+}
+
 $response = [
     'usuario' => $usuario,
-    'cargos' => $cargos
+    'cargos' => $cargos,
+    'funcoes' => $funcoes,
+    'nivel_finalizacao' => $nivel_finalizacao
 ];
 
 echo json_encode($response);

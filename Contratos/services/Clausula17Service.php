@@ -344,19 +344,21 @@ class Clausula17Service
     private function buildParagrafos(bool $temFinalizacao): string
     {
         if ($temFinalizacao) {
-            return implode("<br>", [
+            $paragrafos = [
                 '<p class="paragrafo"><strong>Parágrafo primeiro.</strong> Para recebimento dos valores descritos acima a parte CONTRATADA deverá fazer a entrega das R00 (imagem prévia) dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
                 '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
                 '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> O pagamento da prestação de serviço será feito no 5º (quinto) dia útil do mês subsequente a contratação.</p>',
                 '<p class="paragrafo"><strong>Parágrafo quarto.</strong> Para recebimento dos valores descritos acima, a parte CONTRATADA deverá apresentar à parte CONTRATANTE a respectiva NOTA FISCAL/FATURA, com antecedência mínima de 05 (cinco) dias da data do seu recebimento, sob pena de ser prorrogar o prazo para o pagamento por igual número de dias ao do atraso.</p>'
-            ]);
+            ];
+        } else {
+            $paragrafos = [
+                '<p class="paragrafo"><strong>Parágrafo primeiro.</strong> Para recebimento dos valores descritos acima parte CONTRATANTE deverá fazer a entrega das imagens dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
+                '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
+                '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> O pagamento da prestação de serviço será feito no 5º (quinto) dia útil do mês subsequente a contratação.</p>',
+                '<p class="paragrafo"><strong>Parágrafo quarto.</strong> Para recebimento dos valores descritos acima, a parte CONTRATADA deverá apresentar à parte CONTRATANTE a respectiva NOTA FISCAL/FATURA, com antecedência mínima de 05 (cinco) dias da data do seu recebimento, sob pena de ser prorrogar o prazo para o pagamento por igual número de dias ao do atraso.</p>'
+            ];
         }
 
-        return implode("<br>", [
-            '<p class="paragrafo"><strong>Parágrafo primeiro.</strong> Para recebimento dos valores descritos acima parte CONTRATANTE deverá fazer a entrega das imagens dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
-            '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
-            '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> O pagamento da prestação de serviço será feito no 5º (quinto) dia útil do mês subsequente a contratação.</p>',
-            '<p class="paragrafo"><strong>Parágrafo quarto.</strong> Para recebimento dos valores descritos acima, a parte CONTRATADA deverá apresentar à parte CONTRATANTE a respectiva NOTA FISCAL/FATURA, com antecedência mínima de 05 (cinco) dias da data do seu recebimento, sob pena de ser prorrogar o prazo para o pagamento por igual número de dias ao do atraso.</p>'
-        ]);
+        return '<div class="clausula17-paragrafos">' . implode("<br>", $paragrafos) . '</div>';
     }
 }

@@ -57,7 +57,7 @@ $conn->close();
     <!-- Projeto -->
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&h=' . substr(md5_file(__DIR__ . '/style.css'), 0, 12); ?>">
 </head>
 
 <body>
@@ -156,6 +156,27 @@ $conn->close();
                                 ?>
                             </select>
                         </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="funcaoSelect">Fun&ccedil;&otilde;es</label>
+                            <select id="funcaoSelect" name="funcoes[]" multiple="multiple" style="width: 100%;">
+                                <?php foreach ($funcoes as $funcao) { ?>
+                                    <option
+                                        value="<?php echo (int) $funcao['idfuncao']; ?>"
+                                        data-finalizacao="<?php echo $funcao['nome_funcao'] === html_entity_decode('Finaliza&ccedil;&atilde;o', ENT_QUOTES, 'UTF-8') ? '1' : '0'; ?>">
+                                        <?php echo htmlspecialchars($funcao['nome_funcao']); ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="form-group" id="nivelFinalizacaoGroup" hidden>
+                            <label class="form-label" for="nivelFinalizacao">N&iacute;vel de finaliza&ccedil;&atilde;o</label>
+                            <select class="form-input" id="nivelFinalizacao" name="nivel_finalizacao">
+                                <option value="">Selecione o n&iacute;vel</option>
+                                <option value="1">N&iacute;vel 1</option>
+                                <option value="2">N&iacute;vel 2</option>
+                                <option value="3">N&iacute;vel 3</option>
+                            </select>
+                        </div>
                     </div>
                 </div><!-- /.modal-body -->
 
@@ -186,7 +207,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('script.js') . '&h=' . substr(md5_file(__DIR__ . '/script.js'), 0, 12); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>

@@ -381,6 +381,10 @@ body {
   grid-column: 1 / -1;
 }
 
+.form-group[hidden] {
+  display: none;
+}
+
 .form-label {
   font-size: 11px;
   font-weight: 600;
@@ -407,6 +411,42 @@ body {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+@media (max-width: 600px) {
+  .modal-content {
+    width: calc(100vw - 24px);
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .btn-toggle-status,
+  .modal-footer-right {
+    width: 100%;
+  }
+
+  .btn-toggle-status {
+    justify-content: center;
+  }
+
+  .modal-footer-right .btn-action {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 12px;
+  }
 }
 
 .btn-action {

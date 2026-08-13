@@ -91,6 +91,7 @@ class ContratoLocalService
             'colaborador_nome_empresarial' => $this->escapeHtml((string)($colab['nome_empresarial'])),
             'colaborador_nome' => $this->escapeHtml((string)($colab['nome_colaborador'])),
             'cnpj_contratado' => $this->escapeHtml((string)($colab['cnpj'] ?? '')),
+            'assinatura_cnpj_contratado' => $this->buildAssinaturaCnpj((string)($colab['cnpj'] ?? '')),
             'cpf_contratado' => $this->escapeHtml((string)($colab['cpf'] ?? '')),
             'lista_imagens' => $listaImagens,
         ];
@@ -134,6 +135,15 @@ class ContratoLocalService
             'arquivo_nome' => $nomeArquivoGerado,
             'arquivo_path' => $pdf['file_path'],
         ];
+    }
+
+    private function buildAssinaturaCnpj(string $cnpj): string
+    {
+        $cnpj = trim($cnpj);
+
+        return $cnpj === ''
+            ? ''
+            : '<div>CNPJ: ' . $this->escapeHtml($cnpj) . '</div>';
     }
 
     private function sanitizeFileName(string $name): string

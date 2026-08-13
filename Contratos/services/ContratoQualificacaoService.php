@@ -30,8 +30,18 @@ class ContratoQualificacaoService
             $this->formatCep($this->v($colab, 'cep_cnpj'))
         );
 
-        $texto = "De outro, {$nomeEmpresarial}, CNPJ: {$cnpj}, com endereço/sede na {$enderecoCnpj}; se seguir denominado simplesmente parte CONTRATADA; neste ato representada por {$nome}, brasileiro(a), {$estadoCivil}(a), inscrito(a) no CPF sob o nº {$cpf}, residente e domiciliado(a) na {$enderecoColaborador}, doravante denominada parte CONTRATADA.";
-
+        if ($cnpj !== '') {
+            $texto = "De outro, {$nomeEmpresarial}, CNPJ: {$cnpj}, com endereço/sede na {$enderecoCnpj}; "
+                . "a seguir denominada simplesmente parte CONTRATADA; neste ato representada por {$nome}, "
+                . "brasileiro(a), {$estadoCivil}(a), inscrito(a) no CPF sob o nº {$cpf}, "
+                . "residente e domiciliado(a) na {$enderecoColaborador}, "
+                . "doravante denominada parte CONTRATADA.";
+        } else {
+            $texto = "De outro, {$nome}, brasileiro(a), {$estadoCivil}(a), "
+                . "inscrito(a) no CPF sob o nº {$cpf}, "
+                . "residente e domiciliado(a) na {$enderecoColaborador}, "
+                . "doravante denominada simplesmente parte CONTRATADA.";
+        }
         return $this->sanitize($texto);
     }
 
@@ -132,14 +142,30 @@ class ContratoQualificacaoService
         if ($rua === '') return $rua;
 
         $prefixes = [
-            'rua', 'r.', 'r',
-            'avenida', 'av.', 'av',
-            'travessa', 'tv.', 'tv',
-            'alameda', 'al.', 'al',
-            'estrada', 'est.', 'est',
-            'rodovia', 'rod.', 'rod',
-            'praça', 'praca', 'pça', 'pca',
-            'largo', 'via',
+            'rua',
+            'r.',
+            'r',
+            'avenida',
+            'av.',
+            'av',
+            'travessa',
+            'tv.',
+            'tv',
+            'alameda',
+            'al.',
+            'al',
+            'estrada',
+            'est.',
+            'est',
+            'rodovia',
+            'rod.',
+            'rod',
+            'praça',
+            'praca',
+            'pça',
+            'pca',
+            'largo',
+            'via',
         ];
 
         $lower = mb_strtolower($rua, 'UTF-8');

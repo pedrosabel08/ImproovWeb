@@ -487,9 +487,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nomeFuncaoKey = normalize_name((string)($nome_funcao_db ?: $nome_funcao));
 
         // ── Aprovação dupla de Pós-produção/Alteração ────────────────────────────
-        // Quando o aprovador operacional (colaborador 1) aprova pós-produção ou
-        // alteração, a tarefa aguarda validação da direção. Somente direção
-        // (colaboradores 21 ou 2) segue para o fluxo final/SFTP.
+        // Quando qualquer aprovador autorizado aprova uma função com dupla
+        // validação, a tarefa aguarda a Direção. Somente os colaboradores
+        // identificados por $isDirecaoAprovador seguem para o fluxo final/SFTP.
         $aguardandoDirecao = false;
         $aprovadorDirecaoId = (int)($responsavel ?: $idcolaborador_session);
         $isFuncaoComDirecao = (
@@ -498,41 +498,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             || in_array($nomeFuncaoLower, ['pós-produção', 'alteração'], true)
         );
         $isTipoAprovacaoComDirecao = in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true);
-        $isPrimeiroAprovadorDirecao = ($aprovadorDirecaoId === 1);
         $isDirecaoAprovador = in_array($aprovadorDirecaoId, [21, 9, 31], true);
-        $isFinalizadorAprovadorDirecao = (
-            !$isDirecaoAprovador
-            && $aprovadorDirecaoId > 0
-            && (int)$funcao_id_context === 4
-            && (int)$colaborador_id === $aprovadorDirecaoId
-        );
 
-        if (
-            !$isFinalizadorAprovadorDirecao
-            && !$isDirecaoAprovador
-            && $aprovadorDirecaoId > 0
-            && $imagem_id_context
-            && in_array((int)$funcao_id_context, [5, 6], true)
-        ) {
-            $stmtFinalizadorDirecao = $conn->prepare(
-                "SELECT 1
-                 FROM funcao_imagem
-                 WHERE imagem_id = ?
-                   AND colaborador_id = ?
-                   AND funcao_id IN (4, 6)
-                   AND idfuncao_imagem <> ?
-                 LIMIT 1"
-            );
-            if ($stmtFinalizadorDirecao) {
-                $stmtFinalizadorDirecao->bind_param("iii", $imagem_id_context, $aprovadorDirecaoId, $idfuncao_imagem);
-                $stmtFinalizadorDirecao->execute();
-                $stmtFinalizadorDirecao->store_result();
-                $isFinalizadorAprovadorDirecao = ($stmtFinalizadorDirecao->num_rows > 0);
-                $stmtFinalizadorDirecao->close();
-            }
-        }
-
-        if ($isFuncaoComDirecao && $isTipoAprovacaoComDirecao && ($isPrimeiroAprovadorDirecao || $isFinalizadorAprovadorDirecao) && !$isDirecaoAprovador) {
+        $isAprovadorOperacional = $aprovadorDirecaoId > 0 && !$isDirecaoAprovador;
+        if ($isFuncaoComDirecao && $isTipoAprovacaoComDirecao && $isAprovadorOperacional) {
             $status_dir = "Aguardando Direção";
             $status_ant_dir = $status_funcao_context ?: "Em aprovação";
             $novoHistoricoDirecao = false;

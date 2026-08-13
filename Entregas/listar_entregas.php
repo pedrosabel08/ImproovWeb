@@ -49,7 +49,7 @@ JOIN obra o ON e.obra_id = o.idobra
 JOIN status_imagem s ON e.status_id = s.idstatus
 " . PHP_EOL . $where_standard . PHP_EOL . "GROUP BY e.id
 HAVING total_itens > 0
-ORDER BY ready_count DESC, e.data_conclusao DESC";
+ORDER BY ready_count DESC, e.data_prevista ASC";
 
 $res = $conn->query($sql);
 $out = [];

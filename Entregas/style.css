@@ -885,6 +885,12 @@ body {
   background: var(--bg-count);
 }
 
+#modalImagens {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .modal-body {
   padding: 20px 22px;
   overflow-y: auto;

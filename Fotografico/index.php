@@ -56,7 +56,7 @@ $asset = static fn(string $file): string => rawurlencode((string) (@filemtime(__
                     </div>
                     <p id="fotoSubtitle"></p>
                 </div>
-                <div class="foto-actions"><button class="foto-btn foto-btn-ghost" id="fotoRefresh"><i class="fa-solid fa-rotate"></i> Atualizar</button><button class="foto-btn foto-btn-ghost" id="fotoPendingButton"><i class="fa-solid fa-triangle-exclamation"></i> Pendências <span id="fotoPendingCount">0</span></button><button class="foto-btn foto-btn-primary" id="fotoPublish" title="Resolva todas as pendências para publicar."><i class="fa-solid fa-check"></i> Publicar plano</button><button class="foto-btn foto-btn-ghost" id="fotoRevision">Criar revisão</button></div>
+                <div class="foto-actions"><button class="foto-btn foto-btn-ghost" id="fotoRefresh"><i class="fa-solid fa-rotate"></i> Atualizar</button><button class="foto-btn foto-btn-ghost" id="fotoExportPdf"><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button><button class="foto-btn foto-btn-ghost" id="fotoManageHeights"><i class="fa-solid fa-ruler-vertical"></i> Alturas</button><button class="foto-btn foto-btn-ghost" id="fotoPendingButton"><i class="fa-solid fa-triangle-exclamation"></i> Pendências <span id="fotoPendingCount">0</span></button><button class="foto-btn foto-btn-primary" id="fotoPublish" title="Resolva todas as pendências para publicar."><i class="fa-solid fa-check"></i> Publicar plano</button><button class="foto-btn foto-btn-ghost" id="fotoRevision">Criar revisão</button></div>
             </header>
             <nav class="foto-tabs"><button class="is-active" data-tab="overview">Visão geral</button><button data-tab="plan">Plano</button><button data-tab="execution">Execução</button><button data-tab="issues">Pendências e HOLD</button><button data-tab="history">Histórico</button></nav>
             <section class="foto-panel is-active" data-panel="overview">
@@ -210,6 +210,19 @@ $asset = static fn(string $file): string => rawurlencode((string) (@filemtime(__
                 </select></label><label class="foto-field">Observação<textarea id="fotoHoldDetails" rows="4"></textarea></label>
             <div class="foto-actions"><button value="cancel" class="foto-btn foto-btn-ghost">Cancelar</button><button type="button" class="foto-btn foto-btn-danger" id="fotoConfirmHold">Abrir HOLD</button></div>
         </form>
+    </dialog>
+    <dialog id="fotoHeightDialog" class="foto-dialog foto-height-dialog">
+        <div class="foto-dialog-head">
+            <h2>Alturas fotográficas</h2><button type="button" class="foto-icon-btn" id="fotoHeightClose" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="fotoHeightForm" class="foto-height-form">
+            <input type="hidden" id="fotoHeightId">
+            <label class="foto-field">Identificação<input id="fotoHeightName" maxlength="120" required placeholder="Ex.: Altura pedestre"></label>
+            <label class="foto-field">Altura (m)<input id="fotoHeightValue" type="number" min="0.01" max="999.99" step="0.01" required placeholder="1,60"></label>
+            <label class="foto-field">Observações<textarea id="fotoHeightNotes" rows="2" placeholder="Opcional"></textarea></label>
+            <div class="foto-actions"><button type="button" class="foto-btn foto-btn-ghost" id="fotoHeightCancel">Limpar</button><button class="foto-btn foto-btn-primary" type="submit">Salvar altura</button></div>
+        </form>
+        <div id="fotoHeightList" class="foto-height-list"></div>
     </dialog>
     <script>
         window.FOTOGRAFICO_INITIAL = {

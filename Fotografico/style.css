@@ -1632,3 +1632,320 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* Tema do Flow: a aplicação global usa a preferência do sistema operacional.
+   Tokens locais só fazem a ponte para os componentes específicos do módulo. */
+:root {
+  --foto-page: #f5f7fb;
+  --foto-surface: #ffffff;
+  --foto-surface-raised: #f8fafc;
+  --foto-input: #ffffff;
+  --foto-border: #d8e0ea;
+  --foto-border-strong: #b9c7d8;
+  --foto-text: #172033;
+  --foto-muted-text: #617085;
+  --foto-link: #1769c2;
+  --foto-hover: #eef5ff;
+  --foto-shadow: 0 12px 30px rgba(23, 32, 51, 0.1);
+  --foto-success-bg: #e8f7f0;
+  --foto-success-text: #167451;
+  --foto-warning-bg: #fff5dd;
+  --foto-warning-text: #8a5a00;
+  --foto-danger-bg: #fff0f1;
+  --foto-danger-text: #b42335;
+  --f-bg: var(--foto-page);
+  --f-surface: var(--foto-surface);
+  --f-card: var(--foto-surface);
+  --f-card-2: var(--foto-surface-raised);
+  --f-border: var(--foto-border);
+  --f-text: var(--foto-text);
+  --f-muted: var(--foto-muted-text);
+  --f-blue: #1769c2;
+  --f-blue-soft: #e7f1ff;
+  --f-green: var(--foto-success-text);
+  --f-yellow: var(--foto-warning-text);
+  --f-red: var(--foto-danger-text);
+  --f-shadow: var(--foto-shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foto-page: #07111f;
+    --foto-surface: #0e1b2d;
+    --foto-surface-raised: #122237;
+    --foto-input: #0a1625;
+    --foto-border: #263b54;
+    --foto-border-strong: #3b5777;
+    --foto-text: #edf4ff;
+    --foto-muted-text: #9aabc0;
+    --foto-link: #8fc2ff;
+    --foto-hover: #142a45;
+    --foto-shadow: 0 16px 38px rgba(0, 0, 0, 0.26);
+    --foto-success-bg: #10382e;
+    --foto-success-text: #7de0b8;
+    --foto-warning-bg: #342711;
+    --foto-warning-text: #ffd17b;
+    --foto-danger-bg: #3a1c26;
+    --foto-danger-text: #ffabb4;
+    --f-blue: #4b9dff;
+    --f-blue-soft: #12345f;
+  }
+}
+
+body,
+.foto-app {
+  background: var(--foto-page);
+  color: var(--foto-text);
+}
+.foto-card,
+.foto-plan-card,
+.foto-dialog,
+.foto-checklist-dialog {
+  background: var(--foto-surface);
+  color: var(--foto-text);
+  border-color: var(--foto-border);
+  box-shadow: var(--foto-shadow);
+}
+.foto-card,
+.foto-stats {
+  background-image: none;
+}
+.foto-btn,
+.foto-icon-btn {
+  background: var(--foto-surface-raised);
+  color: var(--foto-text);
+  border-color: var(--foto-border);
+}
+.foto-btn-ghost,
+.foto-text-btn {
+  background: transparent;
+  color: var(--foto-link);
+}
+.foto-btn:hover,
+.foto-icon-btn:hover,
+.foto-plan-card:hover,
+.foto-point-preview:hover {
+  background: var(--foto-hover);
+  border-color: var(--foto-border-strong);
+}
+.foto-btn-primary {
+  background: var(--f-blue);
+  border-color: var(--f-blue);
+  color: #fff;
+}
+.foto-btn-secondary {
+  background: var(--f-blue-soft);
+  border-color: var(--foto-border-strong);
+  color: var(--foto-link);
+}
+.foto-btn-danger {
+  background: var(--foto-danger-bg);
+  border-color: var(--foto-danger-text);
+  color: var(--foto-danger-text);
+}
+input,
+select,
+textarea {
+  background: var(--foto-input);
+  color: var(--foto-text);
+  border-color: var(--foto-border-strong);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--f-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--f-blue) 22%, transparent);
+}
+.foto-breadcrumb,
+.foto-tabs button,
+.foto-point-summary i,
+.foto-point-preview > .fa-chevron-down {
+  color: var(--foto-muted-text);
+}
+.foto-tabs button.is-active,
+.foto-text-btn,
+.foto-preview-all {
+  color: var(--foto-link);
+}
+.foto-summary-item,
+.foto-image-row,
+.foto-position-card,
+.foto-point,
+.foto-point-preview,
+.foto-period-card,
+.foto-map-empty,
+.foto-map-viewport {
+  background: var(--foto-surface-raised);
+  border-color: var(--foto-border);
+  color: var(--foto-text);
+}
+.foto-map-stage {
+  background: var(--foto-surface-raised);
+  border-color: var(--foto-border);
+}
+.foto-point.is-open,
+.foto-pin.is-selected .foto-pin-shape {
+  border-color: var(--f-blue);
+}
+.foto-point-code {
+  background: var(--f-blue-soft);
+  border-color: var(--f-blue);
+  color: var(--foto-link);
+}
+.foto-period-card.is-diurno,
+.foto-period-card.is-golden-hour,
+.foto-period-card.is-blue-hour,
+.foto-period-card.is-noturno {
+  background: var(--foto-surface-raised);
+  border-color: var(--foto-border);
+}
+.foto-period-card-head,
+.foto-point-editor,
+.foto-timeline-item,
+.foto-plan-about dl div {
+  border-color: var(--foto-border);
+}
+.foto-period-toggle,
+.foto-period-image,
+.foto-check,
+.foto-timeline-item p,
+.foto-plan-about dd,
+.foto-point-summary strong {
+  color: var(--foto-text);
+}
+.foto-period-icon {
+  background: var(--foto-surface);
+  border-color: var(--foto-border-strong);
+  color: var(--foto-link);
+}
+.foto-readiness {
+  background: var(--foto-warning-bg);
+  border-color: var(--foto-warning-text);
+  color: var(--foto-warning-text);
+}
+.foto-readiness.is-ready {
+  background: var(--foto-success-bg);
+  border-color: var(--foto-success-text);
+  color: var(--foto-success-text);
+}
+.foto-plan-guidance {
+  background: var(--foto-warning-bg);
+  border-color: var(--foto-warning-text);
+}
+.foto-plan-guidance.is-ready {
+  background: var(--foto-success-bg);
+  border-color: var(--foto-success-text);
+}
+.foto-plan-guidance.is-published {
+  background: var(--foto-surface-raised);
+  border-color: var(--foto-border-strong);
+}
+.foto-section-badge.is-complete,
+.foto-local-complete {
+  color: var(--foto-success-text);
+  background: transparent;
+}
+.foto-section-badge.is-pending,
+.foto-local-pending {
+  color: var(--foto-warning-text);
+  background: transparent;
+}
+.foto-message {
+  background: var(--f-blue);
+  border-color: var(--f-blue);
+  color: #fff;
+}
+.foto-message.is-error {
+  background: var(--foto-danger-bg);
+  border-color: var(--foto-danger-text);
+  color: var(--foto-danger-text);
+}
+.foto-dialog::backdrop,
+.foto-checklist-dialog::backdrop {
+  background: rgba(4, 12, 24, 0.55);
+}
+::-webkit-scrollbar-track {
+  background-color: var(--foto-surface-raised);
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--foto-border-strong);
+  border-radius: 10px;
+}
+
+.foto-point-capture-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.foto-point-capture-fields label {
+  display: grid;
+  gap: 5px;
+  color: var(--foto-muted-text);
+  font-size: 11px;
+}
+.foto-height-dialog {
+  width: min(650px, calc(100vw - 28px));
+  max-height: min(84vh, 760px);
+  overflow: auto;
+  padding: 0;
+}
+.foto-height-dialog .foto-dialog-head {
+  padding: 14px 16px;
+}
+.foto-height-form {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 0 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--foto-border);
+}
+.foto-height-form .foto-field:nth-of-type(3),
+.foto-height-form .foto-actions {
+  grid-column: 1 / -1;
+}
+.foto-height-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px 16px;
+}
+.foto-height-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--foto-border);
+  border-radius: 7px;
+  padding: 10px;
+  background: var(--foto-surface-raised);
+}
+.foto-height-row.is-inactive {
+  opacity: 0.68;
+}
+.foto-height-row strong,
+.foto-height-row small {
+  display: block;
+}
+.foto-height-row small {
+  color: var(--foto-muted-text);
+  margin-top: 3px;
+}
+.foto-height-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+@media (max-width: 560px) {
+  .foto-point-capture-fields,
+  .foto-height-form {
+    grid-template-columns: 1fr;
+  }
+  .foto-height-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .foto-height-actions {
+    justify-content: flex-start;
+  }
+}

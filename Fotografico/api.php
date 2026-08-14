@@ -136,6 +136,83 @@ function foto_fetch_all(mysqli_result $result): array
     return $rows;
 }
 
+function foto_alturas_da_obra(mysqli $conn, int $obraId): array
+{
+    $stmt = $conn->prepare(
+        'SELECT id, obra_id, identificacao, altura_m, altura, observacoes, ativo, created_at, atualizado_em
+           FROM fotografico_alturas
+          WHERE obra_id = ?
+          ORDER BY ativo DESC, identificacao, altura_m, id'
+    );
+    $stmt->bind_param('i', $obraId);
+    $stmt->execute();
+    $rows = foto_fetch_all($stmt->get_result());
+    $stmt->close();
+    return $rows;
+}
+
+function foto_altura_valida(mysqli $conn, int $obraId, ?int $alturaId, ?int $alturaAtualId = null): ?int
+{
+    if ($alturaId === null || $alturaId <= 0) {
+        return null;
+    }
+    $stmt = $conn->prepare('SELECT ativo FROM fotografico_alturas WHERE id = ? AND obra_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $alturaId, $obraId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        foto_response(false, null, 'ALTURA_INVALIDA', 'A altura selecionada nao pertence a esta obra.', 422);
+    }
+    if (!(bool) $row['ativo'] && $alturaId !== $alturaAtualId) {
+        foto_response(false, null, 'ALTURA_INATIVA', 'A altura selecionada esta inativa para novos pontos.', 422);
+    }
+    return $alturaId;
+}
+
+function foto_altura_snapshot(mysqli $conn, ?int $alturaId): array
+{
+    if ($alturaId === null || $alturaId <= 0) {
+        return [null, null];
+    }
+    $stmt = $conn->prepare('SELECT identificacao, altura_m FROM fotografico_alturas WHERE id = ? LIMIT 1');
+    $stmt->bind_param('i', $alturaId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return [$row['identificacao'] ?? null, isset($row['altura_m']) ? (float) $row['altura_m'] : null];
+}
+
+function foto_tipo_foto_valido(mixed $value): ?string
+{
+    $type = strtoupper(trim((string) $value));
+    if ($type === '') {
+        return null;
+    }
+    $allowed = ['360', 'PANORAMICA', 'CLIQUE_UNICO'];
+    if (!in_array($type, $allowed, true)) {
+        foto_response(false, null, 'TIPO_FOTO_INVALIDO', 'Selecione um tipo de foto valido.', 422);
+    }
+    return $type;
+}
+
+function foto_altura_payload(array $payload): array
+{
+    $identificacao = trim((string) ($payload['identificacao'] ?? ''));
+    $rawValue = str_replace(',', '.', trim((string) ($payload['altura_m'] ?? '')));
+    if ($identificacao === '' || mb_strlen($identificacao) > 120) {
+        foto_response(false, null, 'IDENTIFICACAO_INVALIDA', 'Informe uma identificacao de ate 120 caracteres.', 422);
+    }
+    if ($rawValue === '' || !is_numeric($rawValue)) {
+        foto_response(false, null, 'ALTURA_INVALIDA', 'Informe uma altura numerica valida.', 422);
+    }
+    $altura = (float) $rawValue;
+    if ($altura <= 0 || $altura > 999.99) {
+        foto_response(false, null, 'ALTURA_INVALIDA', 'A altura deve ser maior que zero e menor que 1000 m.', 422);
+    }
+    return [$identificacao, $altura, trim((string) ($payload['observacoes'] ?? '')) ?: null];
+}
+
 function foto_get_detail(mysqli $conn, int $planoId): array
 {
     $plan = foto_plan($conn, $planoId);
@@ -170,6 +247,7 @@ function foto_get_detail(mysqli $conn, int $planoId): array
     $activeVersion = $versions[0] ?? null;
     $detail['versoes'] = $versions;
     $detail['versao_ativa'] = $activeVersion;
+    $detail['alturas'] = foto_alturas_da_obra($conn, (int) $detail['obra_id']);
     $detail['imagens'] = [];
     $detail['posicoes'] = [];
 
@@ -196,7 +274,14 @@ function foto_get_detail(mysqli $conn, int $planoId): array
         $detail['imagens'] = foto_fetch_all($stmt->get_result());
         $stmt->close();
 
-        $stmt = $conn->prepare('SELECT * FROM fotografico_posicao WHERE versao_id = ? ORDER BY ordem, id');
+        $stmt = $conn->prepare(
+            'SELECT p.*, COALESCE(p.altura_identificacao_snapshot, h.identificacao) AS altura_identificacao,
+                    COALESCE(p.altura_m_snapshot, h.altura_m) AS altura_valor_m,
+                    h.ativo AS altura_ativa
+               FROM fotografico_posicao p
+          LEFT JOIN fotografico_alturas h ON h.id = p.altura_id
+              WHERE p.versao_id = ? ORDER BY p.ordem, p.id'
+        );
         $stmt->bind_param('i', $versionId);
         $stmt->execute();
         $positions = foto_fetch_all($stmt->get_result());
@@ -342,7 +427,14 @@ function foto_mutation_summary(mysqli $conn, int $planId, ?array $readiness = nu
 function foto_mutation_pin(mysqli $conn, int $pinId): ?array
 {
     if ($pinId <= 0) return null;
-    $stmt = $conn->prepare('SELECT * FROM fotografico_posicao WHERE id = ?');
+    $stmt = $conn->prepare(
+        'SELECT p.*, COALESCE(p.altura_identificacao_snapshot, h.identificacao) AS altura_identificacao,
+                COALESCE(p.altura_m_snapshot, h.altura_m) AS altura_valor_m,
+                h.ativo AS altura_ativa
+           FROM fotografico_posicao p
+      LEFT JOIN fotografico_alturas h ON h.id = p.altura_id
+          WHERE p.id = ?'
+    );
     $stmt->bind_param('i', $pinId);
     $stmt->execute();
     $pin = $stmt->get_result()->fetch_assoc();
@@ -686,6 +778,11 @@ try {
         foto_response(true, ['colaboradores' => $result ? foto_fetch_all($result) : []]);
     }
 
+    if ($method === 'GET' && $action === 'heights') {
+        $plan = foto_plan($conn, (int) ($_GET['plano_id'] ?? 0));
+        foto_response(true, ['alturas' => foto_alturas_da_obra($conn, (int) $plan['obra_id'])]);
+    }
+
     if ($method !== 'POST') {
         foto_response(false, null, 'METODO_INVALIDO', 'Metodo nao permitido.', 405);
     }
@@ -760,6 +857,41 @@ try {
             }
             fotografico_evento($conn, $planId, 'METADADOS_ATUALIZADOS', null, null, $actorId, 'Fotografico/api.php');
             foto_sincronizar_prontidao_execucao($conn, $planId, $actorId, 'Fotografico/api.php');
+        } elseif (in_array($action, ['height_create', 'height_update', 'height_toggle'], true)) {
+            foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para administrar alturas desta obra.');
+            if ($action === 'height_create') {
+                [$identificacao, $alturaM, $observacoes] = foto_altura_payload($payload);
+                $legacyLabel = number_format($alturaM, 2, ',', '.') . ' m';
+                $stmt = $conn->prepare('INSERT INTO fotografico_alturas (obra_id, identificacao, altura, altura_m, observacoes, ativo) VALUES (?, ?, ?, ?, ?, 1)');
+                $stmt->bind_param('issds', $plan['obra_id'], $identificacao, $legacyLabel, $alturaM, $observacoes);
+                $stmt->execute();
+                $alturaId = (int) $conn->insert_id;
+                $stmt->close();
+                fotografico_evento($conn, $planId, 'ALTURA_CADASTRADA', null, null, $actorId, 'Fotografico/api.php', ['altura_id' => $alturaId]);
+            } elseif ($action === 'height_update') {
+                $alturaId = (int) ($payload['altura_id'] ?? 0);
+                foto_altura_valida($conn, (int) $plan['obra_id'], $alturaId, $alturaId);
+                [$identificacao, $alturaM, $observacoes] = foto_altura_payload($payload);
+                $legacyLabel = number_format($alturaM, 2, ',', '.') . ' m';
+                $stmt = $conn->prepare('UPDATE fotografico_alturas SET identificacao = ?, altura = ?, altura_m = ?, observacoes = ? WHERE id = ? AND obra_id = ?');
+                $stmt->bind_param('ssdsii', $identificacao, $legacyLabel, $alturaM, $observacoes, $alturaId, $plan['obra_id']);
+                $stmt->execute();
+                $stmt->close();
+                fotografico_evento($conn, $planId, 'ALTURA_ATUALIZADA', null, null, $actorId, 'Fotografico/api.php', ['altura_id' => $alturaId]);
+            } else {
+                $alturaId = (int) ($payload['altura_id'] ?? 0);
+                foto_altura_valida($conn, (int) $plan['obra_id'], $alturaId, $alturaId);
+                $ativo = !empty($payload['ativo']) ? 1 : 0;
+                $stmt = $conn->prepare('UPDATE fotografico_alturas SET ativo = ? WHERE id = ? AND obra_id = ?');
+                $stmt->bind_param('iii', $ativo, $alturaId, $plan['obra_id']);
+                $stmt->execute();
+                $stmt->close();
+                fotografico_evento($conn, $planId, $ativo ? 'ALTURA_REATIVADA' : 'ALTURA_DESATIVADA', null, null, $actorId, 'Fotografico/api.php', ['altura_id' => $alturaId]);
+            }
+            $stmt = $conn->prepare('UPDATE fotografico_plano SET lock_version = lock_version + 1 WHERE id = ?');
+            $stmt->bind_param('i', $planId);
+            $stmt->execute();
+            $stmt->close();
         } elseif ($action === 'image_update') {
             foto_assert_capability(foto_can_edit($conn, $plan), 'Sem permissao para alterar imagens.');
             if (!in_array($plan['status'], ['PLANO_A_FAZER', 'EM_ELABORACAO', 'PRONTO_PARA_PUBLICAR'], true)) {
@@ -856,7 +988,7 @@ try {
             $periods = foto_period_map($conn);
             $positions = is_array($payload['posicoes'] ?? null) ? $payload['posicoes'] : [];
             $stmtPosition = $conn->prepare(
-                'INSERT INTO fotografico_posicao (versao_id, codigo, x_percentual, y_percentual, direcao_graus, altura_padrao_m, pavimento_referencia, observacao, anotacao_json, criado_por, atualizado_por, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO fotografico_posicao (versao_id, codigo, tipo_foto, x_percentual, y_percentual, direcao_graus, altura_padrao_m, altura_id, altura_identificacao_snapshot, altura_m_snapshot, pavimento_referencia, observacao, anotacao_json, criado_por, atualizado_por, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmtCapture = $conn->prepare(
                 'INSERT INTO fotografico_captura (posicao_id, periodo_id, prioridade, altura_efetiva_m, observacao) VALUES (?, ?, ?, ?, ?)'
@@ -871,11 +1003,14 @@ try {
                 $y = max(0, min(100, (float) ($position['y_percentual'] ?? ($position['anotacao']['y'] ?? 50))));
                 $direction = ($position['direcao_graus'] ?? '') !== '' ? (float) $position['direcao_graus'] : null;
                 $height = ($position['altura_padrao_m'] ?? '') !== '' ? (float) $position['altura_padrao_m'] : null;
+                $tipoFoto = foto_tipo_foto_valido($position['tipo_foto'] ?? null);
+                $alturaId = foto_altura_valida($conn, (int) $plan['obra_id'], (int) ($position['altura_id'] ?? 0) ?: null);
+                [$alturaIdentificacao, $alturaSnapshotM] = foto_altura_snapshot($conn, $alturaId);
                 $floor = trim((string) ($position['pavimento_referencia'] ?? '')) ?: null;
                 $note = trim((string) ($position['observacao'] ?? '')) ?: null;
                 $annotation = is_array($position['anotacao'] ?? null) ? fotografico_json_encode($position['anotacao']) : null;
                 $order = $positionIndex + 1;
-                $stmtPosition->bind_param('isddddsssiii', $versionId, $code, $x, $y, $direction, $height, $floor, $note, $annotation, $actorId, $actorId, $order);
+                $stmtPosition->bind_param('issddddisdsssiii', $versionId, $code, $tipoFoto, $x, $y, $direction, $height, $alturaId, $alturaIdentificacao, $alturaSnapshotM, $floor, $note, $annotation, $actorId, $actorId, $order);
                 $stmtPosition->execute();
                 $positionId = (int) $conn->insert_id;
                 foreach ((array) ($position['capturas'] ?? []) as $capture) {
@@ -958,7 +1093,7 @@ try {
                     $stmt->close();
                     fotografico_evento($conn, $planId, 'PIN_CRIADO', null, null, $actorId, 'Fotografico/api.php', ['pin_id' => $pinId, 'codigo' => $code]);
                 } else {
-                    $stmt = $conn->prepare('SELECT x_percentual, y_percentual, observacao FROM fotografico_posicao WHERE id = ? AND versao_id = ? FOR UPDATE');
+                    $stmt = $conn->prepare('SELECT x_percentual, y_percentual, observacao, tipo_foto, altura_id, altura_identificacao_snapshot, altura_m_snapshot FROM fotografico_posicao WHERE id = ? AND versao_id = ? FOR UPDATE');
                     $stmt->bind_param('ii', $pinId, $versionId);
                     $stmt->execute();
                     $before = $stmt->get_result()->fetch_assoc();
@@ -966,11 +1101,23 @@ try {
                     if (!$before) {
                         foto_response(false, null, 'PIN_INVALIDO', 'Pin nao encontrado.', 422);
                     }
+                    $tipoFoto = array_key_exists('tipo_foto', $payload)
+                        ? foto_tipo_foto_valido($payload['tipo_foto'])
+                        : (($before['tipo_foto'] ?? '') !== '' ? (string) $before['tipo_foto'] : null);
+                    $alturaAtualId = (int) ($before['altura_id'] ?? 0) ?: null;
+                    $alturaId = array_key_exists('altura_id', $payload)
+                        ? foto_altura_valida($conn, (int) $plan['obra_id'], (int) $payload['altura_id'] ?: null, $alturaAtualId)
+                        : $alturaAtualId;
+                    [$alturaIdentificacao, $alturaSnapshotM] = array_key_exists('altura_id', $payload)
+                        ? foto_altura_snapshot($conn, $alturaId)
+                        : [$before['altura_identificacao_snapshot'] ?? null, $before['altura_m_snapshot'] !== null ? (float) $before['altura_m_snapshot'] : null];
                     $pinMoveOnly = (string) ($payload['mutation_kind'] ?? '') === 'MOVE'
                         && !array_key_exists('capturas', $payload)
+                        && !array_key_exists('tipo_foto', $payload)
+                        && !array_key_exists('altura_id', $payload)
                         && (string) ($before['observacao'] ?? '') === (string) ($note ?? '');
-                    $stmt = $conn->prepare('UPDATE fotografico_posicao SET x_percentual = ?, y_percentual = ?, observacao = ?, atualizado_por = ? WHERE id = ?');
-                    $stmt->bind_param('ddsii', $x, $y, $note, $actorId, $pinId);
+                    $stmt = $conn->prepare('UPDATE fotografico_posicao SET x_percentual = ?, y_percentual = ?, observacao = ?, tipo_foto = ?, altura_id = ?, altura_identificacao_snapshot = ?, altura_m_snapshot = ?, atualizado_por = ? WHERE id = ?');
+                    $stmt->bind_param('ddssisdii', $x, $y, $note, $tipoFoto, $alturaId, $alturaIdentificacao, $alturaSnapshotM, $actorId, $pinId);
                     $stmt->execute();
                     $stmt->close();
                     $event = ((float) $before['x_percentual'] !== $x || (float) $before['y_percentual'] !== $y) ? 'PIN_MOVIDO' : 'PIN_ATUALIZADO';
@@ -1089,14 +1236,14 @@ try {
             $stmt->bind_param('ii', $newVersionId, $oldVersionId);
             $stmt->execute();
             $stmt->close();
-            $stmt = $conn->prepare("SELECT id, codigo, x_percentual, y_percentual, direcao_graus, altura_padrao_m, pavimento_referencia, observacao, anotacao_json, ordem FROM fotografico_posicao WHERE versao_id = ? ORDER BY id");
+            $stmt = $conn->prepare("SELECT id, codigo, tipo_foto, x_percentual, y_percentual, direcao_graus, altura_padrao_m, altura_id, altura_identificacao_snapshot, altura_m_snapshot, pavimento_referencia, observacao, anotacao_json, ordem FROM fotografico_posicao WHERE versao_id = ? ORDER BY id");
             $stmt->bind_param('i', $oldVersionId);
             $stmt->execute();
             $oldPositions = foto_fetch_all($stmt->get_result());
             $stmt->close();
             foreach ($oldPositions as $oldPosition) {
-                $stmt = $conn->prepare("INSERT INTO fotografico_posicao (versao_id, codigo, x_percentual, y_percentual, direcao_graus, altura_padrao_m, pavimento_referencia, observacao, anotacao_json, criado_por, atualizado_por, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param('isddddsssiii', $newVersionId, $oldPosition['codigo'], $oldPosition['x_percentual'], $oldPosition['y_percentual'], $oldPosition['direcao_graus'], $oldPosition['altura_padrao_m'], $oldPosition['pavimento_referencia'], $oldPosition['observacao'], $oldPosition['anotacao_json'], $actorId, $actorId, $oldPosition['ordem']);
+                $stmt = $conn->prepare("INSERT INTO fotografico_posicao (versao_id, codigo, tipo_foto, x_percentual, y_percentual, direcao_graus, altura_padrao_m, altura_id, altura_identificacao_snapshot, altura_m_snapshot, pavimento_referencia, observacao, anotacao_json, criado_por, atualizado_por, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param('issddddisdsssiii', $newVersionId, $oldPosition['codigo'], $oldPosition['tipo_foto'], $oldPosition['x_percentual'], $oldPosition['y_percentual'], $oldPosition['direcao_graus'], $oldPosition['altura_padrao_m'], $oldPosition['altura_id'], $oldPosition['altura_identificacao_snapshot'], $oldPosition['altura_m_snapshot'], $oldPosition['pavimento_referencia'], $oldPosition['observacao'], $oldPosition['anotacao_json'], $actorId, $actorId, $oldPosition['ordem']);
                 $stmt->execute();
                 $newPositionId = (int) $conn->insert_id;
                 $stmt->close();

@@ -65,6 +65,20 @@
     HOLD: "Em HOLD",
     CANCELADO: "Cancelado",
   };
+  const photoTypes = {
+    360: "360º",
+    PANORAMICA: "Panorâmica",
+    CLIQUE_UNICO: "Clique único",
+  };
+  const formatHeight = (height) => {
+    const value = Number(height?.altura_valor_m ?? height?.altura_m);
+    if (Number.isFinite(value) && value > 0)
+      return `${value.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })} m`;
+    return height?.altura || "Não definida";
+  };
   const value = (v) => (v == null || v === "" ? "—" : String(v));
   const esc = (v) => {
     const e = document.createElement("span");
@@ -393,11 +407,100 @@
     const checklistLine = (ok, text) =>
       `<li class="${ok ? "is-ok" : "is-pending"}"><i class="fa-solid ${ok ? "fa-circle-check" : "fa-circle-exclamation"}"></i>${esc(text)}</li>`;
     if (published) {
-      guidance.innerHTML = `<div class="foto-guidance-state"><span class="foto-guidance-icon"><i class="fa-solid fa-lock"></i></span><div><strong>Plano publicado</strong><p>O planejamento está bloqueado. Para alterar, crie uma revisão.</p></div></div>`;
+      guidance.innerHTML = `
+    <div class="foto-guidance-state">
+      <span class="foto-guidance-icon">
+        <i class="fa-solid fa-lock"></i>
+      </span>
+
+      <div>
+        <strong>Plano publicado</strong>
+        <p>
+          O planejamento está bloqueado. Para alterar, crie uma revisão.
+        </p>
+      </div>
+    </div>
+  `;
     } else if (check.pronto) {
-      guidance.innerHTML = `<div class="foto-guidance-state"><span class="foto-guidance-icon"><i class="fa-solid fa-circle-check"></i></span><div><strong>Plano pronto para publicação</strong><p>Todos os requisitos foram atendidos. Revise as informações e publique o plano.</p></div></div><div class="foto-guidance-action"><button type="button" class="foto-btn foto-btn-primary" data-publish-plan>Publicar plano</button></div>`;
+      guidance.innerHTML = `
+    <div class="foto-guidance-state">
+      <span class="foto-guidance-icon">
+        <i class="fa-solid fa-circle-check"></i>
+      </span>
+
+      <div>
+        <strong>Plano pronto para publicação</strong>
+        <p>
+          Todos os requisitos foram atendidos. Revise as informações e publique o plano.
+        </p>
+      </div>
+    </div>
+
+    <div class="foto-guidance-action">
+      <button
+        type="button"
+        class="foto-btn foto-btn-primary"
+        data-publish-plan
+      >
+        Publicar plano
+      </button>
+    </div>
+  `;
     } else {
-      guidance.innerHTML = `<div class="foto-guidance-state"><span class="foto-guidance-icon"><i class="fa-solid fa-triangle-exclamation"></i></span><div><strong>Plano incompleto</strong><p>Faltam ${pending.length} pendência${pending.length === 1 ? "" : "s"} para publicar o plano e iniciar a execução fotográfica.</p></div></div><div class="foto-guidance-checks"><ul>${checklistLine(!hasPending("MAPA_OBRIGATORIO"), "Mapa de posições")}${checklistLine(!hasPending("EXECUTOR_OBRIGATORIO"), "Executor definido")}</ul><ul>${imagePending ? checklistLine(false, `${imagePending} imagem${imagePending === 1 ? "" : "ens"} sem posição`) : checklistLine(true, "Imagens vinculadas")}${pointPending ? checklistLine(false, `${pointPending} período não definido`) : checklistLine(true, "Períodos definidos")}</ul></div><div class="foto-guidance-action"><button type="button" class="foto-btn foto-btn-secondary" data-open-pending>Ver pendências</button></div>`;
+      guidance.innerHTML = `
+    <div class="foto-guidance-state">
+      <span class="foto-guidance-icon">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </span>
+
+      <div>
+        <strong>Plano incompleto</strong>
+        <p>
+          Faltam ${pending.length}
+          pendência${pending.length === 1 ? "" : "s"}
+          para publicar o plano e iniciar a execução fotográfica.
+        </p>
+      </div>
+    </div>
+
+    <div class="foto-guidance-checks">
+      <ul>
+        ${checklistLine(!hasPending("MAPA_OBRIGATORIO"), "Mapa de posições")}
+
+        ${checklistLine(
+          !hasPending("EXECUTOR_OBRIGATORIO"),
+          "Executor definido",
+        )}
+      </ul>
+
+      <ul>
+        ${
+          imagePending
+            ? checklistLine(
+                false,
+                `${imagePending} imagem${imagePending === 1 ? "" : "ens"} sem posição`,
+              )
+            : checklistLine(true, "Imagens vinculadas")
+        }
+
+        ${
+          pointPending
+            ? checklistLine(false, `${pointPending} período não definido`)
+            : checklistLine(true, "Períodos definidos")
+        }
+      </ul>
+    </div>
+
+    <div class="foto-guidance-action">
+      <button
+        type="button"
+        class="foto-btn foto-btn-secondary"
+        data-open-pending
+      >
+        Ver pendências
+      </button>
+    </div>
+  `;
     }
     guidance
       .querySelector("[data-publish-plan]")
@@ -515,6 +618,7 @@
       !p.permissions?.edit ||
       !isPublished() ||
       !["PRONTO_EXECUCAO", "CONCLUIDO"].includes(p.status);
+    $("fotoManageHeights").hidden = !p.permissions?.edit;
     [
       "fotoAddress",
       "fotoMapsUrl",
@@ -762,6 +866,12 @@
         x_percentual: pos.x_percentual,
         y_percentual: pos.y_percentual,
         observacao: pos.observacao || "",
+        ...(mode !== "move"
+          ? {
+              tipo_foto: pos.tipo_foto || "",
+              altura_id: Number(pos.altura_id || 0),
+            }
+          : {}),
         ...(mode === "capturas" || mode === "all"
           ? {
               capturas: (pos.capturas || []).map((c) => ({
@@ -838,7 +948,13 @@
               periods.find((p) => p[0] === c.periodo_codigo)?.[1],
           )
           .join(", ") || "Sem períodos";
-      item.innerHTML = `<button type="button" class="foto-point-summary"><span class="foto-point-code">${esc(pos.codigo)}</span><span><strong>${esc(pos.observacao || "Sem descrição")}</strong><small>${esc(captureLabel)}</small>${pointPending.length ? `<em class="foto-local-pending">${esc(pointPending.map((x) => (x.codigo === "PONTO_SEM_CAPTURA" ? "Período não definido" : x.mensagem)).join(" · "))}</em>` : '<em class="foto-local-complete"><i class="fa-solid fa-check"></i> Completo</em>'}</span><i class="fa-solid fa-chevron-down"></i></button><div class="foto-point-editor"></div>`;
+      const captureMeta = [
+        photoTypes[pos.tipo_foto] || "Tipo não definido",
+        pos.altura_id
+          ? `${pos.altura_identificacao || "Altura"} · ${formatHeight(pos)}`
+          : "Altura não definida",
+      ].join(" · ");
+      item.innerHTML = `<button type="button" class="foto-point-summary"><span class="foto-point-code">${esc(pos.codigo)}</span><span><strong>${esc(pos.observacao || "Sem descrição")}</strong><small>${esc(captureLabel)} · ${esc(captureMeta)}</small>${pointPending.length ? `<em class="foto-local-pending">${esc(pointPending.map((x) => (x.codigo === "PONTO_SEM_CAPTURA" ? "Período não definido" : x.mensagem)).join(" · "))}</em>` : '<em class="foto-local-complete"><i class="fa-solid fa-check"></i> Completo</em>'}</span><i class="fa-solid fa-chevron-down"></i></button><div class="foto-point-editor"></div>`;
       item.querySelector(".foto-point-summary").onclick = () => {
         if (String(state.selectedPin) === String(pos.id)) {
           state.selectedPin = null;
@@ -869,10 +985,11 @@
         (pos.capturas || [])
           .map((capture) => capture.periodo_nome || capture.periodo_codigo)
           .join(", ") || "Sem períodos";
+      const captureMeta = `${photoTypes[pos.tipo_foto] || "Tipo não definido"} · ${pos.altura_id ? `${pos.altura_identificacao || "Altura"} · ${formatHeight(pos)}` : "Altura não definida"}`;
       const item = document.createElement("button");
       item.type = "button";
       item.className = "foto-point-preview";
-      item.innerHTML = `<span class="foto-point-code">${esc(pos.codigo)}</span><span class="foto-point-preview-copy"><strong>${esc(pos.observacao || "Sem descrição")}</strong><small>${esc(periodsText)}</small></span>${pending.length ? `<em class="foto-local-pending">${esc(pending.map((x) => (x.codigo === "PONTO_SEM_CAPTURA" ? "Período não definido" : x.mensagem)).join(" · "))}</em>` : '<em class="foto-local-complete"><i class="fa-solid fa-check"></i> Completo</em>'}<i class="fa-solid fa-chevron-down"></i>`;
+      item.innerHTML = `<span class="foto-point-code">${esc(pos.codigo)}</span><span class="foto-point-preview-copy"><strong>${esc(pos.observacao || "Sem descrição")}</strong><small>${esc(periodsText)} · ${esc(captureMeta)}</small></span>${pending.length ? `<em class="foto-local-pending">${esc(pending.map((x) => (x.codigo === "PONTO_SEM_CAPTURA" ? "Período não definido" : x.mensagem)).join(" · "))}</em>` : '<em class="foto-local-complete"><i class="fa-solid fa-check"></i> Completo</em>'}<i class="fa-solid fa-chevron-down"></i>`;
       item.onclick = () => {
         state.selectedPin = pos.id;
         renderPoints();
@@ -901,6 +1018,56 @@
   }
   function renderPointEditor(out, pos) {
     const editable = draftEditable();
+    const captureFields = document.createElement("div");
+    captureFields.className = "foto-point-capture-fields";
+    const typeField = document.createElement("label");
+    typeField.textContent = "Tipo de foto";
+    const typeSelect = document.createElement("select");
+    typeSelect.disabled = !editable;
+    typeSelect.append(new Option("Não definido", ""));
+    Object.entries(photoTypes).forEach(([key, label]) =>
+      typeSelect.append(new Option(label, key)),
+    );
+    typeSelect.value = pos.tipo_foto || "";
+    typeSelect.onchange = () => {
+      pos.tipo_foto = typeSelect.value || null;
+      schedulePinPersist(pos, "Tipo de foto atualizado.", 0, "details");
+    };
+    typeField.append(typeSelect);
+    const heightField = document.createElement("label");
+    heightField.textContent = "Altura";
+    const heightSelect = document.createElement("select");
+    heightSelect.disabled = !editable;
+    heightSelect.append(new Option("Não definida", ""));
+    (state.plan.alturas || [])
+      .filter(
+        (height) =>
+          Number(height.ativo) === 1 ||
+          Number(height.id) === Number(pos.altura_id),
+      )
+      .forEach((height) => {
+        const inactive = Number(height.ativo) !== 1 ? " (inativa)" : "";
+        heightSelect.append(
+          new Option(
+            `${height.identificacao || "Altura sem identificação"} — ${formatHeight(height)}${inactive}`,
+            height.id,
+          ),
+        );
+      });
+    heightSelect.value = pos.altura_id || "";
+    heightSelect.onchange = () => {
+      const height = (state.plan.alturas || []).find(
+        (item) => Number(item.id) === Number(heightSelect.value),
+      );
+      pos.altura_id = Number(heightSelect.value) || null;
+      pos.altura_identificacao = height?.identificacao || null;
+      pos.altura_valor_m = height?.altura_m || null;
+      pos.altura_ativa = height?.ativo ?? null;
+      schedulePinPersist(pos, "Altura atualizada.", 0, "details");
+    };
+    heightField.append(heightSelect);
+    captureFields.append(typeField, heightField);
+    out.append(captureFields);
     const note = document.createElement("textarea");
     note.rows = 3;
     note.placeholder = "Descrição/observação do ponto";
@@ -1320,6 +1487,96 @@
       notice(e.message, true);
     }
   }
+  function resetHeightForm() {
+    $("fotoHeightId").value = "";
+    $("fotoHeightName").value = "";
+    $("fotoHeightValue").value = "";
+    $("fotoHeightNotes").value = "";
+  }
+  function renderHeightsManager() {
+    const list = $("fotoHeightList");
+    if (!list) return;
+    const heights = state.plan?.alturas || [];
+    list.replaceChildren();
+    if (!heights.length) {
+      list.innerHTML =
+        '<p class="foto-empty-small">Nenhuma altura cadastrada para esta obra.</p>';
+      return;
+    }
+    heights.forEach((height) => {
+      const row = document.createElement("article");
+      row.className = `foto-height-row${Number(height.ativo) === 1 ? "" : " is-inactive"}`;
+      row.innerHTML = `<div><strong>${esc(height.identificacao || "Sem identificação")}</strong><small>${esc(formatHeight(height))}${height.observacoes ? ` · ${esc(height.observacoes)}` : ""}</small></div><div class="foto-height-actions"><span class="foto-badge ${Number(height.ativo) === 1 ? "included" : "excluded"}">${Number(height.ativo) === 1 ? "Ativa" : "Inativa"}</span><button type="button" class="foto-text-btn" data-edit>Editar</button><button type="button" class="foto-text-btn ${Number(height.ativo) === 1 ? "foto-danger-text" : ""}" data-toggle>${Number(height.ativo) === 1 ? "Desativar" : "Reativar"}</button></div>`;
+      row.querySelector("[data-edit]").onclick = () => {
+        $("fotoHeightId").value = height.id;
+        $("fotoHeightName").value = height.identificacao || "";
+        $("fotoHeightValue").value = height.altura_m || "";
+        $("fotoHeightNotes").value = height.observacoes || "";
+        $("fotoHeightName").focus();
+      };
+      row.querySelector("[data-toggle]").onclick = async () => {
+        try {
+          await applyOrRefreshMutation(
+            await api("height_toggle", {
+              method: "POST",
+              data: {
+                plano_id: state.plan.id,
+                version: state.plan.lock_version,
+                altura_id: height.id,
+                ativo: Number(height.ativo) !== 1,
+              },
+            }),
+          );
+          renderHeightsManager();
+          notice(
+            `Altura ${Number(height.ativo) === 1 ? "desativada" : "reativada"}.`,
+          );
+        } catch (error) {
+          notice(error.message, true);
+        }
+      };
+      list.append(row);
+    });
+  }
+  $("fotoManageHeights").onclick = () => {
+    resetHeightForm();
+    renderHeightsManager();
+    $("fotoHeightDialog").showModal();
+  };
+  $("fotoHeightClose").onclick = () => $("fotoHeightDialog").close();
+  $("fotoHeightCancel").onclick = resetHeightForm;
+  $("fotoHeightForm").onsubmit = async (event) => {
+    event.preventDefault();
+    const heightId = Number($("fotoHeightId").value || 0);
+    try {
+      await applyOrRefreshMutation(
+        await api(heightId ? "height_update" : "height_create", {
+          method: "POST",
+          data: {
+            plano_id: state.plan.id,
+            version: state.plan.lock_version,
+            ...(heightId ? { altura_id: heightId } : {}),
+            identificacao: $("fotoHeightName").value.trim(),
+            altura_m: $("fotoHeightValue").value,
+            observacoes: $("fotoHeightNotes").value.trim(),
+          },
+        }),
+      );
+      resetHeightForm();
+      renderHeightsManager();
+      notice(heightId ? "Altura atualizada." : "Altura cadastrada.");
+    } catch (error) {
+      notice(error.message, true);
+    }
+  };
+  $("fotoExportPdf").onclick = () => {
+    if (!state.plan?.id) return;
+    window.open(
+      `${root}/Fotografico/export_pdf.php?plano_id=${encodeURIComponent(state.plan.id)}`,
+      "_blank",
+      "noopener",
+    );
+  };
   $("fotoSubmitExecution").onclick = async () => {
     const executed = $("fotoExecutedAt").value,
       material = $("fotoMaterialUrl").value.trim();

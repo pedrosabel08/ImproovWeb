@@ -53,6 +53,9 @@ final class RecipientResolver
                 $moduleKey = (string) ($payload['module_key'] ?? '');
                 $ids = array_merge($ids, $this->config['operational']['manager_roles'][$moduleKey] ?? []);
                 break;
+            case 'approval_dependency_recipients':
+                $ids = array_map('intval', (array) ($payload['aprovador_ids'] ?? []));
+                break;
             case 'pending_summary_audience':
                 $ids = [(int) ($payload['collaborator_id'] ?? 0)];
                 $summary = $this->config['operational']['pending_summary'] ?? [];

@@ -170,6 +170,10 @@ try {
 
         if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0) {
             $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
+            $hasNonConfirmable = !empty(array_filter((array) ($blockedEvaluation['bloqueios'] ?? []), static fn(array $item): bool => !empty($item['nao_confirmavel'])));
+            if ($hasNonConfirmable) {
+                throw new DomainException('A tarefa depende de uma aprovação pendente e não pode ser iniciada antes da liberação.');
+            }
             if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                 throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
             }

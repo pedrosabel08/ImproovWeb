@@ -881,6 +881,13 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
   border-radius: 999px;
 }
 
+.requirements-card-summary .requirement-approval-pending {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #86efac;
+    font-weight: 700;
+}
+
 .kanban-card:last-child {
   margin-bottom: 0;
 }
@@ -2328,6 +2335,14 @@ form#task-form button {
 .tp-requirement-action.is-primary {
   border-color: rgba(245, 158, 11, 0.52);
   background: rgba(180, 83, 9, 0.9);
+}
+
+.tp-requirement-action.is-approval-request {
+    background: #0f766e;
+}
+
+.tp-requirement-action.is-approval-request:hover {
+    background: #115e59;
 }
 
 .tp-requirement-action.is-secondary {
@@ -4703,6 +4718,15 @@ form#dailyForm button {
   color: #1d2939;
   font: inherit;
   background: #fff;
+}
+
+.flow-block-approval-request .flow-block-approval-message {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #115e59;
+    background: #f0fdfa;
+    font-size: 13px;
 }
 .flow-block-hold-form textarea {
   resize: vertical;

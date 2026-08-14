@@ -8,6 +8,7 @@
  */
 
 require_once __DIR__ . '/flow_block_operacional_helper.php';
+require_once __DIR__ . '/flow_block_dependencia_helper.php';
 
 if (!function_exists('flow_block_active_statuses')) {
     function flow_block_active_statuses(): array
@@ -153,11 +154,13 @@ if (!function_exists('flow_block_task')) {
         $stmt = $conn->prepare(
             'SELECT fi.idfuncao_imagem, fi.colaborador_id, fi.status, fi.prazo, fi.observacao,
                     fi.funcao_id, f.nome_funcao, ico.imagem_nome, ico.obra_id,
+                    c.nome_colaborador AS tarefa_responsavel_nome,
                     o.nomenclatura, o.nome_obra
              FROM funcao_imagem fi
              JOIN funcao f ON f.idfuncao = fi.funcao_id
              JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
              JOIN obra o ON o.idobra = ico.obra_id
+             LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
              WHERE fi.idfuncao_imagem = ? LIMIT 1'
         );
         $stmt->bind_param('i', $taskId);
@@ -336,6 +339,37 @@ if (!function_exists('flow_block_publish_operational_lifecycle')) {
             return;
         }
         flow_connect_publish_operational_pending($conn, 'flow_block', 'flow_block.bloqueio.v1', $action, 'flow_issue', $issueId, $payload, $actorId, $logs);
+    }
+}
+
+if (!function_exists('flow_block_publish_approval_dependency_request')) {
+    /** Publica a cobrança contextual sem reutilizar o template genérico de Issue. */
+    function flow_block_publish_approval_dependency_request(mysqli $conn, int $issueId, array $payload, int $actorId): void
+    {
+        if ($issueId <= 0) return;
+        require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+        $mode = flow_connect_operational_mode('flow_block', 'flow_block.aprovacao_dependencia.v1');
+        if ($mode === 'off') return;
+        $event = [
+            'event_type' => 'flow_block.aprovacao_dependencia.solicitada',
+            'event_version' => 1,
+            'source_module' => 'flow_block',
+            'entity_type' => 'flow_issue',
+            'entity_id' => (string) $issueId,
+            'actor_id' => $actorId ?: null,
+            'occurred_at' => gmdate('Y-m-d H:i:s'),
+            'event_uuid' => null,
+            'correlation_id' => flow_connect_request_correlation_id(),
+            'causation_event_uuid' => null,
+            'idempotency_key' => 'flow-block:approval-dependency:' . $issueId . ':v1',
+            'payload' => $payload,
+            'metadata' => ['producer' => 'FlowBlock/api.php', 'flow_connect_mode' => $mode],
+        ];
+        try {
+            flow_connect_publish_in_transaction($conn, $event);
+        } catch (Throwable $ignored) {
+            // A cobrança interna já foi persistida; falha de integração não a desfaz.
+        }
     }
 }
 

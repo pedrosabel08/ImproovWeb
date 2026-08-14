@@ -132,6 +132,16 @@ try {
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
         $avaliacaoInicio = motor_requisitos_avaliar_funcao_imagem($conn, $existingFuncaoImagemId);
+        $hasNonConfirmable = !empty(array_filter((array) ($avaliacaoInicio['bloqueios'] ?? []), static fn(array $item): bool => !empty($item['nao_confirmavel'])));
+        if ($hasNonConfirmable) {
+            $conn->rollback();
+            http_response_code(422);
+            echo json_encode([
+                'error' => 'A tarefa depende de uma aprovação pendente e não pode ser iniciada antes da liberação.',
+                'avaliacao' => $avaliacaoInicio,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         if (!$avaliacaoInicio['elegivel'] && !$confirmarPendencias) {
             $conn->rollback();
             http_response_code(422);

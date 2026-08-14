@@ -124,6 +124,14 @@
   --status-finalizado: #10b981;
 }
 
+.toastify {
+  border-radius: var(--radius-sm) !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+
 /* ===== STATUS IMAGEM — células de tabela ===== */
 .si-p00 {
   background-color: var(--si-p00);

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
+require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -606,6 +607,109 @@ try {
         flow_block_publish_operational_lifecycle($conn, fb_get_issue($conn, $issueId) ?: ['id' => $issueId], 'criada', $actorId);
         flow_block_publish($issueId, $taskId, 'issue_created');
         flow_block_json_response(['ok' => true, 'id' => $issueId, 'codigo' => $code, 'existing' => false, 'task_status_changed' => $taskStatusChanged]);
+    }
+
+    if ($action === 'create_approval_dependency') {
+        $taskId = (int) ($payload['funcao_imagem_id'] ?? 0);
+        $task = flow_block_task($conn, $taskId);
+        if (!$task || !flow_block_can_access_task($task)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Você não pode registrar impedimento para esta tarefa.'], 403);
+        }
+        $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $taskId);
+        $requirement = null;
+        foreach ((array) ($evaluation['bloqueios'] ?? []) as $candidate) {
+            if (($candidate['codigo'] ?? '') === 'APROVACAO_ETAPA_ANTERIOR') {
+                $requirement = $candidate;
+                break;
+            }
+        }
+        if (!$requirement) {
+            flow_block_json_response(['ok' => false, 'message' => 'A aprovação da etapa anterior não está mais pendente.'], 422);
+        }
+
+        $approval = (array) ($requirement['aprovacao'] ?? []);
+        $predecessorId = (int) ($approval['predecessora_funcao_imagem_id'] ?? 0);
+        $cycleKey = trim((string) ($approval['approval_cycle_key'] ?? ''));
+        $recipients = array_values(array_filter((array) ($approval['aprovadores'] ?? []), static fn($item) => (int) ($item['id'] ?? 0) > 0));
+        if ($predecessorId <= 0 || $cycleKey === '' || !$recipients) {
+            flow_block_json_response(['ok' => false, 'message' => 'Não foi possível identificar a fila responsável pela aprovação.'], 422);
+        }
+        if ($existing = flow_block_dependencia_find_active($conn, $taskId, $predecessorId, $cycleKey)) {
+            flow_block_json_response(['ok' => true, 'id' => (int) $existing['id'], 'codigo' => (string) $existing['codigo'], 'existing' => true, 'task_status_changed' => false]);
+        }
+
+        $type = $conn->query("SELECT id FROM flow_issue_tipo WHERE codigo='APROVACAO_PENDENTE' AND ativo=1 LIMIT 1")->fetch_assoc();
+        $queue = $conn->query("SELECT id FROM flow_issue_fila WHERE codigo='PRODUCAO' AND ativo=1 LIMIT 1")->fetch_assoc();
+        if (!$type || !$queue) {
+            flow_block_json_response(['ok' => false, 'message' => 'A configuração de FlowBlock para aprovação pendente está ausente.'], 503);
+        }
+
+        $originTask = (array) ($requirement['origem_tarefa'] ?? []);
+        $blockedName = (string) ($task['nome_funcao'] ?? 'a próxima etapa');
+        $blockedOwner = (string) ($task['tarefa_responsavel_nome'] ?? 'a pessoa bloqueada');
+        $imageName = (string) ($task['imagem_nome'] ?? ($originTask['imagem_nome'] ?? 'imagem'));
+        $previousName = (string) ($originTask['nome'] ?? 'etapa anterior');
+        $description = "Solicitação de liberação: {$previousName} de {$imageName} aguarda aprovação para liberar {$blockedName}.";
+        $responsibleId = (int) $recipients[0]['id'];
+        $typeId = (int) $type['id'];
+        $queueId = (int) $queue['id'];
+
+        $conn->begin_transaction();
+        try {
+            if ($existing = flow_block_dependencia_find_active($conn, $taskId, $predecessorId, $cycleKey)) {
+                $conn->commit();
+                flow_block_json_response(['ok' => true, 'id' => (int) $existing['id'], 'codigo' => (string) $existing['codigo'], 'existing' => true, 'task_status_changed' => false]);
+            }
+            $insert = $conn->prepare("INSERT INTO flow_issue (funcao_imagem_id,tipo_id,fila_id,responsavel_colaborador_id,descricao,urgencia,status,bloqueante,criado_por_colaborador_id,sla_atendimento_em,proxima_cobranca_em) VALUES (?,?,?,?,?,'NORMAL','ABERTA',1,?,DATE_ADD(NOW(), INTERVAL 2 HOUR),DATE_ADD(NOW(), INTERVAL 2 HOUR))");
+            $insert->bind_param('iiiisi', $taskId, $typeId, $queueId, $responsibleId, $description, $actorId);
+            $insert->execute();
+            $issueId = (int) $insert->insert_id;
+            $insert->close();
+            $code = 'ISSUE-' . str_pad((string) $issueId, 4, '0', STR_PAD_LEFT);
+            $updateCode = $conn->prepare('UPDATE flow_issue SET codigo=? WHERE id=?');
+            $updateCode->bind_param('si', $code, $issueId);
+            $updateCode->execute();
+            $updateCode->close();
+            $cycle = $conn->prepare("INSERT INTO flow_issue_ciclo (issue_id,status_inicial) VALUES (?, 'Não iniciado')");
+            $cycle->bind_param('i', $issueId);
+            $cycle->execute();
+            $cycle->close();
+            $context = motor_requisitos_flow_block_contexto([
+                'idfuncao_imagem' => $taskId,
+                'nome_funcao' => $blockedName,
+                'imagem_nome' => $imageName,
+                'status' => $task['status'] ?? 'Não iniciado',
+                'tarefa_responsavel_id' => $task['colaborador_id'] ?? null,
+                'tarefa_responsavel_nome' => $blockedOwner,
+            ], $requirement);
+            $meta = array_merge($context, ['contextual_approval' => true, 'aprovador_ids' => array_values(array_map(static fn($item) => (int) $item['id'], $recipients))]);
+            flow_block_add_activity($conn, $issueId, 'CRIADA', $description, $meta);
+            $approversJson = json_encode($recipients, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $link = $conn->prepare('INSERT INTO flow_issue_dependencia (issue_id,requirement_code,tarefa_bloqueada_id,predecessora_funcao_imagem_id,approval_cycle_key,aprovacao_status,aprovadores_json) VALUES (?,?,?,?,?,?,?)');
+            $approvalStatus = (string) ($approval['status'] ?? 'Em aprovação');
+            $link->bind_param('isiisss', $issueId, $requirement['codigo'], $taskId, $predecessorId, $cycleKey, $approvalStatus, $approversJson);
+            $link->execute();
+            $link->close();
+            $conn->commit();
+        } catch (Throwable $e) {
+            $conn->rollback();
+            throw $e;
+        }
+
+        $message = "Você pode aprovar {$previousName} de {$imageName} para que {$blockedOwner} inicie {$blockedName}?";
+        foreach ($recipients as $recipient) {
+            flow_block_notify($conn, (int) $recipient['id'], $taskId, $message);
+        }
+        flow_block_publish_approval_dependency_request($conn, $issueId, [
+            'aprovador_ids' => array_values(array_map(static fn($item) => (int) $item['id'], $recipients)),
+            'etapa_anterior' => $previousName,
+            'imagem_nome' => $imageName,
+            'etapa_bloqueada' => $blockedName,
+            'bloqueada_por_nome' => $blockedOwner,
+            'funcao_imagem_id' => $taskId,
+        ], $actorId);
+        flow_block_publish($issueId, $taskId, 'approval_dependency_requested');
+        flow_block_json_response(['ok' => true, 'id' => $issueId, 'codigo' => $code, 'existing' => false, 'task_status_changed' => false]);
     }
 
     if ($action === 'comment') {

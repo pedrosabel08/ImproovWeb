@@ -16,6 +16,7 @@ include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
+require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/pdf_approval_helpers.php';
 require_once __DIR__ . '/ws_notify.php';
@@ -750,6 +751,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         aprovacao_interna_ensure_schema($conn);
         $flowConnectTaskEventId = 0;
         $historicoAprovacaoId = 0;
+        $flowBlocksEncerradosAutomaticamente = [];
         $conn->begin_transaction();
 
         if (
@@ -816,6 +818,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $historicoAprovacaoId = (int)$conn->insert_id;
             $stmt->close();
+
+            $flowBlocksEncerradosAutomaticamente = flow_block_dependencia_encerrar_por_aprovacao(
+                $conn,
+                (int) $idfuncao_imagem,
+                (int) $responsavel,
+                (int) $historicoAprovacaoId,
+                (string) $status
+            );
 
             $resultadoFinal['success'] = true;
             $resultadoFinal['message'] = 'Tarefa atualizada com sucesso.';
@@ -1582,6 +1592,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Commit: BD confirmado (SFTP enviado, conflito pendente ou SFTP não necessário)
         $conn->commit();
+
+        foreach ($flowBlocksEncerradosAutomaticamente as $flowBlockEncerrado) {
+            $issueId = (int) ($flowBlockEncerrado['id'] ?? 0);
+            $blockedTaskId = (int) ($flowBlockEncerrado['funcao_imagem_id'] ?? 0);
+            if ($issueId <= 0 || $blockedTaskId <= 0) continue;
+            $blockedTask = flow_block_task($conn, $blockedTaskId);
+            if ($blockedTask) {
+                flow_block_notify(
+                    $conn,
+                    (int) ($blockedTask['colaborador_id'] ?? 0),
+                    $blockedTaskId,
+                    'A aprovação da etapa anterior foi concluída. Sua tarefa está liberada para iniciar.'
+                );
+            }
+            flow_block_publish($issueId, $blockedTaskId, 'approval_dependency_resolved');
+        }
 
         if (!empty($pdfPublicacaoEnfileirada)) {
             pdf_approval_kick_worker();

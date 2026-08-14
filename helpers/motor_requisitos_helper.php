@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/flow_block_helper.php';
+require_once __DIR__ . '/flow_review_aprovacao_helper.php';
 
 if (!defined('MOTOR_REQUISITOS_VERSAO')) {
     define('MOTOR_REQUISITOS_VERSAO', 'PROJECT_REQUIREMENTS_V1');
@@ -177,6 +178,8 @@ function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackRes
         'referencias_mood' => ['REFERENCIA_NAO_DEFINIDA', 'GESTAO'],
         'fotografico' => ['FOTOGRAFICO_FALTANTE', 'GESTAO'],
         'FUNCAO_ANTERIOR_CONCLUIDA' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
+        'APROVACAO_ETAPA_ANTERIOR' => ['APROVACAO_PENDENTE', 'PRODUCAO'],
+        'ENVIO_APROVACAO_ETAPA_ANTERIOR' => ['DEPENDENCIA_OUTRA_TAREFA', 'PRODUCAO'],
         'ARQUIVO_FINALIZACAO_ENVIADO' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
         'subtipo_definido' => ['DUVIDA_TECNICA', 'ARQUITETURA'],
         'arquivos_finais_subtipo' => ['ARQUIVO_FALTANTE', 'PRODUCAO'],
@@ -231,6 +234,14 @@ function motor_requisitos_flow_block_contexto(array $taskContext, array $require
         'requirement_origin_task' => $requirement['origem_tarefa'] ?? null,
         'requirement_origin_responsavel_id' => $requirement['origem_responsavel_id'] ?? null,
         'requirement_origin_responsavel_nome' => (string) ($requirement['origem_responsavel_nome'] ?? ''),
+        'approval' => $requirement['aprovacao'] ?? null,
+        'blocked_task' => [
+            'id' => (int) ($taskContext['idfuncao_imagem'] ?? 0) ?: null,
+            'nome' => (string) ($taskContext['nome_funcao'] ?? ''),
+            'imagem_nome' => (string) ($taskContext['imagem_nome'] ?? ''),
+            'responsavel_id' => (int) ($taskContext['tarefa_responsavel_id'] ?? 0) ?: null,
+            'responsavel_nome' => (string) ($taskContext['tarefa_responsavel_nome'] ?? ''),
+        ],
         'requirement_context' => sprintf(
             'Tarefa %s (%s) em %s com requisito pendente: %s.',
             (string) ($taskContext['imagem_nome'] ?? 'sem nome'),
@@ -272,6 +283,10 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
 
     $requirement['flow_block'] = [
         'action' => $issue ? 'open' : 'create',
+        'action_label' => (string) ($requirement['codigo'] ?? '') === 'APROVACAO_ETAPA_ANTERIOR'
+            ? 'Solicitar liberação'
+            : 'Registrar impedimento',
+        'contextual_approval' => (string) ($requirement['codigo'] ?? '') === 'APROVACAO_ETAPA_ANTERIOR',
         'issue_id' => $issue ? (int) $issue['id'] : null,
         'issue_code' => $issue ? (string) ($issue['codigo'] ?? '') : null,
         'issue_url' => $issue ? '/ImproovWeb/FlowBlock/issue.php?id=' . (int) $issue['id'] : null,
@@ -284,8 +299,8 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
 function motor_requisitos_predecessora(mysqli $conn, int $imagemId, int $funcaoId): ?array
 {
     $stmt = $conn->prepare(
-        "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
-                fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
+        "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id, fi.requires_file_upload,
+                fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome, ico.status_id AS imagem_status_id
            FROM funcao_imagem fi
            LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
            JOIN funcao f ON f.idfuncao = fi.funcao_id
@@ -366,7 +381,7 @@ function motor_requisitos_aliases_predecessora(?array $predecessora, bool $arqui
     return [];
 }
 
-function motor_requisitos_adicionar_predecessora(array &$requisitos, ?array $predecessora, string $origem, string $urlAcao): void
+function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisitos, ?array $predecessora, string $origem, string $urlAcao): void
 {
     if (!$predecessora) {
         $requisitos[] = motor_requisitos_item(
@@ -383,6 +398,50 @@ function motor_requisitos_adicionar_predecessora(array &$requisitos, ?array $pre
     }
 
     $origemId = (int) $predecessora['idfuncao_imagem'];
+    $status = trim((string) ($predecessora['status'] ?? ''));
+    $metadados = motor_requisitos_metadados_origem($predecessora);
+
+    if (in_array($status, ['Em aprovação', 'Aguardando Direção'], true)) {
+        $aprovadores = flow_review_aprovacao_destinatarios($conn, $predecessora);
+        $metadados['aprovacao'] = [
+            'status' => $status,
+            'predecessora_funcao_imagem_id' => $origemId,
+            'approval_cycle_key' => $origemId . ':' . ($predecessora['file_uploaded_at'] ?? $status),
+            'aprovadores' => $aprovadores,
+        ];
+        $requisito = motor_requisitos_item(
+            'APROVACAO_ETAPA_ANTERIOR',
+            'Aprovação da etapa anterior',
+            'APROVACAO',
+            'NAO_ATENDIDO',
+            true,
+            $origem,
+            $origemId,
+            $urlAcao,
+            $metadados
+        );
+        $requisito['nao_confirmavel'] = true;
+        $requisitos[] = $requisito;
+        return;
+    }
+
+    if ($status === 'Finalizado') {
+        $requisito = motor_requisitos_item(
+            'ENVIO_APROVACAO_ETAPA_ANTERIOR',
+            'Etapa anterior concluída, aguardando envio para aprovação',
+            'APROVACAO',
+            'NAO_ATENDIDO',
+            true,
+            $origem,
+            $origemId,
+            $urlAcao,
+            $metadados
+        );
+        $requisito['nao_confirmavel'] = true;
+        $requisitos[] = $requisito;
+        return;
+    }
+
     $conclusao = motor_requisitos_item(
         'FUNCAO_ANTERIOR_CONCLUIDA',
         'Tarefa produtiva anterior concluida',
@@ -392,7 +451,7 @@ function motor_requisitos_adicionar_predecessora(array &$requisitos, ?array $pre
         $origem,
         $origemId,
         $urlAcao,
-        motor_requisitos_metadados_origem($predecessora)
+        $metadados
     );
     $conclusao['flow_block_aliases'] = motor_requisitos_aliases_predecessora($predecessora, false);
     $requisitos[] = $conclusao;
@@ -542,14 +601,16 @@ function motor_requisitos_estado_arquivo(?array $row): string
 function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemId, ?bool $legacyLiberada = null): array
 {
     $stmt = $conn->prepare(
-        "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status,
+        "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
                 f.nome_funcao,
                 ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id,
+                c.nome_colaborador AS tarefa_responsavel_nome,
                 ico.status_id AS imagem_status_id, si.nome_status AS imagem_status_nome
            FROM funcao_imagem fi
            JOIN funcao f ON f.idfuncao = fi.funcao_id
            JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
            LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
+           LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
           WHERE fi.idfuncao_imagem = ?
           LIMIT 1"
     );
@@ -708,11 +769,11 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
                 );
             } else {
                 $urlPredecessora = '/ImproovWeb/inicio.php?imagem_id=' . (int) $predecessora['imagem_id'];
-                motor_requisitos_adicionar_predecessora($requisitos, $predecessora, $origem, $urlPredecessora);
+                motor_requisitos_adicionar_predecessora($conn, $requisitos, $predecessora, $origem, $urlPredecessora);
             }
         } else {
             $predecessora = motor_requisitos_predecessora_anterior_existente($conn, $imagemId, $funcaoId);
-            motor_requisitos_adicionar_predecessora($requisitos, $predecessora, $origem, $urlPredecessora);
+            motor_requisitos_adicionar_predecessora($conn, $requisitos, $predecessora, $origem, $urlPredecessora);
         }
     }
 

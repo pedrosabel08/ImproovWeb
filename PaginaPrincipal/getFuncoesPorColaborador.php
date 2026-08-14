@@ -1241,7 +1241,7 @@ unset($funcaoFinal);
 
 $response = [
     "funcoes"                 => $funcoesFinal,
-    "tarefas"                 => $tarefas,
+    // "tarefas"                 => $tarefas,
     "mostrar_coluna_pendencias" => $mostrarColunaPendencias,
     "pendencias_flowreview"   => $pendenciasFlowReview,
     "pendencias_operacionais" => $pendenciasOperacionais,

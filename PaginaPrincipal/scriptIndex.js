@@ -1548,6 +1548,72 @@ function abrirFormularioFlowBlockHold(
         .join("\n")
     : "";
 
+  const isApprovalDependency =
+    requirement?.codigo === "APROVACAO_ETAPA_ANTERIOR";
+  if (isApprovalDependency) {
+    const approval = requirement?.aprovacao || {};
+    const approvers = Array.isArray(approval.aprovadores)
+      ? approval.aprovadores.map((person) => person?.nome).filter(Boolean)
+      : [];
+    conteudo.querySelector("#flow-block-hold-form")?.remove();
+    cardModal.classList.add("flow-block-hold-active");
+    modalTitle.textContent = "Solicitar liberação";
+    document.querySelector(".modalPrazo").style.display = "none";
+    document.querySelector(".modalObs").style.display = "none";
+    document.querySelector(".modalUploads").style.display = "none";
+    document.querySelector(".statusAnterior").style.display = "none";
+    document.querySelector(".buttons").style.display = "none";
+    const form = document.createElement("section");
+    form.id = "flow-block-hold-form";
+    form.className = "flow-block-hold-form flow-block-approval-request";
+    form.innerHTML = `
+      <p class="flow-block-hold-intro">A tarefa permanecerá em Não iniciado. Esta solicitação apenas informa que a aprovação pendente está impedindo seu início.</p>
+      <div class="flow-block-hold-context">
+        <strong>Aprovação aguardada</strong>
+        <dl>
+          <div><dt>Etapa anterior</dt><dd>${escapeKanbanText(origemTarefaTexto || "Etapa anterior")}</dd></div>
+          <div><dt>Situação</dt><dd>${escapeKanbanText(approval.status || "Em aprovação")}</dd></div>
+          <div><dt>Próxima etapa</dt><dd>${escapeKanbanText(card.dataset.funcao_nome || "Tarefa atual")}</dd></div>
+          <div><dt>Responsáveis pela aprovação</dt><dd>${escapeKanbanText(approvers.join(", ") || "Fila de aprovação")}</dd></div>
+        </dl>
+      </div>
+      <p class="flow-block-approval-message">O Flow enviará uma solicitação contextual para a fila de aprovação.</p>
+      <div class="flow-block-hold-actions"><button type="button" class="flow-block-cancel">Cancelar</button><button type="button" class="flow-block-create"><i class="ri-send-plane-line"></i> Solicitar liberação</button></div>
+    `;
+    conteudo.insertBefore(form, conteudo.querySelector(".buttons"));
+    form.querySelector(".flow-block-cancel").addEventListener("click", () => {
+      cardModal.classList.remove("active");
+      form.remove();
+      cardModal.classList.remove("flow-block-hold-active");
+      card.classList.remove("selected");
+    });
+    form.querySelector(".flow-block-create").addEventListener("click", async () => {
+      const button = form.querySelector(".flow-block-create");
+      button.disabled = true;
+      button.textContent = "Solicitando…";
+      try {
+        const response = await fetch("FlowBlock/api.php?action=create_approval_dependency", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ funcao_imagem_id: Number(card.dataset.id) }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.message || "Não foi possível solicitar a liberação.");
+        cardModal.classList.remove("active");
+        form.remove();
+        carregarDados(colaborador_id);
+        window.location.href = `FlowBlock/issue.php?id=${encodeURIComponent(data.id)}`;
+      } catch (error) {
+        button.disabled = false;
+        button.innerHTML = '<i class="ri-send-plane-line"></i> Solicitar liberação';
+        Toastify({ text: error.message, duration: 4000, gravity: "top", position: "left", backgroundColor: "#d94b4b" }).showToast();
+      }
+    });
+    cardModal.classList.add("active");
+    card.classList.add("selected");
+    return;
+  }
+
   conteudo.querySelector("#flow-block-hold-form")?.remove();
   cardModal.classList.add("flow-block-hold-active");
   modalTitle.textContent = "Registrar Impedimento";
@@ -2351,10 +2417,14 @@ function processarDados(data) {
              <strong><i class="ri-error-warning-line"></i> ${pendenciasInicio.length} ${pendenciasInicio.length === 1 ? "pendência impede" : "pendências impedem"} o início</strong>
              <div>${pendenciasInicio
                .slice(0, 3)
-               .map(
-                 (requisito) =>
-                   `<span title="${escapeKanbanText(requisito.label || "")}">${escapeKanbanText(requisito.label || "Requisito")}</span>`,
-               )
+               .map((requisito) => {
+                 const aguardandoAprovacao =
+                   requisito.codigo === "APROVACAO_ETAPA_ANTERIOR";
+                 const texto = aguardandoAprovacao
+                   ? `${requisito.origem_tarefa?.nome || "Etapa anterior"} aguardando aprovação`
+                   : requisito.label || "Requisito";
+                 return `<span class="${aguardandoAprovacao ? "requirement-approval-pending" : ""}" title="${escapeKanbanText(texto)}">${escapeKanbanText(texto)}</span>`;
+               })
                .join("")}</div>
            </div>`
         : "";
@@ -4613,8 +4683,8 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
                   estado === "NAO_ATENDIDO" &&
                   requisito.flow_block?.action !== "disabled"
                     ? requisito.flow_block?.issue_url
-                      ? `<a class="tp-requirement-action is-primary" href="${escapeKanbanText(requisito.flow_block.issue_url)}"><i class="ri-forbid-2-line"></i> Abrir Flow Block</a>`
-                      : `<button type="button" class="tp-requirement-action is-primary" data-requirement-index="${index}"><i class="ri-forbid-2-line"></i> Registrar impedimento</button>`
+                      ? `<a class="tp-requirement-action is-primary${requisito.flow_block?.contextual_approval ? " is-approval-request" : ""}" href="${escapeKanbanText(requisito.flow_block.issue_url)}"><i class="${requisito.flow_block?.contextual_approval ? "ri-send-plane-line" : "ri-forbid-2-line"}"></i> ${requisito.flow_block?.contextual_approval ? "Abrir solicitação" : "Abrir Flow Block"}</a>`
+                      : `<button type="button" class="tp-requirement-action is-primary${requisito.flow_block?.contextual_approval ? " is-approval-request" : ""}" data-requirement-index="${index}"><i class="${requisito.flow_block?.contextual_approval ? "ri-send-plane-line" : "ri-forbid-2-line"}"></i> ${escapeKanbanText(requisito.flow_block?.action_label || "Registrar impedimento")}</button>`
                     : "";
                 const sourceAction = requisito.url_acao
                   ? `<a class="tp-requirement-action is-secondary" href="${escapeKanbanText(requisito.url_acao)}"><i class="ri-external-link-line"></i> Abrir origem</a>`

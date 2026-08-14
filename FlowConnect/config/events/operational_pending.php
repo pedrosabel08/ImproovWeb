@@ -26,6 +26,14 @@ foreach (['registrado' => 'operational_pending_created', 'resolvido' => 'operati
         'required_payload' => ['module_key', 'titulo', 'cycle_id'],
     ];
 }
+$definitions['flow_block.aprovacao_dependencia.solicitada'] = [
+    'severity' => 'ACAO',
+    'category' => 'OPERATIONAL',
+    'delivery_mode' => 'DM',
+    'template' => 'approval_dependency_requested',
+    'recipient_strategy' => 'approval_dependency_recipients',
+    'required_payload' => ['aprovador_ids', 'etapa_anterior', 'imagem_nome', 'etapa_bloqueada', 'bloqueada_por_nome'],
+];
 $definitions['operacional.pendencia.sla_marco_atingido'] = [
     'severity' => 'ACAO',
     'category' => 'OPERATIONAL',

@@ -37,6 +37,40 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
     return sent;
   }
 
+  function broadcastBriefing(envelope, briefingId, channel, payload) {
+    let sent = 0;
+    wss.clients.forEach((socket) => {
+      if (socket.readyState === WebSocket.OPEN && socket.briefingRooms && socket.briefingRooms.has(String(briefingId))) {
+        socket.send(envelope);
+        sent++;
+      }
+    });
+    console.log(`[WS-DIAG][Node][Briefing] room=briefing:${briefingId} channel=${channel} event=${payload && payload.event ? payload.event : '(sem event)'} sent=${sent}`);
+  }
+
+  async function subscribeBriefing(ws, ticket) {
+    if (!client || !client.isOpen || typeof ticket !== 'string' || !/^[a-f0-9]{64}$/i.test(ticket)) {
+      ws.send(JSON.stringify({ error: 'briefing_subscription_denied' }));
+      return;
+    }
+    try {
+      const key = `briefing_ws_ticket:${require('crypto').createHash('sha256').update(ticket).digest('hex')}`;
+      const raw = await client.get(key);
+      if (raw) await client.del(key); // one ticket authorizes one socket only
+      const claims = raw ? JSON.parse(raw) : null;
+      if (!claims || !claims.briefing_id || !claims.participant_id || Number(claims.exp) < Math.floor(Date.now() / 1000)) {
+        ws.send(JSON.stringify({ error: 'briefing_subscription_denied' }));
+        return;
+      }
+      ws.briefingRooms.add(String(claims.briefing_id));
+      ws.briefingParticipant = { id: Number(claims.participant_id), scope: claims.scope || 'CLIENTE' };
+      ws.send(JSON.stringify({ info: 'briefing_subscribed', briefing_id: Number(claims.briefing_id) }));
+    } catch (err) {
+      console.error('Failed to subscribe briefing room', err);
+      ws.send(JSON.stringify({ error: 'briefing_subscription_denied' }));
+    }
+  }
+
   async function startRedis() {
     try {
       console.log(`[WS-DIAG][Node] redis.connect.start REDIS_URL=${REDIS_URL}`);
@@ -119,6 +153,20 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
+      // Briefings are the first external-facing realtime feature. Unlike the
+      // legacy module channels, they are sent only to a short-lived,
+      // server-authorized room. The payload contains no answer content.
+      await sub.pSubscribe('briefing:*', (message, channel) => {
+        try {
+          const payload = JSON.parse(message);
+          const briefingId = String(payload.briefing_id || channel.split(':')[1] || '');
+          if (!/^\d+$/.test(briefingId)) return;
+          broadcastBriefing(JSON.stringify({ channel, payload }), briefingId, channel, payload);
+        } catch (err) {
+          console.error('Failed to forward Briefing message', err);
+        }
+      });
+
       // psubscribe to funcao_atualizada:* channels (function insert/update broadcasts)
       await sub.pSubscribe('funcao_atualizada:*', (message, channel) => {
         console.log('funcao_atualizada message received on channel:', channel);
@@ -138,7 +186,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
-      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,flow_review:*,fotografico:*,flow_block:*,funcao_atualizada:*`);
+      console.log(`[WS-DIAG][Node] redis.subscribed REDIS_URL=${REDIS_URL} patterns=upload_progress:*,pos_producao:*,render:*,flow_review:*,fotografico:*,flow_block:*,briefing:*,funcao_atualizada:*`);
 
       // clear any reconnect timer if successful
       if (reconnectTimer) {
@@ -161,12 +209,19 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
   startRedis();
 
   wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.briefingRooms = new Set();
+    ws.on('pong', () => { ws.isAlive = true; });
     const counts = socketCounts();
     console.log(`[WS-DIAG][Node] socket.connected sockets_connected=${counts.connected} sockets_open=${counts.open}`);
     ws.send(JSON.stringify({ info: 'connected', timestamp: Date.now() }));
     ws.on('message', async (msg) => {
       try {
         const data = JSON.parse(msg.toString());
+        if (data && data.type === 'briefing.subscribe') {
+          await subscribeBriefing(ws, data.ticket);
+          return;
+        }
         if (data && data.subscribe) {
           const id = String(data.subscribe);
           // try to read latest snapshot from Redis and send to this socket
@@ -190,6 +245,15 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
       }
     });
   });
+
+  const heartbeat = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (ws.isAlive === false) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+  wss.on('close', () => clearInterval(heartbeat));
 
   process.on('SIGINT', async () => {
     console.log('Shutting down...');

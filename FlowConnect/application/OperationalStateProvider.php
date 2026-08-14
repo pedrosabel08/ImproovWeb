@@ -23,6 +23,7 @@ final class OperationalStateProvider
             'pre_alteracao' => $this->preAlteracao($conn, $cycle),
             'fotografico' => $this->fotografico($conn, $cycle),
             'cobranca_cliente' => $this->cobrancaCliente($conn, $cycle),
+            'briefing' => $this->briefing($conn, $cycle),
             default => ['state' => 'UNKNOWN'],
         };
     }
@@ -129,5 +130,17 @@ final class OperationalStateProvider
         if (!$row) return ['state' => 'CANCELLED'];
         $status = strtoupper((string) $row['status']);
         return ['state' => $status === 'SNOOZED' ? 'PAUSED' : (in_array($status, ['PENDING', 'OVERDUE', 'NOTIFIED'], true) ? 'ACTIVE' : ($status === 'IGNORED' ? 'CANCELLED' : 'RESOLVED')), 'due_at' => $row['snooze_until'] ?: ($row['due_at'] ?? null)];
+    }
+
+    private function briefing(mysqli $conn, array $cycle): array
+    {
+        $id = (int) $cycle['entity_id'];
+        $stmt = $conn->prepare('SELECT status,revisor_colaborador_id,prazo_em FROM briefing_online WHERE id=? LIMIT 1');
+        if (!$stmt) return ['state' => 'UNKNOWN'];
+        $stmt->bind_param('i', $id); $stmt->execute(); $row = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$row) return ['state' => 'CANCELLED'];
+        $status = strtoupper((string) $row['status']);
+        $active = in_array($status, ['AGUARDANDO_CLIENTE','EM_PREENCHIMENTO','AJUSTES_SOLICITADOS'], true);
+        return ['state' => $active ? 'ACTIVE' : 'RESOLVED', 'responsavel_id' => (int) ($row['revisor_colaborador_id'] ?? 0), 'due_at' => $row['prazo_em'] ?? null];
     }
 }

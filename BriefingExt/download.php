@@ -1,0 +1,4 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../Briefing/lib.php';
+$conn=briefing_conn();try{$session=briefing_external_session($conn,false);$id=(int)($_GET['id']??0);$stmt=briefing_stmt($conn,'SELECT * FROM briefing_attachment WHERE id=? AND briefing_id=?','ii',[$id,(int)$session['briefing_id']]);$file=$stmt->get_result()->fetch_assoc();$stmt->close();if(!$file)throw new InvalidArgumentException('Anexo não encontrado.');$path=__DIR__.'/storage/'.$file['caminho'];if(!is_file($path))throw new InvalidArgumentException('Arquivo indisponível.');header('Content-Type: '.$file['mime_type']);header('Content-Length: '.filesize($path));header('Content-Disposition: attachment; filename="'.rawurlencode($file['nome_original']).'"');header('X-Content-Type-Options: nosniff');readfile($path);}catch(Throwable){http_response_code(404);echo 'Arquivo indisponível.';}

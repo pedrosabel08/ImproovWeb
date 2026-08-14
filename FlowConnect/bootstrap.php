@@ -59,7 +59,7 @@ if (!function_exists('flow_connect_publish_in_transaction')) {
 if (!function_exists('flow_connect_publish_if_enabled')) {
     function flow_connect_publish_if_enabled(mysqli $conn, string $family, array $event, array &$logs = []): int
     {
-        $mode = flow_connect_review_mode($family);
+        $mode = $family === 'briefing' ? flow_connect_briefing_mode() : flow_connect_review_mode($family);
         if ($mode === 'off') {
             return 0;
         }

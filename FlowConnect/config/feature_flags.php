@@ -39,6 +39,14 @@ if (!function_exists('flow_connect_review_mode')) {
     }
 }
 
+if (!function_exists('flow_connect_briefing_mode')) {
+    function flow_connect_briefing_mode(): string
+    {
+        $value = getenv('FLOW_CONNECT_BRIEFING_MODE');
+        return $value !== false && trim((string) $value) !== '' ? flow_connect_normalize_mode($value) : 'off';
+    }
+}
+
 if (!function_exists('flow_connect_pending_summary_mode')) {
     function flow_connect_pending_summary_mode(): string
     {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$modules = ['flow_review', 'pre_alteracao', 'render', 'projeto', 'imagem', 'links', 'cobranca_cliente', 'fotografico'];
+$modules = ['flow_review', 'pre_alteracao', 'render', 'projeto', 'imagem', 'links', 'cobranca_cliente', 'fotografico', 'briefing'];
 $definitions = [];
 foreach ($modules as $module) {
     foreach (['criada' => 'operational_pending_created', 'resolvida' => 'operational_pending_resolved', 'cancelada' => 'operational_pending_cancelled'] as $action => $template) {

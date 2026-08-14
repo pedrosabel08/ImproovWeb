@@ -59,6 +59,7 @@ return [
             'cobranca_cliente' => flow_connect_env_list('FLOW_CONNECT_COBRANCA_CLIENTE_MANAGER_COLLABORATOR_IDS'),
             'fotografico' => flow_connect_env_list('FLOW_CONNECT_FOTOGRAFICO_MANAGER_COLLABORATOR_IDS'),
             'arquivo' => flow_connect_env_list('FLOW_CONNECT_ARQUIVO_MANAGER_COLLABORATOR_IDS'),
+            'briefing' => flow_connect_env_list('FLOW_CONNECT_BRIEFING_MANAGER_COLLABORATOR_IDS'),
         ],
         'overdue_webhook_env' => 'FLOW_CONNECT_SLA_OVERDUE_WEBHOOK_URL',
         'upload_summary_times' => array_values(array_filter(array_map('trim', explode(',', (string) (getenv('FLOW_CONNECT_UPLOAD_SUMMARY_TIMES') ?: '09:00,13:00,17:00'))))),

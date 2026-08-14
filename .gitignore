@@ -134,7 +134,7 @@ dist
 .pnp.*
 
 # Optional eslint cache
-/vendor/
+vendor/
 
 /.vscode
 

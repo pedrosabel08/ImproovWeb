@@ -8,7 +8,7 @@
     if (typeof window.resolveImproovUrl === "function")
       return window.resolveImproovUrl(path);
     if (path.startsWith("/")) return window.location.origin + path;
-    var root = (window.PROJECT_ROOT || "/ImproovWeb").replace(/\/+$/, "");
+    var root = (window.PROJECT_ROOT || "/flow/ImproovWeb").replace(/\/+$/, "");
     return window.location.origin + root + "/" + path.replace(/^\/+/, "");
   }
 

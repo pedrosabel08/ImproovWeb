@@ -489,7 +489,7 @@
 .flow-notification__hero img {
   display: block;
   width: 100%;
-  max-height: 430px;
+  /* max-height: 430px; */
   border: 1px solid var(--border-card, #e2e8f0);
   border-radius: 14px;
   object-fit: cover;

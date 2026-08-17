@@ -11,6 +11,7 @@ const DEADLINE_TENTATIVA_REFAZENDO = 'REFAZENDO';
 const DEADLINE_TENTATIVA_EXCLUSAO_PENDENTE = 'EXCLUSAO_PENDENTE';
 const DEADLINE_TENTATIVA_ENCERRADA = 'ENCERRADA';
 const DEADLINE_TENTATIVA_CANCELADA = 'CANCELADA';
+const DEADLINE_TENTATIVA_CONCLUIDA_MANUALMENTE = 'CONCLUIDA_MANUALMENTE';
 const DEADLINE_COMANDO_DELETE_JOB = 'DELETE_JOB';
 const DEADLINE_COMANDO_PENDENTE = 'PENDENTE';
 
@@ -57,7 +58,7 @@ function deadline_flow_valid_job_id(?string $jobId): ?string
 function deadline_flow_lock_render(mysqli $conn, int $renderId): array
 {
     $stmt = $conn->prepare(
-        "SELECT idrender_alta, imagem_id, status_id, status, deadline_job_id
+        "SELECT idrender_alta, imagem_id, status_id, status, responsavel_id, deadline_job_id
          FROM render_alta
          WHERE idrender_alta = ?
          FOR UPDATE"
@@ -249,6 +250,113 @@ function deadline_flow_enqueue_delete(
     ];
 }
 
+function deadline_flow_manual_eligible_status(string $status): bool
+{
+    $notStarted = 'N' . "\xC3\xA3" . 'o iniciado';
+    return in_array($status, [$notStarted, 'Nao iniciado', 'Em andamento', 'Erro', 'Reprovado', 'Refazendo'], true);
+}
+
+function deadline_flow_approval_status(): string
+{
+    return "Em aprova\xC3\xA7\xC3\xA3o";
+}
+
+/**
+ * Ends the current Deadline attempt because the output was produced outside
+ * Deadline. The render itself remains awaiting business approval.
+ *
+ * The caller owns the surrounding transaction and persists the audit record.
+ */
+function deadline_flow_complete_manually_locked(
+    mysqli $conn,
+    int $renderId,
+    int $actorId,
+    bool $actorIsManager,
+    string $reason
+): array {
+    deadline_flow_require_schema($conn);
+
+    $render = deadline_flow_lock_render($conn, $renderId);
+    if (!deadline_flow_manual_eligible_status((string) $render['status'])) {
+        throw new RuntimeException('Este render nao pode ser concluido manualmente no status atual.');
+    }
+    if (!$actorIsManager && $actorId !== (int) ($render['responsavel_id'] ?? 0)) {
+        throw new RuntimeException('Apenas o responsavel pelo render ou um gestor pode concluir manualmente.');
+    }
+
+    $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
+    if (!$attempt) {
+        deadline_flow_ensure_initial_attempt($conn, $renderId);
+        $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
+    }
+    if (!$attempt) {
+        throw new RuntimeException('Tentativa ativa nao encontrada para o render.');
+    }
+
+    $attemptId = (int) $attempt['id'];
+    $jobId = deadline_flow_valid_job_id($attempt['deadline_job_id'] ?? null);
+    $previousStatus = (string) $render['status'];
+    $closeReason = 'CONCLUIDA_MANUALMENTE';
+    $stmt = $conn->prepare(
+        "UPDATE render_tentativas
+         SET status = ?, ativa = 0,
+             concluido_em = COALESCE(concluido_em, NOW()),
+             encerrado_em = COALESCE(encerrado_em, NOW()),
+             motivo_encerramento = ?
+         WHERE id = ? AND ativa = 1"
+    );
+    $manualStatus = DEADLINE_TENTATIVA_CONCLUIDA_MANUALMENTE;
+    $stmt->bind_param('ssi', $manualStatus, $closeReason, $attemptId);
+    if (!$stmt->execute() || $stmt->affected_rows !== 1) {
+        $stmt->close();
+        throw new RuntimeException('A tentativa do render mudou antes da conclusao manual.');
+    }
+    $stmt->close();
+
+    $command = ['created' => false, 'id' => null, 'status' => null];
+    if ($jobId !== null) {
+        $command = deadline_flow_enqueue_delete($conn, $render, $attemptId, $jobId, 80);
+    }
+
+    $stmt = $conn->prepare(
+        'UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?'
+    );
+    $approvalStatus = deadline_flow_approval_status();
+    $stmt->bind_param('si', $approvalStatus, $renderId);
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        throw new RuntimeException('Nao foi possivel enviar o render para aprovacao: ' . $error);
+    }
+    $stmt->close();
+
+    $eventData = json_encode([
+        'colaborador_id' => $actorId,
+        'status_anterior' => $previousStatus,
+        'justificativa' => $reason,
+        'deadline_job_id' => $jobId,
+    ], JSON_UNESCAPED_UNICODE);
+    $stmt = $conn->prepare(
+        "INSERT INTO render_tentativa_eventos (tentativa_id, tipo, chave, dados_json)
+         VALUES (?, 'CONCLUSAO_MANUAL', 'CONFIRMADA', ?)"
+    );
+    $stmt->bind_param('is', $attemptId, $eventData);
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        throw new RuntimeException('Nao foi possivel registrar o evento de conclusao manual: ' . $error);
+    }
+    $stmt->close();
+
+    return [
+        'render' => $render,
+        'tentativa_id' => $attemptId,
+        'status_anterior' => $previousStatus,
+        'deadline_job_id' => $jobId,
+        'command' => $command,
+    ];
+}
+
 function deadline_flow_rework_locked(mysqli $conn, int $renderId, string $flowStatus): array
 {
     deadline_flow_require_schema($conn);
@@ -359,8 +467,13 @@ function deadline_flow_approve_locked(mysqli $conn, int $renderId): array
     $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
 
     if (!$attempt) {
-        deadline_flow_ensure_initial_attempt($conn, $renderId);
-        $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
+        $latestAttempt = deadline_flow_lock_latest_attempt($conn, $renderId);
+        if ($latestAttempt && (string) $latestAttempt['status'] === DEADLINE_TENTATIVA_CONCLUIDA_MANUALMENTE) {
+            $attempt = $latestAttempt;
+        } else {
+            deadline_flow_ensure_initial_attempt($conn, $renderId);
+            $attempt = deadline_flow_lock_active_attempt($conn, $renderId);
+        }
     }
 
     if (!$attempt) {
@@ -380,6 +493,39 @@ function deadline_flow_approve_locked(mysqli $conn, int $renderId): array
     $jobId = deadline_flow_valid_job_id(
         $attempt['deadline_job_id'] ?? null
     );
+
+    if ((string) $attempt['status'] === DEADLINE_TENTATIVA_CONCLUIDA_MANUALMENTE) {
+        $stmt = $conn->prepare(
+            "UPDATE render_tentativas
+             SET status = ?, ativa = 0,
+                 concluido_em = COALESCE(concluido_em, NOW()),
+                 encerrado_em = COALESCE(encerrado_em, NOW()),
+                 motivo_encerramento = COALESCE(motivo_encerramento, 'CONCLUIDA_MANUALMENTE')
+             WHERE id = ?"
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Erro ao preparar aprovacao da tentativa manual: ' . $conn->error);
+        }
+        $approved = DEADLINE_TENTATIVA_APROVADA;
+        $stmt->bind_param('si', $approved, $attemptId);
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            throw new RuntimeException('Erro ao aprovar a tentativa manual: ' . $error);
+        }
+        $stmt->close();
+
+        // A exclusao pode ainda estar em fila. A chave unica torna esta garantia idempotente.
+        $command = $jobId !== null
+            ? deadline_flow_enqueue_delete($conn, $render, $attemptId, $jobId, 80)
+            : ['created' => false, 'id' => null, 'status' => null];
+
+        return [
+            'tentativa_id' => $attemptId,
+            'deadline_job_id' => $jobId,
+            'command' => $command,
+        ];
+    }
 
     if ($jobId !== null) {
         $stmt = $conn->prepare(

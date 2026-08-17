@@ -15,10 +15,19 @@ REFAZENDO = "REFAZENDO"
 EXCLUSAO_PENDENTE = "EXCLUSAO_PENDENTE"
 ENCERRADA = "ENCERRADA"
 CANCELADA = "CANCELADA"
+CONCLUIDA_MANUALMENTE = "CONCLUIDA_MANUALMENTE"
 INCONSISTENTE = "INCONSISTENTE"
 
 OPERATIONAL_STATES = {VINCULADA, EM_ANDAMENTO, EM_APROVACAO, ERRO}
-TERMINAL_STATES = {APROVADA, REPROVADA, REFAZENDO, ENCERRADA, CANCELADA, INCONSISTENTE}
+TERMINAL_STATES = {
+    APROVADA,
+    REPROVADA,
+    REFAZENDO,
+    ENCERRADA,
+    CANCELADA,
+    CONCLUIDA_MANUALMENTE,
+    INCONSISTENTE,
+}
 
 ALLOWED_TRANSITIONS = {
     AGUARDANDO_JOB: {VINCULADA, EM_ANDAMENTO, EM_APROVACAO, ERRO, CANCELADA},
@@ -59,7 +68,11 @@ def state_from_deadline(job_data: dict, task_data: dict) -> str:
     for key in ("TaskErrorCount", "JobErrorCount", "ErrorCount", "Errors"):
         values = task_data.get(key, [])
         values = list(values) if isinstance(values, list) else [values]
-        values += job_data.get(key, []) if isinstance(job_data.get(key), list) else [job_data.get(key)]
+        values += (
+            job_data.get(key, [])
+            if isinstance(job_data.get(key), list)
+            else [job_data.get(key)]
+        )
         for value in values:
             try:
                 error_count = max(error_count, int(value))

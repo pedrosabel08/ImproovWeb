@@ -504,6 +504,9 @@ function renderCards(renders) {
         .trim()
         .toLowerCase() === "em andamento";
     const deadlineProgress = isInProgress ? renderDeadlineProgress(render) : "";
+    const manualBadge = render.concluido_manualmente
+      ? '<span class="status-badge manual-completion-badge" title="Execução concluída fora do Deadline"><i class="fa-solid fa-hand"></i> Feito manualmente</span>'
+      : "";
     const obra = render.obra_nomenclatura || "—";
     const colab = render.nome_colaborador || "—";
 
@@ -531,6 +534,7 @@ function renderCards(renders) {
               <i class="fa-solid ${ico}"></i>
               ${render.status}
             </span>
+            ${manualBadge}
             <span class="card-date">
               <i class="fa-regular fa-calendar"></i>
               ${dateLabel}
@@ -740,7 +744,17 @@ function buildTimelineEntry(ev) {
   var startClass = ev.is_start ? "tl-is-start" : "";
 
   var actionHtml;
-  if (ev.is_start || !ev.status_anterior) {
+  if (ev.type === "manual_completion") {
+    var actor = escapeHtml(ev.autor || "Usuário não identificado");
+    var reason = escapeHtml(ev.justificativa || "Sem justificativa informada.");
+    actionHtml =
+      '<span class="status-badge manual-completion-badge"><i class="fa-solid fa-hand"></i> Feito manualmente</span>' +
+      '<span class="tl-manual-detail">Por ' +
+      actor +
+      ": " +
+      reason +
+      "</span>";
+  } else if (ev.is_start || !ev.status_anterior) {
     var bc = getStatusBadgeClass(ev.status_novo);
     actionHtml =
       '<span class="status-badge ' + bc + '">' + ev.status_novo + "</span>";
@@ -828,6 +842,11 @@ function editRender(idrender_alta) {
     success: function (response) {
       if (response.status == "sucesso") {
         const r = response.render;
+        const isPlantaHumanizada =
+          String(r.tipo_imagem || "")
+            .trim()
+            .toLowerCase() === "planta humanizada";
+        $("#myModal").data("tipo-imagem", r.tipo_imagem || "");
 
         // — Header fields —
         $("#modal_imagem_id").text(r.imagem_nome || "—");
@@ -836,11 +855,14 @@ function editRender(idrender_alta) {
         // Status badge in header subtitle
         const sc = getStatusBadgeClass(r.status);
         const ico = getStatusIcon(r.status);
+        const manualHeaderBadge = r.concluido_manualmente
+          ? ' <span class="status-badge manual-completion-badge"><i class="fa-solid fa-hand"></i> Feito manualmente</span>'
+          : "";
         $("#modal_status_badge").html(
-          `<span class="status-badge ${sc}"><i class="fa-solid ${ico}"></i> ${r.status}</span>`,
+          `<span class="status-badge ${sc}"><i class="fa-solid ${ico}"></i> ${r.status}</span>${manualHeaderBadge}`,
         );
 
-        if (r.status !== "Aprovado") {
+        if (r.status !== "Aprovado" || isPlantaHumanizada) {
           $("#openRenderReferences").hide();
         } else {
           $("#openRenderReferences").show();
@@ -859,6 +881,17 @@ function editRender(idrender_alta) {
         $("#modal_previa_jpg").text(r.previa_jpg || "—");
 
         // — Error section —
+        if (r.concluido_manualmente) {
+          const actor = r.concluido_manualmente_por || "—";
+          $("#modal_manual_completion")
+            .text(`Feito manualmente por ${actor}`)
+            .attr("title", r.justificativa_conclusao_manual || "");
+          $("#manualCompletionDetail").show();
+        } else {
+          $("#manualCompletionDetail").hide();
+          $("#modal_manual_completion").text("—").attr("title", "");
+        }
+
         const errors = r.errors || "";
         if (errors) {
           $("#errorsContainer").show();
@@ -938,6 +971,7 @@ function editRender(idrender_alta) {
             .data("target-status", "Reprovado")
             .html('<i class="fa-solid fa-rotate-right"></i> Reprovar');
         }
+        $("#completeRenderManually").toggle(!!r.can_complete_manually);
       }
     },
   });
@@ -1177,15 +1211,19 @@ function mostrarModalAprovacaoInterna() {
 
 function aprovarRender(approvalOrigin) {
   const idrender_alta = $("#modal_idrender").text();
+  const isPlantaHumanizada =
+    String($("#myModal").data("tipo-imagem") || "")
+      .trim()
+      .toLowerCase() === "planta humanizada";
   const statusImagem = String($("#modal_status_id").text() || "")
     .trim()
     .toLowerCase();
-  if (statusImagem !== "p00" && !approvalOrigin) {
+  if (!isPlantaHumanizada && statusImagem !== "p00" && !approvalOrigin) {
     if (window.RenderReferenceReview)
       window.RenderReferenceReview.open(idrender_alta);
     return;
   }
-  if (statusImagem !== "p00") {
+  if (!isPlantaHumanizada && statusImagem !== "p00") {
     if (window.RenderReferenceReview)
       window.RenderReferenceReview.open(idrender_alta, approvalOrigin);
     return;
@@ -1235,6 +1273,91 @@ function aprovarRender(approvalOrigin) {
     }).showToast();
   });
 }
+
+function concluirRenderManualmente(justificativa) {
+  const idrender_alta = Number($("#modal_idrender").text());
+  if (!idrender_alta) return;
+  const $button = $("#completeRenderManually");
+  $button.prop("disabled", true);
+  $.post(
+    "ajax.php",
+    {
+      action: "completeRenderManually",
+      idrender_alta: idrender_alta,
+      justificativa: justificativa,
+    },
+    function (response) {
+      if (response && response.status === "sucesso") {
+        loadRenders();
+        loadRenderKpis();
+        $("#myModal").removeClass("is-open");
+        Toastify({
+          text: response.message || "Render enviado para aprovação.",
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#0e7490",
+        }).showToast();
+        return;
+      }
+      Toastify({
+        text:
+          (response && response.message) ||
+          "Não foi possível concluir o render manualmente.",
+        duration: 4500,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#f44336",
+      }).showToast();
+    },
+    "json",
+  )
+    .fail(function (xhr) {
+      const message = xhr.responseJSON && xhr.responseJSON.message;
+      Toastify({
+        text: message || "Erro de comunicação com o servidor.",
+        duration: 4500,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#f44336",
+      }).showToast();
+    })
+    .always(function () {
+      $button.prop("disabled", false);
+    });
+}
+
+$("#completeRenderManually")
+  .off("click")
+  .on("click", function () {
+    if (typeof Swal === "undefined") return;
+    Swal.fire({
+      icon: "warning",
+      title: "Marcar render como feito manualmente?",
+      text: "O job no Deadline será encerrado e o render seguirá para aprovação.",
+      input: "textarea",
+      inputLabel: "Justificativa",
+      inputPlaceholder:
+        "Explique por que o render foi concluído fora do Deadline.",
+      inputAttributes: {
+        maxlength: 2000,
+        "aria-label": "Justificativa da conclusão manual",
+      },
+      showCancelButton: true,
+      confirmButtonText: "Confirmar conclusão manual",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#0e7490",
+      inputValidator: function (value) {
+        return String(value || "").trim()
+          ? undefined
+          : "Informe a justificativa para continuar.";
+      },
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        concluirRenderManualmente(String(result.value || "").trim());
+      }
+    });
+  });
 
 $("#aprovarRender")
   .off("click")
@@ -1336,6 +1459,17 @@ function enviarParaPos(approvalOrigin) {
     dataType: "json",
     success: function (response) {
       if (response.status === "sucesso") {
+        if (response.skip_pos_producao) {
+          abrirPosAposAprovarRender($("#pos_render_id").val());
+          Toastify({
+            text: "Planta Humanizada aprovada sem envio para P\u00f3s-Produ\u00e7\u00e3o.",
+            duration: 4000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#0e7490",
+          }).showToast();
+          return;
+        }
         abrirPosAposAprovarRender($("#pos_render_id").val());
         $("#pos_caminho, #pos_referencias, #pos_references_files").val("");
         $("#posReferencesPreview").empty();
@@ -1430,12 +1564,46 @@ $("#reprovarRender").click(function () {
   });
 });
 
+function fecharMenuMaisAcoes() {
+  const $container = $(".modal-more-actions");
+  $container.removeClass("is-open");
+  $("#modalMoreActions").attr("aria-expanded", "false");
+  $("#modalMoreMenu").attr("aria-hidden", "true");
+}
+
+$("#modalMoreActions")
+  .off("click")
+  .on("click", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const $container = $(this).closest(".modal-more-actions");
+    const isOpen = $container.toggleClass("is-open").hasClass("is-open");
+    $(this).attr("aria-expanded", String(isOpen));
+    $("#modalMoreMenu").attr("aria-hidden", String(!isOpen));
+  });
+
+$(document)
+  .off("click.renderMoreActions")
+  .on("click.renderMoreActions", function (event) {
+    if (!$(event.target).closest(".modal-more-actions").length) {
+      fecharMenuMaisAcoes();
+    }
+  });
+
+$("#closeModal")
+  .add("#myModal")
+  .off("click.closeMoreActions")
+  .on("click.closeMoreActions", function () {
+    fecharMenuMaisAcoes();
+  });
+
 // Excluir o render
 $("#deleteRender")
   .off("click")
   .on("click", function (e) {
     e.preventDefault(); // Evita submit do formulário se for button type="submit"
     const idrender_alta = $("#modal_idrender").text();
+    fecharMenuMaisAcoes();
     $.ajax({
       url: "ajax.php",
       method: "POST",

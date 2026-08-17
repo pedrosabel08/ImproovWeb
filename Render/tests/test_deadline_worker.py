@@ -20,12 +20,14 @@ from deadline_repository import build_observation_plan
 from deadline_worker import DeadlineWorker, first_submission_plan
 from deadline_domain import (
     AGUARDANDO_JOB,
+    CONCLUIDA_MANUALMENTE,
     EM_ANDAMENTO,
     EM_APROVACAO,
     ENCERRADA,
     ERRO,
     EXCLUSAO_PENDENTE,
     REPROVADA,
+    TERMINAL_STATES,
     backoff_seconds,
     choose_unambiguous_candidates,
     delete_output_means_not_found,
@@ -219,6 +221,10 @@ class DiscoveryModel:
 
 
 class DeadlineWorkerAcceptanceTests(unittest.TestCase):
+    def test_manual_completion_is_terminal_and_not_observed_again(self):
+        self.assertIn(CONCLUIDA_MANUALMENTE, TERMINAL_STATES)
+        self.assertFalse(transition_allowed(CONCLUIDA_MANUALMENTE, EM_ANDAMENTO))
+
     def test_case_01_normal_rejection_creates_history_command_and_new_attempt(self):
         model = FlowModel()
         old, new = model.reprove()

@@ -602,6 +602,17 @@
             }
             if (response.status !== "sucesso")
               throw new Error(response.message);
+            if (response.skip_pos_producao) {
+              fechar();
+              toast(
+                "Planta Humanizada aprovada sem envio para Pos-Producao.",
+                "#0e7490",
+              );
+              if (window.loadRenders) window.loadRenders(1);
+              if (window.loadRenderKpis) window.loadRenderKpis();
+              $("#myModal").removeClass("is-open");
+              return;
+            }
             toast("Render enviado para Pós-Produção.");
             fechar();
             if (window.loadRenders) window.loadRenders(1);
@@ -640,6 +651,11 @@
       .then((r) => r.json())
       .then((data) => {
         if (data.status !== "sucesso") throw new Error(data.message);
+        if (data.skip_pos_producao) {
+          fechar();
+          toast("Planta Humanizada nao utiliza a Pos-Producao.", "#0e7490");
+          return;
+        }
         state.posId = Number(data.pos_producao_id || 0);
         state.items = [
           {

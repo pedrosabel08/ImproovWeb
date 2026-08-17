@@ -946,6 +946,21 @@ body {
   background: rgba(8, 145, 178, 0.12);
   color: #0891b2;
 }
+.manual-completion-badge {
+  background: rgba(14, 116, 144, 0.14);
+  color: #0e7490;
+}
+.manual-completion-detail .detail-value {
+  color: #0e7490;
+}
+.tl-manual-detail {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
 
 .card-date {
   font-size: 11px;
@@ -1442,6 +1457,69 @@ body {
   flex-shrink: 0;
 }
 
+.modal-more-actions {
+  position: relative;
+  margin-right: auto;
+}
+
+.modal-more-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-modal);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.modal-more-trigger:hover,
+.modal-more-trigger:focus-visible,
+.modal-more-actions.is-open .modal-more-trigger {
+  background: var(--bg-section);
+  border-color: var(--accent);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.modal-more-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  display: none;
+  min-width: 150px;
+  padding: 5px;
+  border: 1px solid var(--border-modal);
+  border-radius: var(--radius-sm);
+  background: var(--bg-modal);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.modal-more-actions.is-open .modal-more-menu {
+  display: block;
+}
+
+.modal-more-menu .btn-excluir {
+  width: 100%;
+  justify-content: flex-start;
+  height: 34px;
+  padding: 0 10px;
+  background: transparent;
+}
+
+.modal-more-menu .btn-excluir:hover,
+.modal-more-menu .btn-excluir:focus-visible {
+  background: rgba(239, 68, 68, 0.12);
+  outline: none;
+}
+
 .btn-action {
   display: inline-flex;
   align-items: center;
@@ -1478,6 +1556,15 @@ body {
 }
 .btn-reprovar:hover {
   background: rgba(245, 158, 11, 0.22);
+  transform: translateY(-1px);
+}
+
+.btn-manual {
+  background: rgba(14, 116, 144, 0.14);
+  color: #0e7490;
+}
+.btn-manual:hover {
+  background: rgba(14, 116, 144, 0.24);
   transform: translateY(-1px);
 }
 

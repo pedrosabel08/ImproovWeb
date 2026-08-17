@@ -22,6 +22,88 @@ function render_current_colaborador_id(): int
     return isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : 0;
 }
 
+function render_manual_completion_schema_ready(mysqli $conn): bool
+{
+    static $ready = null;
+    if ($ready !== null) {
+        return $ready;
+    }
+    $stmt = $conn->prepare(
+        "SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'render_conclusoes_manuais'
+           AND COLUMN_NAME IN ('render_id', 'tentativa_id', 'colaborador_id', 'status_anterior', 'justificativa', 'criado_em')"
+    );
+    if (!$stmt || !$stmt->execute()) {
+        if ($stmt) $stmt->close();
+        return $ready = false;
+    }
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $ready = ((int) ($row['total'] ?? 0) === 6);
+}
+
+function render_manual_completion_require_schema(mysqli $conn): void
+{
+    if (!render_manual_completion_schema_ready($conn)) {
+        throw new RuntimeException('A migration sql/2026-08-17_render_conclusao_manual.sql ainda nao foi aplicada.');
+    }
+}
+
+function render_current_user_is_manager(mysqli $conn): bool
+{
+    $nivel = (int) ($_SESSION['nivel_acesso'] ?? 0);
+    if (in_array($nivel, [1, 5], true)) {
+        return true;
+    }
+    $cargoSessao = mb_strtolower(trim((string) ($_SESSION['cargo_colaborador'] ?? '')), 'UTF-8');
+    foreach (['gestor', 'diretor', 'gerente'] as $term) {
+        if ($cargoSessao !== '' && mb_strpos($cargoSessao, $term, 0, 'UTF-8') !== false) {
+            return true;
+        }
+    }
+    $usuarioId = (int) ($_SESSION['idusuario'] ?? 0);
+    if ($usuarioId <= 0) {
+        return false;
+    }
+    $stmt = $conn->prepare(
+        "SELECT LOWER(c.nome) AS cargo
+         FROM usuario_cargo uc
+         JOIN cargo c ON c.id = uc.cargo_id
+         WHERE uc.usuario_id = ?"
+    );
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('i', $usuarioId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        foreach (['gestor', 'diretor', 'gerente'] as $term) {
+            if (mb_strpos((string) $row['cargo'], $term, 0, 'UTF-8') !== false) {
+                $stmt->close();
+                return true;
+            }
+        }
+    }
+    $stmt->close();
+    return false;
+}
+
+function render_can_complete_manually(mysqli $conn, array $render): bool
+{
+    if (!deadline_flow_manual_eligible_status((string) ($render['status'] ?? ''))) {
+        return false;
+    }
+    $actorId = render_current_colaborador_id();
+    if ($actorId <= 0) {
+        return false;
+    }
+    return $actorId === (int) ($render['responsavel_id'] ?? 0)
+        || render_current_user_is_manager($conn);
+}
+
 /**
  * Reads cached Deadline progress once for each unique job shown in a listing.
  *
@@ -661,12 +743,29 @@ if (isset($_GET['action'])) {
                 $types .= 's';
             }
 
+            $manualCompletionAvailable = render_manual_completion_schema_ready($conn);
+            $manualJoin = $manualCompletionAvailable
+                ? "\nLEFT JOIN render_conclusoes_manuais rcm ON rcm.id = (
+                    SELECT cm.id FROM render_conclusoes_manuais cm
+                    WHERE cm.render_id = r.idrender_alta
+                    ORDER BY cm.criado_em DESC, cm.id DESC
+                    LIMIT 1
+                )"
+                : '';
+            $manualSelect = $manualCompletionAvailable
+                ? ", CASE WHEN BINARY r.status = 0x456D206170726F7661C3A7C3A36F
+                           AND rcm.tentativa_id = (
+                               SELECT rt.id FROM render_tentativas rt
+                               WHERE rt.render_id = r.idrender_alta
+                               ORDER BY rt.numero_tentativa DESC LIMIT 1
+                           ) THEN 1 ELSE 0 END AS concluido_manualmente"
+                : ', 0 AS concluido_manualmente';
             $from = "
 FROM render_alta r
 LEFT JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
 LEFT JOIN colaborador c ON r.responsavel_id = c.idcolaborador
 LEFT JOIN status_imagem s ON r.status_id = s.idstatus
-LEFT JOIN obra o ON i.obra_id = o.idobra";
+LEFT JOIN obra o ON i.obra_id = o.idobra" . $manualJoin;
             $whereSql = ' WHERE ' . implode(' AND ', $where);
 
             $bind = static function ($stmt, $bindTypes, $bindParams) {
@@ -686,9 +785,10 @@ LEFT JOIN obra o ON i.obra_id = o.idobra";
     c.nome_colaborador, 
     s.nome_status, 
     i.imagem_nome,
+    i.tipo_imagem,
     o.nome_obra,
     o.nomenclatura AS obra_nomenclatura,
-    r.*
+    r.* $manualSelect
  $from
  $whereSql
 ORDER BY 
@@ -699,6 +799,7 @@ LIMIT $limit OFFSET $offset";
             $renders = [];
 
             while ($row = $result->fetch_assoc()) {
+                $row['concluido_manualmente'] = (bool) ($row['concluido_manualmente'] ?? false);
                 $renders[] = $row;
             }
             $stmt->close();
@@ -750,14 +851,46 @@ LIMIT $limit OFFSET $offset";
         case 'getRender':
             // Buscar um render específico
             if (isset($_GET['idrender_alta'])) {
-                $idrender_alta = $_GET['idrender_alta'];
-                $sql = "SELECT r.*, i.imagem_nome, c.nome_colaborador, s.nome_status  FROM render_alta r
-                 join imagens_cliente_obra i on r.imagem_id = i.idimagens_cliente_obra 
-                 join colaborador c on r.responsavel_id = c.idcolaborador
-                 join status_imagem s on r.status_id = s.idstatus
-                 WHERE idrender_alta = $idrender_alta";
-                $result = $conn->query($sql);
-                $render = $result->fetch_assoc();
+                $idrender_alta = (int) $_GET['idrender_alta'];
+                $manualCompletionAvailable = render_manual_completion_schema_ready($conn);
+                $manualJoin = $manualCompletionAvailable
+                    ? " LEFT JOIN render_conclusoes_manuais rcm ON rcm.id = (
+                        SELECT cm.id FROM render_conclusoes_manuais cm
+                        WHERE cm.render_id = r.idrender_alta
+                        ORDER BY cm.criado_em DESC, cm.id DESC LIMIT 1
+                    ) LEFT JOIN colaborador manual_colaborador ON manual_colaborador.idcolaborador = rcm.colaborador_id"
+                    : '';
+                $manualSelect = $manualCompletionAvailable
+                    ? ", CASE WHEN BINARY r.status = 0x456D206170726F7661C3A7C3A36F
+                               AND rcm.tentativa_id = (
+                                   SELECT rt.id FROM render_tentativas rt
+                                   WHERE rt.render_id = r.idrender_alta
+                                   ORDER BY rt.numero_tentativa DESC LIMIT 1
+                               ) THEN 1 ELSE 0 END AS concluido_manualmente,
+                         rcm.justificativa AS justificativa_conclusao_manual,
+                         rcm.criado_em AS concluido_manualmente_em,
+                         manual_colaborador.nome_colaborador AS concluido_manualmente_por"
+                    : ', 0 AS concluido_manualmente, NULL AS justificativa_conclusao_manual, NULL AS concluido_manualmente_em, NULL AS concluido_manualmente_por';
+                $sql = "SELECT r.*, i.imagem_nome, i.tipo_imagem, c.nome_colaborador, s.nome_status,
+                               o.nomenclatura AS obra_nomenclatura $manualSelect
+                        FROM render_alta r
+                        JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
+                        LEFT JOIN colaborador c ON r.responsavel_id = c.idcolaborador
+                        JOIN status_imagem s ON r.status_id = s.idstatus
+                        LEFT JOIN obra o ON o.idobra = i.obra_id
+                        $manualJoin
+                        WHERE r.idrender_alta = ?";
+                $stmtRender = $conn->prepare($sql);
+                $stmtRender->bind_param('i', $idrender_alta);
+                $stmtRender->execute();
+                $render = $stmtRender->get_result()->fetch_assoc();
+                $stmtRender->close();
+                if (!$render) {
+                    echo json_encode(['status' => 'erro', 'message' => 'Render nao encontrado.']);
+                    break;
+                }
+                $render['concluido_manualmente'] = (bool) ($render['concluido_manualmente'] ?? false);
+                $render['can_complete_manually'] = render_can_complete_manually($conn, $render);
 
                 // Buscar previews associados ao render (se houver) e incluí-los na resposta
                 $previews = [];
@@ -805,6 +938,27 @@ LIMIT $limit OFFSET $offset";
                         $logs[] = $row;
                     }
                     $stmtLogs->close();
+                }
+
+                $manualEvents = [];
+                if (render_manual_completion_schema_ready($conn)) {
+                    $stmtManual = $conn->prepare(
+                        "SELECT cm.status_anterior, cm.justificativa, cm.criado_em,
+                                c.nome_colaborador AS autor
+                         FROM render_conclusoes_manuais cm
+                         JOIN colaborador c ON c.idcolaborador = cm.colaborador_id
+                         WHERE cm.render_id = ?
+                         ORDER BY cm.criado_em ASC, cm.id ASC"
+                    );
+                    if ($stmtManual) {
+                        $stmtManual->bind_param('i', $render_id);
+                        $stmtManual->execute();
+                        $resultManual = $stmtManual->get_result();
+                        while ($manual = $resultManual->fetch_assoc()) {
+                            $manualEvents[] = $manual;
+                        }
+                        $stmtManual->close();
+                    }
                 }
 
                 // 2. Fetch render metadata for anchor/fallback
@@ -872,6 +1026,19 @@ LIMIT $limit OFFSET $offset";
                     }
                 }
 
+                foreach ($manualEvents as $manual) {
+                    $timeline[] = [
+                        'status_anterior' => $manual['status_anterior'],
+                        'status_novo' => deadline_flow_approval_status(),
+                        'data' => $manual['criado_em'],
+                        'source' => 'manual',
+                        'type' => 'manual_completion',
+                        'autor' => $manual['autor'],
+                        'justificativa' => $manual['justificativa'],
+                        'is_start' => false,
+                    ];
+                }
+
                 // 4. Sort chronologically (datetime strings are lexicographically sortable)
                 usort($timeline, function ($a, $b) {
                     return strcmp($a['data'] ?? '', $b['data'] ?? '');
@@ -902,7 +1069,7 @@ if (isset($_POST['action'])) {
                 aprovacao_interna_ensure_schema($conn);
                 $conn->begin_transaction();
                 $stmt = $conn->prepare("SELECT r.idrender_alta, r.imagem_id, r.status_id, r.responsavel_id, r.previa_jpg,
-                    i.obra_id, s.nome_status, p.idpos_producao
+                    i.obra_id, i.tipo_imagem, s.nome_status, p.idpos_producao
                     FROM render_alta r
                     JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
                     JOIN status_imagem s ON s.idstatus = r.status_id
@@ -917,6 +1084,7 @@ if (isset($_POST['action'])) {
                     throw new RuntimeException('P00 mantém o fluxo de aprovação e Follow-up atual.');
                 }
 
+                $isPlantaHumanizada = mb_strtolower(trim((string) ($render['tipo_imagem'] ?? '')), 'UTF-8') === 'planta humanizada';
                 $alteracao = aprovacao_interna_resolver_alteracao_por_render($conn, $renderId);
                 if ($alteracao && !aprovacao_interna_tem_registro($conn, (int) $alteracao['funcao_imagem_id'], (int) $alteracao['status_id'])) {
                     $origin = strtolower(trim((string) ($_POST['approval_origin'] ?? '')));
@@ -930,7 +1098,10 @@ if (isset($_POST['action'])) {
                     }
                 }
 
-                $posId = (int) ($render['idpos_producao'] ?? 0);
+                $posId = 0;
+                $references = [];
+                if (!$isPlantaHumanizada) {
+                    $posId = (int) ($render['idpos_producao'] ?? 0);
                 if ($posId <= 0) {
                     $responsavel = (int) ($render['responsavel_id'] ?: $colaboradorId);
                     $insertPos = $conn->prepare("INSERT INTO pos_producao
@@ -976,6 +1147,8 @@ if (isset($_POST['action'])) {
                         }
                     }
                 }
+                    $references = pos_referencias_list($conn, $posId);
+                }
 
                 // A aprovacao so e concluida quando a Finalizacao estiver marcada
                 // como concluida e aguardando o upload do arquivo final.
@@ -988,9 +1161,9 @@ if (isset($_POST['action'])) {
                 $deadlineFlowResult = deadline_flow_approve_locked($conn, $renderId);
                 $conn->commit();
 
-                notifyRenderUpdate('render.approved_to_pos', ['render_id' => $renderId, 'imagem_id' => (int) $render['imagem_id'], 'pos_producao_id' => $posId]);
-                if (function_exists('notifyPosProducaoUpdate')) notifyPosProducaoUpdate('references_changed', ['render_id' => $renderId, 'pos_producao_id' => $posId]);
-                echo json_encode(['status' => 'sucesso', 'render_id' => $renderId, 'pos_producao_id' => $posId, 'references' => pos_referencias_list($conn, $posId), 'deadline_command_created' => $deadlineFlowResult['command']['created'] ?? false]);
+                notifyRenderUpdate($isPlantaHumanizada ? 'render.approved_without_pos' : 'render.approved_to_pos', ['render_id' => $renderId, 'imagem_id' => (int) $render['imagem_id'], 'pos_producao_id' => $posId, 'tipo_imagem' => $render['tipo_imagem'] ?? null]);
+                if (!$isPlantaHumanizada && function_exists('notifyPosProducaoUpdate')) notifyPosProducaoUpdate('references_changed', ['render_id' => $renderId, 'pos_producao_id' => $posId]);
+                echo json_encode(['status' => 'sucesso', 'render_id' => $renderId, 'pos_producao_id' => $posId, 'skip_pos_producao' => $isPlantaHumanizada, 'tipo_imagem' => $render['tipo_imagem'] ?? null, 'references' => $references, 'deadline_command_created' => $deadlineFlowResult['command']['created'] ?? false]);
             } catch (Throwable $e) {
                 $conn->rollback();
                 pos_referencias_cleanup_uploaded_files($savedFiles);
@@ -1001,11 +1174,19 @@ if (isset($_POST['action'])) {
         case 'getPosReferences':
             $renderId = isset($_GET['render_id']) ? (int) $_GET['render_id'] : 0;
             pos_referencias_ensure_schema($conn);
-            $stmt = $conn->prepare('SELECT idpos_producao FROM pos_producao WHERE render_id = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT p.idpos_producao, i.tipo_imagem
+                FROM pos_producao p
+                JOIN render_alta r ON r.idrender_alta = p.render_id
+                JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                WHERE p.render_id = ? LIMIT 1');
             $stmt->bind_param('i', $renderId);
             $stmt->execute();
             $row = $stmt->get_result()->fetch_assoc();
             $stmt->close();
+            if ($row && mb_strtolower(trim((string) ($row['tipo_imagem'] ?? '')), 'UTF-8') === 'planta humanizada') {
+                echo json_encode(['status' => 'sucesso', 'skip_pos_producao' => true, 'references' => []]);
+                break;
+            }
             echo json_encode(['status' => 'sucesso', 'references' => $row ? pos_referencias_list($conn, (int) $row['idpos_producao']) : []]);
             break;
 
@@ -1017,13 +1198,27 @@ if (isset($_POST['action'])) {
                 break;
             }
             pos_referencias_ensure_schema($conn);
-            $stmt = $conn->prepare("SELECT r.idrender_alta, r.previa_jpg, p.idpos_producao
-                FROM render_alta r LEFT JOIN pos_producao p ON p.render_id = r.idrender_alta
+            $stmt = $conn->prepare("SELECT r.idrender_alta, r.previa_jpg, i.tipo_imagem, p.idpos_producao
+                FROM render_alta r
+                JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                LEFT JOIN pos_producao p ON p.render_id = r.idrender_alta
                 WHERE r.idrender_alta = ? LIMIT 1");
             $stmt->bind_param('i', $renderId);
             $stmt->execute();
             $review = $stmt->get_result()->fetch_assoc();
             $stmt->close();
+            $isPlantaHumanizada = $review && mb_strtolower(trim((string) ($review['tipo_imagem'] ?? '')), 'UTF-8') === 'planta humanizada';
+            if ($isPlantaHumanizada) {
+                echo json_encode([
+                    'status' => 'sucesso',
+                    'render_id' => $renderId,
+                    'pos_producao_id' => 0,
+                    'skip_pos_producao' => true,
+                    'tipo_imagem' => $review['tipo_imagem'],
+                    'references' => [],
+                ]);
+                break;
+            }
             if (!$review) {
                 echo json_encode(['status' => 'erro', 'message' => 'Render não encontrado.']);
                 break;
@@ -1048,11 +1243,19 @@ if (isset($_POST['action'])) {
         case 'addReferenceFiles':
             $renderId = isset($_POST['render_id']) ? (int)$_POST['render_id'] : 0;
             $colaboradorId = render_current_colaborador_id();
-            $stmt = $conn->prepare('SELECT idpos_producao FROM pos_producao WHERE render_id = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT p.idpos_producao, i.tipo_imagem
+                FROM pos_producao p
+                JOIN render_alta r ON r.idrender_alta = p.render_id
+                JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                WHERE p.render_id = ? LIMIT 1');
             $stmt->bind_param('i', $renderId);
             $stmt->execute();
             $pos = $stmt->get_result()->fetch_assoc();
             $stmt->close();
+            if ($pos && mb_strtolower(trim((string) ($pos['tipo_imagem'] ?? '')), 'UTF-8') === 'planta humanizada') {
+                echo json_encode(['status' => 'erro', 'message' => 'Planta Humanizada nao utiliza a Pos-Producao.']);
+                break;
+            }
             if (!$pos || $colaboradorId <= 0) {
                 echo json_encode(['status' => 'erro', 'message' => 'A Pós-Produção ainda não está disponível para esta referência.']);
                 break;
@@ -1110,6 +1313,70 @@ if (isset($_POST['action'])) {
             echo json_encode(['status' => 'sucesso']);
             break;
 
+        case 'completeRenderManually':
+            $renderId = isset($_POST['idrender_alta']) ? (int) $_POST['idrender_alta'] : 0;
+            $reason = trim((string) ($_POST['justificativa'] ?? ''));
+            $actorId = render_current_colaborador_id();
+            if ($renderId <= 0 || $actorId <= 0) {
+                http_response_code(422);
+                echo json_encode(['status' => 'erro', 'message' => 'Render ou colaborador invalido.']);
+                break;
+            }
+            if ($reason === '') {
+                http_response_code(422);
+                echo json_encode(['status' => 'erro', 'message' => 'Informe a justificativa da conclusao manual.']);
+                break;
+            }
+            if (mb_strlen($reason, 'UTF-8') > 2000) {
+                http_response_code(422);
+                echo json_encode(['status' => 'erro', 'message' => 'A justificativa deve ter no maximo 2.000 caracteres.']);
+                break;
+            }
+            try {
+                render_manual_completion_require_schema($conn);
+                $conn->begin_transaction();
+                $completion = deadline_flow_complete_manually_locked(
+                    $conn,
+                    $renderId,
+                    $actorId,
+                    render_current_user_is_manager($conn),
+                    $reason
+                );
+                $attemptId = (int) $completion['tentativa_id'];
+                $stmtAudit = $conn->prepare(
+                    "INSERT INTO render_conclusoes_manuais
+                        (render_id, tentativa_id, colaborador_id, status_anterior, justificativa)
+                     VALUES (?, ?, ?, ?, ?)"
+                );
+                $previousStatus = (string) $completion['status_anterior'];
+                $stmtAudit->bind_param('iiiss', $renderId, $attemptId, $actorId, $previousStatus, $reason);
+                if (!$stmtAudit->execute()) {
+                    $error = $stmtAudit->error;
+                    $stmtAudit->close();
+                    throw new RuntimeException('Nao foi possivel registrar a auditoria: ' . $error);
+                }
+                $stmtAudit->close();
+                $conn->commit();
+                notifyRenderUpdate('render.manually_completed', [
+                    'render_id' => $renderId,
+                    'tentativa_id' => $attemptId,
+                    'status' => deadline_flow_approval_status(),
+                ]);
+                echo json_encode([
+                    'status' => 'sucesso',
+                    'render_id' => $renderId,
+                    'tentativa_id' => $attemptId,
+                    'deadline_command_created' => $completion['command']['created'] ?? false,
+                    'deadline_command_status' => $completion['command']['status'] ?? null,
+                    'message' => 'Render marcado como feito manualmente e enviado para aprovacao.',
+                ]);
+            } catch (Throwable $e) {
+                $conn->rollback();
+                http_response_code(422);
+                echo json_encode(['status' => 'erro', 'message' => $e->getMessage()]);
+            }
+            break;
+
         case 'updateRender':
             // Atualizar o render
             if (isset($_POST['idrender_alta']) && isset($_POST['status'])) {
@@ -1123,8 +1390,20 @@ if (isset($_POST['action'])) {
                 $deadlineFlowResult = null;
                 $flowReviewMediaCreated = [];
                 $flowReviewMediaContext = null;
+                $isPlantaHumanizadaRender = false;
 
                 if (strtolower($status) === 'aprovado') {
+                    $stmtTipoImagem = $conn->prepare('SELECT i.tipo_imagem
+                        FROM render_alta r
+                        JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                        WHERE r.idrender_alta = ? LIMIT 1');
+                    if ($stmtTipoImagem) {
+                        $stmtTipoImagem->bind_param('i', $idrender_alta);
+                        $stmtTipoImagem->execute();
+                        $tipoImagemRow = $stmtTipoImagem->get_result()->fetch_assoc();
+                        $stmtTipoImagem->close();
+                        $isPlantaHumanizadaRender = mb_strtolower(trim((string) ($tipoImagemRow['tipo_imagem'] ?? '')), 'UTF-8') === 'planta humanizada';
+                    }
                     aprovacao_interna_ensure_schema($conn);
                     $alteracaoAprovacao = aprovacao_interna_resolver_alteracao_por_render($conn, (int)$idrender_alta);
 
@@ -1292,14 +1571,16 @@ if (isset($_POST['action'])) {
                     // Se o novo status for 'Aprovado', preparar os ângulos para follow-up
                     if (strtolower($status) === 'aprovado') {
 
-                        $stmtPos = $conn->prepare("UPDATE pos_producao SET data_pos = NOW() WHERE render_id = ?");
-                        if ($stmtPos) {
-                            $stmtPos->bind_param('i', $idrender_alta);
-                            $stmtPos->execute();
-                            $logs[] = 'pos_producao.data_pos resetado para NOW()';
-                            $stmtPos->close();
-                        } else {
-                            $logs[] = 'Erro prepare pos_producao reset: ' . $conn->error;
+                        if (!$isPlantaHumanizadaRender) {
+                            $stmtPos = $conn->prepare("UPDATE pos_producao SET data_pos = NOW() WHERE render_id = ?");
+                            if ($stmtPos) {
+                                $stmtPos->bind_param('i', $idrender_alta);
+                                $stmtPos->execute();
+                                $logs[] = 'pos_producao.data_pos resetado para NOW()';
+                                $stmtPos->close();
+                            } else {
+                                $logs[] = 'Erro prepare pos_producao reset: ' . $conn->error;
+                            }
                         }
 
 
@@ -1633,6 +1914,18 @@ if (isset($_POST['action'])) {
                 $render_id = (int) $_POST['render_id'];
                 $refs = (string) ($_POST['refs'] ?? '');
                 $obs = (string) ($_POST['obs'] ?? '');
+                $stmtType = $conn->prepare('SELECT i.tipo_imagem
+                    FROM render_alta r
+                    JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                    WHERE r.idrender_alta = ? LIMIT 1');
+                $stmtType->bind_param('i', $render_id);
+                $stmtType->execute();
+                $typeRow = $stmtType->get_result()->fetch_assoc();
+                $stmtType->close();
+                if ($typeRow && mb_strtolower(trim((string) ($typeRow['tipo_imagem'] ?? '')), 'UTF-8') === 'planta humanizada') {
+                    echo json_encode(['status' => 'erro', 'message' => 'Planta Humanizada nao utiliza a Pos-Producao.']);
+                    break;
+                }
                 $stmt = $conn->prepare('UPDATE pos_producao SET refs = ?, obs = ?, data_pos = NOW() WHERE render_id = ?');
                 $stmt->bind_param('ssi', $refs, $obs, $render_id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {

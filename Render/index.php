@@ -311,6 +311,10 @@ $conn->close();
                                 <span class="detail-label">Computador</span>
                                 <span class="detail-value" id="modal_computer">—</span>
                             </div>
+                            <div class="detail-row manual-completion-detail" id="manualCompletionDetail" style="display:none;">
+                                <span class="detail-label">Execução</span>
+                                <span class="detail-value" id="modal_manual_completion">—</span>
+                            </div>
                             <div class="detail-row" id="errorsContainer" style="display:none;">
                                 <span class="detail-label">Erros</span>
                                 <button class="errors-toggle" id="toggleErrors">
@@ -357,11 +361,21 @@ $conn->close();
 
             <!-- Footer: actions -->
             <div class="modal-footer">
-                <button type="button" class="btn-action btn-excluir" id="deleteRender">
-                    <i class="fa-solid fa-trash"></i> Excluir
-                </button>
+                <div class="modal-more-actions">
+                    <button type="button" class="modal-more-trigger" id="modalMoreActions" aria-label="Mais ações" aria-haspopup="menu" aria-expanded="false">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                    </button>
+                    <div class="modal-more-menu" id="modalMoreMenu" role="menu" aria-hidden="true">
+                        <button type="button" class="btn-action btn-excluir" id="deleteRender" role="menuitem">
+                            <i class="fa-solid fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </div>
                 <button type="button" class="btn-action btn-reprovar" id="reprovarRender">
                     <i class="fa-solid fa-rotate-right"></i> Reprovar
+                </button>
+                <button type="button" class="btn-action btn-manual" id="completeRenderManually" style="display:none;">
+                    <i class="fa-solid fa-hand"></i> Feito manualmente
                 </button>
                 <button type="button" class="btn-action btn-aprovar" id="aprovarRender">
                     <i class="fa-solid fa-check"></i> Aprovar

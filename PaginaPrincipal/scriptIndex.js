@@ -6857,8 +6857,9 @@ if (typeof Sortable !== "undefined") {
           const _parRepresentative =
             card.dataset.parRepresentative || "primary";
 
-          // For in-review + primary representative:
-          // primary → Finalizado (immediate), upload will set secondary → Em aprovação
+          // Em pares unificados, o arquivo é enviado pela tarefa de Filtro
+          // de assets. Quando o cartão ainda representa o Caderno, conclui o
+          // Caderno e direciona o upload para o Filtro.
           if (
             _parTipo &&
             novaColuna.id === "in-review" &&
@@ -6873,7 +6874,6 @@ if (typeof Sortable !== "undefined") {
                 status: "Finalizado",
               },
             });
-            // Redirect the file upload to the secondary function
             idfuncao_imagem = _idSecundaria || idfuncao_imagem;
             subtitulo = _nomeSecundaria || subtitulo;
           }
@@ -7417,6 +7417,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
 // List view (Tabulator) - visual only
 (function () {
   let tabelaLista = null;
+  let ultimoPayloadLista = null;
 
   function normalizarStatus(status) {
     if (!status) return "Não iniciado";
@@ -7429,6 +7430,8 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
 
   function garantirTabela() {
     if (tabelaLista || !window.Tabulator) return;
+    const container = document.getElementById("list-section");
+    if (container && container.offsetParent === null) return;
 
     tabelaLista = new Tabulator("#tarefas-table", {
       layout: "fitColumns",
@@ -7488,6 +7491,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   // Exposta para o scriptIndex.js reaproveitar o mesmo payload do Kanban
   window.updateListaTabela = function (payload) {
     try {
+      ultimoPayloadLista = payload;
       garantirTabela();
       if (!tabelaLista) return;
 
@@ -7504,6 +7508,10 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
     } catch (e) {
       console.error("updateListaTabela error", e);
     }
+  };
+
+  window.renderizarListaTarefas = function () {
+    if (ultimoPayloadLista) window.updateListaTabela(ultimoPayloadLista);
   };
 })();
 
@@ -7855,6 +7863,9 @@ async function carregarOverview() {
     if (navRight) navRight.style.visibility = "visible";
     clearActive();
     btnLista.classList.add("active");
+    if (typeof window.renderizarListaTarefas === "function") {
+      window.renderizarListaTarefas();
+    }
   }
 
   // Gestores iniciam na Visão Geral; demais no Kanban

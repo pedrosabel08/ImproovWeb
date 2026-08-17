@@ -27,6 +27,11 @@ foreach ($rows as $row) {
 $legacy = [];
 $query = "SELECT fi.colaborador_id,COUNT(DISTINCT fi.idfuncao_imagem) total FROM funcao_imagem fi JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra=fi.imagem_id JOIN obra o ON o.idobra=i.obra_id WHERE fi.requires_file_upload=1 AND fi.file_uploaded_at IS NULL AND fi.colaborador_id IS NOT NULL AND o.status_obra=0 GROUP BY fi.colaborador_id";
 if ($result = $conn->query($query)) while ($row = $result->fetch_assoc()) $legacy[(int) $row['colaborador_id']] = (int) $row['total'];
-foreach ($summaries as &$summary) { $summary['recipients'] = array_keys($summary['recipients']); $summary['legacy_upload_total'] = $legacy[$summary['collaborator_id']] ?? 0; $summary['upload_matches_legacy'] = $summary['upload_total'] === $summary['legacy_upload_total']; } unset($summary);
+foreach ($summaries as &$summary) {
+    $summary['recipients'] = array_keys($summary['recipients']);
+    $summary['legacy_upload_total'] = $legacy[$summary['collaborator_id']] ?? 0;
+    $summary['upload_matches_legacy'] = $summary['upload_total'] === $summary['legacy_upload_total'];
+}
+unset($summary);
 echo json_encode(['window_key' => $window, 'summaries' => array_values($summaries), 'legacy_only_collaborators' => array_values(array_diff(array_keys($legacy), array_keys($summaries)))], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
 $conn->close();

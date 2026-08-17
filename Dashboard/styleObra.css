@@ -131,7 +131,6 @@
   font-weight: 500 !important;
 }
 
-
 /* ===== STATUS IMAGEM — células de tabela ===== */
 .si-p00 {
   background-color: var(--si-p00);
@@ -5898,7 +5897,7 @@ table#tabela-logs tbody tr:hover {
   padding: 14px 22px;
   border-top: 1px solid var(--border);
   background: var(--card-bg);
-  box-shadow: 0 -10px 26px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-md);
 }
 
 .edit-images-summary {
@@ -5945,7 +5944,7 @@ table#tabela-logs tbody tr:hover {
 
 .edit-images-btn-primary {
   border: 1px solid var(--accent);
-  color: #ffffff;
+  color: var(--text-on-accent);
   background: var(--accent);
 }
 
@@ -5962,8 +5961,8 @@ table#tabela-logs tbody tr:hover {
 }
 
 .edit-images-shell .image-item--changed {
-  border-color: rgba(245, 158, 11, 0.75);
-  box-shadow: inset 3px 0 0 #f59e0b;
+  border-color: var(--accent-glow);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .edit-images-shell .titulo_imagem {
@@ -6009,8 +6008,8 @@ table#tabela-logs tbody tr:hover {
   flex: 0 0 auto;
   border-radius: 999px;
   padding: 3px 8px;
-  background: rgba(245, 158, 11, 0.16);
-  color: #b45309;
+  background: var(--accent-subtle);
+  color: var(--accent);
   font-size: 12px;
   font-weight: 800;
 }
@@ -6040,7 +6039,7 @@ table#tabela-logs tbody tr:hover {
 .func-cell--dependent {
   color: var(--text-muted);
   font-style: italic;
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--bg-count);
 }
 
 .edit-images-shell .conteudo_imagens {
@@ -6053,7 +6052,7 @@ table#tabela-logs tbody tr:hover {
 
 .image-field-group {
   padding: 14px 0;
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-top: 1px solid var(--border);
 }
 
 .image-field-group:first-child {
@@ -6339,7 +6338,7 @@ table#tabela-logs tbody tr:hover {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: rgba(2, 6, 14, 0.78);
+  background: var(--bg-overlay);
 }
 
 .edit-images-shell {
@@ -6348,15 +6347,15 @@ table#tabela-logs tbody tr:hover {
   max-height: calc(100vh - 44px);
   margin: 0 auto;
   border-radius: 12px;
-  border-color: rgba(148, 163, 184, 0.18);
-  background: #101824;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.56);
+  border-color: var(--border-modal);
+  background: var(--bg-modal);
+  box-shadow: var(--shadow-modal);
 }
 
 .edit-images-shell #modalHeader {
   padding: 20px 24px 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  background: #101824;
+  border-bottom: 1px solid var(--border-modal);
+  background: var(--bg-modal);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
@@ -6391,13 +6390,13 @@ table#tabela-logs tbody tr:hover {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 16px;
   cursor: pointer;
 }
 
 .edit-images-shell .close-modal-images:hover {
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--bg-card-hover);
   color: var(--text);
 }
 
@@ -6416,15 +6415,15 @@ table#tabela-logs tbody tr:hover {
   height: 36px;
   gap: 9px;
   padding: 0 11px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border-input);
   border-radius: 7px;
-  background: rgba(3, 9, 18, 0.36);
-  color: var(--text-muted);
+  background: var(--bg-input);
+  color: var(--text-secondary);
 }
 
 .edit-images-search:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .edit-images-search input,
@@ -6442,16 +6441,16 @@ table#tabela-logs tbody tr:hover {
   width: 100%;
 }
 .edit-images-search input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .edit-images-filter {
   width: 154px;
   height: 36px;
   padding: 0 29px 0 10px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border-input);
   border-radius: 7px;
-  background: rgba(3, 9, 18, 0.36);
+  background: var(--bg-input);
   cursor: pointer;
 }
 
@@ -6462,9 +6461,9 @@ table#tabela-logs tbody tr:hover {
 .edit-images-filter-chip,
 .edit-images-clear-filters {
   height: 36px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border-input);
   border-radius: 7px;
-  background: rgba(3, 9, 18, 0.36);
+  background: var(--bg-input);
   color: var(--text-secondary);
   font: inherit;
   font-size: 13px;
@@ -6476,12 +6475,12 @@ table#tabela-logs tbody tr:hover {
   white-space: nowrap;
 }
 .edit-images-filter-chip i {
-  color: #fbbf24;
+  color: var(--cor-antecipada);
 }
 .edit-images-filter-chip.is-active {
-  border-color: rgba(251, 191, 36, 0.56);
-  background: rgba(251, 191, 36, 0.13);
-  color: #fde68a;
+  border-color: var(--cor-antecipada);
+  background: var(--accent-subtle);
+  color: var(--cor-antecipada);
 }
 .edit-images-clear-filters {
   padding: 0 7px;
@@ -6498,7 +6497,7 @@ table#tabela-logs tbody tr:hover {
 .edit-images-shell #imageList {
   gap: 6px;
   padding: 12px 24px 20px;
-  background: #0d1520;
+  background: var(--bg-body);
 }
 
 .edit-images-shell .image-item {
@@ -6507,15 +6506,15 @@ table#tabela-logs tbody tr:hover {
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: rgba(148, 163, 184, 0.045);
+  background: var(--bg-card);
 }
 
 .edit-images-shell .image-item:hover {
-  background: rgba(148, 163, 184, 0.075);
+  background: var(--bg-card-hover);
 }
 .edit-images-shell .image-item--open {
-  background: rgba(148, 163, 184, 0.065);
-  border-color: rgba(148, 163, 184, 0.16);
+  background: var(--bg-card-hover);
+  border-color: var(--border-card);
 }
 .edit-images-shell .image-item--antecipada::before {
   content: "";
@@ -6524,11 +6523,11 @@ table#tabela-logs tbody tr:hover {
   inset: 8px auto 8px 0;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: #fbbf24;
+  background: var(--cor-antecipada);
 }
 .edit-images-shell .image-item--changed {
-  border-color: rgba(96, 165, 250, 0.45);
-  box-shadow: inset 3px 0 0 #60a5fa;
+  border-color: var(--accent-glow);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .edit-images-shell .titulo_imagem {
@@ -6566,15 +6565,15 @@ table#tabela-logs tbody tr:hover {
   line-height: 1.35;
 }
 .image-anticipated-badge {
-  color: #fde68a;
-  background: rgba(251, 191, 36, 0.13);
+  color: var(--cor-antecipada);
+  background: var(--accent-subtle);
 }
 .image-anticipated-badge i {
   margin-right: 2px;
 }
 .image-change-indicator {
-  color: #bfdbfe;
-  background: rgba(96, 165, 250, 0.14);
+  color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .image-meta-badge {
@@ -6642,20 +6641,20 @@ table#tabela-logs tbody tr:hover {
   height: 36px;
   margin-top: 6px;
   padding: 0 10px;
-  border-color: rgba(148, 163, 184, 0.21);
+  border-color: var(--border-input);
   border-radius: 6px;
-  background-color: rgba(3, 9, 18, 0.48);
+  background-color: var(--bg-input);
   color: var(--text);
   font-size: 13px;
 }
 .edit-images-shell .conteudo_imagens input:hover,
 .edit-images-shell .conteudo_imagens select:hover {
-  border-color: rgba(148, 163, 184, 0.42);
+  border-color: var(--border-card-hover);
 }
 .edit-images-shell .conteudo_imagens input:focus,
 .edit-images-shell .conteudo_imagens select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .image-field-group:nth-child(4) .image-field-grid {
@@ -6692,14 +6691,14 @@ table#tabela-logs tbody tr:hover {
 
 .edit-images-footer {
   padding: 13px 24px;
-  border-top-color: rgba(148, 163, 184, 0.14);
-  background: #101824;
+  border-top-color: var(--border-modal);
+  background: var(--bg-modal);
   box-shadow: none;
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
 .edit-images-summary {
-  color: #bfdbfe;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 .edit-images-btn {
@@ -6713,7 +6712,7 @@ table#tabela-logs tbody tr:hover {
   color: var(--text-secondary);
 }
 .edit-images-btn-secondary:hover {
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--bg-card-hover);
   color: var(--text);
 }
 
@@ -6801,7 +6800,7 @@ table#tabela-logs tbody tr:hover {
   min-height: 36px;
   padding: 0 10px;
   border-radius: 6px;
-  background: rgba(3, 9, 18, 0.3);
+  background: var(--bg-input);
 }
 .edit-images-shell .image-field-group:nth-child(3) .image-checkbox-field span {
   position: static;

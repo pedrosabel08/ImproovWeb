@@ -429,10 +429,10 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
         $arquivoEnviado = (int) ($predecessora['requires_file_upload'] ?? 1) === 0
             && !empty($predecessora['file_uploaded_at']);
 
-        // O Filtro de assets é a tarefa que envia o PDF ao servidor. Quando
-        // ela já está finalizada e o envio foi confirmado, a próxima etapa
-        // produtiva está atendida — não deve virar uma pendência de aprovação.
-        if ($arquivoEnviado && (int) ($predecessora['funcao_id'] ?? 0) === 8) {
+        // Qualquer etapa predecessora que esteja finalizada e já tenha enviado
+        // o arquivo está atendida. O envio do arquivo não deve criar uma nova
+        // pendência de aprovação apenas porque a etapa seguinte foi avaliada.
+        if ($arquivoEnviado) {
             $requisitos[] = motor_requisitos_item(
                 'FUNCAO_ANTERIOR_CONCLUIDA',
                 'Tarefa produtiva anterior concluída',
@@ -444,34 +444,6 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
                 $urlAcao,
                 $metadados
             );
-            return;
-        }
-
-        // Registros antigos podem ter concluído a tarefa sem trocar o status
-        // para "Em aprovação", embora o arquivo já tenha sido publicado. Não
-        // devemos pedir um novo envio: a pendência correta passa a ser apenas
-        // a aprovação daquela etapa.
-        if ($arquivoEnviado) {
-            $aprovadores = flow_review_aprovacao_destinatarios($conn, $predecessora);
-            $metadados['aprovacao'] = [
-                'status' => 'Arquivo enviado',
-                'predecessora_funcao_imagem_id' => $origemId,
-                'approval_cycle_key' => $origemId . ':' . $predecessora['file_uploaded_at'],
-                'aprovadores' => $aprovadores,
-            ];
-            $requisito = motor_requisitos_item(
-                'APROVACAO_ETAPA_ANTERIOR',
-                'Aprovação da etapa anterior',
-                'APROVACAO',
-                'NAO_ATENDIDO',
-                true,
-                $origem,
-                $origemId,
-                $urlAcao,
-                $metadados
-            );
-            $requisito['nao_confirmavel'] = true;
-            $requisitos[] = $requisito;
             return;
         }
 

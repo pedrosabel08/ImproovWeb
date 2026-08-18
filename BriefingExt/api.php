@@ -20,6 +20,34 @@ function ext_question(mysqli $conn, int $briefingId, int $questionId): ?array
     return $question;
 }
 
+function ext_answer_snapshot(mysqli $conn, int $briefingId, int $questionId): array
+{
+    $stmt = briefing_stmt($conn, 'SELECT a.id,a.valor_json,a.nao_aplica,a.versao,a.atualizado_em,p.id atualizado_por_id,p.nome atualizado_por_nome FROM briefing_answer a JOIN briefing_question q ON q.id=a.briefing_question_id JOIN briefing_section s ON s.id=q.briefing_section_id LEFT JOIN briefing_participant p ON p.id=a.atualizado_por_participant_id WHERE a.briefing_question_id=? AND s.briefing_id=? AND s.ativa=1 AND q.ativa=1 LIMIT 1', 'ii', [$questionId, $briefingId]);
+    $row = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    if (!$row) {
+        return [
+            'id' => null,
+            'value' => null,
+            'not_applicable' => false,
+            'version' => 0,
+            'updated_at' => null,
+            'updated_by' => null,
+        ];
+    }
+    return [
+        'id' => (int) $row['id'],
+        'value' => briefing_json_decode($row['valor_json']),
+        'not_applicable' => (bool) $row['nao_aplica'],
+        'version' => (int) $row['versao'],
+        'updated_at' => $row['atualizado_em'],
+        'updated_by' => $row['atualizado_por_nome'] ? [
+            'participant_id' => (int) $row['atualizado_por_id'],
+            'name' => (string) $row['atualizado_por_nome'],
+        ] : null,
+    ];
+}
+
 function ext_public_link(mysqli $conn, array $body): array
 {
     $link = briefing_external_access_link_v2($conn, (string) ($body['token'] ?? ''));
@@ -162,6 +190,12 @@ try {
         briefing_json(['ok' => true] + $session);
     }
 
+    if ($action === 'csrf.refresh') {
+        $link = ext_public_link($conn, $body);
+        $access = briefing_external_access($conn, (string) ($body['token'] ?? ''), false);
+        briefing_json(['ok' => true, 'csrf' => briefing_external_csrf_token($access['auth'])]);
+    }
+
     $token = (string) ($body['token'] ?? $_GET['t'] ?? '');
     $mutation = in_array($action, ['answer.save', 'briefing.submit', 'ws.ticket'], true);
     $access = briefing_external_access($conn, $token, $mutation);
@@ -183,9 +217,17 @@ try {
             unset($question);
         }
         unset($section);
-        $csrf = bin2hex(random_bytes(32));
+        $csrf = briefing_external_csrf_token($access['auth']);
         briefing_stmt($conn, 'UPDATE external_auth_session SET csrf_hash=? WHERE id=?', 'si', [hash('sha256', $csrf), (int) $access['auth']['id']])->close();
         briefing_json(['ok' => true, 'csrf' => $csrf, 'participant' => ['name' => $access['contact']['name'], 'email' => $access['contact']['email']], 'briefing' => $briefing]);
+    }
+
+    if ($action === 'answer.get') {
+        $questionId = (int) ($body['question_id'] ?? 0);
+        if (!ext_question($conn, $briefingId, $questionId)) {
+            throw new InvalidArgumentException('Pergunta inválida.');
+        }
+        briefing_json(['ok' => true, 'question_id' => $questionId, 'answer' => ext_answer_snapshot($conn, $briefingId, $questionId), 'progress' => briefing_progress($conn, $briefingId)]);
     }
 
     if ($action === 'answer.save') {
@@ -211,12 +253,24 @@ try {
             $conn->commit();
             briefing_json(['ok' => true, 'idempotent' => true, 'answer' => briefing_json_decode($previous)]);
         }
-        $stmt = briefing_stmt($conn, 'SELECT * FROM briefing_answer WHERE briefing_question_id=? FOR UPDATE', 'i', [$questionId]);
+        $stmt = briefing_stmt($conn, 'SELECT a.*,p.id atualizado_por_id,p.nome atualizado_por_nome FROM briefing_answer a LEFT JOIN briefing_participant p ON p.id=a.atualizado_por_participant_id WHERE a.briefing_question_id=? FOR UPDATE', 'i', [$questionId]);
         $answer = $stmt->get_result()->fetch_assoc() ?: null;
         $stmt->close();
         if ($answer && (int) $answer['versao'] !== $expected) {
             $conn->rollback();
-            briefing_json(['ok' => false, 'message' => 'A resposta foi alterada por outra pessoa.', 'conflict' => ['value' => briefing_json_decode($answer['valor_json']), 'not_applicable' => (bool) $answer['nao_aplica'], 'version' => (int) $answer['versao']]], 409);
+            $currentVersion = (int) $answer['versao'];
+            briefing_json([
+                'ok' => false,
+                'code' => 'VERSION_CONFLICT',
+                'message' => 'A resposta foi alterada por outra pessoa.',
+                'question_id' => $questionId,
+                'expected_version' => $expected,
+                'current_version' => $currentVersion,
+                'current_value' => briefing_json_decode($answer['valor_json']),
+                'updated_by' => $answer['atualizado_por_nome'] ? ['participant_id' => (int) $answer['atualizado_por_id'], 'name' => (string) $answer['atualizado_por_nome']] : null,
+                'updated_at' => $answer['atualizado_em'],
+                'conflict' => ['value' => briefing_json_decode($answer['valor_json']), 'not_applicable' => (bool) $answer['nao_aplica'], 'version' => $currentVersion, 'updated_by' => $answer['atualizado_por_nome'] ? ['participant_id' => (int) $answer['atualizado_por_id'], 'name' => (string) $answer['atualizado_por_nome']] : null, 'updated_at' => $answer['atualizado_em']],
+            ], 409);
         }
         if (!$answer) {
             if ($expected !== 0) {

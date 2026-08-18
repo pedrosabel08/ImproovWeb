@@ -48,6 +48,14 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
     console.log(`[WS-DIAG][Node][Briefing] room=briefing:${briefingId} channel=${channel} event=${payload && payload.event ? payload.event : '(sem event)'} sent=${sent}`);
   }
 
+  function disconnectBriefingRoom(briefingId, reason) {
+    wss.clients.forEach((socket) => {
+      if (socket.readyState === WebSocket.OPEN && socket.briefingRooms && socket.briefingRooms.has(String(briefingId))) {
+        socket.close(4003, reason);
+      }
+    });
+  }
+
   async function subscribeBriefing(ws, ticket) {
     if (!client || !client.isOpen || typeof ticket !== 'string' || !/^[a-f0-9]{64}$/i.test(ticket)) {
       ws.send(JSON.stringify({ error: 'briefing_subscription_denied' }));
@@ -162,6 +170,9 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
           const briefingId = String(payload.briefing_id || channel.split(':')[1] || '');
           if (!/^\d+$/.test(briefingId)) return;
           broadcastBriefing(JSON.stringify({ channel, payload }), briefingId, channel, payload);
+          if (payload.event === 'briefing.access.revoked') {
+            disconnectBriefingRoom(briefingId, 'briefing_access_revoked');
+          }
         } catch (err) {
           console.error('Failed to forward Briefing message', err);
         }

@@ -12,7 +12,22 @@
   const notice = (message = "") => {
     $("notice").textContent = message;
   };
-  const api = async (data, method = "POST") => {
+  const refreshCsrf = async () => {
+    const r = await fetch("api.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ action: "bootstrap" }),
+    });
+    const json = await r.json();
+    if (!r.ok || !json.ok || !json.csrf) {
+      throw new Error(json.message || "Não foi possível atualizar a sessão.");
+    }
+    state.csrf = json.csrf;
+  };
+  const api = async (data, method = "POST", retry = true) => {
     const r = await fetch("api.php", {
       method,
       headers: {
@@ -23,7 +38,17 @@
       body: method === "POST" ? JSON.stringify(data) : undefined,
     });
     const json = await r.json();
-    if (!r.ok || !json.ok) throw new Error(json.message || "Erro inesperado.");
+    if (!r.ok || !json.ok) {
+      if (
+        retry &&
+        data.action !== "bootstrap" &&
+        json.message === "Token CSRF inválido."
+      ) {
+        await refreshCsrf();
+        return api(data, method, false);
+      }
+      throw new Error(json.message || "Erro inesperado.");
+    }
     return json;
   };
   const option = (value, label) => {
@@ -37,7 +62,10 @@
     el.replaceChildren(option("", empty));
     items.forEach((x) =>
       el.append(
-        option(x.id ?? x.idobra, x.name || x.nome_obra || x.nome_colaborador),
+        option(
+          x.id ?? x.idobra ?? x.idcolaborador,
+          x.name || x.nome_obra || x.nome_colaborador,
+        ),
       ),
     );
   }
@@ -133,7 +161,12 @@
       const count = document.createElement("p");
       count.className = "muted";
       count.textContent = `${b.progress.answered} de ${b.progress.total} perguntas respondidas`;
-      host.append(title, meta, p, count, detailActions(b));
+      const access = document.createElement("p");
+      access.className = "muted";
+      access.textContent = b.external_access
+        ? `Acesso externo ativo até ${b.external_access.expira_em}${b.external_access.ultimo_uso_em ? ` · último uso ${b.external_access.ultimo_uso_em}` : ""}`
+        : "Acesso externo: nenhum link ativo.";
+      host.append(title, meta, p, count, access, detailActions(b));
       const sections = document.createElement("div");
       b.sections.forEach((s) => {
         const e = document.createElement("div");
@@ -201,7 +234,7 @@
         b.status,
       )
     )
-      action("Gerar link", async () => {
+      action(b.external_access ? "Gerar novo link" : "Gerar link", async () => {
         const r = await api({
           action: "briefing.create_link",
           briefing_id: b.id,
@@ -211,6 +244,13 @@
           "Link gerado. Copie-o abaixo se o navegador não permitir a cópia automática: " +
             r.url,
         );
+        await reload();
+      });
+    if (b.external_access)
+      action("Revogar link", async () => {
+        if (!confirm("Revogar o link externo agora? Sessões abertas perderão o acesso nas próximas requisições.")) return;
+        await api({ action: "briefing.revoke_link", briefing_id: b.id });
+        notice("Link externo revogado.");
         await reload();
       });
     if (["EM_CONFERENCIA", "AJUSTES_SOLICITADOS"].includes(b.status))
@@ -242,11 +282,23 @@
     state.template.sections.forEach((s, si) => {
       const section = document.createElement("div");
       section.className = "template-section";
+      const sectionHead = document.createElement("div");
+      sectionHead.className = "template-section-head";
       const head = document.createElement("input");
       head.placeholder = "Título da seção";
       head.value = s.title || "";
       head.oninput = (e) => (s.title = e.target.value);
-      section.append(head);
+      const removeSection = document.createElement("button");
+      removeSection.type = "button";
+      removeSection.className = "text-button danger-button";
+      removeSection.textContent = "Excluir seção";
+      removeSection.setAttribute("aria-label", `Excluir seção ${si + 1}`);
+      removeSection.onclick = () => {
+        state.template.sections.splice(si, 1);
+        renderTemplate();
+      };
+      sectionHead.append(head, removeSection);
+      section.append(sectionHead);
       const qs = document.createElement("div");
       (s.questions || []).forEach((q, qi) => {
         const row = document.createElement("div");
@@ -297,7 +349,16 @@
             .split(",")
             .map((v) => v.trim())
             .filter(Boolean));
-        row.append(grid, props, na, options);
+        const removeQuestion = document.createElement("button");
+        removeQuestion.type = "button";
+        removeQuestion.className = "text-button danger-button question-remove";
+        removeQuestion.textContent = "Excluir pergunta";
+        removeQuestion.setAttribute("aria-label", `Excluir pergunta ${qi + 1}`);
+        removeQuestion.onclick = () => {
+          s.questions.splice(qi, 1);
+          renderTemplate();
+        };
+        row.append(grid, props, na, options, removeQuestion);
         qs.append(row);
       });
       const add = document.createElement("button");

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/secure_env.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
+require_once __DIR__ . '/../contact_architecture.php';
 
 const BRIEFING_QUESTION_TYPES = ['SHORT_TEXT', 'LONG_TEXT', 'YES_NO', 'SINGLE_SELECT', 'MULTI_SELECT', 'NUMBER', 'DATE', 'LINK', 'REFERENCE'];
 const BRIEFING_OPEN_STATUSES = ['AGUARDANDO_CLIENTE', 'EM_PREENCHIMENTO', 'AJUSTES_SOLICITADOS'];
@@ -287,6 +288,184 @@ function briefing_valid_answer(array $question, mixed $value, bool $notApplicabl
     }
     if ($question['obrigatoria'] && (($type === 'MULTI_SELECT' && $value === []) || ($type !== 'MULTI_SELECT' && ($value === '' || $value === null)))) throw new InvalidArgumentException('Esta pergunta é obrigatória.');
     return $value;
+}
+
+function briefing_external_auth_config(): array
+{
+    return [
+        'code_length' => 6,
+        'otp_ttl' => 600,
+        'max_attempts' => 5,
+        'resend_cooldown' => 60,
+        'request_limit' => 5,
+        'request_window' => 600,
+        'session_ttl' => 30 * 86400,
+        'link_ttl' => 30 * 86400,
+    ];
+}
+
+function briefing_external_client_ip(): string
+{
+    return mb_substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45, 'UTF-8');
+}
+
+function briefing_external_user_agent(): string
+{
+    return mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255, 'UTF-8');
+}
+
+function briefing_external_auth_cookie_name(): string
+{
+    return 'improov_external_auth';
+}
+
+function briefing_external_auth_cookie_path(): string
+{
+    return briefing_base_path() . '/';
+}
+
+function briefing_external_set_auth_cookie(string $token, int $expires): void
+{
+    setcookie(briefing_external_auth_cookie_name(), $token, [
+        'expires' => $expires,
+        'path' => briefing_external_auth_cookie_path(),
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function briefing_external_current_auth(mysqli $conn): ?array
+{
+    $token = (string) ($_COOKIE[briefing_external_auth_cookie_name()] ?? '');
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        return null;
+    }
+    $schema = contact_arch_contact_schema($conn);
+    $sql = 'SELECT s.*, cc.' . $schema['id'] . ' AS contact_id, cc.' . $schema['email'] . ' AS email, cc.' . $schema['name'] . ' AS nome'
+        . ' FROM external_auth_session s JOIN contato_cliente cc ON cc.' . $schema['id'] . '=s.contato_cliente_id'
+        . ' WHERE s.token_hash=? AND s.revogado_em IS NULL AND s.expira_em>UTC_TIMESTAMP()';
+    if ($schema['active']) {
+        $sql .= ' AND cc.' . $schema['active'] . '=1';
+    }
+    $stmt = briefing_stmt($conn, $sql, 's', [hash('sha256', $token)]);
+    $auth = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    if ($auth) {
+        briefing_stmt($conn, 'UPDATE external_auth_session SET ultimo_uso_em=UTC_TIMESTAMP() WHERE id=?', 'i', [(int) $auth['id']])->close();
+    }
+    return $auth;
+}
+
+function briefing_external_access_link_v2(mysqli $conn, string $token): ?array
+{
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        return null;
+    }
+    $stmt = briefing_stmt($conn, "SELECT l.*, b.obra_id,b.status,b.titulo,b.exige_conferencia_interna FROM briefing_access_link l JOIN briefing_online b ON b.id=l.briefing_id WHERE l.token_hash=? AND l.revogado_em IS NULL AND l.expira_em>UTC_TIMESTAMP()", 's', [hash('sha256', $token)]);
+    $link = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    return $link;
+}
+
+function briefing_external_contact_has_obra(mysqli $conn, int $contactId, int $obraId): bool
+{
+    $link = contact_arch_link_schema($conn);
+    if (!$link['exists'] || !$link['obra'] || !$link['contact']) {
+        return false;
+    }
+    $sql = 'SELECT 1 FROM ' . $link['table'] . ' WHERE ' . $link['obra'] . '=? AND ' . $link['contact'] . '=?';
+    if ($link['active']) {
+        $sql .= ' AND ' . $link['active'] . '=1';
+    }
+    return (bool) briefing_scalar($conn, $sql, 'ii', [$obraId, $contactId]);
+}
+
+function briefing_external_participant(mysqli $conn, int $briefingId, array $contact): array
+{
+    $contactId = (int) ($contact['contact_id'] ?? 0);
+    $stmt = briefing_stmt($conn, 'SELECT * FROM briefing_participant WHERE briefing_id=? AND contato_cliente_id=? AND ativo=1 LIMIT 1', 'ii', [$briefingId, $contactId]);
+    $participant = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    if ($participant) {
+        return $participant;
+    }
+    $stmt = briefing_stmt($conn, 'INSERT INTO briefing_participant (briefing_id,contato_cliente_id,email,nome,empresa,verificado_em,primeiro_acesso_em,ultima_atividade_em) VALUES (?,?,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())', 'iisss', [$briefingId, $contactId, (string) $contact['email'], (string) $contact['name'], null]);
+    $id = (int) $conn->insert_id;
+    $stmt->close();
+    return ['id' => $id, 'briefing_id' => $briefingId, 'contato_cliente_id' => $contactId, 'email' => $contact['email'], 'nome' => $contact['name']];
+}
+
+function briefing_external_access(mysqli $conn, string $token, bool $csrf = false): array
+{
+    $link = briefing_external_access_link_v2($conn, $token);
+    if (!$link) {
+        briefing_json(['ok' => false, 'message' => 'Este link expirou ou foi revogado.'], 404);
+    }
+    $auth = briefing_external_current_auth($conn);
+    if (!$auth || !briefing_external_contact_has_obra($conn, (int) $auth['contact_id'], (int) $link['obra_id'])) {
+        briefing_json(['ok' => false, 'message' => 'Sessão externa necessária.'], 401);
+    }
+    if ($csrf) {
+        $provided = (string) ($_SERVER['HTTP_X_BRIEFING_CSRF'] ?? '');
+        if ($provided === '' || !hash_equals((string) $auth['csrf_hash'], hash('sha256', $provided))) {
+            briefing_json(['ok' => false, 'message' => 'Token CSRF inválido.'], 403);
+        }
+    }
+    $contact = contact_arch_fetch_contact_row($conn, (int) $auth['contact_id']);
+    if (!$contact) {
+        briefing_json(['ok' => false, 'message' => 'Sessão externa necessária.'], 401);
+    }
+    $participant = briefing_external_participant($conn, (int) $link['briefing_id'], $contact);
+    return ['link' => $link, 'auth' => $auth, 'contact' => $contact, 'participant' => $participant];
+}
+
+function briefing_external_question_editable(mysqli $conn, int $briefingId, string $status, int $questionId): bool
+{
+    if (in_array($status, ['AGUARDANDO_CLIENTE', 'EM_PREENCHIMENTO'], true)) {
+        return true;
+    }
+    if ($status !== 'AJUSTES_SOLICITADOS') {
+        return false;
+    }
+    return (bool) briefing_scalar($conn, "SELECT 1 FROM briefing_question_request WHERE briefing_question_id=? AND status='SOLICITADO' AND EXISTS (SELECT 1 FROM briefing_question q JOIN briefing_section s ON s.id=q.briefing_section_id WHERE q.id=? AND s.briefing_id=?)", 'iii', [$questionId, $questionId, $briefingId]);
+}
+
+function briefing_external_create_auth_session(mysqli $conn, int $contactId): array
+{
+    $token = bin2hex(random_bytes(32));
+    $csrf = bin2hex(random_bytes(32));
+    $expires = time() + briefing_external_auth_config()['session_ttl'];
+    $stmt = briefing_stmt($conn, 'INSERT INTO external_auth_session (contato_cliente_id,token_hash,csrf_hash,criado_em,expira_em,ultimo_uso_em,ip_criacao,user_agent_criacao) VALUES (?,?,?,UTC_TIMESTAMP(),FROM_UNIXTIME(?),UTC_TIMESTAMP(),?,?)', 'ississ', [$contactId, hash('sha256', $token), hash('sha256', $csrf), $expires, briefing_external_client_ip(), briefing_external_user_agent()]);
+    $stmt->close();
+    briefing_external_set_auth_cookie($token, $expires);
+    return ['csrf' => $csrf, 'expires_at' => gmdate('c', $expires)];
+}
+
+function briefing_external_issue_otp(mysqli $conn, array $link, string $email, string $purpose, ?int $contactId = null, ?array $pending = null): void
+{
+    $config = briefing_external_auth_config();
+    $email = contact_arch_normalize_email($email);
+    if (!in_array($purpose, ['LOGIN', 'LINK_CONTACT', 'CREATE_CONTACT'], true)) {
+        throw new InvalidArgumentException('Finalidade de acesso inválida.');
+    }
+    $count = (int) briefing_scalar($conn, 'SELECT COUNT(*) FROM external_otp_challenge WHERE briefing_access_link_id=? AND (email_normalizado=? OR ip_solicitacao=?) AND criado_em>DATE_SUB(UTC_TIMESTAMP(), INTERVAL 10 MINUTE)', 'iss', [(int) $link['id'], $email, briefing_external_client_ip()]);
+    if ($count >= $config['request_limit']) {
+        briefing_json(['ok' => false, 'message' => 'Muitas tentativas. Aguarde alguns minutos.'], 429);
+    }
+    $last = briefing_scalar($conn, 'SELECT UNIX_TIMESTAMP(ultimo_envio_em) FROM external_otp_challenge WHERE briefing_access_link_id=? AND email_normalizado=? ORDER BY id DESC LIMIT 1', 'is', [(int) $link['id'], $email]);
+    if ($last && (time() - (int) $last) < $config['resend_cooldown']) {
+        briefing_json(['ok' => false, 'message' => 'Aguarde um minuto antes de solicitar outro código.'], 429);
+    }
+    $code = str_pad((string) random_int(0, 999999), $config['code_length'], '0', STR_PAD_LEFT);
+    if (!briefing_send_otp($email, $code, (string) $link['titulo'])) {
+        briefing_json(['ok' => false, 'message' => 'Não foi possível enviar o código agora. Tente novamente mais tarde.'], 503);
+    }
+    $pendingJson = $pending ? json_encode($pending, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
+    briefing_stmt($conn, 'UPDATE external_otp_challenge SET expira_em=UTC_TIMESTAMP() WHERE briefing_access_link_id=? AND email_normalizado=? AND consumido_em IS NULL', 'is', [(int) $link['id'], $email])->close();
+    $stmt = briefing_stmt($conn, 'INSERT INTO external_otp_challenge (briefing_access_link_id,contato_cliente_id,email_normalizado,finalidade,code_hash,tentativas,criado_em,expira_em,ultimo_envio_em,ip_solicitacao,pending_payload) VALUES (?,?,?,?,?,0,UTC_TIMESTAMP(),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 10 MINUTE),UTC_TIMESTAMP(),?,?)', 'iisssss', [(int) $link['id'], $contactId, $email, $purpose, password_hash($code, PASSWORD_DEFAULT), briefing_external_client_ip(), $pendingJson]);
+    $stmt->close();
+    briefing_event($conn, (int) $link['briefing_id'], 'otp.requested', 'SISTEMA', null, ['purpose' => $purpose]);
 }
 
 function briefing_external_cookie_name(): string

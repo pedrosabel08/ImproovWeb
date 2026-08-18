@@ -61,6 +61,7 @@ function contact_arch_contact_schema(mysqli $conn): array
         'client' => 'cliente_id',
         'name' => contact_arch_has_column($conn, 'contato_cliente', 'nome') ? 'nome' : 'nome_contato',
         'email' => 'email',
+        'email_normalized' => contact_arch_has_column($conn, 'contato_cliente', 'email_normalizado') ? 'email_normalizado' : null,
         'role' => contact_arch_has_column($conn, 'contato_cliente', 'cargo') ? 'cargo' : null,
         'phone' => contact_arch_has_column($conn, 'contato_cliente', 'telefone') ? 'telefone' : null,
         'type' => contact_arch_has_column($conn, 'contato_cliente', 'tipo') ? 'tipo' : null,
@@ -142,11 +143,25 @@ function contact_arch_normalize_type(string $value): string
     return in_array($normalized, $allowed, true) ? $normalized : 'OUTRO';
 }
 
+function contact_arch_normalize_email(mixed $value): string
+{
+    $email = mb_strtolower(trim((string) $value), 'UTF-8');
+    if ($email === '') {
+        return '';
+    }
+
+    if (mb_strlen($email, 'UTF-8') > 255 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Informe um e-mail válido.');
+    }
+
+    return $email;
+}
+
 function contact_arch_clean_contact(array $contact): array
 {
     return [
         'name' => trim((string) ($contact['name'] ?? $contact['nome'] ?? $contact['nome_contato'] ?? '')),
-        'email' => trim((string) ($contact['email'] ?? '')),
+        'email' => contact_arch_normalize_email($contact['email'] ?? ''),
         'phone' => trim((string) ($contact['phone'] ?? $contact['telefone'] ?? '')),
         'role' => trim((string) ($contact['role'] ?? $contact['cargo'] ?? '')),
         'type' => contact_arch_normalize_type((string) ($contact['type'] ?? $contact['tipo'] ?? 'OUTRO')),
@@ -248,7 +263,8 @@ function contact_arch_find_existing_contact_id(mysqli $conn, int $clienteId, arr
     }
 
     if ($cleaned['email'] !== '') {
-        $sql = 'SELECT ' . $schema['id'] . ' AS contact_id FROM contato_cliente WHERE ' . $schema['client'] . ' = ? AND LOWER(' . $schema['email'] . ') = LOWER(?) LIMIT 1';
+        $emailColumn = $schema['email_normalized'] ?: 'LOWER(TRIM(' . $schema['email'] . '))';
+        $sql = 'SELECT ' . $schema['id'] . ' AS contact_id FROM contato_cliente WHERE ' . $schema['client'] . ' = ? AND ' . $emailColumn . ' = ? LIMIT 1';
         $stmt = $conn->prepare($sql);
         if ($stmt) {
             $stmt->bind_param('is', $clienteId, $cleaned['email']);
@@ -293,6 +309,89 @@ function contact_arch_find_existing_contact_id(mysqli $conn, int $clienteId, arr
     }
 
     return null;
+}
+
+function contact_arch_find_contacts_by_normalized_email(mysqli $conn, string $email): array
+{
+    $schema = contact_arch_contact_schema($conn);
+    $email = contact_arch_normalize_email($email);
+    if ($email === '') {
+        return [];
+    }
+
+    $emailColumn = $schema['email_normalized'] ?: 'LOWER(TRIM(' . $schema['email'] . '))';
+    $sql = 'SELECT ' . $schema['id'] . ' AS contact_id FROM contato_cliente WHERE ' . $emailColumn . ' = ?';
+    if ($schema['active']) {
+        $sql .= ' AND ' . $schema['active'] . ' = 1';
+    }
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Erro ao consultar contato por e-mail.');
+    }
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $ids = [];
+    while ($result && ($row = $result->fetch_assoc())) {
+        $ids[] = (int) $row['contact_id'];
+    }
+    $stmt->close();
+
+    $contacts = [];
+    foreach ($ids as $id) {
+        $contact = contact_arch_fetch_contact_row($conn, $id);
+        if ($contact) {
+            $contacts[] = $contact;
+        }
+    }
+    return $contacts;
+}
+
+function contact_arch_find_unique_contact_by_email(mysqli $conn, string $email): ?array
+{
+    $contacts = contact_arch_find_contacts_by_normalized_email($conn, $email);
+    if (count($contacts) > 1) {
+        throw new RuntimeException('Há mais de um contato ativo com este e-mail. Solicite apoio da equipe responsável.');
+    }
+    return $contacts[0] ?? null;
+}
+
+function contact_arch_link_contact_to_obra(mysqli $conn, int $obraId, int $contactId): void
+{
+    $link = contact_arch_link_schema($conn);
+    if ($obraId <= 0 || $contactId <= 0 || !$link['exists'] || !$link['obra'] || !$link['contact']) {
+        throw new RuntimeException('Não foi possível vincular o contato à obra.');
+    }
+
+    $contact = contact_arch_fetch_contact_row($conn, $contactId);
+    if (!$contact || (int) $contact['is_active'] !== 1) {
+        throw new RuntimeException('Contato inválido para vínculo com a obra.');
+    }
+
+    $columns = [$link['obra'], $link['contact']];
+    $values = ['?', '?'];
+    $updates = [];
+    $types = 'ii';
+    $params = [$obraId, $contactId];
+    if ($link['active']) {
+        $columns[] = $link['active'];
+        $values[] = '?';
+        $types .= 'i';
+        $params[] = 1;
+        $updates[] = $link['active'] . '=VALUES(' . $link['active'] . ')';
+    }
+    $sql = 'INSERT INTO ' . $link['table'] . ' (' . implode(',', $columns) . ') VALUES (' . implode(',', $values) . ') ON DUPLICATE KEY UPDATE ' . ($updates ? implode(',', $updates) : $link['contact'] . '=VALUES(' . $link['contact'] . ')');
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Erro ao preparar vínculo do contato.');
+    }
+    $stmt->bind_param($types, ...$params);
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        throw new RuntimeException('Erro ao vincular contato à obra: ' . $error);
+    }
+    $stmt->close();
 }
 
 function contact_arch_fetch_contact_row(mysqli $conn, int $contactId): ?array
@@ -381,10 +480,24 @@ function contact_arch_save_client_contact(mysqli $conn, int $clienteId, array $c
         return contact_arch_update_client_contact_by_id($conn, $existingId, $cleaned);
     }
 
+    if ($cleaned['email'] !== '') {
+        $existingGlobal = contact_arch_find_unique_contact_by_email($conn, $cleaned['email']);
+        if ($existingGlobal) {
+            throw new RuntimeException('Já existe um contato ativo cadastrado com este e-mail.');
+        }
+    }
+
     $columns = [$schema['client'], $schema['name'], $schema['email']];
     $placeholders = ['?', '?', '?'];
     $types = 'iss';
     $values = [$clienteId, $cleaned['name'], $cleaned['email']];
+
+    if ($schema['email_normalized']) {
+        $columns[] = $schema['email_normalized'];
+        $placeholders[] = '?';
+        $types .= 's';
+        $values[] = $cleaned['email'] !== '' ? $cleaned['email'] : null;
+    }
 
     if ($schema['role']) {
         $columns[] = $schema['role'];
@@ -456,6 +569,15 @@ function contact_arch_update_client_contact_by_id(mysqli $conn, int $contactId, 
     $type = $cleaned['type'] !== 'OUTRO' || empty($current['type']) ? $cleaned['type'] : (string) $current['type'];
     $notes = $cleaned['notes'] !== '' ? $cleaned['notes'] : (string) ($current['notes'] ?? '');
 
+    if ($email !== '') {
+        $sameEmailContacts = contact_arch_find_contacts_by_normalized_email($conn, $email);
+        foreach ($sameEmailContacts as $sameEmailContact) {
+            if ((int) $sameEmailContact['contact_id'] !== $contactId) {
+                throw new RuntimeException('Já existe um contato ativo cadastrado com este e-mail.');
+            }
+        }
+    }
+
     $assignments = [];
     $types = '';
     $values = [];
@@ -467,6 +589,12 @@ function contact_arch_update_client_contact_by_id(mysqli $conn, int $contactId, 
     $assignments[] = $schema['email'] . ' = ?';
     $types .= 's';
     $values[] = $email;
+
+    if ($schema['email_normalized']) {
+        $assignments[] = $schema['email_normalized'] . ' = ?';
+        $types .= 's';
+        $values[] = $email !== '' ? $email : null;
+    }
 
     if ($schema['role']) {
         $assignments[] = $schema['role'] . ' = ?';

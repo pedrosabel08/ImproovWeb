@@ -175,6 +175,9 @@ try {
     if ($action === 'briefing.detail') {
         $briefing = briefing_fetch($conn, (int)($body['briefing_id'] ?? 0));
         if (!$briefing) briefing_json(['ok' => false, 'message' => 'Briefing não encontrado.'], 404);
+        $stmt = briefing_stmt($conn, 'SELECT id,expira_em,criado_em,ultimo_uso_em FROM briefing_access_link WHERE briefing_id=? AND revogado_em IS NULL AND expira_em>UTC_TIMESTAMP() ORDER BY id DESC LIMIT 1', 'i', [(int) $briefing['id']]);
+        $briefing['external_access'] = $stmt->get_result()->fetch_assoc() ?: null;
+        $stmt->close();
         briefing_json(['ok' => true, 'briefing' => $briefing]);
     }
     if ($action === 'briefing.prepare') {
@@ -200,17 +203,33 @@ try {
         $token = bin2hex(random_bytes(32));
         $expires = gmdate('Y-m-d H:i:s', time() + $hours * 3600);
         $conn->begin_transaction();
+        briefing_stmt($conn, 'UPDATE briefing_access_link SET revogado_em=UTC_TIMESTAMP(),revogado_motivo=?,revogado_por_colaborador_id=? WHERE briefing_id=? AND revogado_em IS NULL AND expira_em>UTC_TIMESTAMP()', 'sii', ['SUBSTITUIDO', $actorId, $id])->close();
         $stmt = briefing_stmt($conn, 'INSERT INTO briefing_access_link (briefing_id,token_hash,expira_em,criado_por_colaborador_id) VALUES (?,?,?,?)', 'issi', [$id, hash('sha256', $token), $expires, $actorId]);
         $stmt->close();
         briefing_stmt($conn, "UPDATE briefing_online SET status='AGUARDANDO_CLIENTE',link_expira_em=? WHERE id=?", 'si', [$expires, $id])->close();
-        briefing_event($conn, $id, 'briefing.link_issued', 'COLABORADOR', $actorId, ['expires_at' => $expires]);
+        briefing_event($conn, $id, 'briefing.link_issued', 'COLABORADOR', $actorId, ['expires_at' => $expires, 'replaced_previous' => true]);
         briefing_cycle($conn, $briefing + ['id' => $id], 'criada', $actorId);
         briefing_flow_event($conn, $briefing + ['id' => $id], 'link_issued', $actorId);
         $conn->commit();
         briefing_publish_realtime($id, 'briefing.status_updated', ['status' => 'AGUARDANDO_CLIENTE']);
         briefing_json(['ok' => true, 'url' => briefing_base_path() . '/BriefingExt/?t=' . rawurlencode($token), 'expires_at' => $expires]);
     }
+    if ($action === 'briefing.revoke_link') {
+        $id = (int) ($body['briefing_id'] ?? 0);
+        $briefing = briefing_fetch($conn, $id);
+        if (!$briefing) throw new InvalidArgumentException('Briefing não encontrado.');
+        $conn->begin_transaction();
+        $stmt = briefing_stmt($conn, 'UPDATE briefing_access_link SET revogado_em=UTC_TIMESTAMP(),revogado_motivo=?,revogado_por_colaborador_id=? WHERE briefing_id=? AND revogado_em IS NULL AND expira_em>UTC_TIMESTAMP()', 'sii', ['REVOGADO_MANUALMENTE', $actorId, $id]);
+        $changed = $stmt->affected_rows;
+        $stmt->close();
+        if ($changed < 1) throw new InvalidArgumentException('Não há link ativo para revogar.');
+        briefing_event($conn, $id, 'briefing.link_revoked', 'COLABORADOR', $actorId, ['reason' => 'REVOGADO_MANUALMENTE']);
+        $conn->commit();
+        briefing_publish_realtime($id, 'briefing.access.revoked');
+        briefing_json(['ok' => true]);
+    }
     if ($action === 'briefing.invite') {
+        throw new InvalidArgumentException('Convites diretos foram substituídos pelo link de acesso seguro.');
         $id = (int)($body['briefing_id'] ?? 0);
         $email = briefing_email($body['email'] ?? '');
         $name = briefing_clean_text($body['name'] ?? '', 180);

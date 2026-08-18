@@ -47,7 +47,7 @@ if (($_SESSION['logado'] ?? false) !== true) {
         <div>
           <p class="eyebrow">CATÁLOGO</p>
           <h2>Template de briefing</h2>
-        </div><button class="icon" value="cancel" aria-label="Fechar">×</button>
+        </div><button type="submit" class="icon" value="cancel" formnovalidate aria-label="Fechar">×</button>
       </header><label>Nome do template<input id="template-name" required maxlength="180"></label><label class="check"><input type="checkbox" id="template-review" checked> Exige conferência interna</label><label>Revisor padrão<select id="template-reviewer">
           <option value="">Definir por briefing</option>
         </select></label>
@@ -58,7 +58,7 @@ if (($_SESSION['logado'] ?? false) !== true) {
   <dialog id="briefing-dialog" class="dialog">
     <form method="dialog" id="briefing-form">
       <header>
-        <h2>Novo briefing</h2><button class="icon" value="cancel" aria-label="Fechar">×</button>
+        <h2>Novo briefing</h2><button type="submit" class="icon" value="cancel" formnovalidate aria-label="Fechar">×</button>
       </header><label>Template<select id="briefing-template" required></select></label><label>Obra<select id="briefing-obra" required></select></label><label>Título<input id="briefing-title" required maxlength="180"></label><label>Prazo<input id="briefing-due" type="datetime-local"></label><label>Responsável pela conferência<select id="briefing-reviewer">
           <option value="">Qualquer pessoa interna</option>
         </select></label><label class="check"><input type="checkbox" id="briefing-requires-review" checked> Exige conferência interna</label>

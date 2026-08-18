@@ -435,6 +435,18 @@ body {
   padding: 13px;
   margin: 12px 0;
 }
+.template-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.template-section-head input {
+  flex: 1;
+}
+.danger-button {
+  color: var(--b-red);
+  white-space: nowrap;
+}
 .template-section h3 {
   margin: 0 0 8px;
 }
@@ -449,6 +461,9 @@ body {
 }
 .question-options {
   font-size: 12px;
+}
+.question-remove {
+  margin-top: 8px;
 }
 .detail-actions {
   gap: 8px;
@@ -483,6 +498,13 @@ body {
   }
   .template-question-grid {
     grid-template-columns: 1fr;
+  }
+  .template-section-head {
+    flex-direction: column;
+  }
+  .template-section-head input,
+  .template-section-head .danger-button {
+    width: 100%;
   }
   .kpi {
     flex: 1;

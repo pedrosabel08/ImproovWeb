@@ -7,6 +7,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/secure_env.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 require_once __DIR__ . '/../contact_architecture.php';
 
@@ -16,7 +17,9 @@ const BRIEFING_OPEN_STATUSES = ['AGUARDANDO_CLIENTE', 'EM_PREENCHIMENTO', 'AJUST
 function briefing_conn(): mysqli
 {
     global $conn;
-    if (!$conn instanceof mysqli) throw new RuntimeException('Banco de dados indisponível.');
+    if (!$conn instanceof mysqli) {
+        throw new RuntimeException('Banco de dados indisponível.');
+    }
     $conn->set_charset('utf8mb4');
     return $conn;
 }
@@ -36,7 +39,9 @@ function briefing_body(): array
     $raw = file_get_contents('php://input');
     if (is_string($raw) && trim($raw) !== '') {
         $decoded = json_decode($raw, true);
-        if (is_array($decoded)) return $decoded;
+        if (is_array($decoded)) {
+            return $decoded;
+        }
     }
     return $_POST;
 }
@@ -54,7 +59,9 @@ function briefing_clean_text(mixed $value, int $max = 5000): string
 function briefing_email(mixed $value): string
 {
     $email = mb_strtolower(trim((string) $value), 'UTF-8');
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 255) throw new InvalidArgumentException('E-mail inválido.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 255) {
+        throw new InvalidArgumentException('E-mail inválido.');
+    }
     return $email;
 }
 function briefing_actor_id(): int
@@ -63,18 +70,24 @@ function briefing_actor_id(): int
 }
 function briefing_internal_require(): int
 {
-    if (($_SESSION['logado'] ?? false) !== true || briefing_actor_id() <= 0) briefing_json(['ok' => false, 'message' => 'Sessão interna inválida.'], 401);
+    if (($_SESSION['logado'] ?? false) !== true || briefing_actor_id() <= 0) {
+        briefing_json(['ok' => false, 'message' => 'Sessão interna inválida.'], 401);
+    }
     return briefing_actor_id();
 }
 function briefing_csrf_token(): string
 {
-    if (empty($_SESSION['briefing_csrf'])) $_SESSION['briefing_csrf'] = bin2hex(random_bytes(32));
+    if (empty($_SESSION['briefing_csrf'])) {
+        $_SESSION['briefing_csrf'] = bin2hex(random_bytes(32));
+    }
     return (string) $_SESSION['briefing_csrf'];
 }
 function briefing_require_internal_csrf(): void
 {
     $provided = (string) ($_SERVER['HTTP_X_BRIEFING_CSRF'] ?? '');
-    if ($provided === '' || !hash_equals(briefing_csrf_token(), $provided)) briefing_json(['ok' => false, 'message' => 'Token CSRF inválido.'], 403);
+    if ($provided === '' || !hash_equals(briefing_csrf_token(), $provided)) {
+        briefing_json(['ok' => false, 'message' => 'Token CSRF inválido.'], 403);
+    }
 }
 function briefing_is_mutation(string $action): bool
 {
@@ -84,8 +97,12 @@ function briefing_is_mutation(string $action): bool
 function briefing_stmt(mysqli $conn, string $sql, string $types = '', array $params = []): mysqli_stmt
 {
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Falha ao preparar consulta.');
-    if ($types !== '') $stmt->bind_param($types, ...$params);
+    if (!$stmt) {
+        throw new RuntimeException('Falha ao preparar consulta.');
+    }
+    if ($types !== '') {
+        $stmt->bind_param($types, ...$params);
+    }
     if (!$stmt->execute()) {
         $message = $stmt->error;
         $stmt->close();
@@ -116,7 +133,9 @@ function briefing_event(mysqli $conn, int $briefingId, string $type, string $act
 function briefing_publish_realtime(int $briefingId, string $event, array $metadata = []): void
 {
     try {
-        if (!class_exists('Predis\\Client')) return;
+        if (!class_exists('Predis\\Client')) {
+            return;
+        }
         improov_load_env_once();
         $url = improov_env('REDIS_URL', 'redis://127.0.0.1:6379');
         $redis = new Predis\Client($url);
@@ -129,10 +148,14 @@ function briefing_publish_realtime(int $briefingId, string $event, array $metada
 
 function briefing_temporal_state(?string $dueAt): string
 {
-    if (!$dueAt) return 'SEM_PRAZO';
+    if (!$dueAt) {
+        return 'SEM_PRAZO';
+    }
     $due = new DateTimeImmutable($dueAt);
     $now = new DateTimeImmutable('now');
-    if ($due < $now) return 'VENCIDO';
+    if ($due < $now) {
+        return 'VENCIDO';
+    }
     return $due->format('Y-m-d') === $now->format('Y-m-d') ? 'VENCE_HOJE' : 'NO_PRAZO';
 }
 
@@ -149,7 +172,9 @@ function briefing_fetch(mysqli $conn, int $briefingId, bool $external = false): 
     $stmt = briefing_stmt($conn, "SELECT b.*,o.nome_obra, t.nome template_nome, c.nome_colaborador revisor_nome FROM briefing_online b LEFT JOIN obra o ON o.idobra=b.obra_id LEFT JOIN briefing_template t ON t.id=b.template_id LEFT JOIN colaborador c ON c.idcolaborador=b.revisor_colaborador_id WHERE b.id=?", 'i', [$briefingId]);
     $briefing = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$briefing) return null;
+    if (!$briefing) {
+        return null;
+    }
     $briefing['id'] = (int)$briefing['id'];
     $briefing['temporal_status'] = briefing_temporal_state($briefing['prazo_em']);
     $briefing['progress'] = briefing_progress($conn, $briefingId);
@@ -166,19 +191,23 @@ function briefing_fetch(mysqli $conn, int $briefingId, bool $external = false): 
         $ids = array_keys($sections);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $types = str_repeat('i', count($ids));
-        $stmt = $conn->prepare("SELECT q.*,a.id answer_id,a.valor_json,a.nao_aplica,a.versao,a.atualizado_em,a.respondido_em,p.nome resposta_por FROM briefing_question q LEFT JOIN briefing_answer a ON a.briefing_question_id=q.id LEFT JOIN briefing_participant p ON p.id=a.atualizado_por_participant_id WHERE q.briefing_section_id IN ($placeholders) AND q.ativa=1 ORDER BY q.ordem,q.id");
+        $stmt = $conn->prepare("SELECT q.*,a.id answer_id,a.valor_json,a.nao_aplica,a.versao,a.atualizado_em,a.respondido_em,p.id resposta_por_id,p.nome resposta_por FROM briefing_question q LEFT JOIN briefing_answer a ON a.briefing_question_id=q.id LEFT JOIN briefing_participant p ON p.id=a.atualizado_por_participant_id WHERE q.briefing_section_id IN ($placeholders) AND q.ativa=1 ORDER BY q.ordem,q.id");
         $stmt->bind_param($types, ...$ids);
         $stmt->execute();
         $r = $stmt->get_result();
         while ($q = $r->fetch_assoc()) {
             $q['id'] = (int)$q['id'];
-            $q['answer'] = ['id' => $q['answer_id'] ? (int)$q['answer_id'] : null, 'value' => briefing_json_decode($q['valor_json']), 'not_applicable' => (bool)$q['nao_aplica'], 'version' => (int)($q['versao'] ?? 0), 'updated_at' => $q['atualizado_em'], 'author' => $q['resposta_por']];
-            unset($q['answer_id'], $q['valor_json'], $q['nao_aplica'], $q['versao'], $q['atualizado_em'], $q['respondido_em'], $q['resposta_por']);
+            $q['answer'] = ['id' => $q['answer_id'] ? (int)$q['answer_id'] : null, 'value' => briefing_json_decode($q['valor_json']), 'not_applicable' => (bool)$q['nao_aplica'], 'version' => (int)($q['versao'] ?? 0), 'updated_at' => $q['atualizado_em'], 'author' => $q['resposta_por'], 'author_id' => $q['resposta_por_id'] ? (int)$q['resposta_por_id'] : null];
+            unset($q['answer_id'], $q['valor_json'], $q['nao_aplica'], $q['versao'], $q['atualizado_em'], $q['respondido_em'], $q['resposta_por_id'], $q['resposta_por']);
             $sections[(int)$q['briefing_section_id']]['questions'][] = $q;
         }
         $stmt->close();
         $questionIds = [];
-        foreach ($sections as $section) foreach ($section['questions'] as $q) $questionIds[] = $q['id'];
+        foreach ($sections as $section) {
+            foreach ($section['questions'] as $q) {
+                $questionIds[] = $q['id'];
+            }
+        }
         if ($questionIds) {
             $marks = implode(',', array_fill(0, count($questionIds), '?'));
             $types = str_repeat('i', count($questionIds));
@@ -187,9 +216,15 @@ function briefing_fetch(mysqli $conn, int $briefingId, bool $external = false): 
             $stmt->execute();
             $r = $stmt->get_result();
             $options = [];
-            while ($o = $r->fetch_assoc()) $options[(int)$o['question_id']][] = ['value' => $o['valor'], 'label' => $o['rotulo']];
+            while ($o = $r->fetch_assoc()) {
+                $options[(int)$o['question_id']][] = ['value' => $o['valor'], 'label' => $o['rotulo']];
+            }
             $stmt->close();
-            foreach ($sections as &$section) foreach ($section['questions'] as &$q) $q['options'] = $options[$q['id']] ?? [];
+            foreach ($sections as &$section) {
+                foreach ($section['questions'] as &$q) {
+                    $q['options'] = $options[$q['id']] ?? [];
+                }
+            }
             unset($q);
             unset($section);
         }
@@ -198,13 +233,17 @@ function briefing_fetch(mysqli $conn, int $briefingId, bool $external = false): 
     $stmt = briefing_stmt($conn, "SELECT r.*,q.pergunta FROM briefing_question_request r JOIN briefing_question q ON q.id=r.briefing_question_id JOIN briefing_section s ON s.id=q.briefing_section_id WHERE s.briefing_id=? AND r.status<>'RESOLVIDO' ORDER BY r.criado_em", 'i', [$briefingId]);
     $requests = [];
     $r = $stmt->get_result();
-    while ($row = $r->fetch_assoc()) $requests[] = $row;
+    while ($row = $r->fetch_assoc()) {
+        $requests[] = $row;
+    }
     $stmt->close();
     $briefing['requests'] = $requests;
-    $stmt = briefing_stmt($conn, 'SELECT nome,email,ultima_atividade_em FROM briefing_participant WHERE briefing_id=? AND ativo=1 ORDER BY ultima_atividade_em DESC', 'i', [$briefingId]);
+    $stmt = briefing_stmt($conn, 'SELECT p.nome,p.email,p.ultima_atividade_em,COUNT(a.id) respostas_count FROM briefing_participant p LEFT JOIN briefing_answer a ON a.atualizado_por_participant_id=p.id WHERE p.briefing_id=? AND p.ativo=1 GROUP BY p.id,p.nome,p.email,p.ultima_atividade_em ORDER BY p.ultima_atividade_em DESC', 'i', [$briefingId]);
     $participants = [];
     $r = $stmt->get_result();
-    while ($row = $r->fetch_assoc()) $participants[] = $row;
+    while ($row = $r->fetch_assoc()) {
+        $participants[] = $row;
+    }
     $stmt->close();
     $briefing['participants'] = $participants;
     if (!$external) {
@@ -218,7 +257,9 @@ function briefing_fetch(mysqli $conn, int $briefingId, bool $external = false): 
 function briefing_snapshot(mysqli $conn, int $briefingId, string $kind, string $actorType, ?int $actorId): void
 {
     $content = briefing_fetch($conn, $briefingId, false);
-    if (!$content) throw new RuntimeException('Briefing não encontrado.');
+    if (!$content) {
+        throw new RuntimeException('Briefing não encontrado.');
+    }
     unset($content['events']);
     $json = json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $version = (int)briefing_scalar($conn, 'SELECT COALESCE(MAX(versao_snapshot),0)+1 FROM briefing_snapshot WHERE briefing_id=?', 'i', [$briefingId]);
@@ -232,7 +273,9 @@ function briefing_clone_template(mysqli $conn, int $templateId, int $obraId, str
     $stmt = briefing_stmt($conn, 'SELECT * FROM briefing_template WHERE id=? AND ativo=1', 'i', [$templateId]);
     $template = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$template) throw new InvalidArgumentException('Template não encontrado ou inativo.');
+    if (!$template) {
+        throw new InvalidArgumentException('Template não encontrado ou inativo.');
+    }
     $review = $requiresReview === null ? (int)$template['exige_conferencia_interna'] : (int)$requiresReview;
     $reviewer = $reviewerId ?: ($template['revisor_padrao_colaborador_id'] ?: null);
     $stmt = briefing_stmt($conn, 'INSERT INTO briefing_online (obra_id,template_id,template_versao,titulo,exige_conferencia_interna,revisor_colaborador_id,criado_por_colaborador_id,prazo_em) VALUES (?,?,?,?,?,?,?,?)', 'iiisiiis', [$obraId, $templateId, (int)$template['versao'], $title, $review, $reviewer, $actorId, $dueAt]);
@@ -266,27 +309,41 @@ function briefing_can_review(array $briefing, int $actorId): bool
 function briefing_valid_answer(array $question, mixed $value, bool $notApplicable): mixed
 {
     if ($notApplicable) {
-        if (!(int)$question['permite_nao_aplica']) throw new InvalidArgumentException('Esta pergunta não permite “Não se aplica”.');
+        if (!(int)$question['permite_nao_aplica']) {
+            throw new InvalidArgumentException('Esta pergunta não permite “Não se aplica”.');
+        }
         return null;
     }
     $type = $question['tipo'];
     if ($type === 'MULTI_SELECT') {
-        if (!is_array($value)) throw new InvalidArgumentException('Selecione uma ou mais opções.');
-        $value = array_values(array_unique(array_map(fn($v) => briefing_clean_text($v, 255), $value)));
+        if (!is_array($value)) {
+            throw new InvalidArgumentException('Selecione uma ou mais opções.');
+        }
+        $value = array_values(array_unique(array_map(fn ($v) => briefing_clean_text($v, 255), $value)));
     } elseif ($type === 'YES_NO') {
-        if (!in_array($value, [true, false, 'yes', 'no', 'sim', 'nao'], true)) throw new InvalidArgumentException('Resposta sim/não inválida.');
+        if (!in_array($value, [true, false, 'yes', 'no', 'sim', 'nao'], true)) {
+            throw new InvalidArgumentException('Resposta sim/não inválida.');
+        }
         $value = in_array($value, [true, 'yes', 'sim'], true);
     } elseif ($type === 'NUMBER') {
-        if (!is_numeric($value)) throw new InvalidArgumentException('Informe um número válido.');
+        if (!is_numeric($value)) {
+            throw new InvalidArgumentException('Informe um número válido.');
+        }
         $value = (string)$value;
     } elseif ($type === 'DATE') {
-        if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) throw new InvalidArgumentException('Informe uma data válida.');
+        if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            throw new InvalidArgumentException('Informe uma data válida.');
+        }
     } elseif ($type === 'LINK') {
-        if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) throw new InvalidArgumentException('Informe um link válido.');
+        if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
+            throw new InvalidArgumentException('Informe um link válido.');
+        }
     } else {
         $value = briefing_clean_text($value, $type === 'LONG_TEXT' ? 10000 : 2000);
     }
-    if ($question['obrigatoria'] && (($type === 'MULTI_SELECT' && $value === []) || ($type !== 'MULTI_SELECT' && ($value === '' || $value === null)))) throw new InvalidArgumentException('Esta pergunta é obrigatória.');
+    if ($question['obrigatoria'] && (($type === 'MULTI_SELECT' && $value === []) || ($type !== 'MULTI_SELECT' && ($value === '' || $value === null)))) {
+        throw new InvalidArgumentException('Esta pergunta é obrigatória.');
+    }
     return $value;
 }
 
@@ -357,6 +414,23 @@ function briefing_external_current_auth(mysqli $conn): ?array
     return $auth;
 }
 
+function briefing_external_csrf_token(array $auth): string
+{
+    $sessionToken = (string) ($_COOKIE[briefing_external_auth_cookie_name()] ?? '');
+    return hash_hmac('sha256', 'briefing-external-csrf:' . (int) ($auth['id'] ?? 0), $sessionToken);
+}
+
+function briefing_external_csrf_valid(array $auth, string $provided): bool
+{
+    if ($provided === '') {
+        return false;
+    }
+    $providedHash = hash('sha256', $provided);
+    $stored = (string) ($auth['csrf_hash'] ?? '');
+    $stable = briefing_external_csrf_token($auth);
+    return ($stored !== '' && hash_equals($stored, $providedHash)) || hash_equals($stable, $provided);
+}
+
 function briefing_external_access_link_v2(mysqli $conn, string $token): ?array
 {
     if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
@@ -408,7 +482,7 @@ function briefing_external_access(mysqli $conn, string $token, bool $csrf = fals
     }
     if ($csrf) {
         $provided = (string) ($_SERVER['HTTP_X_BRIEFING_CSRF'] ?? '');
-        if ($provided === '' || !hash_equals((string) $auth['csrf_hash'], hash('sha256', $provided))) {
+        if (!briefing_external_csrf_valid($auth, $provided)) {
             briefing_json(['ok' => false, 'message' => 'Token CSRF inválido.'], 403);
         }
     }
@@ -434,10 +508,13 @@ function briefing_external_question_editable(mysqli $conn, int $briefingId, stri
 function briefing_external_create_auth_session(mysqli $conn, int $contactId): array
 {
     $token = bin2hex(random_bytes(32));
-    $csrf = bin2hex(random_bytes(32));
+    $initialCsrf = bin2hex(random_bytes(32));
     $expires = time() + briefing_external_auth_config()['session_ttl'];
-    $stmt = briefing_stmt($conn, 'INSERT INTO external_auth_session (contato_cliente_id,token_hash,csrf_hash,criado_em,expira_em,ultimo_uso_em,ip_criacao,user_agent_criacao) VALUES (?,?,?,UTC_TIMESTAMP(),FROM_UNIXTIME(?),UTC_TIMESTAMP(),?,?)', 'ississ', [$contactId, hash('sha256', $token), hash('sha256', $csrf), $expires, briefing_external_client_ip(), briefing_external_user_agent()]);
+    $stmt = briefing_stmt($conn, 'INSERT INTO external_auth_session (contato_cliente_id,token_hash,csrf_hash,criado_em,expira_em,ultimo_uso_em,ip_criacao,user_agent_criacao) VALUES (?,?,?,UTC_TIMESTAMP(),FROM_UNIXTIME(?),UTC_TIMESTAMP(),?,?)', 'ississ', [$contactId, hash('sha256', $token), hash('sha256', $initialCsrf), $expires, briefing_external_client_ip(), briefing_external_user_agent()]);
+    $sessionId = (int) $conn->insert_id;
     $stmt->close();
+    $csrf = hash_hmac('sha256', 'briefing-external-csrf:' . $sessionId, $token);
+    briefing_stmt($conn, 'UPDATE external_auth_session SET csrf_hash=? WHERE id=?', 'si', [hash('sha256', $csrf), $sessionId])->close();
     briefing_external_set_auth_cookie($token, $expires);
     return ['csrf' => $csrf, 'expires_at' => gmdate('c', $expires)];
 }
@@ -483,15 +560,21 @@ function briefing_set_ext_cookie(string $token, int $expires): void
 function briefing_external_session(mysqli $conn, bool $csrf = false): array
 {
     $token = (string)($_COOKIE[briefing_external_cookie_name()] ?? '');
-    if ($token === '') briefing_json(['ok' => false, 'message' => 'Sessão externa necessária.'], 401);
+    if ($token === '') {
+        briefing_json(['ok' => false, 'message' => 'Sessão externa necessária.'], 401);
+    }
     $hash = hash('sha256', $token);
     $stmt = briefing_stmt($conn, "SELECT s.*,p.nome,p.email,p.papel,b.status,b.link_expira_em FROM briefing_external_session s JOIN briefing_participant p ON p.id=s.participant_id JOIN briefing_online b ON b.id=s.briefing_id WHERE s.token_hash=? AND s.revogado_em IS NULL AND s.expira_em>UTC_TIMESTAMP() AND p.ativo=1", 's', [$hash]);
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$row) briefing_json(['ok' => false, 'message' => 'Sessão externa expirada.'], 401);
+    if (!$row) {
+        briefing_json(['ok' => false, 'message' => 'Sessão externa expirada.'], 401);
+    }
     if ($csrf) {
         $provided = (string)($_SERVER['HTTP_X_BRIEFING_CSRF'] ?? '');
-        if ($provided === '' || !hash_equals($row['csrf_hash'], hash('sha256', $provided))) briefing_json(['ok' => false, 'message' => 'Token CSRF inválido.'], 403);
+        if ($provided === '' || !hash_equals($row['csrf_hash'], hash('sha256', $provided))) {
+            briefing_json(['ok' => false, 'message' => 'Token CSRF inválido.'], 403);
+        }
     }
     briefing_stmt($conn, 'UPDATE briefing_external_session SET ultimo_acesso_em=UTC_TIMESTAMP() WHERE id=?', 'i', [(int)$row['id']])->close();
     return $row;
@@ -513,11 +596,15 @@ function briefing_contact_by_email(mysqli $conn, int $obraId, string $email): ?a
 function briefing_rate_limit(mysqli $conn, string $key, int $limit, int $seconds): bool
 {
     try {
-        if (!class_exists('Predis\\Client')) return true;
+        if (!class_exists('Predis\\Client')) {
+            return true;
+        }
         $redis = new Predis\Client(improov_env('REDIS_URL', 'redis://127.0.0.1:6379'));
         $k = 'briefing:rate:' . hash('sha256', $key);
         $n = (int)$redis->incr($k);
-        if ($n === 1) $redis->expire($k, $seconds);
+        if ($n === 1) {
+            $redis->expire($k, $seconds);
+        }
         $redis->disconnect();
         return $n <= $limit;
     } catch (Throwable) {
@@ -540,9 +627,13 @@ function briefing_send_otp(string $email, string $code, string $briefingTitle): 
         $line = '';
         while (!feof($socket)) {
             $part = fgets($socket, 1024);
-            if ($part === false) break;
+            if ($part === false) {
+                break;
+            }
             $line .= $part;
-            if (preg_match('/^\d{3} /', $part)) break;
+            if (preg_match('/^\d{3} /', $part)) {
+                break;
+            }
         }
         return $line;
     };
@@ -550,7 +641,7 @@ function briefing_send_otp(string $email, string $code, string $briefingTitle): 
         fwrite($socket, $command . "\r\n");
         return $read($socket);
     };
-    $ok = static fn(string $reply, array $codes): bool => preg_match('/^(\d{3})/', $reply, $m) === 1 && in_array((int)$m[1], $codes, true);
+    $ok = static fn (string $reply, array $codes): bool => preg_match('/^(\d{3})/', $reply, $m) === 1 && in_array((int)$m[1], $codes, true);
     $socket = @stream_socket_client(($port === 465 ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 10, STREAM_CLIENT_CONNECT);
     if (!$socket) {
         error_log('[Briefing] SMTP connection failed.');
@@ -558,21 +649,37 @@ function briefing_send_otp(string $email, string $code, string $briefingTitle): 
     }
     stream_set_timeout($socket, 10);
     try {
-        if (!$ok($read($socket), [220])) throw new RuntimeException('greeting');
-        if (!$ok($send($socket, 'EHLO flow-briefing'), [250])) throw new RuntimeException('ehlo');
+        if (!$ok($read($socket), [220])) {
+            throw new RuntimeException('greeting');
+        }
+        if (!$ok($send($socket, 'EHLO flow-briefing'), [250])) {
+            throw new RuntimeException('ehlo');
+        }
         if ($port !== 465) {
-            if (!$ok($send($socket, 'STARTTLS'), [220])) throw new RuntimeException('starttls');
-            if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) throw new RuntimeException('tls');
-            if (!$ok($send($socket, 'EHLO flow-briefing'), [250])) throw new RuntimeException('ehlo-tls');
+            if (!$ok($send($socket, 'STARTTLS'), [220])) {
+                throw new RuntimeException('starttls');
+            }
+            if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                throw new RuntimeException('tls');
+            }
+            if (!$ok($send($socket, 'EHLO flow-briefing'), [250])) {
+                throw new RuntimeException('ehlo-tls');
+            }
         }
         if ($user !== '' || $password !== '') {
-            if (!$ok($send($socket, 'AUTH LOGIN'), [334]) || !$ok($send($socket, base64_encode($user)), [334]) || !$ok($send($socket, base64_encode($password)), [235])) throw new RuntimeException('auth');
+            if (!$ok($send($socket, 'AUTH LOGIN'), [334]) || !$ok($send($socket, base64_encode($user)), [334]) || !$ok($send($socket, base64_encode($password)), [235])) {
+                throw new RuntimeException('auth');
+            }
         }
-        if (!$ok($send($socket, 'MAIL FROM:<' . $from . '>'), [250]) || !$ok($send($socket, 'RCPT TO:<' . $email . '>'), [250, 251]) || !$ok($send($socket, 'DATA'), [354])) throw new RuntimeException('envelope');
+        if (!$ok($send($socket, 'MAIL FROM:<' . $from . '>'), [250]) || !$ok($send($socket, 'RCPT TO:<' . $email . '>'), [250, 251]) || !$ok($send($socket, 'DATA'), [354])) {
+            throw new RuntimeException('envelope');
+        }
         $subject = 'Código de acesso — ' . briefing_clean_text($briefingTitle, 160);
         $body = "Seu código de acesso ao briefing é: {$code}\r\n\r\nEle expira em 10 minutos.";
         $message = "From: {$from}\r\nTo: {$email}\r\nSubject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" . str_replace("\n.", "\n..", $body) . "\r\n.";
-        if (!$ok($send($socket, $message), [250])) throw new RuntimeException('data');
+        if (!$ok($send($socket, $message), [250])) {
+            throw new RuntimeException('data');
+        }
         $send($socket, 'QUIT');
         fclose($socket);
         return true;
@@ -584,7 +691,9 @@ function briefing_send_otp(string $email, string $code, string $briefingTitle): 
 }
 function briefing_ws_ticket(int $briefingId, int $participantId, string $scope): string
 {
-    if (!class_exists('Predis\\Client')) throw new RuntimeException('Realtime indisponível.');
+    if (!class_exists('Predis\\Client')) {
+        throw new RuntimeException('Realtime indisponível.');
+    }
     $ticket = bin2hex(random_bytes(32));
     $payload = json_encode(['briefing_id' => $briefingId, 'participant_id' => $participantId, 'scope' => $scope, 'exp' => time() + 300]);
     $redis = new Predis\Client(improov_env('REDIS_URL', 'redis://127.0.0.1:6379'));
@@ -594,7 +703,9 @@ function briefing_ws_ticket(int $briefingId, int $participantId, string $scope):
 }
 function briefing_flow_event(mysqli $conn, array $briefing, string $action, ?int $actorId = null): void
 {
-    if (flow_connect_operational_mode('briefing', 'business') === 'off') return;
+    if (flow_connect_operational_mode('briefing', 'business') === 'off') {
+        return;
+    }
     $event = \FlowConnect\Contracts\EventEnvelope::normalize([
         'event_type' => 'briefing.briefing.' . $action,
         'source_module' => 'briefing',

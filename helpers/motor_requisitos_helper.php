@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/flow_block_helper.php';
 require_once __DIR__ . '/flow_review_aprovacao_helper.php';
@@ -56,8 +57,8 @@ function motor_requisitos_resultado(
     // Não aplicável não significa liberada. A decisão precisa continuar
     // respeitando a compatibilidade legada ou o bloqueio seguro de configuração.
     $elegivel = $erroConfiguracao === null && empty($bloqueios) && $legacyLiberada;
-    $atendidos = count(array_filter($requisitos, static fn(array $i): bool => $i['estado'] === 'ATENDIDO'));
-    $pendentes = count(array_filter($requisitos, static fn(array $i): bool => $i['estado'] === 'NAO_ATENDIDO'));
+    $atendidos = count(array_filter($requisitos, static fn (array $i): bool => $i['estado'] === 'ATENDIDO'));
+    $pendentes = count(array_filter($requisitos, static fn (array $i): bool => $i['estado'] === 'NAO_ATENDIDO'));
 
     return [
         'politica_versao' => $aplicavel ? MOTOR_REQUISITOS_VERSAO : null,
@@ -206,19 +207,35 @@ function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackRes
 function motor_requisitos_politica_funcao_imagem(array $context): ?string
 {
     $funcaoId = (int) ($context['funcao_id'] ?? 0);
-    if ($funcaoId === 1) return 'CADERNO';
-    if ($funcaoId === 8) return 'FILTRO';
-    if ($funcaoId === 2) return 'MODELAGEM';
-    if ($funcaoId === 3) return 'COMPOSICAO';
+    if ($funcaoId === 1) {
+        return 'CADERNO';
+    }
+    if ($funcaoId === 8) {
+        return 'FILTRO';
+    }
+    if ($funcaoId === 2) {
+        return 'MODELAGEM';
+    }
+    if ($funcaoId === 3) {
+        return 'COMPOSICAO';
+    }
     if ($funcaoId === 4) {
         return trim((string) ($context['tipo_imagem'] ?? '')) === 'Planta Humanizada'
             ? 'FINALIZACAO_PLANTA_HUMANIZADA'
             : 'FINALIZACAO';
     }
-    if ($funcaoId === 7) return 'FINALIZACAO_PLANTA_HUMANIZADA';
-    if ($funcaoId === 5) return 'POS_PRODUCAO';
-    if ($funcaoId === 6) return 'ALTERACAO';
-    if ($funcaoId === 9) return 'LEGADO_PRE_FINALIZACAO';
+    if ($funcaoId === 7) {
+        return 'FINALIZACAO_PLANTA_HUMANIZADA';
+    }
+    if ($funcaoId === 5) {
+        return 'POS_PRODUCAO';
+    }
+    if ($funcaoId === 6) {
+        return 'ALTERACAO';
+    }
+    if ($funcaoId === 9) {
+        return 'LEGADO_PRE_FINALIZACAO';
+    }
     return null;
 }
 
@@ -572,7 +589,9 @@ function motor_requisitos_entrega_registrada_na_etapa(mysqli $conn, int $obraId,
 
 function motor_requisitos_primeira_composicao_pendente_subtipo(mysqli $conn, int $obraId, int $subtipoId): ?array
 {
-    if ($subtipoId <= 0) return null;
+    if ($subtipoId <= 0) {
+        return null;
+    }
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
                 fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
@@ -625,11 +644,13 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
                 f.nome_funcao,
                 ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id,
+                o.liberar_modelagem,
                 c.nome_colaborador AS tarefa_responsavel_nome,
                 ico.status_id AS imagem_status_id, si.nome_status AS imagem_status_nome
            FROM funcao_imagem fi
            JOIN funcao f ON f.idfuncao = fi.funcao_id
            JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+           JOIN obra o ON o.idobra = ico.obra_id
            LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
            LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
           WHERE fi.idfuncao_imagem = ?
@@ -772,9 +793,13 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
         $origem = 'Tarefa produtiva anterior';
         $urlPredecessora = $taskUrl;
 
+        $liberarModelagem = $funcaoId === 2 && (int) ($context['liberar_modelagem'] ?? 0) === 1;
         $usaModelagemBaseFachada = ($funcaoId === 4 && $tipoImagem === 'fachada')
             || ($funcaoId === 3 && $tipoImagem === 'imagem externa');
-        if ($usaModelagemBaseFachada) {
+        if ($liberarModelagem) {
+            // A liberação da obra permite iniciar Modelagem antes de qualquer
+            // tarefa produtiva anterior, como no fluxo legado da obra.
+        } elseif ($usaModelagemBaseFachada) {
             $predecessora = motor_requisitos_modelagem_base_fachada($conn, $obraId);
             $origem = 'Modelagem-base da Fachada';
             if (!$predecessora) {

@@ -51,7 +51,7 @@ $conn->close();
     <!-- Project CSS -->
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('styleCard.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('styleCard.css') . '&t=' . filemtime(__DIR__ . '/styleCard.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&t=' . filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -516,14 +516,14 @@ $conn->close();
     <script>
         window.STATUS_IMAGENS = <?php
         $statusArr = [];
-        foreach ($status_imagens as $s) {
-            $statusArr[] = [
-                'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
-                'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
-            ];
-        }
-        echo json_encode($statusArr);
-        ?>;
+foreach ($status_imagens as $s) {
+    $statusArr[] = [
+        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
+        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
+    ];
+}
+echo json_encode($statusArr);
+?>;
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

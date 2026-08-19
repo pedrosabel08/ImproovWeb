@@ -1,52 +1,65 @@
 /* ===== CARD DE ENTREGA ===== */
 .card-entrega {
+  --card-status-color: transparent;
   background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-left: 3px solid var(--card-status-color);
+  border-radius: var(--radius-sm);
   padding: 12px 14px;
   cursor: grab;
   position: relative;
   transition:
     transform var(--transition-normal),
     box-shadow var(--transition-normal),
-    border-color var(--transition-normal),
     background var(--transition-normal);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-md);
   animation: cardSlideIn 0.2s both;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
 }
 
 .card-entrega:hover {
   transform: translateY(-3px);
-  box-shadow: var(--shadow-card-hover);
-  border-color: var(--border-card-hover);
+  box-shadow: var(--shadow-lg);
   background: var(--bg-card-hover);
 }
 
 .card-entrega:hover::before {
   opacity: 1;
 }
+
+/* .card-entrega::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: var(--card-status-color);
+  content: "";
+  opacity: 0.85;
+  transition: opacity var(--transition-normal);
+} */
 .card-entrega:active {
   cursor: grabbing;
 }
 
 /* Top color bar per status */
 .card-entrega.status-P00 {
-  border-left: 4px solid var(--status-P00);
+  --card-status-color: var(--status-P00);
 }
 .card-entrega.status-R00 {
-  border-left: 4px solid var(--status-R00);
+  --card-status-color: var(--status-R00);
 }
 .card-entrega.status-R01 {
-  border-left: 4px solid var(--status-R01);
+  --card-status-color: var(--status-R01);
 }
 .card-entrega.status-R02 {
-  border-left: 4px solid var(--status-R02);
+  --card-status-color: var(--status-R02);
 }
 .card-entrega.status-R03 {
-  border-left: 4px solid var(--status-R03);
+  --card-status-color: var(--status-R03);
 }
 .card-entrega.status-EF {
-  border-left: 4px solid var(--status-EF);
+  --card-status-color: var(--status-EF);
 }
 
 /* ===== CARD HEADER ===== */
@@ -171,7 +184,7 @@
   justify-content: space-between;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--border-card);
+  border-top: 0;
 }
 
 /* ===== PROGRESS BAR ===== */

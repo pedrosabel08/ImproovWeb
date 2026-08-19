@@ -36,6 +36,13 @@ function getTaskRefId(tarefa) {
   );
 }
 
+function getTaskPreviewPath(tarefa) {
+  // Quando a tarefa veio de um PDF, o preview da primeira página representa
+  // o arquivo que está sendo aprovado e deve ter prioridade sobre uma imagem
+  // antiga ou associada à mesma função.
+  return tarefa?.preview_path || tarefa?.imagem || null;
+}
+
 function isVideoMedia(media) {
   const tipo = String(media?.media_tipo || "").toLowerCase();
   const mime = String(media?.mime_type || "").toLowerCase();
@@ -959,10 +966,13 @@ async function exibirCardsDeObra(tarefas) {
     tarefasDaObra.sort(
       (a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao),
     );
-    const tarefaComImagem = tarefasDaObra.find((t) => t.imagem);
+    const tarefaComImagem = tarefasDaObra.find((t) => getTaskPreviewPath(t));
     // Use thumbnail for obra preview to reduce load
+    const tarefaPreviewPath = tarefaComImagem
+      ? getTaskPreviewPath(tarefaComImagem)
+      : null;
     const imagemPreview = tarefaComImagem
-      ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefaComImagem.imagem)}&w=450&q=85`
+      ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefaPreviewPath)}&w=450&q=85`
       : "../assets/logo.jpg";
 
     const mencoesNaObra = mencoes.mencoes_por_obra[nomenclatura] || 0;
@@ -1456,8 +1466,9 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa));
       });
 
-      const imagemPreview = tarefa.imagem
-        ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefa.imagem)}&w=450&q=85`
+      const tarefaPreviewPath = getTaskPreviewPath(tarefa);
+      const imagemPreview = tarefaPreviewPath
+        ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefaPreviewPath)}&w=450&q=85`
         : "../assets/logo.jpg";
       const qtdMencoesTask =
         (_mencoesDados.mencoes_por_funcao_imagem || {})[

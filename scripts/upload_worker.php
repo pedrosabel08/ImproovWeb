@@ -1,4 +1,5 @@
 <?php
+
 // CLI worker: processa arquivos em uploads/staging e os envia via SFTP ao NAS.
 // Uso: php scripts/upload_worker.php
 
@@ -15,10 +16,20 @@ $baseDir = __DIR__ . '/../uploads/staging';
 $processedDir = __DIR__ . '/../uploads/sent';
 $failedDir = __DIR__ . '/../uploads/failed';
 $approvalDir = __DIR__ . '/../uploads/aprovacao_pdf';
+$pdfPreviewDir = __DIR__ . '/../uploads/pdf_thumbs';
 
-if (!is_dir($processedDir)) mkdir($processedDir, 0777, true);
-if (!is_dir($failedDir)) mkdir($failedDir, 0777, true);
-if (!is_dir($approvalDir)) mkdir($approvalDir, 0777, true);
+if (!is_dir($processedDir)) {
+    mkdir($processedDir, 0777, true);
+}
+if (!is_dir($failedDir)) {
+    mkdir($failedDir, 0777, true);
+}
+if (!is_dir($approvalDir)) {
+    mkdir($approvalDir, 0777, true);
+}
+if (!is_dir($pdfPreviewDir)) {
+    mkdir($pdfPreviewDir, 0777, true);
+}
 pdf_approval_ensure_schema($conn);
 
 // Config SFTP
@@ -39,7 +50,103 @@ $ftp_port = $sftpCfg['port'];
 function worker_log(string $message, string $level = 'INFO'): void
 {
     $ts = date('Y-m-d H:i:s');
-    echo "[{$ts}] [{$level}] {$message}\n\n";
+    $line = "[{$ts}] [{$level}] {$message}";
+    echo $line . "\n\n";
+    error_log('[upload_worker] ' . $line);
+}
+
+function resolve_pdf_renderer_worker(): ?string
+{
+    $configured = trim((string)improov_env('PDFTOPPM_PATH', ''));
+    $candidates = [];
+    $configuredIsWindowsBinary = DIRECTORY_SEPARATOR !== '\\'
+        && (preg_match('/\.exe$/i', $configured) || strpos($configured, '\\') !== false);
+    if ($configured !== '' && !$configuredIsWindowsBinary) {
+        $candidates[] = $configured;
+    }
+
+    // The portable development install lives in the repository. Production can
+    // point PDFTOPPM_PATH to a system installation instead. Never consider
+    // the Windows .exe bundle when the worker is running on Linux.
+    if (DIRECTORY_SEPARATOR === '\\') {
+        $bundled = glob(__DIR__ . '/../tools/poppler/*/Library/bin/pdftoppm.exe') ?: [];
+        foreach ($bundled as $candidate) {
+            $candidates[] = $candidate;
+        }
+    }
+
+    $candidates[] = 'pdftoppm';
+    foreach ($candidates as $candidate) {
+        if ($candidate === 'pdftoppm') {
+            if (!function_exists('exec')) {
+                error_log('[upload_worker] PDF preview: exec() está desabilitado no PHP CLI.');
+                return null;
+            }
+            $whereOutput = [];
+            $whereCode = 1;
+            $lookupCommand = DIRECTORY_SEPARATOR === '\\'
+                ? 'where.exe pdftoppm 2>NUL'
+                : 'command -v pdftoppm 2>/dev/null';
+            @exec($lookupCommand, $whereOutput, $whereCode);
+            if ($whereCode === 0 && !empty($whereOutput[0])) {
+                return trim((string)$whereOutput[0]);
+            }
+            continue;
+        }
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
+function generate_pdf_preview_worker(string $pdfPath, array &$meta, string $jobId, string $previewDir): ?string
+{
+    if (!is_file($pdfPath) || !is_readable($pdfPath)) {
+        error_log('[upload_worker] PDF preview: arquivo de origem indisponível: ' . $pdfPath);
+        return null;
+    }
+    if (!function_exists('exec')) {
+        error_log('[upload_worker] PDF preview: exec() está desabilitado no PHP CLI.');
+        return null;
+    }
+
+    $safeJobId = preg_replace('/[^A-Za-z0-9_.-]/', '_', $jobId);
+    $previewName = 'pdf_' . ($safeJobId !== '' ? $safeJobId : sha1($pdfPath)) . '.jpg';
+    $previewPath = rtrim($previewDir, '/\\') . DIRECTORY_SEPARATOR . $previewName;
+    $previewRelativePath = 'uploads/pdf_thumbs/' . $previewName;
+
+    if (!is_file($previewPath) || (int)@filesize($previewPath) < 100) {
+        $renderer = resolve_pdf_renderer_worker();
+        if ($renderer === null) {
+            error_log('[upload_worker] PDF preview: pdftoppm não encontrado; defina PDFTOPPM_PATH.');
+            return null;
+        }
+        if (!is_dir($previewDir) && !@mkdir($previewDir, 0777, true) && !is_dir($previewDir)) {
+            error_log('[upload_worker] PDF preview: não foi possível criar o diretório ' . $previewDir);
+            return null;
+        }
+
+        $prefixPath = substr($previewPath, 0, -4);
+        $command = escapeshellarg($renderer)
+            . ' -f 1 -l 1 -singlefile -jpeg -r 144 -scale-to 1200 '
+            . escapeshellarg($pdfPath) . ' ' . escapeshellarg($prefixPath) . ' 2>&1';
+        error_log('[upload_worker] PDF preview: renderizando com ' . $renderer . ' para ' . $previewPath);
+        $output = [];
+        $exitCode = 1;
+        @exec($command, $output, $exitCode);
+        if ($exitCode !== 0 || !is_file($previewPath) || (int)@filesize($previewPath) < 100) {
+            error_log('[upload_worker] PDF preview: falha ao renderizar ' . $pdfPath . ' (' . implode(' ', $output) . ')');
+            @unlink($previewPath);
+            return null;
+        }
+        error_log('[upload_worker] PDF preview: arquivo criado, bytes=' . (int)@filesize($previewPath));
+    }
+
+    $meta['pdf_preview_path'] = $previewRelativePath;
+    $meta['pdf_preview_generated_at'] = date('c');
+    return $previewRelativePath;
 }
 
 function append_failed_log(string $failedDir, string $processingMeta, string $message): void
@@ -72,21 +179,31 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
         // way never works. SOURCE_CALLBACK is the reliable way to get per-chunk callbacks.
         $totalSize = (int) filesize($arquivoLocal);
         $localHandle = @fopen($arquivoLocal, 'rb');
-        if (!$localHandle) return [false, 'Erro ao abrir arquivo local para leitura.'];
+        if (!$localHandle) {
+            return [false, 'Erro ao abrir arquivo local para leitura.'];
+        }
 
         $sent = 0;
         if ($onProgress && $totalSize > 0) {
-            try { $onProgress(0, $totalSize); } catch (Exception $e) {}
+            try {
+                $onProgress(0, $totalSize);
+            } catch (Exception $e) {
+            }
         }
 
         $result = $sftp->put(
             $arquivoRemoto,
             function ($chunkLen) use ($localHandle, $totalSize, $onProgress, &$sent) {
                 $data = fread($localHandle, max(1, $chunkLen));
-                if ($data === false || strlen($data) === 0) return null; // EOF
+                if ($data === false || strlen($data) === 0) {
+                    return null;
+                } // EOF
                 $sent += strlen($data);
                 if ($onProgress && $totalSize > 0) {
-                    try { $onProgress($sent, $totalSize); } catch (Exception $e) {}
+                    try {
+                        $onProgress($sent, $totalSize);
+                    } catch (Exception $e) {
+                    }
                 }
                 return $data;
             },
@@ -103,7 +220,10 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
                 return [false, "Upload incompleto: local={$totalSize} bytes, remoto={$remoteSize} bytes"];
             }
             if ($onProgress) {
-                try { $onProgress($totalSize, $totalSize); } catch (Exception $e) {}
+                try {
+                    $onProgress($totalSize, $totalSize);
+                } catch (Exception $e) {
+                }
             }
             return [true, 'OK'];
         }
@@ -134,7 +254,9 @@ function sanitizeFilename_worker($str)
     // try transliteration to ASCII to avoid non-ASCII characters that may
     // cause SMB/Windows to create short (8.3) names when viewed via Z:\\.
     $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
-    if ($trans !== false) $str = $trans;
+    if ($trans !== false) {
+        $str = $trans;
+    }
 
     // remove characters invalid for filenames and keep a small safe set
     $str = preg_replace('/[\/\\:\*\?"<>\|]/', '', $str);
@@ -147,8 +269,12 @@ function sanitizeFilename_worker($str)
     // trim leading/trailing dots/underscores/dashes/spaces
     $str = trim($str, " ._-\t\n\r\0\x0B");
     // limit length to avoid issues on some filesystems/clients
-    if (strlen($str) > 120) $str = substr($str, 0, 120);
-    if ($str === '') $str = 'unnamed';
+    if (strlen($str) > 120) {
+        $str = substr($str, 0, 120);
+    }
+    if ($str === '') {
+        $str = 'unnamed';
+    }
     return $str;
 }
 
@@ -157,13 +283,19 @@ function sanitizeFolderSegment_worker($str)
     $str = removerTodosAcentos_worker($str);
     $str = str_replace(['°', 'º', 'ª'], 'o', $str);
     $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
-    if ($trans !== false) $str = $trans;
+    if ($trans !== false) {
+        $str = $trans;
+    }
     $str = preg_replace('/[\/\\:\*\?"<>\|]/', '', $str);
     $str = preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
     $str = preg_replace('/\s+/', ' ', $str);
     $str = trim($str, " .-_\t\n\r\0\x0B");
-    if (strlen($str) > 160) $str = substr($str, 0, 160);
-    if ($str === '') $str = 'unnamed';
+    if (strlen($str) > 160) {
+        $str = substr($str, 0, 160);
+    }
+    if ($str === '') {
+        $str = 'unnamed';
+    }
     return $str;
 }
 
@@ -176,23 +308,33 @@ function normalize_task_type_worker($value): string
 function normalize_animation_type_worker($value): ?string
 {
     $raw = mb_strtolower(trim((string)$value), 'UTF-8');
-    if ($raw === '') return null;
-    if (!in_array($raw, ['horizontal', 'vertical', 'reels'], true)) return null;
+    if ($raw === '') {
+        return null;
+    }
+    if (!in_array($raw, ['horizontal', 'vertical', 'reels'], true)) {
+        return null;
+    }
     return $raw;
 }
 
 function format_animation_type_worker($value): string
 {
     $normalized = normalize_animation_type_worker($value);
-    if ($normalized === null) return '';
+    if ($normalized === null) {
+        return '';
+    }
     return ucfirst($normalized);
 }
 
 function resolve_log_file_type_worker(string $extension, string $taskType = 'imagem'): string
 {
     $ext = strtoupper(trim($extension, '. '));
-    if ($ext === '') return 'ARQUIVO';
-    if ($taskType === 'animacao') return $ext;
+    if ($ext === '') {
+        return 'ARQUIVO';
+    }
+    if ($taskType === 'animacao') {
+        return $ext;
+    }
     return $ext === 'PDF' ? 'PDF' : 'IMG';
 }
 
@@ -220,14 +362,20 @@ function build_animation_file_name_worker(string $numeroImagem, string $nomencla
 function ensure_remote_dir_recursive(SFTP $sftp, string $dir): bool
 {
     $dir = rtrim($dir, '/');
-    if ($sftp->is_dir($dir)) return true;
+    if ($sftp->is_dir($dir)) {
+        return true;
+    }
     $parts = explode('/', ltrim($dir, '/'));
     $path = '';
     foreach ($parts as $p) {
-        if ($p === '') continue;
+        if ($p === '') {
+            continue;
+        }
         $path .= '/' . $p;
         if (!$sftp->is_dir($path)) {
-            if (!$sftp->mkdir($path)) return false;
+            if (!$sftp->mkdir($path)) {
+                return false;
+            }
         }
     }
     return $sftp->is_dir($dir);
@@ -304,7 +452,9 @@ function normalize_revisao_worker($value): ?string
 // e depois reenviados como UTF-8 (ex: "FinalizaÃ§Ã£o" -> "Finalização").
 function fix_mojibake_worker($s)
 {
-    if (!is_string($s) || $s === '') return $s;
+    if (!is_string($s) || $s === '') {
+        return $s;
+    }
     // Strategy: decode UTF-8 -> Latin-1 bytes; if the result is itself valid UTF-8
     // (and not pure ASCII, which would be a no-op anyway), the original was double-encoded.
     $decoded = mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8');
@@ -314,7 +464,9 @@ function fix_mojibake_worker($s)
     // Fallback: try to convert raw Latin-1 bytes to UTF-8 when string is not valid UTF-8
     if (!mb_check_encoding($s, 'UTF-8')) {
         $try = @iconv('ISO-8859-1', 'UTF-8//TRANSLIT', $s);
-        if ($try !== false) return $try;
+        if ($try !== false) {
+            return $try;
+        }
     }
     return $s;
 }
@@ -394,7 +546,9 @@ function mapFuncaoParaPasta($nome_funcao)
     ];
 
     foreach ($mapa as $k => $v) {
-        if (mb_strtolower($k, 'UTF-8') === mb_strtolower($nome_funcao, 'UTF-8')) return $v;
+        if (mb_strtolower($k, 'UTF-8') === mb_strtolower($nome_funcao, 'UTF-8')) {
+            return $v;
+        }
     }
     return '';
 }
@@ -444,7 +598,9 @@ function writeMeta(string $path, array $meta)
 // Move a file out of staging to destination dir. Attempts rename, then copy+unlink fallback.
 function moveFromStaging(string $src, string $destDir): bool
 {
-    if (!file_exists($src)) return false;
+    if (!file_exists($src)) {
+        return false;
+    }
     if (!is_dir($destDir)) {
         if (!@mkdir($destDir, 0777, true)) {
             error_log("[upload_worker] failed to create dest dir: {$destDir}");
@@ -491,12 +647,18 @@ function publishProgress($redis, string $id, int $progress, string $status = 'ru
 function load_dotenv_if_present()
 {
     $envPath = __DIR__ . '/.env';
-    if (!is_file($envPath)) return;
+    if (!is_file($envPath)) {
+        return;
+    }
     $lines = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    if (!$lines) return;
+    if (!$lines) {
+        return;
+    }
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || $line[0] === '#') continue;
+        if ($line === '' || $line[0] === '#') {
+            continue;
+        }
         if (preg_match('/^([A-Z0-9_]+)\s*=\s*(.*)$/', $line, $m)) {
             $key = $m[1];
             $val = $m[2];
@@ -540,8 +702,12 @@ function create_arquivo_log_table_if_missing()
 function create_log_entries_if_missing(string $metaPath, array &$meta, string $remote_path = null, $nome_final = null, $tamanho = null, $tipo = null)
 {
     global $conn;
-    if (!isset($conn)) return;
-    if (!empty($meta['log_ids'])) return;
+    if (!isset($conn)) {
+        return;
+    }
+    if (!empty($meta['log_ids'])) {
+        return;
+    }
 
     // Ensure connection is still alive before inserts
     if (function_exists('ensure_db_connection_local')) {
@@ -618,7 +784,9 @@ function create_log_entries_if_missing(string $metaPath, array &$meta, string $r
 function update_log_entries_status(array $logIds = null, string $status = '', $caminho = null, $nome_arquivo = null, $tamanho = null, $tipo = null)
 {
     global $conn;
-    if (!isset($conn) || empty($logIds)) return;
+    if (!isset($conn) || empty($logIds)) {
+        return;
+    }
 
     // Ensure connection is still alive before updates
     if (function_exists('ensure_db_connection_local')) {
@@ -650,23 +818,33 @@ function upload_deferred_pdf_to_vps(string $localFile, array $meta, string $jobI
     try {
         $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
         $vpsBase = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
-        if ($vpsBase === '') throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido');
+        if ($vpsBase === '') {
+            throw new RuntimeException('IMPROOV_VPS_SFTP_REMOTE_PATH não definido');
+        }
 
         $safeJob = preg_replace('/[^A-Za-z0-9_.-]/', '_', $jobId);
         $remoteDir = $vpsBase . '/uploads/aprovacao_pdf/' . $safeJob;
         $remoteFile = $remoteDir . '/' . basename($nomeFinal);
         $remoteMeta = $remoteDir . '/' . $safeJob . '.json';
         $sftp = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
-        if (!$sftp->login($vpsCfg['user'], $vpsCfg['pass'])) throw new RuntimeException('Falha de login no VPS para PDF pendente');
-        if (!ensure_remote_dir_recursive($sftp, $remoteDir)) throw new RuntimeException('Não foi possível criar o diretório persistente no VPS');
-        if (!$sftp->put($remoteFile, $localFile, SFTP::SOURCE_LOCAL_FILE)) throw new RuntimeException('Falha ao copiar PDF pendente para o VPS');
+        if (!$sftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
+            throw new RuntimeException('Falha de login no VPS para PDF pendente');
+        }
+        if (!ensure_remote_dir_recursive($sftp, $remoteDir)) {
+            throw new RuntimeException('Não foi possível criar o diretório persistente no VPS');
+        }
+        if (!$sftp->put($remoteFile, $localFile, SFTP::SOURCE_LOCAL_FILE)) {
+            throw new RuntimeException('Falha ao copiar PDF pendente para o VPS');
+        }
 
         $meta['staged_path'] = $remoteFile;
         $meta['pending_vps_path'] = $remoteFile;
         $meta['remote_path'] = $nasPath;
         $meta['nome_final'] = $nomeFinal;
         $meta['pdf_approval_state'] = 'aguardando_aprovacao';
-        if (!$sftp->put($remoteMeta, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))) throw new RuntimeException('PDF copiado, mas os metadados não foram persistidos no VPS');
+        if (!$sftp->put($remoteMeta, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))) {
+            throw new RuntimeException('PDF copiado, mas os metadados não foram persistidos no VPS');
+        }
         return ['file' => $remoteFile, 'data' => $meta];
     } catch (Throwable $e) {
         error_log('[upload_worker] PDF pendente VPS: ' . $e->getMessage());
@@ -694,12 +872,16 @@ function persist_deferred_pdf_pending(string $processingMeta, string $staged, ar
 
     $safeJob = preg_replace('/[^A-Za-z0-9_.-]/', '_', $jobId);
     $pendingDir = rtrim($approvalDir, '/\\') . DIRECTORY_SEPARATOR . $safeJob;
-    if (!is_dir($pendingDir) && !@mkdir($pendingDir, 0777, true) && !is_dir($pendingDir)) return false;
+    if (!is_dir($pendingDir) && !@mkdir($pendingDir, 0777, true) && !is_dir($pendingDir)) {
+        return false;
+    }
     $pendingFile = $pendingDir . DIRECTORY_SEPARATOR . basename($nomeFinal);
     $pendingMeta = $pendingDir . DIRECTORY_SEPARATOR . $safeJob . '.json';
     $vpsBase = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
     $pendingRemoteFile = $vpsBase !== '' ? $vpsBase . '/uploads/aprovacao_pdf/' . $safeJob . '/' . basename($nomeFinal) : $pendingFile;
-    if (!@rename($staged, $pendingFile)) return false;
+    if (!@rename($staged, $pendingFile)) {
+        return false;
+    }
 
     $meta['staged_path'] = $pendingFile;
     $meta['pending_vps_path'] = $pendingRemoteFile;
@@ -707,7 +889,9 @@ function persist_deferred_pdf_pending(string $processingMeta, string $staged, ar
     $meta['nome_final'] = $nomeFinal;
     $meta['pdf_approval_state'] = 'aguardando_aprovacao';
     writeMeta($pendingMeta, $meta);
-    if ($processingMeta !== $pendingMeta) @unlink($processingMeta);
+    if ($processingMeta !== $pendingMeta) {
+        @unlink($processingMeta);
+    }
     pdf_approval_update_log_rows($conn, $logIds, 'aguardando_aprovacao', $pendingRemoteFile, $pendingRemoteFile, $nasPath, $nomeFinal, $tipo);
     return true;
 }
@@ -715,39 +899,59 @@ function persist_deferred_pdf_pending(string $processingMeta, string $staged, ar
 function process_approved_pdf_publications(): int
 {
     global $conn, $ftp_host, $ftp_port, $ftp_user, $ftp_pass;
-    if (!isset($conn) || !pdf_approval_ensure_schema($conn)) return 0;
+    if (!isset($conn) || !pdf_approval_ensure_schema($conn)) {
+        return 0;
+    }
     $rows = [];
     $res = $conn->query("SELECT al.id, al.funcao_imagem_id, al.caminho, al.caminho_vps, al.caminho_nas, al.nome_arquivo, al.colaborador_id FROM arquivo_log al JOIN funcao_imagem fi ON fi.idfuncao_imagem = al.funcao_imagem_id WHERE UPPER(al.tipo) = 'PDF' AND al.status IN ('publicacao_enfileirada', 'falha_publicacao') AND fi.status = 'Aprovado' ORDER BY al.id ASC LIMIT 20");
-    if ($res) { while ($row = $res->fetch_assoc()) $rows[] = $row; $res->free(); }
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $rows[] = $row;
+        } $res->free();
+    }
 
     $processed = 0;
     foreach ($rows as $row) {
         $logId = (int)$row['id'];
         $claim = $conn->prepare("UPDATE arquivo_log SET status = 'publicando_nas' WHERE id = ? AND status IN ('publicacao_enfileirada', 'falha_publicacao')");
-        if (!$claim) continue;
+        if (!$claim) {
+            continue;
+        }
         $claim->bind_param('i', $logId);
         $claim->execute();
         $claimed = $claim->affected_rows === 1;
         $claim->close();
-        if (!$claimed) continue;
+        if (!$claimed) {
+            continue;
+        }
 
         $source = (string)($row['caminho_vps'] ?: $row['caminho']);
         $target = (string)($row['caminho_nas'] ?? '');
         $tempFile = null;
         try {
-            if ($target === '') throw new RuntimeException('caminho_nas não foi definido para o PDF');
+            if ($target === '') {
+                throw new RuntimeException('caminho_nas não foi definido para o PDF');
+            }
             if (!is_file($source)) {
                 $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
                 $tempFile = tempnam(sys_get_temp_dir(), 'pdf_approval_');
                 $vps = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
-                if (!$tempFile || !$vps->login($vpsCfg['user'], $vpsCfg['pass']) || !$vps->get($source, $tempFile)) throw new RuntimeException('não foi possível baixar o PDF pendente do VPS');
+                if (!$tempFile || !$vps->login($vpsCfg['user'], $vpsCfg['pass']) || !$vps->get($source, $tempFile)) {
+                    throw new RuntimeException('não foi possível baixar o PDF pendente do VPS');
+                }
             }
             $sftpError = null;
             $sftp = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $sftpError);
-            if (!$sftp) throw new RuntimeException($sftpError ?: 'não foi possível conectar ao NAS');
-            if (!ensure_remote_dir_recursive($sftp, dirname($target))) throw new RuntimeException('não foi possível preparar o diretório do NAS');
+            if (!$sftp) {
+                throw new RuntimeException($sftpError ?: 'não foi possível conectar ao NAS');
+            }
+            if (!ensure_remote_dir_recursive($sftp, dirname($target))) {
+                throw new RuntimeException('não foi possível preparar o diretório do NAS');
+            }
             [$ok, $message] = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $tempFile ?: $source, $target, $ftp_port);
-            if (!$ok) throw new RuntimeException($message);
+            if (!$ok) {
+                throw new RuntimeException($message);
+            }
             pdf_approval_update_log_rows($conn, [$logId], 'publicado', to_windows_access_path($target), (string)($row['caminho_vps'] ?: $source), $target, (string)$row['nome_arquivo'], 'PDF', date('Y-m-d H:i:s'));
             mark_funcao_upload_quitado(['tipo_tarefa' => 'imagem', 'dataIdFuncoes' => [(int)$row['funcao_imagem_id']], 'post' => ['idcolaborador' => (int)$row['colaborador_id']]]);
             $processed++;
@@ -755,7 +959,9 @@ function process_approved_pdf_publications(): int
             error_log("[upload_worker] publicação PDF id={$logId} falhou: " . $e->getMessage());
             pdf_approval_update_log_rows($conn, [$logId], 'falha_publicacao', $source, (string)($row['caminho_vps'] ?: $source), $target, (string)$row['nome_arquivo'], 'PDF');
         } finally {
-            if ($tempFile && is_file($tempFile)) @unlink($tempFile);
+            if ($tempFile && is_file($tempFile)) {
+                @unlink($tempFile);
+            }
         }
     }
     return $processed;
@@ -902,7 +1108,8 @@ function mark_funcao_upload_quitado(array $meta): void
         if ($redis) {
             $redis->publish('funcao_atualizada:updated', json_encode(['source' => 'upload_worker']));
         }
-    } catch (Exception $e) { /* ignore */ }
+    } catch (Exception $e) { /* ignore */
+    }
 }
 
 // Remove any duplicate meta json recreated after claim (race in enqueue)
@@ -927,7 +1134,9 @@ function send_slack_notification_for_colaborador($colaborador_id, array $meta, $
         error_log('[upload_worker] Slack token missing: set SLACK_TOKEN');
         return false;
     }
-    if (!isset($conn) || !$colaborador_id) return false;
+    if (!isset($conn) || !$colaborador_id) {
+        return false;
+    }
     // Correção: usar colunas reais da tabela `usuario`
     $stmt = $conn->prepare('SELECT nome_slack, nome_usuario FROM usuario WHERE idcolaborador = ? LIMIT 1');
     if (!$stmt) {
@@ -964,7 +1173,9 @@ function send_slack_notification_for_colaborador($colaborador_id, array $meta, $
     require_once __DIR__ . '/../FlowConnect/bootstrap.php';
     $flowConnectLogs = [];
     $flowConnectEventId = flow_connect_publish_legacy_immediate($conn, 'upload_worker', 'arquivo.upload.worker_status', 'upload_job', (string) ($meta['job_id'] ?? sha1($original . '|' . $remote_path)), $text, (int) $colaborador_id, null, 'upload_worker:' . sha1(json_encode([$meta['job_id'] ?? null, $original, $remote_path, $ok])) . ':v1', $flowConnectLogs);
-    if (flow_connect_legacy_should_bypass('upload_worker', $flowConnectEventId)) return true;
+    if (flow_connect_legacy_should_bypass('upload_worker', $flowConnectEventId)) {
+        return true;
+    }
 
     // We must DM the user (no channels). Resolve user ID if nome_slack isn't already an ID.
     $userId = null;
@@ -1087,7 +1298,9 @@ do {
     }
 
     foreach ($metaFiles as $metaFile) {
-        if ($shutdown) break 2;
+        if ($shutdown) {
+            break 2;
+        }
 
         // Se já está em modo processing (qualquer sufixo), use diretamente; senão tente claim.
         if (strpos($metaFile, '.json.processing') !== false) {
@@ -1445,9 +1658,27 @@ do {
         $meta['tipo'] = $tipo;
         writeMeta($processingMeta, $meta);
 
+        $isDeferredPdf = !empty($meta['pdf_approval_deferred']) && strtoupper($tipo) === 'PDF';
+        $isPdfPreviewRequired = strtoupper($tipo) === 'PDF'
+            && ($isDeferredPdf || pdf_approval_is_deferred_function($nome_funcao));
+        if ($isPdfPreviewRequired) {
+            $previewPath = generate_pdf_preview_worker($staged, $meta, (string)$jobId, $pdfPreviewDir);
+            if ($previewPath !== null) {
+                $previewUpdated = pdf_approval_update_preview_path($conn, array_map('intval', $meta['log_ids'] ?? []), $previewPath);
+                writeMeta($processingMeta, $meta);
+                worker_log("Preview da primeira página do PDF gerado em {$previewPath}.");
+                if (!$previewUpdated) {
+                    worker_log('Preview gerado, mas não foi possível atualizar preview_path no arquivo_log.', 'ERROR');
+                }
+            } else {
+                worker_log("Não foi possível gerar o preview do PDF {$jobId}; o arquivo continuará disponível para aprovação.", 'WARN');
+            }
+        }
+
         // PDFs de Caderno/Filtro ficam no VPS até a aprovação. O caminho do
         // NAS é preparado e persistido, mas o arquivo não é enviado nesta etapa.
-        if (!empty($meta['pdf_approval_deferred']) && strtoupper($tipo) === 'PDF') {
+        if ($isDeferredPdf) {
+
             $pendingOk = persist_deferred_pdf_pending(
                 $processingMeta,
                 $staged,
@@ -1502,13 +1733,15 @@ do {
                 if ($meta['attempts'] < $maxAttempts && !$shutdown) {
                     $delaySec = $isNetworkError
                         ? min(120, 20 * $meta['attempts'])  // 20s, 40s, 60s, 80s
-                        : min(30,  5  * $meta['attempts']);  //  5s, 10s, 15s, 20s
+                        : min(30, 5  * $meta['attempts']);  //  5s, 10s, 15s, 20s
                     worker_log("Tentativa {$meta['attempts']}/{$maxAttempts} falhou: {$msg}. Aguardando {$delaySec}s.", 'WARN');
                     sleep($delaySec);
                 }
             }
             $lastMsg = $msg;
-            if ($ok) break;
+            if ($ok) {
+                break;
+            }
         }
 
         // after retry loop: finalize
@@ -1625,8 +1858,12 @@ do {
         }
     }
 
-    if (!$daemon) break;
-    if (!$shutdown) sleep($sleepWhenIdle);
+    if (!$daemon) {
+        break;
+    }
+    if (!$shutdown) {
+        sleep($sleepWhenIdle);
+    }
 } while (!$shutdown);
 
 worker_log('Worker finalizado.');

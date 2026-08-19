@@ -187,7 +187,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
 
                 $funcaoImagemId = isset($info['idfuncao_imagem']) ? intval($info['idfuncao_imagem']) : 0;
                 if ($isCadernoOuFiltro) {
-                    $sqlPdf = "SELECT id, nome_arquivo, caminho, caminho_vps, caminho_nas, status, publicado_em
+                    $sqlPdf = "SELECT id, nome_arquivo, caminho, caminho_vps, caminho_nas, preview_path, status, publicado_em
                                FROM arquivo_log
                                WHERE funcao_imagem_id = $funcaoImagemId
                                  AND UPPER(tipo) = 'PDF'

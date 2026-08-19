@@ -143,6 +143,9 @@ conexaoMain.php
 
 AGENTS.MD
 
+# Poppler portátil usado pelo worker para gerar previews da primeira página dos PDFs
+/tools/poppler/
+
 # Runtime do worker Flow x Deadline
 Render/__pycache__/
 Render/tests/__pycache__/

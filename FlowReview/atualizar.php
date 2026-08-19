@@ -1,24 +1,27 @@
 ﻿<?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
 include_once __DIR__ . '/../conexao.php'; // Conexão com o banco de dados
 require_once __DIR__ . '/approval_media_schema.php';
+require_once __DIR__ . '/pdf_approval_helpers.php';
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: ../index.html");
-  exit();
+    header("Location: ../index.html");
+    exit();
 }
 
 $idusuario = $_SESSION['idusuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
 try {
-  fr_approval_media_ensure_schema($conn);
+    fr_approval_media_ensure_schema($conn);
+    pdf_approval_ensure_schema($conn);
 
-  // Construção da query com base no usuário
-  if ($idusuario == 1 || $idusuario == 2) {
-    $sql = "SELECT
+    // Construção da query com base no usuário
+    if ($idusuario == 1 || $idusuario == 2) {
+        $sql = "SELECT
             f.idfuncao_imagem,
             f.funcao_id,
             fun.nome_funcao,
@@ -47,7 +50,15 @@ try {
              FROM historico_aprovacoes_imagens hi 
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem
              ORDER BY hi.data_envio DESC 
-             LIMIT 1) AS imagem
+             LIMIT 1) AS imagem,
+            (SELECT al.preview_path
+             FROM arquivo_log al
+             WHERE al.funcao_imagem_id = f.idfuncao_imagem
+               AND UPPER(al.tipo) = 'PDF'
+               AND al.preview_path IS NOT NULL
+               AND al.preview_path <> ''
+             ORDER BY al.id DESC
+             LIMIT 1) AS preview_path
         FROM funcao_imagem f
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
@@ -71,8 +82,8 @@ try {
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
-  } elseif ($idusuario == 5) {
-    $sql = "SELECT
+    } elseif ($idusuario == 5) {
+        $sql = "SELECT
             f.idfuncao_imagem,
             f.funcao_id,
             fun.nome_funcao,
@@ -100,7 +111,15 @@ try {
              FROM historico_aprovacoes_imagens hi 
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem
              ORDER BY hi.data_envio DESC 
-             LIMIT 1) AS imagem
+             LIMIT 1) AS imagem,
+            (SELECT al.preview_path
+             FROM arquivo_log al
+             WHERE al.funcao_imagem_id = f.idfuncao_imagem
+               AND UPPER(al.tipo) = 'PDF'
+               AND al.preview_path IS NOT NULL
+               AND al.preview_path <> ''
+             ORDER BY al.id DESC
+             LIMIT 1) AS preview_path
         FROM funcao_imagem f
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
@@ -123,8 +142,8 @@ try {
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
-  } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
-    $sql = "SELECT
+    } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
+        $sql = "SELECT
             f.idfuncao_imagem,
             f.funcao_id,
             fun.nome_funcao,
@@ -152,7 +171,15 @@ try {
              FROM historico_aprovacoes_imagens hi 
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem
              ORDER BY hi.data_envio DESC 
-             LIMIT 1) AS imagem
+             LIMIT 1) AS imagem,
+            (SELECT al.preview_path
+             FROM arquivo_log al
+             WHERE al.funcao_imagem_id = f.idfuncao_imagem
+               AND UPPER(al.tipo) = 'PDF'
+               AND al.preview_path IS NOT NULL
+               AND al.preview_path <> ''
+             ORDER BY al.id DESC
+             LIMIT 1) AS preview_path
         FROM funcao_imagem f
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
@@ -175,11 +202,11 @@ try {
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
-  } else {
-    // Se for colaborador não-admin, limitar por obras associadas ao colaborador.
-    // Permitir que o colaborador 8 veja as tarefas dele e do colaborador 40.
-    if ($idcolaborador == 8) {
-      $sql = "SELECT
+    } else {
+        // Se for colaborador não-admin, limitar por obras associadas ao colaborador.
+        // Permitir que o colaborador 8 veja as tarefas dele e do colaborador 40.
+        if ($idcolaborador == 8) {
+            $sql = "SELECT
             f.idfuncao_imagem,
             f.funcao_id,
             fun.nome_funcao,
@@ -207,7 +234,15 @@ try {
              FROM historico_aprovacoes_imagens hi 
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem
              ORDER BY hi.data_envio DESC 
-             LIMIT 1) AS imagem
+             LIMIT 1) AS imagem,
+            (SELECT al.preview_path
+             FROM arquivo_log al
+             WHERE al.funcao_imagem_id = f.idfuncao_imagem
+               AND UPPER(al.tipo) = 'PDF'
+               AND al.preview_path IS NOT NULL
+               AND al.preview_path <> ''
+             ORDER BY al.id DESC
+             LIMIT 1) AS preview_path
         FROM funcao_imagem f
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
@@ -236,8 +271,8 @@ try {
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
-    } else {
-      $sql = "SELECT
+        } else {
+            $sql = "SELECT
             f.idfuncao_imagem,
             f.funcao_id,
             fun.nome_funcao,
@@ -265,7 +300,15 @@ try {
              FROM historico_aprovacoes_imagens hi 
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem
              ORDER BY hi.data_envio DESC 
-             LIMIT 1) AS imagem
+             LIMIT 1) AS imagem,
+            (SELECT al.preview_path
+             FROM arquivo_log al
+             WHERE al.funcao_imagem_id = f.idfuncao_imagem
+               AND UPPER(al.tipo) = 'PDF'
+               AND al.preview_path IS NOT NULL
+               AND al.preview_path <> ''
+             ORDER BY al.id DESC
+             LIMIT 1) AS preview_path
         FROM funcao_imagem f
         LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
         LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
@@ -294,39 +337,39 @@ try {
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
+        }
     }
-  }
 
-  // Preparar e executar a query
-  // Somente usuários não-admin precisam de bind por colaborador.
-  if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3 || $idusuario == 5)) {
-    if ($idcolaborador == 8) {
-      // SQL já contém os colaboradores (8 e 40) sem placeholder
-      $stmt = $conn->prepare($sql);
+    // Preparar e executar a query
+    // Somente usuários não-admin precisam de bind por colaborador.
+    if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3 || $idusuario == 5)) {
+        if ($idcolaborador == 8) {
+            // SQL já contém os colaboradores (8 e 40) sem placeholder
+            $stmt = $conn->prepare($sql);
+        } else {
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("i", $idcolaborador);
+        }
     } else {
-      $stmt = $conn->prepare($sql);
-      $stmt->bind_param("i", $idcolaborador);
+        // Usuários admin (1,2,9,20,3,5) não precisam de bind
+        $stmt = $conn->prepare($sql);
     }
-  } else {
-    // Usuários admin (1,2,9,20,3,5) não precisam de bind
-    $stmt = $conn->prepare($sql);
-  }
 
-  $stmt->execute();
-  $result = $stmt->get_result();
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-  // Processar os resultados
-  $tarefas = [];
-  if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-      $row['tipo_tarefa'] = 'imagem';
-      $row['funcao_ref_id'] = (int)$row['idfuncao_imagem'];
-      $row['funcao_animacao_id'] = null;
-      $tarefas[] = $row;
+    // Processar os resultados
+    $tarefas = [];
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $row['tipo_tarefa'] = 'imagem';
+            $row['funcao_ref_id'] = (int)$row['idfuncao_imagem'];
+            $row['funcao_animacao_id'] = null;
+            $tarefas[] = $row;
+        }
     }
-  }
 
-  $sqlAnimacao = "SELECT
+    $sqlAnimacao = "SELECT
             fa.id AS idfuncao_imagem,
             fa.id AS funcao_animacao_id,
             fa.funcao_id,
@@ -371,223 +414,223 @@ try {
         WHERE fa.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aguardando Direção')
           AND o.status_obra = 0 AND i.substatus_id <> 7";
 
-  $animParams = [];
-  $animTypes = '';
-  if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3)) {
-    if ($idusuario == 5) {
-      $sqlAnimacao .= " AND fa.funcao_id = 5";
-    } elseif ((int)$idcolaborador === 8) {
-      $sqlAnimacao .= " AND o.idobra IN (
+    $animParams = [];
+    $animTypes = '';
+    if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3)) {
+        if ($idusuario == 5) {
+            $sqlAnimacao .= " AND fa.funcao_id = 5";
+        } elseif ((int)$idcolaborador === 8) {
+            $sqlAnimacao .= " AND o.idobra IN (
           SELECT i2.obra_id
           FROM imagens_cliente_obra i2
           JOIN animacao a2 ON a2.imagem_id = i2.idimagens_cliente_obra
           JOIN funcao_animacao fa2 ON fa2.animacao_id = a2.idanimacao
           WHERE fa2.colaborador_id IN (8, 40, 23)
       )";
-    } else {
-      $sqlAnimacao .= " AND o.idobra IN (
+        } else {
+            $sqlAnimacao .= " AND o.idobra IN (
           SELECT i2.obra_id
           FROM imagens_cliente_obra i2
           JOIN animacao a2 ON a2.imagem_id = i2.idimagens_cliente_obra
           JOIN funcao_animacao fa2 ON fa2.animacao_id = a2.idanimacao
           WHERE fa2.colaborador_id = ?
       )";
-      $animTypes = 'i';
-      $animParams[] = (int)$idcolaborador;
+            $animTypes = 'i';
+            $animParams[] = (int)$idcolaborador;
+        }
     }
-  }
-  $sqlAnimacao .= " ORDER BY data_aprovacao DESC";
+    $sqlAnimacao .= " ORDER BY data_aprovacao DESC";
 
-  $stmtAnim = $conn->prepare($sqlAnimacao);
-  if ($stmtAnim) {
-    if ($animTypes !== '') {
-      $stmtAnim->bind_param($animTypes, ...$animParams);
+    $stmtAnim = $conn->prepare($sqlAnimacao);
+    if ($stmtAnim) {
+        if ($animTypes !== '') {
+            $stmtAnim->bind_param($animTypes, ...$animParams);
+        }
+        $stmtAnim->execute();
+        $resAnim = $stmtAnim->get_result();
+        while ($rowAnim = $resAnim->fetch_assoc()) {
+            $rowAnim['funcao_ref_id'] = (int)$rowAnim['funcao_animacao_id'];
+            $tarefas[] = $rowAnim;
+        }
+        $stmtAnim->close();
     }
-    $stmtAnim->execute();
-    $resAnim = $stmtAnim->get_result();
-    while ($rowAnim = $resAnim->fetch_assoc()) {
-      $rowAnim['funcao_ref_id'] = (int)$rowAnim['funcao_animacao_id'];
-      $tarefas[] = $rowAnim;
-    }
-    $stmtAnim->close();
-  }
 
-  // ==== ÂNGULO APROVADO FLAG ====
-  // Tarefas com status 'Não iniciado' ou 'Em andamento' que passaram pelo filtro
-  // do EXISTS (angulos_imagens.liberada=1) recebem flag para exibição no front-end.
-  foreach ($tarefas as &$t) {
-    if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
-      continue;
+    // ==== ÂNGULO APROVADO FLAG ====
+    // Tarefas com status 'Não iniciado' ou 'Em andamento' que passaram pelo filtro
+    // do EXISTS (angulos_imagens.liberada=1) recebem flag para exibição no front-end.
+    foreach ($tarefas as &$t) {
+        if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
+            continue;
+        }
+        if (intval($t['funcao_id']) === 4 && in_array($t['status'], ['Não iniciado', 'Em andamento'])) {
+            $t['angulo_aprovado'] = true;
+        }
     }
-    if (intval($t['funcao_id']) === 4 && in_array($t['status'], ['Não iniciado', 'Em andamento'])) {
-      $t['angulo_aprovado'] = true;
+    unset($t);
+    // ==== END ÂNGULO APROVADO FLAG ====
+
+    // ==== UNIFIED PAIR BADGE ====
+    // For secondary functions (Filtro=8, Composição=3), detect if they belong to a unified pair
+    // by checking if the corresponding primary (Caderno=1, Modelagem=2) is "Finalizado"
+    // for the same imagem_id and colaborador_id, and the pair is not explicitly separated.
+    $pairMap = [
+      8 => ['primary_id' => 1, 'primary_nome' => 'Caderno', 'par_tipo' => 'caderno_filtro'],
+      3 => ['primary_id' => 2, 'primary_nome' => 'Modelagem', 'par_tipo' => 'modelagem_composicao']
+    ];
+
+    $imagemIdsSec = [];
+    foreach ($tarefas as $t) {
+        if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
+            continue;
+        }
+        $fid = intval($t['funcao_id']);
+        if (isset($pairMap[$fid])) {
+            $imagemIdsSec[] = intval($t['imagem_id']);
+        }
     }
-  }
-  unset($t);
-  // ==== END ÂNGULO APROVADO FLAG ====
 
-  // ==== UNIFIED PAIR BADGE ====
-  // For secondary functions (Filtro=8, Composição=3), detect if they belong to a unified pair
-  // by checking if the corresponding primary (Caderno=1, Modelagem=2) is "Finalizado"
-  // for the same imagem_id and colaborador_id, and the pair is not explicitly separated.
-  $pairMap = [
-    8 => ['primary_id' => 1, 'primary_nome' => 'Caderno', 'par_tipo' => 'caderno_filtro'],
-    3 => ['primary_id' => 2, 'primary_nome' => 'Modelagem', 'par_tipo' => 'modelagem_composicao']
-  ];
+    $primFinalizados  = []; // [imagem_id:funcao_id] => true
+    $paresSepFR       = [];
+    if (!empty($imagemIdsSec)) {
+        $imagemIdsSec = array_unique($imagemIdsSec);
+        $inSec = implode(',', array_fill(0, count($imagemIdsSec), '?'));
+        $typesSec = str_repeat('i', count($imagemIdsSec));
 
-  $imagemIdsSec = [];
-  foreach ($tarefas as $t) {
-    if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
-      continue;
-    }
-    $fid = intval($t['funcao_id']);
-    if (isset($pairMap[$fid])) {
-      $imagemIdsSec[] = intval($t['imagem_id']);
-    }
-  }
-
-  $primFinalizados  = []; // [imagem_id:funcao_id] => true
-  $paresSepFR       = [];
-  if (!empty($imagemIdsSec)) {
-    $imagemIdsSec = array_unique($imagemIdsSec);
-    $inSec = implode(',', array_fill(0, count($imagemIdsSec), '?'));
-    $typesSec = str_repeat('i', count($imagemIdsSec));
-
-    try {
-      // Which primaries are Finalizado?
-      $stmtPrim = $conn->prepare(
-        "SELECT imagem_id, funcao_id FROM funcao_imagem
+        try {
+            // Which primaries are Finalizado?
+            $stmtPrim = $conn->prepare(
+                "SELECT imagem_id, funcao_id FROM funcao_imagem
          WHERE imagem_id IN ($inSec)
            AND funcao_id IN (1, 2)
            AND status = 'Finalizado'"
-      );
-      $stmtPrim->bind_param($typesSec, ...$imagemIdsSec);
-      $stmtPrim->execute();
-      $resPrim = $stmtPrim->get_result();
-      while ($rp = $resPrim->fetch_assoc()) {
-        $primFinalizados[$rp['imagem_id'] . ':' . $rp['funcao_id']] = true;
-      }
-      $stmtPrim->close();
+            );
+            $stmtPrim->bind_param($typesSec, ...$imagemIdsSec);
+            $stmtPrim->execute();
+            $resPrim = $stmtPrim->get_result();
+            while ($rp = $resPrim->fetch_assoc()) {
+                $primFinalizados[$rp['imagem_id'] . ':' . $rp['funcao_id']] = true;
+            }
+            $stmtPrim->close();
 
-      // Which pairs are separated?
-      $stmtSepFR = $conn->prepare(
-        "SELECT imagem_id, par_tipo FROM funcao_par_separado WHERE imagem_id IN ($inSec)"
-      );
-      $stmtSepFR->bind_param($typesSec, ...$imagemIdsSec);
-      $stmtSepFR->execute();
-      $resSepFR = $stmtSepFR->get_result();
-      while ($rs = $resSepFR->fetch_assoc()) {
-        $paresSepFR[$rs['imagem_id'] . ':' . $rs['par_tipo']] = true;
-      }
-      $stmtSepFR->close();
-    } catch (Exception $ex) {
-      // funcao_par_separado may not exist yet; ignore
-    }
-
-    foreach ($tarefas as &$t) {
-      if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
-        continue;
-      }
-      $fid = intval($t['funcao_id']);
-      if (isset($pairMap[$fid])) {
-        $pc       = $pairMap[$fid];
-        $imgId    = intval($t['imagem_id']);
-        $primKey  = $imgId . ':' . $pc['primary_id'];
-        $sepKey   = $imgId . ':' . $pc['par_tipo'];
-        if (isset($primFinalizados[$primKey]) && !isset($paresSepFR[$sepKey])) {
-          $t['par_primario_nome']   = $pc['primary_nome'];
-          $t['par_primario_status'] = 'Finalizado';
+            // Which pairs are separated?
+            $stmtSepFR = $conn->prepare(
+                "SELECT imagem_id, par_tipo FROM funcao_par_separado WHERE imagem_id IN ($inSec)"
+            );
+            $stmtSepFR->bind_param($typesSec, ...$imagemIdsSec);
+            $stmtSepFR->execute();
+            $resSepFR = $stmtSepFR->get_result();
+            while ($rs = $resSepFR->fetch_assoc()) {
+                $paresSepFR[$rs['imagem_id'] . ':' . $rs['par_tipo']] = true;
+            }
+            $stmtSepFR->close();
+        } catch (Exception $ex) {
+            // funcao_par_separado may not exist yet; ignore
         }
-      }
+
+        foreach ($tarefas as &$t) {
+            if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
+                continue;
+            }
+            $fid = intval($t['funcao_id']);
+            if (isset($pairMap[$fid])) {
+                $pc       = $pairMap[$fid];
+                $imgId    = intval($t['imagem_id']);
+                $primKey  = $imgId . ':' . $pc['primary_id'];
+                $sepKey   = $imgId . ':' . $pc['par_tipo'];
+                if (isset($primFinalizados[$primKey]) && !isset($paresSepFR[$sepKey])) {
+                    $t['par_primario_nome']   = $pc['primary_nome'];
+                    $t['par_primario_status'] = 'Finalizado';
+                }
+            }
+        }
+        unset($t);
     }
-    unset($t);
-  }
-  // ==== END UNIFIED PAIR BADGE ====
+    // ==== END UNIFIED PAIR BADGE ====
 
-  // ==== FINALIZADOR PODE APROVAR PÓS-PRODUÇÃO ====
-  // Se o colaborador atual tem uma tarefa de Finalização (funcao_id=4)
-  // para a mesma imagem, pode aprovar a Pós-produção (funcao_id=5).
-  $imagemIdsPosP = [];
-  foreach ($tarefas as $t) {
-    if (intval($t['funcao_id']) == 5) {
-      if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
-        continue;
-      }
-      $imagemIdsPosP[] = intval($t['imagem_id']);
+    // ==== FINALIZADOR PODE APROVAR PÓS-PRODUÇÃO ====
+    // Se o colaborador atual tem uma tarefa de Finalização (funcao_id=4)
+    // para a mesma imagem, pode aprovar a Pós-produção (funcao_id=5).
+    $imagemIdsPosP = [];
+    foreach ($tarefas as $t) {
+        if (intval($t['funcao_id']) == 5) {
+            if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
+                continue;
+            }
+            $imagemIdsPosP[] = intval($t['imagem_id']);
+        }
     }
-  }
 
-  if (!empty($imagemIdsPosP) && !empty($idcolaborador)) {
-    $imagemIdsPosP = array_unique($imagemIdsPosP);
-    $inP     = implode(',', array_fill(0, count($imagemIdsPosP), '?'));
-    $typesP  = 'i' . str_repeat('i', count($imagemIdsPosP));
-    $paramsP = array_merge([$idcolaborador], $imagemIdsPosP);
+    if (!empty($imagemIdsPosP) && !empty($idcolaborador)) {
+        $imagemIdsPosP = array_unique($imagemIdsPosP);
+        $inP     = implode(',', array_fill(0, count($imagemIdsPosP), '?'));
+        $typesP  = 'i' . str_repeat('i', count($imagemIdsPosP));
+        $paramsP = array_merge([$idcolaborador], $imagemIdsPosP);
 
-    $stmtFinP = $conn->prepare(
-      "SELECT imagem_id FROM funcao_imagem
+        $stmtFinP = $conn->prepare(
+            "SELECT imagem_id FROM funcao_imagem
        WHERE funcao_id IN (4, 6) AND colaborador_id = ? AND imagem_id IN ($inP)"
-    );
-    $stmtFinP->bind_param($typesP, ...$paramsP);
-    $stmtFinP->execute();
-    $resFinP = $stmtFinP->get_result();
-    $imgComFinalizacao = [];
-    while ($rowP = $resFinP->fetch_assoc()) {
-      $imgComFinalizacao[$rowP['imagem_id']] = true;
-    }
-    $stmtFinP->close();
+        );
+        $stmtFinP->bind_param($typesP, ...$paramsP);
+        $stmtFinP->execute();
+        $resFinP = $stmtFinP->get_result();
+        $imgComFinalizacao = [];
+        while ($rowP = $resFinP->fetch_assoc()) {
+            $imgComFinalizacao[$rowP['imagem_id']] = true;
+        }
+        $stmtFinP->close();
 
-    // Colaborador 8 também pode aprovar pós-produção das imagens
-    // finalizadas pelos colaboradores 23 e 40.
-    if (intval($idcolaborador) === 8) {
-      $inP8    = implode(',', array_fill(0, count($imagemIdsPosP), '?'));
-      $typesP8 = str_repeat('i', count($imagemIdsPosP));
-      $stmtFinP8 = $conn->prepare(
-        "SELECT imagem_id FROM funcao_imagem
+        // Colaborador 8 também pode aprovar pós-produção das imagens
+        // finalizadas pelos colaboradores 23 e 40.
+        if (intval($idcolaborador) === 8) {
+            $inP8    = implode(',', array_fill(0, count($imagemIdsPosP), '?'));
+            $typesP8 = str_repeat('i', count($imagemIdsPosP));
+            $stmtFinP8 = $conn->prepare(
+                "SELECT imagem_id FROM funcao_imagem
          WHERE funcao_id IN (4, 6) AND colaborador_id IN (23, 40) AND imagem_id IN ($inP8)"
-      );
-      $stmtFinP8->bind_param($typesP8, ...$imagemIdsPosP);
-      $stmtFinP8->execute();
-      $resFinP8 = $stmtFinP8->get_result();
-      while ($rowP8 = $resFinP8->fetch_assoc()) {
-        $imgComFinalizacao[$rowP8['imagem_id']] = true;
-      }
-      $stmtFinP8->close();
+            );
+            $stmtFinP8->bind_param($typesP8, ...$imagemIdsPosP);
+            $stmtFinP8->execute();
+            $resFinP8 = $stmtFinP8->get_result();
+            while ($rowP8 = $resFinP8->fetch_assoc()) {
+                $imgComFinalizacao[$rowP8['imagem_id']] = true;
+            }
+            $stmtFinP8->close();
+        }
+
+        foreach ($tarefas as &$t) {
+            // Não marcar finalizador_pode_aprovar se a tarefa já está aguardando direção
+            if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
+                continue;
+            }
+            if (intval($t['funcao_id']) == 5 && isset($imgComFinalizacao[$t['imagem_id']]) && empty($t['pendente_direcao'])) {
+                $t['finalizador_pode_aprovar'] = true;
+            }
+        }
+        unset($t);
+    }
+    // ==== END FINALIZADOR PODE APROVAR ====
+
+    // ==== PENDENTE DIREÇÃO ====
+    // Para tarefas de Pós-produção/Alteração (funcao_id 5/6) com status_novo
+    // histórico = 'Aguardando Direção', sinaliza pendente_direcao e, se o
+    // colaborador atual for direção (21 ou 2), diretor_pode_aprovar.
+    $funcaoImagemIdsDirecao = [];
+    foreach ($tarefas as $t) {
+        if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
+            continue;
+        }
+        if (in_array(intval($t['funcao_id']), [4, 5, 6], true)) {
+            $funcaoImagemIdsDirecao[] = intval($t['idfuncao_imagem']);
+        }
     }
 
-    foreach ($tarefas as &$t) {
-      // Não marcar finalizador_pode_aprovar se a tarefa já está aguardando direção
-      if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
-        continue;
-      }
-      if (intval($t['funcao_id']) == 5 && isset($imgComFinalizacao[$t['imagem_id']]) && empty($t['pendente_direcao'])) {
-        $t['finalizador_pode_aprovar'] = true;
-      }
-    }
-    unset($t);
-  }
-  // ==== END FINALIZADOR PODE APROVAR ====
+    if (!empty($funcaoImagemIdsDirecao)) {
+        $funcaoImagemIdsDirecao = array_unique($funcaoImagemIdsDirecao);
+        $inDir   = implode(',', array_fill(0, count($funcaoImagemIdsDirecao), '?'));
+        $typDir  = str_repeat('i', count($funcaoImagemIdsDirecao));
 
-  // ==== PENDENTE DIREÇÃO ====
-  // Para tarefas de Pós-produção/Alteração (funcao_id 5/6) com status_novo
-  // histórico = 'Aguardando Direção', sinaliza pendente_direcao e, se o
-  // colaborador atual for direção (21 ou 2), diretor_pode_aprovar.
-  $funcaoImagemIdsDirecao = [];
-  foreach ($tarefas as $t) {
-    if (($t['tipo_tarefa'] ?? 'imagem') !== 'imagem') {
-      continue;
-    }
-    if (in_array(intval($t['funcao_id']), [4, 5, 6], true)) {
-      $funcaoImagemIdsDirecao[] = intval($t['idfuncao_imagem']);
-    }
-  }
-
-  if (!empty($funcaoImagemIdsDirecao)) {
-    $funcaoImagemIdsDirecao = array_unique($funcaoImagemIdsDirecao);
-    $inDir   = implode(',', array_fill(0, count($funcaoImagemIdsDirecao), '?'));
-    $typDir  = str_repeat('i', count($funcaoImagemIdsDirecao));
-
-    $stmtDir = $conn->prepare(
-      "SELECT DISTINCT h.funcao_imagem_id
+        $stmtDir = $conn->prepare(
+            "SELECT DISTINCT h.funcao_imagem_id
        FROM historico_aprovacoes h
        WHERE h.funcao_imagem_id IN ($inDir)
          AND h.status_novo = 'Aguardando Direção'
@@ -597,122 +640,122 @@ try {
              WHERE h2.funcao_imagem_id = h.funcao_imagem_id
                AND h2.id > h.id
          )"
-    );
-    $stmtDir->bind_param($typDir, ...$funcaoImagemIdsDirecao);
-    $stmtDir->execute();
-    $resDir = $stmtDir->get_result();
-    $pendenteDirecaoIds = [];
-    while ($rowDir = $resDir->fetch_assoc()) {
-      $pendenteDirecaoIds[$rowDir['funcao_imagem_id']] = true;
-    }
-    $stmtDir->close();
-
-    $isDirecao = in_array((int)$idcolaborador, [21, 9, 31], true);
-
-    foreach ($tarefas as &$t) {
-      if (in_array(intval($t['funcao_id']), [4, 5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {
-        $t['pendente_direcao']      = true;
-        // Remove finalizador_pode_aprovar se foi marcado antes desta detecção
-        unset($t['finalizador_pode_aprovar']);
-        if ($isDirecao) {
-          $t['diretor_pode_aprovar'] = true;
+        );
+        $stmtDir->bind_param($typDir, ...$funcaoImagemIdsDirecao);
+        $stmtDir->execute();
+        $resDir = $stmtDir->get_result();
+        $pendenteDirecaoIds = [];
+        while ($rowDir = $resDir->fetch_assoc()) {
+            $pendenteDirecaoIds[$rowDir['funcao_imagem_id']] = true;
         }
-      }
-    }
-    unset($t);
-  }
-  // ==== END PENDENTE DIREÇÃO ====
+        $stmtDir->close();
 
-  // ==== SLA DATA ====
-  // Inject SLA limit (hours) per function and the timestamp when each task
-  // last entered "Em aprovação" so the frontend can render live timers.
-  $slaLimites = [];
-  try {
-    $slaRes = $conn->query('SELECT funcao_id, limite_horas FROM sla_funcao');
-    if ($slaRes) {
-      while ($slaRow = $slaRes->fetch_assoc()) {
-        $slaLimites[(int)$slaRow['funcao_id']] = (int)$slaRow['limite_horas'];
-      }
-    }
-  } catch (Exception $exSla) { /* sla_funcao table not yet created — skip */
-  }
+        $isDirecao = in_array((int)$idcolaborador, [21, 9, 31], true);
 
-  if (!empty($slaLimites)) {
-    // Collect IDs of tasks currently in "Em aprovação"
-    $idsAprovacaoImagem = [];
-    $idsAprovacaoAnimacao = [];
-    foreach ($tarefas as $t) {
-      if ($t['status'] === 'Em aprovação') {
-        if (($t['tipo_tarefa'] ?? 'imagem') === 'animacao') {
-          $idsAprovacaoAnimacao[] = (int)$t['idfuncao_imagem'];
-        } else {
-          $idsAprovacaoImagem[] = (int)$t['idfuncao_imagem'];
+        foreach ($tarefas as &$t) {
+            if (in_array(intval($t['funcao_id']), [4, 5, 6], true) && isset($pendenteDirecaoIds[$t['idfuncao_imagem']])) {
+                $t['pendente_direcao']      = true;
+                // Remove finalizador_pode_aprovar se foi marcado antes desta detecção
+                unset($t['finalizador_pode_aprovar']);
+                if ($isDirecao) {
+                    $t['diretor_pode_aprovar'] = true;
+                }
+            }
         }
-      }
+        unset($t);
+    }
+    // ==== END PENDENTE DIREÇÃO ====
+
+    // ==== SLA DATA ====
+    // Inject SLA limit (hours) per function and the timestamp when each task
+    // last entered "Em aprovação" so the frontend can render live timers.
+    $slaLimites = [];
+    try {
+        $slaRes = $conn->query('SELECT funcao_id, limite_horas FROM sla_funcao');
+        if ($slaRes) {
+            while ($slaRow = $slaRes->fetch_assoc()) {
+                $slaLimites[(int)$slaRow['funcao_id']] = (int)$slaRow['limite_horas'];
+            }
+        }
+    } catch (Exception $exSla) { /* sla_funcao table not yet created — skip */
     }
 
-    $slaIniciosImagem = [];
-    $slaIniciosAnimacao = [];
-    if (!empty($idsAprovacaoImagem)) {
-      $idsAprovacaoImagem = array_values(array_unique($idsAprovacaoImagem));
-      $inSla = implode(',', array_map('intval', $idsAprovacaoImagem));
-      $slaInicioRes = $conn->query(
-        "SELECT funcao_imagem_id, data_aprovacao
+    if (!empty($slaLimites)) {
+        // Collect IDs of tasks currently in "Em aprovação"
+        $idsAprovacaoImagem = [];
+        $idsAprovacaoAnimacao = [];
+        foreach ($tarefas as $t) {
+            if ($t['status'] === 'Em aprovação') {
+                if (($t['tipo_tarefa'] ?? 'imagem') === 'animacao') {
+                    $idsAprovacaoAnimacao[] = (int)$t['idfuncao_imagem'];
+                } else {
+                    $idsAprovacaoImagem[] = (int)$t['idfuncao_imagem'];
+                }
+            }
+        }
+
+        $slaIniciosImagem = [];
+        $slaIniciosAnimacao = [];
+        if (!empty($idsAprovacaoImagem)) {
+            $idsAprovacaoImagem = array_values(array_unique($idsAprovacaoImagem));
+            $inSla = implode(',', array_map('intval', $idsAprovacaoImagem));
+            $slaInicioRes = $conn->query(
+                "SELECT funcao_imagem_id, data_aprovacao
          FROM historico_aprovacoes
          WHERE funcao_imagem_id IN ($inSla)
            AND status_novo = 'Em aprovação'
          ORDER BY funcao_imagem_id ASC, data_aprovacao DESC"
-      );
-      if ($slaInicioRes) {
-        while ($slaRow = $slaInicioRes->fetch_assoc()) {
-          $fid = (int)$slaRow['funcao_imagem_id'];
-          if (!isset($slaIniciosImagem[$fid])) {
-            $slaIniciosImagem[$fid] = $slaRow['data_aprovacao'];
-          }
+            );
+            if ($slaInicioRes) {
+                while ($slaRow = $slaInicioRes->fetch_assoc()) {
+                    $fid = (int)$slaRow['funcao_imagem_id'];
+                    if (!isset($slaIniciosImagem[$fid])) {
+                        $slaIniciosImagem[$fid] = $slaRow['data_aprovacao'];
+                    }
+                }
+            }
         }
-      }
-    }
 
-    if (!empty($idsAprovacaoAnimacao)) {
-      $idsAprovacaoAnimacao = array_values(array_unique($idsAprovacaoAnimacao));
-      $inSlaAnim = implode(',', array_map('intval', $idsAprovacaoAnimacao));
-      $slaInicioAnimRes = $conn->query(
-        "SELECT funcao_animacao_id, data_aprovacao
+        if (!empty($idsAprovacaoAnimacao)) {
+            $idsAprovacaoAnimacao = array_values(array_unique($idsAprovacaoAnimacao));
+            $inSlaAnim = implode(',', array_map('intval', $idsAprovacaoAnimacao));
+            $slaInicioAnimRes = $conn->query(
+                "SELECT funcao_animacao_id, data_aprovacao
          FROM historico_aprovacoes
          WHERE funcao_animacao_id IN ($inSlaAnim)
            AND status_novo = 'Em aprovação'
          ORDER BY funcao_animacao_id ASC, data_aprovacao DESC"
-      );
-      if ($slaInicioAnimRes) {
-        while ($slaRow = $slaInicioAnimRes->fetch_assoc()) {
-          $fid = (int)$slaRow['funcao_animacao_id'];
-          if (!isset($slaIniciosAnimacao[$fid])) {
-            $slaIniciosAnimacao[$fid] = $slaRow['data_aprovacao'];
-          }
+            );
+            if ($slaInicioAnimRes) {
+                while ($slaRow = $slaInicioAnimRes->fetch_assoc()) {
+                    $fid = (int)$slaRow['funcao_animacao_id'];
+                    if (!isset($slaIniciosAnimacao[$fid])) {
+                        $slaIniciosAnimacao[$fid] = $slaRow['data_aprovacao'];
+                    }
+                }
+            }
         }
-      }
+
+        foreach ($tarefas as &$t) {
+            $funcaoId = (int)$t['funcao_id'];
+            $fimId    = (int)$t['idfuncao_imagem'];
+            $isAnimacaoTask = (($t['tipo_tarefa'] ?? 'imagem') === 'animacao');
+            $t['sla_limite_horas'] = $slaLimites[$funcaoId] ?? null;
+            $t['sla_inicio']       = ($t['status'] === 'Em aprovação')
+              ? ($isAnimacaoTask ? ($slaIniciosAnimacao[$fimId] ?? null) : ($slaIniciosImagem[$fimId] ?? null))
+              : null;
+        }
+        unset($t);
     }
+    // ==== END SLA DATA ====
 
-    foreach ($tarefas as &$t) {
-      $funcaoId = (int)$t['funcao_id'];
-      $fimId    = (int)$t['idfuncao_imagem'];
-      $isAnimacaoTask = (($t['tipo_tarefa'] ?? 'imagem') === 'animacao');
-      $t['sla_limite_horas'] = $slaLimites[$funcaoId] ?? null;
-      $t['sla_inicio']       = ($t['status'] === 'Em aprovação')
-        ? ($isAnimacaoTask ? ($slaIniciosAnimacao[$fimId] ?? null) : ($slaIniciosImagem[$fimId] ?? null))
-        : null;
-    }
-    unset($t);
-  }
-  // ==== END SLA DATA ====
+    // Retornar os resultados no formato JSON
+    $serverNow = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
+    echo json_encode(['server_now' => $serverNow, 'tarefas' => $tarefas]);
 
-  // Retornar os resultados no formato JSON
-  $serverNow = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
-  echo json_encode(['server_now' => $serverNow, 'tarefas' => $tarefas]);
-
-  $stmt->close();
-  $conn->close();
+    $stmt->close();
+    $conn->close();
 } catch (Exception $e) {
-  // Retornar erro em caso de falha
-  echo json_encode(['erro' => 'Erro ao executar a consulta', 'mensagem' => $e->getMessage()]);
+    // Retornar erro em caso de falha
+    echo json_encode(['erro' => 'Erro ao executar a consulta', 'mensagem' => $e->getMessage()]);
 }

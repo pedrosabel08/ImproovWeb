@@ -102,6 +102,7 @@ if (!function_exists('pdf_approval_ensure_schema')) {
         $definitions = [
             ['arquivo_log', 'caminho_vps', "ALTER TABLE arquivo_log ADD COLUMN caminho_vps VARCHAR(1024) NULL AFTER caminho"],
             ['arquivo_log', 'caminho_nas', "ALTER TABLE arquivo_log ADD COLUMN caminho_nas VARCHAR(1024) NULL AFTER caminho_vps"],
+            ['arquivo_log', 'preview_path', "ALTER TABLE arquivo_log ADD COLUMN preview_path VARCHAR(1024) NULL AFTER caminho_nas"],
             ['arquivo_log', 'publicado_em', "ALTER TABLE arquivo_log ADD COLUMN publicado_em DATETIME NULL AFTER status"],
             ['historico_aprovacoes', 'arquivo_log_id', "ALTER TABLE historico_aprovacoes ADD COLUMN arquivo_log_id INT NULL AFTER funcao_animacao_id"],
             ['log_alteracoes', 'arquivo_log_id', "ALTER TABLE log_alteracoes ADD COLUMN arquivo_log_id INT NULL AFTER funcao_imagem_id"],
@@ -166,6 +167,33 @@ if (!function_exists('pdf_approval_update_log_rows')) {
     }
 }
 
+if (!function_exists('pdf_approval_update_preview_path')) {
+    function pdf_approval_update_preview_path(mysqli $conn, array $logIds, ?string $previewPath): bool
+    {
+        if (empty($logIds) || !pdf_approval_ensure_schema($conn)) {
+            return false;
+        }
+
+        $stmt = $conn->prepare("UPDATE arquivo_log SET preview_path = ? WHERE id = ?");
+        if (!$stmt) {
+            error_log('[pdf_approval] falha ao preparar atualização do preview: ' . $conn->error);
+            return false;
+        }
+
+        $ok = true;
+        foreach ($logIds as $logId) {
+            $id = (int)$logId;
+            $stmt->bind_param('si', $previewPath, $id);
+            if (!$stmt->execute()) {
+                $ok = false;
+                error_log("[pdf_approval] falha ao atualizar preview_path do arquivo_log id={$id}: " . $stmt->error);
+            }
+        }
+        $stmt->close();
+        return $ok;
+    }
+}
+
 if (!function_exists('pdf_approval_latest_log')) {
     function pdf_approval_latest_log(mysqli $conn, int $funcaoImagemId): ?array
     {
@@ -174,7 +202,7 @@ if (!function_exists('pdf_approval_latest_log')) {
         }
 
         $stmt = $conn->prepare(
-            "SELECT id, nome_arquivo, tipo, status, caminho, caminho_vps, caminho_nas
+            "SELECT id, nome_arquivo, tipo, status, caminho, caminho_vps, caminho_nas, preview_path
                FROM arquivo_log
               WHERE funcao_imagem_id = ?
                 AND UPPER(tipo) = 'PDF'

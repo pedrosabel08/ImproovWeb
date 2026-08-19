@@ -381,6 +381,18 @@
   function fieldFor(question) {
     const current = answerState(question);
     const value = current.value;
+    let validation = {};
+    if (question.validacao_json) {
+      try {
+        validation =
+          typeof question.validacao_json === "string"
+            ? JSON.parse(question.validacao_json)
+            : question.validacao_json;
+      } catch (_error) {
+        validation = {};
+      }
+    }
+    validation = validation && typeof validation === "object" ? validation : {};
     let field;
     if (question.tipo === "LONG_TEXT") {
       field = document.createElement("textarea");
@@ -427,6 +439,19 @@
               ? "url"
               : "text";
       field.value = value || "";
+    }
+    if (validation.placeholder && "placeholder" in field) {
+      field.placeholder = validation.placeholder;
+    }
+    if (question.tipo === "NUMBER") {
+      if (validation.min !== undefined && validation.min !== "")
+        field.min = validation.min;
+      if (validation.max !== undefined && validation.max !== "")
+        field.max = validation.max;
+    }
+    if (question.tipo === "DATE") {
+      if (validation.min) field.min = validation.min;
+      if (validation.max) field.max = validation.max;
     }
     field.dataset.answerControl = "true";
     field.disabled = !question.editable;

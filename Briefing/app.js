@@ -38,6 +38,10 @@
     detailTab: "overview",
     realtimeBriefingId: null,
     template: { sections: [] },
+    templateMode: "edit",
+    templateSaving: false,
+    briefingSaving: false,
+    templateDrag: null,
     view: "briefings",
   };
   const $ = (id) => document.getElementById(id);
@@ -378,12 +382,29 @@
     button.onclick = () => handler().catch(showError);
     host.append(button);
   }
+  function detailIcon(name) {
+    const icons = {
+      maximize:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" /></svg>',
+      restore:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h13v13H8zM3 16V3h13" /></svg>',
+      trash:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></svg>',
+      more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none" /></svg>',
+      close:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>',
+    };
+    return icons[name] || "";
+  }
+  function setDetailIcon(button, name) {
+    button.innerHTML = detailIcon(name);
+  }
   function toggleDetailMaximize() {
     const host = $("detail");
     const maximized = host.classList.toggle("is-maximized");
     const control = host.querySelector(".detail-maximize");
     if (!control) return;
-    control.textContent = maximized ? "↙" : "⛶";
+    setDetailIcon(control, maximized ? "restore" : "maximize");
     control.setAttribute(
       "aria-label",
       maximized ? "Restaurar tamanho do detalhe" : "Maximizar detalhe",
@@ -411,8 +432,10 @@
     const menu = document.createElement("details");
     menu.className = "detail-menu";
     const summary = document.createElement("summary");
-    summary.textContent = "⋮";
+    summary.className = "icon-button detail-icon-button detail-menu-trigger";
+    setDetailIcon(summary, "more");
     summary.setAttribute("aria-label", "Mais ações");
+    summary.title = "Mais ações";
     const menuList = document.createElement("div");
     menuList.className = "detail-menu-list";
     addMenuItem(menuList, "Atualizar dados", refreshCurrent);
@@ -433,22 +456,30 @@
     menu.append(summary, menuList);
     const close = document.createElement("button");
     close.type = "button";
-    close.className = "icon-button";
-    close.textContent = "×";
+    close.className = "icon-button detail-icon-button";
+    setDetailIcon(close, "close");
     close.setAttribute("aria-label", "Fechar detalhe");
+    close.title = "Fechar detalhe";
     close.onclick = closeDetail;
     const maximize = document.createElement("button");
     maximize.type = "button";
-    maximize.className = "icon-button detail-maximize";
+    maximize.className = "icon-button detail-icon-button detail-maximize";
     const isMaximized = host.classList.contains("is-maximized");
-    maximize.textContent = isMaximized ? "↙" : "⛶";
+    setDetailIcon(maximize, isMaximized ? "restore" : "maximize");
     maximize.setAttribute(
       "aria-label",
       isMaximized ? "Restaurar tamanho do detalhe" : "Maximizar detalhe",
     );
     maximize.title = maximize.getAttribute("aria-label");
     maximize.onclick = toggleDetailMaximize;
-    actions.append(menu, maximize, close);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "icon-button detail-icon-button danger";
+    setDetailIcon(remove, "trash");
+    remove.setAttribute("aria-label", "Excluir briefing");
+    remove.title = "Excluir briefing";
+    remove.onclick = () => deleteBriefing(briefing).catch(showError);
+    actions.append(menu, maximize, remove, close);
     header.append(info, actions);
     const metrics = document.createElement("div");
     metrics.className = "detail-metrics";
@@ -767,6 +798,18 @@
     await loadDetail(state.current.id, true);
     await loadBriefings();
   }
+  async function deleteBriefing(briefing) {
+    if (
+      !confirm(
+        `Excluir o briefing “${briefing.titulo}”? Esta ação não pode ser desfeita.`,
+      )
+    )
+      return;
+    await api({ action: "briefing.delete", briefing_id: briefing.id });
+    closeDetail();
+    notice("Briefing excluído.");
+    await loadBriefings();
+  }
   async function loadBriefings() {
     $("briefing-list").setAttribute("aria-busy", "true");
     const result = await api({
@@ -852,158 +895,771 @@
     $("complement-message").value = "";
     $("complement-dialog").showModal();
   }
+  const TEMPLATE_TYPES = {
+    SHORT_TEXT: {
+      label: "Resposta curta",
+      icon: "Aa",
+      hint: "Uma linha de texto",
+    },
+    LONG_TEXT: {
+      label: "Resposta longa",
+      icon: "≡",
+      hint: "Texto com mais detalhes",
+    },
+    YES_NO: { label: "Sim ou não", icon: "○", hint: "Duas alternativas fixas" },
+    SINGLE_SELECT: {
+      label: "Escolha única",
+      icon: "◉",
+      hint: "Uma alternativa",
+    },
+    MULTI_SELECT: {
+      label: "Múltipla escolha",
+      icon: "☑",
+      hint: "Uma ou mais alternativas",
+    },
+    NUMBER: { label: "Número", icon: "#", hint: "Valor numérico" },
+    DATE: { label: "Data", icon: "◷", hint: "Dia, mês e ano" },
+    LINK: { label: "Link", icon: "↗", hint: "URL externa" },
+    REFERENCE: {
+      label: "Referências visuais",
+      icon: "▧",
+      hint: "Imagem ou referência",
+    },
+  };
+  const TEMPLATE_TYPE_KEYS = Object.keys(TEMPLATE_TYPES);
+  function parseValidation(value) {
+    if (value && typeof value === "object") return { ...value };
+    if (typeof value === "string" && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (_error) {
+        return {};
+      }
+    }
+    return {};
+  }
+  function newQuestion(type = "SHORT_TEXT") {
+    return {
+      text: "",
+      type,
+      required: false,
+      allow_not_applicable: false,
+      options: [],
+      validation: {},
+    };
+  }
+  function normalizeOption(value) {
+    if (typeof value === "string") return { label: value, value };
+    const label =
+      value?.label || value?.rotulo || value?.value || value?.valor || "";
+    return { label, value: value?.value || value?.valor || label };
+  }
+  function normalizeQuestion(question) {
+    const type = TEMPLATE_TYPES[question.type || question.tipo]
+      ? question.type || question.tipo
+      : "SHORT_TEXT";
+    return {
+      text: question.text || question.pergunta || "",
+      type,
+      code: question.code || question.codigo || "",
+      help: question.help || question.ajuda || "",
+      required: Boolean(question.required ?? question.obrigatoria),
+      allow_not_applicable: Boolean(
+        question.allow_not_applicable ?? question.permite_nao_aplica,
+      ),
+      options: (question.options || []).map(normalizeOption),
+      validation: parseValidation(
+        question.validation ?? question.validacao_json,
+      ),
+    };
+  }
   function normalizeTemplate(template) {
     return {
       id: Number(template.id) || 0,
       sections: (template.sections || []).map((section) => ({
         title: section.title || section.titulo || "",
-        questions: (section.questions || []).map((question) => ({
-          text: question.text || question.pergunta || "",
-          type: question.type || question.tipo || "SHORT_TEXT",
-          required: Boolean(question.required ?? question.obrigatoria),
-          allow_not_applicable: Boolean(
-            question.allow_not_applicable ?? question.permite_nao_aplica,
-          ),
-          options: (question.options || []).map((value) =>
-            typeof value === "string"
-              ? value
-              : value.label || value.rotulo || "",
-          ),
-        })),
+        description: section.description || section.descricao || "",
+        questions: (section.questions || []).map(normalizeQuestion),
       })),
     };
+  }
+  function cloneQuestion(question) {
+    return JSON.parse(JSON.stringify(question));
+  }
+  function updateValidation(questionData, key, value) {
+    if (value === "" || value === null || value === undefined) {
+      delete questionData.validation[key];
+    } else {
+      questionData.validation[key] = value;
+    }
+  }
+  function inputField(labelText, value, onInput, options = {}) {
+    const label = document.createElement("label");
+    label.className = options.className || "template-config-field";
+    label.textContent = labelText;
+    const input = document.createElement(options.tagName || "input");
+    input.type = options.type || "text";
+    input.value = value ?? "";
+    input.placeholder = options.placeholder || "";
+    if (options.min !== undefined) input.min = options.min;
+    if (options.max !== undefined) input.max = options.max;
+    input.oninput = (event) => onInput(event.target.value);
+    label.append(input);
+    return label;
+  }
+  function actionMenu(items) {
+    const menu = document.createElement("details");
+    menu.className = "template-context-menu";
+    const summary = document.createElement("summary");
+    summary.className = "template-context-trigger";
+    summary.textContent = "⋯";
+    summary.setAttribute("aria-label", "Mais ações");
+    summary.title = "Mais ações";
+    const list = document.createElement("div");
+    list.className = "template-context-list";
+    items.forEach((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = item.label;
+      if (item.danger) button.className = "danger";
+      button.onclick = () => {
+        menu.removeAttribute("open");
+        item.onClick();
+      };
+      list.append(button);
+    });
+    menu.append(summary, list);
+    return menu;
+  }
+  function setDragHandle(handle, drag) {
+    handle.draggable = true;
+    handle.ondragstart = (event) => {
+      state.templateDrag = drag;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", JSON.stringify(drag));
+      handle
+        .closest(".template-section, .template-question, .template-option-row")
+        ?.classList.add("is-dragging");
+    };
+    handle.ondragend = () => {
+      state.templateDrag = null;
+      document
+        .querySelectorAll(".is-dragging")
+        .forEach((element) => element.classList.remove("is-dragging"));
+    };
+  }
+  function renderQuestionConfiguration(questionData) {
+    const config = document.createElement("div");
+    config.className = "template-question-config";
+    const type = questionData.type;
+    if (type === "SHORT_TEXT") {
+      config.append(
+        inputField(
+          "Placeholder opcional",
+          questionData.validation.placeholder || "",
+          (value) => updateValidation(questionData, "placeholder", value),
+          { placeholder: "Digite sua resposta..." },
+        ),
+      );
+      const preview = document.createElement("div");
+      preview.className = "question-preview-field";
+      preview.textContent =
+        questionData.validation.placeholder || "Digite sua resposta...";
+      config.append(preview);
+    } else if (type === "LONG_TEXT") {
+      config.append(
+        inputField(
+          "Placeholder opcional",
+          questionData.validation.placeholder || "",
+          (value) => updateValidation(questionData, "placeholder", value),
+          { placeholder: "Conte um pouco mais..." },
+        ),
+      );
+      const preview = document.createElement("textarea");
+      preview.disabled = true;
+      preview.placeholder =
+        questionData.validation.placeholder || "Conte um pouco mais...";
+      config.append(preview);
+    } else if (type === "YES_NO") {
+      const preview = document.createElement("div");
+      preview.className = "choice-preview fixed-choice-preview";
+      ["Sim", "Não"].forEach((label) => {
+        const item = document.createElement("label");
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.disabled = true;
+        item.append(radio, document.createTextNode(label));
+        preview.append(item);
+      });
+      config.append(preview);
+    } else if (["SINGLE_SELECT", "MULTI_SELECT"].includes(type)) {
+      const options = document.createElement("div");
+      options.className = "template-options-editor";
+      if (!questionData.options.length) {
+        const empty = document.createElement("p");
+        empty.className = "template-options-empty";
+        empty.textContent =
+          "Adicione as alternativas que o cliente poderá escolher.";
+        options.append(empty);
+      }
+      questionData.options.forEach((optionData, optionIndex) => {
+        const row = document.createElement("div");
+        row.className = "template-option-row";
+        const handle = document.createElement("button");
+        handle.type = "button";
+        handle.className = "template-drag-handle option-drag-handle";
+        handle.textContent = "⋮⋮";
+        handle.title = "Arrastar alternativa";
+        setDragHandle(handle, { kind: "option", questionData, optionIndex });
+        const marker = document.createElement("input");
+        marker.type = type === "MULTI_SELECT" ? "checkbox" : "radio";
+        marker.disabled = true;
+        const text = document.createElement("input");
+        text.type = "text";
+        text.value = optionData.label;
+        text.placeholder = `Alternativa ${optionIndex + 1}`;
+        text.oninput = (event) => {
+          optionData.label = event.target.value;
+        };
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "template-option-remove";
+        remove.textContent = "Excluir";
+        remove.onclick = () => {
+          questionData.options.splice(optionIndex, 1);
+          renderTemplateEditor();
+        };
+        row.append(handle, marker, text, remove);
+        row.ondragover = (event) => {
+          if (state.templateDrag?.kind === "option") event.preventDefault();
+        };
+        row.ondrop = (event) => {
+          event.preventDefault();
+          const drag = state.templateDrag;
+          if (!drag || drag.kind !== "option") return;
+          const from = questionData.options.indexOf(
+            drag.questionData.options[drag.optionIndex],
+          );
+          if (
+            drag.questionData !== questionData ||
+            from < 0 ||
+            from === optionIndex
+          )
+            return;
+          const [moved] = questionData.options.splice(from, 1);
+          questionData.options.splice(optionIndex, 0, moved);
+          state.templateDrag = null;
+          renderTemplateEditor();
+        };
+        options.append(row);
+      });
+      const addOption = document.createElement("button");
+      addOption.type = "button";
+      addOption.className = "template-add-option";
+      addOption.textContent = "+ Adicionar opção";
+      addOption.onclick = () => {
+        questionData.options.push({ label: "", value: "" });
+        renderTemplateEditor();
+        const rows = $("template-sections").querySelectorAll(
+          ".template-option-row input[type='text']",
+        );
+        rows[rows.length - 1]?.focus();
+      };
+      options.append(addOption);
+      config.append(options);
+    } else if (type === "NUMBER") {
+      const fields = document.createElement("div");
+      fields.className = "template-config-grid three-columns";
+      fields.append(
+        inputField(
+          "Mínimo",
+          questionData.validation.min,
+          (value) => updateValidation(questionData, "min", value),
+          { type: "number", placeholder: "Opcional" },
+        ),
+        inputField(
+          "Máximo",
+          questionData.validation.max,
+          (value) => updateValidation(questionData, "max", value),
+          { type: "number", placeholder: "Opcional" },
+        ),
+        inputField(
+          "Unidade",
+          questionData.validation.unit,
+          (value) => updateValidation(questionData, "unit", value),
+          { placeholder: "Ex.: m²" },
+        ),
+      );
+      config.append(fields);
+      const preview = document.createElement("input");
+      preview.type = "number";
+      preview.disabled = true;
+      preview.placeholder = questionData.validation.unit
+        ? `Informe um valor em ${questionData.validation.unit}`
+        : "Informe um número...";
+      config.append(preview);
+    } else if (type === "DATE") {
+      const fields = document.createElement("div");
+      fields.className = "template-config-grid two-columns";
+      fields.append(
+        inputField(
+          "Data mínima",
+          questionData.validation.min,
+          (value) => updateValidation(questionData, "min", value),
+          { type: "date" },
+        ),
+        inputField(
+          "Data máxima",
+          questionData.validation.max,
+          (value) => updateValidation(questionData, "max", value),
+          { type: "date" },
+        ),
+      );
+      config.append(fields);
+      const preview = document.createElement("input");
+      preview.type = "date";
+      preview.disabled = true;
+      config.append(preview);
+    } else if (type === "LINK") {
+      config.append(
+        inputField(
+          "Placeholder opcional",
+          questionData.validation.placeholder || "",
+          (value) => updateValidation(questionData, "placeholder", value),
+          { placeholder: "https://..." },
+        ),
+      );
+      const preview = document.createElement("div");
+      preview.className = "question-preview-link";
+      preview.textContent =
+        questionData.validation.placeholder || "https://...";
+      config.append(preview);
+      const hint = document.createElement("small");
+      hint.textContent = "O cliente deverá inserir uma URL válida.";
+      config.append(hint);
+    } else if (type === "REFERENCE") {
+      const preview = document.createElement("div");
+      preview.className = "reference-preview";
+      preview.innerHTML =
+        '<span aria-hidden="true">＋</span><div><strong>Adicionar imagem ou link</strong><small>O cliente poderá enviar uma referência visual para este briefing.</small></div>';
+      config.append(preview);
+    }
+    return config;
+  }
+  function renderQuestionCard(
+    sectionData,
+    questionData,
+    sectionIndex,
+    questionIndex,
+  ) {
+    const card = document.createElement("article");
+    card.className = "template-question-card";
+    const top = document.createElement("div");
+    top.className = "template-question-top";
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "template-drag-handle";
+    handle.textContent = "⋮⋮";
+    handle.title = "Arrastar pergunta";
+    setDragHandle(handle, { kind: "question", sectionIndex, questionIndex });
+    const number = document.createElement("span");
+    number.className = "template-question-number";
+    number.textContent = `PERGUNTA ${String(questionIndex + 1).padStart(2, "0")}`;
+    const menu = actionMenu([
+      {
+        label: "Duplicar pergunta",
+        onClick: () => {
+          sectionData.questions.splice(
+            questionIndex + 1,
+            0,
+            cloneQuestion(questionData),
+          );
+          renderTemplateEditor();
+        },
+      },
+      {
+        label: "Excluir pergunta",
+        danger: true,
+        onClick: () => {
+          if (
+            (questionData.text || questionData.options.length) &&
+            !confirm("Excluir esta pergunta?")
+          )
+            return;
+          sectionData.questions.splice(questionIndex, 1);
+          renderTemplateEditor();
+        },
+      },
+    ]);
+    top.append(handle, number, menu);
+    const main = document.createElement("div");
+    main.className = "template-question-main";
+    const grid = document.createElement("div");
+    grid.className = "template-question-grid redesigned-question-grid";
+    const question = document.createElement("textarea");
+    question.rows = 2;
+    question.required = true;
+    question.placeholder = "Escreva a pergunta que o cliente verá...";
+    question.value = questionData.text;
+    question.oninput = (event) => {
+      questionData.text = event.target.value;
+    };
+    const typeWrap = document.createElement("label");
+    typeWrap.className = "template-type-field";
+    typeWrap.textContent = "Tipo de resposta";
+    const type = document.createElement("select");
+    TEMPLATE_TYPE_KEYS.forEach((value) =>
+      type.append(
+        option(
+          value,
+          `${TEMPLATE_TYPES[value].icon}  ${TEMPLATE_TYPES[value].label}`,
+        ),
+      ),
+    );
+    type.value = questionData.type;
+    type.onchange = (event) => {
+      questionData.type = event.target.value;
+      questionData.validation = {};
+      if (!["SINGLE_SELECT", "MULTI_SELECT"].includes(questionData.type))
+        questionData.options = [];
+      renderTemplateEditor();
+    };
+    typeWrap.append(type);
+    const hint = document.createElement("small");
+    hint.textContent = TEMPLATE_TYPES[questionData.type].hint;
+    typeWrap.append(hint);
+    grid.append(question, typeWrap);
+    main.append(grid, renderQuestionConfiguration(questionData));
+    const footer = document.createElement("div");
+    footer.className = "template-question-footer";
+    [
+      ["required", "Obrigatória", "required"],
+      [
+        "allow_not_applicable",
+        "Permitir “Não se aplica”",
+        "allow_not_applicable",
+      ],
+    ].forEach((item) => {
+      const label = document.createElement("label");
+      label.className = "check template-toggle";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = !!questionData[item[2]];
+      input.onchange = (event) => {
+        questionData[item[2]] = event.target.checked;
+      };
+      label.append(input, document.createTextNode(item[1]));
+      footer.append(label);
+    });
+    card.append(top, main, footer);
+    card.ondragover = (event) => {
+      if (state.templateDrag?.kind === "question") event.preventDefault();
+    };
+    card.ondrop = (event) => {
+      event.preventDefault();
+      const drag = state.templateDrag;
+      if (
+        !drag ||
+        drag.kind !== "question" ||
+        drag.sectionIndex !== sectionIndex ||
+        drag.questionIndex === questionIndex
+      )
+        return;
+      const questions = sectionData.questions;
+      const [moved] = questions.splice(drag.questionIndex, 1);
+      questions.splice(questionIndex, 0, moved);
+      state.templateDrag = null;
+      renderTemplateEditor();
+    };
+    return card;
   }
   function renderTemplateEditor() {
     const host = $("template-sections");
     host.replaceChildren();
+    if (!state.template.sections.length) {
+      const empty = document.createElement("div");
+      empty.className = "template-builder-empty";
+      empty.innerHTML =
+        '<span class="template-empty-icon">＋</span><strong>Comece criando a primeira seção do briefing.</strong><p>Organize o formulário em blocos para facilitar a resposta do cliente.</p>';
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "button secondary";
+      add.textContent = "+ Adicionar seção";
+      add.onclick = () => {
+        state.template.sections.push({
+          title: "",
+          description: "",
+          questions: [],
+        });
+        renderTemplateEditor();
+      };
+      empty.append(add);
+      host.append(empty);
+      renderTemplatePreview();
+      return;
+    }
     state.template.sections.forEach((sectionData, sectionIndex) => {
-      const sectionElement = document.createElement("div");
-      sectionElement.className = "template-section";
+      const sectionElement = document.createElement("section");
+      sectionElement.className = "template-section-card";
       const head = document.createElement("div");
-      head.className = "template-section-head";
+      head.className = "template-section-head redesigned-section-head";
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "template-drag-handle";
+      handle.textContent = "⋮⋮";
+      handle.title = "Arrastar seção";
+      setDragHandle(handle, { kind: "section", sectionIndex });
+      const identity = document.createElement("div");
+      identity.className = "template-section-identity";
+      const label = document.createElement("span");
+      label.className = "template-section-number";
+      label.textContent = `SEÇÃO ${String(sectionIndex + 1).padStart(2, "0")}`;
+      identity.append(label);
       const title = document.createElement("input");
-      title.placeholder = "Título da seção";
+      title.required = true;
+      title.placeholder = "Nome da seção, ex.: Informações gerais";
       title.value = sectionData.title;
       title.oninput = (event) => {
         sectionData.title = event.target.value;
       };
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "text-button danger-button";
-      remove.textContent = "Excluir seção";
-      remove.onclick = () => {
-        state.template.sections.splice(sectionIndex, 1);
-        renderTemplateEditor();
+      identity.append(title);
+      const menu = actionMenu([
+        {
+          label: "Excluir seção",
+          danger: true,
+          onClick: () => {
+            if (
+              (sectionData.title || sectionData.questions.length) &&
+              !confirm("Excluir esta seção e suas perguntas?")
+            )
+              return;
+            state.template.sections.splice(sectionIndex, 1);
+            renderTemplateEditor();
+          },
+        },
+      ]);
+      head.append(handle, identity, menu);
+      const description = document.createElement("textarea");
+      description.className = "template-section-description";
+      description.rows = 2;
+      description.placeholder = "Descrição opcional para orientar o cliente...";
+      description.value = sectionData.description || "";
+      description.oninput = (event) => {
+        sectionData.description = event.target.value;
       };
-      head.append(title, remove);
-      sectionData.questions.forEach((questionData, questionIndex) => {
-        const row = document.createElement("div");
-        row.className = "template-question";
-        const grid = document.createElement("div");
-        grid.className = "template-question-grid";
-        const question = document.createElement("input");
-        question.placeholder = "Pergunta";
-        question.value = questionData.text;
-        question.oninput = (event) => {
-          questionData.text = event.target.value;
-        };
-        const type = document.createElement("select");
-        [
-          "SHORT_TEXT",
-          "LONG_TEXT",
-          "YES_NO",
-          "SINGLE_SELECT",
-          "MULTI_SELECT",
-          "NUMBER",
-          "DATE",
-          "LINK",
-          "REFERENCE",
-        ].forEach((value) => type.append(option(value, value)));
-        type.value = questionData.type;
-        type.onchange = (event) => {
-          questionData.type = event.target.value;
-        };
-        grid.append(question, type);
-        const required = document.createElement("label");
-        required.className = "check";
-        const requiredInput = document.createElement("input");
-        requiredInput.type = "checkbox";
-        requiredInput.checked = !!questionData.required;
-        requiredInput.onchange = (event) => {
-          questionData.required = event.target.checked;
-        };
-        required.append(requiredInput, document.createTextNode(" Obrigatória"));
-        const allowNa = document.createElement("label");
-        allowNa.className = "check";
-        const allowNaInput = document.createElement("input");
-        allowNaInput.type = "checkbox";
-        allowNaInput.checked = !!questionData.allow_not_applicable;
-        allowNaInput.onchange = (event) => {
-          questionData.allow_not_applicable = event.target.checked;
-        };
-        allowNa.append(
-          allowNaInput,
-          document.createTextNode(" Permite não se aplica"),
+      const questions = document.createElement("div");
+      questions.className = "template-questions-list";
+      if (!sectionData.questions.length) {
+        const empty = document.createElement("div");
+        empty.className = "template-section-empty";
+        empty.innerHTML =
+          "<strong>Nenhuma pergunta nesta seção.</strong><span>Adicione a primeira pergunta para começar.</span>";
+        questions.append(empty);
+      } else {
+        sectionData.questions.forEach((questionData, questionIndex) =>
+          questions.append(
+            renderQuestionCard(
+              sectionData,
+              questionData,
+              sectionIndex,
+              questionIndex,
+            ),
+          ),
         );
-        const choices = document.createElement("input");
-        choices.className = "question-options";
-        choices.placeholder = "Opções separadas por vírgula";
-        choices.value = questionData.options.join(", ");
-        choices.oninput = (event) => {
-          questionData.options = event.target.value
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean);
-        };
-        const removeQuestion = document.createElement("button");
-        removeQuestion.type = "button";
-        removeQuestion.className = "text-button danger-button question-remove";
-        removeQuestion.textContent = "Excluir pergunta";
-        removeQuestion.onclick = () => {
-          sectionData.questions.splice(questionIndex, 1);
-          renderTemplateEditor();
-        };
-        row.append(grid, required, allowNa, choices, removeQuestion);
-        sectionElement.append(row);
-      });
+      }
       const addQuestion = document.createElement("button");
       addQuestion.type = "button";
-      addQuestion.className = "text-button";
-      addQuestion.textContent = "Adicionar pergunta";
+      addQuestion.className = "template-add-question";
+      addQuestion.textContent = "+ Adicionar pergunta";
       addQuestion.onclick = () => {
-        sectionData.questions.push({
-          text: "",
-          type: "SHORT_TEXT",
-          options: [],
-          required: false,
-          allow_not_applicable: false,
-        });
+        sectionData.questions.push(newQuestion());
         renderTemplateEditor();
       };
-      sectionElement.append(head, addQuestion);
+      questions.append(addQuestion);
+      sectionElement.append(head, description, questions);
+      sectionElement.ondragover = (event) => {
+        if (
+          state.templateDrag?.kind === "section" &&
+          !event.target.closest(".template-question-card")
+        )
+          event.preventDefault();
+      };
+      sectionElement.ondrop = (event) => {
+        if (event.target.closest(".template-question-card")) return;
+        event.preventDefault();
+        const drag = state.templateDrag;
+        if (
+          !drag ||
+          drag.kind !== "section" ||
+          drag.sectionIndex === sectionIndex
+        )
+          return;
+        const [moved] = state.template.sections.splice(drag.sectionIndex, 1);
+        state.template.sections.splice(sectionIndex, 0, moved);
+        state.templateDrag = null;
+        renderTemplateEditor();
+      };
       host.append(sectionElement);
     });
+    const addSection = document.createElement("button");
+    addSection.type = "button";
+    addSection.className = "template-add-section button secondary";
+    addSection.textContent = "+ Adicionar seção";
+    addSection.onclick = () => {
+      state.template.sections.push({
+        title: "",
+        description: "",
+        questions: [],
+      });
+      renderTemplateEditor();
+    };
+    host.append(addSection);
+    renderTemplatePreview();
+  }
+  function appendPreviewControl(host, questionData) {
+    const type = questionData.type;
+    if (type === "LONG_TEXT") {
+      const field = document.createElement("textarea");
+      field.disabled = true;
+      field.placeholder =
+        questionData.validation.placeholder || "Conte um pouco mais...";
+      host.append(field);
+    } else if (type === "YES_NO") {
+      const choices = document.createElement("div");
+      choices.className = "preview-choice-list";
+      ["Sim", "Não"].forEach((value) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.disabled = true;
+        label.append(input, document.createTextNode(value));
+        choices.append(label);
+      });
+      host.append(choices);
+    } else if (["SINGLE_SELECT", "MULTI_SELECT"].includes(type)) {
+      const choices = document.createElement("div");
+      choices.className = "preview-choice-list";
+      questionData.options.forEach((optionData) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = type === "MULTI_SELECT" ? "checkbox" : "radio";
+        input.disabled = true;
+        label.append(
+          input,
+          document.createTextNode(optionData.label || "Alternativa sem nome"),
+        );
+        choices.append(label);
+      });
+      if (!questionData.options.length)
+        choices.append(document.createTextNode("Nenhuma opção adicionada."));
+      host.append(choices);
+    } else if (type === "REFERENCE") {
+      const reference = document.createElement("div");
+      reference.className = "reference-preview preview-only";
+      reference.innerHTML =
+        '<span aria-hidden="true">＋</span><div><strong>Adicionar imagem ou link</strong><small>Área de referência visual</small></div>';
+      host.append(reference);
+    } else {
+      const field = document.createElement("input");
+      field.disabled = true;
+      field.type =
+        type === "NUMBER"
+          ? "number"
+          : type === "DATE"
+            ? "date"
+            : type === "LINK"
+              ? "url"
+              : "text";
+      field.placeholder =
+        questionData.validation.placeholder ||
+        (type === "LINK"
+          ? "https://..."
+          : type === "NUMBER"
+            ? "Informe um número..."
+            : "Digite sua resposta...");
+      if (questionData.validation.min) field.min = questionData.validation.min;
+      if (questionData.validation.max) field.max = questionData.validation.max;
+      host.append(field);
+    }
+  }
+  function renderTemplatePreview() {
+    const host = $("template-preview");
+    host.replaceChildren();
+    if (!state.template.sections.length) {
+      host.innerHTML =
+        '<div class="template-preview-empty"><strong>O preview aparecerá aqui.</strong><p>Adicione uma seção e perguntas para visualizar o formulário.</p></div>';
+      return;
+    }
+    state.template.sections.forEach((sectionData, sectionIndex) => {
+      const section = document.createElement("section");
+      section.className = "client-preview-section";
+      const eyebrow = document.createElement("span");
+      eyebrow.className = "template-section-number";
+      eyebrow.textContent = `SEÇÃO ${String(sectionIndex + 1).padStart(2, "0")}`;
+      const title = document.createElement("h3");
+      title.textContent = sectionData.title || "Seção sem nome";
+      section.append(eyebrow, title);
+      if (sectionData.description) {
+        const description = document.createElement("p");
+        description.textContent = sectionData.description;
+        section.append(description);
+      }
+      sectionData.questions.forEach((questionData) => {
+        const question = document.createElement("div");
+        question.className = "client-preview-question";
+        const label = document.createElement("strong");
+        label.textContent = questionData.text || "Pergunta sem texto";
+        if (questionData.required) {
+          const required = document.createElement("span");
+          required.className = "required-mark";
+          required.textContent = " *";
+          label.append(required);
+        }
+        const type = document.createElement("small");
+        type.textContent = TEMPLATE_TYPES[questionData.type].label;
+        question.append(label, type);
+        appendPreviewControl(question, questionData);
+        if (questionData.allow_not_applicable) {
+          const na = document.createElement("label");
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.disabled = true;
+          na.append(input, document.createTextNode(" Não se aplica"));
+          question.append(na);
+        }
+        section.append(question);
+      });
+      host.append(section);
+    });
+  }
+  function setTemplateMode(mode) {
+    state.templateMode = mode;
+    const editing = mode === "edit";
+    $("template-sections").hidden = !editing;
+    $("template-preview").hidden = editing;
+    [
+      ["template-mode-edit", editing],
+      ["template-mode-preview", !editing],
+    ].forEach(([id, active]) => {
+      $(id).classList.toggle("is-active", active);
+      $(id).setAttribute("aria-selected", String(active));
+    });
+    if (!editing) renderTemplatePreview();
+  }
+  function closeTemplateEditor() {
+    const dialog = $("template-dialog");
+    if (!dialog.open || dialog.classList.contains("is-closing")) return;
+    dialog.classList.add("is-closing");
+    setTimeout(() => {
+      dialog.close();
+      dialog.classList.remove("is-closing");
+    }, 180);
   }
   function openTemplateEditor(template = null, duplicate = false) {
     state.template = template
       ? normalizeTemplate(template)
-      : {
-          id: 0,
-          sections: [
-            {
-              title: "Informações gerais",
-              questions: [
-                {
-                  text: "",
-                  type: "SHORT_TEXT",
-                  options: [],
-                  required: false,
-                  allow_not_applicable: false,
-                },
-              ],
-            },
-          ],
-        };
+      : { id: 0, sections: [] };
     if (duplicate) state.template.id = 0;
     $("template-name").value = template
       ? (duplicate ? "Cópia de " : "") + template.nome
@@ -1018,7 +1674,10 @@
       : state.template.id
         ? "Editar template"
         : "Novo template";
+    state.templateMode = "edit";
     renderTemplateEditor();
+    setTemplateMode("edit");
+    document.body.classList.add("template-modal-open");
     $("template-dialog").showModal();
   }
   async function loadTemplates() {
@@ -1053,7 +1712,7 @@
           ? " is-selected"
           : "");
       row.innerHTML =
-        '<div class="project-cell"><strong></strong><small></small></div><div><strong></strong><small>perguntas</small></div><div class="activity-cell"><strong></strong><small></small></div><span class="row-arrow">›</span>';
+        '<div class="project-cell"><strong></strong><small></small></div><div><strong></strong><small> perguntas</small></div><div class="activity-cell"><strong></strong><small></small></div><span class="row-arrow">›</span>';
       row.querySelector(".project-cell strong").textContent = template.nome;
       row.querySelector(".project-cell small").textContent =
         "Versão " +
@@ -1202,12 +1861,50 @@
   $("view-templates").onclick = () => showView("templates");
   $("open-templates").onclick = () => showView("templates");
   $("new-template").onclick = () => openTemplateEditor();
-  $("add-section").onclick = () => {
-    state.template.sections.push({ title: "", questions: [] });
-    renderTemplateEditor();
-  };
-  $("save-template").onclick = async (event) => {
+  $("template-mode-edit").onclick = () => setTemplateMode("edit");
+  $("template-mode-preview").onclick = () => setTemplateMode("preview");
+  $("close-template").onclick = closeTemplateEditor;
+  $("cancel-template").onclick = closeTemplateEditor;
+  $("template-dialog").addEventListener("cancel", (event) => {
     event.preventDefault();
+    closeTemplateEditor();
+  });
+  $("template-dialog").addEventListener("close", () => {
+    document.body.classList.remove("template-modal-open");
+  });
+  $("template-dialog").addEventListener("show", () => {
+    document.body.classList.add("template-modal-open");
+  });
+  $("template-dialog").addEventListener("toggle", (event) => {
+    if (event.newState === "open")
+      document.body.classList.add("template-modal-open");
+  });
+  $("template-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (state.templateSaving) return;
+    if (!$("template-form").reportValidity()) return;
+    const invalidSection = state.template.sections.find(
+      (section) => !section.title.trim(),
+    );
+    if (invalidSection) {
+      showError(new Error("Dê um nome para todas as seções."));
+      setTemplateMode("edit");
+      return;
+    }
+    const invalidQuestion = state.template.sections
+      .flatMap((section) => section.questions)
+      .find((question) => !question.text.trim());
+    if (invalidQuestion) {
+      showError(new Error("Preencha o texto de todas as perguntas."));
+      setTemplateMode("edit");
+      return;
+    }
+    state.templateSaving = true;
+    const saveButton = $("save-template");
+    saveButton.disabled = true;
+    saveButton.setAttribute("aria-busy", "true");
+    saveButton.dataset.label = saveButton.textContent;
+    saveButton.textContent = "Salvando…";
     try {
       const result = await api({
         action: "template.save",
@@ -1223,15 +1920,46 @@
       if (state.view === "templates") await showTemplate(result.template_id);
     } catch (error) {
       showError(error);
+    } finally {
+      state.templateSaving = false;
+      saveButton.disabled = false;
+      saveButton.removeAttribute("aria-busy");
+      saveButton.textContent = saveButton.dataset.label || "Salvar template";
     }
-  };
+  });
+  function closeBriefingDialog() {
+    const dialog = $("briefing-dialog");
+    if (!dialog.open || dialog.classList.contains("is-closing")) return;
+    dialog.classList.add("is-closing");
+    setTimeout(() => {
+      dialog.close();
+      dialog.classList.remove("is-closing");
+    }, 180);
+  }
+  $("close-briefing").onclick = closeBriefingDialog;
+  $("cancel-briefing").onclick = closeBriefingDialog;
+  $("briefing-dialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeBriefingDialog();
+  });
+  $("briefing-dialog").addEventListener("close", () => {
+    document.body.classList.remove("briefing-modal-open");
+  });
   $("new-briefing").onclick = () => {
     $("briefing-form").reset();
     $("briefing-requires-review").checked = true;
+    document.body.classList.add("briefing-modal-open");
     $("briefing-dialog").showModal();
   };
-  $("save-briefing").onclick = async (event) => {
+  $("briefing-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (state.briefingSaving || !$("briefing-form").reportValidity()) return;
+    state.briefingSaving = true;
+    const saveButton = $("save-briefing");
+    saveButton.disabled = true;
+    saveButton.setAttribute("aria-busy", "true");
+    saveButton.dataset.label = saveButton.textContent;
+    saveButton.textContent = "Criando…";
     try {
       const result = await api({
         action: "briefing.create",
@@ -1249,8 +1977,13 @@
       await loadDetail(result.briefing_id);
     } catch (error) {
       showError(error);
+    } finally {
+      state.briefingSaving = false;
+      saveButton.disabled = false;
+      saveButton.removeAttribute("aria-busy");
+      saveButton.textContent = saveButton.dataset.label || "Criar briefing";
     }
-  };
+  });
   $("save-complement").onclick = async (event) => {
     event.preventDefault();
     try {

@@ -99,11 +99,10 @@ function save_template(mysqli $conn, array $data, int $actorId): int
     $reviewer = (int)($data['default_reviewer_id'] ?? 0) ?: null;
     if ($id > 0) {
         $stmt = briefing_stmt($conn, 'UPDATE briefing_template SET nome=?,versao=versao+1,exige_conferencia_interna=?,revisor_padrao_colaborador_id=? WHERE id=?', 'siii', [$name, $requires, $reviewer, $id]);
-        if ($stmt->affected_rows === 0) {
-            $stmt->close();
+        $stmt->close();
+        if (!briefing_scalar($conn, 'SELECT id FROM briefing_template WHERE id=?', 'i', [$id])) {
             throw new InvalidArgumentException('Template não encontrado.');
         }
-        $stmt->close();
         briefing_stmt($conn, 'DELETE FROM briefing_template_section WHERE template_id=?', 'i', [$id])->close();
     } else {
         $stmt = briefing_stmt($conn, 'INSERT INTO briefing_template (nome,exige_conferencia_interna,revisor_padrao_colaborador_id,criado_por_colaborador_id) VALUES (?,?,?,?)', 'siii', [$name, $requires, $reviewer, $actorId]);
@@ -153,7 +152,7 @@ function briefing_cycle(mysqli $conn, array $briefing, string $action, ?int $act
 
 try {
     if ($action === 'bootstrap') {
-        briefing_json(['ok' => true, 'csrf' => briefing_csrf_token(), 'obras' => internal_obras($conn), 'collaborators' => internal_collaborators($conn), 'templates' => array_map(fn ($x) => ['id' => (int)$x['id'], 'name' => $x['nome'], 'version' => (int)$x['versao']], $conn->query('SELECT id,nome,versao FROM briefing_template WHERE ativo=1 ORDER BY nome')->fetch_all(MYSQLI_ASSOC))]);
+        briefing_json(['ok' => true, 'csrf' => briefing_csrf_token(), 'obras' => internal_obras($conn), 'collaborators' => internal_collaborators($conn), 'templates' => array_map(fn($x) => ['id' => (int)$x['id'], 'name' => $x['nome'], 'version' => (int)$x['versao']], $conn->query('SELECT id,nome,versao FROM briefing_template WHERE ativo=1 ORDER BY nome')->fetch_all(MYSQLI_ASSOC))]);
     }
     if ($action === 'template.list') {
         $r = $conn->query('SELECT t.id,t.nome,t.versao,t.ativo,t.atualizado_em,COUNT(q.id) questions_count FROM briefing_template t LEFT JOIN briefing_template_section s ON s.template_id=t.id LEFT JOIN briefing_template_question q ON q.section_id=s.id GROUP BY t.id,t.nome,t.versao,t.ativo,t.atualizado_em ORDER BY t.nome');
@@ -273,6 +272,22 @@ try {
         $briefing['external_access'] = $stmt->get_result()->fetch_assoc() ?: null;
         $stmt->close();
         briefing_json(['ok' => true, 'briefing' => $briefing]);
+    }
+    if ($action === 'briefing.delete') {
+        $id = (int)($body['briefing_id'] ?? 0);
+        if (!$id || !briefing_fetch($conn, $id)) {
+            throw new InvalidArgumentException('Briefing não encontrado.');
+        }
+        $conn->begin_transaction();
+        $stmt = briefing_stmt($conn, 'DELETE FROM briefing_online WHERE id=?', 'i', [$id]);
+        if ($stmt->affected_rows !== 1) {
+            $stmt->close();
+            throw new InvalidArgumentException('Briefing não encontrado.');
+        }
+        $stmt->close();
+        $conn->commit();
+        briefing_publish_realtime($id, 'briefing.deleted');
+        briefing_json(['ok' => true]);
     }
     if ($action === 'briefing.prepare') {
         $id = (int)($body['briefing_id'] ?? 0);

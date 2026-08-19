@@ -472,6 +472,7 @@
   border-radius: 7px;
   color: var(--sb-text);
   text-decoration: none;
+  cursor: pointer;
 }
 .sidebar-project-quick .obra-item:hover,
 .sidebar-project-results .obra-item:hover {

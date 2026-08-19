@@ -315,11 +315,13 @@ function briefing_valid_answer(array $question, mixed $value, bool $notApplicabl
         return null;
     }
     $type = $question['tipo'];
+    $validation = briefing_json_decode($question['validacao_json'] ?? null, []);
+    $validation = is_array($validation) ? $validation : [];
     if ($type === 'MULTI_SELECT') {
         if (!is_array($value)) {
             throw new InvalidArgumentException('Selecione uma ou mais opções.');
         }
-        $value = array_values(array_unique(array_map(fn ($v) => briefing_clean_text($v, 255), $value)));
+        $value = array_values(array_unique(array_map(fn($v) => briefing_clean_text($v, 255), $value)));
     } elseif ($type === 'YES_NO') {
         if (!in_array($value, [true, false, 'yes', 'no', 'sim', 'nao'], true)) {
             throw new InvalidArgumentException('Resposta sim/não inválida.');
@@ -329,10 +331,23 @@ function briefing_valid_answer(array $question, mixed $value, bool $notApplicabl
         if (!is_numeric($value)) {
             throw new InvalidArgumentException('Informe um número válido.');
         }
+        $number = (float)$value;
+        if (isset($validation['min']) && $validation['min'] !== '' && is_numeric($validation['min']) && $number < (float)$validation['min']) {
+            throw new InvalidArgumentException('O número informado está abaixo do mínimo permitido.');
+        }
+        if (isset($validation['max']) && $validation['max'] !== '' && is_numeric($validation['max']) && $number > (float)$validation['max']) {
+            throw new InvalidArgumentException('O número informado está acima do máximo permitido.');
+        }
         $value = (string)$value;
     } elseif ($type === 'DATE') {
         if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
             throw new InvalidArgumentException('Informe uma data válida.');
+        }
+        if (isset($validation['min']) && $validation['min'] !== '' && $value < $validation['min']) {
+            throw new InvalidArgumentException('A data informada é anterior ao mínimo permitido.');
+        }
+        if (isset($validation['max']) && $validation['max'] !== '' && $value > $validation['max']) {
+            throw new InvalidArgumentException('A data informada é posterior ao máximo permitido.');
         }
     } elseif ($type === 'LINK') {
         if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
@@ -641,7 +656,7 @@ function briefing_send_otp(string $email, string $code, string $briefingTitle): 
         fwrite($socket, $command . "\r\n");
         return $read($socket);
     };
-    $ok = static fn (string $reply, array $codes): bool => preg_match('/^(\d{3})/', $reply, $m) === 1 && in_array((int)$m[1], $codes, true);
+    $ok = static fn(string $reply, array $codes): bool => preg_match('/^(\d{3})/', $reply, $m) === 1 && in_array((int)$m[1], $codes, true);
     $socket = @stream_socket_client(($port === 465 ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 10, STREAM_CLIENT_CONNECT);
     if (!$socket) {
         error_log('[Briefing] SMTP connection failed.');

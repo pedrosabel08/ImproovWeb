@@ -31,15 +31,34 @@ try {
         throw new InvalidArgumentException('pessoas deve ser um objeto JSON.');
     }
 
-    // Cenário de validação explicitamente acordado para RAY_BRH; nenhuma data é gravada.
-    $padrao116 = $obraId === 116;
+    $entregaId = (int) ($_GET['entrega_id'] ?? 0);
+    if ($entregaId <= 0) {
+        $stmtEntrega = $conn->prepare(
+            'SELECT id FROM entregas WHERE obra_id = ? AND status_id = 2 ORDER BY data_recebimento DESC, id DESC LIMIT 1'
+        );
+        if (!$stmtEntrega) throw new RuntimeException($conn->error);
+        $stmtEntrega->bind_param('i', $obraId);
+        $stmtEntrega->execute();
+        $entregaId = (int) (($stmtEntrega->get_result()->fetch_assoc()['id'] ?? 0));
+        $stmtEntrega->close();
+    }
+    if ($entregaId <= 0) {
+        throw new InvalidArgumentException('Nenhuma R00 foi encontrada para esta obra.');
+    }
+
+    $entrega = flow_planejamento_contexto_entrega($conn, $entregaId);
+    if ((int) $entrega['obra_id'] !== $obraId) {
+        throw new InvalidArgumentException('A R00 informada não pertence a esta obra.');
+    }
     $opcoes = [
-        'data_inicio' => $_GET['inicio'] ?? ($padrao116 ? '2026-08-12' : date('Y-m-d')),
-        'data_hoje' => $_GET['hoje'] ?? ($padrao116 ? '2026-08-20' : date('Y-m-d')),
-        'data_entrega' => $_GET['entrega'] ?? ($padrao116 ? '2026-10-15' : null),
+        'data_inicio' => $_GET['inicio'] ?? $entrega['data_recebimento'],
+        'data_hoje' => $_GET['hoje'] ?? date('Y-m-d'),
+        'data_entrega' => $_GET['entrega'] ?? $entrega['data_prevista'],
         'pessoas_alocadas' => $pessoas,
+        'replanejar' => !empty($_GET['replanejar']),
     ];
-    $plano = flow_planejamento_planejar_obra($conn, $obraId, $opcoes);
+    $plano = flow_planejamento_carregar_para_interface($conn, $entregaId, $opcoes);
+    $plano['entrega_id'] = $entregaId;
     $conn->close();
 
     echo json_encode($plano, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

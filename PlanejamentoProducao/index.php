@@ -4,30 +4,43 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexaoMain.php';
 
 if (empty($_SESSION['logado'])) {
-    header('Location: ../index.html');
-    exit();
+  header('Location: ../index.html');
+  exit();
 }
 
-$obraId = (int) ($_GET['obra_id'] ?? 116);
+$obraId = (int) ($_GET['obra_id'] ?? 0);
+$entregaId = (int) ($_GET['entrega_id'] ?? 0);
 $conn = conectarBanco();
+if ($obraId <= 0 && $entregaId > 0) {
+  $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
+  if ($stmtEntrega) {
+    $stmtEntrega->bind_param('i', $entregaId);
+    $stmtEntrega->execute();
+    $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
+    $stmtEntrega->close();
+  }
+}
 if ($obraId <= 0 || !improov_usuario_pode_acessar_obra($conn, $obraId)) {
-    $conn->close();
-    header('Location: ../acesso_negado.php');
-    exit();
+  $conn->close();
+  header('Location: ../acesso_negado.php');
+  exit();
 }
 $conn->close();
 ?>
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Planejamento de Produção · Flow</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="redesign.css?v=3">
+  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+    type="image/x-icon">
 </head>
-<body class="planning-page" data-obra-id="<?= $obraId ?>">
+
+<body class="planning-page" data-obra-id="<?= $obraId ?>" data-entrega-id="<?= $entregaId ?>">
   <main class="planning-shell" aria-live="polite">
     <header class="planning-header" aria-labelledby="planning-title">
       <section class="planning-title-block">
@@ -38,37 +51,59 @@ $conn->close();
         </div>
         <div class="planning-topbar-actions">
           <a class="planning-back" href="../Dashboard/obra.php?obra_id=<?= $obraId ?>" aria-label="Voltar para a obra"><i class="fa-solid fa-arrow-left"></i><span>Obra</span></a>
-          <span class="planning-prototype-label"><i class="fa-solid fa-flask"></i> Simulação</span>
-          <button class="planning-icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema"><i class="fa-solid fa-gear"></i></button>
+          <span class="planning-prototype-label" id="planning-mode-label"><i class="fa-solid fa-flask"></i> Simulação</span>
+          <!-- <button class="planning-icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema"><i class="fa-solid fa-gear"></i></button> -->
         </div>
       </section>
 
       <section class="planning-summary" aria-label="Resumo do planejamento">
         <article class="planning-work-name"><span>Obra</span><strong data-plan-title>Carregando…</strong></article>
         <article><span>Início da produção</span><strong id="summary-start">—</strong></article>
-        <article><span>Hoje</span><strong id="summary-today">—</strong></article>
-        <article><span>Entrega prevista (R00)</span><strong id="summary-due">—</strong></article>
-        <article class="planning-result-card"><span>Fim previsto</span><strong id="summary-finish">—</strong></article>
+        <article class="planning-result-card"><span>Fim planejado</span><strong id="summary-finish">—</strong></article>
+        <article><span>Entrega R00</span><strong id="summary-due">—</strong></article>
         <article class="planning-margin-card planning-result-card" id="summary-margin"><span>Margem</span><strong>—</strong></article>
+        <article class="planning-summary-today"><span>Hoje</span><strong id="summary-today">—</strong></article>
       </section>
-      <div class="planning-hero-status" id="plan-status-card" aria-live="polite"><span>Status do plano</span><strong>Calculando…</strong><small id="plan-exception-count" hidden></small></div>
     </header>
 
     <section class="planning-diagnosis" id="planning-diagnosis" aria-label="Diagnóstico do planejamento">
-      <div class="planning-diagnosis-main"><i class="fa-solid fa-tower-broadcast"></i><div><strong id="diagnosis-summary">Calculando diagnóstico…</strong><span id="diagnosis-bottleneck"></span></div></div>
-      <div class="planning-diagnosis-goal" id="diagnosis-goal">Para cumprir a entrega</div>
+      <div class="planning-hero-status" id="plan-status-card" aria-live="polite"><span>Status do plano</span><strong>Calculando…</strong><small id="plan-exception-count" hidden></small></div>
+      <div class="planning-diagnosis-main"><i class="fa-solid fa-tower-broadcast"></i>
+        <div><strong id="diagnosis-summary">Gargalo atual: calculando…</strong><span id="diagnosis-bottleneck"></span></div>
+      </div>
       <div class="planning-scenario-list" id="scenario-list" aria-live="polite"></div>
-      <button type="button" class="planning-scenarios-button" id="show-scenarios"><i class="fa-solid fa-chart-column"></i> Ver mais cenários</button>
+      <!-- <button type="button" class="planning-scenarios-button" id="show-scenarios"><i class="fa-solid fa-chart-column"></i> Ver mais cenários</button> -->
+      <section class="planning-lifecycle" id="planning-lifecycle" aria-live="polite">
+        <div><span class="planning-eyebrow" id="planning-lifecycle-label">Estado do plano</span><strong id="planning-lifecycle-title">Calculando plano para revisão…</strong><small id="planning-lifecycle-detail"></small></div>
+        <div class="planning-lifecycle-actions">
+          <select id="planning-replan-reason" hidden aria-label="Motivo do replanejamento">
+            <option value="">Motivo do replanejamento</option>
+            <option value="AUMENTO_ESCOPO">Aumento de escopo</option>
+            <option value="ATRASO_OPERACIONAL">Atraso operacional</option>
+            <option value="REDISTRIBUICAO_EQUIPE">Redistribuição de equipe</option>
+            <option value="ANTECIPACAO">Antecipação</option>
+            <option value="ALTERACAO_PRAZO">Alteração de prazo</option>
+            <option value="MUDANCA_PRIORIDADE">Mudança de prioridade</option>
+            <option value="OUTRO">Outro</option>
+          </select>
+          <input id="planning-replan-note" hidden maxlength="500" placeholder="Descreva brevemente o motivo">
+          <button type="button" class="planning-primary-button" id="confirm-plan"><i class="fa-solid fa-check"></i> Confirmar plano</button>
+          <button type="button" class="planning-text-button" id="show-plan-history" hidden><i class="fa-solid fa-clock-rotate-left"></i> Histórico</button>
+        </div>
+      </section>
     </section>
 
     <section class="planning-workspace" aria-label="Cronograma de produção">
       <div class="planning-toolbar">
-        <div><strong>Resumo por função</strong><span>Use +/− para simular capacidade; não há persistência.</span></div>
+        <div><strong>Resumo por função</strong><span id="planning-toolbar-hint">Use +/− para ajustar a capacidade da proposta.</span></div>
         <button type="button" class="planning-text-button" id="reset-simulation"><i class="fa-solid fa-rotate-left"></i> Restaurar cenário</button>
       </div>
       <div class="planning-board" id="planning-board">
         <div class="planning-stage-head"><span>#</span><span>Etapa</span><span>Volume</span><span>Duração</span><span>Início</span><span>Limite</span><span>Pessoas</span><span>Dependências</span></div>
-        <div class="planning-timeline-head" aria-label="Escala de datas"><div class="planning-timeline-controls"><button type="button" aria-label="Visualização mensal" data-scale="month">Mês</button><button type="button" aria-label="Visualização semanal" data-scale="week" class="is-active">Semana</button><button type="button" aria-label="Visualização diária" data-scale="day">Dia</button><span class="planning-legend"><b class="legend-today"></b>Hoje <b class="legend-due"></b>Entrega <b class="legend-finish"></b>Fim previsto <i></i>Caminho crítico</span></div><div id="timeline-head"></div></div>
+        <div class="planning-timeline-head" aria-label="Escala de datas">
+          <div class="planning-timeline-controls"><button type="button" aria-label="Visualização mensal" data-scale="month">Mês</button><button type="button" aria-label="Visualização semanal" data-scale="week" class="is-active">Semana</button><button type="button" aria-label="Visualização diária" data-scale="day">Dia</button><span class="planning-legend"><b class="legend-today"></b>Hoje <b class="legend-due"></b>Entrega R00 <b class="legend-finish"></b>Fim planejado <i></i>Caminho crítico</span></div>
+          <div id="timeline-head"></div>
+        </div>
         <div class="planning-stage-list" id="stage-list"></div>
         <div class="planning-timeline" id="timeline" tabindex="0" aria-label="Timeline do planejamento"></div>
       </div>
@@ -82,6 +117,7 @@ $conn->close();
   </aside>
   <div class="planning-scrim" id="planning-scrim" hidden></div>
 
-  <script src="script.js?v=9" defer></script>
+  <script src="script.js?v=10" defer></script>
 </body>
+
 </html>

@@ -88,7 +88,7 @@ function flow_planejamento_dias_uteis_entre(string $inicio, string $fim): int
 
 function flow_planejamento_mediana(array $valores): ?float
 {
-    $valores = array_values(array_filter($valores, static fn ($valor) => is_numeric($valor)));
+    $valores = array_values(array_filter($valores, static fn($valor) => is_numeric($valor)));
     if (!$valores) {
         return null;
     }
@@ -105,14 +105,14 @@ function flow_planejamento_remover_outliers(array $duracoes): array
     }
 
     $mediana = flow_planejamento_mediana($duracoes);
-    $desvios = array_map(static fn ($valor) => abs((float) $valor - $mediana), $duracoes);
+    $desvios = array_map(static fn($valor) => abs((float) $valor - $mediana), $duracoes);
     $mad = flow_planejamento_mediana($desvios);
     if ($mad === null || $mad == 0.0) {
-        return array_values(array_filter($duracoes, static fn ($valor) => $valor <= max(1, $mediana * 3)));
+        return array_values(array_filter($duracoes, static fn($valor) => $valor <= max(1, $mediana * 3)));
     }
 
     $limite = 3.5 * $mad;
-    return array_values(array_filter($duracoes, static fn ($valor) => abs((float) $valor - $mediana) <= $limite));
+    return array_values(array_filter($duracoes, static fn($valor) => abs((float) $valor - $mediana) <= $limite));
 }
 
 /**
@@ -192,7 +192,7 @@ function flow_planejamento_definicoes_etapas(): array
 
 function flow_planejamento_dependencias(string $codigo, array $ativos): array
 {
-    $tem = static fn (string $etapa): bool => !empty($ativos[$etapa]);
+    $tem = static fn(string $etapa): bool => !empty($ativos[$etapa]);
     $finalizacoes = array_values(array_filter(['FINALIZACAO_EXTERNA', 'FINALIZACAO_INTERNA', 'FINALIZACAO_PLANTA'], $tem));
 
     switch ($codigo) {
@@ -221,7 +221,7 @@ function flow_planejamento_dependencias(string $codigo, array $ativos): array
  */
 function flow_planejamento_ciclos_validos(array $logs, ?string $corte = null): array
 {
-    usort($logs, static fn (array $a, array $b) => strcmp((string) $a['data'], (string) $b['data']));
+    usort($logs, static fn(array $a, array $b) => strcmp((string) $a['data'], (string) $b['data']));
     $resultado = ['duracoes' => [], 'descartados_hold' => 0, 'descartados_duracao' => 0, 'reaberturas' => 0];
     $inicio = null;
     $contaminado = false;
@@ -585,7 +585,7 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
             continue;
         }
         $volume = count($grupo);
-        $concluidas = count(array_filter($grupo, static fn (array $item) => flow_planejamento_status_finalizado((string) ($item['status'] ?? ''))));
+        $concluidas = count(array_filter($grupo, static fn(array $item) => flow_planejamento_status_finalizado((string) ($item['status'] ?? ''))));
         $editavel = ($definicao['estrategia'] ?? '') !== 'JANELA_FIXA';
         $pessoas = flow_planejamento_pessoas_alocadas($opcoes, $codigo, $editavel);
         $metrica = $volume && ($definicao['estrategia'] ?? '') === 'HISTORICO_POR_PESSOA' ? $resolverProdutividade($codigo, $definicao, $grupo) : null;
@@ -613,7 +613,7 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
     // As dependências são calculadas após saber quais funções existem de fato.
     $ordem = ['CADERNO_FILTRO', 'MODELAGEM_FACHADA', 'MODELAGEM_INTERNA', 'COMPOSICAO', 'FINALIZACAO_EXTERNA', 'FINALIZACAO_INTERNA', 'FINALIZACAO_PLANTA', 'FINALIZACAO_GLOBAL', 'POS_PRODUCAO'];
     foreach ($ordem as $codigo) {
-        $etapa =& $etapas[$codigo];
+        $etapa = &$etapas[$codigo];
         if ($etapa['nao_aplicavel']) {
             $etapa['dependencias'] = [];
             unset($etapa);
@@ -636,10 +636,10 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
             continue;
         }
         if (!empty($etapa['virtual'])) {
-            $etapa['inicio'] = min(array_map(static fn (string $dep) => $etapas[$dep]['inicio'], $dependencias));
+            $etapa['inicio'] = min(array_map(static fn(string $dep) => $etapas[$dep]['inicio'], $dependencias));
             $etapa['limite'] = max($limites);
-            $etapa['duracao_dias_uteis'] = max(array_map(static fn (string $dep) => $etapas[$dep]['duracao_dias_uteis'], $dependencias));
-            $etapa['volume'] = array_sum(array_map(static fn (string $dep) => $etapas[$dep]['volume'], $dependencias));
+            $etapa['duracao_dias_uteis'] = max(array_map(static fn(string $dep) => $etapas[$dep]['duracao_dias_uteis'], $dependencias));
+            $etapa['volume'] = array_sum(array_map(static fn(string $dep) => $etapas[$dep]['volume'], $dependencias));
             unset($etapa);
             continue;
         }
@@ -675,7 +675,7 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
         if (!$dependencias) {
             break;
         }
-        usort($dependencias, static fn (string $a, string $b) => strcmp((string) ($etapas[$b]['limite'] ?? ''), (string) ($etapas[$a]['limite'] ?? '')));
+        usort($dependencias, static fn(string $a, string $b) => strcmp((string) ($etapas[$b]['limite'] ?? ''), (string) ($etapas[$a]['limite'] ?? '')));
         $atual = $dependencias[0] ?? null;
     }
     foreach ($etapas as $codigo => &$etapa) {
@@ -720,4 +720,470 @@ function flow_planejamento_planejar_entrega(mysqli $conn, int $entregaId, array 
     $opcoes['data_entrega'] = $opcoes['data_entrega'] ?? $entrega['data_prevista'];
     $opcoes['entrega_id'] = $entregaId;
     return flow_planejamento_planejar_obra($conn, (int) $entrega['obra_id'], $opcoes);
+}
+
+/*
+ * Persistência do planejamento R00
+ *
+ * O motor acima continua puro: ele calcula uma proposta a partir dos dados
+ * atuais. As funções abaixo separam essa proposta do plano oficial: cada
+ * confirmação cria uma versão imutável e a primeira é o baseline.
+ */
+function flow_planejamento_tabelas_persistencia_disponiveis(mysqli $conn): bool
+{
+    static $disponivel = null;
+    if ($disponivel !== null) {
+        return $disponivel;
+    }
+    $necessarias = [
+        'entrega_planejamento_producao',
+        'entrega_planejamento_versao',
+        'entrega_planejamento_funcao',
+        'entrega_planejamento_evento',
+    ];
+    foreach ($necessarias as $tabela) {
+        $stmt = $conn->prepare(
+            'SELECT 1
+               FROM information_schema.tables
+              WHERE table_schema = DATABASE()
+                AND table_name = ?
+              LIMIT 1'
+        );
+        if (!$stmt) return $disponivel = false;
+        $stmt->bind_param('s', $tabela);
+        $stmt->execute();
+        $existe = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+        if (!$existe) return $disponivel = false;
+    }
+    return $disponivel = true;
+}
+
+function flow_planejamento_json(array $valor): string
+{
+    $json = json_encode($valor, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        throw new RuntimeException('Não foi possível serializar o planejamento.');
+    }
+    return $json;
+}
+
+function flow_planejamento_estrutura_entrega(mysqli $conn, int $entregaId): array
+{
+    $entrega = flow_planejamento_contexto_entrega($conn, $entregaId);
+    $stmt = $conn->prepare(
+        'SELECT ei.imagem_id, ico.tipo_imagem
+           FROM entregas_itens ei
+           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = ei.imagem_id
+          WHERE ei.entrega_id = ?
+          ORDER BY ei.imagem_id'
+    );
+    if (!$stmt) throw new RuntimeException($conn->error);
+    $stmt->bind_param('i', $entregaId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $imagens = [];
+    while ($row = $result->fetch_assoc()) {
+        $imagens[(int) $row['imagem_id']] = (string) ($row['tipo_imagem'] ?? '');
+    }
+    $result->free();
+    $stmt->close();
+
+    $itens = flow_planejamento_carregar_itens_obra($conn, (int) $entrega['obra_id'], array_keys($imagens));
+    $linhas = [];
+    foreach ($itens as $item) {
+        $status = flow_planejamento_normalizar((string) ($item['status'] ?? ''));
+        $linhas[] = [
+            'imagem_id' => (int) ($item['imagem_id'] ?? 0),
+            'funcao_id' => (int) ($item['funcao_id'] ?? 0),
+            'tipo_imagem' => flow_planejamento_tipo_imagem((string) ($item['tipo_imagem'] ?? '')),
+            // O motor distingue apenas cancelamento; andamento operacional
+            // não é mudança estrutural e não pode invalidar o baseline.
+            'status' => $status === 'cancelado' ? 'CANCELADO' : 'ATIVO',
+        ];
+    }
+    usort($linhas, static fn(array $a, array $b): int => strcmp(flow_planejamento_json($a), flow_planejamento_json($b)));
+
+    $volumes = [];
+    $cadernoPorImagem = [];
+    foreach ($itens as $item) {
+        if (flow_planejamento_normalizar((string) ($item['status'] ?? '')) === 'cancelado') continue;
+        $codigo = flow_planejamento_codigo_etapa($item);
+        if ($codigo === null) continue;
+        if ($codigo === 'CADERNO_FILTRO') {
+            $cadernoPorImagem[(int) $item['imagem_id']] = true;
+            continue;
+        }
+        $volumes[$codigo] = ($volumes[$codigo] ?? 0) + 1;
+    }
+    if ($cadernoPorImagem) $volumes['CADERNO_FILTRO'] = count($cadernoPorImagem);
+    ksort($volumes);
+
+    return [
+        'entrega_id' => (int) $entrega['id'],
+        'obra_id' => (int) $entrega['obra_id'],
+        'data_inicio' => (string) $entrega['data_recebimento'],
+        'prazo_r00' => (string) $entrega['data_prevista'],
+        'imagens' => array_map(static fn(int $id, string $tipo): array => ['imagem_id' => $id, 'tipo_imagem' => flow_planejamento_tipo_imagem($tipo)], array_keys($imagens), array_values($imagens)),
+        'funcoes' => $linhas,
+        'volumes_por_etapa' => $volumes,
+    ];
+}
+
+function flow_planejamento_fingerprint_entrega(mysqli $conn, int $entregaId): array
+{
+    $contexto = flow_planejamento_estrutura_entrega($conn, $entregaId);
+    return ['fingerprint' => hash('sha256', flow_planejamento_json($contexto)), 'contexto' => $contexto];
+}
+
+function flow_planejamento_diferencas_estrutura(array $anterior, array $atual): array
+{
+    $mudancas = [];
+    foreach (['data_inicio' => 'Início da produção', 'prazo_r00' => 'Prazo da R00'] as $campo => $rotulo) {
+        if (($anterior[$campo] ?? null) !== ($atual[$campo] ?? null)) {
+            $mudancas[] = ['tipo' => $campo, 'descricao' => $rotulo . ' alterado de ' . ($anterior[$campo] ?? '—') . ' para ' . ($atual[$campo] ?? '—') . '.'];
+        }
+    }
+    $etapas = array_unique(array_merge(array_keys($anterior['volumes_por_etapa'] ?? []), array_keys($atual['volumes_por_etapa'] ?? [])));
+    sort($etapas);
+    foreach ($etapas as $etapa) {
+        $antes = (int) (($anterior['volumes_por_etapa'][$etapa] ?? 0));
+        $depois = (int) (($atual['volumes_por_etapa'][$etapa] ?? 0));
+        if ($antes !== $depois) {
+            $mudancas[] = ['tipo' => 'volume', 'etapa' => $etapa, 'antes' => $antes, 'depois' => $depois, 'descricao' => $etapa . ': ' . ($depois - $antes >= 0 ? '+' : '') . ($depois - $antes) . ' tarefa(s).'];
+        }
+    }
+    if (($anterior['imagens'] ?? []) !== ($atual['imagens'] ?? [])) {
+        $mudancas[] = ['tipo' => 'imagens', 'descricao' => 'A composição de imagens da R00 foi alterada.'];
+    }
+    if (($anterior['funcoes'] ?? []) !== ($atual['funcoes'] ?? [])) {
+        $mudancas[] = ['tipo' => 'funcoes', 'descricao' => 'As funções ou tipos de imagem considerados pelo plano foram alterados.'];
+    }
+    return $mudancas;
+}
+
+function flow_planejamento_registrar_evento(mysqli $conn, int $planejamentoId, int $entregaId, string $tipo, ?int $versaoId = null, ?int $atorId = null, ?string $motivoCodigo = null, ?string $motivoObservacao = null, array $metadados = []): void
+{
+    $json = $metadados ? flow_planejamento_json($metadados) : null;
+    $stmt = $conn->prepare(
+        'INSERT INTO entrega_planejamento_evento
+         (planejamento_id, versao_id, entrega_id, tipo, motivo_codigo, motivo_observacao, ator_colaborador_id, metadados_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    if (!$stmt) throw new RuntimeException($conn->error);
+    $stmt->bind_param('iiisssis', $planejamentoId, $versaoId, $entregaId, $tipo, $motivoCodigo, $motivoObservacao, $atorId, $json);
+    if (!$stmt->execute()) {
+        $erro = $stmt->error;
+        $stmt->close();
+        throw new RuntimeException($erro);
+    }
+    $stmt->close();
+}
+
+function flow_planejamento_garantir_rascunho(mysqli $conn, int $entregaId, ?int $atorId = null): ?array
+{
+    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) return null;
+    $fingerprint = flow_planejamento_fingerprint_entrega($conn, $entregaId);
+    $stmt = $conn->prepare(
+        "INSERT INTO entrega_planejamento_producao (entrega_id, estado, ultimo_fingerprint)
+         VALUES (?, 'RASCUNHO', ?)
+         ON DUPLICATE KEY UPDATE atualizado_em = atualizado_em"
+    );
+    if (!$stmt) throw new RuntimeException($conn->error);
+    $hash = $fingerprint['fingerprint'];
+    $stmt->bind_param('is', $entregaId, $hash);
+    if (!$stmt->execute()) {
+        $erro = $stmt->error;
+        $stmt->close();
+        throw new RuntimeException($erro);
+    }
+    $criado = $stmt->affected_rows === 1;
+    $stmt->close();
+    $stmtPlano = $conn->prepare('SELECT id, estado, lock_version FROM entrega_planejamento_producao WHERE entrega_id = ? LIMIT 1');
+    $stmtPlano->bind_param('i', $entregaId);
+    $stmtPlano->execute();
+    $plano = $stmtPlano->get_result()->fetch_assoc();
+    $stmtPlano->close();
+    if ($criado && $plano) {
+        flow_planejamento_registrar_evento($conn, (int) $plano['id'], $entregaId, 'RASCUNHO_CRIADO', null, $atorId, null, null, ['fingerprint' => $hash]);
+    }
+    return $plano ?: null;
+}
+
+function flow_planejamento_snapshot(array $plano): array
+{
+    $snapshot = $plano;
+    if (isset($snapshot['etapas']) && is_array($snapshot['etapas'])) {
+        foreach ($snapshot['etapas'] as &$etapa) {
+            unset($etapa['itens']);
+        }
+        unset($etapa);
+    }
+    return $snapshot;
+}
+
+function flow_planejamento_carregar_raiz(mysqli $conn, int $entregaId, bool $forUpdate = false): ?array
+{
+    $sql = 'SELECT * FROM entrega_planejamento_producao WHERE entrega_id = ? LIMIT 1' . ($forUpdate ? ' FOR UPDATE' : '');
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) throw new RuntimeException($conn->error);
+    $stmt->bind_param('i', $entregaId);
+    $stmt->execute();
+    $raiz = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    return $raiz;
+}
+
+function flow_planejamento_carregar_versao(mysqli $conn, int $versaoId): ?array
+{
+    $stmt = $conn->prepare('SELECT * FROM entrega_planejamento_versao WHERE id = ? LIMIT 1');
+    if (!$stmt) throw new RuntimeException($conn->error);
+    $stmt->bind_param('i', $versaoId);
+    $stmt->execute();
+    $versao = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    return $versao;
+}
+
+function flow_planejamento_marcar_desatualizado(mysqli $conn, int $entregaId, ?int $atorId = null): array
+{
+    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) return ['alterado' => false, 'motivos' => []];
+    $raiz = flow_planejamento_carregar_raiz($conn, $entregaId);
+    if (!$raiz || empty($raiz['versao_atual_id']) || !in_array($raiz['estado'], ['CONFIRMADO', 'REPLANEJAMENTO', 'DESATUALIZADO'], true)) {
+        return ['alterado' => false, 'motivos' => []];
+    }
+    $versao = flow_planejamento_carregar_versao($conn, (int) $raiz['versao_atual_id']);
+    $atual = flow_planejamento_fingerprint_entrega($conn, $entregaId);
+    if (!$versao || hash_equals((string) $versao['fingerprint'], $atual['fingerprint'])) return ['alterado' => false, 'motivos' => []];
+    $anterior = json_decode((string) $versao['contexto_fingerprint_json'], true) ?: [];
+    $motivos = flow_planejamento_diferencas_estrutura($anterior, $atual['contexto']);
+    $stmt = $conn->prepare("UPDATE entrega_planejamento_producao SET estado = 'DESATUALIZADO', atualizado_em = NOW() WHERE id = ? AND estado <> 'DESATUALIZADO'");
+    $planejamentoId = (int) $raiz['id'];
+    $stmt->bind_param('i', $planejamentoId);
+    $stmt->execute();
+    $alterado = $stmt->affected_rows > 0;
+    $stmt->close();
+    if ($alterado) {
+        flow_planejamento_registrar_evento($conn, $planejamentoId, $entregaId, 'PLANO_DESATUALIZADO', (int) $raiz['versao_atual_id'], $atorId, null, null, ['motivos' => $motivos, 'fingerprint_atual' => $atual['fingerprint']]);
+    }
+    return ['alterado' => $alterado, 'motivos' => $motivos];
+}
+
+function flow_planejamento_marcar_desatualizado_por_imagens(mysqli $conn, array $imagemIds, ?int $atorId = null): void
+{
+    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) return;
+    $imagemIds = array_values(array_unique(array_filter(array_map('intval', $imagemIds))));
+    if (!$imagemIds) return;
+    $lista = implode(',', $imagemIds);
+    $resultado = $conn->query(
+        "SELECT DISTINCT e.id
+           FROM entregas e
+           JOIN entregas_itens ei ON ei.entrega_id = e.id
+          WHERE e.status_id = 2 AND ei.imagem_id IN ({$lista})"
+    );
+    if (!$resultado) throw new RuntimeException($conn->error);
+    while ($row = $resultado->fetch_assoc()) {
+        flow_planejamento_marcar_desatualizado($conn, (int) $row['id'], $atorId);
+    }
+    $resultado->free();
+}
+
+function flow_planejamento_historico(mysqli $conn, int $entregaId): array
+{
+    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) return [];
+    $stmt = $conn->prepare(
+        'SELECT v.id, v.numero, v.tipo, v.vigente, v.fim_previsto, v.margem_dias_uteis, v.status_plano,
+                v.confirmado_em, c.nome_colaborador AS confirmado_por
+           FROM entrega_planejamento_producao p
+           JOIN entrega_planejamento_versao v ON v.planejamento_id = p.id
+      LEFT JOIN colaborador c ON c.idcolaborador = v.confirmado_por_colaborador_id
+          WHERE p.entrega_id = ?
+          ORDER BY v.numero DESC'
+    );
+    if (!$stmt) throw new RuntimeException($conn->error);
+    $stmt->bind_param('i', $entregaId);
+    $stmt->execute();
+    $historico = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $historico;
+}
+
+function flow_planejamento_carregar_para_interface(mysqli $conn, int $entregaId, array $opcoes = []): array
+{
+    $fingerprint = flow_planejamento_fingerprint_entrega($conn, $entregaId);
+    $persistenciaDisponivel = flow_planejamento_tabelas_persistencia_disponiveis($conn);
+    $meta = ['estado' => 'RASCUNHO', 'lock_version' => 0, 'historico' => []];
+    if ($persistenciaDisponivel) {
+        $raiz = flow_planejamento_carregar_raiz($conn, $entregaId);
+        if ($raiz) {
+            $estado = (string) $raiz['estado'];
+            $desatualizacao = flow_planejamento_marcar_desatualizado($conn, $entregaId);
+            if ($desatualizacao['alterado']) {
+                $raiz = flow_planejamento_carregar_raiz($conn, $entregaId) ?: $raiz;
+                $estado = 'DESATUALIZADO';
+            }
+            $meta = [
+                'id' => (int) $raiz['id'],
+                'estado' => $estado,
+                'lock_version' => (int) $raiz['lock_version'],
+                'versao_atual_id' => $raiz['versao_atual_id'] ? (int) $raiz['versao_atual_id'] : null,
+                'baseline_versao_id' => $raiz['baseline_versao_id'] ? (int) $raiz['baseline_versao_id'] : null,
+                'historico' => flow_planejamento_historico($conn, $entregaId),
+                'motivos_desatualizacao' => $desatualizacao['motivos'],
+            ];
+            // Consulta do plano confirmado lê somente o snapshot persistido;
+            // o motor/histórico fica reservado para rascunho e replanejamento.
+            if (!empty($raiz['versao_atual_id']) && empty($opcoes['replanejar'])) {
+                $versao = flow_planejamento_carregar_versao($conn, (int) $raiz['versao_atual_id']);
+                $oficial = $versao ? json_decode((string) $versao['snapshot_json'], true) : null;
+                if (is_array($oficial)) {
+                    $oficial['fingerprint'] = (string) ($versao['fingerprint'] ?? '');
+                    $oficial['fonte'] = 'VERSAO_CONFIRMADA';
+                    $oficial['persistencia_disponivel'] = true;
+                    $oficial['planejamento'] = $meta;
+                    if ($estado === 'DESATUALIZADO') $oficial['status_plano'] = 'DESATUALIZADO';
+                    return $oficial;
+                }
+            }
+        }
+    }
+    $simulacao = flow_planejamento_planejar_entrega($conn, $entregaId, $opcoes);
+    $simulacao['fingerprint'] = $fingerprint['fingerprint'];
+    $simulacao['contexto_fingerprint'] = $fingerprint['contexto'];
+    $simulacao['fonte'] = 'SIMULACAO';
+    $simulacao['persistencia_disponivel'] = $persistenciaDisponivel;
+    $simulacao['planejamento'] = $meta;
+    return $simulacao;
+}
+
+function flow_planejamento_persistir_confirmacao(mysqli $conn, int $entregaId, array $pessoas, string $fingerprintEsperado, int $lockVersionEsperado, ?int $atorId, bool $replanejar, ?string $motivoCodigo, ?string $motivoObservacao): array
+{
+    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) {
+        throw new RuntimeException('A migration do planejamento de produção ainda não foi aplicada.');
+    }
+    if (!improov_usuario_eh_gestor_sidebar($conn)) {
+        throw new RuntimeException('Você não tem permissão para confirmar ou replanejar este plano.');
+    }
+    $entrega = flow_planejamento_contexto_entrega($conn, $entregaId);
+    if (!improov_usuario_pode_acessar_obra($conn, (int) $entrega['obra_id'])) {
+        throw new RuntimeException('Sem permissão para acessar esta R00.');
+    }
+    $motivoCodigo = $motivoCodigo !== null ? strtoupper(trim($motivoCodigo)) : null;
+    $motivoObservacao = $motivoObservacao !== null ? trim($motivoObservacao) : null;
+    if ($motivoObservacao !== null && mb_strlen($motivoObservacao) > 500) throw new InvalidArgumentException('A observação do motivo aceita até 500 caracteres.');
+
+    $conn->begin_transaction();
+    try {
+        $raiz = flow_planejamento_carregar_raiz($conn, $entregaId, true);
+        $raizCriadaAgora = false;
+        if (!$raiz) {
+            $hashInicial = flow_planejamento_fingerprint_entrega($conn, $entregaId)['fingerprint'];
+            $stmtCriar = $conn->prepare("INSERT INTO entrega_planejamento_producao (entrega_id, estado, ultimo_fingerprint) VALUES (?, 'RASCUNHO', ?)");
+            $stmtCriar->bind_param('is', $entregaId, $hashInicial);
+            $stmtCriar->execute();
+            $stmtCriar->close();
+            $raiz = flow_planejamento_carregar_raiz($conn, $entregaId, true);
+            $raizCriadaAgora = true;
+            flow_planejamento_registrar_evento($conn, (int) $raiz['id'], $entregaId, 'RASCUNHO_CRIADO', null, $atorId, null, null, ['fingerprint' => $hashInicial]);
+        }
+        if ($lockVersionEsperado !== (int) $raiz['lock_version'] && !($raizCriadaAgora && $lockVersionEsperado === 0)) {
+            throw new RuntimeException('O plano foi alterado por outro gestor. Recarregue a revisão antes de confirmar.');
+        }
+        $atual = flow_planejamento_fingerprint_entrega($conn, $entregaId);
+        if (!hash_equals($fingerprintEsperado, $atual['fingerprint'])) {
+            throw new RuntimeException('A R00 mudou desde que este cálculo foi aberto. Recalcule e revise o plano antes de confirmar.');
+        }
+        $temVersao = !empty($raiz['versao_atual_id']);
+        if ($temVersao && !$replanejar) {
+            throw new RuntimeException('Já existe um plano confirmado. Use Replanejar para criar uma nova versão sem alterar o baseline.');
+        }
+        if ($temVersao && (!$motivoCodigo || ($motivoCodigo === 'OUTRO' && !$motivoObservacao))) {
+            throw new InvalidArgumentException('Informe o motivo do replanejamento.');
+        }
+        $plano = flow_planejamento_planejar_entrega($conn, $entregaId, ['pessoas_alocadas' => $pessoas]);
+        $numero = 1;
+        if ($temVersao) {
+            $resNumero = $conn->query('SELECT MAX(numero) AS numero FROM entrega_planejamento_versao WHERE planejamento_id = ' . (int) $raiz['id']);
+            $numero = ((int) ($resNumero->fetch_assoc()['numero'] ?? 0)) + 1;
+            $resNumero->free();
+            $stmtDesativar = $conn->prepare('UPDATE entrega_planejamento_versao SET vigente = 0, vigente_token = NULL WHERE planejamento_id = ? AND vigente = 1');
+            $planejamentoId = (int) $raiz['id'];
+            $stmtDesativar->bind_param('i', $planejamentoId);
+            $stmtDesativar->execute();
+            $stmtDesativar->close();
+        }
+        $tipo = $temVersao ? 'REPLANEJAMENTO' : 'BASELINE';
+        $snapshot = flow_planejamento_json(flow_planejamento_snapshot($plano));
+        $contexto = flow_planejamento_json($atual['contexto']);
+        $statusPlano = (string) $plano['status_plano'];
+        $fingerprintAtual = (string) $atual['fingerprint'];
+        $fim = $plano['fim_previsto'] ?: null;
+        $margem = $plano['margem_dias_uteis'];
+        $prazo = $plano['data_entrega'] ?: null;
+        $inicio = $plano['data_inicio'];
+        $vigenteToken = 'VIGENTE';
+        $planejamentoId = (int) $raiz['id'];
+        $stmtVersao = $conn->prepare(
+            'INSERT INTO entrega_planejamento_versao
+             (planejamento_id, numero, tipo, vigente, vigente_token, fingerprint, data_inicio, prazo_r00, fim_previsto, margem_dias_uteis, status_plano, motivo_codigo, motivo_observacao, confirmado_por_colaborador_id, snapshot_json, contexto_fingerprint_json)
+             VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if (!$stmtVersao) throw new RuntimeException($conn->error);
+        $stmtVersao->bind_param('iissssssisssiss', $planejamentoId, $numero, $tipo, $vigenteToken, $fingerprintAtual, $inicio, $prazo, $fim, $margem, $statusPlano, $motivoCodigo, $motivoObservacao, $atorId, $snapshot, $contexto);
+        if (!$stmtVersao->execute()) throw new RuntimeException($stmtVersao->error);
+        $versaoId = (int) $stmtVersao->insert_id;
+        $stmtVersao->close();
+
+        $stmtEtapa = $conn->prepare(
+            'INSERT INTO entrega_planejamento_funcao
+             (versao_id, codigo_etapa, ordem_apresentacao, nome_etapa, volume, pessoas_alocadas, capacidade_editavel, estrategia_duracao, produtividade_json, formula_calculo, duracao_dias_uteis, data_inicio, data_limite, dependencias_json, confianca, origem_calculo, caminho_critico, metadados_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if (!$stmtEtapa) throw new RuntimeException($conn->error);
+        foreach ($plano['etapas'] as $ordem => $etapa) {
+            $codigo = (string) $etapa['codigo'];
+            $nome = (string) $etapa['nome'];
+            $volume = (int) $etapa['volume'];
+            // Marcos virtuais, como FINALIZACAO_GLOBAL, não recebem pessoas
+            // nem métrica própria; persistimos o valor neutro 1.
+            $pessoasEtapa = (int) ($etapa['pessoas_alocadas'] ?? 1);
+            $editavel = !empty($etapa['capacidade_editavel']) ? 1 : 0;
+            $estrategia = $etapa['estrategia_duracao'] ?? null;
+            $metrica = is_array($etapa['metrica'] ?? null) ? $etapa['metrica'] : [];
+            $produtividade = $metrica ? flow_planejamento_json($metrica) : null;
+            $formula = $etapa['formula'] ?? null;
+            $duracao = $etapa['duracao_dias_uteis'] ?? null;
+            $inicioEtapa = $etapa['inicio'] ?? null;
+            $limite = $etapa['limite'] ?? null;
+            $dependencias = flow_planejamento_json($etapa['dependencias'] ?? []);
+            $confianca = $metrica['confianca'] ?? null;
+            $origem = $metrica['origem'] ?? 'Motor de planejamento V1';
+            $critico = !empty($etapa['caminho_critico']) ? 1 : 0;
+            $metadados = flow_planejamento_json(['nao_aplicavel' => !empty($etapa['nao_aplicavel']), 'concluidas' => (int) ($etapa['concluidas'] ?? 0), 'regra' => $etapa['regra_classificacao'] ?? null]);
+            $ordemBanco = $ordem + 1;
+            $stmtEtapa->bind_param('isisiiisssisssssis', $versaoId, $codigo, $ordemBanco, $nome, $volume, $pessoasEtapa, $editavel, $estrategia, $produtividade, $formula, $duracao, $inicioEtapa, $limite, $dependencias, $confianca, $origem, $critico, $metadados);
+            if (!$stmtEtapa->execute()) throw new RuntimeException($stmtEtapa->error);
+        }
+        $stmtEtapa->close();
+        $novoLock = (int) $raiz['lock_version'] + 1;
+        if ($temVersao) {
+            $stmtRaiz = $conn->prepare("UPDATE entrega_planejamento_producao SET estado = 'CONFIRMADO', versao_atual_id = ?, ultimo_fingerprint = ?, lock_version = ? WHERE id = ?");
+            $stmtRaiz->bind_param('isii', $versaoId, $fingerprintAtual, $novoLock, $planejamentoId);
+        } else {
+            $stmtRaiz = $conn->prepare("UPDATE entrega_planejamento_producao SET estado = 'CONFIRMADO', versao_atual_id = ?, baseline_versao_id = ?, ultimo_fingerprint = ?, lock_version = ? WHERE id = ?");
+            $stmtRaiz->bind_param('iisii', $versaoId, $versaoId, $fingerprintAtual, $novoLock, $planejamentoId);
+        }
+        if (!$stmtRaiz->execute()) throw new RuntimeException($stmtRaiz->error);
+        $stmtRaiz->close();
+        flow_planejamento_registrar_evento($conn, $planejamentoId, $entregaId, $temVersao ? 'REPLANEJAMENTO_CONFIRMADO' : 'PLANO_CONFIRMADO', $versaoId, $atorId, $motivoCodigo, $motivoObservacao, ['fingerprint' => $atual['fingerprint'], 'numero' => $numero]);
+        $conn->commit();
+        $plano['fingerprint'] = $atual['fingerprint'];
+        $plano['fonte'] = 'VERSAO_CONFIRMADA';
+        $plano['persistencia_disponivel'] = true;
+        $plano['planejamento'] = ['id' => $planejamentoId, 'estado' => 'CONFIRMADO', 'lock_version' => $novoLock, 'versao_atual_id' => $versaoId, 'baseline_versao_id' => $temVersao ? (int) $raiz['baseline_versao_id'] : $versaoId, 'historico' => flow_planejamento_historico($conn, $entregaId)];
+        return $plano;
+    } catch (Throwable $erro) {
+        $conn->rollback();
+        throw $erro;
+    }
 }

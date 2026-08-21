@@ -443,13 +443,14 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
     }
 
     if ($status === 'Finalizado') {
-        $arquivoEnviado = (int) ($predecessora['requires_file_upload'] ?? 1) === 0
-            && !empty($predecessora['file_uploaded_at']);
+        $arquivoAtendido = (int) ($predecessora['requires_file_upload'] ?? 1) === 0
+            || !empty($predecessora['file_uploaded_at']);
 
-        // Qualquer etapa predecessora que esteja finalizada e já tenha enviado
-        // o arquivo está atendida. O envio do arquivo não deve criar uma nova
-        // pendência de aprovação apenas porque a etapa seguinte foi avaliada.
-        if ($arquivoEnviado) {
+        // Finalizado sem arquivo obrigatório já é uma conclusão válida. Quando
+        // o arquivo é obrigatório, a etapa só fica atendida após o upload; em
+        // ambos os casos, a avaliação da etapa seguinte não deve criar uma
+        // pendência artificial de envio para aprovação.
+        if ($arquivoAtendido) {
             $requisitos[] = motor_requisitos_item(
                 'FUNCAO_ANTERIOR_CONCLUIDA',
                 'Tarefa produtiva anterior concluída',
@@ -633,7 +634,7 @@ function motor_requisitos_estado_arquivo(?array $row): string
     if (in_array($estadoPredecessora, ['NAO_APLICAVEL', 'DISPENSADO'], true)) {
         return $estadoPredecessora;
     }
-    return (int) ($row['requires_file_upload'] ?? 1) === 0 && !empty($row['file_uploaded_at'])
+    return (int) ($row['requires_file_upload'] ?? 1) === 0 || !empty($row['file_uploaded_at'])
         ? 'ATENDIDO'
         : 'NAO_ATENDIDO';
 }

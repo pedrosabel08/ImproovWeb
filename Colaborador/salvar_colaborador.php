@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/capacidade_colaborador_helper.php';
 
 $action = $_POST['action'] ?? '';
 
@@ -24,9 +25,39 @@ function normalizarFuncoes($funcoes, $nivelFinalizacao)
     return [$funcoes, $nivelFinalizacao === '' ? null : (int) $nivelFinalizacao];
 }
 
-function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao)
+function normalizarAtuacoesFuncoes($atuacoes, array $funcoes): array
 {
-    $stmtFinalizacao = $conn->prepare("SELECT idfuncao FROM funcao WHERE nome_funcao = CONVERT(0x46696E616C697A61C3A7C3A36F USING utf8mb4) LIMIT 1");
+    if (!is_array($atuacoes)) {
+        return [];
+    }
+
+    $resultado = [];
+    foreach ($funcoes as $funcaoId) {
+        $id = (int) $funcaoId;
+        if (flow_capacidade_tipo_atuacao_informado($atuacoes, $id)) {
+            $resultado[$id] = flow_capacidade_tipo_atuacao_para_funcao($atuacoes, $id);
+        }
+    }
+    return $resultado;
+}
+
+/**
+ * Sincroniza os vínculos sem apagar os que permanecem selecionados. Assim,
+ * id, valor e tipo_atuacao sobrevivem a edições antigas que não enviam papel.
+ */
+function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, array $atuacoes = [])
+{
+    // nome_funcao usa utf8mb4_unicode_ci, enquanto parâmetros preparados no
+    // MySQL atual chegam em utf8mb4_0900_ai_ci. A collation explícita evita
+    // que a própria validação de Finalização impeça qualquer salvamento.
+    $stmtFinalizacao = $conn->prepare(
+        'SELECT idfuncao
+           FROM funcao
+          WHERE nome_funcao = (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIMIT 1'
+    );
+    $nomeFinalizacao = 'Finalização';
+    $stmtFinalizacao->bind_param('s', $nomeFinalizacao);
     $stmtFinalizacao->execute();
     $finalizacao = $stmtFinalizacao->get_result()->fetch_assoc();
     $idFinalizacao = $finalizacao ? (int) $finalizacao['idfuncao'] : 0;
@@ -35,20 +66,63 @@ function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinaliz
         throw new InvalidArgumentException('Selecione um nivel de finalizacao valido.');
     }
 
-    $stmtDelete = $conn->prepare("DELETE FROM funcao_colaborador WHERE colaborador_id = ?");
-    $stmtDelete->bind_param("i", $idcolaborador);
-    $stmtDelete->execute();
-
-    if (empty($funcoes)) {
-        return;
+    $stmtExistentes = $conn->prepare(
+        'SELECT idfuncao_colaborador, funcao_id, tipo_atuacao
+           FROM funcao_colaborador
+          WHERE colaborador_id = ?
+          FOR UPDATE'
+    );
+    $stmtExistentes->bind_param('i', $idcolaborador);
+    $stmtExistentes->execute();
+    $existentes = [];
+    $resultadoExistentes = $stmtExistentes->get_result();
+    while ($linha = $resultadoExistentes->fetch_assoc()) {
+        $existentes[(int) $linha['funcao_id']] = [
+            'id' => (int) $linha['idfuncao_colaborador'],
+            'tipo_atuacao' => flow_capacidade_normalizar_tipo_atuacao($linha['tipo_atuacao'] ?? null),
+        ];
     }
+    $stmtExistentes->close();
 
-    $stmtInsert = $conn->prepare("INSERT INTO funcao_colaborador (colaborador_id, funcao_id, nivel_finalizacao) VALUES (?, ?, NULLIF(?, 0))");
+    $selecionadas = array_fill_keys(array_map('intval', $funcoes), true);
+    $stmtDelete = $conn->prepare('DELETE FROM funcao_colaborador WHERE idfuncao_colaborador = ?');
+    foreach ($existentes as $funcaoId => $existente) {
+        if (!isset($selecionadas[$funcaoId])) {
+            $idVinculo = (int) $existente['id'];
+            $stmtDelete->bind_param('i', $idVinculo);
+            $stmtDelete->execute();
+        }
+    }
+    $stmtDelete->close();
+
+    $stmtInsert = $conn->prepare(
+        'INSERT INTO funcao_colaborador (colaborador_id, funcao_id, tipo_atuacao, nivel_finalizacao)
+         VALUES (?, ?, ?, NULLIF(?, 0))'
+    );
+    $stmtUpdate = $conn->prepare(
+        'UPDATE funcao_colaborador
+            SET tipo_atuacao = ?, nivel_finalizacao = NULLIF(?, 0)
+          WHERE idfuncao_colaborador = ?'
+    );
     foreach ($funcoes as $idfuncao) {
+        $idfuncao = (int) $idfuncao;
         $nivel = $idfuncao === $idFinalizacao ? (int) $nivelFinalizacao : 0;
-        $stmtInsert->bind_param("iii", $idcolaborador, $idfuncao, $nivel);
+        if (isset($existentes[$idfuncao])) {
+            $tipo = array_key_exists($idfuncao, $atuacoes)
+                ? $atuacoes[$idfuncao]
+                : $existentes[$idfuncao]['tipo_atuacao'];
+            $idVinculo = (int) $existentes[$idfuncao]['id'];
+            $stmtUpdate->bind_param('sii', $tipo, $nivel, $idVinculo);
+            $stmtUpdate->execute();
+            continue;
+        }
+
+        $tipo = $atuacoes[$idfuncao] ?? FLOW_TIPO_ATUACAO_SECUNDARIA;
+        $stmtInsert->bind_param('iisi', $idcolaborador, $idfuncao, $tipo, $nivel);
         $stmtInsert->execute();
     }
+    $stmtInsert->close();
+    $stmtUpdate->close();
 }
 
 if ($action === 'create') {
@@ -59,6 +133,8 @@ if ($action === 'create') {
     $nivel_acesso = $_POST['nivel_acesso'] !== '' ? (int)$_POST['nivel_acesso'] : null;
     $cargos = $_POST['cargos'] ?? [];
     [$funcoes, $nivelFinalizacao] = normalizarFuncoes($_POST['funcoes'] ?? [], $_POST['nivel_finalizacao'] ?? '');
+    $atuacoes = normalizarAtuacoesFuncoes($_POST['tipo_atuacao'] ?? [], $funcoes);
+    $elegivelCapacidade = !array_key_exists('elegivel_capacidade', $_POST) || !empty($_POST['elegivel_capacidade']) ? 1 : 0;
 
     if ($nome_colaborador === '' || $nome_usuario === '' || $login === '' || $senha === '') {
         response(false, 'Preencha os campos obrigatórios.');
@@ -67,8 +143,8 @@ if ($action === 'create') {
     $conn->begin_transaction();
 
     try {
-        $stmtCol = $conn->prepare("INSERT INTO colaborador (nome_colaborador) VALUES (?)");
-        $stmtCol->bind_param("s", $nome_colaborador);
+        $stmtCol = $conn->prepare("INSERT INTO colaborador (nome_colaborador, elegivel_capacidade) VALUES (?, ?)");
+        $stmtCol->bind_param("si", $nome_colaborador, $elegivelCapacidade);
         $stmtCol->execute();
         $idcolaborador = $conn->insert_id;
 
@@ -86,12 +162,13 @@ if ($action === 'create') {
             }
         }
 
-        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao);
+        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $atuacoes);
 
         $conn->commit();
         response(true, 'Colaborador criado com sucesso!');
     } catch (Throwable $e) {
         $conn->rollback();
+        error_log('Erro ao criar colaborador: ' . $e->getMessage());
         response(false, 'Erro ao criar colaborador.');
     }
 }
@@ -106,6 +183,9 @@ if ($action === 'update') {
     $nivel_acesso = $_POST['nivel_acesso'] !== '' ? (int)$_POST['nivel_acesso'] : null;
     $cargos = $_POST['cargos'] ?? [];
     [$funcoes, $nivelFinalizacao] = normalizarFuncoes($_POST['funcoes'] ?? [], $_POST['nivel_finalizacao'] ?? '');
+    $atuacoes = normalizarAtuacoesFuncoes($_POST['tipo_atuacao'] ?? [], $funcoes);
+    $elegivelCapacidadeInformada = array_key_exists('elegivel_capacidade', $_POST);
+    $elegivelCapacidade = !empty($_POST['elegivel_capacidade']) ? 1 : 0;
 
     if ($idusuario <= 0 || $idcolaborador <= 0) {
         response(false, 'Colaborador inválido.');
@@ -114,8 +194,13 @@ if ($action === 'update') {
     $conn->begin_transaction();
 
     try {
-        $stmtCol = $conn->prepare("UPDATE colaborador SET nome_colaborador = ? WHERE idcolaborador = ?");
-        $stmtCol->bind_param("si", $nome_colaborador, $idcolaborador);
+        if ($elegivelCapacidadeInformada) {
+            $stmtCol = $conn->prepare("UPDATE colaborador SET nome_colaborador = ?, elegivel_capacidade = ? WHERE idcolaborador = ?");
+            $stmtCol->bind_param("sii", $nome_colaborador, $elegivelCapacidade, $idcolaborador);
+        } else {
+            $stmtCol = $conn->prepare("UPDATE colaborador SET nome_colaborador = ? WHERE idcolaborador = ?");
+            $stmtCol->bind_param("si", $nome_colaborador, $idcolaborador);
+        }
         $stmtCol->execute();
 
         if ($senha !== '') {
@@ -140,12 +225,13 @@ if ($action === 'update') {
             }
         }
 
-        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao);
+        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $atuacoes);
 
         $conn->commit();
         response(true, 'Colaborador atualizado com sucesso!');
     } catch (Throwable $e) {
         $conn->rollback();
+        error_log('Erro ao atualizar colaborador: ' . $e->getMessage());
         response(false, 'Erro ao atualizar colaborador.');
     }
 }

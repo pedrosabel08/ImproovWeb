@@ -1,4 +1,48 @@
 let dataTable = null;
+let atuacoesFuncoes = {};
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function atualizarAtuacoesFuncoes() {
+  const selecionadas = $("#funcaoSelect option:selected").toArray();
+  const grupo = document.getElementById("atuacoesFuncoesGroup");
+  const container = document.getElementById("atuacoesFuncoes");
+
+  grupo.hidden = selecionadas.length === 0;
+  if (selecionadas.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = selecionadas
+    .map((option) => {
+      const id = String(option.value);
+      const tipo = atuacoesFuncoes[id] === "PRINCIPAL" ? "PRINCIPAL" : "SECUNDARIA";
+      const nome = escapeHtml(option.textContent.trim());
+      return `
+        <div class="atuacao-funcao">
+          <span class="atuacao-funcao__nome">${nome}</span>
+          <div class="atuacao-funcao__opcoes" role="radiogroup" aria-label="Atuação em ${nome}">
+            <label>
+              <input type="radio" name="tipo_atuacao[${id}]" value="PRINCIPAL" ${tipo === "PRINCIPAL" ? "checked" : ""}>
+              Principal
+            </label>
+            <label>
+              <input type="radio" name="tipo_atuacao[${id}]" value="SECUNDARIA" ${tipo !== "PRINCIPAL" ? "checked" : ""}>
+              Secundária
+            </label>
+          </div>
+        </div>`;
+    })
+    .join("");
+}
 
 function atualizarNivelFinalizacao() {
   const funcoesSelecionadas = $("#funcaoSelect option:selected");
@@ -114,9 +158,13 @@ function abrirModalEdicao(idusuario) {
         data.usuario.nivel_acesso ?? "";
 
       $("#cargoSelect").val(data.cargos).trigger("change");
+      atuacoesFuncoes = data.funcoes_atuacao || {};
       $("#funcaoSelect").val(data.funcoes).trigger("change");
       $("#nivelFinalizacao").val(data.nivel_finalizacao ?? "");
       atualizarNivelFinalizacao();
+      atualizarAtuacoesFuncoes();
+      document.getElementById("elegivelCapacidade").checked =
+        parseInt(data.usuario.elegivel_capacidade ?? 1, 10) === 1;
 
       const ativo = parseInt(data.usuario.ativo) === 1;
       const btnToggle = document.getElementById("btnToggleStatus");
@@ -144,8 +192,11 @@ function abrirModalNovo() {
   document.getElementById("idcolaborador").value = "";
   $("#cargoSelect").val([]).trigger("change");
   $("#funcaoSelect").val([]).trigger("change");
+  atuacoesFuncoes = {};
   $("#nivelFinalizacao").val("");
+  document.getElementById("elegivelCapacidade").checked = true;
   atualizarNivelFinalizacao();
+  atualizarAtuacoesFuncoes();
 }
 
 function fecharModal() {
@@ -243,7 +294,17 @@ $(document).ready(function () {
     dropdownParent: $("#modal"),
   });
 
-  $("#funcaoSelect").on("change", atualizarNivelFinalizacao);
+  $("#funcaoSelect").on("change", function () {
+    atualizarNivelFinalizacao();
+    atualizarAtuacoesFuncoes();
+  });
+
+  $(document).on("change", 'input[name^="tipo_atuacao"]', function () {
+    const match = this.name.match(/\[(\d+)\]/);
+    if (match) {
+      atuacoesFuncoes[match[1]] = this.value;
+    }
+  });
 
   $("#btnAdicionar").on("click", function () {
     abrirModalNovo();
@@ -286,6 +347,16 @@ $("#form").on("submit", function (e) {
     cargos: $("#cargoSelect").val(),
     funcoes: $("#funcaoSelect").val(),
     nivel_finalizacao: $("#nivelFinalizacao").val(),
+    tipo_atuacao: Object.fromEntries(
+      $("#funcaoSelect option:selected")
+        .toArray()
+        .map((option) => {
+          const id = String(option.value);
+          const selecionada = document.querySelector(`input[name="tipo_atuacao[${id}]"]:checked`);
+          return [id, selecionada?.value || "SECUNDARIA"];
+        }),
+    ),
+    elegivel_capacidade: document.getElementById("elegivelCapacidade").checked ? 1 : 0,
   };
 
   if (

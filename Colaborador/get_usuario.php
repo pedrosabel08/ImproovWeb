@@ -9,6 +9,7 @@ $idusuario = $_GET['idusuario'] ?? 0;
 $sql_usuario = "SELECT 
                     u.*,
                     c.nome_colaborador,
+                    c.elegivel_capacidade,
                     CONCAT(UPPER(LEFT(SUBSTRING_INDEX(u.nome_usuario, ' ', 1), 1)), LOWER(SUBSTRING(SUBSTRING_INDEX(u.nome_usuario, ' ', 1), 2))) AS primeiro_nome_formatado
                 FROM 
                     usuario u
@@ -42,7 +43,7 @@ while ($row = $result_cargos->fetch_assoc()) {
     $cargos[] = $row['cargo_id']; // Armazena o ID do cargo
 }
 
-$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao
+$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao, fc.tipo_atuacao
                 FROM funcao_colaborador fc
                 WHERE fc.colaborador_id = ?";
 
@@ -52,9 +53,14 @@ $stmt_funcoes->execute();
 $result_funcoes = $stmt_funcoes->get_result();
 
 $funcoes = [];
+$funcoes_atuacao = [];
 $nivel_finalizacao = null;
 while ($row = $result_funcoes->fetch_assoc()) {
-    $funcoes[] = (int) $row['funcao_id'];
+    $funcaoId = (int) $row['funcao_id'];
+    $funcoes[] = $funcaoId;
+    $funcoes_atuacao[(string) $funcaoId] = strtoupper((string) ($row['tipo_atuacao'] ?? 'SECUNDARIA')) === 'PRINCIPAL'
+        ? 'PRINCIPAL'
+        : 'SECUNDARIA';
     if ($row['nivel_finalizacao'] !== null) {
         $nivel_finalizacao = (int) $row['nivel_finalizacao'];
     }
@@ -64,6 +70,7 @@ $response = [
     'usuario' => $usuario,
     'cargos' => $cargos,
     'funcoes' => $funcoes,
+    'funcoes_atuacao' => $funcoes_atuacao,
     'nivel_finalizacao' => $nivel_finalizacao
 ];
 

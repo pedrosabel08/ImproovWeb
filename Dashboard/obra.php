@@ -236,6 +236,10 @@ $conn->close();
                     <i class="fa-solid fa-file"></i>
                     <span class="qa-label">Arquivos</span>
                 </a>
+                <a id="quick_production_plan" class="quick-link" href="../PlanejamentoProducao/index.php" title="Plano de Produção R00" aria-hidden="false">
+                    <i class="fa-solid fa-chart-gantt"></i>
+                    <span class="qa-label">Plano R00</span>
+                </a>
 
                 <!-- Handoff Comercial -->
                 <a id="quick_handoff" class="quick-link" href="#" title="Handoff Comercial" aria-hidden="false">

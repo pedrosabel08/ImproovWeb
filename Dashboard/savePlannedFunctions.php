@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -128,6 +129,11 @@ try {
     }
 
     $conn->commit();
+    try {
+        flow_planejamento_marcar_desatualizado_por_imagens($conn, $updatedImages, $actorId);
+    } catch (Throwable $planejamentoErro) {
+        error_log('Não foi possível atualizar o estado do planejamento: ' . $planejamentoErro->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

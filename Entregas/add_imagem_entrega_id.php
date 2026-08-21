@@ -3,6 +3,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/pendencias_entrega_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
 
 // Recebe JSON: { entrega_id: int, imagem_ids: [int, ...] }
 $raw = file_get_contents('php://input');
@@ -15,7 +16,9 @@ if (!$input || !isset($input['entrega_id']) || !isset($input['imagem_ids']) || !
 
 $entrega_id = intval($input['entrega_id']);
 $imagem_ids = array_map('intval', $input['imagem_ids']);
-$imagem_ids = array_values(array_filter($imagem_ids, function($v){ return $v > 0; }));
+$imagem_ids = array_values(array_filter($imagem_ids, function ($v) {
+    return $v > 0;
+}));
 
 if ($entrega_id <= 0 || count($imagem_ids) === 0) {
     http_response_code(400);
@@ -90,6 +93,13 @@ try {
     }
 
     $conn->commit();
+    if ((int) ($ent['status_id'] ?? 0) === 2 && $added > 0) {
+        try {
+            flow_planejamento_marcar_desatualizado($conn, $entrega_id, $resolvidaPor);
+        } catch (Throwable $planejamentoErro) {
+            error_log('Não foi possível atualizar o estado do planejamento da entrega ' . $entrega_id . ': ' . $planejamentoErro->getMessage());
+        }
+    }
 
     echo json_encode([
         'success' => true,
@@ -102,5 +112,3 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
-
-?>

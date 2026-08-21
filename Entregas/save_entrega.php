@@ -4,6 +4,7 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/prazo_entrega_helper.php';
 require_once __DIR__ . '/pendencias_entrega_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
 
 $obra_id = $_POST['obra_id'] ?? null;
 $status_id = $_POST['status_id'] ?? null;
@@ -148,7 +149,21 @@ try {
     }
 
     $conn->commit();
-    echo json_encode(['success' => true, 'entrega_id' => $entrega_id, 'pendencias_resolvidas' => $pendenciasResolvidas ?? 0]);
+    // O rascunho é criado após a R00 existir. Falha de planejamento nunca
+    // invalida a criação operacional da entrega.
+    $planejamentoDisponivel = false;
+    if ((int) $status_id === 2) {
+        try {
+            $planejamentoDisponivel = flow_planejamento_garantir_rascunho(
+                $conn,
+                (int) $entrega_id,
+                isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+            ) !== null;
+        } catch (Throwable $planejamentoErro) {
+            error_log('Rascunho de planejamento não criado para entrega ' . $entrega_id . ': ' . $planejamentoErro->getMessage());
+        }
+    }
+    echo json_encode(['success' => true, 'entrega_id' => $entrega_id, 'pendencias_resolvidas' => $pendenciasResolvidas ?? 0, 'planejamento_rascunho_disponivel' => $planejamentoDisponivel]);
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(['success' => false, 'msg' => 'Erro: ' . $e->getMessage()]);

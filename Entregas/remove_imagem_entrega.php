@@ -2,6 +2,8 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
+require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
 
 improov_p00_ensure_schema($conn);
 
@@ -18,13 +20,15 @@ if ($entregaId <= 0) {
 }
 
 $tipoEntrega = 'PADRAO';
-$stmtEntrega = $conn->prepare("SELECT COALESCE(tipo_entrega, 'PADRAO') AS tipo_entrega FROM entregas WHERE id = ? LIMIT 1");
+$statusEntrega = 0;
+$stmtEntrega = $conn->prepare("SELECT COALESCE(tipo_entrega, 'PADRAO') AS tipo_entrega, status_id FROM entregas WHERE id = ? LIMIT 1");
 if ($stmtEntrega) {
     $stmtEntrega->bind_param('i', $entregaId);
     $stmtEntrega->execute();
     $resEntrega = $stmtEntrega->get_result()->fetch_assoc();
     if ($resEntrega && isset($resEntrega['tipo_entrega'])) {
         $tipoEntrega = (string) $resEntrega['tipo_entrega'];
+        $statusEntrega = (int) ($resEntrega['status_id'] ?? 0);
     }
     $stmtEntrega->close();
 }
@@ -47,6 +51,14 @@ if ($tipoEntrega === 'P00' && $itemId > 0) {
 $stmt->execute();
 $affected = $stmt->affected_rows;
 $stmt->close();
+
+if ($affected > 0 && $statusEntrega === 2) {
+    try {
+        flow_planejamento_marcar_desatualizado($conn, $entregaId, isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null);
+    } catch (Throwable $planejamentoErro) {
+        error_log('Não foi possível atualizar o estado do planejamento da entrega ' . $entregaId . ': ' . $planejamentoErro->getMessage());
+    }
+}
 
 echo json_encode([
     'success' => $affected > 0,

@@ -168,6 +168,11 @@ $conn->close();
                                 <?php } ?>
                             </select>
                         </div>
+                        <div class="form-group full" id="atuacoesFuncoesGroup" hidden>
+                            <label class="form-label">Atua&ccedil;&atilde;o por fun&ccedil;&atilde;o</label>
+                            <div id="atuacoesFuncoes" class="atuacoes-funcoes" aria-live="polite"></div>
+                            <small class="form-help">Principal compõe a capacidade-base; Secundária representa apoio potencial.</small>
+                        </div>
                         <div class="form-group" id="nivelFinalizacaoGroup" hidden>
                             <label class="form-label" for="nivelFinalizacao">N&iacute;vel de finaliza&ccedil;&atilde;o</label>
                             <select class="form-input" id="nivelFinalizacao" name="nivel_finalizacao">
@@ -176,6 +181,15 @@ $conn->close();
                                 <option value="2">N&iacute;vel 2</option>
                                 <option value="3">N&iacute;vel 3</option>
                             </select>
+                        </div>
+                        <div class="form-group full">
+                            <label class="capacity-eligibility" for="elegivelCapacidade">
+                                <input type="checkbox" id="elegivelCapacidade" name="elegivel_capacidade" value="1" checked>
+                                <span>
+                                    <strong>Conta como capacidade produtiva</strong>
+                                    <small>Desmarque para registros administrativos ou genéricos que não representam uma pessoa disponível.</small>
+                                </span>
+                            </label>
                         </div>
                     </div>
                 </div><!-- /.modal-body -->

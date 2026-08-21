@@ -133,7 +133,7 @@ header.planning-header {
   padding: 12px 16px;
   border: 1px solid var(--pp-line);
   border-radius: 12px;
-  background: var(--pp-surface);
+  background: var(--pp-panel);
   color: var(--pp-text);
 }
 
@@ -194,10 +194,11 @@ header.planning-header {
 .planning-lifecycle select,
 .planning-lifecycle input {
   max-width: 210px;
-  padding: 0 8px;
+  padding: 5px 10px;
   border: 1px solid var(--pp-line);
   color: var(--pp-text);
-  background: var(--pp-surface-2, var(--pp-surface));
+  background: var(--pp-panel-deep);
+  font-size: 13px;
 }
 
 body.planning-page.light .planning-title-block,
@@ -320,6 +321,161 @@ body.planning-page.light .planning-workspace {
   color: var(--pp-text);
   font-size: 16px;
   white-space: nowrap;
+}
+
+.planning-summary article small {
+  display: block;
+  margin-top: 3px;
+  color: var(--pp-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.planning-summary article small.negative {
+  color: #ff6877;
+}
+
+.planning-progress-pill {
+  margin-left: auto;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #dfe7f2;
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.planning-progress-pill.is-concluida {
+  background: rgba(34, 201, 151, 0.18);
+  color: #58e1ad;
+}
+
+.planning-progress-pill.is-em_andamento {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f8bd4c;
+}
+
+.planning-bar-progress {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.27);
+  transition: width 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.planning-bar span {
+  position: relative;
+  z-index: 1;
+}
+
+.planning-bar-projection {
+  position: absolute;
+  z-index: 1;
+  top: 26px;
+  height: 7px;
+  border-top: 2px dashed #ff6978;
+  opacity: 0.95;
+}
+
+.planning-bar-real {
+  position: absolute;
+  z-index: 3;
+  top: 19px;
+  width: 8px;
+  height: 20px;
+  border: 2px solid #ecf3fc;
+  border-radius: 50%;
+  background: var(--pp-success, #22c997);
+  transform: translateX(-50%);
+}
+
+.marker-projection {
+  border-left: 1px dashed #ff6978;
+  background: #ff6978;
+  color: #ff6978;
+}
+
+.planning-detail-section {
+  margin: 28px 0 0;
+}
+
+.planning-execution-grid strong.is-negative {
+  color: #ff6978;
+}
+
+/* Tema claro preserva a leitura da tabela sem alterar a linguagem do Gantt. */
+body.planning-page.light .planning-workspace,
+body.planning-page.light .planning-toolbar,
+body.planning-page.light .planning-stage-head {
+  background: #ffffff;
+  border-color: #dbe3ee;
+}
+
+body.planning-page.light .planning-stage-head {
+  background: linear-gradient(90deg, #f8fbff, #f0f5fb);
+  color: #5d6d82;
+}
+
+body.planning-page.light .planning-stage-head span,
+body.planning-page.light .planning-toolbar strong {
+  color: #5b37bb;
+}
+
+body.planning-page.light .planning-stage-row,
+body.planning-page.light .planning-stage-row:nth-child(even) {
+  background: #ffffff;
+  border-color: #e4eaf2;
+}
+
+body.planning-page.light .planning-stage-row:nth-child(even) {
+  background: #f8fbff;
+}
+
+body.planning-page.light .planning-stage-row.is-critical {
+  background: #faf7ff;
+}
+
+body.planning-page.light .planning-cell,
+body.planning-page.light .planning-date,
+body.planning-page.light .planning-index {
+  color: #34445a;
+}
+
+body.planning-page.light .planning-stage-name span {
+  color: #ffffff;
+}
+
+body.planning-page.light .planning-capacity {
+  border-color: #ccd7e5;
+  background: #ffffff;
+  color: #1f2b3d;
+}
+
+body.planning-page.light .planning-capacity output,
+body.planning-page.light .planning-capacity button {
+  color: #334155;
+}
+
+body.planning-page.light .planning-diagnosis {
+  background: linear-gradient(100deg, #f7fbff, #eff7f4 55%, #eef3ff);
+  border-color: #b9dcca;
+}
+
+body.planning-page.light .planning-diagnosis-main,
+body.planning-page.light .planning-lifecycle,
+body.planning-page.light .planning-diagnosis-main strong,
+body.planning-page.light .planning-diagnosis-main span,
+body.planning-page.light .planning-lifecycle strong,
+body.planning-page.light .planning-lifecycle small {
+  color: #223247;
+}
+
+body.planning-page.light .planning-diagnosis > #plan-status-card {
+  border-color: #c7dfd2;
 }
 
 .planning-summary .planning-work-name strong {
@@ -466,7 +622,10 @@ body.planning-page.light .planning-workspace {
     rgba(27, 23, 31, 0.92)
   );
   display: grid;
-  grid-template-columns: minmax(230px, 0.8fr) minmax(300px, 1fr) minmax(300px, 1fr) minmax(420px, 1.55fr);
+  grid-template-columns: minmax(230px, 0.8fr) minmax(300px, 1fr) minmax(
+      300px,
+      1fr
+    ) minmax(420px, 1.55fr);
   align-items: center;
   gap: 14px;
   min-height: 74px;

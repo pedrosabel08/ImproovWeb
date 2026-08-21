@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_execucao_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -36,7 +37,9 @@ try {
         $stmtEntrega = $conn->prepare(
             'SELECT id FROM entregas WHERE obra_id = ? AND status_id = 2 ORDER BY data_recebimento DESC, id DESC LIMIT 1'
         );
-        if (!$stmtEntrega) throw new RuntimeException($conn->error);
+        if (!$stmtEntrega) {
+            throw new RuntimeException($conn->error);
+        }
         $stmtEntrega->bind_param('i', $obraId);
         $stmtEntrega->execute();
         $entregaId = (int) (($stmtEntrega->get_result()->fetch_assoc()['id'] ?? 0));
@@ -58,6 +61,11 @@ try {
         'replanejar' => !empty($_GET['replanejar']),
     ];
     $plano = flow_planejamento_carregar_para_interface($conn, $entregaId, $opcoes);
+    // O snapshot confirmado continua sendo a referência; execução é uma
+    // leitura derivada e nunca altera as datas, capacidade ou baseline.
+    $plano['execucao'] = flow_planejamento_monitorar_execucao($conn, $entregaId, $plano, [
+        'data_hoje' => $opcoes['data_hoje'],
+    ]);
     $plano['entrega_id'] = $entregaId;
     $conn->close();
 

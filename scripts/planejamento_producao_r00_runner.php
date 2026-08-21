@@ -9,14 +9,22 @@
 
 require_once dirname(__DIR__) . '/conexao.php';
 require_once dirname(__DIR__) . '/helpers/planejamento_producao_helper.php';
+require_once dirname(__DIR__) . '/helpers/planejamento_execucao_helper.php';
 
-$argumentos = getopt('', ['obra::', 'r00::', 'inicio::', 'entrega::', 'pretty::', 'resumo::', 'tabela::']);
+$argumentos = getopt('', ['obra::', 'r00::', 'inicio::', 'entrega::', 'hoje::', 'pretty::', 'resumo::', 'tabela::', 'execucao::']);
 try {
     if (!empty($argumentos['r00'])) {
-        $plano = flow_planejamento_planejar_entrega($conn, (int) $argumentos['r00'], [
+        $opcoes = [
             'data_inicio' => $argumentos['inicio'] ?? null,
             'data_entrega' => $argumentos['entrega'] ?? null,
-        ]);
+            'data_hoje' => $argumentos['hoje'] ?? date('Y-m-d'),
+        ];
+        $plano = array_key_exists('execucao', $argumentos)
+            ? flow_planejamento_carregar_para_interface($conn, (int) $argumentos['r00'], $opcoes)
+            : flow_planejamento_planejar_entrega($conn, (int) $argumentos['r00'], $opcoes);
+        if (array_key_exists('execucao', $argumentos)) {
+            $plano['execucao'] = flow_planejamento_monitorar_execucao($conn, (int) $argumentos['r00'], $plano, $opcoes);
+        }
     } elseif (!empty($argumentos['obra'])) {
         $plano = flow_planejamento_planejar_obra($conn, (int) $argumentos['obra'], [
             'data_inicio' => $argumentos['inicio'] ?? null,

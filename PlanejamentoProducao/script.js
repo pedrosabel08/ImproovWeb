@@ -45,15 +45,16 @@
         ? "stage-model-fachada"
         : code === "MODELAGEM_INTERNA"
           ? "stage-model-interna"
-        : code === "COMPOSICAO"
-          ? "stage-compose"
-          : code === "FINALIZACAO_GLOBAL"
-            ? "stage-final-global"
-            : code === "FINALIZACAO_INTERNA"
-              ? "stage-final-interna"
-              : code === "FINALIZACAO_EXTERNA" || code === "FINALIZACAO_PLANTA"
-                ? "stage-final-externa"
-                : "stage-post";
+          : code === "COMPOSICAO"
+            ? "stage-compose"
+            : code === "FINALIZACAO_GLOBAL"
+              ? "stage-final-global"
+              : code === "FINALIZACAO_INTERNA"
+                ? "stage-final-interna"
+                : code === "FINALIZACAO_EXTERNA" ||
+                    code === "FINALIZACAO_PLANTA"
+                  ? "stage-final-externa"
+                  : "stage-post";
   const stageIcon = (code) =>
     code.includes("CADERNO")
       ? "fa-book-open"
@@ -83,6 +84,29 @@
     new Map((plan?.etapas || []).map((stage) => [stage.codigo, stage]));
   const activeStages = (plan) =>
     (plan?.etapas || []).filter((stage) => !stage.nao_aplicavel);
+  const executionMap = (plan) =>
+    new Map(
+      (plan?.execucao?.etapas || []).map((stage) => [stage.codigo, stage]),
+    );
+  const executionStage = (plan, code) => executionMap(plan).get(code) || null;
+  const executionLabel = (value) =>
+    ({
+      NO_PRAZO: "No prazo",
+      ATENCAO: "Atenção",
+      EM_RISCO: "Em risco",
+      CONCLUIDA: "Concluída",
+    })[value] ||
+    value ||
+    "Aguardando plano confirmado";
+  const stageExecutionLabel = (value) =>
+    ({
+      NAO_INICIADA: "Não iniciada",
+      EM_ANDAMENTO: "Em andamento",
+      CONCLUIDA: "Concluída",
+      NAO_APLICAVEL: "Não aplicável",
+    })[value] ||
+    value ||
+    "—";
 
   function dateMotionDelay(value, plan) {
     if (!value || !plan?.data_hoje) return 0;
@@ -257,12 +281,16 @@
       plan.data_inicio,
       plan.data_entrega || plan.fim_previsto,
       plan.data_hoje,
+      plan.execucao?.fim_projetado,
     );
-    dates.sort();
-    const ultimoMarco = new Date(`${dates.at(-1)}T12:00:00Z`);
+    (plan.execucao?.etapas || []).forEach((stage) =>
+      dates.push(stage.fim_projetado),
+    );
+    const validDates = dates.filter(Boolean).sort();
+    const ultimoMarco = new Date(`${validDates.at(-1)}T12:00:00Z`);
     ultimoMarco.setUTCDate(ultimoMarco.getUTCDate() + 7);
     return {
-      start: dates[0],
+      start: validDates[0],
       end: ultimoMarco.toISOString().slice(0, 10),
       days: daysBetween(dates[0], ultimoMarco.toISOString().slice(0, 10)),
     };
@@ -381,6 +409,30 @@
 
     const margin = $("#summary-margin");
     margin.classList.toggle("negative", Number(plan.margem_dias_uteis) < 0);
+    const execution = plan.execucao?.disponivel ? plan.execucao : null;
+    const projection = $("#summary-projection");
+    const projectedMargin = $("#summary-projected-margin");
+    const projectionDelta =
+      execution?.impacto_margem_dias_uteis == null
+        ? null
+        : -Number(execution.impacto_margem_dias_uteis);
+    if (projection) {
+      projection.hidden = !execution;
+      projection.textContent = execution
+        ? `Projeção ${formatDate(execution.fim_projetado)} · ${projectionDelta >= 0 ? "+" : ""}${projectionDelta ?? 0}d vs plano`
+        : "";
+      projection.classList.toggle("negative", Number(projectionDelta) > 0);
+    }
+    if (projectedMargin) {
+      projectedMargin.hidden = !execution;
+      projectedMargin.textContent = execution
+        ? `Projetada ${formatMargin(execution.margem_projetada_dias_uteis)}`
+        : "";
+      projectedMargin.classList.toggle(
+        "negative",
+        Number(execution?.margem_projetada_dias_uteis) < 0,
+      );
+    }
     const labels = {
       VIAVEL: "Viável",
       ATENCAO: "Atenção",
@@ -417,7 +469,11 @@
     const history = hasHistory
       ? `<div><span>Amostra</span><strong>${metric.amostra_ciclos_validos} ciclos</strong></div><div><span>Confiança</span><strong>${metric.confianca}</strong></div><div><span>Produtividade</span><strong>${metric.tarefas_por_dia_util_pessoa} tarefa/dia/pessoa</strong></div>`
       : `<div><span>Origem</span><strong>${metric.origem || "Marco calculado"}</strong></div>`;
-    return `<div class="planning-detail-grid"><div><span>Volume</span><strong>${stage.volume} tarefas</strong></div><div><span>Pessoas</span><strong>${stage.pessoas_alocadas || "—"}</strong></div><div><span>Duração</span><strong>${stage.duracao_dias_uteis} dias úteis</strong></div><div><span>Limite</span><strong>${formatDate(stage.limite)}</strong></div>${history}</div><p class="planning-formula">${stage.formula || "Marco global: maior data-limite entre os pools de Finalização."}</p>`;
+    const execution = executionStage(state.plan, stage.codigo);
+    const executionInfo = execution
+      ? `<p class="planning-eyebrow planning-detail-section">Execução</p><div class="planning-detail-grid planning-execution-grid"><div><span>Progresso</span><strong>${execution.percentual_concluido === null ? "Marco global" : `${execution.concluidas}/${execution.volume_atual} · ${Math.round(execution.percentual_concluido)}%`}</strong></div><div><span>Estado</span><strong>${stageExecutionLabel(execution.execucao)}</strong></div><div><span>Início real</span><strong>${formatDate(execution.inicio_real)}</strong></div><div><span>Conclusão real</span><strong>${formatDate(execution.conclusao_real)}</strong></div><div><span>Fim projetado</span><strong>${formatDate(execution.fim_projetado)}</strong></div><div><span>Desvio projetado</span><strong class="${Number(execution.desvio_projetado_dias_uteis) > 0 ? "is-negative" : ""}">${execution.desvio_projetado_dias_uteis === null ? "—" : `${execution.desvio_projetado_dias_uteis >= 0 ? "+" : ""}${execution.desvio_projetado_dias_uteis} dias úteis`}</strong></div></div><p class="planning-formula">${execution.execucao === "CONCLUIDA" ? "A projeção usa a conclusão real da última tarefa necessária." : `${execution.pendentes} pendente${execution.pendentes === 1 ? "" : "s"} · ${execution.metodo_projecao?.replaceAll("_", " ").toLowerCase() || "capacidade planejada"}.`}</p>`
+      : "";
+    return `<div class="planning-detail-grid"><div><span>Volume</span><strong>${stage.volume} tarefas</strong></div><div><span>Pessoas</span><strong>${stage.pessoas_alocadas || "—"}</strong></div><div><span>Duração</span><strong>${stage.duracao_dias_uteis} dias úteis</strong></div><div><span>Limite</span><strong>${formatDate(stage.limite)}</strong></div>${history}</div><p class="planning-formula">${stage.formula || "Marco global: maior data-limite entre os pools de Finalização."}</p>${executionInfo}`;
   }
   function capacity(stage) {
     if (!stage.capacidade_editavel)
@@ -429,7 +485,7 @@
 
   function capacityControlsLocked() {
     return (
-      state.plan?.fonte === "VERSAO_CONFIRMADA" && !state.replanning ||
+      (state.plan?.fonte === "VERSAO_CONFIRMADA" && !state.replanning) ||
       state.plan?.fonte === "VERSAO_HISTORICA"
     );
   }
@@ -591,15 +647,19 @@
   function renderExceptions(plan) {
     const badge = $("#plan-exception-count");
     if (!badge) return;
-    if (!plan.excecoes?.length) {
+    const exceptions = [
+      ...(plan.excecoes || []),
+      ...(plan.execucao?.excecoes || []),
+    ];
+    if (!exceptions.length) {
       badge.hidden = true;
       badge.textContent = "";
       badge.title = "";
       return;
     }
     badge.hidden = false;
-    badge.textContent = `⚠ ${plan.excecoes.length} exceção${plan.excecoes.length === 1 ? "" : "ões"}`;
-    badge.title = plan.excecoes
+    badge.textContent = `⚠ ${exceptions.length === 1 ? "1 exceção" : `${exceptions.length} exceções`}`;
+    badge.title = exceptions
       .map(
         (item) =>
           `${item.codigo.replaceAll("_", " ")}${item.imagem_id ? ` · Imagem ${item.imagem_id}` : ""}`,
@@ -731,13 +791,29 @@
     const diagnosis = $("#diagnosis-summary");
     const detail = $("#diagnosis-bottleneck");
     const goal = $("#diagnosis-goal");
+    const execution = plan.execucao?.disponivel ? plan.execucao : null;
+    const executionStages = executionMap(plan);
+    const next = execution
+      ? executionStages.get(execution.proximo_marco)
+      : null;
+    const currentBottleneck = execution
+      ? executionStages.get(execution.gargalo)
+      : null;
     const gate = bottleneck(plan);
-    const summary = gate
-      ? "<b>Gargalo atual:</b> " + gate.nome
-      : "<b>Gargalo atual:</b> nenhum identificado";
-    const bottleneckText = gate?.limite
-      ? "Próximo marco crítico: " + formatDate(gate.limite)
-      : "O caminho crítico será definido quando houver previsão confiável.";
+    const summary = execution
+      ? `<b>Execução:</b> ${executionLabel(execution.saude)}`
+      : gate
+        ? "<b>Gargalo atual:</b> " + gate.nome
+        : "<b>Gargalo atual:</b> nenhum identificado";
+    const bottleneckText = execution
+      ? next
+        ? `Próximo marco: ${plan.etapas.find((stage) => stage.codigo === next.codigo)?.nome || next.codigo} · ${next.concluidas}/${next.volume_atual} concluídas · limite ${formatDate(next.limite_planejado)}`
+        : execution.excecoes?.length
+          ? `${execution.excecoes.length} exceção${execution.excecoes.length === 1 ? "" : "ões"} requer${execution.excecoes.length === 1 ? "" : "em"} revisão.`
+          : "Nenhuma intervenção necessária."
+      : gate?.limite
+        ? "Próximo marco crítico: " + formatDate(gate.limite)
+        : "O caminho crítico será definido quando houver previsão confiável.";
     const changed = !motion.initial && motion.summaryChanged;
     if (motion.initial) {
       [
@@ -755,6 +831,9 @@
     }
     animateText(detail, bottleneckText, changed);
     if (goal) goal.textContent = "";
+    if (execution && currentBottleneck) {
+      detail.title = `Gargalo projetado: ${plan.etapas.find((stage) => stage.codigo === currentBottleneck.codigo)?.nome || currentBottleneck.codigo}`;
+    }
     renderScenarioSuggestions(plan);
   }
 
@@ -811,7 +890,8 @@
       (version) => version.tipo !== "BASELINE",
     );
     history.hidden = !allVersions.length;
-    history.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Histórico';
+    history.innerHTML =
+      '<i class="fa-solid fa-clock-rotate-left"></i> Histórico';
   }
 
   function renderPlan(plan, before, reason = "recalculate") {
@@ -924,6 +1004,12 @@
           .filter((stage) => stage.capacidade_editavel)
           .map((stage) => [stage.codigo, stage.pessoas_alocadas]),
       );
+      // Libera os controles imediatamente. O recálculo é assíncrono e não
+      // deve deixar a tela parecendo bloqueada enquanto o snapshot simulado
+      // é carregado.
+      const replanMotion = planMotion(state.plan, state.plan, "replanning");
+      renderStageRowsAnimated(state.plan, replanMotion, state.plan);
+      renderLifecycle(state.plan);
       await load();
       return;
     }
@@ -977,7 +1063,8 @@
           `<article class="planning-history-entry"><div><span>Replanejamento #${Math.max(1, Number(version.numero) - 1)}</span><strong>${version.vigente ? "Vigente" : "Substituído"}</strong></div><p>${formatDate(String(version.confirmado_em || "").slice(0, 10))}${version.confirmado_por ? ` · ${escapeHtml(version.confirmado_por)}` : ""}</p><div class="planning-history-metrics"><span>Fim planejado <b>${formatDate(version.fim_previsto)}</b></span><span>Margem <b>${formatMargin(version.margem_dias_uteis)}</b></span><span>Status <b>${escapeHtml(version.status_plano || "—")}</b></span></div></article>`,
       )
       .join("");
-    $("#detail-content").innerHTML = `<p class="planning-eyebrow">Registro de versões</p><h2 id="detail-title">Histórico do plano</h2><p>Versões confirmadas desta R00.</p>${entries ? `<div class="planning-history-list">${entries}</div>` : "<p>Ainda não há replanejamentos registrados.</p>"}`;
+    $("#detail-content").innerHTML =
+      `<p class="planning-eyebrow">Registro de versões</p><h2 id="detail-title">Histórico do plano</h2><p>Versões confirmadas desta R00.</p>${entries ? `<div class="planning-history-list">${entries}</div>` : "<p>Ainda não há replanejamentos registrados.</p>"}`;
     $("#planning-detail").classList.add("is-open");
     $("#planning-detail").setAttribute("aria-hidden", "false");
     $("#planning-scrim").hidden = false;
@@ -1030,19 +1117,30 @@
     const locked = capacityControlsLocked();
     const disabled = locked ? " disabled" : "";
     return (
-      '<div class="planning-capacity' + (locked ? ' is-locked' : '') + '" data-field="capacity" aria-label="Pessoas alocadas em ' +
+      '<div class="planning-capacity' +
+      (locked ? " is-locked" : "") +
+      '" data-field="capacity" aria-label="Pessoas alocadas em ' +
       stage.nome +
-      '" title="' + (locked ? 'Plano confirmado. Replaneje para alterar a capacidade.' : 'Alterar pessoas alocadas') + '"><button data-capacity="-1" data-stage="' +
+      '" title="' +
+      (locked
+        ? "Plano confirmado. Replaneje para alterar a capacidade."
+        : "Alterar pessoas alocadas") +
+      '"><button data-capacity="-1" data-stage="' +
       stage.codigo +
-      '" type="button" aria-label="Remover uma pessoa"' + disabled + '>−</button><output>' +
+      '" type="button" aria-label="Remover uma pessoa"' +
+      disabled +
+      ">−</button><output>" +
       stage.pessoas_alocadas +
       '</output><button data-capacity="1" data-stage="' +
       stage.codigo +
-      '" type="button" aria-label="Adicionar uma pessoa"' + disabled + '>+</button></div>'
+      '" type="button" aria-label="Adicionar uma pessoa"' +
+      disabled +
+      ">+</button></div>"
     );
   }
 
   function animatedStageRowMarkup(stage, index, active) {
+    const execution = executionStage(state.plan, stage.codigo);
     const dependencies = stage.dependencias || [];
     const dependencyLabel =
       dependencies.length === 0
@@ -1076,7 +1174,15 @@
       stage.nome +
       " " +
       criticalMark +
-      '</span></button><span class="planning-cell" data-field="volume">' +
+      "</span>" +
+      (execution && execution.percentual_concluido !== null
+        ? '<small class="planning-progress-pill is-' +
+          String(execution.execucao || "").toLowerCase() +
+          '">' +
+          Math.round(execution.percentual_concluido) +
+          "%</small>"
+        : "") +
+      '</button><span class="planning-cell" data-field="volume">' +
       stage.volume +
       ' imgs</span><span class="planning-cell planning-duration" data-field="duration">' +
       (stage.duracao_dias_uteis ?? "—") +
@@ -1174,6 +1280,24 @@
         ' <em class="fa-solid fa-bolt" title="Caminho crítico"></em>',
       );
     }
+    const execution = executionStage(motion.next, stage.codigo);
+    let progress = row.querySelector(".planning-progress-pill");
+    if (execution && execution.percentual_concluido !== null) {
+      if (!progress) {
+        name.insertAdjacentHTML(
+          "beforeend",
+          '<small class="planning-progress-pill"></small>',
+        );
+        progress = name.querySelector(".planning-progress-pill");
+      }
+      progress.className =
+        "planning-progress-pill is-" +
+        String(execution.execucao || "").toLowerCase();
+      progress.textContent = Math.round(execution.percentual_concluido) + "%";
+      progress.title = `${execution.concluidas}/${execution.volume_atual} concluídas · ${stageExecutionLabel(execution.execucao)}`;
+    } else if (progress) {
+      progress.remove();
+    }
     setField("volume", stage.volume + " imgs");
     setField("duration", (stage.duracao_dias_uteis ?? "—") + " dias");
     setField("start", formatDate(stage.inicio).slice(0, 5), stage.inicio);
@@ -1205,11 +1329,19 @@
         )
         .join(", ");
     const oldCapacity = row.querySelector('[data-field="capacity"]');
-    if (
+    const currentCapacityEditable =
+      oldCapacity?.classList.contains("planning-capacity") || false;
+    const desiredCapacityEditable = Boolean(stage.capacidade_editavel);
+    const currentCapacityLocked =
+      oldCapacity?.classList.contains("is-locked") || false;
+    const desiredCapacityLocked =
+      desiredCapacityEditable && capacityControlsLocked();
+    const capacityNeedsRefresh =
       oldCapacity &&
-      oldCapacity.classList.contains("planning-capacity") !==
-        Boolean(stage.capacidade_editavel)
-    ) {
+      (currentCapacityEditable !== desiredCapacityEditable ||
+        (desiredCapacityEditable &&
+          currentCapacityLocked !== desiredCapacityLocked));
+    if (capacityNeedsRefresh) {
       oldCapacity.insertAdjacentHTML("afterend", animatedCapacity(stage));
       oldCapacity.remove();
     } else if (stage.capacidade_editavel && oldCapacity) {
@@ -1257,6 +1389,21 @@
   function timelineBarMarkup(stage, index) {
     const left = position(stage.inicio, range(state.plan));
     const right = position(stage.limite, range(state.plan));
+    const execution = executionStage(state.plan, stage.codigo);
+    const progress = Math.max(
+      0,
+      Math.min(100, Number(execution?.percentual_concluido || 0)),
+    );
+    const projection = execution?.fim_projetado;
+    const projectLeft =
+      projection && stage.limite
+        ? position(stage.limite, range(state.plan))
+        : 0;
+    const projectWidth =
+      projection && stage.limite && projection > stage.limite
+        ? Math.max(0.8, position(projection, range(state.plan)) - projectLeft)
+        : 0;
+    const actual = execution?.conclusao_real;
     return (
       '<div class="planning-bar-row" data-bar-row="' +
       stage.codigo +
@@ -1276,9 +1423,26 @@
       formatDate(stage.inicio) +
       " até " +
       formatDate(stage.limite) +
-      '"><span>' +
+      '"><i class="planning-bar-progress" style="width:' +
+      progress +
+      '%"></i><span>' +
       stage.nome +
-      "</span></button></div>"
+      "</span></button>" +
+      (projectWidth
+        ? '<i class="planning-bar-projection" style="left:' +
+          projectLeft +
+          "%;width:" +
+          projectWidth +
+          '%"></i>'
+        : "") +
+      (actual
+        ? '<i class="planning-bar-real" style="left:' +
+          position(actual, range(state.plan)) +
+          '%" title="Concluída em ' +
+          formatDate(actual) +
+          '"></i>'
+        : "") +
+      "</div>"
     );
   }
 
@@ -1361,6 +1525,14 @@
       timeline,
       motion,
     );
+    updateTimelineMarker(
+      target,
+      "projection",
+      "Projeção",
+      plan.execucao?.disponivel ? plan.execucao.fim_projetado : null,
+      timeline,
+      motion,
+    );
 
     const related = state.selected ? relationship(plan, state.selected) : null;
     const existing = new Map(
@@ -1419,6 +1591,36 @@
           formatDate(stage.limite),
       );
       bar.querySelector("span").textContent = stage.nome;
+      const execution = executionStage(plan, stage.codigo);
+      let fill = bar.querySelector(".planning-bar-progress");
+      if (!fill) {
+        bar.insertAdjacentHTML(
+          "afterbegin",
+          '<i class="planning-bar-progress"></i>',
+        );
+        fill = bar.querySelector(".planning-bar-progress");
+      }
+      fill.style.width = `${Math.max(0, Math.min(100, Number(execution?.percentual_concluido || 0)))}%`;
+      row
+        .querySelectorAll(".planning-bar-projection, .planning-bar-real")
+        .forEach((element) => element.remove());
+      if (execution?.fim_projetado && execution.fim_projetado > stage.limite) {
+        const projectedLeft = position(stage.limite, timeline);
+        const projectedWidth = Math.max(
+          0.8,
+          position(execution.fim_projetado, timeline) - projectedLeft,
+        );
+        row.insertAdjacentHTML(
+          "beforeend",
+          `<i class="planning-bar-projection" style="left:${projectedLeft}%;width:${projectedWidth}%" title="Projeção: ${formatDate(execution.fim_projetado)}"></i>`,
+        );
+      }
+      if (execution?.conclusao_real) {
+        row.insertAdjacentHTML(
+          "beforeend",
+          `<i class="planning-bar-real" style="left:${position(execution.conclusao_real, timeline)}%" title="Concluída em ${formatDate(execution.conclusao_real)}"></i>`,
+        );
+      }
       animateLayout(
         bar,
         () => {

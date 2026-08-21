@@ -4,26 +4,27 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexaoMain.php';
 
 if (empty($_SESSION['logado'])) {
-  header('Location: ../index.html');
-  exit();
+    header('Location: ../index.html');
+    exit();
 }
 
 $obraId = (int) ($_GET['obra_id'] ?? 0);
 $entregaId = (int) ($_GET['entrega_id'] ?? 0);
+$tema = ($_GET['tema'] ?? '') === 'light' ? 'light' : '';
 $conn = conectarBanco();
 if ($obraId <= 0 && $entregaId > 0) {
-  $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
-  if ($stmtEntrega) {
-    $stmtEntrega->bind_param('i', $entregaId);
-    $stmtEntrega->execute();
-    $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
-    $stmtEntrega->close();
-  }
+    $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
+    if ($stmtEntrega) {
+        $stmtEntrega->bind_param('i', $entregaId);
+        $stmtEntrega->execute();
+        $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
+        $stmtEntrega->close();
+    }
 }
 if ($obraId <= 0 || !improov_usuario_pode_acessar_obra($conn, $obraId)) {
-  $conn->close();
-  header('Location: ../acesso_negado.php');
-  exit();
+    $conn->close();
+    header('Location: ../acesso_negado.php');
+    exit();
 }
 $conn->close();
 ?>
@@ -35,12 +36,12 @@ $conn->close();
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Planejamento de Produção · Flow</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=13">
   <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
     type="image/x-icon">
 </head>
 
-<body class="planning-page" data-obra-id="<?= $obraId ?>" data-entrega-id="<?= $entregaId ?>">
+<body class="planning-page <?= $tema ?>" data-obra-id="<?= $obraId ?>" data-entrega-id="<?= $entregaId ?>">
   <main class="planning-shell" aria-live="polite">
     <header class="planning-header" aria-labelledby="planning-title">
       <section class="planning-title-block">
@@ -59,9 +60,9 @@ $conn->close();
       <section class="planning-summary" aria-label="Resumo do planejamento">
         <article class="planning-work-name"><span>Obra</span><strong data-plan-title>Carregando…</strong></article>
         <article><span>Início da produção</span><strong id="summary-start">—</strong></article>
-        <article class="planning-result-card"><span>Fim planejado</span><strong id="summary-finish">—</strong></article>
+        <article class="planning-result-card"><span>Fim planejado</span><strong id="summary-finish">—</strong><small id="summary-projection" hidden></small></article>
         <article><span>Entrega R00</span><strong id="summary-due">—</strong></article>
-        <article class="planning-margin-card planning-result-card" id="summary-margin"><span>Margem</span><strong>—</strong></article>
+        <article class="planning-margin-card planning-result-card" id="summary-margin"><span>Margem planejada</span><strong>—</strong><small id="summary-projected-margin" hidden></small></article>
         <article class="planning-summary-today"><span>Hoje</span><strong id="summary-today">—</strong></article>
       </section>
     </header>
@@ -77,7 +78,7 @@ $conn->close();
         <div><span class="planning-eyebrow" id="planning-lifecycle-label">Estado do plano</span><strong id="planning-lifecycle-title">Calculando plano para revisão…</strong><small id="planning-lifecycle-detail"></small></div>
         <div class="planning-lifecycle-actions">
           <select id="planning-replan-reason" hidden aria-label="Motivo do replanejamento">
-            <option value="">Motivo do replanejamento</option>
+            <option value="">Motivo</option>
             <option value="AUMENTO_ESCOPO">Aumento de escopo</option>
             <option value="ATRASO_OPERACIONAL">Atraso operacional</option>
             <option value="REDISTRIBUICAO_EQUIPE">Redistribuição de equipe</option>
@@ -101,7 +102,7 @@ $conn->close();
       <div class="planning-board" id="planning-board">
         <div class="planning-stage-head"><span>#</span><span>Etapa</span><span>Volume</span><span>Duração</span><span>Início</span><span>Limite</span><span>Pessoas</span><span>Dependências</span></div>
         <div class="planning-timeline-head" aria-label="Escala de datas">
-          <div class="planning-timeline-controls"><button type="button" aria-label="Visualização mensal" data-scale="month">Mês</button><button type="button" aria-label="Visualização semanal" data-scale="week" class="is-active">Semana</button><button type="button" aria-label="Visualização diária" data-scale="day">Dia</button><span class="planning-legend"><b class="legend-today"></b>Hoje <b class="legend-due"></b>Entrega R00 <b class="legend-finish"></b>Fim planejado <i></i>Caminho crítico</span></div>
+          <div class="planning-timeline-controls"><button type="button" aria-label="Visualização mensal" data-scale="month">Mês</button><button type="button" aria-label="Visualização semanal" data-scale="week" class="is-active">Semana</button><button type="button" aria-label="Visualização diária" data-scale="day">Dia</button><span class="planning-legend"><b class="legend-today"></b>Hoje <b class="legend-due"></b>Entrega R00 <b class="legend-finish"></b>Fim planejado <i class="legend-progress"></i>Realizado</span></div>
           <div id="timeline-head"></div>
         </div>
         <div class="planning-stage-list" id="stage-list"></div>
@@ -117,7 +118,7 @@ $conn->close();
   </aside>
   <div class="planning-scrim" id="planning-scrim" hidden></div>
 
-  <script src="script.js?v=10" defer></script>
+  <script src="script.js?v=13" defer></script>
 </body>
 
 </html>

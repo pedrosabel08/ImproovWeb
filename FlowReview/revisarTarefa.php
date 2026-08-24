@@ -867,7 +867,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdfPublicacaoEnfileirada = false;
             if (
                 $pdfLogId > 0
-                && $status === 'Aprovado'
+                && in_array($status, ['Aprovado', 'Aprovado com ajustes'], true)
                 && pdf_approval_is_deferred_function($nome_funcao_db ?: $nome_funcao)
             ) {
                 pdf_approval_update_log_rows($conn, [$pdfLogId], 'publicacao_enfileirada');

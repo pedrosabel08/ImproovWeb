@@ -903,7 +903,7 @@ function process_approved_pdf_publications(): int
         return 0;
     }
     $rows = [];
-    $res = $conn->query("SELECT al.id, al.funcao_imagem_id, al.caminho, al.caminho_vps, al.caminho_nas, al.nome_arquivo, al.colaborador_id FROM arquivo_log al JOIN funcao_imagem fi ON fi.idfuncao_imagem = al.funcao_imagem_id WHERE UPPER(al.tipo) = 'PDF' AND al.status IN ('publicacao_enfileirada', 'falha_publicacao') AND fi.status = 'Aprovado' ORDER BY al.id ASC LIMIT 20");
+    $res = $conn->query("SELECT al.id, al.funcao_imagem_id, al.caminho, al.caminho_vps, al.caminho_nas, al.nome_arquivo, al.colaborador_id FROM arquivo_log al JOIN funcao_imagem fi ON fi.idfuncao_imagem = al.funcao_imagem_id WHERE UPPER(al.tipo) = 'PDF' AND al.status IN ('publicacao_enfileirada', 'falha_publicacao') AND fi.status IN ('Aprovado', 'Aprovado com ajustes') ORDER BY al.id ASC LIMIT 20");
     if ($res) {
         while ($row = $res->fetch_assoc()) {
             $rows[] = $row;

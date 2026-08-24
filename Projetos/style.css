@@ -95,8 +95,9 @@
 body {
   display: grid;
   grid-template-columns: 60px 1fr;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--bg-body);
   font-family:
     "Inter",
@@ -113,8 +114,9 @@ body {
   flex-direction: column;
   gap: 16px;
   padding: 20px 24px;
-  height: 100vh;
-  overflow-y: auto;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
 }
 
 /* Reset básico e tipografia geral */

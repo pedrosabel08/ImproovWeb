@@ -102,7 +102,7 @@
   padding: 7px 9px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 7px;
-  background: #25253a;
+  background: var(--sb-panel);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
   color: var(--sb-text);
   content: attr(data-tooltip);
@@ -542,7 +542,7 @@
     --sb-hover: rgba(92, 107, 192, 0.09);
     --sb-accent: #5267d8;
     --sb-icon: #58628e;
-    --sb-text: #e6e9fa;
+    --sb-text: #5f6481;
     --sb-muted: #777f9e;
     --sb-divider: rgba(35, 44, 81, 0.12);
     --sb-shadow: 12px 0 30px rgba(28, 33, 58, 0.16);

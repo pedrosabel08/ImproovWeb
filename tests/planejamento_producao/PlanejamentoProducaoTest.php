@@ -66,6 +66,8 @@ $itens[] = teste_item(19, 2, 'Fachada');
 $inicial = teste_plano($itens);
 teste_assert(teste_etapa($inicial, 'CADERNO_FILTRO')['volume'] === 14, 'Caderno/Filtro não pode dobrar volume.');
 teste_assert(teste_etapa($inicial, 'CADERNO_FILTRO')['duracao_dias_uteis'] === 14, 'Caderno/Filtro deve usar uma pessoa por padrão.');
+teste_assert(teste_etapa($inicial, 'MODELAGEM_INTERNA')['volume'] === 14, 'Modelagem Interna deve incluir as duas Imagens Externas da obra.');
+teste_assert(teste_etapa($inicial, 'MODELAGEM_FACHADA')['volume'] === 1, 'Modelagem da Fachada deve considerar somente o tipo Fachada.');
 teste_assert(teste_etapa($inicial, 'MODELAGEM_INTERNA')['dependencias'] === ['CADERNO_FILTRO'], 'Modelagem interna deve depender do marco combinado.');
 teste_assert(teste_etapa($inicial, 'COMPOSICAO')['dependencias'] === ['MODELAGEM_INTERNA'], 'Composição não pode aguardar Fachada.');
 teste_assert(teste_etapa($inicial, 'MODELAGEM_FACHADA')['duracao_dias_uteis'] === 7, 'Modelagem da Fachada deve manter janela fixa de sete dias.');
@@ -78,7 +80,7 @@ teste_assert(teste_etapa($inicial, 'POS_PRODUCAO')['duracao_dias_uteis'] === 3, 
 // Simulação requerida: 1 -> 2 apenas nas três etapas editáveis.
 $simulado = teste_plano($itens, ['CADERNO_FILTRO' => 2, 'MODELAGEM_INTERNA' => 2, 'COMPOSICAO' => 2]);
 teste_assert(teste_etapa($simulado, 'CADERNO_FILTRO')['duracao_dias_uteis'] === 7, '2 pessoas devem reduzir Caderno/Filtro de 14 para 7 dias.');
-teste_assert(teste_etapa($simulado, 'MODELAGEM_INTERNA')['duracao_dias_uteis'] === 6, '2 pessoas devem reduzir Modelagem Interna de 12 para 6 dias.');
+teste_assert(teste_etapa($simulado, 'MODELAGEM_INTERNA')['duracao_dias_uteis'] === 7, '2 pessoas devem reduzir Modelagem Interna de 14 para 7 dias.');
 teste_assert(teste_etapa($simulado, 'COMPOSICAO')['duracao_dias_uteis'] === 7, '2 pessoas devem reduzir Composição de 14 para 7 dias.');
 teste_assert(teste_etapa($simulado, 'MODELAGEM_FACHADA')['duracao_dias_uteis'] === 7, 'Capacidade não altera a janela fixa de Fachada.');
 teste_assert(teste_etapa($simulado, 'COMPOSICAO')['inicio'] === teste_etapa($simulado, 'MODELAGEM_INTERNA')['limite'], 'Recalcular capacidade deve propagar pela cadeia principal.');

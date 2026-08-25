@@ -2,6 +2,15 @@
 
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexaoMain.php';
+include_once __DIR__ . '/../conexao.php';
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
 
 if (empty($_SESSION['logado'])) {
     header('Location: ../index.html');
@@ -26,7 +35,19 @@ if ($obraId <= 0 || !improov_usuario_pode_acessar_obra($conn, $obraId)) {
     header('Location: ../acesso_negado.php');
     exit();
 }
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
+
 $conn->close();
+
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -39,9 +60,23 @@ $conn->close();
   <link rel="stylesheet" href="style.css?v=13">
   <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
     type="image/x-icon">
+  <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+    integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+    type="image/x-icon">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+  <link href="https://unpkg.com/tabulator-tables@6.2.0/dist/css/tabulator.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 </head>
 
 <body class="planning-page <?= $tema ?>" data-obra-id="<?= $obraId ?>" data-entrega-id="<?= $entregaId ?>">
+
+  <?php include '../sidebar.php'; ?>
+
   <main class="planning-shell" aria-live="polite">
     <header class="planning-header" aria-labelledby="planning-title">
       <section class="planning-title-block">
@@ -119,6 +154,13 @@ $conn->close();
   <div class="planning-scrim" id="planning-scrim" hidden></div>
 
   <script src="script.js?v=13" defer></script>
+  <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.2.0/dist/js/tabulator.min.js"></script>
+
 </body>
 
 </html>

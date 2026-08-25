@@ -22,23 +22,66 @@ const FLOW_CAPACIDADE_ESTRATEGIA_NAO_CONSUME = 'NON_CAPACITY';
 function flow_capacidade_definicoes_etapas(): array
 {
     return [
-        'CADERNO_FILTRO' => ['nome' => 'Caderno + Filtro de Assets', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
+        'CADERNO_FILTRO' => [
+            'nome' => 'Caderno + Filtro de Assets',
+            'nome_painel' => 'Caderno / Filtro',
+            'ordem_painel' => 10,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
         'MODELAGEM_FACHADA' => [
             'nome' => 'Modelagem da Fachada',
+            'ordem_painel' => 15,
             'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_NAO_CONSUME,
             'motivo_nao_consume' => 'JANELA_GERENCIAL_FIXA_SEM_EVIDENCIA_DE_OCUPACAO_INTEGRAL',
         ],
-        'MODELAGEM_INTERNA' => ['nome' => 'Modelagem Interna', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
-        'COMPOSICAO' => ['nome' => 'Composição', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
-        'FINALIZACAO_EXTERNA' => ['nome' => 'Finalização Externa', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
-        'FINALIZACAO_INTERNA' => ['nome' => 'Finalização Interna', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
-        'FINALIZACAO_PLANTA' => ['nome' => 'Finalização Planta', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
+        'MODELAGEM_INTERNA' => [
+            'nome' => 'Modelagem Interna',
+            'nome_painel' => 'Modelagem',
+            'ordem_painel' => 20,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
+        'COMPOSICAO' => [
+            'nome' => 'Composição',
+            'nome_painel' => 'Composição',
+            'ordem_painel' => 30,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
+        'FINALIZACAO_EXTERNA' => [
+            'nome' => 'Finalização Externa',
+            'nome_painel' => 'Finalização Externa',
+            'ordem_painel' => 40,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
+        'FINALIZACAO_INTERNA' => [
+            'nome' => 'Finalização Interna',
+            'nome_painel' => 'Finalização Interna',
+            'ordem_painel' => 50,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
+        'FINALIZACAO_PLANTA' => [
+            'nome' => 'Finalização Planta',
+            'nome_painel' => 'Finalização Planta',
+            'ordem_painel' => 60,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
         'FINALIZACAO_GLOBAL' => [
             'nome' => 'Finalização (marco global)',
             'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_NAO_CONSUME,
             'motivo_nao_consume' => 'MARCO_VIRTUAL_AGREGADOR_DE_POOLS',
         ],
-        'POS_PRODUCAO' => ['nome' => 'Pós-Produção', 'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA],
+        'POS_PRODUCAO' => [
+            'nome' => 'Pós-Produção',
+            'nome_painel' => 'Pós-Produção',
+            'ordem_painel' => 70,
+            'visivel_painel' => true,
+            'estrategia' => FLOW_CAPACIDADE_ESTRATEGIA_JANELA_COMPLETA,
+        ],
     ];
 }
 
@@ -223,6 +266,10 @@ function flow_capacidade_carregar_configuracoes_colaboradores(mysqli $conn): arr
     $configuracoes = [];
     $mapaFuncoes = [
         'CADERNO_FILTRO' => [1, 8],
+        // Embora a demanda da Fachada não seja inferida no heatmap global,
+        // ela continua sendo uma frente real de Modelagem e precisa expor os
+        // mesmos colaboradores elegíveis na Central de Alocação.
+        'MODELAGEM_FACHADA' => [2],
         'MODELAGEM_INTERNA' => [2],
         'COMPOSICAO' => [3],
         'POS_PRODUCAO' => [5],
@@ -598,6 +645,22 @@ function flow_capacidade_agrupar_conflitos(array $dias): array
     return $periodos;
 }
 
+function flow_capacidade_prioridade_classificacao(string $classificacao): int
+{
+    return [
+        'SEM_CAPACIDADE_CONFIGURADA' => 5,
+        'CONFLITO' => 4,
+        'SEM_PRINCIPAIS_CONFIGURADOS' => 3,
+        'NECESSITA_APOIO' => 2,
+        'SAUDAVEL' => 1,
+        'SEM_DEMANDA' => 0,
+    ][$classificacao] ?? 0;
+}
+
+/**
+ * A UI usa semanas, mas a decisão é sempre ancorada no pior dia útil: média
+ * semanal nunca pode esconder um conflito pontual.
+ */
 function flow_capacidade_resumo_semanal(array $dias): array
 {
     $semanas = [];
@@ -616,6 +679,13 @@ function flow_capacidade_resumo_semanal(array $dias): array
                 'apoio_maximo' => 0.0,
                 'dias_analisados' => 0,
                 'sem_configuracao' => false,
+                'principal_no_limite' => false,
+                'dia_referencia' => null,
+                'classificacao_referencia' => 'SEM_DEMANDA',
+                'capacidade_principal_referencia' => null,
+                'capacidade_secundaria_referencia' => null,
+                'capacidade_total_referencia' => null,
+                'projetos' => [],
             ];
         }
         $item = &$semanas[$semana];
@@ -633,6 +703,45 @@ function flow_capacidade_resumo_semanal(array $dias): array
         $item['deficit_maximo'] = max((float) $item['deficit_maximo'], (float) ($dia['deficit'] ?? 0));
         $item['apoio_maximo'] = max((float) $item['apoio_maximo'], (float) ($dia['necessidade_apoio'] ?? 0));
         $item['sem_configuracao'] = $item['sem_configuracao'] || $dia['classificacao'] === 'SEM_CAPACIDADE_CONFIGURADA';
+        $item['principal_no_limite'] = $item['principal_no_limite'] || !empty($dia['principal_no_limite']);
+
+        $prioridadeAtual = flow_capacidade_prioridade_classificacao((string) ($item['classificacao_referencia'] ?? 'SEM_DEMANDA'));
+        $prioridadeDia = flow_capacidade_prioridade_classificacao((string) ($dia['classificacao'] ?? 'SEM_DEMANDA'));
+        $mesmaPrioridadeComPiorImpacto = $prioridadeDia === $prioridadeAtual
+            && (
+                (float) ($dia['deficit'] ?? 0) > (float) ($item['deficit_referencia'] ?? 0)
+                || (float) ($dia['necessidade_apoio'] ?? 0) > (float) ($item['apoio_referencia'] ?? 0)
+                || (float) ($dia['demanda_planejada'] ?? 0) > (float) ($item['demanda_referencia'] ?? 0)
+            );
+        $deveSubstituirReferencia = $item['dia_referencia'] === null
+            || $prioridadeDia > $prioridadeAtual
+            || $mesmaPrioridadeComPiorImpacto;
+        if ($deveSubstituirReferencia) {
+            $item['dia_referencia'] = $dia['data'];
+            $item['classificacao_referencia'] = $dia['classificacao'];
+            $item['capacidade_principal_referencia'] = $dia['capacidade_principal'];
+            $item['capacidade_secundaria_referencia'] = $dia['capacidade_secundaria'];
+            $item['capacidade_total_referencia'] = $dia['capacidade_total'];
+            $item['demanda_referencia'] = $dia['demanda_planejada'];
+            $item['apoio_referencia'] = $dia['necessidade_apoio'];
+            $item['deficit_referencia'] = $dia['deficit'];
+        }
+        foreach (($dia['projetos'] ?? []) as $projeto) {
+            $chave = (string) ($projeto['versao_id'] ?? $projeto['planejamento_id'] ?? '');
+            if ($chave === '') {
+                continue;
+            }
+            if (!isset($item['projetos'][$chave])) {
+                $item['projetos'][$chave] = $projeto + [
+                    'dias_consumindo_semana' => 0,
+                    'primeiro_dia_semana' => $dia['data'],
+                    'ultimo_dia_semana' => $dia['data'],
+                ];
+            }
+            $item['projetos'][$chave]['dias_consumindo_semana']++;
+            $item['projetos'][$chave]['primeiro_dia_semana'] = min((string) $item['projetos'][$chave]['primeiro_dia_semana'], (string) $dia['data']);
+            $item['projetos'][$chave]['ultimo_dia_semana'] = max((string) $item['projetos'][$chave]['ultimo_dia_semana'], (string) $dia['data']);
+        }
         unset($item);
     }
     foreach ($semanas as &$semana) {
@@ -644,6 +753,14 @@ function flow_capacidade_resumo_semanal(array $dias): array
                     ? 'SEM_PRINCIPAIS_CONFIGURADOS'
                     : ($semana['dias_necessita_apoio'] > 0 ? 'NECESSITA_APOIO' : 'SAUDAVEL')));
         unset($semana['sem_configuracao']);
+        $semana['projetos'] = array_values($semana['projetos']);
+        usort($semana['projetos'], static function (array $a, array $b): int {
+            $margemA = $a['margem_dias_uteis'] ?? PHP_INT_MAX;
+            $margemB = $b['margem_dias_uteis'] ?? PHP_INT_MAX;
+            return $margemA <=> $margemB
+                ?: ((float) ($b['capacidade_planejada'] ?? 0) <=> (float) ($a['capacidade_planejada'] ?? 0))
+                ?: strcmp((string) ($a['obra'] ?? ''), (string) ($b['obra'] ?? ''));
+        });
     }
     unset($semana);
     return array_values($semanas);
@@ -672,7 +789,6 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
         if (!empty($filtros['obra_id']) && (int) $plano['obra_id'] !== (int) $filtros['obra_id']) {
             continue;
         }
-        $planosConsiderados[(int) $plano['versao_id']] = $plano;
         foreach (($plano['etapas'] ?? []) as $etapa) {
             $codigo = (string) ($etapa['codigo_etapa'] ?? $etapa['codigo'] ?? '');
             if ($codigo === '' || (!empty($filtros['etapa']) && $codigo !== (string) $filtros['etapa'])) {
@@ -711,7 +827,14 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
             }
             $faixaInicio = max($inicio, $inicioEtapa);
             $faixaFim = min($fim, $fimEtapa);
-            foreach (flow_capacidade_dias_uteis_no_intervalo($faixaInicio, $faixaFim) as $dia) {
+            $diasDaFaixa = flow_capacidade_dias_uteis_no_intervalo($faixaInicio, $faixaFim);
+            if (!$diasDaFaixa) {
+                continue;
+            }
+            // O plano só é considerado no horizonte global quando uma etapa
+            // de fato consome capacidade dentro do intervalo consultado.
+            $planosConsiderados[(int) $plano['versao_id']] = $plano;
+            foreach ($diasDaFaixa as $dia) {
                 $diasPorEtapa[$codigo][$dia][] = [
                     'planejamento_id' => (int) $plano['planejamento_id'],
                     'versao_id' => (int) $plano['versao_id'],
@@ -764,7 +887,7 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
                 'projetos' => $projetos,
             ], $estado);
         }
-        $temDemanda = array_filter($dias, static fn(array $dia): bool => $dia['demanda_planejada'] > 0.0);
+        $temDemanda = array_filter($dias, static fn (array $dia): bool => $dia['demanda_planejada'] > 0.0);
         if (!$temDemanda) {
             continue;
         }
@@ -777,6 +900,9 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
         $etapas[] = [
             'codigo_etapa' => $codigo,
             'etapa' => $definicao['nome'],
+            'nome_painel' => $definicao['nome_painel'] ?? $definicao['nome'],
+            'ordem_painel' => (int) ($definicao['ordem_painel'] ?? 999),
+            'visivel_painel' => !empty($definicao['visivel_painel']),
             'estrategia_consumo' => $definicao['estrategia'],
             'dias' => $dias,
             'semanas' => flow_capacidade_resumo_semanal($dias),
@@ -787,6 +913,8 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
     $conflitos = [];
     $diasNecessitaApoio = 0;
     $diasSemPrincipais = 0;
+    $resumoEtapas = [];
+    $prioridade = null;
     foreach ($etapas as $etapa) {
         foreach ($etapa['conflitos'] as $conflito) {
             $conflitos[] = $conflito;
@@ -795,8 +923,45 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
             $diasNecessitaApoio += ($dia['classificacao'] ?? '') === 'NECESSITA_APOIO' ? 1 : 0;
             $diasSemPrincipais += ($dia['classificacao'] ?? '') === 'SEM_PRINCIPAIS_CONFIGURADOS' ? 1 : 0;
         }
+        $classificacaoEtapa = 'SAUDAVEL';
+        $melhorSemana = null;
+        foreach ($etapa['semanas'] as $semana) {
+            if (flow_capacidade_prioridade_classificacao((string) $semana['classificacao']) > flow_capacidade_prioridade_classificacao($classificacaoEtapa)) {
+                $classificacaoEtapa = (string) $semana['classificacao'];
+            }
+            if ($melhorSemana === null
+                || flow_capacidade_prioridade_classificacao((string) $semana['classificacao']) > flow_capacidade_prioridade_classificacao((string) $melhorSemana['classificacao'])
+                || (flow_capacidade_prioridade_classificacao((string) $semana['classificacao']) === flow_capacidade_prioridade_classificacao((string) $melhorSemana['classificacao'])
+                    && ((float) ($semana['deficit_maximo'] ?? 0) > (float) ($melhorSemana['deficit_maximo'] ?? 0)
+                        || (float) ($semana['apoio_maximo'] ?? 0) > (float) ($melhorSemana['apoio_maximo'] ?? 0)))) {
+                $melhorSemana = $semana;
+            }
+        }
+        $resumoEtapas[] = [
+            'codigo_etapa' => $etapa['codigo_etapa'],
+            'etapa' => $etapa['etapa'],
+            'nome_painel' => $etapa['nome_painel'],
+            'ordem_painel' => $etapa['ordem_painel'],
+            'classificacao' => $classificacaoEtapa,
+            'semana_critica' => $melhorSemana,
+        ];
+        if ($melhorSemana !== null) {
+            $candidatoPrioridade = [
+                'codigo_etapa' => $etapa['codigo_etapa'],
+                'etapa' => $etapa['etapa'],
+                'nome_painel' => $etapa['nome_painel'],
+                'semana' => $melhorSemana,
+            ];
+            if ($prioridade === null
+                || flow_capacidade_prioridade_classificacao((string) $candidatoPrioridade['semana']['classificacao']) > flow_capacidade_prioridade_classificacao((string) $prioridade['semana']['classificacao'])
+                || (flow_capacidade_prioridade_classificacao((string) $candidatoPrioridade['semana']['classificacao']) === flow_capacidade_prioridade_classificacao((string) $prioridade['semana']['classificacao'])
+                    && ((float) ($candidatoPrioridade['semana']['deficit_maximo'] ?? 0) > (float) ($prioridade['semana']['deficit_maximo'] ?? 0)
+                        || (float) ($candidatoPrioridade['semana']['apoio_maximo'] ?? 0) > (float) ($prioridade['semana']['apoio_maximo'] ?? 0)))) {
+                $prioridade = $candidatoPrioridade;
+            }
+        }
     }
-    $obras = array_unique(array_map(static fn(array $plano): int => (int) $plano['obra_id'], $planosConsiderados));
+    $obras = array_unique(array_map(static fn (array $plano): int => (int) $plano['obra_id'], $planosConsiderados));
     $capacidades = [];
     foreach ($configuracoes as $codigo => $configuracao) {
         $capacidades[$codigo] = [
@@ -814,6 +979,34 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
             'overrides' => $configuracao['overrides'] ?? [],
         ];
     }
+    usort($etapas, static fn (array $a, array $b): int => ($a['ordem_painel'] ?? 999) <=> ($b['ordem_painel'] ?? 999));
+    usort($resumoEtapas, static fn (array $a, array $b): int => ($a['ordem_painel'] ?? 999) <=> ($b['ordem_painel'] ?? 999));
+    $catalogoEtapas = [];
+    foreach ($definicoes as $codigo => $definicao) {
+        if (empty($definicao['visivel_painel'])) {
+            continue;
+        }
+        $catalogoEtapas[] = [
+            'codigo_etapa' => $codigo,
+            'etapa' => $definicao['nome'],
+            'nome_painel' => $definicao['nome_painel'] ?? $definicao['nome'],
+            'ordem_painel' => (int) ($definicao['ordem_painel'] ?? 999),
+        ];
+    }
+    usort($catalogoEtapas, static fn (array $a, array $b): int => $a['ordem_painel'] <=> $b['ordem_painel']);
+    $resumoClassificacoes = [
+        'SAUDAVEL' => 0,
+        'NECESSITA_APOIO' => 0,
+        'CONFLITO' => 0,
+        'SEM_PRINCIPAIS_CONFIGURADOS' => 0,
+        'SEM_CAPACIDADE_CONFIGURADA' => 0,
+    ];
+    foreach ($resumoEtapas as $resumoEtapa) {
+        $codigoClassificacao = (string) $resumoEtapa['classificacao'];
+        if (array_key_exists($codigoClassificacao, $resumoClassificacoes)) {
+            $resumoClassificacoes[$codigoClassificacao]++;
+        }
+    }
     return [
         'periodo' => ['inicio' => $inicio, 'fim' => $fim],
         'tipo_demanda' => 'PLANEJADA',
@@ -824,13 +1017,17 @@ function flow_capacidade_calcular_demanda_planejada(array $planos, string $inici
             'conflitos' => count($conflitos),
             'dias_necessita_apoio' => $diasNecessitaApoio,
             'dias_sem_principais_configurados' => $diasSemPrincipais,
-            'planos_desatualizados' => count(array_filter($planosConsiderados, static fn(array $plano): bool => ($plano['estado'] ?? '') === 'DESATUALIZADO')),
+            'planos_desatualizados' => count(array_filter($planosConsiderados, static fn (array $plano): bool => ($plano['estado'] ?? '') === 'DESATUALIZADO')),
+            'funcoes_por_classificacao' => $resumoClassificacoes,
         ],
         'planos_considerados' => array_values(array_map(static function (array $plano): array {
             unset($plano['etapas']);
             return $plano;
         }, $planosConsiderados)),
         'etapas' => $etapas,
+        'catalogo_etapas' => $catalogoEtapas,
+        'resumo_etapas' => $resumoEtapas,
+        'prioridade' => $prioridade,
         'conflitos' => $conflitos,
         'etapas_sem_demanda_inferida' => $exclusoes,
         'capacidades' => $capacidades,

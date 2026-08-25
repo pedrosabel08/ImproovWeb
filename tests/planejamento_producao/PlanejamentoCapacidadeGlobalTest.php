@@ -166,6 +166,14 @@ $inativos = capacidade_teste_resultado([
 ], ['COMPOSICAO' => 4]);
 capacidade_teste_assert($inativos['resumo']['planos_considerados'] === 0, 'Entrega concluída/arquivada e obra inativa não podem consumir capacidade.');
 
+$foraDoPeriodo = capacidade_teste_resultado([
+    capacidade_teste_plano(1, 10, [capacidade_teste_etapa('COMPOSICAO', '2026-11-02', '2026-11-06', 1)]),
+], ['COMPOSICAO' => 2], '2026-09-14', '2026-09-18');
+capacidade_teste_assert(
+    $foraDoPeriodo['resumo']['planos_considerados'] === 0 && empty($foraDoPeriodo['etapas']),
+    'Plano vigente fora do horizonte consultado não pode aparecer como planejamento do período.'
+);
+
 $semConfiguracao = capacidade_teste_resultado([
     capacidade_teste_plano(1, 10, [capacidade_teste_etapa('COMPOSICAO', '2026-09-14', '2026-09-14', 1)]),
 ], []);
@@ -186,6 +194,12 @@ $parcial = capacidade_teste_resultado([
 $etapaParcial = capacidade_teste_etapa_resultado($parcial, 'COMPOSICAO');
 capacidade_teste_assert($etapaParcial['conflitos'][0]['data_inicio'] === '2026-09-16' && $etapaParcial['conflitos'][0]['data_fim'] === '2026-09-16', 'A sobreposição parcial deve conflitar somente no dia real.');
 capacidade_teste_assert($etapaParcial['semanas'][0]['dias_conflito'] === 1 && $etapaParcial['semanas'][0]['pico_demanda'] === 5.0, 'Resumo semanal deve manter pico e dia crítico.');
+capacidade_teste_assert(
+    $etapaParcial['semanas'][0]['classificacao'] === 'CONFLITO'
+    && $etapaParcial['semanas'][0]['dia_referencia'] === '2026-09-16'
+    && count($etapaParcial['semanas'][0]['projetos']) === 2,
+    'A célula semanal deve expor o pior dia e as obras envolvidas, sem recalcular no frontend.'
+);
 
 $continuo = capacidade_teste_resultado([
     capacidade_teste_plano(1, 10, [capacidade_teste_etapa('COMPOSICAO', '2026-09-14', '2026-09-18', 5)]),

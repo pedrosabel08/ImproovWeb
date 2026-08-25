@@ -58,7 +58,7 @@ body {
 }
 
 body.planning-page {
-  display: block;
+  display: grid;
   min-height: 100vh;
   overflow-x: hidden;
   background: radial-gradient(
@@ -67,6 +67,7 @@ body.planning-page {
     var(--pp-bg) 64%
   );
   color: var(--pp-text);
+  grid-template-columns: 60px 1fr;
 }
 
 body.planning-page.light {
@@ -98,10 +99,8 @@ button {
 }
 
 .planning-shell {
-  width: calc(100% - 36px);
-  max-width: 1800px;
-  margin: 0 auto;
-  padding: 20px 0 14px;
+  padding: 15px;
+  grid-column: 2;
 }
 
 header.planning-header {
@@ -622,10 +621,9 @@ body.planning-page.light .planning-diagnosis > #plan-status-card {
     rgba(27, 23, 31, 0.92)
   );
   display: grid;
-  grid-template-columns: minmax(230px, 0.8fr) minmax(300px, 1fr) minmax(
-      300px,
-      1fr
-    ) minmax(420px, 1.55fr);
+  grid-template-columns:
+    minmax(230px, 0.8fr) minmax(300px, 1fr) minmax(300px, 1fr)
+    minmax(420px, 1.55fr);
   align-items: center;
   gap: 14px;
   min-height: 74px;

@@ -1,0 +1,32 @@
+-- V1.4 — validações excepcionais de capacidade por contexto.
+-- A alocação das tarefas continua em funcao_imagem.colaborador_id.
+CREATE TABLE IF NOT EXISTS entrega_planejamento_capacidade_validacao (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    planejamento_id BIGINT UNSIGNED NOT NULL,
+    versao_id BIGINT UNSIGNED NOT NULL,
+    entrega_id INT NOT NULL,
+    obra_id INT NOT NULL,
+    colaborador_id INT NOT NULL,
+    codigo_etapa VARCHAR(50) NOT NULL,
+    data_inicio DATE NOT NULL,
+    data_fim DATE NOT NULL,
+    carga_percentual DECIMAL(8,2) NOT NULL,
+    pico_carga DECIMAL(10,4) NOT NULL,
+    fingerprint CHAR(64) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'VALIDA',
+    observacao VARCHAR(500) NULL,
+    validado_por_colaborador_id INT NULL,
+    validado_em DATETIME NULL,
+    invalidado_em DATETIME NULL,
+    motivo_invalidacao VARCHAR(120) NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_epcv_contexto (planejamento_id, versao_id, entrega_id, colaborador_id, codigo_etapa, fingerprint),
+    KEY idx_epcv_atual (versao_id, colaborador_id, codigo_etapa, status),
+    KEY idx_epcv_entrega (entrega_id, codigo_etapa),
+    CONSTRAINT fk_epcv_planejamento FOREIGN KEY (planejamento_id) REFERENCES entrega_planejamento_producao (id),
+    CONSTRAINT fk_epcv_versao FOREIGN KEY (versao_id) REFERENCES entrega_planejamento_versao (id),
+    CONSTRAINT fk_epcv_colaborador FOREIGN KEY (colaborador_id) REFERENCES colaborador (idcolaborador),
+    CONSTRAINT fk_epcv_validador FOREIGN KEY (validado_por_colaborador_id) REFERENCES colaborador (idcolaborador)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

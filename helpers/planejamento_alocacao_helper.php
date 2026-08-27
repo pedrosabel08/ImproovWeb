@@ -15,6 +15,60 @@ require_once __DIR__ . '/planejamento_capacidade_global_helper.php';
 
 const FLOW_ALOCACAO_STATUS_PENDENTE_MATERIALIZACAO = 'PENDENTE_MATERIALIZACAO';
 const FLOW_ALOCACAO_ALERTA_POOL_FINALIZACAO_HARDCODED = 'POOL_FINALIZACAO_HARDCODED';
+const FLOW_ALOCACAO_STATUS_NORMAL = 'NORMAL';
+const FLOW_ALOCACAO_STATUS_SOBRECARGA_NAO_VALIDADA = 'SOBRECARGA_NAO_VALIDADA';
+const FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA = 'SOBRECARGA_VALIDADA';
+const FLOW_ALOCACAO_STATUS_VALIDACAO_DESATUALIZADA = 'VALIDACAO_DESATUALIZADA';
+const FLOW_ALOCACAO_STATUS_CAPACIDADE_PENDENTE_VALIDACAO = 'CAPACIDADE_PENDENTE_VALIDACAO';
+const FLOW_ALOCACAO_STATUS_ALOCACAO_VALIDADA_EXCECAO = 'ALOCACAO_VALIDADA_COM_EXCECAO';
+
+function flow_alocacao_validacoes_disponiveis(mysqli $conn): bool
+{
+    static $cache = [];
+    $key = spl_object_id($conn);
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $stmt = $conn->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'entrega_planejamento_capacidade_validacao' LIMIT 1");
+    if (!$stmt) {
+        return $cache[$key] = false;
+    }
+    $stmt->execute();
+    $exists = $stmt->get_result()->num_rows > 0;
+    $stmt->close();
+    return $cache[$key] = $exists;
+}
+
+function flow_alocacao_json_canonico(array $valor): string
+{
+    $normalizar = static function ($item) use (&$normalizar) {
+        if (!is_array($item)) {
+            return $item;
+        }
+        if (array_is_list($item)) {
+            return array_map($normalizar, $item);
+        }
+        ksort($item);
+        foreach ($item as $chave => $parte) {
+            $item[$chave] = $normalizar($parte);
+        }
+        return $item;
+    };
+    return json_encode($normalizar($valor), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+}
+
+function flow_alocacao_status_carga(float $pico, bool $validacaoVigente = false, bool $validacaoAnterior = false): string
+{
+    if ($pico <= 1.0001) {
+        return FLOW_ALOCACAO_STATUS_NORMAL;
+    }
+    if ($validacaoVigente) {
+        return FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA;
+    }
+    return $validacaoAnterior
+        ? FLOW_ALOCACAO_STATUS_VALIDACAO_DESATUALIZADA
+        : FLOW_ALOCACAO_STATUS_SOBRECARGA_NAO_VALIDADA;
+}
 
 function flow_alocacao_chave_etapa(int $entregaId, string $codigoEtapa): string
 {
@@ -177,13 +231,19 @@ function flow_alocacao_tipo_atuacao_candidato(array $elegiveis, int $colaborador
         : null;
 }
 
-function flow_alocacao_status_etapa(array $resumo, int $pessoasPlanejadas, int $pendentesMaterializacao, bool $foraDoPlano, bool $temConflito): string
+function flow_alocacao_status_etapa(array $resumo, int $pessoasPlanejadas, int $pendentesMaterializacao, bool $foraDoPlano, bool $temConflito, bool $temSobrecargaNaoValidada = false, bool $temSobrecargaValidada = false): string
 {
     $materializadas = (int) ($resumo['materializado'] ?? $resumo['materializadas'] ?? 0);
     $alocadas = (int) ($resumo['alocado'] ?? $resumo['alocadas'] ?? 0);
     $semResponsavel = (int) ($resumo['sem_responsavel'] ?? 0);
     if ($foraDoPlano) {
         return 'FORA_DO_PLANO';
+    }
+    if ($temSobrecargaNaoValidada) {
+        return FLOW_ALOCACAO_STATUS_CAPACIDADE_PENDENTE_VALIDACAO;
+    }
+    if ($temSobrecargaValidada) {
+        return FLOW_ALOCACAO_STATUS_ALOCACAO_VALIDADA_EXCECAO;
     }
     if ($temConflito) {
         return 'CONFLITO';
@@ -356,8 +416,81 @@ function flow_alocacao_carga_na_janela(array $carga, array $diasDaEtapa): array
     return [
         'pessoa_dias' => array_sum($dias),
         'pico_carga' => $dias ? max($dias) : 0.0,
+        'dias' => $dias,
+        'referencias' => $referencias,
         'conflitos' => $conflitos,
     ];
+}
+
+function flow_alocacao_carregar_validacoes(mysqli $conn, array $planos): array
+{
+    if (!$planos || !flow_alocacao_validacoes_disponiveis($conn)) {
+        return [];
+    }
+    $versoes = array_values(array_unique(array_filter(array_map(static fn (array $plano): int => (int) ($plano['versao_id'] ?? 0), $planos))));
+    if (!$versoes) {
+        return [];
+    }
+    $sql = 'SELECT * FROM entrega_planejamento_capacidade_validacao WHERE versao_id IN (' . implode(',', $versoes) . ') AND status = \'VALIDA\' ORDER BY id DESC';
+    $resultado = $conn->query($sql);
+    if (!$resultado) {
+        throw new RuntimeException('Não foi possível carregar validações de capacidade: ' . $conn->error);
+    }
+    $validacoes = [];
+    while ($linha = $resultado->fetch_assoc()) {
+        $chave = (int) $linha['versao_id'] . ':' . (int) $linha['colaborador_id'] . ':' . (string) $linha['codigo_etapa'];
+        $validacoes[$chave][] = $linha;
+    }
+    $resultado->free();
+    return $validacoes;
+}
+
+function flow_alocacao_validacao_contextual(array $validacoes, array $etapa, array $pessoa, string $fingerprint): array
+{
+    $chave = (int) ($etapa['versao_id'] ?? 0) . ':' . (int) ($pessoa['id'] ?? 0) . ':' . (string) ($etapa['codigo_etapa'] ?? '');
+    $historico = $validacoes[$chave] ?? [];
+    foreach ($historico as $validacao) {
+        if ((string) ($validacao['fingerprint'] ?? '') === $fingerprint) {
+            return [
+                'status' => FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA,
+                'registro' => $validacao,
+            ];
+        }
+    }
+    return [
+        'status' => $historico ? FLOW_ALOCACAO_STATUS_VALIDACAO_DESATUALIZADA : FLOW_ALOCACAO_STATUS_SOBRECARGA_NAO_VALIDADA,
+        'registro' => $historico[0] ?? null,
+    ];
+}
+
+function flow_alocacao_fingerprint_pessoa(array $etapa, array $pessoa, array $dias, array $tarefas): string
+{
+    $tarefasContexto = [];
+    foreach ($tarefas as $unidade) {
+        foreach (($unidade['tarefas'] ?? []) as $tarefa) {
+            $tarefasContexto[] = [
+                'id' => (int) ($tarefa['tarefa_id'] ?? 0),
+                'responsavel' => (int) ($tarefa['colaborador_id'] ?? 0),
+                'status' => (string) ($tarefa['status'] ?? ''),
+            ];
+        }
+    }
+    usort($tarefasContexto, static fn (array $a, array $b): int => ($a['id'] <=> $b['id']) ?: ($a['responsavel'] <=> $b['responsavel']));
+    return hash('sha256', flow_alocacao_json_canonico([
+        'planejamento_id' => (int) ($etapa['planejamento_id'] ?? 0),
+        'versao_id' => (int) ($etapa['versao_id'] ?? 0),
+        'entrega_id' => (int) ($etapa['entrega_id'] ?? 0),
+        'obra_id' => (int) ($etapa['obra_id'] ?? 0),
+        'codigo_etapa' => (string) ($etapa['codigo_etapa'] ?? ''),
+        'colaborador_id' => (int) ($pessoa['id'] ?? 0),
+        'inicio' => (string) ($etapa['inicio'] ?? ''),
+        'limite' => (string) ($etapa['limite'] ?? ''),
+        'duracao' => (int) ($etapa['duracao_dias_uteis'] ?? 0),
+        'pessoas_planejadas' => (int) ($etapa['pessoas_planejadas'] ?? 0),
+        'planejado' => (int) ($etapa['planejado'] ?? 0),
+        'dias' => $dias,
+        'tarefas' => $tarefasContexto,
+    ]));
 }
 
 function flow_alocacao_consultar(mysqli $conn, string $inicio, string $fim, array $opcoes = []): array
@@ -372,6 +505,21 @@ function flow_alocacao_consultar(mysqli $conn, string $inicio, string $fim, arra
     $planos = flow_capacidade_carregar_planos_vigentes($conn, $inicio, $fim, $opcoes);
     $definicoes = flow_capacidade_definicoes_etapas();
     $configuracoes = flow_capacidade_carregar_configuracoes_colaboradores($conn);
+    $validacoes = flow_alocacao_carregar_validacoes($conn, $planos);
+    $responsaveisOverride = [];
+    foreach ((array) ($opcoes['responsaveis_override'] ?? []) as $tarefaId => $colaboradorId) {
+        $tarefaId = (int) $tarefaId;
+        $colaboradorId = (int) $colaboradorId;
+        if ($tarefaId > 0 && $colaboradorId > 0) {
+            $responsaveisOverride[$tarefaId] = $colaboradorId;
+        }
+    }
+    $colaboradoresPorId = [];
+    foreach ($configuracoes as $configuracao) {
+        foreach (($configuracao['colaboradores'] ?? []) as $colaborador) {
+            $colaboradoresPorId[(int) $colaborador['id']] = $colaborador;
+        }
+    }
     $indices = [];
     $entradas = [];
 
@@ -399,6 +547,16 @@ function flow_alocacao_consultar(mysqli $conn, string $inicio, string $fim, arra
     foreach (flow_alocacao_carregar_tarefas_reais($conn, $entregaIds) as $tarefa) {
         if (flow_planejamento_normalizar((string) ($tarefa['status'] ?? '')) === 'cancelado') {
             continue;
+        }
+        $tarefaId = (int) ($tarefa['tarefa_id'] ?? 0);
+        if (isset($responsaveisOverride[$tarefaId])) {
+            $novoResponsavelId = $responsaveisOverride[$tarefaId];
+            $tarefa['colaborador_id'] = $novoResponsavelId;
+            if (isset($colaboradoresPorId[$novoResponsavelId])) {
+                $tarefa['responsavel_nome'] = $colaboradoresPorId[$novoResponsavelId]['nome'];
+                $tarefa['responsavel_ativo'] = 1;
+                $tarefa['responsavel_elegivel_capacidade'] = 1;
+            }
         }
         $codigo = flow_planejamento_codigo_etapa($tarefa);
         $chave = flow_alocacao_chave_etapa((int) $tarefa['entrega_id'], (string) $codigo);
@@ -569,23 +727,41 @@ function flow_alocacao_consultar(mysqli $conn, string $inicio, string $fim, arra
     $grupos = [];
     foreach ($resultadoEtapas as &$etapa) {
         $temConflito = false;
+        $temSobrecargaNaoValidada = false;
+        $temSobrecargaValidada = false;
         $cargasDaEtapa = [];
         foreach ($cargasPorPessoa as $id => $cargaGlobal) {
             $cargasDaEtapa[(int) $id] = flow_alocacao_carga_na_janela($cargaGlobal, $etapa['dias_carga']);
         }
         foreach ($etapa['pessoas'] as &$pessoa) {
-            $carga = $cargasDaEtapa[(int) $pessoa['id']] ?? ['pessoa_dias' => 0.0, 'pico_carga' => 0.0, 'conflitos' => []];
+            $carga = $cargasDaEtapa[(int) $pessoa['id']] ?? ['pessoa_dias' => 0.0, 'pico_carga' => 0.0, 'dias' => [], 'referencias' => [], 'conflitos' => []];
             $pessoa['carga_periodo'] = round((float) $carga['pico_carga'], 4);
             $pessoa['carga_periodo_percentual'] = round(100 * (float) $carga['pico_carga'], 1);
             $pessoa['conflitos'] = array_values($carga['conflitos']);
+            $pessoa['carga_dias'] = array_map(
+                static fn (float $ocupacao, string $dia): array => [
+                    'data' => $dia,
+                    'carga' => round($ocupacao, 4),
+                    'percentual' => round($ocupacao * 100, 1),
+                    'referencias' => array_values($carga['referencias'][$dia] ?? []),
+                ],
+                $carga['dias'],
+                array_keys($carga['dias'])
+            );
+            $pessoa['fingerprint_carga'] = flow_alocacao_fingerprint_pessoa($etapa, $pessoa, $pessoa['carga_dias'], $etapa['tarefas_operacionais']);
+            $validacao = flow_alocacao_validacao_contextual($validacoes, $etapa, $pessoa, $pessoa['fingerprint_carga']);
+            $pessoa['status_carga'] = flow_alocacao_status_carga((float) $carga['pico_carga'], $validacao['status'] === FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA, $validacao['status'] === FLOW_ALOCACAO_STATUS_VALIDACAO_DESATUALIZADA);
+            $pessoa['validacao_excepcional'] = $validacao['registro'];
             $temConflito = $temConflito || !empty($pessoa['conflitos']);
+            $temSobrecargaNaoValidada = $temSobrecargaNaoValidada || in_array($pessoa['status_carga'], [FLOW_ALOCACAO_STATUS_SOBRECARGA_NAO_VALIDADA, FLOW_ALOCACAO_STATUS_VALIDACAO_DESATUALIZADA], true);
+            $temSobrecargaValidada = $temSobrecargaValidada || $pessoa['status_carga'] === FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA;
         }
         unset($pessoa);
         $foraDoPlano = (bool) array_filter($etapa['pessoas'], static fn (array $pessoa): bool => empty($pessoa['elegivel']));
         $etapa['candidatos'] = flow_alocacao_candidatos_da_etapa($etapa['elegiveis'], array_column($etapa['pessoas'], null, 'id'), $cargasDaEtapa);
         unset($etapa['elegiveis']);
         unset($etapa['dias_carga']);
-        $etapa['status_alocacao'] = flow_alocacao_status_etapa($etapa, (int) $etapa['pessoas_planejadas'], (int) $etapa['pendente_materializacao'], $foraDoPlano, $temConflito);
+        $etapa['status_alocacao'] = flow_alocacao_status_etapa($etapa, (int) $etapa['pessoas_planejadas'], (int) $etapa['pendente_materializacao'], $foraDoPlano, $temConflito, $temSobrecargaNaoValidada, $temSobrecargaValidada);
         $grupos[$etapa['codigo_etapa']][] = $etapa;
     }
     unset($etapa);
@@ -607,20 +783,570 @@ function flow_alocacao_consultar(mysqli $conn, string $inicio, string $fim, arra
     }
     usort($resultadoGrupos, static fn (array $a, array $b): int => $a['ordem_painel'] <=> $b['ordem_painel']);
 
-    $resumo = ['planejado' => 0, 'materializado' => 0, 'alocado' => 0, 'sem_responsavel' => 0, 'pendente_materializacao' => 0, 'conflitos' => 0];
+    $resumo = [
+        'planejado' => 0,
+        'materializado' => 0,
+        'alocado' => 0,
+        'sem_responsavel' => 0,
+        'pendente_materializacao' => 0,
+        'conflitos' => 0,
+        'etapas_ok' => 0,
+        'sobrecargas' => 0,
+        'sobrecargas_validadas' => 0,
+        'aguardando_validacao' => 0,
+    ];
+    $contextoEtapas = [];
+    $contextoTarefas = [];
     foreach ($resultadoEtapas as $etapa) {
         foreach (['planejado', 'materializado', 'alocado', 'sem_responsavel', 'pendente_materializacao'] as $campo) {
             $resumo[$campo] += (int) $etapa[$campo];
         }
         $resumo['conflitos'] += count(array_filter($etapa['pessoas'], static fn (array $pessoa): bool => !empty($pessoa['conflitos'])));
+        if ($etapa['status_alocacao'] === FLOW_ALOCACAO_STATUS_CAPACIDADE_PENDENTE_VALIDACAO) {
+            $resumo['aguardando_validacao']++;
+        } elseif ($etapa['status_alocacao'] === FLOW_ALOCACAO_STATUS_ALOCACAO_VALIDADA_EXCECAO) {
+            $resumo['sobrecargas_validadas']++;
+        } elseif ($etapa['status_alocacao'] === 'ALOCADO') {
+            $resumo['etapas_ok']++;
+        }
+        foreach ($etapa['pessoas'] as $pessoa) {
+            if ((float) ($pessoa['carga_periodo'] ?? 0) > 1.0001) {
+                $resumo['sobrecargas']++;
+            }
+        }
+        $contextoEtapas[] = [
+            'planejamento_id' => (int) $etapa['planejamento_id'],
+            'versao_id' => (int) $etapa['versao_id'],
+            'entrega_id' => (int) $etapa['entrega_id'],
+            'codigo_etapa' => (string) $etapa['codigo_etapa'],
+            'volume' => (int) $etapa['planejado'],
+            'pessoas' => (int) $etapa['pessoas_planejadas'],
+            'duracao' => (int) $etapa['duracao_dias_uteis'],
+            'inicio' => (string) $etapa['inicio'],
+            'limite' => (string) $etapa['limite'],
+        ];
+        foreach ($etapa['tarefas_operacionais'] as $unidade) {
+            foreach (($unidade['tarefas'] ?? []) as $tarefa) {
+                $contextoTarefas[] = [
+                    'tarefa_id' => (int) ($tarefa['tarefa_id'] ?? 0),
+                    'entrega_id' => (int) ($tarefa['entrega_id'] ?? $etapa['entrega_id']),
+                    'imagem_id' => (int) ($tarefa['imagem_id'] ?? 0),
+                    'funcao_id' => (int) ($tarefa['funcao_id'] ?? 0),
+                    'colaborador_id' => (int) ($tarefa['colaborador_id'] ?? 0),
+                    'status' => (string) ($tarefa['status'] ?? ''),
+                ];
+            }
+        }
     }
+    usort($contextoEtapas, static fn (array $a, array $b): int => strcmp(flow_alocacao_json_canonico($a), flow_alocacao_json_canonico($b)));
+    usort($contextoTarefas, static fn (array $a, array $b): int => ($a['tarefa_id'] <=> $b['tarefa_id']) ?: strcmp(flow_alocacao_json_canonico($a), flow_alocacao_json_canonico($b)));
+    $contexto = [
+        'periodo' => ['inicio' => $inicio, 'fim' => $fim],
+        'etapas' => $contextoEtapas,
+        'tarefas' => $contextoTarefas,
+    ];
+    $fingerprint = hash('sha256', flow_alocacao_json_canonico($contexto));
 
     return [
         'periodo' => ['inicio' => $inicio, 'fim' => $fim],
         'modo' => 'READ_ONLY_SANDBOX',
+        'fingerprint' => $fingerprint,
         'resumo' => $resumo + ['planos' => count($planos), 'etapas' => count($resultadoEtapas)],
         'grupos' => $resultadoGrupos,
         'excecoes' => array_values($excecoes),
         'formula_carga' => 'carga_total_planejada_pessoa_dia = duracao_dias_uteis × pessoas_planejadas; a carga nominal só é atribuída a tarefas operacionais reais com um único responsável.',
     ];
+}
+
+function flow_alocacao_indexar_tarefas(array $alocacao): array
+{
+    $indice = [];
+    foreach (($alocacao['grupos'] ?? []) as $grupo) {
+        foreach (($grupo['projetos'] ?? []) as $projeto) {
+            foreach (($projeto['tarefas_operacionais'] ?? []) as $unidade) {
+                foreach (($unidade['tarefas'] ?? []) as $tarefa) {
+                    $id = (int) ($tarefa['tarefa_id'] ?? 0);
+                    if ($id <= 0) {
+                        continue;
+                    }
+                    $indice[$id] = [
+                        'tarefa' => $tarefa,
+                        'unidade' => $unidade,
+                        'projeto' => $projeto,
+                        'grupo' => $grupo,
+                    ];
+                }
+            }
+        }
+    }
+    return $indice;
+}
+
+function flow_alocacao_indexar_pessoas(array $alocacao): array
+{
+    $indice = [];
+    foreach (($alocacao['grupos'] ?? []) as $grupo) {
+        foreach (($grupo['projetos'] ?? []) as $projeto) {
+            foreach (($projeto['pessoas'] ?? []) as $pessoa) {
+                $id = (int) ($pessoa['id'] ?? 0);
+                if ($id <= 0) {
+                    continue;
+                }
+                $indice[$id][] = [
+                    'pessoa' => $pessoa,
+                    'projeto' => $projeto,
+                    'grupo' => $grupo,
+                ];
+            }
+        }
+    }
+    return $indice;
+}
+
+function flow_alocacao_normalizar_movimentos(array $movimentos): array
+{
+    $resultado = [];
+    $vistos = [];
+    foreach ($movimentos as $movimento) {
+        if (!is_array($movimento)) {
+            throw new InvalidArgumentException('Cada movimentação deve ser um objeto.');
+        }
+        $tarefaId = (int) ($movimento['tarefa_id'] ?? $movimento['idfuncao_imagem'] ?? 0);
+        $para = (int) ($movimento['para_colaborador_id'] ?? $movimento['colaborador_id'] ?? 0);
+        if ($tarefaId <= 0 || $para <= 0) {
+            throw new InvalidArgumentException('Toda movimentação precisa informar tarefa e colaborador destino.');
+        }
+        if (isset($vistos[$tarefaId])) {
+            throw new InvalidArgumentException('A mesma tarefa não pode aparecer duas vezes na simulação.');
+        }
+        $vistos[$tarefaId] = true;
+        $resultado[] = [
+            'tarefa_id' => $tarefaId,
+            'para_colaborador_id' => $para,
+            'de_colaborador_id' => (int) ($movimento['de_colaborador_id'] ?? 0),
+        ];
+    }
+    if (!$resultado) {
+        throw new InvalidArgumentException('Selecione pelo menos uma tarefa para simular.');
+    }
+    return $resultado;
+}
+
+function flow_alocacao_carga_pessoas_resumo(array $alocacao, array $ids): array
+{
+    $ids = array_fill_keys(array_map('intval', $ids), true);
+    $resumo = [];
+    foreach (($alocacao['grupos'] ?? []) as $grupo) {
+        foreach (($grupo['projetos'] ?? []) as $projeto) {
+            foreach (($projeto['pessoas'] ?? []) as $pessoa) {
+                $id = (int) ($pessoa['id'] ?? 0);
+                if (!isset($ids[$id])) {
+                    continue;
+                }
+                $resumo[$id] = [
+                    'id' => $id,
+                    'nome' => (string) ($pessoa['nome'] ?? ''),
+                    'carga_percentual' => (float) ($pessoa['carga_periodo_percentual'] ?? 0),
+                    'carga_periodo' => (float) ($pessoa['carga_periodo'] ?? 0),
+                    'status_carga' => (string) ($pessoa['status_carga'] ?? FLOW_ALOCACAO_STATUS_NORMAL),
+                    'conflitos' => $pessoa['conflitos'] ?? [],
+                ];
+            }
+        }
+    }
+    foreach (array_keys($ids) as $id) {
+        if (!isset($resumo[$id])) {
+            $resumo[$id] = ['id' => (int) $id, 'nome' => '', 'carga_percentual' => 0.0, 'carga_periodo' => 0.0, 'status_carga' => FLOW_ALOCACAO_STATUS_NORMAL, 'conflitos' => []];
+        }
+    }
+    return $resumo;
+}
+
+function flow_alocacao_simular_movimentos(mysqli $conn, string $inicio, string $fim, array $movimentos, array $opcoes = []): array
+{
+    $movimentos = flow_alocacao_normalizar_movimentos($movimentos);
+    $atual = flow_alocacao_consultar($conn, $inicio, $fim, $opcoes);
+    $tarefas = flow_alocacao_indexar_tarefas($atual);
+    $idsPessoas = [];
+    $override = [];
+    $mudancas = [];
+    foreach ($movimentos as $movimento) {
+        $id = (int) $movimento['tarefa_id'];
+        if (!isset($tarefas[$id])) {
+            throw new InvalidArgumentException('A tarefa ' . $id . ' não pertence a um plano vigente no período consultado.');
+        }
+        $item = $tarefas[$id];
+        $tarefa = $item['tarefa'];
+        $projeto = $item['projeto'];
+        $codigo = (string) ($projeto['codigo_etapa'] ?? '');
+        $de = (int) ($tarefa['colaborador_id'] ?? 0);
+        $deInformado = (int) $movimento['de_colaborador_id'];
+        if ($deInformado > 0 && $deInformado !== $de) {
+            throw new RuntimeException('A tarefa ' . $id . ' foi alterada por outra pessoa. Recarregue a Central.');
+        }
+        $para = (int) $movimento['para_colaborador_id'];
+        $elegivel = false;
+        foreach (($projeto['candidatos'] ?? []) as $candidato) {
+            if ((int) ($candidato['colaborador_id'] ?? 0) === $para && !empty($candidato['elegivel'])) {
+                $elegivel = true;
+                $idsPessoas[$para] = true;
+                break;
+            }
+        }
+        if (!$elegivel) {
+            throw new InvalidArgumentException('O colaborador escolhido não é elegível para ' . $codigo . '.');
+        }
+        if ($de > 0) {
+            $idsPessoas[$de] = true;
+        }
+        $override[$id] = $para;
+        $mudancas[] = [
+            'tarefa_id' => $id,
+            'imagem_id' => (int) ($tarefa['imagem_id'] ?? 0),
+            'imagem_nome' => (string) ($tarefa['imagem_nome'] ?? ''),
+            'obra' => (string) ($projeto['obra'] ?? ''),
+            'entrega_id' => (int) ($projeto['entrega_id'] ?? 0),
+            'codigo_etapa' => $codigo,
+            'etapa' => (string) ($projeto['etapa'] ?? $codigo),
+            'de_colaborador_id' => $de,
+            'de_nome' => (string) ($tarefa['responsavel_nome'] ?? ''),
+            'para_colaborador_id' => $para,
+            'para_nome' => (string) (($projeto['candidatos'][array_search($para, array_column($projeto['candidatos'], 'colaborador_id'))]['nome'] ?? '')),
+        ];
+    }
+    $simulado = flow_alocacao_consultar($conn, $inicio, $fim, array_merge($opcoes, ['responsaveis_override' => $override]));
+    $idsPessoas = array_keys($idsPessoas);
+    $antes = flow_alocacao_carga_pessoas_resumo($atual, $idsPessoas);
+    $depois = flow_alocacao_carga_pessoas_resumo($simulado, $idsPessoas);
+    $impactos = [];
+    foreach ($idsPessoas as $id) {
+        $impactos[] = [
+            'colaborador_id' => (int) $id,
+            'nome' => $depois[$id]['nome'] ?: $antes[$id]['nome'],
+            'antes' => $antes[$id],
+            'depois' => $depois[$id],
+            'delta_percentual' => round($depois[$id]['carga_percentual'] - $antes[$id]['carga_percentual'], 1),
+        ];
+    }
+    $sobrecargasDepois = [];
+    $requerValidacao = false;
+    foreach ($depois as $pessoa) {
+        if ((float) $pessoa['carga_periodo'] > 1.0001) {
+            $sobrecargasDepois[] = $pessoa;
+            $requerValidacao = $requerValidacao || ($pessoa['status_carga'] ?? '') !== FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA;
+        }
+    }
+    return [
+        'periodo' => ['inicio' => $inicio, 'fim' => $fim],
+        'fingerprint_atual' => (string) ($atual['fingerprint'] ?? ''),
+        'fingerprint_simulado' => (string) ($simulado['fingerprint'] ?? ''),
+        'movimentos' => $mudancas,
+        'atual' => $atual,
+        'simulado' => $simulado,
+        'impactos' => $impactos,
+        'sobrecargas_depois' => $sobrecargasDepois,
+        'requer_validacao' => $requerValidacao,
+        'resultado' => [
+            'sobrecargas_antes' => (int) ($atual['resumo']['sobrecargas'] ?? 0),
+            'sobrecargas_depois' => (int) ($simulado['resumo']['sobrecargas'] ?? 0),
+            'aguardando_validacao_depois' => (int) ($simulado['resumo']['aguardando_validacao'] ?? 0),
+            'conflitos_antes' => (int) ($atual['resumo']['conflitos'] ?? 0),
+            'conflitos_depois' => (int) ($simulado['resumo']['conflitos'] ?? 0),
+        ],
+    ];
+}
+
+/**
+ * Procura uma redistribuição determinística para uma etapa, sem persistir.
+ * O algoritmo só aceita uma troca quando ela reduz lexicograficamente:
+ * quantidade de sobrecargas, excesso total, pico e uso de secundários.
+ */
+function flow_alocacao_sugerir_distribuicao(mysqli $conn, string $inicio, string $fim, int $entregaId, string $codigoEtapa): array
+{
+    if ($entregaId <= 0 || $codigoEtapa === '') {
+        throw new InvalidArgumentException('Informe entrega e etapa para buscar uma distribuição.');
+    }
+    $atual = flow_alocacao_consultar($conn, $inicio, $fim);
+    $projeto = null;
+    foreach (($atual['grupos'] ?? []) as $grupo) {
+        foreach (($grupo['projetos'] ?? []) as $item) {
+            if ((int) ($item['entrega_id'] ?? 0) === $entregaId && (string) ($item['codigo_etapa'] ?? '') === $codigoEtapa) {
+                $projeto = $item;
+                break 2;
+            }
+        }
+    }
+    if (!$projeto) {
+        throw new InvalidArgumentException('A etapa não está presente no período atual.');
+    }
+    if ((int) ($projeto['pendente_materializacao'] ?? 0) > 0 && empty($projeto['tarefas_operacionais'])) {
+        return ['movimentos' => [], 'motivo' => 'PENDENTE_MATERIALIZACAO', 'mensagem' => 'Não há tarefas operacionais materializadas para distribuir.'];
+    }
+    $candidatos = [];
+    foreach (($projeto['candidatos'] ?? []) as $candidato) {
+        $id = (int) ($candidato['colaborador_id'] ?? 0);
+        if ($id > 0) {
+            $candidatos[$id] = $candidato;
+        }
+    }
+    foreach (($projeto['pessoas'] ?? []) as $pessoa) {
+        $id = (int) ($pessoa['id'] ?? 0);
+        if ($id > 0 && !isset($candidatos[$id]) && !empty($pessoa['elegivel'])) {
+            $candidatos[$id] = ['colaborador_id' => $id, 'tipo_atuacao' => $pessoa['tipo_atuacao'] ?? null];
+        }
+    }
+    if (!$candidatos) {
+        return ['movimentos' => [], 'motivo' => 'SEM_ELEGIVEIS', 'mensagem' => 'Não há colaboradores elegíveis para testar.'];
+    }
+    $unidades = array_values(array_filter($projeto['tarefas_operacionais'] ?? [], static fn (array $unidade): bool => !empty($unidade['tarefas'])));
+    $score = static function (array $alocacao) use ($candidatos): array {
+        $sobrecargas = 0;
+        $excesso = 0.0;
+        $pico = 0.0;
+        $secundarios = 0;
+        foreach (($alocacao['grupos'] ?? []) as $grupo) {
+            foreach (($grupo['projetos'] ?? []) as $item) {
+                foreach (($item['pessoas'] ?? []) as $pessoa) {
+                    $carga = (float) ($pessoa['carga_periodo'] ?? 0);
+                    $pico = max($pico, $carga);
+                    if ($carga > 1.0001) {
+                        $sobrecargas++;
+                        $excesso += $carga - 1.0;
+                    }
+                    if (($candidatos[(int) ($pessoa['id'] ?? 0)]['tipo_atuacao'] ?? null) === FLOW_TIPO_ATUACAO_SECUNDARIA) {
+                        $secundarios++;
+                    }
+                }
+            }
+        }
+        return [$sobrecargas, round($excesso, 6), round($pico, 6), $secundarios];
+    };
+    $melhorScore = $score($atual);
+    $override = [];
+    $movimentos = [];
+    foreach ($unidades as $unidade) {
+        $idsTarefas = array_values(array_filter(array_map(static fn (array $tarefa): int => (int) ($tarefa['tarefa_id'] ?? 0), $unidade['tarefas'] ?? [])));
+        if (!$idsTarefas) {
+            continue;
+        }
+        $responsaveis = array_values(array_unique(array_filter(array_map(static fn (array $tarefa): int => (int) ($tarefa['colaborador_id'] ?? 0), $unidade['tarefas'] ?? []))));
+        $origem = $responsaveis[0] ?? 0;
+        $melhorCandidato = null;
+        $melhorCandidatoScore = null;
+        foreach ($candidatos as $candidatoId => $candidato) {
+            if ($candidatoId === $origem || in_array($candidatoId, $responsaveis, true)) {
+                continue;
+            }
+            $trialOverride = $override;
+            foreach ($idsTarefas as $tarefaId) {
+                $trialOverride[$tarefaId] = $candidatoId;
+            }
+            $trial = flow_alocacao_consultar($conn, $inicio, $fim, ['responsaveis_override' => $trialOverride]);
+            $trialScore = $score($trial);
+            if ($melhorCandidatoScore === null || $trialScore < $melhorCandidatoScore) {
+                $melhorCandidato = $candidatoId;
+                $melhorCandidatoScore = $trialScore;
+            }
+        }
+        if ($melhorCandidato === null || $melhorCandidatoScore === null || !($melhorCandidatoScore < $melhorScore)) {
+            continue;
+        }
+        $override = array_merge($override, array_fill_keys($idsTarefas, $melhorCandidato));
+        foreach ($idsTarefas as $tarefaId) {
+            $tarefa = null;
+            foreach (($unidade['tarefas'] ?? []) as $item) {
+                if ((int) ($item['tarefa_id'] ?? 0) === $tarefaId) {
+                    $tarefa = $item;
+                    break;
+                }
+            }
+            $movimentos[] = [
+                'tarefa_id' => $tarefaId,
+                'de_colaborador_id' => (int) ($tarefa['colaborador_id'] ?? 0),
+                'para_colaborador_id' => $melhorCandidato,
+            ];
+        }
+        $melhorScore = $melhorCandidatoScore;
+    }
+    if (!$movimentos) {
+        return ['movimentos' => [], 'motivo' => 'NENHUMA_MELHORIA', 'mensagem' => 'Nenhuma distribuição elegível reduz a sobrecarga sem piorar o contexto global.', 'score_atual' => $melhorScore];
+    }
+    return flow_alocacao_simular_movimentos($conn, $inicio, $fim, $movimentos);
+}
+
+function flow_alocacao_aplicar_movimentos(mysqli $conn, string $inicio, string $fim, array $movimentos, string $fingerprintEsperado, ?int $atorId, string $observacao = ''): array
+{
+    if ($fingerprintEsperado === '') {
+        throw new InvalidArgumentException('A simulação precisa informar o fingerprint atual da Central.');
+    }
+    $movimentos = flow_alocacao_normalizar_movimentos($movimentos);
+    $observacao = trim($observacao);
+    if (mb_strlen($observacao) > 500) {
+        throw new InvalidArgumentException('A observação aceita até 500 caracteres.');
+    }
+
+    $ids = array_values(array_unique(array_map(static fn (array $movimento): int => (int) $movimento['tarefa_id'], $movimentos)));
+    $conn->begin_transaction();
+    try {
+        $lista = implode(',', array_map('intval', $ids));
+        $resultado = $conn->query("SELECT idfuncao_imagem, colaborador_id, status FROM funcao_imagem WHERE idfuncao_imagem IN ({$lista}) FOR UPDATE");
+        if (!$resultado || $resultado->num_rows !== count($ids)) {
+            throw new RuntimeException('Uma ou mais tarefas não existem mais. Recarregue a Central.');
+        }
+        $atuais = [];
+        while ($linha = $resultado->fetch_assoc()) {
+            $atuais[(int) $linha['idfuncao_imagem']] = $linha;
+        }
+        $resultado->free();
+        foreach ($movimentos as $movimento) {
+            $id = (int) $movimento['tarefa_id'];
+            $atual = $atuais[$id];
+            if (flow_planejamento_normalizar((string) ($atual['status'] ?? '')) === 'cancelado') {
+                throw new InvalidArgumentException('A tarefa ' . $id . ' está cancelada e não pode ser alocada.');
+            }
+            $de = (int) ($atual['colaborador_id'] ?? 0);
+            $deEsperado = (int) ($movimento['de_colaborador_id'] ?? 0);
+            if ($deEsperado > 0 && $de !== $deEsperado) {
+                throw new RuntimeException('A tarefa ' . $id . ' mudou de responsável. Recalcule a simulação.');
+            }
+            if ($de === (int) $movimento['para_colaborador_id']) {
+                throw new InvalidArgumentException('A tarefa ' . $id . ' já está com o colaborador escolhido.');
+            }
+        }
+
+        $atual = flow_alocacao_consultar($conn, $inicio, $fim);
+        if (!hash_equals($fingerprintEsperado, (string) ($atual['fingerprint'] ?? ''))) {
+            throw new RuntimeException('O contexto da alocação mudou. Recarregue a Central e simule novamente.');
+        }
+        $simulacao = flow_alocacao_simular_movimentos($conn, $inicio, $fim, $movimentos);
+        foreach (($simulacao['sobrecargas_depois'] ?? []) as $sobrecarga) {
+            if (($sobrecarga['status_carga'] ?? '') !== FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA) {
+                throw new DomainException('A distribuição mantém sobrecarga sem validação excepcional vigente.');
+            }
+        }
+
+        $update = $conn->prepare('UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ? AND colaborador_id = ?');
+        if (!$update) {
+            throw new RuntimeException('Não foi possível preparar a atualização das tarefas: ' . $conn->error);
+        }
+        $mudancasPorPlano = [];
+        $indiceTarefas = flow_alocacao_indexar_tarefas($atual);
+        foreach ($movimentos as $movimento) {
+            $id = (int) $movimento['tarefa_id'];
+            $de = (int) ($atuais[$id]['colaborador_id'] ?? 0);
+            $para = (int) $movimento['para_colaborador_id'];
+            $update->bind_param('iii', $para, $id, $de);
+            $update->execute();
+            if ($update->affected_rows !== 1) {
+                throw new RuntimeException('A tarefa ' . $id . ' mudou durante a aplicação. Recalcule a simulação.');
+            }
+            $projeto = $indiceTarefas[$id]['projeto'] ?? [];
+            $chavePlano = (int) ($projeto['planejamento_id'] ?? 0) . ':' . (int) ($projeto['entrega_id'] ?? 0);
+            $mudancasPorPlano[$chavePlano]['planejamento_id'] = (int) ($projeto['planejamento_id'] ?? 0);
+            $mudancasPorPlano[$chavePlano]['entrega_id'] = (int) ($projeto['entrega_id'] ?? 0);
+            $mudancasPorPlano[$chavePlano]['versao_id'] = (int) ($projeto['versao_id'] ?? 0);
+            $mudancasPorPlano[$chavePlano]['mudancas'][] = [
+                'tarefa_id' => $id,
+                'imagem_id' => (int) ($indiceTarefas[$id]['tarefa']['imagem_id'] ?? 0),
+                'de_colaborador_id' => $de,
+                'para_colaborador_id' => $para,
+                'codigo_etapa' => (string) ($projeto['codigo_etapa'] ?? ''),
+                'obra' => (string) ($projeto['obra'] ?? ''),
+            ];
+        }
+        $update->close();
+
+        foreach ($mudancasPorPlano as $plano) {
+            flow_planejamento_registrar_evento(
+                $conn,
+                $plano['planejamento_id'],
+                $plano['entrega_id'],
+                'ALOCACAO_CENTRAL_CONFIRMADA',
+                $plano['versao_id'],
+                $atorId,
+                'REALOCACAO_EM_MASSA',
+                $observacao !== '' ? $observacao : null,
+                [
+                    'origem' => 'CENTRAL_ALOCACAO',
+                    'fingerprint_antes' => $fingerprintEsperado,
+                    'fingerprint_depois' => $simulacao['fingerprint_simulado'],
+                    'movimentos' => $plano['mudancas'],
+                    'resultado' => $simulacao['resultado'],
+                ]
+            );
+        }
+        $conn->commit();
+        return $simulacao + ['aplicado' => true];
+    } catch (Throwable $erro) {
+        $conn->rollback();
+        throw $erro;
+    }
+}
+
+function flow_alocacao_validar_capacidade_excepcional(mysqli $conn, string $inicio, string $fim, array $dados, ?int $atorId): array
+{
+    if (!flow_alocacao_validacoes_disponiveis($conn)) {
+        throw new RuntimeException('A migration de validação excepcional ainda não foi aplicada.');
+    }
+    if (!$atorId || empty($dados['confirmado'])) {
+        throw new InvalidArgumentException('Confirme explicitamente a capacidade excepcional.');
+    }
+    $observacao = trim((string) ($dados['observacao'] ?? ''));
+    if (mb_strlen($observacao) < 5 || mb_strlen($observacao) > 500) {
+        throw new InvalidArgumentException('Informe uma observação entre 5 e 500 caracteres.');
+    }
+    $entregaId = (int) ($dados['entrega_id'] ?? 0);
+    $codigo = strtoupper(trim((string) ($dados['codigo_etapa'] ?? '')));
+    $colaboradorId = (int) ($dados['colaborador_id'] ?? 0);
+    $fingerprint = trim((string) ($dados['fingerprint_carga'] ?? ''));
+    if ($entregaId <= 0 || $codigo === '' || $colaboradorId <= 0 || $fingerprint === '') {
+        throw new InvalidArgumentException('O contexto da validação está incompleto. Reabra a Central.');
+    }
+    $alocacao = flow_alocacao_consultar($conn, $inicio, $fim);
+    foreach (($alocacao['grupos'] ?? []) as $grupo) {
+        foreach (($grupo['projetos'] ?? []) as $projeto) {
+            if ((int) $projeto['entrega_id'] !== $entregaId || (string) $projeto['codigo_etapa'] !== $codigo) {
+                continue;
+            }
+            foreach (($projeto['pessoas'] ?? []) as $pessoa) {
+                if ((int) ($pessoa['id'] ?? 0) !== $colaboradorId) {
+                    continue;
+                }
+                if ((float) ($pessoa['carga_periodo'] ?? 0) <= 1.0001) {
+                    throw new InvalidArgumentException('A pessoa não está acima de 100% neste contexto.');
+                }
+                if (!hash_equals($fingerprint, (string) ($pessoa['fingerprint_carga'] ?? ''))) {
+                    throw new RuntimeException('A carga mudou desde a abertura da validação. Recalcule a Central.');
+                }
+                $stmt = $conn->prepare(
+                    'INSERT INTO entrega_planejamento_capacidade_validacao
+                     (planejamento_id, versao_id, entrega_id, obra_id, colaborador_id, codigo_etapa, data_inicio, data_fim, carga_percentual, pico_carga, fingerprint, status, observacao, validado_por_colaborador_id, validado_em)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'VALIDA\', ?, ?, NOW())'
+                );
+                if (!$stmt) {
+                    throw new RuntimeException('Não foi possível preparar a validação: ' . $conn->error);
+                }
+                $percentual = (float) ($pessoa['carga_periodo_percentual'] ?? 0);
+                $pico = (float) ($pessoa['carga_periodo'] ?? 0);
+                $planejamentoId = (int) ($projeto['planejamento_id'] ?? 0);
+                $versaoId = (int) ($projeto['versao_id'] ?? 0);
+                $obraId = (int) ($projeto['obra_id'] ?? 0);
+                $dataInicio = (string) ($projeto['inicio'] ?? '');
+                $dataFim = (string) ($projeto['limite'] ?? '');
+                $stmt->bind_param('iiiiisssddssi', $planejamentoId, $versaoId, $entregaId, $obraId, $colaboradorId, $codigo, $dataInicio, $dataFim, $percentual, $pico, $fingerprint, $observacao, $atorId);
+                $stmt->execute();
+                $id = (int) $stmt->insert_id;
+                $stmt->close();
+                flow_planejamento_registrar_evento($conn, (int) $projeto['planejamento_id'], $entregaId, 'CAPACIDADE_EXCEPCIONAL_VALIDADA', (int) $projeto['versao_id'], $atorId, 'SOBRECARGA_EXCEPCIONAL', $observacao, [
+                    'origem' => 'CENTRAL_ALOCACAO',
+                    'colaborador_id' => $colaboradorId,
+                    'codigo_etapa' => $codigo,
+                    'carga_percentual' => $percentual,
+                    'fingerprint' => $fingerprint,
+                ]);
+                return ['id' => $id, 'status' => FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA, 'pessoa' => $pessoa, 'observacao' => $observacao];
+            }
+        }
+    }
+    throw new InvalidArgumentException('Colaborador ou etapa não encontrados no contexto atual.');
 }

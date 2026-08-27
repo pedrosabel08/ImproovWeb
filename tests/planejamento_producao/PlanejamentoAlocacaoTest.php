@@ -66,4 +66,39 @@ $carga = flow_alocacao_carga_na_janela([
 ], ['2026-09-08', '2026-09-09']);
 alocacao_assert($carga['pico_carga'] === 1.2 && count($carga['conflitos']) === 1, 'Conflito de pessoa precisa ser calculado por dia útil dentro da janela da etapa.');
 
-echo "OK: materialização, deduplicação Caderno/Filtro, estados e carga planejada validados.\n";
+// Estados de capacidade são distintos: a validação não reduz o valor
+// matemático e uma validação antiga não cobre um contexto alterado.
+alocacao_assert(flow_alocacao_status_carga(1.0) === FLOW_ALOCACAO_STATUS_NORMAL, 'Carga exatamente em 100% deve ser NORMAL.');
+alocacao_assert(flow_alocacao_status_carga(1.1667) === FLOW_ALOCACAO_STATUS_SOBRECARGA_NAO_VALIDADA, 'Carga acima de 100% deve exigir validação.');
+alocacao_assert(flow_alocacao_status_carga(1.1667, true) === FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA, 'Sobrecarga validada deve manter o estado excepcional.');
+alocacao_assert(flow_alocacao_status_carga(1.1667, false, true) === FLOW_ALOCACAO_STATUS_VALIDACAO_DESATUALIZADA, 'Contexto alterado deve invalidar a validação anterior.');
+
+$movimentos = flow_alocacao_normalizar_movimentos([
+    ['tarefa_id' => 50, 'de_colaborador_id' => 10, 'para_colaborador_id' => 11],
+]);
+alocacao_assert($movimentos[0]['tarefa_id'] === 50 && $movimentos[0]['para_colaborador_id'] === 11, 'Movimento deve ser normalizado com origem e destino.');
+$duplicadoRejeitado = false;
+try {
+    flow_alocacao_normalizar_movimentos([
+        ['tarefa_id' => 50, 'para_colaborador_id' => 11],
+        ['tarefa_id' => 50, 'para_colaborador_id' => 12],
+    ]);
+} catch (InvalidArgumentException) {
+    $duplicadoRejeitado = true;
+}
+alocacao_assert($duplicadoRejeitado, 'A mesma tarefa não pode ser simulada duas vezes.');
+
+$etapaContexto = [
+    'planejamento_id' => 1, 'versao_id' => 2, 'entrega_id' => 3, 'obra_id' => 4,
+    'codigo_etapa' => 'FINALIZACAO_INTERNA', 'inicio' => '2026-09-11',
+    'limite' => '2026-09-21', 'duracao_dias_uteis' => 6, 'pessoas_planejadas' => 2,
+    'planejado' => 12,
+];
+$pessoaContexto = ['id' => 33];
+$tarefasContexto = [['tarefas' => [alocacao_tarefa(99, 100, 4, 33)]]];
+$fingerprintA = flow_alocacao_fingerprint_pessoa($etapaContexto, $pessoaContexto, [['data' => '2026-09-11', 'carga' => 1.0]], $tarefasContexto);
+$tarefasContexto[0]['tarefas'][0]['colaborador_id'] = 6;
+$fingerprintB = flow_alocacao_fingerprint_pessoa($etapaContexto, $pessoaContexto, [['data' => '2026-09-11', 'carga' => 1.0]], $tarefasContexto);
+alocacao_assert($fingerprintA !== $fingerprintB, 'Fingerprint deve mudar quando o responsável real muda.');
+
+echo "OK: materialização, deduplicação Caderno/Filtro, estados, fingerprint e carga planejada validados.\n";

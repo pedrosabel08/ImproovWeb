@@ -62,7 +62,7 @@ $conn->close();
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 </head>
 
-<body class="capacity-page <?= $tema ?>" data-api-url="consultar.php" data-allocation-api-url="alocacao_consultar.php" data-simulation-url="simular.php" data-apply-simulation-url="aplicar_cenario.php">
+<body class="capacity-page <?= $tema ?>" data-api-url="consultar.php" data-allocation-api-url="alocacao_consultar.php" data-allocation-simulate-url="alocacao_simular.php" data-allocation-apply-url="alocacao_aplicar.php" data-allocation-validation-url="alocacao_validar_capacidade.php" data-allocation-suggest-url="alocacao_sugerir.php" data-operational-projection-api-url="projecao_operacional.php" data-queue-simulate-url="fila_operacional_simular.php" data-queue-confirm-url="fila_operacional_confirmar.php" data-queue-suggest-url="fila_operacional_sugerir.php" data-simulation-url="simular.php" data-apply-simulation-url="aplicar_cenario.php">
 
   <?php include '../sidebar.php'; ?>
 
@@ -156,11 +156,11 @@ $conn->close();
     <section class="allocation-workspace" id="allocation-workspace" aria-label="Central de Alocação" hidden>
       <header class="allocation-header">
         <div>
-          <p><i class="fa-solid fa-lock"></i> Sandbox operacional · somente leitura</p>
+          <p><i class="fa-solid fa-shuffle"></i> Alocação operacional · simulação antes da confirmação</p>
           <h2>Central de Alocação</h2>
           <span>Planejado → materializado → alocado, usando as tarefas reais do Flow.</span>
         </div>
-        <aside><i class="fa-solid fa-circle-info"></i> Nenhum responsável ou prazo é alterado nesta visão.</aside>
+        <aside><i class="fa-solid fa-circle-info"></i> A seleção e a simulação não alteram tarefas. A responsabilidade só muda após confirmação explícita.</aside>
       </header>
 
       <section class="allocation-kpis" aria-label="Resumo da alocação">
@@ -168,6 +168,8 @@ $conn->close();
         <article><span>Materializado</span><strong id="allocation-materialized">—</strong><small>tarefas reais disponíveis</small></article>
         <article><span>Sem responsável</span><strong id="allocation-unassigned">—</strong><small>tarefas reais sem pessoa</small></article>
         <article class="is-warning"><span>Pendente de materialização</span><strong id="allocation-pending">—</strong><small>necessidades ainda sem tarefa real</small></article>
+        <article class="is-danger"><span>Sobrecargas</span><strong id="allocation-overloads">—</strong><small>cargas acima de 100%</small></article>
+        <article class="is-warning"><span>Aguardando validação</span><strong id="allocation-awaiting">—</strong><small>exceções ainda não confirmadas</small></article>
       </section>
 
       <section class="allocation-panel" aria-live="polite">
@@ -178,6 +180,12 @@ $conn->close();
         <div class="allocation-loading" id="allocation-loading" hidden><span></span><span></span><span></span></div>
         <div class="allocation-empty" id="allocation-empty" hidden></div>
         <div class="allocation-stage-list" id="allocation-stage-list"></div>
+        <div class="allocation-action-status" id="allocation-action-status" aria-live="polite" hidden></div>
+        <section class="allocation-simulation-panel" id="allocation-simulation-panel" hidden aria-live="polite">
+          <header><div><p>Simulação de redistribuição</p><h3>Atual → simulado</h3></div><button type="button" id="allocation-simulation-close" aria-label="Fechar simulação"><i class="fa-solid fa-xmark"></i></button></header>
+          <div id="allocation-simulation-content"></div>
+          <footer><button type="button" class="capacity-button-secondary" id="allocation-simulation-cancel">Cancelar</button><button type="button" class="capacity-button-primary" id="allocation-simulation-apply">Aplicar redistribuição</button></footer>
+        </section>
       </section>
 
       <section class="allocation-notes" id="allocation-notes" hidden></section>
@@ -189,9 +197,26 @@ $conn->close();
     <div id="drawer-content"></div>
   </aside>
   <div class="capacity-scrim" id="capacity-scrim" hidden></div>
+  <dialog class="allocation-validation-dialog" id="allocation-validation-dialog">
+    <form method="dialog" id="allocation-validation-form">
+      <p class="allocation-dialog-eyebrow">Validação contextual · nada permanente</p>
+      <h2>Validar capacidade excepcional</h2>
+      <p id="allocation-validation-summary"></p>
+      <label>Motivo / observação<textarea id="allocation-validation-observation" minlength="5" maxlength="500" required placeholder="Ex.: Confirmado com o colaborador para esta janela."></textarea></label>
+      <label class="allocation-confirm-check"><input id="allocation-validation-confirm" type="checkbox" required> Confirmo que esta capacidade foi validada com o colaborador.</label>
+      <div class="allocation-dialog-actions"><button type="button" class="capacity-button-secondary" id="allocation-validation-cancel">Cancelar</button><button type="submit" class="capacity-button-primary">Confirmar capacidade</button></div>
+    </form>
+  </dialog>
+  <dialog class="queue-dialog" id="queue-dialog" aria-labelledby="queue-dialog-title">
+    <section>
+      <header class="queue-dialog-header"><div><p>Fila operacional · simulação antes da confirmação</p><h2 id="queue-dialog-title">Organizar fila</h2></div><button type="button" id="queue-dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></header>
+      <div id="queue-dialog-content"></div>
+      <footer class="queue-dialog-actions"><button type="button" class="capacity-button-secondary" id="queue-dialog-suggest"><i class="fa-solid fa-wand-magic-sparkles"></i> Encontrar melhor ordem</button><span></span><button type="button" class="capacity-button-secondary" id="queue-dialog-cancel">Cancelar</button><button type="button" class="capacity-button-primary" id="queue-dialog-confirm">Confirmar nova fila</button></footer>
+    </section>
+  </dialog>
 
   <script src="script.js?v=6" defer></script>
-  <script src="alocacao.js?v=1" defer></script>
+  <script src="alocacao.js?v=6" defer></script>
   <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

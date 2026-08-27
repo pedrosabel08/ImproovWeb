@@ -8,6 +8,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
 $nivelAcesso = isset($_SESSION['nivel_acesso']) ? (int) $_SESSION['nivel_acesso'] : 0;
@@ -251,6 +252,10 @@ $stmt->execute();
 $result = $stmt->get_result();
 $funcoes = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+// Resolve o plano vigente por tarefa em lote. A mesma estrutura e reutilizada
+// pelo Kanban, detalhe e modal; nenhuma consulta de planejamento e feita por card.
+$contextosPlanejamento = flow_tarefa_contextos_planejamento_lote($conn, $funcoes);
 
 // ====================
 // FUNCAO_ANIMACAO (para o Kanban)
@@ -1035,6 +1040,16 @@ foreach ($funcoes as $funcao) {
     $logs           = isset($logsPorFuncao[$funcaoId]) ? $logsPorFuncao[$funcaoId] : [];
     $tempoCalculado = calcularTempo($logs, $funcao['status']);
 
+    $contextoPlanejamento = $contextosPlanejamento[(int) $funcao['idfuncao_imagem']] ?? flow_tarefa_planejamento_contexto_vazio($funcao);
+    if (!in_array((string) ($contextoPlanejamento['status_temporal']['codigo'] ?? ''), ['CONCLUIDO_NO_PRAZO', 'CONCLUIDO_COM_ATRASO'], true)) {
+        $contextoPlanejamento['status_temporal'] = flow_tarefa_planejamento_status_temporal(
+            $contextoPlanejamento['prazo_necessario'] ?? null,
+            (string) ($funcao['status'] ?? ''),
+            null,
+            !$liberada
+        );
+    }
+
     $funcoesFinal[] = [
         'imagem_id'                  => $funcao['imagem_id'],
         'imagem_nome'                => $funcao['imagem_nome'],
@@ -1081,6 +1096,7 @@ foreach ($funcoes as $funcao) {
         'requires_file_upload'       => $funcao['requires_file_upload'],
         'requires_render_send'       => isset($funcao['requires_render_send']) ? intval($funcao['requires_render_send']) : 0,
         'requisitos'                 => $avaliacaoRequisitos,
+        'planejamento'               => $contextoPlanejamento,
     ];
 }
 
@@ -1130,6 +1146,7 @@ foreach ($animFuncoes as $af) {
         'animacao_id'                => $af['animacao_id'],
         'tipo_animacao'              => $af['tipo_animacao'],
         'requisitos'                 => $avaliacaoRequisitosAnimacao,
+        'planejamento'               => flow_tarefa_planejamento_contexto_vazio($af),
     ];
 }
 
@@ -1215,6 +1232,18 @@ if (!empty($suppressedIndexes)) {
     }
     $funcoesFinal = array_values($funcoesFinal);
 }
+
+// Urgência operacional usa o prazo necessário do plano vigente. A previsão
+// pessoal não muda a posição da tarefa na fila.
+usort($funcoesFinal, static function (array $a, array $b): int {
+    $prioridadeA = (int) ($a['prioridade'] ?? 3);
+    $prioridadeB = (int) ($b['prioridade'] ?? 3);
+    if ($prioridadeA !== $prioridadeB) return $prioridadeA <=> $prioridadeB;
+    $prazoA = (string) ($a['planejamento']['prazo_necessario'] ?? '9999-12-31');
+    $prazoB = (string) ($b['planejamento']['prazo_necessario'] ?? '9999-12-31');
+    if ($prazoA !== $prazoB) return strcmp($prazoA, $prazoB);
+    return (int) ($a['idfuncao_imagem'] ?? 0) <=> (int) ($b['idfuncao_imagem'] ?? 0);
+});
 
 // ====================
 // RESPONSE FINAL ÚNICO

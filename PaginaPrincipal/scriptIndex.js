@@ -128,6 +128,21 @@ function escapeCssIdentifier(value) {
   return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+function formatarDataPlanejamento(data) {
+  return data ? formatarData(data) : "Não definido pelo planejamento";
+}
+
+function resumoPlanejamentoKanban(contexto) {
+  const prazo = contexto?.prazo_necessario;
+  const temporal = contexto?.status_temporal || {};
+  if (!prazo) {
+    return `<div class="planning-card-summary is-empty"><span>Prazo necessário</span><strong>Não definido pelo planejamento</strong></div>`;
+  }
+  const status = String(temporal.codigo || "SEM_PRAZO").toLowerCase();
+  const icon = status.includes("atras") ? "ri-alarm-warning-line" : status === "bloqueado" ? "ri-pause-circle-line" : status.includes("hoje") || status.includes("proximo") ? "ri-error-warning-line" : "ri-checkbox-circle-line";
+  return `<div class="planning-card-summary is-${status}"><span><i class="ri-calendar-line"></i> Prazo necessário: ${formatarDataPlanejamento(prazo)}</span><strong><i class="${icon}"></i> ${escapeKanbanText(temporal.rotulo || "No prazo")}</strong></div>`;
+}
+
 function formatarDataHoraKanban(value) {
   if (!value) return "-";
   const normalized = String(value).replace(" ", "T");
@@ -2325,9 +2340,16 @@ function processarDados(data) {
       return prazo < hojeLimpo;
     }
 
-    // Marca como atrasada apenas se estiver 'Em andamento' e o prazo já passou
+    const planejamento = item.planejamento || {};
+
+    // A urgência visível vem do prazo necessário. O prazo legado continua
+    // disponível somente para fluxos sem correspondência no planejamento.
     const atrasada =
-      status === "Em andamento" && item.prazo ? isAtrasada(item.prazo) : false;
+      tipo === "imagem" && planejamento?.planejamento_disponivel
+        ? planejamento?.status_temporal?.codigo === "ATRASADO"
+        : status === "Em andamento" && item.prazo
+          ? isAtrasada(item.prazo)
+          : false;
 
     // Normalize ultima_imagem: if it's an SFTP server path (/mnt/clientes/...), convert to public URL
     const ultimaImagemRaw = item.ultima_imagem || "";
@@ -2414,19 +2436,21 @@ function processarDados(data) {
     const resumoPendenciasInicio =
       status === "Não iniciado" && pendenciasInicio.length > 0
         ? `<div class="requirements-card-summary">
-             <strong><i class="ri-error-warning-line"></i> ${pendenciasInicio.length} ${pendenciasInicio.length === 1 ? "pendência impede" : "pendências impedem"} o início</strong>
-             <div>${pendenciasInicio
-               .slice(0, 3)
-               .map((requisito) => {
-                 const aguardandoAprovacao =
-                   requisito.codigo === "APROVACAO_ETAPA_ANTERIOR";
-                 const texto = aguardandoAprovacao
-                   ? `${requisito.origem_tarefa?.nome || "Etapa anterior"} aguardando aprovação`
-                   : requisito.label || "Requisito";
-                 return `<span class="${aguardandoAprovacao ? "requirement-approval-pending" : ""}" title="${escapeKanbanText(texto)}">${escapeKanbanText(texto)}</span>`;
-               })
-               .join("")}</div>
+             <strong><i class="ri-forbid-2-line"></i> ${pendenciasInicio.length} ${pendenciasInicio.length === 1 ? "dependência impede" : "dependências impedem"} o início</strong>
+             <button type="button" class="kanban-dependencies-toggle">Ver dependências <i class="ri-arrow-right-s-line"></i></button>
            </div>`
+        : status === "Não iniciado" && liberado === "1"
+          ? `<div class="requirements-card-summary is-ready"><strong><i class="ri-checkbox-circle-line"></i> Pronta para iniciar</strong></div>`
+          : "";
+    const diasDesvioPlanejamento = Number(
+      planejamento?.status_temporal?.dias ?? 0,
+    );
+    const desvioPlanejamentoHtml =
+      tipo === "imagem" &&
+      status === "Não iniciado" &&
+      planejamento?.prazo_necessario &&
+      diasDesvioPlanejamento > 0
+        ? `<strong class="kanban-planning-deviation">+${diasDesvioPlanejamento}d</strong>`
         : "";
 
     const flowBlockIssueCount = Number(item.flow_block_issues_abertas || 0);
@@ -2519,8 +2543,9 @@ function processarDados(data) {
                     <div class="card-footer">
                         <span class="date ${atrasada ? "atrasada" : ""}">
                             <i class="fa-regular fa-calendar"></i>
-                            ${item.prazo ? formatarData(item.prazo) : "-"}
+                            ${tipo === "imagem" ? (planejamento.prazo_necessario ? formatarDataPlanejamento(planejamento.prazo_necessario) : "Sem prazo") : (item.prazo ? formatarData(item.prazo) : "-")}
                         </span>
+                        ${desvioPlanejamentoHtml}
                     </div>
                     <div class="card-log">
                             <span 
@@ -2561,6 +2586,12 @@ function processarDados(data) {
       card.querySelector(".card-log")?.appendChild(owner);
     }
 
+    if (status === "Não iniciado") {
+      card.querySelector(".card-log")?.remove();
+      card.classList.remove("kanban-card--with-thumb");
+      card.querySelector(".kanban-card-thumb")?.remove();
+    }
+
     const cardThumbnail = card.querySelector(".kanban-card-thumb");
     if (cardThumbnail) {
       cardThumbnail.addEventListener("error", () => {
@@ -2573,6 +2604,15 @@ function processarDados(data) {
     card.dataset.obra_nome = item.nomenclatura || ""; // nome da obra
     card.dataset.funcao_nome = item.nome_funcao || ""; // nome da função
     card.dataset.status = status; // status normalizado
+    card.dataset.planningAvailable = planejamento.planejamento_disponivel
+      ? "1"
+      : "0";
+    card.dataset.planningRequiredDue = planejamento.prazo_necessario || "";
+    card.dataset.planningPrediction = planejamento.previsao_colaborador || "";
+    card.dataset.planningJustification =
+      planejamento.justificativa_previsao || "";
+    card.dataset.planningDifference =
+      planejamento.diferenca_previsao_dias_uteis ?? "";
     card.dataset.flowBlockIssues = String(
       Number(item.flow_block_issues_abertas || 0),
     );
@@ -2631,6 +2671,21 @@ function processarDados(data) {
         abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "");
       }
     });
+
+    const dependenciesToggle = card.querySelector(".kanban-dependencies-toggle");
+    if (dependenciesToggle) {
+      dependenciesToggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        abrirSidebar(
+          card.dataset.id,
+          card.dataset.idImagem,
+          card.dataset.nomeObraReal || "",
+          false,
+          { focusDependencies: true },
+        );
+      });
+    }
 
     const flowBlockIssue = card.querySelector(".flow-block-card-type");
     if (flowBlockIssue) {
@@ -2697,6 +2752,18 @@ function processarDados(data) {
   });
 
   atualizarTaskCount();
+
+  // Mantém a carga leve mesmo em filas extensas: só os primeiros cards visíveis
+  // de cada coluna recebem stagger; o restante entra sem trabalho extra.
+  document.querySelectorAll(".kanban-box .content").forEach((column) => {
+    Array.from(column.querySelectorAll(":scope > .kanban-card"))
+      .slice(0, 12)
+      .forEach((card, index) => {
+        card.classList.remove("kanban-card--enter");
+        card.style.setProperty("--kanban-enter-delay", `${Math.min(index * 45, 360)}ms`);
+        requestAnimationFrame(() => card.classList.add("kanban-card--enter"));
+      });
+  });
 
   preencherFiltros();
   alertarPendenciasSeNecessario(data);
@@ -4430,7 +4497,13 @@ function abrirSidebarTarefaCriada(idTarefa) {
     });
 }
 
-function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
+function abrirSidebar(
+  idFuncao,
+  idImagem,
+  nomeObra = "",
+  isAnimacao = false,
+  options = {},
+) {
   return fetch(
     `PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}&is_animacao=${isAnimacao ? 1 : 0}`,
   )
@@ -4443,6 +4516,9 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
       openMindmapModal();
 
       const funcao = data.funcoes && data.funcoes[0] ? data.funcoes[0] : {};
+      const planejamento = data.planejamento || {};
+      const prazoNecessario = planejamento.prazo_necessario || null;
+      const statusTemporal = planejamento.status_temporal || {};
 
       function getFuncaoStatusColor(status) {
         const s = String(status || "").toLowerCase();
@@ -4580,8 +4656,8 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
               </div>
               <div class="tp-meta-sep"></div>
               <div class="tp-meta-item">
-                <strong>Prazo</strong>
-                <span>${funcao.prazo ? formatarData(funcao.prazo) : "-"}</span>
+                <strong>Prazo necessário</strong>
+                <span>${formatarDataPlanejamento(prazoNecessario)}</span>
               </div>
             </div>
           </div>
@@ -4605,6 +4681,40 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
       const tpMain = document.createElement("div");
       tpMain.className = "tp-main";
       tpBody.appendChild(tpMain);
+
+      const compromisso = document.createElement("section");
+      compromisso.className = `tp-card tp-commitment-card is-${String(statusTemporal.codigo || "sem_prazo").toLowerCase()}`;
+      const timelineItens = Array.isArray(planejamento.timeline)
+        ? planejamento.timeline
+        : [];
+      const formatarDesvio = (desvio) => {
+        if (desvio === null || desvio === undefined) return "";
+        if (Number(desvio) === 0) return "0d";
+        return Number(desvio) > 0
+          ? `+${desvio}d`
+          : `${desvio}d`;
+      };
+      compromisso.innerHTML = `
+        <div class="tp-commitment-header">
+          <div><span class="tp-section-label"><i class="ri-calendar-check-line"></i> Compromisso da etapa</span><p>Seus prazos e o contexto do processo para esta etapa.</p></div>
+          <strong class="tp-commitment-status"><i class="ri-time-line"></i> ${escapeKanbanText(statusTemporal.rotulo || "Prazo não definido")}</strong>
+        </div>
+        <div class="tp-commitment-grid">
+          <div><span>Função atual</span><strong>${escapeKanbanText(planejamento.etapa_nome || funcao.nome_funcao || "Não definida")}</strong><small>Você está nesta etapa</small></div>
+          <div><span>Janela da etapa</span><strong>${planejamento.janela_inicio && planejamento.janela_fim ? `${formatarData(planejamento.janela_inicio)} → ${formatarData(planejamento.janela_fim)}` : "Não definida"}</strong><small>${planejamento.plano_versao ? `Plano vigente v${planejamento.plano_versao}` : "Sem plano vigente"}</small></div>
+          <div><span>Prazo necessário</span><strong class="tp-commitment-deadline">${formatarDataPlanejamento(prazoNecessario)}</strong><small>Definido pelo planejamento</small></div>
+          <div><span>Sua previsão</span><strong class="tp-commitment-prediction">${planejamento.previsao_colaborador ? formatarData(planejamento.previsao_colaborador) : "Não informada"}</strong><small>${planejamento.diferenca_previsao_dias_uteis > 0 ? `+${planejamento.diferenca_previsao_dias_uteis} dias úteis` : ""}</small></div>
+        </div>
+        ${timelineItens.length ? `<div class="tp-process-timeline is-animated">${timelineItens.map((etapa) => {
+          const concluida = etapa.estado === "CONCLUIDA";
+          const prazoEtapa = etapa.prazo ? `Prazo: ${formatarData(etapa.prazo)}` : "Prazo não definido";
+          const legenda = concluida ? formatarDesvio(etapa.desvio) : prazoEtapa;
+          const estado = etapa.estado === "ATUAL" ? "Você está aqui" : concluida ? "Concluída" : etapa.estado === "BLOQUEADA" ? "Bloqueada" : "Próxima etapa";
+          return `<div class="tp-process-stage is-${String(etapa.estado || "proxima").toLowerCase()}"><i class="${concluida ? "ri-checkbox-circle-fill" : etapa.estado === "ATUAL" ? "ri-user-location-fill" : etapa.estado === "BLOQUEADA" ? "ri-pause-circle-line" : "ri-circle-line"}"></i><strong>${escapeKanbanText(etapa.nome || etapa.codigo)}</strong><span>${estado}</span><small>${legenda}</small></div>`;
+        }).join("")}</div>` : ""}
+        <div class="tp-commitment-message"><i class="ri-information-line"></i><span>${escapeKanbanText(planejamento.mensagem_contexto || "O planejamento ainda não definiu o contexto desta tarefa.")}</span></div>
+      `;
+      tpMain.appendChild(compromisso);
 
       // ─ Resumo da tarefa ─
       const summaryCard = document.createElement("div");
@@ -4657,6 +4767,7 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
         )
       ) {
         const requisitosCard = document.createElement("section");
+        requisitosCard.id = "tp-dependencies-section";
         requisitosCard.className = `tp-card tp-requirements-card ${
           requisitosPendentes.length ? "is-blocked" : "is-ready"
         }`;
@@ -4718,6 +4829,16 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
           </div>
         `;
         tpMain.appendChild(requisitosCard);
+        if (options.focusDependencies) {
+          requestAnimationFrame(() => {
+            requisitosCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            requisitosCard.classList.add("tp-dependencies-highlight");
+            window.setTimeout(
+              () => requisitosCard.classList.remove("tp-dependencies-highlight"),
+              1200,
+            );
+          });
+        }
         requisitosCard
           .querySelectorAll("[data-requirement-index]")
           .forEach((button) => {
@@ -6210,7 +6331,115 @@ form.addEventListener("submit", (e) => {
 const cardModal = document.getElementById("cardModal");
 const modalPrazo = document.getElementById("modalPrazo");
 const modalObs = document.getElementById("modalObs");
+const modalPlanejamento = document.getElementById("modalPlanejamento");
+const modalPrevisaoConclusao = document.getElementById("modalPrevisaoConclusao");
+const modalPrazoNecessario = document.getElementById("modalPrazoNecessario");
+const modalPrevisaoFeedback = document.getElementById("modalPrevisaoFeedback");
+const modalJustificativaWrap = document.getElementById("modalJustificativaWrap");
+const modalJustificativa = document.getElementById("modalJustificativa");
 let cardSelecionado = null;
+
+function ocultarPlanejamentoModal() {
+  if (!modalPlanejamento) return;
+  modalPlanejamento.hidden = true;
+  modalPlanejamento.dataset.taskId = "";
+  if (modalPrevisaoFeedback) modalPrevisaoFeedback.textContent = "";
+  if (modalJustificativaWrap) modalJustificativaWrap.hidden = true;
+}
+
+function renderizarFeedbackPrevisao(resultado) {
+  if (!modalPrevisaoFeedback || !modalJustificativaWrap) return;
+  const diferenca = Number(resultado?.diferenca_dias_uteis);
+  const temPrazo = !!resultado?.prazo_necessario;
+  if (!temPrazo) {
+    modalPrevisaoFeedback.textContent = "O planejamento ainda não definiu um prazo necessário para esta tarefa.";
+    modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
+    modalJustificativaWrap.hidden = true;
+    return;
+  }
+  if (!Number.isFinite(diferenca) || diferenca <= 0) {
+    modalPrevisaoFeedback.innerHTML = '<i class="ri-checkbox-circle-line"></i> Dentro do prazo necessário';
+    modalPrevisaoFeedback.className = "modal-planning-feedback is-ok";
+    modalJustificativaWrap.hidden = true;
+    return;
+  }
+  modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa o prazo necessário em ${diferenca} ${diferenca === 1 ? "dia útil" : "dias úteis"}.`;
+  modalPrevisaoFeedback.className = "modal-planning-feedback is-risk";
+  modalJustificativaWrap.hidden = false;
+}
+
+async function atualizarFeedbackPrevisao() {
+  const taskId = modalPlanejamento?.dataset.taskId;
+  const previsao = modalPrevisaoConclusao?.value;
+  if (!taskId || !previsao) return;
+  try {
+    const response = await fetch(
+      `PaginaPrincipal/validar_previsao_conclusao.php?funcao_imagem_id=${encodeURIComponent(taskId)}&previsao_conclusao=${encodeURIComponent(previsao)}`,
+    );
+    const resultado = await response.json();
+    if (resultado?.success) renderizarFeedbackPrevisao(resultado);
+  } catch (_) {
+    // A validação definitiva ocorre no salvamento; não interrompe a edição local.
+  }
+}
+
+function configurarModalPlanejamento(card) {
+  if (!modalPlanejamento || !card || card.classList.contains("tarefa-criada")) {
+    ocultarPlanejamentoModal();
+    return false;
+  }
+  const disponivel = card.dataset.planningAvailable === "1";
+  document.querySelector(".modalPrazo").style.display = "none";
+  modalPlanejamento.hidden = false;
+  modalPlanejamento.dataset.taskId = card.dataset.id || "";
+  modalPrazoNecessario.textContent = formatarDataPlanejamento(
+    card.dataset.planningRequiredDue || "",
+  );
+  modalPrevisaoConclusao.value = card.dataset.planningPrediction || "";
+  modalJustificativa.value = card.dataset.planningJustification || "";
+  if (!disponivel) {
+    renderizarFeedbackPrevisao({ prazo_necessario: null });
+    return true;
+  }
+  if (modalPrevisaoConclusao.value) {
+    atualizarFeedbackPrevisao();
+  } else {
+    modalPrevisaoFeedback.textContent = "Informe sua previsão para confirmar o compromisso com esta etapa.";
+    modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
+    modalJustificativaWrap.hidden = true;
+  }
+  return true;
+}
+
+async function salvarPrevisaoPlanejamento(card) {
+  if (!card || card.classList.contains("tarefa-criada")) return true;
+  const previsao = modalPrevisaoConclusao?.value || "";
+  if (card.dataset.planningAvailable !== "1" && !previsao) return true;
+  if (!previsao) {
+    throw new Error("Informe sua previsão de conclusão.");
+  }
+  const body = new URLSearchParams({
+    funcao_imagem_id: card.dataset.id || "",
+    previsao_conclusao: previsao,
+    justificativa: modalJustificativa?.value.trim() || "",
+  });
+  const response = await fetch("PaginaPrincipal/salvar_previsao_conclusao.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || "Não foi possível salvar sua previsão.");
+  }
+  const contexto = payload.planejamento || {};
+  card.dataset.planningPrediction = contexto.previsao_colaborador || previsao;
+  card.dataset.planningJustification = contexto.justificativa_previsao || "";
+  card.dataset.planningDifference = contexto.diferenca_previsao_dias_uteis ?? "";
+  return true;
+}
+
+modalPrevisaoConclusao?.addEventListener("change", atualizarFeedbackPrevisao);
 
 function restaurarCardModalPadrao() {
   if (!cardModal) return;
@@ -6241,8 +6470,24 @@ document.getElementById("fecharModal").addEventListener("click", () => {
 });
 
 // Salvar alterações
-document.getElementById("salvarModal").addEventListener("click", () => {
+document.getElementById("salvarModal").addEventListener("click", async () => {
   if (!cardSelecionado) return;
+
+  if (!cardSelecionado.classList.contains("tarefa-criada")) {
+    try {
+      await salvarPrevisaoPlanejamento(cardSelecionado);
+    } catch (error) {
+      Toastify({
+        text: error?.message || "Não foi possível salvar sua previsão.",
+        duration: 4000,
+        close: true,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "red",
+      }).showToast();
+      return;
+    }
+  }
 
   // Verifica se o prazo está vazio
   if (modalPrazo.offsetParent !== null && !modalPrazo.value) {
@@ -6329,7 +6574,8 @@ document.getElementById("salvarModal").addEventListener("click", () => {
       cardId: cardSelecionado.dataset.id,
       animacao_id: cardSelecionado.dataset.animacaoId || "",
       status: statusMap[cardSelecionado.closest(".kanban-box").id] || null,
-      prazo: modalPrazo.value,
+      prazo:
+        cardSelecionado.dataset.planningAvailable === "1" ? "" : modalPrazo.value,
       observacao: modalObs.value,
       confirmar_pendencias:
         cardModal.dataset.confirmarPendencias === "1" ? 1 : 0,
@@ -6951,6 +7197,12 @@ if (typeof Sortable !== "undefined") {
             default:
               // padrão: tudo visível
               break;
+          }
+
+          if (!card.classList.contains("tarefa-criada")) {
+            configurarModalPlanejamento(card);
+          } else {
+            ocultarPlanejamentoModal();
           }
 
           // ✅ Sobrescreve se for tarefa-criada (regra final)

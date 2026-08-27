@@ -547,6 +547,24 @@ $conn->close();
                 <input type="date" id="modalPrazo">
             </div>
 
+            <section class="modal-item modalPlanejamento" id="modalPlanejamento" hidden>
+                <div class="modal-planning-required">
+                    <span>Prazo necessário</span>
+                    <strong id="modalPrazoNecessario">Não definido pelo planejamento</strong>
+                    <small>Definido pelo planejamento da produção.</small>
+                </div>
+                <label for="modalPrevisaoConclusao">Sua previsão de conclusão <b aria-hidden="true">*</b></label>
+                <small>Informe quando você acredita que irá concluir esta tarefa.</small>
+                <input type="date" id="modalPrevisaoConclusao">
+                <div class="modal-planning-feedback" id="modalPrevisaoFeedback" aria-live="polite"></div>
+                <label class="modal-planning-justification" id="modalJustificativaWrap" for="modalJustificativa" hidden>
+                    Justificativa <b aria-hidden="true">*</b>
+                    <small>Explique o que está impedindo a conclusão dentro do prazo necessário.</small>
+                    <textarea id="modalJustificativa" rows="3" maxlength="500" placeholder="Informe o motivo"></textarea>
+                </label>
+                <p class="modal-planning-note"><i class="ri-information-line"></i> Sua previsão é uma estimativa pessoal e não altera o prazo necessário.</p>
+            </section>
+
             <div class="modal-item modalObs">
                 <h4>Observação:</h4>
                 <textarea id="modalObs" rows="4"></textarea>

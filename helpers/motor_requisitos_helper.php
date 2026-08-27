@@ -795,11 +795,30 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
         $urlPredecessora = $taskUrl;
 
         $liberarModelagem = $funcaoId === 2 && (int) ($context['liberar_modelagem'] ?? 0) === 1;
+        $composicaoAposModelagemAntecipada = $funcaoId === 3
+            && (int) ($context['liberar_modelagem'] ?? 0) === 1;
         $usaModelagemBaseFachada = ($funcaoId === 4 && $tipoImagem === 'fachada')
             || ($funcaoId === 3 && $tipoImagem === 'imagem externa');
         if ($liberarModelagem) {
             // A liberação da obra permite iniciar Modelagem antes de qualquer
             // tarefa produtiva anterior, como no fluxo legado da obra.
+        } elseif ($composicaoAposModelagemAntecipada) {
+            // A exceção vale apenas para o início da Modelagem. A Composição
+            // não pode herdar essa antecipação: quando Caderno e/ou Filtro
+            // existirem na imagem, ambos precisam estar concluídos junto da
+            // Modelagem antes de a Composição ser liberada.
+            foreach ([1, 8, 2] as $funcaoAnteriorId) {
+                $predecessora = motor_requisitos_predecessora($conn, $imagemId, $funcaoAnteriorId);
+                if ($predecessora) {
+                    motor_requisitos_adicionar_predecessora(
+                        $conn,
+                        $requisitos,
+                        $predecessora,
+                        'Etapa anterior à Composição',
+                        $urlPredecessora
+                    );
+                }
+            }
         } elseif ($usaModelagemBaseFachada) {
             $predecessora = motor_requisitos_modelagem_base_fachada($conn, $obraId);
             $origem = 'Modelagem-base da Fachada';

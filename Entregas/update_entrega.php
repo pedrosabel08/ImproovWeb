@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
 
 $raw   = file_get_contents('php://input');
 $input = json_decode($raw, true);
@@ -78,6 +80,13 @@ try {
     }
 
     $conn->commit();
+    if ($data_prevista !== null) {
+        try {
+            flow_planejamento_marcar_desatualizado($conn, $entrega_id, isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null);
+        } catch (Throwable $planejamentoErro) {
+            error_log('Não foi possível atualizar o estado do planejamento da entrega ' . $entrega_id . ': ' . $planejamentoErro->getMessage());
+        }
+    }
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
     $conn->rollback();

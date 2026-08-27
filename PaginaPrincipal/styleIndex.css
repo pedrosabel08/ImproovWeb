@@ -4685,6 +4685,127 @@ form#dailyForm button {
   gap: 20px;
 }
 
+/* Contexto operacional do planejamento: usa a mesma linguagem visual dos cards. */
+.modalPlanejamento {
+  gap: 8px !important;
+  padding: 12px;
+  border: 1px solid rgba(79, 128, 225, 0.38);
+  border-radius: 10px;
+  background: rgba(79, 128, 225, 0.06);
+}
+.modalPlanejamento > label { display: grid; gap: 5px; margin: 0 !important; font-size: .82rem; font-weight: 800; text-transform: uppercase; }
+.modalPlanejamento small { color: var(--text-log, #64748b); font-size: .74rem; font-weight: 500; text-transform: none; }
+.modal-planning-required { display: grid; gap: 3px; padding: 10px; border: 1px solid rgba(79, 128, 225, .34); border-radius: 8px; background: rgba(15, 23, 42, .25); }
+.modal-planning-required span, .modal-planning-justification { color: var(--cor-principal); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.modal-planning-required strong { color: #76a4ff; font-size: 1.05rem; }
+.modal-planning-feedback { min-height: 20px; padding: 8px 10px; border-radius: 7px; font-size: .78rem; font-weight: 700; }
+.modal-planning-feedback.is-ok { color: #17803d; background: rgba(34, 197, 94, .12); }
+.modal-planning-feedback.is-risk { color: #b45309; background: rgba(245, 158, 11, .13); border: 1px solid rgba(245, 158, 11, .42); }
+.modal-planning-feedback.is-neutral { color: var(--text-log, #64748b); background: rgba(148, 163, 184, .12); }
+.modal-planning-note { display: flex; gap: 6px; margin: 0; color: #5276b8; font-size: .74rem; line-height: 1.35; }
+
+.planning-card-summary { display: grid; gap: 3px; margin-top: 4px; padding: 5px 6px; border-left: 2px solid #5b91ed; border-radius: 5px; background: rgba(79, 128, 225, .08); color: #9eb0c4; font-size: .62rem; line-height: 1.2; }
+.planning-card-summary span, .planning-card-summary strong { display: flex; align-items: center; gap: 4px; }
+.planning-card-summary strong { color: #8ed6a6; font-weight: 800; }
+.planning-card-summary.is-prazo_hoje, .planning-card-summary.is-prazo_proximo { border-color: #e8af42; background: rgba(232, 175, 66, .11); }
+.planning-card-summary.is-prazo_hoje strong, .planning-card-summary.is-prazo_proximo strong { color: #efbe5b; }
+.planning-card-summary.is-atrasado, .planning-card-summary.is-concluido_com_atraso { border-color: #ed7777; background: rgba(237, 119, 119, .11); }
+.planning-card-summary.is-atrasado strong, .planning-card-summary.is-concluido_com_atraso strong { color: #f28b8b; }
+.planning-card-summary.is-bloqueado { border-color: #9476dc; background: rgba(148, 118, 220, .11); }
+.planning-card-summary.is-bloqueado strong { color: #c5b4ff; }
+.planning-card-summary.is-empty { border-color: #718096; background: rgba(113, 128, 150, .09); }
+
+.tp-commitment-card { border-color: rgba(79, 128, 225, .32); background: linear-gradient(135deg, rgba(35, 58, 91, .42), var(--tp-card)); }
+.tp-commitment-card.is-atrasado { border-color: rgba(239, 104, 104, .55); }
+.tp-commitment-card.is-bloqueado { border-color: rgba(148, 118, 220, .54); }
+.tp-commitment-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.tp-commitment-header .tp-section-label { display: block; margin: 0 0 5px; color: #cfe0ff; }
+.tp-commitment-header p { margin: 0; color: var(--tp-text-2); font-size: 12px; }
+.tp-commitment-status { padding: 7px 10px; border-radius: 8px; background: rgba(34, 197, 94, .12); color: #82d9a0; font-size: 11px; white-space: nowrap; }
+.tp-commitment-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 16px; border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden; }
+.tp-commitment-grid > div { display: grid; gap: 5px; min-width: 0; padding: 12px; border-right: 1px solid var(--tp-border); }
+.tp-commitment-grid > div:last-child { border-right: 0; }
+.tp-commitment-grid span { color: var(--tp-text-2); font-size: 10px; font-weight: 800; letter-spacing: .45px; text-transform: uppercase; }
+.tp-commitment-grid strong { overflow: hidden; color: var(--tp-text-1); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.tp-commitment-grid small { color: var(--tp-text-2); font-size: 11px; }
+.tp-commitment-grid .tp-commitment-deadline { color: #ff9a9a; font-size: 16px; }
+.tp-commitment-grid .tp-commitment-prediction { color: #86dca0; }
+.tp-process-timeline { display: flex; min-width: max-content; margin-top: 18px; padding: 4px 0; overflow-x: auto; }
+.tp-process-stage { position: relative; display: grid; justify-items: center; gap: 3px; min-width: 132px; padding: 4px 8px; color: var(--tp-text-2); text-align: center; }
+.tp-process-stage:not(:last-child)::after { position: absolute; top: 14px; left: calc(50% + 16px); width: calc(100% - 32px); height: 2px; content: ""; background: var(--tp-border-strong); }
+.tp-process-stage > i { position: relative; z-index: 1; font-size: 28px; color: #75869e; background: var(--tp-card); }
+.tp-process-stage.is-concluida > i { color: #37c66c; }
+.tp-process-stage.is-atual > i { color: #6d9eff; }
+.tp-process-stage strong { color: var(--tp-text-1); font-size: 11px; }
+.tp-process-stage span, .tp-process-stage small { font-size: 10px; }
+.tp-process-stage small { min-height: 12px; color: #f4b462; font-weight: 800; }
+.tp-commitment-message { display: flex; gap: 8px; margin-top: 14px; padding: 10px; border: 1px solid rgba(79, 128, 225, .18); border-radius: 7px; color: #a7c3ed; background: rgba(79, 128, 225, .07); font-size: 12px; line-height: 1.4; }
+.tp-commitment-message i { color: #79a7ff; font-size: 16px; }
+
+@keyframes kanban-card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#kanban-section .kanban-card--enter {
+  animation: kanban-card-enter 240ms ease-out both;
+  animation-delay: var(--kanban-enter-delay, 0ms);
+}
+
+#kanban-section .kanban-card {
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+
+#kanban-section .kanban-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(120, 160, 225, .48);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .18);
+  cursor: pointer;
+}
+
+@keyframes tp-dependencies-pulse {
+  0%, 100% { border-color: rgba(217, 119, 6, .42); box-shadow: none; background: var(--tp-card); }
+  40%, 70% { border-color: rgba(251, 191, 36, .95); box-shadow: 0 0 0 4px rgba(251, 191, 36, .14), 0 0 24px rgba(251, 191, 36, .22); background: rgba(120, 88, 25, .22); }
+}
+
+.tp-dependencies-highlight { animation: tp-dependencies-pulse 560ms ease-in-out 2; }
+
+@keyframes tp-timeline-node-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tp-process-timeline.is-animated .tp-process-stage {
+  animation: tp-timeline-node-enter 180ms ease-out both;
+}
+.tp-process-timeline.is-animated .tp-process-stage:nth-child(1) { animation-delay: 40ms; }
+.tp-process-timeline.is-animated .tp-process-stage:nth-child(2) { animation-delay: 95ms; }
+.tp-process-timeline.is-animated .tp-process-stage:nth-child(3) { animation-delay: 150ms; }
+.tp-process-timeline.is-animated .tp-process-stage:nth-child(4) { animation-delay: 205ms; }
+.tp-process-timeline.is-animated .tp-process-stage:nth-child(5) { animation-delay: 260ms; }
+.tp-process-timeline.is-animated .tp-process-stage:nth-child(n + 6) { animation-delay: 315ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .tp-commitment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tp-commitment-grid > div:nth-child(2) { border-right: 0; }
+  .tp-commitment-grid > div:nth-child(-n+2) { border-bottom: 1px solid var(--tp-border); }
+}
+@media (max-width: 560px) {
+  .tp-commitment-header { flex-direction: column; }
+  .tp-commitment-grid { grid-template-columns: 1fr; }
+  .tp-commitment-grid > div { border-right: 0; border-bottom: 1px solid var(--tp-border); }
+  .tp-commitment-grid > div:last-child { border-bottom: 0; }
+}
+
 /* Flow Block: substitui a observação livre quando uma tarefa é bloqueada. */
 .flow-block-hold-form {
   display: grid;
@@ -7062,6 +7183,12 @@ tr.prod-row-recorde td {
   text-overflow: ellipsis;
 }
 
+#kanban-section .kanban-box#to-do .kanban-card h5 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 #kanban-section.kanban--comfortable .kanban-card h5 {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -7112,6 +7239,19 @@ tr.prod-row-recorde td {
   min-width: 0;
   gap: 5px;
   margin: 0;
+}
+
+#kanban-section .kanban-box#to-do .kanban-card .card-footer {
+  justify-content: space-between;
+  min-height: 15px;
+  margin-top: 2px;
+}
+
+#kanban-section .kanban-planning-deviation {
+  flex: 0 0 auto;
+  color: #ff7777;
+  font-size: .66rem;
+  font-weight: 900;
 }
 
 #kanban-section .kanban-card .card-log {
@@ -7204,6 +7344,63 @@ tr.prod-row-recorde td {
   font-size: inherit;
   font-weight: 800;
 }
+
+#kanban-section .kanban-box#to-do .requirements-card-summary {
+  display: grid;
+  gap: 3px;
+  padding: 2px 0 0;
+  color: #ff7777;
+  background: transparent;
+  border: 0;
+}
+
+#kanban-section .kanban-box#to-do .requirements-card-summary strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .64rem;
+}
+
+#kanban-section .kanban-box#to-do .requirements-card-summary.is-ready,
+#kanban-section .kanban-box#to-do .requirements-card-summary.is-ready strong {
+  color: #79d79a;
+}
+
+#kanban-section .kanban-dependencies-toggle {
+  width: max-content;
+  padding: 0;
+  color: #9eb0c4;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: .61rem;
+  cursor: pointer;
+}
+
+#kanban-section .kanban-dependencies-toggle:hover {
+  color: #d9e6f5;
+  text-decoration: underline;
+}
+
+.kanban-dependencies-dialog {
+  display: grid;
+  gap: 9px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.kanban-dependencies-dialog li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #dbe7f3;
+  font-size: .85rem;
+}
+
+.kanban-dependencies-dialog i { color: #f3b357; }
+.kanban-dependencies-dialog small { margin-left: auto; color: #9eb0c4; }
 
 #kanban-section .requirements-card-summary > div {
   margin-left: 4px;

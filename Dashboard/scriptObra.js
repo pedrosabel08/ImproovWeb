@@ -5899,6 +5899,28 @@ function infosObra(obraId) {
         const qFot = document.getElementById("quick_fotografico");
         const qDrive = document.getElementById("quick_drive");
         const qReview = document.getElementById("quick_review");
+        const qProductionPlan = document.getElementById("quick_production_plan");
+
+        if (qProductionPlan) {
+          const getPlanningObraId = () => String(
+            (typeof obraId !== "undefined" && obraId) ||
+              localStorage.getItem("obraId") ||
+              localStorage.getItem("idObra") ||
+              "",
+          ).trim();
+          const currentObraId = getPlanningObraId();
+          if (currentObraId && /^\d+$/.test(currentObraId)) {
+            qProductionPlan.href = `../PlanejamentoProducao/index.php?obra_id=${encodeURIComponent(currentObraId)}`;
+          }
+          qProductionPlan.addEventListener("click", (event) => {
+            const obraAtual = getPlanningObraId();
+            if (!obraAtual || !/^\d+$/.test(obraAtual)) {
+              event.preventDefault();
+              return;
+            }
+            qProductionPlan.href = `../PlanejamentoProducao/index.php?obra_id=${encodeURIComponent(obraAtual)}`;
+          });
+        }
 
         const fotograficoInput = document.getElementById("fotografico");
         const driveInput = document.getElementById("link_drive");

@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     // --- Parâmetro ---
@@ -56,6 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 fi.observacao,
                 fi.idfuncao_imagem AS id,
                 fi.funcao_id,
+                img.tipo_imagem,
                 o.nomenclatura,
                 0 AS is_animacao
             FROM imagens_cliente_obra img
@@ -77,6 +79,20 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $avaliacaoRequisitos = $isAnimacao
         ? motor_requisitos_avaliar_funcao_animacao($conn, $idFuncaoImagem)
         : motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
+    $tarefaPlanejamento = $funcoes[0] ?? [];
+    $tarefaPlanejamento['idfuncao_imagem'] = (int) ($tarefaPlanejamento['id'] ?? 0);
+    $tarefaPlanejamento['imagem_id'] = (int) ($tarefaPlanejamento['idimagem'] ?? 0);
+    $contextoPlanejamento = !$isAnimacao && !empty($funcoes[0])
+        ? flow_tarefa_contexto_planejamento($conn, $tarefaPlanejamento)
+        : flow_tarefa_planejamento_contexto_vazio([]);
+    if (!$isAnimacao && !in_array((string) ($contextoPlanejamento['status_temporal']['codigo'] ?? ''), ['CONCLUIDO_NO_PRAZO', 'CONCLUIDO_COM_ATRASO'], true)) {
+        $contextoPlanejamento['status_temporal'] = flow_tarefa_planejamento_status_temporal(
+            $contextoPlanejamento['prazo_necessario'] ?? null,
+            (string) ($funcoes[0]['status'] ?? ''),
+            null,
+            !empty($avaliacaoRequisitos['aplicavel']) && empty($avaliacaoRequisitos['elegivel'])
+        );
+    }
 
     // ==========================================================
     // 2) Status da imagem
@@ -461,6 +477,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         "obra_links" => $obra_links ?? [],
         "observacoes_obra" => $observacoes_obra,
         "requisitos" => $avaliacaoRequisitos,
+        "planejamento" => $contextoPlanejamento,
 
     ], JSON_UNESCAPED_UNICODE);
 } else {

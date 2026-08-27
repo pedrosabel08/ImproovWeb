@@ -13,6 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
 include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/helpers/tarefa_planejamento_contexto_helper.php';
 
 // Simple file logger for debugging
 function write_log_insere_funcao($msg)
@@ -323,6 +324,31 @@ try {
         );
         $stmtPrazoHistory->execute();
         $stmtPrazoHistory->close();
+    }
+
+    // A conclusão guarda o prazo necessário efetivo no momento do fato. Assim,
+    // um replanejamento posterior não reescreve o histórico operacional.
+    if (
+        $funcao_id !== null
+        && $status !== null
+        && flow_planejamento_status_finalizado((string) $status)
+        && !flow_planejamento_status_finalizado((string) $existingStatus)
+    ) {
+        $stmtConclusao = $conn->prepare('SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1');
+        if ($stmtConclusao) {
+            $stmtConclusao->bind_param('ii', $imagem_id, $funcao_id);
+            $stmtConclusao->execute();
+            $rowConclusao = $stmtConclusao->get_result()->fetch_assoc();
+            $stmtConclusao->close();
+            if (!empty($rowConclusao['idfuncao_imagem'])) {
+                flow_tarefa_planejamento_registrar_conclusao(
+                    $conn,
+                    (int) $rowConclusao['idfuncao_imagem'],
+                    $actorColaboradorId,
+                    $actorUsuarioId
+                );
+            }
+        }
     }
 
     // ─── Inserir em alteracoes se funcao_id = 6 ───────────────────────────

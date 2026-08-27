@@ -399,6 +399,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                         <li><a title="Atividade do Sistema" href="https://improov.com.br/flow/ImproovWeb/Atividade"><i class="fa-solid fa-chart-simple"></i><span>Atividade</span></a></li>
                         <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></a></li>
                         <li><a title="Dashboard Operacional" href="https://improov.com.br/flow/ImproovWeb/Dashboard/Operacional"><i class="fa-solid fa-chart-area"></i><span>Dashboard Operacional</span></a></li>
+                        <li><a title="Planejamento Global de Capacidade" href="<?php echo htmlspecialchars(improov_sidebar_url('PlanejamentoCapacidade'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-chart-column"></i><span>Capacidade da Produção</span></a></li>
                         <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-sitemap"></i><span>Projetos</span></a></li>
                         <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
                     </ul>

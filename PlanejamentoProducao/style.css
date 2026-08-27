@@ -292,7 +292,7 @@ body.planning-page.light .planning-workspace {
 
 .planning-summary {
   display: grid;
-  grid-template-columns: 1fr 0.9fr 1fr 1fr 1fr 0.72fr;
+  grid-template-columns: 1fr 0.9fr 1fr 1fr 1fr 1.05fr 0.72fr;
   overflow: hidden;
 }
 
@@ -333,6 +333,21 @@ body.planning-page.light .planning-workspace {
 .planning-summary article small.negative {
   color: #ff6877;
 }
+
+.planning-operational-card {
+  background: rgba(139, 92, 246, .08);
+  border-left: 2px solid var(--pp-violet);
+}
+.planning-operational-card strong { color: var(--pp-violet); }
+.planning-operational-card.is-no_plano { border-left-color: var(--pp-success, #22c997); }
+.planning-operational-card.is-no_plano strong { color: var(--pp-success, #22c997); }
+.planning-operational-card.is-margem_consumida { border-left-color: #f59e0b; }
+.planning-operational-card.is-margem_consumida strong { color: #f59e0b; }
+.planning-operational-card.is-atraso_projetado { border-left-color: var(--pp-danger); }
+.planning-operational-card.is-atraso_projetado strong { color: var(--pp-danger); }
+.planning-operational-card.is-bloqueado,
+.planning-operational-card.is-fila_nao_calculavel { border-left-color: #a855f7; }
+.planning-operational-card small { text-transform: uppercase; }
 
 .planning-progress-pill {
   margin-left: auto;
@@ -390,12 +405,6 @@ body.planning-page.light .planning-workspace {
   border-radius: 50%;
   background: var(--pp-success, #22c997);
   transform: translateX(-50%);
-}
-
-.marker-projection {
-  border-left: 1px dashed #ff6978;
-  background: #ff6978;
-  color: #ff6978;
 }
 
 .planning-detail-section {
@@ -1360,6 +1369,22 @@ body.planning-page.light .planning-diagnosis > #plan-status-card {
   border-left: 1px dashed #ff4d60;
   background: #ff4d60;
   color: #ff4d60;
+}
+body.planning-page.light .planning-operational-card {
+  background: rgba(139, 92, 246, .06);
+}
+
+.marker-operational {
+  border-left: 2px dashed var(--pp-violet);
+  background: var(--pp-violet);
+  color: var(--pp-violet);
+}
+.legend-operational {
+  display: inline-block;
+  width: 18px;
+  margin: 0 4px 0 10px;
+  border-top: 2px dashed var(--pp-violet);
+  vertical-align: middle;
 }
 
 .planning-exceptions {

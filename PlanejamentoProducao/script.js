@@ -89,6 +89,17 @@
       (plan?.execucao?.etapas || []).map((stage) => [stage.codigo, stage]),
     );
   const executionStage = (plan, code) => executionMap(plan).get(code) || null;
+  const operationalData = (plan) => plan?.projecao_operacional || null;
+  const operationalStage = (plan, code) =>
+    (operationalData(plan)?.etapas || []).find((stage) => stage.codigo === code) || null;
+  const operationalLabel = (value) =>
+    ({
+      NO_PLANO: "No plano",
+      MARGEM_CONSUMIDA: "Margem consumida",
+      ATRASO_PROJETADO: "Atraso projetado",
+      FILA_NAO_CALCULAVEL: "Não calculável",
+      BLOQUEADO: "Bloqueada",
+    })[value] || value || "—";
   const executionLabel = (value) =>
     ({
       NO_PRAZO: "No prazo",
@@ -281,10 +292,10 @@
       plan.data_inicio,
       plan.data_entrega || plan.fim_previsto,
       plan.data_hoje,
-      plan.execucao?.fim_projetado,
+      operationalData(plan)?.fim_operacional_projetado,
     );
-    (plan.execucao?.etapas || []).forEach((stage) =>
-      dates.push(stage.fim_projetado),
+    (operationalData(plan)?.etapas || []).forEach((stage) =>
+      dates.push(stage.fim_operacional_projetado),
     );
     const validDates = dates.filter(Boolean).sort();
     const ultimoMarco = new Date(`${validDates.at(-1)}T12:00:00Z`);
@@ -345,11 +356,14 @@
     $("#summary-today").textContent = formatDate(plan.data_hoje);
     $("#summary-due").textContent = formatDate(plan.data_entrega);
     $("#summary-finish").textContent = formatDate(plan.fim_previsto);
+    $("#summary-operational").textContent = formatDate(operationalData(plan)?.fim_operacional_projetado);
+    $("#summary-operational-status").textContent = operationalLabel(operationalData(plan)?.status_operacional);
     const margin = $("#summary-margin");
     margin.classList.toggle("negative", Number(plan.margem_dias_uteis) < 0);
     margin.querySelector("strong").textContent = formatMargin(
       plan.margem_dias_uteis,
     );
+    if ($("#summary-margin-operational")) $("#summary-margin-operational").textContent = `Operacional: ${formatMargin(operationalData(plan)?.margem_operacional_dias_uteis ?? null)}`;
     const card = $("#plan-status-card");
     const labels = {
       VIAVEL: "Viável",
@@ -376,7 +390,8 @@
       [$("#summary-today"), formatDate(plan.data_hoje), plan.data_hoje],
       [$("#summary-due"), formatDate(plan.data_entrega), plan.data_entrega],
       [$("#summary-finish"), formatDate(plan.fim_previsto), plan.fim_previsto],
-      [$("#summary-margin strong"), formatMargin(plan.margem_dias_uteis), null],
+      [$("#summary-operational"), formatDate(operationalData(plan)?.fim_operacional_projetado), operationalData(plan)?.fim_operacional_projetado],
+      [$("#summary-margin-planned"), formatMargin(plan.margem_dias_uteis), null],
     ];
     values.forEach(([element, value, date]) => {
       if (!element) return;
@@ -409,29 +424,19 @@
 
     const margin = $("#summary-margin");
     margin.classList.toggle("negative", Number(plan.margem_dias_uteis) < 0);
-    const execution = plan.execucao?.disponivel ? plan.execucao : null;
-    const projection = $("#summary-projection");
-    const projectedMargin = $("#summary-projected-margin");
-    const projectionDelta =
-      execution?.impacto_margem_dias_uteis == null
-        ? null
-        : -Number(execution.impacto_margem_dias_uteis);
-    if (projection) {
-      projection.hidden = !execution;
-      projection.textContent = execution
-        ? `Projeção ${formatDate(execution.fim_projetado)} · ${projectionDelta >= 0 ? "+" : ""}${projectionDelta ?? 0}d vs plano`
-        : "";
-      projection.classList.toggle("negative", Number(projectionDelta) > 0);
+    const operational = operationalData(plan);
+    const operationalCard = $("#summary-operational-card");
+    const operationalStatus = $("#summary-operational-status");
+    if (operationalCard) {
+      operationalCard.className = `planning-operational-card is-${String(operational?.status_operacional || "fila-nao-calculavel").toLowerCase()}`;
+      operationalStatus.textContent = operational?.erro ? "Indisponível" : operationalLabel(operational?.status_operacional);
     }
-    if (projectedMargin) {
-      projectedMargin.hidden = !execution;
-      projectedMargin.textContent = execution
-        ? `Projetada ${formatMargin(execution.margem_projetada_dias_uteis)}`
-        : "";
-      projectedMargin.classList.toggle(
-        "negative",
-        Number(execution?.margem_projetada_dias_uteis) < 0,
-      );
+    const operationalMargin = $("#summary-margin-operational");
+    if (operationalMargin) {
+      operationalMargin.textContent = operational?.erro
+        ? "Operacional: não calculável"
+        : `Operacional: ${formatMargin(operational?.margem_operacional_dias_uteis ?? null)}`;
+      operationalMargin.classList.toggle("negative", Number(operational?.margem_operacional_dias_uteis) < 0);
     }
     const labels = {
       VIAVEL: "Viável",
@@ -470,10 +475,14 @@
       ? `<div><span>Amostra</span><strong>${metric.amostra_ciclos_validos} ciclos</strong></div><div><span>Confiança</span><strong>${metric.confianca}</strong></div><div><span>Produtividade</span><strong>${metric.tarefas_por_dia_util_pessoa} tarefa/dia/pessoa</strong></div>`
       : `<div><span>Origem</span><strong>${metric.origem || "Marco calculado"}</strong></div>`;
     const execution = executionStage(state.plan, stage.codigo);
-    const executionInfo = execution
-      ? `<p class="planning-eyebrow planning-detail-section">Execução</p><div class="planning-detail-grid planning-execution-grid"><div><span>Progresso</span><strong>${execution.percentual_concluido === null ? "Marco global" : `${execution.concluidas}/${execution.volume_atual} · ${Math.round(execution.percentual_concluido)}%`}</strong></div><div><span>Estado</span><strong>${stageExecutionLabel(execution.execucao)}</strong></div><div><span>Início real</span><strong>${formatDate(execution.inicio_real)}</strong></div><div><span>Conclusão real</span><strong>${formatDate(execution.conclusao_real)}</strong></div><div><span>Fim projetado</span><strong>${formatDate(execution.fim_projetado)}</strong></div><div><span>Desvio projetado</span><strong class="${Number(execution.desvio_projetado_dias_uteis) > 0 ? "is-negative" : ""}">${execution.desvio_projetado_dias_uteis === null ? "—" : `${execution.desvio_projetado_dias_uteis >= 0 ? "+" : ""}${execution.desvio_projetado_dias_uteis} dias úteis`}</strong></div></div><p class="planning-formula">${execution.execucao === "CONCLUIDA" ? "A projeção usa a conclusão real da última tarefa necessária." : `${execution.pendentes} pendente${execution.pendentes === 1 ? "" : "s"} · ${execution.metodo_projecao?.replaceAll("_", " ").toLowerCase() || "capacidade planejada"}.`}</p>`
+    const operational = operationalStage(state.plan, stage.codigo);
+    const operationalInfo = operational
+      ? `<p class="planning-eyebrow planning-detail-section">Projeção operacional</p><div class="planning-detail-grid planning-operational-detail"><div><span>Janela operacional</span><strong>${formatDate(operational.inicio_operacional_projetado)} → ${formatDate(operational.fim_operacional_projetado)}</strong></div><div><span>Status</span><strong>${operationalLabel(operational.status_operacional)}</strong></div><div><span>Desvio vs plano</span><strong class="${Number(operational.desvio_plano_vigente_dias_uteis) > 0 ? "is-negative" : ""}">${operational.desvio_plano_vigente_dias_uteis == null ? "—" : `${operational.desvio_plano_vigente_dias_uteis >= 0 ? "+" : ""}${operational.desvio_plano_vigente_dias_uteis} dias úteis`}</strong></div><div><span>Confiança</span><strong>${operational.confianca || "—"}</strong></div></div><p class="planning-formula">${operational.dependencias?.length ? `Depende de: ${operational.dependencias.join(", ")}.` : "Frente operacional calculada pela fila atual, execução e calendário do Flow."}</p><a class="planning-detail-link" href="../PlanejamentoCapacidade/index.php">Ver fila operacional na Central</a>`
       : "";
-    return `<div class="planning-detail-grid"><div><span>Volume</span><strong>${stage.volume} tarefas</strong></div><div><span>Pessoas</span><strong>${stage.pessoas_alocadas || "—"}</strong></div><div><span>Duração</span><strong>${stage.duracao_dias_uteis} dias úteis</strong></div><div><span>Limite</span><strong>${formatDate(stage.limite)}</strong></div>${history}</div><p class="planning-formula">${stage.formula || "Marco global: maior data-limite entre os pools de Finalização."}</p>${executionInfo}`;
+    const executionInfo = execution
+      ? `<p class="planning-eyebrow planning-detail-section">Execução realizada</p><div class="planning-detail-grid planning-execution-grid"><div><span>Progresso</span><strong>${execution.percentual_concluido === null ? "Marco global" : `${execution.concluidas}/${execution.volume_atual} · ${Math.round(execution.percentual_concluido)}%`}</strong></div><div><span>Estado</span><strong>${stageExecutionLabel(execution.execucao)}</strong></div><div><span>Início real</span><strong>${formatDate(execution.inicio_real)}</strong></div><div><span>Conclusão real</span><strong>${formatDate(execution.conclusao_real)}</strong></div></div><p class="planning-formula">Os dados acima representam o realizado observado; a previsão oficial está na Projeção operacional.</p>`
+      : "";
+    return `<div class="planning-detail-grid"><div><span>Volume</span><strong>${stage.volume} tarefas</strong></div><div><span>Pessoas</span><strong>${stage.pessoas_alocadas || "—"}</strong></div><div><span>Duração</span><strong>${stage.duracao_dias_uteis} dias úteis</strong></div><div><span>Limite</span><strong>${formatDate(stage.limite)}</strong></div>${history}</div><p class="planning-formula">${stage.formula || "Marco global: maior data-limite entre os pools de Finalização."}</p>${operationalInfo}${executionInfo}`;
   }
   function capacity(stage) {
     if (!stage.capacidade_editavel)
@@ -792,6 +801,8 @@
     const detail = $("#diagnosis-bottleneck");
     const goal = $("#diagnosis-goal");
     const execution = plan.execucao?.disponivel ? plan.execucao : null;
+    const operational = operationalData(plan);
+    const operationalStages = operational?.etapas || [];
     const executionStages = executionMap(plan);
     const next = execution
       ? executionStages.get(execution.proximo_marco)
@@ -800,12 +811,19 @@
       ? executionStages.get(execution.gargalo)
       : null;
     const gate = bottleneck(plan);
-    const summary = execution
-      ? `<b>Execução:</b> ${executionLabel(execution.saude)}`
+    const operationalCritical = operationalStages.find((stage) => ["ATRASO_PROJETADO", "BLOQUEADO", "FILA_NAO_CALCULAVEL", "MARGEM_CONSUMIDA"].includes(stage.status_operacional)) || operationalStages.find((stage) => stage.inicio_operacional_projetado && stage.fim_operacional_projetado);
+    const summary = operational
+      ? `<b>Projeção operacional:</b> ${operationalLabel(operational.status_operacional)}`
+      : execution
+        ? `<b>Execução:</b> ${executionLabel(execution.saude)}`
       : gate
         ? "<b>Gargalo atual:</b> " + gate.nome
         : "<b>Gargalo atual:</b> nenhum identificado";
-    const bottleneckText = execution
+    const bottleneckText = operational
+      ? operationalCritical
+        ? `Próximo marco crítico: ${operationalCritical.nome || operationalCritical.codigo} · ${formatDate(operationalCritical.fim_operacional_projetado)} · ${operationalLabel(operationalCritical.status_operacional)}`
+        : "Nenhum desvio operacional identificado."
+      : execution
       ? next
         ? `Próximo marco: ${plan.etapas.find((stage) => stage.codigo === next.codigo)?.nome || next.codigo} · ${next.concluidas}/${next.volume_atual} concluídas · limite ${formatDate(next.limite_planejado)}`
         : execution.excecoes?.length
@@ -1394,7 +1412,7 @@
       0,
       Math.min(100, Number(execution?.percentual_concluido || 0)),
     );
-    const projection = execution?.fim_projetado;
+    const projection = operationalStage(state.plan, stage.codigo)?.fim_operacional_projetado;
     const projectLeft =
       projection && stage.limite
         ? position(stage.limite, range(state.plan))
@@ -1527,9 +1545,9 @@
     );
     updateTimelineMarker(
       target,
-      "projection",
-      "Projeção",
-      plan.execucao?.disponivel ? plan.execucao.fim_projetado : null,
+      "operational",
+      "Projeção operacional",
+      operationalData(plan)?.fim_operacional_projetado || null,
       timeline,
       motion,
     );
@@ -1604,15 +1622,16 @@
       row
         .querySelectorAll(".planning-bar-projection, .planning-bar-real")
         .forEach((element) => element.remove());
-      if (execution?.fim_projetado && execution.fim_projetado > stage.limite) {
+      const operationalFinish = operationalStage(plan, stage.codigo)?.fim_operacional_projetado;
+      if (operationalFinish && operationalFinish > stage.limite) {
         const projectedLeft = position(stage.limite, timeline);
         const projectedWidth = Math.max(
           0.8,
-          position(execution.fim_projetado, timeline) - projectedLeft,
+          position(operationalFinish, timeline) - projectedLeft,
         );
         row.insertAdjacentHTML(
           "beforeend",
-          `<i class="planning-bar-projection" style="left:${projectedLeft}%;width:${projectedWidth}%" title="Projeção: ${formatDate(execution.fim_projetado)}"></i>`,
+          `<i class="planning-bar-projection" style="left:${projectedLeft}%;width:${projectedWidth}%" title="Projeção operacional: ${formatDate(operationalFinish)}"></i>`,
         );
       }
       if (execution?.conclusao_real) {

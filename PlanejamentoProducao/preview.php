@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
 require_once __DIR__ . '/../helpers/planejamento_execucao_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_fila_confirmada_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -66,6 +67,20 @@ try {
     $plano['execucao'] = flow_planejamento_monitorar_execucao($conn, $entregaId, $plano, [
         'data_hoje' => $opcoes['data_hoje'],
     ]);
+    // A projeção oficial de execução vem da V1.5. O monitor legado acima é
+    // mantido para detalhes de progresso por tarefa, mas não é mais usado
+    // como “Projeção” no header ou no Gantt.
+    $plano['projecao_operacional'] = null;
+    if (flow_fila_confirmada_tabelas_disponiveis($conn)) {
+        try {
+            $operacional = flow_fila_confirmada_projetar($conn, ['entrega_id' => $entregaId], [
+                'data_hoje' => $opcoes['data_hoje'],
+            ]);
+            $plano['projecao_operacional'] = $operacional['projecoes'][0] ?? null;
+        } catch (Throwable $projecaoErro) {
+            $plano['projecao_operacional'] = ['erro' => $projecaoErro->getMessage()];
+        }
+    }
     $plano['entrega_id'] = $entregaId;
     $conn->close();
 

@@ -8605,7 +8605,7 @@ ul.file-list {
 
 #acoesModal input,
 #acoesModal select {
-  background: transparent;
+  background: var(--bg-card);
   color: var(--text);
   border: none;
   border-bottom: 1px solid var(--border);

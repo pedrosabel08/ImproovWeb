@@ -398,7 +398,7 @@ function motor_requisitos_aliases_predecessora(?array $predecessora, bool $arqui
     return [];
 }
 
-function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisitos, ?array $predecessora, string $origem, string $urlAcao): void
+function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisitos, ?array $predecessora, string $origem, string $urlAcao, bool $ignorarPendenciaArquivo = false): void
 {
     if (!$predecessora) {
         $requisitos[] = motor_requisitos_item(
@@ -446,10 +446,9 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
         $arquivoAtendido = (int) ($predecessora['requires_file_upload'] ?? 1) === 0
             || !empty($predecessora['file_uploaded_at']);
 
-        // Finalizado sem arquivo obrigatório já é uma conclusão válida. Quando
-        // o arquivo é obrigatório, a etapa só fica atendida após o upload; em
-        // ambos os casos, a avaliação da etapa seguinte não deve criar uma
-        // pendência artificial de envio para aprovação.
+        // Finalizado sem arquivo obrigatório já é uma conclusão válida. Para a
+        // função 5, a conclusão também libera a etapa mesmo sem o arquivo da
+        // predecessora; nas demais funções, o envio continua bloqueante.
         if ($arquivoAtendido) {
             $requisitos[] = motor_requisitos_item(
                 'FUNCAO_ANTERIOR_CONCLUIDA',
@@ -465,19 +464,33 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
             return;
         }
 
-        $requisito = motor_requisitos_item(
-            'ENVIO_APROVACAO_ETAPA_ANTERIOR',
-            'Etapa anterior concluída, aguardando envio para aprovação',
-            'APROVACAO',
-            'NAO_ATENDIDO',
-            true,
-            $origem,
-            $origemId,
-            $urlAcao,
-            $metadados
-        );
-        $requisito['nao_confirmavel'] = true;
-        $requisitos[] = $requisito;
+        if ($ignorarPendenciaArquivo) {
+            $requisitos[] = motor_requisitos_item(
+                'FUNCAO_ANTERIOR_CONCLUIDA',
+                'Tarefa produtiva anterior concluída',
+                'PRODUCAO',
+                'ATENDIDO',
+                true,
+                $origem,
+                $origemId,
+                $urlAcao,
+                $metadados
+            );
+        } else {
+            $requisito = motor_requisitos_item(
+                'ENVIO_APROVACAO_ETAPA_ANTERIOR',
+                'Arquivo da etapa anterior não enviado para aprovação',
+                'APROVACAO',
+                'NAO_ATENDIDO',
+                true,
+                $origem,
+                $origemId,
+                $urlAcao,
+                $metadados
+            );
+            $requisito['nao_confirmavel'] = true;
+            $requisitos[] = $requisito;
+        }
         return;
     }
 
@@ -839,7 +852,14 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             }
         } else {
             $predecessora = motor_requisitos_predecessora_anterior_existente($conn, $imagemId, $funcaoId);
-            motor_requisitos_adicionar_predecessora($conn, $requisitos, $predecessora, $origem, $urlPredecessora);
+            motor_requisitos_adicionar_predecessora(
+                $conn,
+                $requisitos,
+                $predecessora,
+                $origem,
+                $urlPredecessora,
+                $funcaoId === 5
+            );
         }
     }
 

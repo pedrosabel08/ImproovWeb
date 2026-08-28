@@ -26,6 +26,123 @@ function flow_tarefa_planejamento_persistencia_disponivel(mysqli $conn): bool
         && flow_tarefa_planejamento_tabela_existe($conn, 'funcao_imagem_previsao_historico');
 }
 
+/**
+ * Retorna a posição confirmada da fila operacional para as tarefas de uma
+ * pessoa. A fila é gerenciada por blocos (entrega + etapa), então todas as
+ * tarefas da mesma obra/etapa recebem a mesma posição e continuam usando os
+ * critérios atuais como desempate.
+ *
+ * Obras legadas sem entrega planejada podem ser encontradas pelo par obra +
+ * etapa, pois a fila confirmada usa a referência operacional OBRA:{id}:{etapa}.
+ */
+function flow_tarefa_fila_operacional_posicoes_lote(mysqli $conn, array $tarefas, int $colaboradorId): array
+{
+    if ($colaboradorId <= 0 || !$tarefas || !flow_tarefa_planejamento_tabela_existe($conn, 'entrega_planejamento_fila_operacional')) {
+        return [];
+    }
+
+    $imagemIds = [];
+    foreach ($tarefas as $tarefa) {
+        if (!empty($tarefa['is_animacao'])) continue;
+        $imagemId = (int) ($tarefa['imagem_id'] ?? 0);
+        if ($imagemId > 0) $imagemIds[$imagemId] = true;
+    }
+    if (!$imagemIds) return [];
+
+    $placeholders = implode(',', array_fill(0, count($imagemIds), '?'));
+    $tipos = str_repeat('i', count($imagemIds));
+    $valores = array_map('intval', array_keys($imagemIds));
+
+    // Mantém a mesma regra do contexto de planejamento: quando uma imagem
+    // está em mais de uma entrega ativa, considera a entrega mais recente.
+    $stmtEntregas = $conn->prepare(
+        "SELECT ei.imagem_id, e.id AS entrega_id, e.obra_id
+           FROM entregas_itens ei
+           JOIN entregas e ON e.id = ei.entrega_id AND e.status_id = 2
+          WHERE ei.imagem_id IN ($placeholders)
+          ORDER BY e.id DESC, ei.id ASC"
+    );
+    if (!$stmtEntregas) return [];
+    $stmtEntregas->bind_param($tipos, ...$valores);
+    $stmtEntregas->execute();
+    $entregaPorImagem = [];
+    $resultEntregas = $stmtEntregas->get_result();
+    while ($row = $resultEntregas->fetch_assoc()) {
+        $imagemId = (int) ($row['imagem_id'] ?? 0);
+        if (!isset($entregaPorImagem[$imagemId])) {
+            $entregaPorImagem[$imagemId] = [
+                'entrega_id' => (int) ($row['entrega_id'] ?? 0),
+                'obra_id' => (int) ($row['obra_id'] ?? 0),
+            ];
+        }
+    }
+    $stmtEntregas->close();
+
+    $stmtFila = $conn->prepare(
+        'SELECT entrega_id, obra_id, codigo_etapa, posicao
+           FROM entrega_planejamento_fila_operacional
+          WHERE colaborador_id = ? AND ativo = 1
+          ORDER BY codigo_etapa, posicao, id'
+    );
+    if (!$stmtFila) return [];
+    $stmtFila->bind_param('i', $colaboradorId);
+    $stmtFila->execute();
+    $filaPorEntregaEtapa = [];
+    $filaPorObraEtapa = [];
+    $resultFila = $stmtFila->get_result();
+    while ($row = $resultFila->fetch_assoc()) {
+        $etapa = strtoupper(trim((string) ($row['codigo_etapa'] ?? '')));
+        $posicao = (int) ($row['posicao'] ?? 0);
+        if ($etapa === '' || $posicao <= 0) continue;
+
+        $entregaId = (int) ($row['entrega_id'] ?? 0);
+        $obraId = (int) ($row['obra_id'] ?? 0);
+        if ($entregaId > 0) {
+            $chave = $entregaId . ':' . $etapa;
+            $filaPorEntregaEtapa[$chave] = isset($filaPorEntregaEtapa[$chave])
+                ? min($filaPorEntregaEtapa[$chave], $posicao)
+                : $posicao;
+        } elseif ($obraId > 0) {
+            $chave = $obraId . ':' . $etapa;
+            $filaPorObraEtapa[$chave] = isset($filaPorObraEtapa[$chave])
+                ? min($filaPorObraEtapa[$chave], $posicao)
+                : $posicao;
+        }
+    }
+    $stmtFila->close();
+
+    if (!$filaPorEntregaEtapa && !$filaPorObraEtapa) return [];
+
+    $posicoes = [];
+    foreach ($tarefas as $tarefa) {
+        if (!empty($tarefa['is_animacao'])) continue;
+        $tarefaId = (int) ($tarefa['idfuncao_imagem'] ?? 0);
+        $imagemId = (int) ($tarefa['imagem_id'] ?? 0);
+        $etapa = flow_planejamento_codigo_etapa($tarefa);
+        if ($tarefaId <= 0 || $imagemId <= 0 || !$etapa) continue;
+
+        $posicao = null;
+        $entrega = $entregaPorImagem[$imagemId] ?? null;
+        if ($entrega) {
+            $posicao = $filaPorEntregaEtapa[(int) $entrega['entrega_id'] . ':' . $etapa] ?? null;
+        }
+        if ($posicao === null) {
+            $obraId = (int) ($tarefa['obra_id'] ?? ($entrega['obra_id'] ?? 0));
+            if ($obraId > 0) {
+                $posicao = $filaPorObraEtapa[$obraId . ':' . $etapa] ?? null;
+            }
+        }
+        if ($posicao !== null) {
+            $posicoes[$tarefaId] = [
+                'posicao' => (int) $posicao,
+                'etapa' => $etapa,
+            ];
+        }
+    }
+
+    return $posicoes;
+}
+
 function flow_tarefa_planejamento_data_valida(?string $data): ?string
 {
     $data = $data ? substr($data, 0, 10) : null;

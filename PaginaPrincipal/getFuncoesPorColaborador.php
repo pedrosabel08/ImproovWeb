@@ -1,8 +1,8 @@
 <?php
-header('Content-Type: application/json');
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
+if (!defined('FLOW_FUNCOES_COLABORADOR_INTERNAL')) {
+    header('Content-Type: application/json; charset=utf-8');
 }
+require_once __DIR__ . '/../config/session_bootstrap.php';
 
 // Conectar ao banco de dados
 require_once __DIR__ . '/../conexao.php';
@@ -10,8 +10,41 @@ require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
 
-$colaboradorId = intval($_GET['colaborador_id']);
+function flow_funcoes_colaborador_falhar_autorizacao(int $status, string $mensagem): void
+{
+    if (defined('FLOW_FUNCOES_COLABORADOR_INTERNAL')) {
+        throw new RuntimeException($mensagem);
+    }
+    http_response_code($status);
+    echo json_encode(['success' => false, 'error' => $mensagem], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+/** Mantém a permissão explícita já usada pela interface de gestão. */
+function flow_funcoes_colaborador_pode_consultar_outro(int $nivelAcesso, int $colaboradorSessao): bool
+{
+    return in_array($nivelAcesso, [1, 5], true)
+        || in_array($colaboradorSessao, [9, 21], true);
+}
+
+if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_funcoes_colaborador_falhar_autorizacao(401, 'Não autenticado.');
+}
+
 $nivelAcesso = isset($_SESSION['nivel_acesso']) ? (int) $_SESSION['nivel_acesso'] : 0;
+$colaboradorSessao = isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : 0;
+if ($colaboradorSessao <= 0) {
+    flow_funcoes_colaborador_falhar_autorizacao(403, 'Colaborador não identificado na sessão.');
+}
+
+$colaboradorId = $colaboradorSessao;
+$colaboradorSolicitado = isset($_GET['colaborador_id']) ? (int) $_GET['colaborador_id'] : 0;
+if ($colaboradorSolicitado > 0 && $colaboradorSolicitado !== $colaboradorSessao) {
+    if (!flow_funcoes_colaborador_pode_consultar_outro($nivelAcesso, $colaboradorSessao)) {
+        flow_funcoes_colaborador_falhar_autorizacao(403, 'Sem permissão para consultar tarefas de outro colaborador.');
+    }
+    $colaboradorId = $colaboradorSolicitado;
+}
 date_default_timezone_set('America/Sao_Paulo');
 
 // ====================
@@ -256,6 +289,7 @@ $stmt->close();
 // Resolve o plano vigente por tarefa em lote. A mesma estrutura e reutilizada
 // pelo Kanban, detalhe e modal; nenhuma consulta de planejamento e feita por card.
 $contextosPlanejamento = flow_tarefa_contextos_planejamento_lote($conn, $funcoes);
+$posicoesFilaOperacional = flow_tarefa_fila_operacional_posicoes_lote($conn, $funcoes, $colaboradorId);
 
 // ====================
 // FUNCAO_ANIMACAO (para o Kanban)
@@ -1097,6 +1131,8 @@ foreach ($funcoes as $funcao) {
         'requires_render_send'       => isset($funcao['requires_render_send']) ? intval($funcao['requires_render_send']) : 0,
         'requisitos'                 => $avaliacaoRequisitos,
         'planejamento'               => $contextoPlanejamento,
+        'fila_operacional_posicao'   => $posicoesFilaOperacional[(int) $funcao['idfuncao_imagem']]['posicao'] ?? null,
+        'fila_operacional_etapa'     => $posicoesFilaOperacional[(int) $funcao['idfuncao_imagem']]['etapa'] ?? null,
     ];
 }
 
@@ -1236,6 +1272,17 @@ if (!empty($suppressedIndexes)) {
 // Urgência operacional usa o prazo necessário do plano vigente. A previsão
 // pessoal não muda a posição da tarefa na fila.
 usort($funcoesFinal, static function (array $a, array $b): int {
+    // A fila confirmada é granular por responsável + etapa. Só comparamos a
+    // posição quando as tarefas pertencem à mesma etapa; entre etapas, os
+    // critérios atuais continuam determinando a ordem.
+    $etapaA = $a['fila_operacional_etapa'] ?? null;
+    $etapaB = $b['fila_operacional_etapa'] ?? null;
+    if ($etapaA !== null && $etapaA === $etapaB) {
+        $posicaoA = isset($a['fila_operacional_posicao']) ? (int) $a['fila_operacional_posicao'] : PHP_INT_MAX;
+        $posicaoB = isset($b['fila_operacional_posicao']) ? (int) $b['fila_operacional_posicao'] : PHP_INT_MAX;
+        if ($posicaoA !== $posicaoB) return $posicaoA <=> $posicaoB;
+    }
+
     $prioridadeA = (int) ($a['prioridade'] ?? 3);
     $prioridadeB = (int) ($b['prioridade'] ?? 3);
     if ($prioridadeA !== $prioridadeB) return $prioridadeA <=> $prioridadeB;
@@ -1277,6 +1324,8 @@ $response = [
     "media_tempo_em_andamento" => $mediaTemposPorFuncao
 ];
 
-echo json_encode($response);
+if (!defined('FLOW_FUNCOES_COLABORADOR_INTERNAL')) {
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
 
 $conn->close();

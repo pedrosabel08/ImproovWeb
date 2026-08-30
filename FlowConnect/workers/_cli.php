@@ -52,3 +52,8 @@ function flow_connect_cli_log(string $message, bool $verbose = true): void
 {
     if ($verbose) fwrite(STDOUT, '[' . gmdate('c') . '] ' . $message . PHP_EOL);
 }
+
+function flow_connect_is_weekday(DateTimeInterface $date): bool
+{
+    return (int) $date->format('N') <= 5;
+}

@@ -21,6 +21,10 @@ try {
     if (!$table || $table->num_rows === 0) throw new RuntimeException('pending_summary_migration_missing');
     $tz = new DateTimeZone((string) ($config['operational']['business_timezone'] ?? 'America/Sao_Paulo'));
     $now = new DateTimeImmutable('now', $tz);
+    if (!flow_connect_is_weekday($now)) {
+        flow_connect_cli_log('pending_summary_worker skipped: weekend', (bool) $options['verbose']);
+        exit(0);
+    }
     $time = $now->format('H:i');
     if (!in_array($time, $summaryConfig['times'] ?? [], true)) {
         flow_connect_cli_log('pending_summary_worker skipped: outside configured window', (bool) $options['verbose']);

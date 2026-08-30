@@ -8,6 +8,11 @@ require_once dirname(__DIR__) . '/workers/_cli.php';
 
 function flow_connect_test_worker_daemon(): void
 {
+    $timezone = new DateTimeZone('America/Sao_Paulo');
+    fc_assert_same(true, flow_connect_is_weekday(new DateTimeImmutable('2026-08-28 10:00:00', $timezone)), 'Friday allows pending summaries');
+    fc_assert_same(false, flow_connect_is_weekday(new DateTimeImmutable('2026-08-29 10:00:00', $timezone)), 'Saturday blocks pending summaries');
+    fc_assert_same(false, flow_connect_is_weekday(new DateTimeImmutable('2026-08-30 10:00:00', $timezone)), 'Sunday blocks pending summaries');
+
     $daemonOptions = flow_connect_cli_options(['worker.php', '--daemon', '--limit=55']);
     fc_assert_same(true, $daemonOptions['daemon'], 'daemon flag is parsed');
     fc_assert_same(55, $daemonOptions['limit'], 'daemon keeps configured batch limit');

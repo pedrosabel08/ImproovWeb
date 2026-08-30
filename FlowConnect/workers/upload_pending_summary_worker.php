@@ -21,6 +21,11 @@ if (!$table || $table->num_rows === 0) {
 $config = flow_connect_config();
 $tz = new DateTimeZone((string) $config['operational']['business_timezone']);
 $now = new DateTimeImmutable('now', $tz);
+if (!flow_connect_is_weekday($now)) {
+    flow_connect_cli_log('upload_pending_summary_worker skipped: weekend', true);
+    $conn->close();
+    exit(0);
+}
 $currentTime = $now->format('H:i');
 if (!in_array($currentTime, $config['operational']['upload_summary_times'], true)) {
     flow_connect_cli_log('upload_pending_summary_worker skipped: outside configured window', true);

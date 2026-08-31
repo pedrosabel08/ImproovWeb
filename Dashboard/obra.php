@@ -46,7 +46,9 @@ $status_etapa = obterStatus($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 $clientes = obterClientes($conn);
-$nivel_acesso = $_SESSION['nivel_acesso'];
+$nivel_acesso = (int) ($_SESSION['nivel_acesso'] ?? 0);
+$idcolaborador = (int) ($_SESSION['idcolaborador'] ?? 0);
+$pode_ver_plano_r00 = $nivel_acesso === 1 || in_array($idcolaborador, [9, 21], true);
 
 $subtipos = [];
 $resSubtipos = $conn->query("SELECT id, nome FROM subtipo_imagem ORDER BY nome ASC");
@@ -236,10 +238,12 @@ $conn->close();
                     <i class="fa-solid fa-file"></i>
                     <span class="qa-label">Arquivos</span>
                 </a>
-                <a id="quick_production_plan" class="quick-link" href="../PlanejamentoProducao/index.php" title="Plano de Produção R00" aria-hidden="false">
-                    <i class="fa-solid fa-chart-gantt"></i>
-                    <span class="qa-label">Plano R00</span>
-                </a>
+                <?php if ($pode_ver_plano_r00): ?>
+                    <a id="quick_production_plan" class="quick-link" href="#" title="Plano de Produção R00" aria-hidden="true" style="display:none;">
+                        <i class="fa-solid fa-chart-gantt"></i>
+                        <span class="qa-label">Plano R00</span>
+                    </a>
+                <?php endif; ?>
 
                 <!-- Handoff Comercial -->
                 <a id="quick_handoff" class="quick-link" href="#" title="Handoff Comercial" aria-hidden="false">
@@ -302,6 +306,11 @@ $conn->close();
                                 class="fa-solid fa-clipboard-list"></i> <span>Info. Obra</span></a>
                         <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
                                 class="fa-solid fa-file"></i> <span>Arquivos</span></a>
+
+                        <?php if ($pode_ver_plano_r00): ?>
+                            <a class="mobile-link" id="mobile_production_plan" href="#" aria-hidden="true" style="display:none;"><i
+                                    class="fa-solid fa-chart-gantt"></i> <span>Plano R00</span></a>
+                        <?php endif; ?>
 
                         <a class="mobile-link" id="mobile_handoff" href="#"><i class="fa-solid fa-handshake"></i>
                             <span>Handoff</span></a>

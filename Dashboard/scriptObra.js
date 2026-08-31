@@ -6048,6 +6048,9 @@ function infosObra(obraId) {
         const qProductionPlan = document.getElementById(
           "quick_production_plan",
         );
+        const hasProductionPlan =
+          data?.obra?.tem_planejamento_r00 === true ||
+          Number(data?.obra?.tem_planejamento_r00 || 0) === 1;
 
         if (qProductionPlan) {
           const getPlanningObraId = () =>
@@ -6058,12 +6061,17 @@ function infosObra(obraId) {
                 "",
             ).trim();
           const currentObraId = getPlanningObraId();
-          if (currentObraId && /^\d+$/.test(currentObraId)) {
+          if (hasProductionPlan && currentObraId && /^\d+$/.test(currentObraId)) {
             qProductionPlan.href = `../PlanejamentoProducao/index.php?obra_id=${encodeURIComponent(currentObraId)}`;
+            qProductionPlan.style.display = "inline-flex";
+            qProductionPlan.setAttribute("aria-hidden", "false");
+          } else {
+            qProductionPlan.style.display = "none";
+            qProductionPlan.setAttribute("aria-hidden", "true");
           }
           qProductionPlan.addEventListener("click", (event) => {
             const obraAtual = getPlanningObraId();
-            if (!obraAtual || !/^\d+$/.test(obraAtual)) {
+            if (!hasProductionPlan || !obraAtual || !/^\d+$/.test(obraAtual)) {
               event.preventDefault();
               return;
             }
@@ -6151,6 +6159,10 @@ function infosObra(obraId) {
           if (!/^https?:\/\//i.test(url)) return "https://" + url;
           return url;
         }
+        // Keep the compact menu in sync with the same backend gate as the desktop link.
+        const mobileHasProductionPlan =
+          data?.obra?.tem_planejamento_r00 === true ||
+          Number(data?.obra?.tem_planejamento_r00 || 0) === 1;
 
         const hamburger = document.getElementById("quickHamburger");
         const mobileMenu = document.getElementById("quickMobileMenu");
@@ -6159,12 +6171,33 @@ function infosObra(obraId) {
         const mobileFot = document.getElementById("mobile_fotografico");
         const mobileDrive = document.getElementById("mobile_drive");
         const mobileReview = document.getElementById("mobile_review");
+        const mobileProductionPlan = document.getElementById(
+          "mobile_production_plan",
+        );
 
         const fotograficoInput = document.getElementById("fotografico");
         const driveInput = document.getElementById("link_drive");
         const reviewInput = document.getElementById("link_review");
 
         function setMobileLinks() {
+          if (mobileProductionPlan) {
+            const currentObraId = String(
+              (typeof obraId !== "undefined" && obraId) ||
+                localStorage.getItem("obraId") ||
+                localStorage.getItem("idObra") ||
+                "",
+            ).trim();
+            const canOpenPlan =
+              mobileHasProductionPlan && /^\d+$/.test(currentObraId);
+            mobileProductionPlan.href = canOpenPlan
+              ? `../PlanejamentoProducao/index.php?obra_id=${encodeURIComponent(currentObraId)}`
+              : "#";
+            mobileProductionPlan.style.display = canOpenPlan ? "flex" : "none";
+            mobileProductionPlan.setAttribute(
+              "aria-hidden",
+              canOpenPlan ? "false" : "true",
+            );
+          }
           if (mobileFot) {
             const url = normalizeUrl(
               fotograficoInput

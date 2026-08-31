@@ -882,6 +882,161 @@ function flow_alocacao_indexar_tarefas(array $alocacao): array
     return $indice;
 }
 
+/**
+ * Referência persistida da fila para uma etapa que pertence a uma entrega.
+ * Mantê-la em um único lugar evita que a realocação e a fila usem chaves
+ * diferentes para o mesmo bloco de trabalho.
+ */
+function flow_alocacao_referencia_fila(int $entregaId, int $obraId, string $codigoEtapa): ?string
+{
+    $codigoEtapa = strtoupper(trim($codigoEtapa));
+    if ($codigoEtapa === '') {
+        return null;
+    }
+    if ($entregaId > 0) {
+        return 'ENTREGA:' . $entregaId . ':' . $codigoEtapa;
+    }
+    if ($obraId > 0) {
+        return 'OBRA:' . $obraId . ':' . $codigoEtapa;
+    }
+    return null;
+}
+
+/**
+ * A confirmação de fila pertence ao responsável, não à tarefa. Quando a
+ * Central transfere toda a frente aberta de uma entrega/etapa para outra
+ * pessoa, a decisão já confirmada deve acompanhá-la. Sem isso a ordem fica
+ * órfã na pessoa anterior e o Kanban volta a desempatar por prazo.
+ *
+ * Em realocações parciais, a prioridade é copiada para a nova responsável e
+ * permanece com a origem. Quando a frente inteira sai da origem, a cópia é
+ * criada e a decisão antiga é desativada. Assim, cada pessoa preserva a
+ * ordem que já foi decidida para o trabalho que efetivamente recebeu.
+ */
+function flow_alocacao_migrar_fila_confirmada(
+    mysqli $conn,
+    array $movimentos,
+    array $indiceTarefas
+): array {
+    $tabela = $conn->query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'entrega_planejamento_fila_operacional' LIMIT 1");
+    if (!$tabela || $tabela->num_rows === 0) {
+        return [];
+    }
+    $tabela->free();
+
+    $candidatos = [];
+    foreach ($movimentos as $movimento) {
+        $tarefaId = (int) ($movimento['tarefa_id'] ?? 0);
+        $indice = $indiceTarefas[$tarefaId] ?? null;
+        $projeto = $indice['projeto'] ?? [];
+        $origem = (int) ($movimento['de_colaborador_id'] ?? 0);
+        $destino = (int) ($movimento['para_colaborador_id'] ?? 0);
+        $entregaId = (int) ($projeto['entrega_id'] ?? 0);
+        $obraId = (int) ($projeto['obra_id'] ?? 0);
+        $etapa = strtoupper(trim((string) ($projeto['codigo_etapa'] ?? '')));
+        $referencia = flow_alocacao_referencia_fila($entregaId, $obraId, $etapa);
+        if ($origem <= 0 || $destino <= 0 || $origem === $destino || !$referencia) {
+            continue;
+        }
+        $chave = implode(':', [$origem, $destino, $entregaId, $obraId, $etapa]);
+        $candidatos[$chave] = compact('origem', 'destino', 'entregaId', 'obraId', 'etapa', 'referencia');
+    }
+
+    if (!$candidatos) {
+        return [];
+    }
+
+    $buscarTarefasOrigem = $conn->prepare(
+        'SELECT fi.funcao_id, ico.tipo_imagem
+           FROM entregas_itens ei
+           JOIN funcao_imagem fi ON fi.imagem_id = ei.imagem_id
+           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+          WHERE ei.entrega_id = ?
+            AND fi.colaborador_id = ?
+            AND fi.status NOT IN (\'Finalizado\', \'Aprovado\', \'Aprovado com ajustes\', \'Cancelado\')'
+    );
+    $copiar = $conn->prepare(
+        'INSERT INTO entrega_planejamento_fila_operacional
+            (planejamento_id, versao_id, entrega_id, obra_id, codigo_etapa, referencia_fila, colaborador_id, posicao, fingerprint, motivo, confirmado_por_colaborador_id)
+         SELECT origem.planejamento_id, origem.versao_id, origem.entrega_id, origem.obra_id, origem.codigo_etapa, origem.referencia_fila, ?, origem.posicao, origem.fingerprint, origem.motivo, origem.confirmado_por_colaborador_id
+           FROM entrega_planejamento_fila_operacional origem
+          WHERE origem.colaborador_id = ?
+            AND origem.codigo_etapa = ?
+            AND origem.referencia_fila = ?
+            AND origem.ativo = 1
+            AND NOT EXISTS (
+                SELECT 1
+                  FROM entrega_planejamento_fila_operacional destino
+                 WHERE destino.colaborador_id = ?
+                   AND destino.codigo_etapa = ?
+                   AND destino.referencia_fila = ?
+                   AND destino.ativo = 1
+            )'
+    );
+    $desativarOrigem = $conn->prepare(
+        'UPDATE entrega_planejamento_fila_operacional
+            SET ativo = 0
+          WHERE colaborador_id = ?
+            AND codigo_etapa = ?
+            AND referencia_fila = ?
+            AND ativo = 1'
+    );
+    if (!$buscarTarefasOrigem || !$copiar || !$desativarOrigem) {
+        throw new RuntimeException('Não foi possível preparar a atualização da fila após a realocação.');
+    }
+
+    $migradas = [];
+    foreach ($candidatos as $candidato) {
+        // Filas legadas sem entrega continuam identificadas pela obra. Para as
+        // filas atuais, a referência de entrega é a chave canônica.
+        if ($candidato['entregaId'] <= 0) {
+            continue;
+        }
+        $buscarTarefasOrigem->bind_param('ii', $candidato['entregaId'], $candidato['origem']);
+        $buscarTarefasOrigem->execute();
+        $aindaNaOrigem = false;
+        $resultado = $buscarTarefasOrigem->get_result();
+        while ($tarefa = $resultado->fetch_assoc()) {
+            if (flow_planejamento_codigo_etapa($tarefa) === $candidato['etapa']) {
+                $aindaNaOrigem = true;
+                break;
+            }
+        }
+        $resultado->free();
+        $copiar->bind_param(
+            'iississ',
+            $candidato['destino'],
+            $candidato['origem'],
+            $candidato['etapa'],
+            $candidato['referencia'],
+            $candidato['destino'],
+            $candidato['etapa'],
+            $candidato['referencia']
+        );
+        if (!$copiar->execute()) {
+            throw new RuntimeException('Não foi possível copiar a prioridade confirmada: ' . $copiar->error);
+        }
+        $linhasCopiadas = $copiar->affected_rows;
+        if (!$aindaNaOrigem) {
+            $desativarOrigem->bind_param('iss', $candidato['origem'], $candidato['etapa'], $candidato['referencia']);
+            if (!$desativarOrigem->execute()) {
+                throw new RuntimeException('Não foi possível encerrar a prioridade anterior: ' . $desativarOrigem->error);
+            }
+        }
+        if ($linhasCopiadas > 0 || !$aindaNaOrigem) {
+            $migradas[] = $candidato + [
+                'linhas' => $linhasCopiadas,
+                'tipo' => $aindaNaOrigem ? 'COPIADA' : 'MIGRADA',
+            ];
+        }
+    }
+    $buscarTarefasOrigem->close();
+    $copiar->close();
+    $desativarOrigem->close();
+
+    return $migradas;
+}
+
 function flow_alocacao_indexar_pessoas(array $alocacao): array
 {
     $indice = [];
@@ -1256,6 +1411,11 @@ function flow_alocacao_aplicar_movimentos(mysqli $conn, string $inicio, string $
         }
         $update->close();
 
+        // A prioridade confirmada acompanha uma frente que foi integralmente
+        // transferida. Isso mantém a ordem do Kanban alinhada à Central de
+        // Alocação também depois de trocar o responsável.
+        $filasMigradas = flow_alocacao_migrar_fila_confirmada($conn, $movimentos, $indiceTarefas);
+
         foreach ($mudancasPorPlano as $plano) {
             flow_planejamento_registrar_evento(
                 $conn,
@@ -1276,7 +1436,7 @@ function flow_alocacao_aplicar_movimentos(mysqli $conn, string $inicio, string $
             );
         }
         $conn->commit();
-        return $simulacao + ['aplicado' => true];
+        return $simulacao + ['aplicado' => true, 'filas_migradas' => $filasMigradas];
     } catch (Throwable $erro) {
         $conn->rollback();
         throw $erro;

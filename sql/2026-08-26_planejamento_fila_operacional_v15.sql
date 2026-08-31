@@ -18,11 +18,21 @@ CREATE TABLE IF NOT EXISTS entrega_planejamento_fila_operacional (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY idx_fila_ativa_colaborador (ativo, colaborador_id, codigo_etapa, posicao),
-    KEY idx_fila_referencia (colaborador_id, codigo_etapa, referencia_fila, ativo),
+    KEY idx_fila_ativa_colaborador (
+        ativo,
+        colaborador_id,
+        codigo_etapa,
+        posicao
+    ),
+    KEY idx_fila_referencia (
+        colaborador_id,
+        codigo_etapa,
+        referencia_fila,
+        ativo
+    ),
     KEY idx_fila_entrega (entrega_id, ativo),
     KEY idx_fila_planejamento_versao (planejamento_id, versao_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS entrega_planejamento_projecao_operacional (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -42,7 +52,7 @@ CREATE TABLE IF NOT EXISTS entrega_planejamento_projecao_operacional (
     PRIMARY KEY (id),
     KEY idx_projecao_entrega (entrega_id, confirmado_em),
     KEY idx_projecao_fingerprint (fingerprint)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS entrega_planejamento_projecao_etapa (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -58,6 +68,5 @@ CREATE TABLE IF NOT EXISTS entrega_planejamento_projecao_etapa (
     explicacao_json JSON NULL,
     PRIMARY KEY (id),
     KEY idx_projecao_etapa (projecao_id, codigo_etapa),
-    CONSTRAINT fk_projecao_etapa_cabecalho FOREIGN KEY (projecao_id)
-        REFERENCES entrega_planejamento_projecao_operacional(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    CONSTRAINT fk_projecao_etapa_cabecalho FOREIGN KEY (projecao_id) REFERENCES entrega_planejamento_projecao_operacional (id) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

@@ -101,4 +101,17 @@ $tarefasContexto[0]['tarefas'][0]['colaborador_id'] = 6;
 $fingerprintB = flow_alocacao_fingerprint_pessoa($etapaContexto, $pessoaContexto, [['data' => '2026-09-11', 'carga' => 1.0]], $tarefasContexto);
 alocacao_assert($fingerprintA !== $fingerprintB, 'Fingerprint deve mudar quando o responsável real muda.');
 
+alocacao_assert(
+    flow_alocacao_referencia_fila(293, 116, 'caderno_filtro') === 'ENTREGA:293:CADERNO_FILTRO',
+    'A fila confirmada deve usar a mesma chave canônica da entrega realocada.'
+);
+alocacao_assert(
+    flow_alocacao_referencia_fila(0, 116, 'caderno_filtro') === 'OBRA:116:CADERNO_FILTRO',
+    'Filas legadas precisam conservar a chave por obra.'
+);
+alocacao_assert(
+    flow_alocacao_referencia_fila(0, 0, 'CADERNO_FILTRO') === null,
+    'Não deve haver migração de fila sem uma referência de entrega ou obra.'
+);
+
 echo "OK: materialização, deduplicação Caderno/Filtro, estados, fingerprint e carga planejada validados.\n";

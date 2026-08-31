@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
@@ -129,6 +130,27 @@ $obra['total_imagens_antecipadas'] = (int) ($obra['total_imagens_antecipadas'] ?
 $obra['imagens_por_tipo'] = $imagensPorTipo;
 
 $response['obra'] = $obra;
+
+// O Plano R00 só deve aparecer para gestores ou para os colaboradores 9 e 21,
+// e somente quando já existe um planejamento de produção para a entrega R00.
+$podeVerPlanoR00 = (int) ($_SESSION['nivel_acesso'] ?? 0) === 1
+    || in_array((int) ($_SESSION['idcolaborador'] ?? 0), [9, 21], true);
+$response['obra']['tem_planejamento_r00'] = false;
+if ($podeVerPlanoR00) {
+    $stmtPlanoR00 = $conn->prepare(
+        'SELECT 1
+           FROM entregas e
+           JOIN entrega_planejamento_producao p ON p.entrega_id = e.id
+          WHERE e.obra_id = ? AND e.status_id = 2
+          LIMIT 1'
+    );
+    if ($stmtPlanoR00) {
+        $stmtPlanoR00->bind_param('i', $obraId);
+        $stmtPlanoR00->execute();
+        $response['obra']['tem_planejamento_r00'] = $stmtPlanoR00->get_result()->num_rows > 0;
+        $stmtPlanoR00->close();
+    }
+}
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlAprovacaoObra = "SELECT 

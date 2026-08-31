@@ -95,6 +95,214 @@
     return files;
   }
 
+  function imageAlt(file, index, total) {
+    var name = String(file.nome_original || "").trim();
+    var position = total > 1 ? " " + (index + 1) + " de " + total : "";
+    return name
+      ? "Imagem" + position + " da notificação: " + name
+      : "Imagem" + position + " da notificação";
+  }
+
+  function createIcon(name) {
+    var icon = document.createElement("i");
+    icon.className = "fa-solid " + name;
+    icon.setAttribute("aria-hidden", "true");
+    return icon;
+  }
+
+  function openImageLightbox(images, startIndex) {
+    var index = startIndex;
+    var lightbox = document.createElement("div");
+    lightbox.className = "flow-notification-lightbox";
+    lightbox.setAttribute("role", "dialog");
+    lightbox.setAttribute("aria-modal", "true");
+    lightbox.setAttribute("aria-label", "Imagem ampliada da notificação");
+    lightbox.innerHTML =
+      '<div class="flow-notification-lightbox__backdrop"></div><section class="flow-notification-lightbox__panel"><button type="button" class="flow-notification-lightbox__close" aria-label="Fechar imagem ampliada"></button><img class="flow-notification-lightbox__image" alt=""><div class="flow-notification-lightbox__counter" aria-live="polite" hidden></div></section>';
+    document.body.appendChild(lightbox);
+
+    var q = function (selector) {
+      return lightbox.querySelector(selector);
+    };
+    var image = q(".flow-notification-lightbox__image");
+    var counter = q(".flow-notification-lightbox__counter");
+    var closeButton = q(".flow-notification-lightbox__close");
+    closeButton.appendChild(createIcon("fa-xmark"));
+
+    function update(nextIndex) {
+      index = (nextIndex + images.length) % images.length;
+      var file = images[index];
+      image.src = rootUrl(file.url || file.caminho);
+      image.alt = imageAlt(file, index, images.length);
+      if (images.length > 1)
+        counter.textContent = index + 1 + " / " + images.length;
+    }
+
+    function dismiss() {
+      document.removeEventListener("keydown", onKeydown);
+      lightbox.remove();
+    }
+
+    function onKeydown(event) {
+      if (event.key === "Escape") dismiss();
+      if (images.length > 1 && event.key === "ArrowLeft") update(index - 1);
+      if (images.length > 1 && event.key === "ArrowRight") update(index + 1);
+    }
+
+    closeButton.addEventListener("click", dismiss);
+    q(".flow-notification-lightbox__backdrop").addEventListener(
+      "click",
+      dismiss,
+    );
+    if (images.length > 1) {
+      var previous = document.createElement("button");
+      previous.type = "button";
+      previous.className =
+        "flow-notification-lightbox__nav flow-notification-lightbox__nav--previous";
+      previous.setAttribute("aria-label", "Imagem anterior");
+      previous.appendChild(createIcon("fa-chevron-left"));
+      previous.addEventListener("click", function () {
+        update(index - 1);
+      });
+      var next = document.createElement("button");
+      next.type = "button";
+      next.className =
+        "flow-notification-lightbox__nav flow-notification-lightbox__nav--next";
+      next.setAttribute("aria-label", "Próxima imagem");
+      next.appendChild(createIcon("fa-chevron-right"));
+      next.addEventListener("click", function () {
+        update(index + 1);
+      });
+      q(".flow-notification-lightbox__panel").append(previous, next);
+      counter.hidden = false;
+    }
+    document.addEventListener("keydown", onKeydown);
+    update(index);
+    closeButton.focus();
+  }
+
+  function createImageCarousel(images) {
+    var index = 0;
+    var touchStart = null;
+    var carousel = document.createElement("div");
+    carousel.className =
+      "flow-notification__carousel" +
+      (images.length > 1 ? " flow-notification__carousel--multiple" : "");
+    carousel.tabIndex = 0;
+    carousel.setAttribute("role", "region");
+    carousel.setAttribute("aria-label", "Galeria de imagens da notificação");
+
+    var stage = document.createElement("div");
+    stage.className = "flow-notification__carousel-stage";
+    var image = document.createElement("img");
+    image.className = "flow-notification__carousel-image";
+    image.loading = "eager";
+    image.decoding = "async";
+    image.addEventListener("click", function () {
+      openImageLightbox(images, index);
+    });
+    stage.appendChild(image);
+    carousel.appendChild(stage);
+
+    var counter;
+    var dots;
+    function update(nextIndex) {
+      index = (nextIndex + images.length) % images.length;
+      var file = images[index];
+      if (images.length > 1) {
+        image.classList.remove("is-changing");
+        // Reinicia a animação sem recriar elementos ou listeners.
+        void image.offsetWidth;
+        image.classList.add("is-changing");
+      }
+      image.src = rootUrl(file.url || file.caminho);
+      image.alt = imageAlt(file, index, images.length);
+      if (counter) counter.textContent = index + 1 + " / " + images.length;
+      if (dots) {
+        Array.prototype.forEach.call(dots.children, function (dot, dotIndex) {
+          var active = dotIndex === index;
+          dot.classList.toggle("is-active", active);
+          dot.setAttribute("aria-current", active ? "true" : "false");
+        });
+      }
+    }
+
+    if (images.length > 1) {
+      [
+        ["previous", "Imagem anterior", "fa-chevron-left", -1],
+        ["next", "Próxima imagem", "fa-chevron-right", 1],
+      ].forEach(function (control) {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className =
+          "flow-notification__carousel-nav flow-notification__carousel-nav--" +
+          control[0];
+        button.setAttribute("aria-label", control[1]);
+        button.appendChild(createIcon(control[2]));
+        button.addEventListener("click", function () {
+          update(index + control[3]);
+        });
+        stage.appendChild(button);
+      });
+
+      counter = document.createElement("div");
+      counter.className = "flow-notification__carousel-counter";
+      counter.setAttribute("aria-live", "polite");
+      stage.appendChild(counter);
+
+      dots = document.createElement("div");
+      dots.className = "flow-notification__carousel-dots";
+      images.forEach(function (_, dotIndex) {
+        var dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "flow-notification__carousel-dot";
+        dot.setAttribute("aria-label", "Ir para imagem " + (dotIndex + 1));
+        dot.addEventListener("click", function () {
+          update(dotIndex);
+        });
+        dots.appendChild(dot);
+      });
+      carousel.appendChild(dots);
+    }
+
+    carousel.addEventListener("keydown", function (event) {
+      if (images.length < 2) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        update(index - 1);
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        update(index + 1);
+      }
+    });
+    carousel.addEventListener(
+      "touchstart",
+      function (event) {
+        var touch = event.changedTouches[0];
+        touchStart = touch ? { x: touch.clientX, y: touch.clientY } : null;
+      },
+      { passive: true },
+    );
+    carousel.addEventListener(
+      "touchend",
+      function (event) {
+        if (images.length < 2 || !touchStart) return;
+        var touch = event.changedTouches[0];
+        if (!touch) return;
+        var deltaX = touch.clientX - touchStart.x;
+        var deltaY = touch.clientY - touchStart.y;
+        touchStart = null;
+        if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY))
+          return;
+        update(index + (deltaX < 0 ? 1 : -1));
+      },
+      { passive: true },
+    );
+    update(0);
+    return carousel;
+  }
+
   function statusRequest(id, action) {
     if (!id || !action) return Promise.resolve();
     return fetch(rootUrl("notificacao_modulo_status.php"), {
@@ -119,9 +327,8 @@
     var preview = !!options.preview;
     var files = attachments(notification);
     var images = files.filter(isImage);
-    var cover = images[0] || null;
-    var remaining = files.filter(function (file, index) {
-      return file !== cover && (!isImage(file) || index > 0);
+    var remaining = files.filter(function (file) {
+      return !isImage(file);
     });
     var moduleName = notification.modulo_nome || notification.module_name || "";
     var moduleUrl = notification.modulo_url || notification.module_url || "";
@@ -146,7 +353,7 @@
     modal.setAttribute("aria-modal", "true");
     modal.innerHTML =
       '<div class="flow-notification__backdrop"></div><section class="flow-notification__panel"><button type="button" class="flow-notification__close" aria-label="Fechar">×</button><div class="flow-notification__preview-meta" hidden></div><div class="flow-notification__content"><div class="flow-notification__main' +
-      (cover ? " flow-notification__main--with-media" : "") +
+      (images.length ? " flow-notification__main--with-media" : "") +
       '"><div class="flow-notification__copy"><div class="flow-notification__version"><i class="fa-solid fa-rocket"></i> FLOW <span></span></div><h2></h2><div class="flow-notification__message notification-content"></div><div class="flow-notification__module" hidden></div></div><div class="flow-notification__hero" hidden></div></div><div class="flow-notification__attachments" hidden></div></div><footer class="flow-notification__footer"><label class="flow-notification__dismiss" hidden><input type="checkbox"> Não mostrar novamente</label><div class="flow-notification__footer-actions"><small class="flow-notification__hint" hidden></small><button type="button" class="flow-notification__later">Agora não</button><button type="button" class="flow-notification__confirm" hidden>Confirmar leitura</button><a class="flow-notification__cta" hidden></a></div></footer></section>';
     document.body.appendChild(modal);
 
@@ -194,13 +401,10 @@
         '"></i><div><small>Módulo relacionado</small><strong></strong></div>';
       module.querySelector("strong").textContent = moduleName;
     }
-    if (cover) {
+    if (images.length) {
       var hero = q(".flow-notification__hero");
       hero.hidden = false;
-      hero.innerHTML = '<img alt="">';
-      var image = hero.querySelector("img");
-      image.src = rootUrl(cover.url || cover.caminho);
-      image.alt = cover.nome_original || "Imagem da notificação";
+      hero.appendChild(createImageCarousel(images));
     }
     if (remaining.length) {
       var attachmentsBox = q(".flow-notification__attachments");

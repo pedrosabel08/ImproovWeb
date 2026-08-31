@@ -18,7 +18,7 @@ function flow_capacidade_fixture_validacao(): array
         'FINALIZACAO_EXTERNA' => 1, 'FINALIZACAO_INTERNA' => 2,
         'FINALIZACAO_PLANTA' => 1, 'POS_PRODUCAO' => 2,
     ];
-    return array_map(static fn(float $capacidade): array => [
+    return array_map(static fn (float $capacidade): array => [
         'capacidade_padrao' => $capacidade,
         'origem' => 'FIXTURE_TESTE',
     ], $valores);
@@ -50,8 +50,8 @@ try {
         echo 'Capacidade: ' . $resultado['origem_capacidade'] . PHP_EOL;
         echo 'Planos: ' . $resultado['resumo']['planos_considerados'] . ' | Obras: ' . $resultado['resumo']['obras_consideradas'] . ' | Dias úteis: ' . $resultado['resumo']['dias_uteis_analisados'] . ' | Conflitos: ' . $resultado['resumo']['conflitos'] . PHP_EOL;
         foreach (($resultado['capacidades'] ?? []) as $codigo => $capacidade) {
-            $principais = array_values(array_unique(array_map(static fn(array $colaborador): string => (string) ($colaborador['nome'] ?? ''), $capacidade['colaboradores_principais'] ?? [])));
-            $secundarios = array_values(array_unique(array_map(static fn(array $colaborador): string => (string) ($colaborador['nome'] ?? ''), $capacidade['colaboradores_secundarios'] ?? [])));
+            $principais = array_values(array_unique(array_map(static fn (array $colaborador): string => (string) ($colaborador['nome'] ?? ''), $capacidade['colaboradores_principais'] ?? [])));
+            $secundarios = array_values(array_unique(array_map(static fn (array $colaborador): string => (string) ($colaborador['nome'] ?? ''), $capacidade['colaboradores_secundarios'] ?? [])));
             echo 'CAPACIDADE: ' . implode(' | ', [
                 $codigo,
                 'principal ' . $capacidade['capacidade_principal'],
@@ -70,7 +70,7 @@ try {
             ]) . PHP_EOL;
         }
         foreach ($resultado['etapas'] as $etapa) {
-            $ocupados = array_values(array_filter($etapa['dias'], static fn(array $dia): bool => $dia['demanda_planejada'] > 0));
+            $ocupados = array_values(array_filter($etapa['dias'], static fn (array $dia): bool => $dia['demanda_planejada'] > 0));
             if (!$ocupados) {
                 continue;
             }

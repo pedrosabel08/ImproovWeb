@@ -57,7 +57,13 @@ function sftpToPublicUrl(rawPath) {
 
 const KANBAN_LOADING_DELAY = 250;
 const KANBAN_MIN_LOADING_VISIBILITY = 180;
-const kanbanLoading = { hasRendered: false, sequence: 0, shownAt: 0, timer: null, state: "IDLE" };
+const kanbanLoading = {
+  hasRendered: false,
+  sequence: 0,
+  shownAt: 0,
+  timer: null,
+  state: "IDLE",
+};
 
 function getKanbanBoard() {
   return document.getElementById("kanban-section");
@@ -84,15 +90,26 @@ function updateKanbanLoadingSignature(stage, retry = false) {
   if (!signature) return;
   const copy = signature.querySelector(".kanban-loading-copy");
   const messages = {
-    loading: ["Preparando seu quadro...", "Buscando suas tarefas e organizando prioridades."],
+    loading: [
+      "Preparando seu quadro...",
+      "Buscando suas tarefas e organizando prioridades.",
+    ],
     rendering: ["Organizando informações...", "Seu quadro está quase pronto."],
-    refreshing: ["Atualizando quadro...", "Sincronizando as informações mais recentes."],
-    error: ["Não foi possível carregar o quadro.", "Verifique sua conexão e tente novamente."],
+    refreshing: [
+      "Atualizando quadro...",
+      "Sincronizando as informações mais recentes.",
+    ],
+    error: [
+      "Não foi possível carregar o quadro.",
+      "Verifique sua conexão e tente novamente.",
+    ],
   };
   const [title, detail] = messages[stage] || messages.loading;
   copy.innerHTML = `<strong>${title}</strong><small>${detail}</small>${retry ? '<button type="button" class="kanban-retry-load">Tentar novamente</button>' : ""}`;
   signature.hidden = false;
-  signature.querySelector(".kanban-retry-load")?.addEventListener("click", () => carregarDados(colaborador_id));
+  signature
+    .querySelector(".kanban-retry-load")
+    ?.addEventListener("click", () => carregarDados(colaborador_id));
 }
 
 function setKanbanLoadingCounts() {
@@ -104,9 +121,9 @@ function setKanbanLoadingCounts() {
 }
 
 function setKanbanRefreshingCounts() {
-  document.querySelectorAll(".kanban-box .task-count").forEach((badge) =>
-    badge.classList.add("task-count--refreshing"),
-  );
+  document
+    .querySelectorAll(".kanban-box .task-count")
+    .forEach((badge) => badge.classList.add("task-count--refreshing"));
 }
 
 function renderKanbanSkeletons() {
@@ -116,7 +133,11 @@ function renderKanbanSkeletons() {
     const content = box.querySelector(".content");
     if (!content) return;
     const skeletons = box.classList.contains("kanban-box-pendencias") ? 3 : 2;
-    content.innerHTML = Array.from({ length: skeletons }, () => `<div class="kanban-card-skeleton" aria-hidden="true"><span class="kanban-skeleton-line kanban-skeleton-line--eyebrow"></span><span class="kanban-skeleton-line kanban-skeleton-line--title"></span><span class="kanban-skeleton-line kanban-skeleton-line--subtitle"></span><span class="kanban-skeleton-meta"><i></i><i></i></span></div>`).join("");
+    content.innerHTML = Array.from(
+      { length: skeletons },
+      () =>
+        `<div class="kanban-card-skeleton" aria-hidden="true"><span class="kanban-skeleton-line kanban-skeleton-line--eyebrow"></span><span class="kanban-skeleton-line kanban-skeleton-line--title"></span><span class="kanban-skeleton-line kanban-skeleton-line--subtitle"></span><span class="kanban-skeleton-meta"><i></i><i></i></span></div>`,
+    ).join("");
   });
   setKanbanLoadingCounts();
 }
@@ -126,7 +147,10 @@ function setKanbanLoadingState(state) {
   if (!board) return;
   kanbanLoading.state = state;
   board.dataset.loadState = state.toLowerCase();
-  board.setAttribute("aria-busy", ["LOADING", "RENDERING", "REFRESHING"].includes(state) ? "true" : "false");
+  board.setAttribute(
+    "aria-busy",
+    ["LOADING", "RENDERING", "REFRESHING"].includes(state) ? "true" : "false",
+  );
 }
 
 function showKanbanLoading(loadId, initial) {
@@ -148,7 +172,11 @@ function showKanbanLoading(loadId, initial) {
 function clearKanbanLoadingVisuals() {
   const board = getKanbanBoard();
   if (!board) return;
-  board.classList.remove("kanban--loading", "kanban--refreshing", "kanban--error");
+  board.classList.remove(
+    "kanban--loading",
+    "kanban--refreshing",
+    "kanban--error",
+  );
   const signature = board.querySelector(".kanban-loading-signature");
   if (signature) signature.hidden = true;
 }
@@ -159,7 +187,10 @@ function showKanbanLoadError(loadId, initial, error) {
   const board = getKanbanBoard();
   if (!board) return;
   console.error("Erro ao carregar o Kanban:", error);
-  if (initial) board.querySelectorAll(".kanban-card-skeleton").forEach((skeleton) => skeleton.remove());
+  if (initial)
+    board
+      .querySelectorAll(".kanban-card-skeleton")
+      .forEach((skeleton) => skeleton.remove());
   board.classList.remove("kanban--loading", "kanban--refreshing");
   board.classList.add("kanban--error");
   setKanbanLoadingState("ERROR");
@@ -168,18 +199,30 @@ function showKanbanLoadError(loadId, initial, error) {
 
 function renderKanbanResponse(loadId, data) {
   if (loadId !== kanbanLoading.sequence) return;
-  const elapsed = kanbanLoading.shownAt ? performance.now() - kanbanLoading.shownAt : KANBAN_MIN_LOADING_VISIBILITY;
-  const waitForSkeleton = kanbanLoading.shownAt ? Math.max(0, KANBAN_MIN_LOADING_VISIBILITY - elapsed) : 0;
+  const elapsed = kanbanLoading.shownAt
+    ? performance.now() - kanbanLoading.shownAt
+    : KANBAN_MIN_LOADING_VISIBILITY;
+  const waitForSkeleton = kanbanLoading.shownAt
+    ? Math.max(0, KANBAN_MIN_LOADING_VISIBILITY - elapsed)
+    : 0;
   window.setTimeout(() => {
     if (loadId !== kanbanLoading.sequence) return;
     setKanbanLoadingState("RENDERING");
     updateKanbanLoadingSignature("rendering");
     if (window.updateMiniCalendarWithData) {
-      try { window.updateMiniCalendarWithData(data); } catch (error) { console.error("mini-calendar update error", error); }
+      try {
+        window.updateMiniCalendarWithData(data);
+      } catch (error) {
+        console.error("mini-calendar update error", error);
+      }
     }
     processarDados(data);
     if (window.updateListaTabela) {
-      try { window.updateListaTabela(data); } catch (error) { console.error("updateListaTabela error", error); }
+      try {
+        window.updateListaTabela(data);
+      } catch (error) {
+        console.error("updateListaTabela error", error);
+      }
     }
     kanbanLoading.hasRendered = true;
     window.setTimeout(() => {
@@ -197,7 +240,10 @@ function carregarDados(colaborador_id) {
   kanbanLoading.shownAt = 0;
   window.clearTimeout(kanbanLoading.timer);
   setKanbanLoadingState(initial ? "LOADING" : "REFRESHING");
-  kanbanLoading.timer = window.setTimeout(() => showKanbanLoading(loadId, initial), KANBAN_LOADING_DELAY);
+  kanbanLoading.timer = window.setTimeout(
+    () => showKanbanLoading(loadId, initial),
+    KANBAN_LOADING_DELAY,
+  );
 
   const xhr = new XMLHttpRequest();
   let settled = false;
@@ -208,13 +254,16 @@ function carregarDados(colaborador_id) {
   };
   xhr.onreadystatechange = function () {
     if (xhr.readyState !== XMLHttpRequest.DONE || settled) return;
-    if (xhr.status !== 200) return fail(new Error(`Resposta HTTP ${xhr.status}`));
+    if (xhr.status !== 200)
+      return fail(new Error(`Resposta HTTP ${xhr.status}`));
     try {
       window.clearTimeout(kanbanLoading.timer);
       const data = JSON.parse(xhr.responseText);
       settled = true;
       renderKanbanResponse(loadId, data);
-    } catch (error) { fail(error); }
+    } catch (error) {
+      fail(error);
+    }
   };
   xhr.onerror = () => fail(new Error("Falha de rede"));
   xhr.ontimeout = () => fail(new Error("Tempo de resposta esgotado"));
@@ -252,7 +301,13 @@ function resumoPlanejamentoKanban(contexto) {
     return `<div class="planning-card-summary is-empty"><span>Prazo necessário</span><strong>Não definido pelo planejamento</strong></div>`;
   }
   const status = String(temporal.codigo || "SEM_PRAZO").toLowerCase();
-  const icon = status.includes("atras") ? "ri-alarm-warning-line" : status === "bloqueado" ? "ri-pause-circle-line" : status.includes("hoje") || status.includes("proximo") ? "ri-error-warning-line" : "ri-checkbox-circle-line";
+  const icon = status.includes("atras")
+    ? "ri-alarm-warning-line"
+    : status === "bloqueado"
+      ? "ri-pause-circle-line"
+      : status.includes("hoje") || status.includes("proximo")
+        ? "ri-error-warning-line"
+        : "ri-checkbox-circle-line";
   return `<div class="planning-card-summary is-${status}"><span><i class="ri-calendar-line"></i> Prazo necessário: ${formatarDataPlanejamento(prazo)}</span><strong><i class="${icon}"></i> ${escapeKanbanText(temporal.rotulo || "No prazo")}</strong></div>`;
 }
 
@@ -1715,28 +1770,45 @@ function abrirFormularioFlowBlockHold(
       cardModal.classList.remove("flow-block-hold-active");
       card.classList.remove("selected");
     });
-    form.querySelector(".flow-block-create").addEventListener("click", async () => {
-      const button = form.querySelector(".flow-block-create");
-      button.disabled = true;
-      button.textContent = "Solicitando…";
-      try {
-        const response = await fetch("FlowBlock/api.php?action=create_approval_dependency", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ funcao_imagem_id: Number(card.dataset.id) }),
-        });
-        const data = await response.json();
-        if (!response.ok || !data.ok) throw new Error(data.message || "Não foi possível solicitar a liberação.");
-        cardModal.classList.remove("active");
-        form.remove();
-        carregarDados(colaborador_id);
-        window.location.href = `FlowBlock/issue.php?id=${encodeURIComponent(data.id)}`;
-      } catch (error) {
-        button.disabled = false;
-        button.innerHTML = '<i class="ri-send-plane-line"></i> Solicitar liberação';
-        Toastify({ text: error.message, duration: 4000, gravity: "top", position: "left", backgroundColor: "#d94b4b" }).showToast();
-      }
-    });
+    form
+      .querySelector(".flow-block-create")
+      .addEventListener("click", async () => {
+        const button = form.querySelector(".flow-block-create");
+        button.disabled = true;
+        button.textContent = "Solicitando…";
+        try {
+          const response = await fetch(
+            "FlowBlock/api.php?action=create_approval_dependency",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                funcao_imagem_id: Number(card.dataset.id),
+              }),
+            },
+          );
+          const data = await response.json();
+          if (!response.ok || !data.ok)
+            throw new Error(
+              data.message || "Não foi possível solicitar a liberação.",
+            );
+          cardModal.classList.remove("active");
+          form.remove();
+          carregarDados(colaborador_id);
+          window.location.href = `FlowBlock/issue.php?id=${encodeURIComponent(data.id)}`;
+        } catch (error) {
+          button.disabled = false;
+          button.innerHTML =
+            '<i class="ri-send-plane-line"></i> Solicitar liberação';
+          Toastify({
+            text: error.message,
+            duration: 4000,
+            gravity: "top",
+            position: "left",
+            backgroundColor: "#d94b4b",
+          }).showToast();
+        }
+      });
     cardModal.classList.add("active");
     card.classList.add("selected");
     return;
@@ -2656,7 +2728,7 @@ function processarDados(data) {
                     <div class="card-footer">
                         <span class="date ${atrasada ? "atrasada" : ""}">
                             <i class="fa-regular fa-calendar"></i>
-                            ${tipo === "imagem" ? (planejamento.prazo_necessario ? formatarDataPlanejamento(planejamento.prazo_necessario) : "Sem prazo") : (item.prazo ? formatarData(item.prazo) : "-")}
+                            ${tipo === "imagem" ? (planejamento.prazo_necessario ? formatarDataPlanejamento(planejamento.prazo_necessario) : "Sem prazo") : item.prazo ? formatarData(item.prazo) : "-"}
                         </span>
                         ${desvioPlanejamentoHtml}
                     </div>
@@ -2785,7 +2857,9 @@ function processarDados(data) {
       }
     });
 
-    const dependenciesToggle = card.querySelector(".kanban-dependencies-toggle");
+    const dependenciesToggle = card.querySelector(
+      ".kanban-dependencies-toggle",
+    );
     if (dependenciesToggle) {
       dependenciesToggle.addEventListener("click", (event) => {
         event.preventDefault();
@@ -2873,7 +2947,10 @@ function processarDados(data) {
       .slice(0, 8)
       .forEach((card, index) => {
         card.classList.remove("kanban-card--enter");
-        card.style.setProperty("--kanban-enter-delay", `${Math.min(index * 40, 280)}ms`);
+        card.style.setProperty(
+          "--kanban-enter-delay",
+          `${Math.min(index * 40, 280)}ms`,
+        );
         requestAnimationFrame(() => card.classList.add("kanban-card--enter"));
       });
   });
@@ -4808,9 +4885,7 @@ function abrirSidebar(
       const formatarDesvio = (desvio) => {
         if (desvio === null || desvio === undefined) return "";
         if (Number(desvio) === 0) return "0d";
-        return Number(desvio) > 0
-          ? `+${desvio}d`
-          : `${desvio}d`;
+        return Number(desvio) > 0 ? `+${desvio}d` : `${desvio}d`;
       };
       compromisso.innerHTML = `
         <div class="tp-commitment-header">
@@ -4823,13 +4898,30 @@ function abrirSidebar(
           <div><span>Prazo necessário</span><strong class="tp-commitment-deadline">${formatarDataPlanejamento(prazoNecessario)}</strong><small>Definido pelo planejamento</small></div>
           <div><span>Sua previsão</span><strong class="tp-commitment-prediction">${planejamento.previsao_colaborador ? formatarData(planejamento.previsao_colaborador) : "Não informada"}</strong><small>${planejamento.diferenca_previsao_dias_uteis > 0 ? `+${planejamento.diferenca_previsao_dias_uteis} dias úteis` : ""}</small></div>
         </div>
-        ${timelineItens.length ? `<div class="tp-process-timeline is-animated">${timelineItens.map((etapa) => {
-          const concluida = etapa.estado === "CONCLUIDA";
-          const prazoEtapa = etapa.prazo ? `Prazo: ${formatarData(etapa.prazo)}` : "Prazo não definido";
-          const legenda = concluida ? formatarDesvio(etapa.desvio) : prazoEtapa;
-          const estado = etapa.estado === "ATUAL" ? "Você está aqui" : concluida ? "Concluída" : etapa.estado === "BLOQUEADA" ? "Bloqueada" : "Próxima etapa";
-          return `<div class="tp-process-stage is-${String(etapa.estado || "proxima").toLowerCase()}"><i class="${concluida ? "ri-checkbox-circle-fill" : etapa.estado === "ATUAL" ? "ri-user-location-fill" : etapa.estado === "BLOQUEADA" ? "ri-pause-circle-line" : "ri-circle-line"}"></i><strong>${escapeKanbanText(etapa.nome || etapa.codigo)}</strong><span>${estado}</span><small>${legenda}</small></div>`;
-        }).join("")}</div>` : ""}
+        ${
+          timelineItens.length
+            ? `<div class="tp-process-timeline is-animated">${timelineItens
+                .map((etapa) => {
+                  const concluida = etapa.estado === "CONCLUIDA";
+                  const prazoEtapa = etapa.prazo
+                    ? `Prazo: ${formatarData(etapa.prazo)}`
+                    : "Prazo não definido";
+                  const legenda = concluida
+                    ? formatarDesvio(etapa.desvio)
+                    : prazoEtapa;
+                  const estado =
+                    etapa.estado === "ATUAL"
+                      ? "Você está aqui"
+                      : concluida
+                        ? "Concluída"
+                        : etapa.estado === "BLOQUEADA"
+                          ? "Bloqueada"
+                          : "Próxima etapa";
+                  return `<div class="tp-process-stage is-${String(etapa.estado || "proxima").toLowerCase()}"><i class="${concluida ? "ri-checkbox-circle-fill" : etapa.estado === "ATUAL" ? "ri-user-location-fill" : etapa.estado === "BLOQUEADA" ? "ri-pause-circle-line" : "ri-circle-line"}"></i><strong>${escapeKanbanText(etapa.nome || etapa.codigo)}</strong><span>${estado}</span><small>${legenda}</small></div>`;
+                })
+                .join("")}</div>`
+            : ""
+        }
         <div class="tp-commitment-message"><i class="ri-information-line"></i><span>${escapeKanbanText(planejamento.mensagem_contexto || "O planejamento ainda não definiu o contexto desta tarefa.")}</span></div>
       `;
       tpMain.appendChild(compromisso);
@@ -4949,10 +5041,14 @@ function abrirSidebar(
         tpMain.appendChild(requisitosCard);
         if (options.focusDependencies) {
           requestAnimationFrame(() => {
-            requisitosCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            requisitosCard.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
             requisitosCard.classList.add("tp-dependencies-highlight");
             window.setTimeout(
-              () => requisitosCard.classList.remove("tp-dependencies-highlight"),
+              () =>
+                requisitosCard.classList.remove("tp-dependencies-highlight"),
               1200,
             );
           });
@@ -6450,10 +6546,14 @@ const cardModal = document.getElementById("cardModal");
 const modalPrazo = document.getElementById("modalPrazo");
 const modalObs = document.getElementById("modalObs");
 const modalPlanejamento = document.getElementById("modalPlanejamento");
-const modalPrevisaoConclusao = document.getElementById("modalPrevisaoConclusao");
+const modalPrevisaoConclusao = document.getElementById(
+  "modalPrevisaoConclusao",
+);
 const modalPrazoNecessario = document.getElementById("modalPrazoNecessario");
 const modalPrevisaoFeedback = document.getElementById("modalPrevisaoFeedback");
-const modalJustificativaWrap = document.getElementById("modalJustificativaWrap");
+const modalJustificativaWrap = document.getElementById(
+  "modalJustificativaWrap",
+);
 const modalJustificativa = document.getElementById("modalJustificativa");
 let cardSelecionado = null;
 
@@ -6470,13 +6570,15 @@ function renderizarFeedbackPrevisao(resultado) {
   const diferenca = Number(resultado?.diferenca_dias_uteis);
   const temPrazo = !!resultado?.prazo_necessario;
   if (!temPrazo) {
-    modalPrevisaoFeedback.textContent = "O planejamento ainda não definiu um prazo necessário para esta tarefa.";
+    modalPrevisaoFeedback.textContent =
+      "O planejamento ainda não definiu um prazo necessário para esta tarefa.";
     modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
     modalJustificativaWrap.hidden = true;
     return;
   }
   if (!Number.isFinite(diferenca) || diferenca <= 0) {
-    modalPrevisaoFeedback.innerHTML = '<i class="ri-checkbox-circle-line"></i> Dentro do prazo necessário';
+    modalPrevisaoFeedback.innerHTML =
+      '<i class="ri-checkbox-circle-line"></i> Dentro do prazo necessário';
     modalPrevisaoFeedback.className = "modal-planning-feedback is-ok";
     modalJustificativaWrap.hidden = true;
     return;
@@ -6522,7 +6624,8 @@ function configurarModalPlanejamento(card) {
   if (modalPrevisaoConclusao.value) {
     atualizarFeedbackPrevisao();
   } else {
-    modalPrevisaoFeedback.textContent = "Informe sua previsão para confirmar o compromisso com esta etapa.";
+    modalPrevisaoFeedback.textContent =
+      "Informe sua previsão para confirmar o compromisso com esta etapa.";
     modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
     modalJustificativaWrap.hidden = true;
   }
@@ -6541,19 +6644,25 @@ async function salvarPrevisaoPlanejamento(card) {
     previsao_conclusao: previsao,
     justificativa: modalJustificativa?.value.trim() || "",
   });
-  const response = await fetch("PaginaPrincipal/salvar_previsao_conclusao.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const response = await fetch(
+    "PaginaPrincipal/salvar_previsao_conclusao.php",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    },
+  );
   const payload = await response.json();
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || "Não foi possível salvar sua previsão.");
+    throw new Error(
+      payload?.message || "Não foi possível salvar sua previsão.",
+    );
   }
   const contexto = payload.planejamento || {};
   card.dataset.planningPrediction = contexto.previsao_colaborador || previsao;
   card.dataset.planningJustification = contexto.justificativa_previsao || "";
-  card.dataset.planningDifference = contexto.diferenca_previsao_dias_uteis ?? "";
+  card.dataset.planningDifference =
+    contexto.diferenca_previsao_dias_uteis ?? "";
   return true;
 }
 
@@ -6693,7 +6802,9 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       animacao_id: cardSelecionado.dataset.animacaoId || "",
       status: statusMap[cardSelecionado.closest(".kanban-box").id] || null,
       prazo:
-        cardSelecionado.dataset.planningAvailable === "1" ? "" : modalPrazo.value,
+        cardSelecionado.dataset.planningAvailable === "1"
+          ? ""
+          : modalPrazo.value,
       observacao: modalObs.value,
       confirmar_pendencias:
         cardModal.dataset.confirmarPendencias === "1" ? 1 : 0,

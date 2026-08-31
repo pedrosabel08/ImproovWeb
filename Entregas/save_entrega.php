@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
@@ -129,7 +130,9 @@ try {
         $stmtOrdem->bind_param('i', $obra_id);
         $stmtOrdem->execute();
         $rOrd = $stmtOrdem->get_result()->fetch_assoc();
-        if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem = intval($rOrd['next_ordem']);
+        if ($rOrd && isset($rOrd['next_ordem'])) {
+            $next_ordem = intval($rOrd['next_ordem']);
+        }
         $stmtOrdem->close();
     }
 

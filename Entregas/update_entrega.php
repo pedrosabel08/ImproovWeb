@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../config/session_bootstrap.php';
@@ -15,7 +16,7 @@ if (!$input || !isset($input['entrega_id'])) {
 
 $entrega_id    = intval($input['entrega_id']);
 $data_prevista = isset($input['data_prevista']) ? trim($input['data_prevista']) : null;
-$status_id     = isset($input['status_id'])     ? intval($input['status_id'])   : null;
+$status_id     = isset($input['status_id']) ? intval($input['status_id']) : null;
 $has_observacoes = array_key_exists('observacoes', $input);
 $observacoes = $has_observacoes ? trim((string) $input['observacoes']) : null;
 

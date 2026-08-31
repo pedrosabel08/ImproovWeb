@@ -64,8 +64,12 @@ function flow_fila_carregar_planos_confirmados(mysqli $conn, array $filtros = []
         }
     }
     $stmt = $conn->prepare($sql . ' ORDER BY e.obra_id, e.id');
-    if (!$stmt) throw new RuntimeException($conn->error);
-    if ($tipos !== '') $stmt->bind_param($tipos, ...$valores);
+    if (!$stmt) {
+        throw new RuntimeException($conn->error);
+    }
+    if ($tipos !== '') {
+        $stmt->bind_param($tipos, ...$valores);
+    }
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -78,7 +82,9 @@ function flow_fila_carregar_planos_confirmados(mysqli $conn, array $filtros = []
             : null;
         $snapshot = $vigente ? json_decode((string) $vigente['snapshot_json'], true) : null;
         $baselineSnapshot = $baseline ? json_decode((string) $baseline['snapshot_json'], true) : null;
-        if (!is_array($snapshot)) continue;
+        if (!is_array($snapshot)) {
+            continue;
+        }
         $snapshot['fonte'] = 'VERSAO_CONFIRMADA';
         $snapshot['planejamento'] = [
             'id' => (int) $row['planejamento_id'],
@@ -104,7 +110,9 @@ function flow_fila_mapa_etapas_plano(array $plano): array
     $mapa = [];
     foreach ((array) ($plano['etapas'] ?? []) as $etapa) {
         $codigo = (string) ($etapa['codigo'] ?? $etapa['codigo_etapa'] ?? '');
-        if ($codigo !== '') $mapa[$codigo] = $etapa;
+        if ($codigo !== '') {
+            $mapa[$codigo] = $etapa;
+        }
     }
     return $mapa;
 }
@@ -113,7 +121,9 @@ function flow_fila_mapa_etapas_plano(array $plano): array
 function flow_fila_carregar_tarefas_responsaveis(mysqli $conn, array $colaboradorIds): array
 {
     $ids = array_values(array_unique(array_filter(array_map('intval', $colaboradorIds))));
-    if (!$ids) return [];
+    if (!$ids) {
+        return [];
+    }
     $lista = implode(',', $ids);
     $sql = "SELECT fi.idfuncao_imagem AS tarefa_id, fi.imagem_id, fi.funcao_id, fi.colaborador_id, fi.status, fi.prazo,
                    ico.tipo_imagem, ico.imagem_nome, ico.obra_id, o.nome_obra, c.nome_colaborador AS responsavel_nome,
@@ -134,7 +144,9 @@ function flow_fila_carregar_tarefas_responsaveis(mysqli $conn, array $colaborado
                AND fi.status NOT IN ('Finalizado', 'Aprovado', 'Aprovado com ajustes', 'Cancelado')
              ORDER BY fi.colaborador_id, COALESCE(pf.prioridade, 3), fi.idfuncao_imagem";
     $result = $conn->query($sql);
-    if (!$result) throw new RuntimeException('Não foi possível carregar a fila operacional: ' . $conn->error);
+    if (!$result) {
+        throw new RuntimeException('Não foi possível carregar a fila operacional: ' . $conn->error);
+    }
     $rows = $result->fetch_all(MYSQLI_ASSOC);
     $result->free();
     return $rows;
@@ -154,7 +166,9 @@ function flow_fila_unidades_logicas(array $tarefas, bool $incluirFechadas = fals
     $grupos = [];
     foreach ($tarefas as $tarefa) {
         $codigo = flow_planejamento_codigo_etapa($tarefa);
-        if ($codigo === null || (!$incluirFechadas && !flow_fila_status_aberto((string) ($tarefa['status'] ?? '')))) continue;
+        if ($codigo === null || (!$incluirFechadas && !flow_fila_status_aberto((string) ($tarefa['status'] ?? '')))) {
+            continue;
+        }
         $chave = $codigo === 'CADERNO_FILTRO'
             ? $codigo . ':I' . (int) $tarefa['imagem_id']
             : $codigo . ':T' . (int) $tarefa['tarefa_id'];
@@ -163,19 +177,21 @@ function flow_fila_unidades_logicas(array $tarefas, bool $incluirFechadas = fals
             $grupos[$chave] = ['chave' => $chave, 'codigo_etapa' => $codigo, 'imagem_id' => (int) $tarefa['imagem_id'], 'tarefas' => [], 'representante' => $tarefa];
         }
         $grupos[$chave]['tarefas'][] = $tarefa;
-        if ((int) $tarefa['funcao_id'] === 1) $grupos[$chave]['representante'] = $tarefa;
+        if ((int) $tarefa['funcao_id'] === 1) {
+            $grupos[$chave]['representante'] = $tarefa;
+        }
     }
     foreach ($grupos as &$unidade) {
-        $responsaveis = array_values(array_unique(array_filter(array_map(static fn(array $t): int => (int) ($t['colaborador_id'] ?? 0), $unidade['tarefas']))));
+        $responsaveis = array_values(array_unique(array_filter(array_map(static fn (array $t): int => (int) ($t['colaborador_id'] ?? 0), $unidade['tarefas']))));
         sort($responsaveis);
         $unidade['responsaveis'] = $responsaveis;
         $unidade['responsabilidade_divergente'] = $unidade['codigo_etapa'] === 'CADERNO_FILTRO' && count($responsaveis) > 1;
-        $unidade['prioridade'] = min(array_map(static fn(array $t): int => (int) ($t['prioridade'] ?? 3), $unidade['tarefas']));
-        $prazos = array_values(array_filter(array_map(static fn(array $t): ?string => ($t['prazo'] ?? null) ?: null, $unidade['tarefas'])));
+        $unidade['prioridade'] = min(array_map(static fn (array $t): int => (int) ($t['prioridade'] ?? 3), $unidade['tarefas']));
+        $prazos = array_values(array_filter(array_map(static fn (array $t): ?string => ($t['prazo'] ?? null) ?: null, $unidade['tarefas'])));
         $unidade['prazo_operacional'] = $prazos ? min($prazos) : null;
-        $entregas = array_values(array_filter(array_map(static fn(array $t): int => (int) ($t['entrega_id'] ?? 0), $unidade['tarefas'])));
+        $entregas = array_values(array_filter(array_map(static fn (array $t): int => (int) ($t['entrega_id'] ?? 0), $unidade['tarefas'])));
         $unidade['entrega_id'] = $entregas ? min($entregas) : null;
-        $prazoEntregas = array_values(array_filter(array_map(static fn(array $t): ?string => ($t['prazo_entrega'] ?? null) ?: null, $unidade['tarefas'])));
+        $prazoEntregas = array_values(array_filter(array_map(static fn (array $t): ?string => ($t['prazo_entrega'] ?? null) ?: null, $unidade['tarefas'])));
         $unidade['prazo_entrega'] = $prazoEntregas ? min($prazoEntregas) : null;
     }
     unset($unidade);
@@ -191,10 +207,10 @@ function flow_fila_estimativa_unidade(mysqli $conn, array $unidade, array $plano
     foreach ($unidade['tarefas'] as $tarefa) {
         $resumos[] = flow_execucao_resumir_tarefa($tarefa, $logsPorTarefa[(int) $tarefa['tarefa_id']] ?? []);
     }
-    if ($resumos && !array_filter($resumos, static fn(array $r): bool => empty($r['concluida']))) {
+    if ($resumos && !array_filter($resumos, static fn (array $r): bool => empty($r['concluida']))) {
         return ['pessoa_dias' => 0.0, 'origem' => 'CONCLUSAO_REAL', 'confianca' => 'ALTA', 'bloqueada' => false, 'resumos' => $resumos];
     }
-    if (array_filter($resumos, static fn(array $r): bool => !empty($r['hold']))) {
+    if (array_filter($resumos, static fn (array $r): bool => !empty($r['hold']))) {
         return ['pessoa_dias' => null, 'origem' => 'HOLD', 'confianca' => 'INSUFICIENTE', 'bloqueada' => true, 'resumos' => $resumos];
     }
 
@@ -245,7 +261,7 @@ function flow_fila_ordenar_unidades(array &$unidades, array $etapasPorEntrega): 
     }
     unset($unidade);
     usort($unidades, static function (array $a, array $b): int {
-        $nuloDepois = static fn(?string $data): string => $data ?: '9999-12-31';
+        $nuloDepois = static fn (?string $data): string => $data ?: '9999-12-31';
         return ((int) $a['prioridade'] <=> (int) $b['prioridade'])
             ?: strcmp($nuloDepois($a['prazo_operacional']), $nuloDepois($b['prazo_operacional']))
             ?: strcmp($nuloDepois($a['prazo_entrega']), $nuloDepois($b['prazo_entrega']))
@@ -279,7 +295,9 @@ function flow_fila_chave_operacional(array $unidade): string
 {
     $entregaId = (int) ($unidade['entrega_id'] ?? 0);
     $codigo = (string) ($unidade['codigo_etapa'] ?? '');
-    if ($entregaId > 0) return 'ENTREGA:' . $entregaId . ':' . $codigo;
+    if ($entregaId > 0) {
+        return 'ENTREGA:' . $entregaId . ':' . $codigo;
+    }
     $representante = (array) ($unidade['representante'] ?? []);
     $obraId = (int) ($unidade['obra_id'] ?? $representante['obra_id'] ?? 0);
     return 'OBRA:' . $obraId . ':' . $codigo;
@@ -316,7 +334,9 @@ function flow_fila_resumir_blocos_responsavel(array $fila, array $estimativas, i
         $blocos[$chave]['unidades']++;
         $blocos[$chave]['esforco_pessoa_dia'] += (float) ($estimativa['pessoa_dias'] ?? 0) / $divisor;
         foreach ((array) ($unidade['tarefas'] ?? []) as $tarefa) {
-            if ((int) ($tarefa['colaborador_id'] ?? 0) !== $colaboradorId) continue;
+            if ((int) ($tarefa['colaborador_id'] ?? 0) !== $colaboradorId) {
+                continue;
+            }
             $blocos[$chave]['tarefas_contexto'][] = [
                 'id' => (int) ($tarefa['tarefa_id'] ?? 0),
                 'funcao_id' => (int) ($tarefa['funcao_id'] ?? 0),
@@ -326,7 +346,7 @@ function flow_fila_resumir_blocos_responsavel(array $fila, array $estimativas, i
         }
     }
     foreach ($blocos as &$bloco) {
-        usort($bloco['tarefas_contexto'], static fn(array $a, array $b): int => $a['id'] <=> $b['id']);
+        usort($bloco['tarefas_contexto'], static fn (array $a, array $b): int => $a['id'] <=> $b['id']);
         $bloco['esforco_pessoa_dia'] = round($bloco['esforco_pessoa_dia'], 2);
     }
     unset($bloco);
@@ -369,7 +389,9 @@ function flow_fila_disponibilidade_por_responsavel(array $unidades, array $estim
             }
         }
         foreach ($fila as $unidade) {
-            if ((int) ($unidade['entrega_id'] ?? 0) === $entregaAlvo) break;
+            if ((int) ($unidade['entrega_id'] ?? 0) === $entregaAlvo) {
+                break;
+            }
             $estimativa = $estimativas[$unidade['chave']] ?? [];
             if (!empty($estimativa['bloqueada']) || ($estimativa['confianca'] ?? '') === 'INSUFICIENTE') {
                 $indisponivel = true;
@@ -398,15 +420,23 @@ function flow_fila_disponibilidade_por_responsavel(array $unidades, array $estim
 
 function flow_fila_status_etapa(?string $fim, ?string $limite, ?string $entrega, bool $bloqueada, bool $insuficiente): string
 {
-    if ($bloqueada) return 'BLOQUEADO';
-    if ($insuficiente || !$fim) return 'FILA_NAO_CALCULAVEL';
-    if (!$limite || $fim <= $limite) return 'NO_PLANO';
+    if ($bloqueada) {
+        return 'BLOQUEADO';
+    }
+    if ($insuficiente || !$fim) {
+        return 'FILA_NAO_CALCULAVEL';
+    }
+    if (!$limite || $fim <= $limite) {
+        return 'NO_PLANO';
+    }
     return $entrega && $fim > $entrega ? 'ATRASO_PROJETADO' : 'MARGEM_CONSUMIDA';
 }
 
 function flow_fila_margem_operacional(?string $fim, ?string $entrega): ?int
 {
-    if (!$fim || !$entrega) return null;
+    if (!$fim || !$entrega) {
+        return null;
+    }
     return $fim <= $entrega
         ? flow_planejamento_dias_uteis_entre($fim, $entrega)
         : -flow_planejamento_dias_uteis_entre($entrega, $fim);
@@ -421,10 +451,12 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
     $confiancaGeral = 'ALTA';
     foreach ((array) ($planoVigente['etapas'] ?? []) as $planejada) {
         $codigo = (string) ($planejada['codigo'] ?? $planejada['codigo_etapa'] ?? '');
-        if ($codigo === '') continue;
+        if ($codigo === '') {
+            continue;
+        }
         $dependencias = (array) ($planejada['dependencias'] ?? []);
         if ($codigo === 'FINALIZACAO_GLOBAL') {
-            $fins = array_values(array_filter(array_map(static fn(string $d): ?string => $resultado[$d]['fim_operacional_projetado'] ?? null, $dependencias)));
+            $fins = array_values(array_filter(array_map(static fn (string $d): ?string => $resultado[$d]['fim_operacional_projetado'] ?? null, $dependencias)));
             $resultado[$codigo] = [
                 'codigo' => $codigo, 'nome' => (string) ($planejada['nome'] ?? 'Finalização (marco global)'),
                 'baseline_limite' => $etapasBaseline[$codigo]['limite'] ?? null,
@@ -440,8 +472,11 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
         $dependenciaFim = $hoje;
         foreach ($dependencias as $dependencia) {
             $fim = $resultado[$dependencia]['fim_operacional_projetado'] ?? null;
-            if ($fim === null) $dependenciaFim = null;
-            elseif ($dependenciaFim !== null && $fim > $dependenciaFim) $dependenciaFim = $fim;
+            if ($fim === null) {
+                $dependenciaFim = null;
+            } elseif ($dependenciaFim !== null && $fim > $dependenciaFim) {
+                $dependenciaFim = $fim;
+            }
         }
         $frentes = [];
         $cargasFrente = [];
@@ -449,10 +484,16 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
         $insuficiente = false;
         foreach ($unidades as $unidade) {
             $estimativa = $estimativas[$unidade['chave']] ?? [];
-            if (!empty($estimativa['bloqueada'])) $bloqueada = true;
-            if (($estimativa['confianca'] ?? '') === 'INSUFICIENTE') $insuficiente = true;
+            if (!empty($estimativa['bloqueada'])) {
+                $bloqueada = true;
+            }
+            if (($estimativa['confianca'] ?? '') === 'INSUFICIENTE') {
+                $insuficiente = true;
+            }
             $pessoas = $unidade['responsaveis'];
-            if (!$pessoas) $bloqueada = true;
+            if (!$pessoas) {
+                $bloqueada = true;
+            }
             foreach ($pessoas as $pessoaId) {
                 $cargasFrente[$pessoaId]['esforco'] = ($cargasFrente[$pessoaId]['esforco'] ?? 0) + ((float) ($estimativa['pessoa_dias'] ?? 0) / max(1, count($pessoas)));
                 $cargasFrente[$pessoaId]['unidades'][] = $unidade['chave'];
@@ -464,9 +505,13 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
         // preserva, por exemplo, Pós-produção a 5 tarefas/dia.
         foreach ($cargasFrente as $pessoaId => $carga) {
             $disponibilidade = $disponibilidades[$pessoaId] ?? [];
-            if (empty($disponibilidade['disponivel_em'])) $bloqueada = true;
+            if (empty($disponibilidade['disponivel_em'])) {
+                $bloqueada = true;
+            }
             $inicio = $dependenciaFim;
-            if ($inicio && !empty($disponibilidade['disponivel_em']) && $disponibilidade['disponivel_em'] > $inicio) $inicio = $disponibilidade['disponivel_em'];
+            if ($inicio && !empty($disponibilidade['disponivel_em']) && $disponibilidade['disponivel_em'] > $inicio) {
+                $inicio = $disponibilidade['disponivel_em'];
+            }
             $fim = ($inicio && !$bloqueada && !$insuficiente) ? flow_fila_adicionar_esforco($inicio, (float) $carga['esforco']) : null;
             $frentes[$pessoaId] = [
                 'colaborador_id' => (int) $pessoaId,
@@ -507,12 +552,18 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
 function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosGlobais = [], array $opcoes = []): array
 {
     $hoje = (string) ($opcoes['data_hoje'] ?? date('Y-m-d'));
-    if (!entregas_valid_date($hoje)) $hoje = date('Y-m-d');
+    if (!entregas_valid_date($hoje)) {
+        $hoje = date('Y-m-d');
+    }
     $planosGlobais = $planosGlobais ?: flow_fila_carregar_planos_confirmados($conn);
     $plano = $planosGlobais[$entregaId] ?? null;
-    if (!$plano) throw new RuntimeException('Não há plano confirmado para esta entrega.');
+    if (!$plano) {
+        throw new RuntimeException('Não há plano confirmado para esta entrega.');
+    }
     $etapasPorEntrega = [];
-    foreach ($planosGlobais as $id => $item) $etapasPorEntrega[$id] = flow_fila_mapa_etapas_plano($item['vigente']);
+    foreach ($planosGlobais as $id => $item) {
+        $etapasPorEntrega[$id] = flow_fila_mapa_etapas_plano($item['vigente']);
+    }
 
     $tarefasEntrega = flow_alocacao_carregar_tarefas_reais($conn, [$entregaId]);
     foreach ($tarefasEntrega as &$tarefaEntrega) {
@@ -523,12 +574,20 @@ function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosG
     unset($tarefaEntrega);
     $mapeadasIniciais = flow_fila_unidades_logicas($tarefasEntrega, true);
     $responsaveis = [];
-    foreach ($mapeadasIniciais as $unidade) foreach ($unidade['responsaveis'] as $id) $responsaveis[] = $id;
+    foreach ($mapeadasIniciais as $unidade) {
+        foreach ($unidade['responsaveis'] as $id) {
+            $responsaveis[] = $id;
+        }
+    }
     $tarefasFila = flow_fila_carregar_tarefas_responsaveis($conn, $responsaveis);
     $unidadesFila = flow_fila_unidades_logicas($tarefasFila);
     $prioridadesFila = [];
-    foreach ($tarefasFila as $tarefaFila) $prioridadesFila[(int) $tarefaFila['tarefa_id']] = (int) ($tarefaFila['prioridade'] ?? 3);
-    foreach ($tarefasEntrega as &$tarefaEntrega) $tarefaEntrega['prioridade'] = $prioridadesFila[(int) $tarefaEntrega['tarefa_id']] ?? 3;
+    foreach ($tarefasFila as $tarefaFila) {
+        $prioridadesFila[(int) $tarefaFila['tarefa_id']] = (int) ($tarefaFila['prioridade'] ?? 3);
+    }
+    foreach ($tarefasEntrega as &$tarefaEntrega) {
+        $tarefaEntrega['prioridade'] = $prioridadesFila[(int) $tarefaEntrega['tarefa_id']] ?? 3;
+    }
     unset($tarefaEntrega);
     $mapeadas = flow_fila_unidades_logicas($tarefasEntrega, true);
     $todasTarefas = array_merge($tarefasEntrega, $tarefasFila);
@@ -543,7 +602,9 @@ function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosG
     }
     $disponibilidades = flow_fila_disponibilidade_por_responsavel($unidadesFila, $estimativas, $entregaId, $hoje, (array) ($opcoes['overrides'] ?? []));
     $unidadesEtapa = [];
-    foreach ($mapeadas as $unidade) $unidadesEtapa[$unidade['codigo_etapa']][] = $unidade;
+    foreach ($mapeadas as $unidade) {
+        $unidadesEtapa[$unidade['codigo_etapa']][] = $unidade;
+    }
     foreach ($mapeadas as $unidade) {
         if (!isset($estimativas[$unidade['chave']])) {
             $etapa = $etapasPorEntrega[$entregaId][$unidade['codigo_etapa']] ?? [];
@@ -552,7 +613,11 @@ function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosG
     }
     $etapas = flow_fila_projetar_etapas($plano['vigente'], (array) $plano['baseline'], $unidadesEtapa, $estimativas, $disponibilidades, $hoje);
     $fim = null;
-    foreach ($etapas as $etapa) if (!empty($etapa['fim_operacional_projetado']) && ($fim === null || $etapa['fim_operacional_projetado'] > $fim)) $fim = $etapa['fim_operacional_projetado'];
+    foreach ($etapas as $etapa) {
+        if (!empty($etapa['fim_operacional_projetado']) && ($fim === null || $etapa['fim_operacional_projetado'] > $fim)) {
+            $fim = $etapa['fim_operacional_projetado'];
+        }
+    }
     $entrega = (string) ($plano['vigente']['data_entrega'] ?? $plano['vigente']['prazo_r00'] ?? '');
     $margem = flow_fila_margem_operacional($fim, $entrega);
     $status = $fim === null ? 'FILA_NAO_CALCULAVEL' : ($entrega && $fim > $entrega ? 'ATRASO_PROJETADO' : (($plano['vigente']['fim_previsto'] ?? null) && $fim > $plano['vigente']['fim_previsto'] ? 'MARGEM_CONSUMIDA' : 'NO_PLANO'));
@@ -566,7 +631,7 @@ function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosG
         'margem_consumida_dias_uteis' => $margem === null ? null : max(0, (int) ($plano['vigente']['margem_dias_uteis'] ?? 0) - $margem),
         'status_operacional' => $status, 'etapas' => array_values($etapas),
         'filas_responsaveis' => array_values($disponibilidades),
-        'estimativas_etapas' => array_intersect_key($estimativas, array_flip(array_map(static fn(array $u): string => $u['chave'], $mapeadas))),
+        'estimativas_etapas' => array_intersect_key($estimativas, array_flip(array_map(static fn (array $u): string => $u['chave'], $mapeadas))),
         'explicacao' => 'Fila derivada por prioridade, prazos, início planejado e imagem; nenhuma ordem ou tarefa foi alterada.',
     ];
 }
@@ -575,6 +640,8 @@ function flow_fila_operacional_consultar(mysqli $conn, array $filtros = [], arra
 {
     $planos = flow_fila_carregar_planos_confirmados($conn, $filtros);
     $projecoes = [];
-    foreach ($planos as $entregaId => $plano) $projecoes[$entregaId] = flow_fila_projetar_entrega($conn, (int) $entregaId, $planos, $opcoes);
+    foreach ($planos as $entregaId => $plano) {
+        $projecoes[$entregaId] = flow_fila_projetar_entrega($conn, (int) $entregaId, $planos, $opcoes);
+    }
     return ['tipo' => 'PROJECAO_OPERACIONAL_READ_ONLY', 'projecoes' => array_values($projecoes)];
 }

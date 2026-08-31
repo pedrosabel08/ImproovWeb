@@ -206,7 +206,7 @@ $conn->close();
 
     include '../sidebar.php';
 
-    ?>
+?>
     <div class="container animate__animated animate__fadeIn">
 
         <header>
@@ -3044,15 +3044,15 @@ $conn->close();
 
     <script>
         window.STATUS_IMAGENS = <?php
-                                $statusArr = [];
-                                foreach ($status_imagens as $s) {
-                                    $statusArr[] = [
-                                        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
-                                        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
-                                    ];
-                                }
-                                echo json_encode($statusArr);
-                                ?>;
+                            $statusArr = [];
+foreach ($status_imagens as $s) {
+    $statusArr[] = [
+        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
+        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
+    ];
+}
+echo json_encode($statusArr);
+?>;
         // Auto-filter Entregas view to current obra (if available in localStorage)
         document.addEventListener('DOMContentLoaded', () => {
             const currentObra = localStorage.getItem('obraId') || null;

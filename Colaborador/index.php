@@ -142,18 +142,18 @@ $conn->close();
                             <select id="cargoSelect" name="cargos[]" multiple="multiple" style="width: 100%;">
                                 <?php
                                 $currentFuncao = '';
-                                while ($row = $result->fetch_assoc()) {
-                                    if ($row['funcao'] != $currentFuncao) {
-                                        if ($currentFuncao != '') {
-                                            echo '</optgroup>';
-                                        }
-                                        echo '<optgroup label="' . htmlspecialchars($row['funcao']) . '">';
-                                        $currentFuncao = $row['funcao'];
-                                    }
-                                    echo '<option value="' . htmlspecialchars($row['id']) . '">' . htmlspecialchars($row['nome']) . '</option>';
-                                }
-                                echo '</optgroup>';
-                                ?>
+while ($row = $result->fetch_assoc()) {
+    if ($row['funcao'] != $currentFuncao) {
+        if ($currentFuncao != '') {
+            echo '</optgroup>';
+        }
+        echo '<optgroup label="' . htmlspecialchars($row['funcao']) . '">';
+        $currentFuncao = $row['funcao'];
+    }
+    echo '<option value="' . htmlspecialchars($row['id']) . '">' . htmlspecialchars($row['nome']) . '</option>';
+}
+echo '</optgroup>';
+?>
                             </select>
                         </div>
                         <div class="form-group full">

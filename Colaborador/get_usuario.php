@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php'; // Certifique-se de incluir a conexão com o banco

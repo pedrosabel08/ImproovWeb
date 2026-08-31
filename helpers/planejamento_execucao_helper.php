@@ -63,7 +63,7 @@ function flow_execucao_itens_por_etapa(array $itens): array
 /** Consulta única para os históricos das tarefas reais de uma R00. */
 function flow_execucao_carregar_logs(mysqli $conn, array $itens): array
 {
-    $ids = array_values(array_unique(array_filter(array_map(static fn(array $item): int => (int) ($item['tarefa_id'] ?? 0), $itens))));
+    $ids = array_values(array_unique(array_filter(array_map(static fn (array $item): int => (int) ($item['tarefa_id'] ?? 0), $itens))));
     if (!$ids) {
         return [];
     }
@@ -130,18 +130,28 @@ function flow_execucao_condicao_prazo(string $estado, ?string $limite, ?string $
         return 'SEM_LIMITE';
     }
     if ($estado === 'CONCLUIDA' && $conclusao) {
-        if ($conclusao < $limite) return 'ADIANTADA';
-        if ($conclusao > $limite) return 'ATRASADA';
+        if ($conclusao < $limite) {
+            return 'ADIANTADA';
+        }
+        if ($conclusao > $limite) {
+            return 'ATRASADA';
+        }
         return 'NO_PRAZO';
     }
-    if ($limite < $hoje) return 'ATRASADA';
-    if ($limite === $hoje) return 'LIMITE_HOJE';
+    if ($limite < $hoje) {
+        return 'ATRASADA';
+    }
+    if ($limite === $hoje) {
+        return 'LIMITE_HOJE';
+    }
     return 'NO_PRAZO';
 }
 
 function flow_execucao_margem(?string $fim, ?string $entrega): ?int
 {
-    if (!$fim || !$entrega) return null;
+    if (!$fim || !$entrega) {
+        return null;
+    }
     $dias = flow_planejamento_dias_uteis_entre($fim, $entrega);
     return $entrega < $fim ? -$dias : $dias;
 }
@@ -149,8 +159,12 @@ function flow_execucao_margem(?string $fim, ?string $entrega): ?int
 /** Convenção: positivo = termina depois do marco; negativo = antecipação. */
 function flow_execucao_desvio(?string $marcoPlanejado, ?string $fimProjetado): ?int
 {
-    if (!$marcoPlanejado || !$fimProjetado) return null;
-    if ($fimProjetado === $marcoPlanejado) return 0;
+    if (!$marcoPlanejado || !$fimProjetado) {
+        return null;
+    }
+    if ($fimProjetado === $marcoPlanejado) {
+        return 0;
+    }
     return $fimProjetado > $marcoPlanejado
         ? flow_planejamento_dias_uteis_entre($marcoPlanejado, $fimProjetado)
         : -flow_planejamento_dias_uteis_entre($fimProjetado, $marcoPlanejado);
@@ -159,7 +173,9 @@ function flow_execucao_desvio(?string $marcoPlanejado, ?string $fimProjetado): ?
 function flow_execucao_duracao_restante(array $planejada, array $realizada): array
 {
     $pendentes = max(0, (int) $realizada['pendentes']);
-    if ($pendentes === 0) return ['dias' => 0, 'metodo' => 'SEM_RESTANTE', 'taxa' => null];
+    if ($pendentes === 0) {
+        return ['dias' => 0, 'metodo' => 'SEM_RESTANTE', 'taxa' => null];
+    }
     $volume = max(1, (int) ($planejada['volume'] ?? $realizada['volume_atual'] ?? 1));
     $pessoas = max(1, (int) ($planejada['pessoas_alocadas'] ?? 1));
     $duracaoPlanejada = max(1, (int) ($planejada['duracao_dias_uteis'] ?? 1));
@@ -207,7 +223,9 @@ function flow_execucao_duracao_restante(array $planejada, array $realizada): arr
 function flow_execucao_caminho_critico(array $etapas, string $fim): array
 {
     $mapa = [];
-    foreach ($etapas as $etapa) $mapa[$etapa['codigo']] = $etapa;
+    foreach ($etapas as $etapa) {
+        $mapa[$etapa['codigo']] = $etapa;
+    }
     $atual = null;
     foreach ($etapas as $etapa) {
         if (($etapa['fim_projetado'] ?? null) === $fim && !empty($etapa['codigo'])) {
@@ -218,7 +236,7 @@ function flow_execucao_caminho_critico(array $etapas, string $fim): array
     while ($atual && empty($criticas[$atual])) {
         $criticas[$atual] = true;
         $dependencias = $mapa[$atual]['dependencias'] ?? [];
-        usort($dependencias, static fn(string $a, string $b): int => strcmp((string) ($mapa[$b]['fim_projetado'] ?? ''), (string) ($mapa[$a]['fim_projetado'] ?? '')));
+        usort($dependencias, static fn (string $a, string $b): int => strcmp((string) ($mapa[$b]['fim_projetado'] ?? ''), (string) ($mapa[$a]['fim_projetado'] ?? '')));
         $atual = $dependencias[0] ?? null;
     }
     return $criticas;
@@ -247,28 +265,34 @@ function flow_planejamento_monitorar_execucao_com_dados(array $planoVigente, arr
         return ['disponivel' => false, 'motivo' => 'PLANO_AINDA_NAO_CONFIRMADO'];
     }
     $hoje = (string) ($opcoes['data_hoje'] ?? $planoVigente['data_hoje'] ?? date('Y-m-d'));
-    if (!entregas_valid_date($hoje)) $hoje = date('Y-m-d');
+    if (!entregas_valid_date($hoje)) {
+        $hoje = date('Y-m-d');
+    }
     $mapeamento = flow_execucao_itens_por_etapa($itens);
     $planejadas = [];
-    foreach ((array) ($planoVigente['etapas'] ?? []) as $etapa) $planejadas[(string) $etapa['codigo']] = $etapa;
-    $ordem = array_map(static fn(array $etapa): string => (string) $etapa['codigo'], (array) ($planoVigente['etapas'] ?? []));
+    foreach ((array) ($planoVigente['etapas'] ?? []) as $etapa) {
+        $planejadas[(string) $etapa['codigo']] = $etapa;
+    }
+    $ordem = array_map(static fn (array $etapa): string => (string) $etapa['codigo'], (array) ($planoVigente['etapas'] ?? []));
     $etapas = [];
     $excecoes = [];
 
     foreach ($ordem as $codigo) {
         $planejada = $planejadas[$codigo];
-        if ($codigo === 'FINALIZACAO_GLOBAL') continue;
+        if ($codigo === 'FINALIZACAO_GLOBAL') {
+            continue;
+        }
         $grupo = $mapeamento['grupos'][$codigo] ?? [];
-        $resumos = array_map(static fn(array $item): array => flow_execucao_resumir_tarefa($item, $logsPorTarefa[(int) ($item['tarefa_id'] ?? 0)] ?? []), $grupo);
+        $resumos = array_map(static fn (array $item): array => flow_execucao_resumir_tarefa($item, $logsPorTarefa[(int) ($item['tarefa_id'] ?? 0)] ?? []), $grupo);
         $volumeAtual = count($resumos);
-        $concluidas = count(array_filter($resumos, static fn(array $resumo): bool => $resumo['concluida']));
+        $concluidas = count(array_filter($resumos, static fn (array $resumo): bool => $resumo['concluida']));
         $inicios = array_values(array_filter(array_column($resumos, 'inicio_real')));
         $conclusoes = array_values(array_filter(array_column($resumos, 'conclusao_real')));
-        $temEvidenciaTrabalho = !empty($inicios) || $concluidas > 0 || count(array_filter($resumos, static fn(array $resumo): bool => $resumo['hold'])) > 0;
+        $temEvidenciaTrabalho = !empty($inicios) || $concluidas > 0 || count(array_filter($resumos, static fn (array $resumo): bool => $resumo['hold'])) > 0;
         $estado = $volumeAtual === 0 ? 'NAO_APLICAVEL' : ($concluidas === $volumeAtual ? 'CONCLUIDA' : ($temEvidenciaTrabalho ? 'EM_ANDAMENTO' : 'NAO_INICIADA'));
         $inicioReal = $inicios ? min($inicios) : null;
         $conclusaoReal = $estado === 'CONCLUIDA' && $conclusoes ? max($conclusoes) : null;
-        $hold = count(array_filter($resumos, static fn(array $resumo): bool => $resumo['hold']));
+        $hold = count(array_filter($resumos, static fn (array $resumo): bool => $resumo['hold']));
         $canceladas = (int) ($mapeamento['canceladas'][$codigo] ?? 0);
         $etapa = [
             'codigo' => $codigo,
@@ -290,35 +314,39 @@ function flow_planejamento_monitorar_execucao_com_dados(array $planoVigente, arr
         if ($volumeAtual !== (int) ($planejada['volume'] ?? 0)) {
             $excecoes[] = ['codigo' => 'ESCOPO_OPERACIONAL_DIVERGENTE', 'etapa' => $codigo, 'volume_planejado' => (int) ($planejada['volume'] ?? 0), 'volume_atual' => $volumeAtual, 'canceladas' => $canceladas];
         }
-        if ($hold > 0) $excecoes[] = ['codigo' => 'TAREFAS_EM_HOLD', 'etapa' => $codigo, 'quantidade' => $hold];
+        if ($hold > 0) {
+            $excecoes[] = ['codigo' => 'TAREFAS_EM_HOLD', 'etapa' => $codigo, 'quantidade' => $hold];
+        }
         $etapas[$codigo] = $etapa;
     }
 
     // Marco virtual: não tem tarefa nem percentual artificial; ele só fecha
     // quando todos os pools realmente aplicáveis fecham.
     if (isset($planejadas['FINALIZACAO_GLOBAL'])) {
-        $pools = array_values(array_filter(['FINALIZACAO_EXTERNA', 'FINALIZACAO_INTERNA', 'FINALIZACAO_PLANTA'], static fn(string $codigo): bool => !empty($etapas[$codigo]) && $etapas[$codigo]['execucao'] !== 'NAO_APLICAVEL'));
-        $concluida = $pools && !array_filter($pools, static fn(string $codigo): bool => $etapas[$codigo]['execucao'] !== 'CONCLUIDA');
-        $iniciosPools = array_values(array_filter(array_map(static fn(string $codigo): ?string => $etapas[$codigo]['inicio_real'], $pools)));
-        $conclusoesPools = array_values(array_filter(array_map(static fn(string $codigo): ?string => $etapas[$codigo]['conclusao_real'], $pools)));
+        $pools = array_values(array_filter(['FINALIZACAO_EXTERNA', 'FINALIZACAO_INTERNA', 'FINALIZACAO_PLANTA'], static fn (string $codigo): bool => !empty($etapas[$codigo]) && $etapas[$codigo]['execucao'] !== 'NAO_APLICAVEL'));
+        $concluida = $pools && !array_filter($pools, static fn (string $codigo): bool => $etapas[$codigo]['execucao'] !== 'CONCLUIDA');
+        $iniciosPools = array_values(array_filter(array_map(static fn (string $codigo): ?string => $etapas[$codigo]['inicio_real'], $pools)));
+        $conclusoesPools = array_values(array_filter(array_map(static fn (string $codigo): ?string => $etapas[$codigo]['conclusao_real'], $pools)));
         $etapas['FINALIZACAO_GLOBAL'] = [
             'codigo' => 'FINALIZACAO_GLOBAL', 'volume_planejado' => (int) ($planejadas['FINALIZACAO_GLOBAL']['volume'] ?? 0),
-            'volume_atual' => array_sum(array_map(static fn(string $codigo): int => $etapas[$codigo]['volume_atual'], $pools)),
-            'concluidas' => array_sum(array_map(static fn(string $codigo): int => $etapas[$codigo]['concluidas'], $pools)),
-            'pendentes' => array_sum(array_map(static fn(string $codigo): int => $etapas[$codigo]['pendentes'], $pools)),
-            'percentual_concluido' => null, 'execucao' => !$pools ? 'NAO_APLICAVEL' : ($concluida ? 'CONCLUIDA' : (array_filter($pools, static fn(string $codigo): bool => $etapas[$codigo]['execucao'] !== 'NAO_INICIADA') ? 'EM_ANDAMENTO' : 'NAO_INICIADA')),
+            'volume_atual' => array_sum(array_map(static fn (string $codigo): int => $etapas[$codigo]['volume_atual'], $pools)),
+            'concluidas' => array_sum(array_map(static fn (string $codigo): int => $etapas[$codigo]['concluidas'], $pools)),
+            'pendentes' => array_sum(array_map(static fn (string $codigo): int => $etapas[$codigo]['pendentes'], $pools)),
+            'percentual_concluido' => null, 'execucao' => !$pools ? 'NAO_APLICAVEL' : ($concluida ? 'CONCLUIDA' : (array_filter($pools, static fn (string $codigo): bool => $etapas[$codigo]['execucao'] !== 'NAO_INICIADA') ? 'EM_ANDAMENTO' : 'NAO_INICIADA')),
             'inicio_real' => $iniciosPools ? min($iniciosPools) : null,
             'conclusao_real' => $concluida && $conclusoesPools ? max($conclusoesPools) : null,
-            'limite_planejado' => $planejadas['FINALIZACAO_GLOBAL']['limite'] ?? null, 'dependencias' => $pools, 'hold' => array_sum(array_map(static fn(string $codigo): int => $etapas[$codigo]['hold'], $pools)), 'canceladas' => 0, 'data_hoje' => $hoje,
+            'limite_planejado' => $planejadas['FINALIZACAO_GLOBAL']['limite'] ?? null, 'dependencias' => $pools, 'hold' => array_sum(array_map(static fn (string $codigo): int => $etapas[$codigo]['hold'], $pools)), 'canceladas' => 0, 'data_hoje' => $hoje,
         ];
         $etapas['FINALIZACAO_GLOBAL']['condicao_prazo'] = flow_execucao_condicao_prazo($etapas['FINALIZACAO_GLOBAL']['execucao'], $etapas['FINALIZACAO_GLOBAL']['limite_planejado'], $etapas['FINALIZACAO_GLOBAL']['conclusao_real'], $hoje);
     }
 
     foreach ($ordem as $codigo) {
-        if (!isset($etapas[$codigo])) continue;
+        if (!isset($etapas[$codigo])) {
+            continue;
+        }
         $realizada = &$etapas[$codigo];
         $planejada = $planejadas[$codigo];
-        $terminosDependencias = array_values(array_filter(array_map(static fn(string $dependencia): ?string => $etapas[$dependencia]['fim_projetado'] ?? null, $realizada['dependencias'])));
+        $terminosDependencias = array_values(array_filter(array_map(static fn (string $dependencia): ?string => $etapas[$dependencia]['fim_projetado'] ?? null, $realizada['dependencias'])));
         if ($codigo === 'FINALIZACAO_GLOBAL') {
             $realizada['inicio_projetado'] = $terminosDependencias ? min($terminosDependencias) : null;
             $realizada['fim_projetado'] = $terminosDependencias ? max($terminosDependencias) : null;
@@ -345,7 +373,11 @@ function flow_planejamento_monitorar_execucao_com_dados(array $planoVigente, arr
 
     $lista = array_values($etapas);
     $fimProjetado = null;
-    foreach ($lista as $etapa) if (($etapa['fim_projetado'] ?? null) && ($fimProjetado === null || $etapa['fim_projetado'] > $fimProjetado)) $fimProjetado = $etapa['fim_projetado'];
+    foreach ($lista as $etapa) {
+        if (($etapa['fim_projetado'] ?? null) && ($fimProjetado === null || $etapa['fim_projetado'] > $fimProjetado)) {
+            $fimProjetado = $etapa['fim_projetado'];
+        }
+    }
     $criticas = $fimProjetado ? flow_execucao_caminho_critico($lista, $fimProjetado) : [];
     $atrasosCriticos = [];
     foreach ($lista as &$etapa) {
@@ -358,27 +390,31 @@ function flow_planejamento_monitorar_execucao_com_dados(array $planoVigente, arr
     // Uma cadeia propagada representa uma única decisão gerencial. Exibir
     // cada nó atrasado criaria ruído e duplicaria o mesmo impacto temporal.
     if ($atrasosCriticos) {
-        usort($atrasosCriticos, static fn(array $a, array $b): int => strcmp((string) $a['limite_planejado'], (string) $b['limite_planejado']));
+        usort($atrasosCriticos, static fn (array $a, array $b): int => strcmp((string) $a['limite_planejado'], (string) $b['limite_planejado']));
         $atraso = $atrasosCriticos[0];
         $excecoes[] = ['codigo' => 'CADEIA_CRITICA_PROJETADA_ATRASADA', 'etapa' => $atraso['codigo'], 'limite' => $atraso['limite_planejado'], 'fim_projetado' => $atraso['fim_projetado']];
     }
     $margemPlanejada = $planoVigente['margem_dias_uteis'] ?? null;
     $margemProjetada = flow_execucao_margem($fimProjetado, $planoVigente['data_entrega'] ?? null);
-    if ($margemProjetada !== null && $margemProjetada < 0) $excecoes[] = ['codigo' => 'ENTREGA_R00_EM_RISCO', 'fim_projetado' => $fimProjetado, 'data_entrega' => $planoVigente['data_entrega']];
-    $naoConcluidas = array_values(array_filter($lista, static fn(array $etapa): bool => $etapa['execucao'] !== 'CONCLUIDA' && $etapa['execucao'] !== 'NAO_APLICAVEL'));
+    if ($margemProjetada !== null && $margemProjetada < 0) {
+        $excecoes[] = ['codigo' => 'ENTREGA_R00_EM_RISCO', 'fim_projetado' => $fimProjetado, 'data_entrega' => $planoVigente['data_entrega']];
+    }
+    $naoConcluidas = array_values(array_filter($lista, static fn (array $etapa): bool => $etapa['execucao'] !== 'CONCLUIDA' && $etapa['execucao'] !== 'NAO_APLICAVEL'));
     if ($naoConcluidas) {
-        usort($naoConcluidas, static fn(array $a, array $b): int => strcmp((string) ($a['limite_planejado'] ?? '9999-12-31'), (string) ($b['limite_planejado'] ?? '9999-12-31')));
+        usort($naoConcluidas, static fn (array $a, array $b): int => strcmp((string) ($a['limite_planejado'] ?? '9999-12-31'), (string) ($b['limite_planejado'] ?? '9999-12-31')));
     }
     $proximo = $naoConcluidas[0] ?? null;
-    $gargalos = array_values(array_filter($lista, static fn(array $etapa): bool => !empty($etapa['caminho_critico_projetado']) && $etapa['execucao'] !== 'CONCLUIDA' && $etapa['codigo'] !== 'FINALIZACAO_GLOBAL'));
+    $gargalos = array_values(array_filter($lista, static fn (array $etapa): bool => !empty($etapa['caminho_critico_projetado']) && $etapa['execucao'] !== 'CONCLUIDA' && $etapa['codigo'] !== 'FINALIZACAO_GLOBAL'));
     usort($gargalos, static function (array $a, array $b): int {
         $desvioA = (int) ($a['desvio_projetado_dias_uteis'] ?? PHP_INT_MIN);
         $desvioB = (int) ($b['desvio_projetado_dias_uteis'] ?? PHP_INT_MIN);
-        if ($desvioA !== $desvioB) return $desvioB <=> $desvioA;
+        if ($desvioA !== $desvioB) {
+            return $desvioB <=> $desvioA;
+        }
         return strcmp((string) ($a['limite_planejado'] ?? ''), (string) ($b['limite_planejado'] ?? ''));
     });
     $gargalo = $gargalos[0] ?? null;
-    $saude = !$naoConcluidas ? 'CONCLUIDA' : ($margemProjetada !== null && $margemProjetada < 0 ? 'EM_RISCO' : (($margemProjetada !== null && $margemPlanejada !== null && ($margemProjetada <= 2 || $margemProjetada < $margemPlanejada)) || array_filter($excecoes, static fn(array $excecao): bool => in_array($excecao['codigo'], ['TAREFAS_EM_HOLD', 'ESCOPO_OPERACIONAL_DIVERGENTE'], true)) ? 'ATENCAO' : 'NO_PRAZO'));
+    $saude = !$naoConcluidas ? 'CONCLUIDA' : ($margemProjetada !== null && $margemProjetada < 0 ? 'EM_RISCO' : (($margemProjetada !== null && $margemPlanejada !== null && ($margemProjetada <= 2 || $margemProjetada < $margemPlanejada)) || array_filter($excecoes, static fn (array $excecao): bool => in_array($excecao['codigo'], ['TAREFAS_EM_HOLD', 'ESCOPO_OPERACIONAL_DIVERGENTE'], true)) ? 'ATENCAO' : 'NO_PRAZO'));
     return [
         'disponivel' => true, 'data_referencia' => $hoje, 'etapas' => $lista,
         'fim_planejado' => $planoVigente['fim_previsto'] ?? null, 'fim_projetado' => $fimProjetado,

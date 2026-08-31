@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
@@ -194,8 +195,9 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 $startTs = (new DateTime($current['data']))->getTimestamp();
                 $endTs = (new DateTime($next['data']))->getTimestamp();
                 $diff = $endTs - $startTs;
-                if ($diff < 0)
+                if ($diff < 0) {
                     $diff = 0;
+                }
                 $durations_by_log[(int) $current['idlog']] = $diff;
             }
             // last log has no next event => null (or 0). Keep as null to indicate open interval.
@@ -222,8 +224,9 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 $start = new DateTime($logAsc[$i]['data']);
                 $end = new DateTime($logAsc[$i + 1]['data']);
                 $interval_sec = $end->getTimestamp() - $start->getTimestamp();
-                if ($interval_sec < 0)
+                if ($interval_sec < 0) {
                     $interval_sec = 0;
+                }
                 $tempo_total_seg += $interval_sec;
 
                 $status_novo = isset($logAsc[$i]['status_novo']) ? $logAsc[$i]['status_novo'] : null;
@@ -249,14 +252,18 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             $minutes = floor($s / 60);
             $seconds = $s - $minutes * 60;
             $parts = [];
-            if ($days > 0)
+            if ($days > 0) {
                 $parts[] = $days . 'd';
-            if ($hours > 0)
+            }
+            if ($hours > 0) {
                 $parts[] = $hours . 'h';
-            if ($minutes > 0)
+            }
+            if ($minutes > 0) {
                 $parts[] = $minutes . 'm';
-            if ($seconds > 0)
+            }
+            if ($seconds > 0) {
                 $parts[] = $seconds . 's';
+            }
             return implode(' ', $parts) ?: '0s';
         }
 

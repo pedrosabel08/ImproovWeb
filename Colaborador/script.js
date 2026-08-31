@@ -24,7 +24,8 @@ function atualizarAtuacoesFuncoes() {
   container.innerHTML = selecionadas
     .map((option) => {
       const id = String(option.value);
-      const tipo = atuacoesFuncoes[id] === "PRINCIPAL" ? "PRINCIPAL" : "SECUNDARIA";
+      const tipo =
+        atuacoesFuncoes[id] === "PRINCIPAL" ? "PRINCIPAL" : "SECUNDARIA";
       const nome = escapeHtml(option.textContent.trim());
       return `
         <div class="atuacao-funcao">
@@ -352,11 +353,15 @@ $("#form").on("submit", function (e) {
         .toArray()
         .map((option) => {
           const id = String(option.value);
-          const selecionada = document.querySelector(`input[name="tipo_atuacao[${id}]"]:checked`);
+          const selecionada = document.querySelector(
+            `input[name="tipo_atuacao[${id}]"]:checked`,
+          );
           return [id, selecionada?.value || "SECUNDARIA"];
         }),
     ),
-    elegivel_capacidade: document.getElementById("elegivelCapacidade").checked ? 1 : 0,
+    elegivel_capacidade: document.getElementById("elegivelCapacidade").checked
+      ? 1
+      : 0,
   };
 
   if (

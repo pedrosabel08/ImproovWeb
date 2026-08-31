@@ -12,7 +12,9 @@ require_once __DIR__ . '/planejamento_execucao_helper.php';
 function flow_tarefa_planejamento_tabela_existe(mysqli $conn, string $tabela): bool
 {
     $stmt = $conn->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1');
-    if (!$stmt) return false;
+    if (!$stmt) {
+        return false;
+    }
     $stmt->bind_param('s', $tabela);
     $stmt->execute();
     $existe = $stmt->get_result()->num_rows > 0;
@@ -43,11 +45,17 @@ function flow_tarefa_fila_operacional_posicoes_lote(mysqli $conn, array $tarefas
 
     $imagemIds = [];
     foreach ($tarefas as $tarefa) {
-        if (!empty($tarefa['is_animacao'])) continue;
+        if (!empty($tarefa['is_animacao'])) {
+            continue;
+        }
         $imagemId = (int) ($tarefa['imagem_id'] ?? 0);
-        if ($imagemId > 0) $imagemIds[$imagemId] = true;
+        if ($imagemId > 0) {
+            $imagemIds[$imagemId] = true;
+        }
     }
-    if (!$imagemIds) return [];
+    if (!$imagemIds) {
+        return [];
+    }
 
     $placeholders = implode(',', array_fill(0, count($imagemIds), '?'));
     $tipos = str_repeat('i', count($imagemIds));
@@ -62,7 +70,9 @@ function flow_tarefa_fila_operacional_posicoes_lote(mysqli $conn, array $tarefas
           WHERE ei.imagem_id IN ($placeholders)
           ORDER BY e.id DESC, ei.id ASC"
     );
-    if (!$stmtEntregas) return [];
+    if (!$stmtEntregas) {
+        return [];
+    }
     $stmtEntregas->bind_param($tipos, ...$valores);
     $stmtEntregas->execute();
     $entregaPorImagem = [];
@@ -84,7 +94,9 @@ function flow_tarefa_fila_operacional_posicoes_lote(mysqli $conn, array $tarefas
           WHERE colaborador_id = ? AND ativo = 1
           ORDER BY codigo_etapa, posicao, id'
     );
-    if (!$stmtFila) return [];
+    if (!$stmtFila) {
+        return [];
+    }
     $stmtFila->bind_param('i', $colaboradorId);
     $stmtFila->execute();
     $filaPorEntregaEtapa = [];
@@ -93,7 +105,9 @@ function flow_tarefa_fila_operacional_posicoes_lote(mysqli $conn, array $tarefas
     while ($row = $resultFila->fetch_assoc()) {
         $etapa = strtoupper(trim((string) ($row['codigo_etapa'] ?? '')));
         $posicao = (int) ($row['posicao'] ?? 0);
-        if ($etapa === '' || $posicao <= 0) continue;
+        if ($etapa === '' || $posicao <= 0) {
+            continue;
+        }
 
         $entregaId = (int) ($row['entrega_id'] ?? 0);
         $obraId = (int) ($row['obra_id'] ?? 0);
@@ -111,15 +125,21 @@ function flow_tarefa_fila_operacional_posicoes_lote(mysqli $conn, array $tarefas
     }
     $stmtFila->close();
 
-    if (!$filaPorEntregaEtapa && !$filaPorObraEtapa) return [];
+    if (!$filaPorEntregaEtapa && !$filaPorObraEtapa) {
+        return [];
+    }
 
     $posicoes = [];
     foreach ($tarefas as $tarefa) {
-        if (!empty($tarefa['is_animacao'])) continue;
+        if (!empty($tarefa['is_animacao'])) {
+            continue;
+        }
         $tarefaId = (int) ($tarefa['idfuncao_imagem'] ?? 0);
         $imagemId = (int) ($tarefa['imagem_id'] ?? 0);
         $etapa = flow_planejamento_codigo_etapa($tarefa);
-        if ($tarefaId <= 0 || $imagemId <= 0 || !$etapa) continue;
+        if ($tarefaId <= 0 || $imagemId <= 0 || !$etapa) {
+            continue;
+        }
 
         $posicao = null;
         $entrega = $entregaPorImagem[$imagemId] ?? null;
@@ -152,8 +172,12 @@ function flow_tarefa_planejamento_data_valida(?string $data): ?string
 /** Convenção: positivo = depois do prazo; negativo = antes do prazo. */
 function flow_tarefa_planejamento_desvio(?string $referencia, ?string $data): ?int
 {
-    if (!$referencia || !$data) return null;
-    if ($referencia === $data) return 0;
+    if (!$referencia || !$data) {
+        return null;
+    }
+    if ($referencia === $data) {
+        return 0;
+    }
     return $data > $referencia
         ? flow_planejamento_dias_uteis_entre($referencia, $data)
         : -flow_planejamento_dias_uteis_entre($data, $referencia);
@@ -164,7 +188,9 @@ function flow_tarefa_planejamento_status_temporal(?string $prazo, string $status
     $prazo = flow_tarefa_planejamento_data_valida($prazo);
     $conclusao = flow_tarefa_planejamento_data_valida($conclusao);
     $hoje = flow_tarefa_planejamento_data_valida($hoje ?: date('Y-m-d')) ?: date('Y-m-d');
-    if (!$prazo) return ['codigo' => 'SEM_PRAZO', 'rotulo' => 'Prazo não definido pelo planejamento', 'dias' => null];
+    if (!$prazo) {
+        return ['codigo' => 'SEM_PRAZO', 'rotulo' => 'Prazo não definido pelo planejamento', 'dias' => null];
+    }
 
     if (flow_planejamento_status_finalizado($status)) {
         $desvio = flow_tarefa_planejamento_desvio($prazo, $conclusao);
@@ -182,11 +208,17 @@ function flow_tarefa_planejamento_status_temporal(?string $prazo, string $status
             'dias' => max(0, (int) ($desvio ?? 0)),
         ];
     }
-    if ($desvio !== null && $desvio > 0) return ['codigo' => 'ATRASADO', 'rotulo' => '+' . $desvio . ' ' . ($desvio === 1 ? 'dia útil' : 'dias úteis'), 'dias' => $desvio];
-    if ($prazo === $hoje) return ['codigo' => 'PRAZO_HOJE', 'rotulo' => 'Prazo hoje', 'dias' => 0];
+    if ($desvio !== null && $desvio > 0) {
+        return ['codigo' => 'ATRASADO', 'rotulo' => '+' . $desvio . ' ' . ($desvio === 1 ? 'dia útil' : 'dias úteis'), 'dias' => $desvio];
+    }
+    if ($prazo === $hoje) {
+        return ['codigo' => 'PRAZO_HOJE', 'rotulo' => 'Prazo hoje', 'dias' => 0];
+    }
 
     $restantes = flow_planejamento_dias_uteis_entre($hoje, $prazo);
-    if ($restantes <= 1) return ['codigo' => 'PRAZO_PROXIMO', 'rotulo' => 'Prazo amanhã', 'dias' => $restantes];
+    if ($restantes <= 1) {
+        return ['codigo' => 'PRAZO_PROXIMO', 'rotulo' => 'Prazo amanhã', 'dias' => $restantes];
+    }
     return ['codigo' => 'NO_PRAZO', 'rotulo' => 'No prazo', 'dias' => $restantes];
 }
 
@@ -220,14 +252,18 @@ function flow_tarefa_planejamento_contexto_vazio(array $tarefa): array
  */
 function flow_tarefa_timeline_operacional_fallback_lote(mysqli $conn, array $porTarefa, array $contextos): array
 {
-    $imagemIds = array_values(array_unique(array_filter(array_map(static fn(array $t): int => (int) ($t['imagem_id'] ?? 0), $porTarefa))));
-    if (!$imagemIds) return $contextos;
+    $imagemIds = array_values(array_unique(array_filter(array_map(static fn (array $t): int => (int) ($t['imagem_id'] ?? 0), $porTarefa))));
+    if (!$imagemIds) {
+        return $contextos;
+    }
     $inImagens = implode(',', array_fill(0, count($imagemIds), '?'));
     $stmt = $conn->prepare("SELECT fi.idfuncao_imagem AS tarefa_id, fi.imagem_id, fi.funcao_id, fi.status, fi.prazo, f.nome_funcao
                               FROM funcao_imagem fi
                               LEFT JOIN funcao f ON f.idfuncao = fi.funcao_id
                              WHERE fi.imagem_id IN ($inImagens)");
-    if (!$stmt) return $contextos;
+    if (!$stmt) {
+        return $contextos;
+    }
     $tipos = str_repeat('i', count($imagemIds));
     $stmt->bind_param($tipos, ...$imagemIds);
     $stmt->execute();
@@ -245,7 +281,9 @@ function flow_tarefa_timeline_operacional_fallback_lote(mysqli $conn, array $por
 
     foreach ($porTarefa as $id => $tarefa) {
         $itens = $porImagem[(int) ($tarefa['imagem_id'] ?? 0)] ?? [];
-        if (!$itens) continue;
+        if (!$itens) {
+            continue;
+        }
         usort($itens, static function (array $a, array $b) use ($ordem): int {
             $ordemA = $ordem[(int) ($a['funcao_id'] ?? 0)] ?? 999;
             $ordemB = $ordem[(int) ($b['funcao_id'] ?? 0)] ?? 999;
@@ -289,17 +327,25 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
     $porTarefa = [];
     foreach ($tarefas as $tarefa) {
         $id = (int) ($tarefa['idfuncao_imagem'] ?? $tarefa['tarefa_id'] ?? 0);
-        if (!$id || !empty($tarefa['is_animacao'])) continue;
+        if (!$id || !empty($tarefa['is_animacao'])) {
+            continue;
+        }
         $tarefa['idfuncao_imagem'] = $id;
         $porTarefa[$id] = $tarefa;
         $resultado[$id] = flow_tarefa_planejamento_contexto_vazio($tarefa);
     }
-    if (!$porTarefa) return $resultado;
+    if (!$porTarefa) {
+        return $resultado;
+    }
     $resultado = flow_tarefa_timeline_operacional_fallback_lote($conn, $porTarefa, $resultado);
-    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) return $resultado;
+    if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) {
+        return $resultado;
+    }
 
-    $imagemIds = array_values(array_unique(array_filter(array_map(static fn(array $t): int => (int) ($t['imagem_id'] ?? 0), $porTarefa))));
-    if (!$imagemIds) return $resultado;
+    $imagemIds = array_values(array_unique(array_filter(array_map(static fn (array $t): int => (int) ($t['imagem_id'] ?? 0), $porTarefa))));
+    if (!$imagemIds) {
+        return $resultado;
+    }
     $inImagens = implode(',', array_fill(0, count($imagemIds), '?'));
     $sqlPlanos = "SELECT ei.imagem_id, e.id AS entrega_id, v.id AS versao_id, v.numero AS plano_versao, v.snapshot_json
                     FROM entregas_itens ei
@@ -309,7 +355,9 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
                    WHERE ei.imagem_id IN ($inImagens)
                    ORDER BY e.id DESC";
     $stmt = $conn->prepare($sqlPlanos);
-    if (!$stmt) return $resultado;
+    if (!$stmt) {
+        return $resultado;
+    }
     $tipos = str_repeat('i', count($imagemIds));
     $stmt->bind_param($tipos, ...$imagemIds);
     $stmt->execute();
@@ -317,27 +365,41 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
     $resPlanos = $stmt->get_result();
     while ($row = $resPlanos->fetch_assoc()) {
         $imagemId = (int) $row['imagem_id'];
-        if (!isset($planosPorImagem[$imagemId])) $planosPorImagem[$imagemId] = $row;
+        if (!isset($planosPorImagem[$imagemId])) {
+            $planosPorImagem[$imagemId] = $row;
+        }
     }
     $stmt->close();
-    if (!$planosPorImagem) return $resultado;
+    if (!$planosPorImagem) {
+        return $resultado;
+    }
 
     $entregaPorTarefa = [];
     $entregas = [];
     foreach ($porTarefa as $id => $tarefa) {
         $plano = $planosPorImagem[(int) ($tarefa['imagem_id'] ?? 0)] ?? null;
         $codigo = flow_planejamento_codigo_etapa($tarefa);
-        if (!$plano || !$codigo) continue;
+        if (!$plano || !$codigo) {
+            continue;
+        }
         $snapshot = json_decode((string) $plano['snapshot_json'], true);
-        if (!is_array($snapshot)) continue;
+        if (!is_array($snapshot)) {
+            continue;
+        }
         $etapas = [];
-        foreach ((array) ($snapshot['etapas'] ?? []) as $etapa) $etapas[(string) ($etapa['codigo'] ?? '')] = $etapa;
-        if (empty($etapas[$codigo]['limite'])) continue;
+        foreach ((array) ($snapshot['etapas'] ?? []) as $etapa) {
+            $etapas[(string) ($etapa['codigo'] ?? '')] = $etapa;
+        }
+        if (empty($etapas[$codigo]['limite'])) {
+            continue;
+        }
         $entregaId = (int) $plano['entrega_id'];
         $entregas[$entregaId] = ['plano' => $plano, 'snapshot' => $snapshot, 'etapas' => $etapas];
         $entregaPorTarefa[$id] = ['entrega_id' => $entregaId, 'codigo' => $codigo];
     }
-    if (!$entregaPorTarefa) return $resultado;
+    if (!$entregaPorTarefa) {
+        return $resultado;
+    }
 
     $entregaIds = array_keys($entregas);
     $inEntregas = implode(',', array_fill(0, count($entregaIds), '?'));
@@ -347,7 +409,9 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
                     JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
                    WHERE ei.entrega_id IN ($inEntregas)";
     $stmt = $conn->prepare($sqlItens);
-    if (!$stmt) return $resultado;
+    if (!$stmt) {
+        return $resultado;
+    }
     $tipos = str_repeat('i', count($entregaIds));
     $stmt->bind_param($tipos, ...$entregaIds);
     $stmt->execute();
@@ -368,11 +432,15 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
         $estagios = [];
         foreach ((array) ($entrega['snapshot']['etapas'] ?? []) as $planejada) {
             $codigo = (string) ($planejada['codigo'] ?? '');
-            if (!$codigo || $codigo === 'FINALIZACAO_GLOBAL') continue;
+            if (!$codigo || $codigo === 'FINALIZACAO_GLOBAL') {
+                continue;
+            }
             $grupo = $grupos[$codigo] ?? [];
             $resumos = [];
-            foreach ($grupo as $item) $resumos[] = flow_execucao_resumir_tarefa($item, $logsPorTarefa[(int) ($item['tarefa_id'] ?? 0)] ?? []);
-            $concluidas = $resumos && !array_filter($resumos, static fn(array $r): bool => empty($r['concluida']));
+            foreach ($grupo as $item) {
+                $resumos[] = flow_execucao_resumir_tarefa($item, $logsPorTarefa[(int) ($item['tarefa_id'] ?? 0)] ?? []);
+            }
+            $concluidas = $resumos && !array_filter($resumos, static fn (array $r): bool => empty($r['concluida']));
             $inicios = array_values(array_filter(array_column($resumos, 'inicio_real')));
             $conclusoes = array_values(array_filter(array_column($resumos, 'conclusao_real')));
             $estagios[$codigo] = [
@@ -400,7 +468,9 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
             $stmt->bind_param($tipos, ...$ids);
             $stmt->execute();
             $res = $stmt->get_result();
-            while ($row = $res->fetch_assoc()) $previsoes[(int) $row['funcao_imagem_id']] = $row;
+            while ($row = $res->fetch_assoc()) {
+                $previsoes[(int) $row['funcao_imagem_id']] = $row;
+            }
             $stmt->close();
         }
         $stmt = $conn->prepare("SELECT h.funcao_imagem_id, h.prazo_necessario
@@ -411,7 +481,9 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
             $stmt->bind_param($tipos, ...$ids);
             $stmt->execute();
             $res = $stmt->get_result();
-            while ($row = $res->fetch_assoc()) $conclusoesHistoricas[(int) $row['funcao_imagem_id']] = flow_tarefa_planejamento_data_valida($row['prazo_necessario']);
+            while ($row = $res->fetch_assoc()) {
+                $conclusoesHistoricas[(int) $row['funcao_imagem_id']] = flow_tarefa_planejamento_data_valida($row['prazo_necessario']);
+            }
             $stmt->close();
         }
     }
@@ -421,7 +493,9 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
         $entrega = $entregas[$referencia['entrega_id']];
         $estagios = $execucaoPorEntrega[$referencia['entrega_id']] ?? [];
         $atual = $estagios[$referencia['codigo']] ?? null;
-        if (!$atual) continue;
+        if (!$atual) {
+            continue;
+        }
         $prazoAtual = $atual['limite_planejado'];
         $prazoHistorico = $conclusoesHistoricas[$id] ?? null;
         $prazo = flow_planejamento_status_finalizado((string) ($tarefa['status'] ?? '')) && $prazoHistorico ? $prazoHistorico : $prazoAtual;
@@ -430,15 +504,25 @@ function flow_tarefa_contextos_planejamento_lote(mysqli $conn, array $tarefas): 
         $chegada = $atual['inicio_real'];
         if (!$chegada && !empty($atual['dependencias'])) {
             $terminos = [];
-            foreach ($atual['dependencias'] as $dep) if (!empty($estagios[$dep]['conclusao_real'])) $terminos[] = $estagios[$dep]['conclusao_real'];
-            if ($terminos) $chegada = max($terminos);
+            foreach ($atual['dependencias'] as $dep) {
+                if (!empty($estagios[$dep]['conclusao_real'])) {
+                    $terminos[] = $estagios[$dep]['conclusao_real'];
+                }
+            }
+            if ($terminos) {
+                $chegada = max($terminos);
+            }
         }
-        if ($chegada) $desvioChegada = flow_tarefa_planejamento_desvio($atual['inicio_planejado'], $chegada);
+        if ($chegada) {
+            $desvioChegada = flow_tarefa_planejamento_desvio($atual['inicio_planejado'], $chegada);
+        }
 
         $timeline = [];
         foreach ((array) ($entrega['snapshot']['etapas'] ?? []) as $planejada) {
             $codigo = (string) ($planejada['codigo'] ?? '');
-            if (!$codigo || $codigo === 'FINALIZACAO_GLOBAL' || empty($estagios[$codigo])) continue;
+            if (!$codigo || $codigo === 'FINALIZACAO_GLOBAL' || empty($estagios[$codigo])) {
+                continue;
+            }
             $etapa = $estagios[$codigo];
             $desvio = $etapa['concluida']
                 ? flow_tarefa_planejamento_desvio($etapa['limite_planejado'], $etapa['conclusao_real'])
@@ -489,23 +573,33 @@ function flow_tarefa_contexto_planejamento(mysqli $conn, array $tarefa): array
 
 function flow_tarefa_planejamento_registrar_conclusao(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): void
 {
-    if (!flow_tarefa_planejamento_persistencia_disponivel($conn)) return;
+    if (!flow_tarefa_planejamento_persistencia_disponivel($conn)) {
+        return;
+    }
     $stmt = $conn->prepare('SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, ico.tipo_imagem FROM funcao_imagem fi JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id WHERE fi.idfuncao_imagem = ? LIMIT 1');
-    if (!$stmt) return;
+    if (!$stmt) {
+        return;
+    }
     $stmt->bind_param('i', $funcaoImagemId);
     $stmt->execute();
     $tarefa = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$tarefa) return;
+    if (!$tarefa) {
+        return;
+    }
     $contexto = flow_tarefa_contexto_planejamento($conn, $tarefa);
-    if (empty($contexto['prazo_necessario'])) return;
+    if (empty($contexto['prazo_necessario'])) {
+        return;
+    }
     $previsao = $contexto['previsao_colaborador'];
     $justificativa = $contexto['justificativa_previsao'];
     $diferenca = $contexto['diferenca_previsao_dias_uteis'];
     $versao = $contexto['versao_id'];
     $prazo = $contexto['prazo_necessario'];
     $stmt = $conn->prepare('INSERT INTO funcao_imagem_previsao_historico (funcao_imagem_id, evento, prazo_necessario, previsao_conclusao, diferenca_dias_uteis, justificativa, versao_planejamento_id, ator_colaborador_id, ator_usuario_id) VALUES (?, \'CONCLUSAO_REGISTRADA\', ?, ?, ?, ?, ?, ?, ?)');
-    if (!$stmt) return;
+    if (!$stmt) {
+        return;
+    }
     $stmt->bind_param('issisiii', $funcaoImagemId, $prazo, $previsao, $diferenca, $justificativa, $versao, $atorColaboradorId, $atorUsuarioId);
     $stmt->execute();
     $stmt->close();

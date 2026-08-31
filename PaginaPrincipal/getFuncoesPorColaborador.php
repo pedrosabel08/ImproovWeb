@@ -1,4 +1,5 @@
 <?php
+
 if (!defined('FLOW_FUNCOES_COLABORADOR_INTERNAL')) {
     header('Content-Type: application/json; charset=utf-8');
 }
@@ -1229,8 +1230,12 @@ foreach ($paresPossiveis as $funcaoPrimId => $parConfig) {
     $parTipoUnif = $parConfig['par_tipo'];
 
     foreach ($funcoesPorImagemFuncao as $imgId => $funcaoMap) {
-        if (!isset($funcaoMap[$funcaoPrimId]) || !isset($funcaoMap[$funcaoSecId])) continue;
-        if (isset($paresSeparados[$imgId . ':' . $parTipoUnif])) continue;
+        if (!isset($funcaoMap[$funcaoPrimId]) || !isset($funcaoMap[$funcaoSecId])) {
+            continue;
+        }
+        if (isset($paresSeparados[$imgId . ':' . $parTipoUnif])) {
+            continue;
+        }
 
         $idxPrim = $funcaoMap[$funcaoPrimId];
         $idxSec  = $funcaoMap[$funcaoSecId];
@@ -1280,15 +1285,21 @@ usort($funcoesFinal, static function (array $a, array $b): int {
     if ($etapaA !== null && $etapaA === $etapaB) {
         $posicaoA = isset($a['fila_operacional_posicao']) ? (int) $a['fila_operacional_posicao'] : PHP_INT_MAX;
         $posicaoB = isset($b['fila_operacional_posicao']) ? (int) $b['fila_operacional_posicao'] : PHP_INT_MAX;
-        if ($posicaoA !== $posicaoB) return $posicaoA <=> $posicaoB;
+        if ($posicaoA !== $posicaoB) {
+            return $posicaoA <=> $posicaoB;
+        }
     }
 
     $prioridadeA = (int) ($a['prioridade'] ?? 3);
     $prioridadeB = (int) ($b['prioridade'] ?? 3);
-    if ($prioridadeA !== $prioridadeB) return $prioridadeA <=> $prioridadeB;
+    if ($prioridadeA !== $prioridadeB) {
+        return $prioridadeA <=> $prioridadeB;
+    }
     $prazoA = (string) ($a['planejamento']['prazo_necessario'] ?? '9999-12-31');
     $prazoB = (string) ($b['planejamento']['prazo_necessario'] ?? '9999-12-31');
-    if ($prazoA !== $prazoB) return strcmp($prazoA, $prazoB);
+    if ($prazoA !== $prazoB) {
+        return strcmp($prazoA, $prazoB);
+    }
     return (int) ($a['idfuncao_imagem'] ?? 0) <=> (int) ($b['idfuncao_imagem'] ?? 0);
 });
 

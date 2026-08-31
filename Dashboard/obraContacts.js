@@ -162,9 +162,7 @@
     elements.counter.textContent = `${selectedCount()} selecionado(s)`;
     elements.saveSelection.disabled = state.loading || !state.architectureReady;
     elements.add.disabled =
-      state.loading ||
-      !state.architectureReady ||
-      !state.canManageRegistration;
+      state.loading || !state.architectureReady || !state.canManageRegistration;
     syncRegistrationVisibility();
 
     if (!state.architectureReady) {
@@ -196,15 +194,16 @@
       .map((contact) => {
         const contactId = Number(contact.contact_id || 0);
         const isSelected = state.selectedIds.includes(contactId);
-      const primaryMeta = contact.email || contact.phone || "Sem contato principal";
-      const secondaryMeta = [];
+        const primaryMeta =
+          contact.email || contact.phone || "Sem contato principal";
+        const secondaryMeta = [];
 
-      if (contact.email && contact.phone) {
-        secondaryMeta.push(contact.phone);
-      }
-      if (contact.role) {
-        secondaryMeta.push(contact.role);
-      }
+        if (contact.email && contact.phone) {
+          secondaryMeta.push(contact.phone);
+        }
+        if (contact.role) {
+          secondaryMeta.push(contact.role);
+        }
 
         return `
           <label class="obra-contact-option ${isSelected ? "is-selected" : ""}">
@@ -232,7 +231,9 @@
           event.stopPropagation();
           event.preventDefault();
           const cId = Number(btn.dataset.contactEdit || 0);
-          const found = state.available.find((c) => Number(c.contact_id) === cId);
+          const found = state.available.find(
+            (c) => Number(c.contact_id) === cId,
+          );
           if (found) {
             enterEditMode(found);
           }
@@ -382,21 +383,27 @@
   function updateFormCardHead() {
     const isEditing = state.formMode === "edit";
     if (elements.formEyebrow) {
-      elements.formEyebrow.textContent = isEditing ? "Editando contato" : "Cadastro inline";
+      elements.formEyebrow.textContent = isEditing
+        ? "Editando contato"
+        : "Cadastro inline";
       elements.formEyebrow.classList.toggle("is-edit", isEditing);
     }
     if (elements.formTitle) {
       if (isEditing) {
         const editing = state.available.find(
-          (c) => Number(c.contact_id) === state.editingContactId
+          (c) => Number(c.contact_id) === state.editingContactId,
         );
-        elements.formTitle.textContent = editing ? editing.name : "Editar contato";
+        elements.formTitle.textContent = editing
+          ? editing.name
+          : "Editar contato";
       } else {
         elements.formTitle.textContent = "Novo contato do cliente";
       }
     }
     if (elements.add) {
-      elements.add.textContent = isEditing ? "Salvar alterações" : "Cadastrar contato";
+      elements.add.textContent = isEditing
+        ? "Salvar alterações"
+        : "Cadastrar contato";
       elements.add.classList.toggle("is-primary", isEditing);
       elements.add.classList.toggle("is-secondary", !isEditing);
     }
@@ -404,7 +411,10 @@
       elements.cancel.hidden = !isEditing;
     }
     if (registrationCard) {
-      registrationCard.classList.toggle("obra-contacts-card--edit-mode", isEditing);
+      registrationCard.classList.toggle(
+        "obra-contacts-card--edit-mode",
+        isEditing,
+      );
     }
   }
 
@@ -464,7 +474,7 @@
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || !data.success) {
         throw new Error(
-          data && data.message ? data.message : "Erro ao atualizar contato."
+          data && data.message ? data.message : "Erro ao atualizar contato.",
         );
       }
       notify("Contato atualizado com sucesso.");
@@ -515,9 +525,13 @@
     }
 
     if (target.checked) {
-      state.selectedIds = Array.from(new Set(state.selectedIds.concat([contactId])));
+      state.selectedIds = Array.from(
+        new Set(state.selectedIds.concat([contactId])),
+      );
     } else {
-      state.selectedIds = state.selectedIds.filter((value) => value !== contactId);
+      state.selectedIds = state.selectedIds.filter(
+        (value) => value !== contactId,
+      );
     }
 
     render();
@@ -535,9 +549,12 @@
     elements.cancel.addEventListener("click", exitEditMode);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", fetchContacts);
-  } else {
+  // A aba Contatos inicia oculta. A busca é feita na primeira abertura e o
+  // estado em memória é reutilizado nas próximas alternâncias de aba.
+  let hasLoadedContacts = false;
+  document.addEventListener("obra:contacts-open", function () {
+    if (hasLoadedContacts) return;
+    hasLoadedContacts = true;
     fetchContacts();
-  }
+  });
 })();

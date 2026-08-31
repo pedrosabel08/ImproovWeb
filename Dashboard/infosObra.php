@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
@@ -269,14 +270,7 @@ $sqlImagens = "SELECT
             WHERE sh2.imagem_id = ico.idimagens_cliente_obra
             ORDER BY sh2.id DESC
             LIMIT 1
-        ) AS hold_justificativa_recente,
-        (
-            SELECT sh3.justificativa
-            FROM status_hold sh3
-            WHERE sh3.imagem_id = ico.idimagens_cliente_obra
-            ORDER BY sh3.id DESC
-            LIMIT 1
-        ) AS descricao
+        ) AS hold_justificativa_recente
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
@@ -301,6 +295,9 @@ $resultImagens = $stmtImagens->get_result();
 // Processa os resultados do novo SELECT
 $imagens = [];
 while ($row = $resultImagens->fetch_assoc()) {
+    // Mantém a chave legada consumida pelo frontend sem repetir a mesma
+    // subconsulta correlacionada para cada imagem.
+    $row['descricao'] = $row['hold_justificativa_recente'];
     $imagens[] = $row;
 }
 

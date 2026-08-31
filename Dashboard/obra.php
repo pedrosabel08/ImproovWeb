@@ -153,7 +153,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes da Obra</title>
     <link rel="stylesheet" href="<?php echo asset_url('styleObra.css') . '&t=' . filemtime(__DIR__ . '/styleObra.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('onboardingObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('onboardingObra.css') . '&t=' . filemtime(__DIR__ . '/onboardingObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('popoverAcomp.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
@@ -649,19 +649,19 @@ $conn->close();
                     <button type="button" class="obra-dashboard-card is-interactive" id="imagens-totais"
                         data-dashboard-card="imagens" aria-pressed="false" aria-controls="dashboardDetailImagens">
                         <span class="obra-dashboard-card-icon is-blue"><i class="fa-regular fa-images"></i></span>
-                        <span class="obra-dashboard-card-content"><span>Total de imagens</span><strong class="imagens-totais-texto">0</strong><small id="imagens-antecipadas" hidden></small></span>
+                        <span class="obra-dashboard-card-content"><span>Total de imagens</span><strong class="imagens-totais-texto" aria-label="Carregando total de imagens"></strong><small id="imagens-antecipadas" hidden></small></span>
                         <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="obra-dashboard-card is-interactive" id="dashboardPendenciasCard"
                         data-dashboard-card="pendencias" aria-pressed="false" aria-controls="dashboardDetailPendencias">
                         <span class="obra-dashboard-card-icon is-amber"><i class="fa-solid fa-triangle-exclamation"></i></span>
-                        <span class="obra-dashboard-card-content"><span>Pendências</span><strong id="dashboardPendenciasTotal">0</strong><small id="dashboardPendenciasCaption">Carregando...</small></span>
+                        <span class="obra-dashboard-card-content"><span>Pendências</span><strong id="dashboardPendenciasTotal" aria-label="Carregando pendências"></strong><small id="dashboardPendenciasCaption">Carregando...</small></span>
                         <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="obra-dashboard-card is-interactive" id="dashboardEntregasCard"
                         data-dashboard-card="entregas" aria-pressed="false" aria-controls="dashboardDetailEntregas">
                         <span class="obra-dashboard-card-icon is-violet"><i class="fa-solid fa-box-open"></i></span>
-                        <span class="obra-dashboard-card-content"><span>Entregas</span><strong id="dashboardEntregasTotal">—</strong><small>Pendentes</small></span>
+                        <span class="obra-dashboard-card-content"><span>Entregas</span><strong id="dashboardEntregasTotal" aria-label="Carregando entregas"></strong><small>Pendentes</small></span>
                         <i class="fa-solid fa-chevron-down obra-dashboard-card-chevron" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -3033,8 +3033,8 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script src="<?php echo asset_url('../assets/js/upload-ws.js'); ?>"></script>
     <script src="<?php echo asset_url('scriptObra.js') . '&t=' . filemtime(__DIR__ . '/scriptObra.js'); ?>"></script>
-    <script src="<?php echo asset_url('onboardingObra.js'); ?>"></script>
-    <script src="<?php echo asset_url('obraContacts.js'); ?>"></script>
+    <script src="<?php echo asset_url('onboardingObra.js') . '&t=' . filemtime(__DIR__ . '/onboardingObra.js'); ?>"></script>
+    <script src="<?php echo asset_url('obraContacts.js') . '&t=' . filemtime(__DIR__ . '/obraContacts.js'); ?>"></script>
     <script src="<?php echo asset_url('../Entregas/script.js') . '&t=' . filemtime(__DIR__ . '/../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>

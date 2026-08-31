@@ -3637,10 +3637,154 @@ funcoes.forEach((func) => {
   totaisPorFuncao[func] = { total: 0, validos: 0 };
 });
 
+// Estado único da região crítica da Obra. Evita que uma resposta antiga
+// substitua a tabela depois de uma atualização mais recente e só revela
+// skeleton quando o carregamento realmente demora.
+const OBRA_LOAD = (() => {
+  const state = {
+    request: 0,
+    controller: null,
+    timer: null,
+    skeletonShownAt: 0,
+    hasRendered: false,
+    startedAt: 0,
+  };
+
+  function tableBody() {
+    return document.querySelector("#tabela-obra tbody");
+  }
+
+  function setBusy(busy, refreshing) {
+    const table = document.getElementById("tabela-obra");
+    const dashboard = document.getElementById("obraDashboard");
+    [table, dashboard].forEach((region) => {
+      if (!region) return;
+      region.setAttribute("aria-busy", busy ? "true" : "false");
+      region.classList.toggle("obra-region--refreshing", !!refreshing);
+    });
+  }
+
+  function showInitialSkeleton() {
+    if (state.hasRendered) return;
+    const body = tableBody();
+    if (!body || state.skeletonShownAt) return;
+    body.innerHTML = Array.from(
+      { length: 9 },
+      () =>
+        '<tr class="obra-table-skeleton" aria-hidden="true">' +
+        Array.from(
+          { length: 11 },
+          (_, index) =>
+            `<td><span class="obra-skeleton-line obra-skeleton-line--${index % 4}"></span></td>`,
+        ).join("") +
+        "</tr>",
+    ).join("");
+    state.skeletonShownAt = Date.now();
+    document
+      .getElementById("obraDashboard")
+      ?.classList.add("obra-dashboard--loading");
+  }
+
+  function clearSkeleton() {
+    const body = tableBody();
+    if (body?.querySelector(".obra-table-skeleton")) body.innerHTML = "";
+    document
+      .getElementById("obraDashboard")
+      ?.classList.remove("obra-dashboard--loading");
+  }
+
+  function begin() {
+    if (state.controller) state.controller.abort();
+    if (state.timer) clearTimeout(state.timer);
+    state.request += 1;
+    state.controller = new AbortController();
+    state.startedAt = Date.now();
+    state.skeletonShownAt = 0;
+    setBusy(true, state.hasRendered);
+    const request = state.request;
+    state.timer = window.setTimeout(() => {
+      if (request !== state.request) return;
+      if (state.hasRendered) {
+        document
+          .getElementById("obraDashboard")
+          ?.classList.add("obra-dashboard--loading");
+      } else {
+        showInitialSkeleton();
+      }
+    }, 250);
+    return { request, signal: state.controller.signal };
+  }
+
+  function isCurrent(request) {
+    return request === state.request;
+  }
+
+  function finish(request) {
+    if (!isCurrent(request)) return;
+    if (state.timer) clearTimeout(state.timer);
+    const elapsedSkeleton = state.skeletonShownAt
+      ? Date.now() - state.skeletonShownAt
+      : 0;
+    const finalize = () => {
+      if (!isCurrent(request)) return;
+      clearSkeleton();
+      setBusy(false, false);
+      state.hasRendered = true;
+      const timeToUsableMs = Date.now() - state.startedAt;
+      document
+        .getElementById("tabela-obra")
+        ?.setAttribute("data-obra-time-to-usable-ms", String(timeToUsableMs));
+      window.__obraLoadMetrics = {
+        state: "READY",
+        request,
+        timeToUsableMs,
+      };
+    };
+    // Evita um flash de skeleton quando a resposta chega logo após o delay.
+    if (elapsedSkeleton > 0 && elapsedSkeleton < 180) {
+      window.setTimeout(finalize, 180 - elapsedSkeleton);
+    } else {
+      finalize();
+    }
+  }
+
+  function fail(request) {
+    if (!isCurrent(request)) return;
+    if (state.timer) clearTimeout(state.timer);
+    clearSkeleton();
+    if (!state.hasRendered) {
+      const body = tableBody();
+      if (body) {
+        body.innerHTML =
+          '<tr class="obra-table-load-error"><td colspan="11">Não foi possível carregar os dados da obra. <button type="button" data-obra-retry> Tentar novamente</button></td></tr>';
+        body
+          .querySelector("[data-obra-retry]")
+          ?.addEventListener("click", () => {
+            const currentObraId = localStorage.getItem("obraId");
+            if (currentObraId) infosObra(currentObraId);
+          });
+      }
+    }
+    setBusy(false, false);
+    document
+      .getElementById("tabela-obra")
+      ?.setAttribute(
+        "data-obra-time-to-usable-ms",
+        String(Date.now() - state.startedAt),
+      );
+    window.__obraLoadMetrics = {
+      state: "ERROR",
+      request,
+      timeToUsableMs: Date.now() - state.startedAt,
+    };
+  }
+
+  return { begin, isCurrent, finish, fail };
+})();
+
 // Verifica se obraId está presente no localStorage
 if (obraId) {
   infosObra(obraId);
-  carregarEventos(obraId);
 }
 
 // ===== BRIEFING (ARQUIVOS) =====
@@ -4848,6 +4992,9 @@ const BRIEFING_ARQUIVOS = (function () {
   }
 
   async function openModal() {
+    if (!cachedTipos.length && Array.isArray(dadosImagens)) {
+      await ensureRenderedFrom(dadosImagens);
+    }
     const modal = el(IDS.modal);
     const container = el(IDS.container);
     if (!modal || !container) return;
@@ -5056,13 +5203,19 @@ const BRIEFING_ARQUIVOS = (function () {
     }
   }
 
-  return { ensureRenderedFrom, openModal };
+  return { ensureRenderedFrom, openModal, bindOnce };
 })();
+BRIEFING_ARQUIVOS.bindOnce();
 function infosObra(obraId) {
+  const load = OBRA_LOAD.begin();
   OBRA_PENDENCIAS.load(obraId);
-  fetch(`infosObra.php?obraId=${obraId}`)
-    .then((response) => response.json())
+  fetch(`infosObra.php?obraId=${obraId}`, { signal: load.signal })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
     .then((data) => {
+      if (!OBRA_LOAD.isCurrent(load.request)) return;
       if (batchMode) {
         // Remove a coluna de checkboxes do header
         const headerRow = document.querySelector(
@@ -5088,13 +5241,6 @@ function infosObra(obraId) {
       const modelagemComplexidadeObra =
         data?.obra?.modelagem_complexidade_nome || "";
       atualizarChecklistImagemCache(dadosImagens);
-
-      // Briefing (Arquivos): renderiza baseado nos tipos presentes na obra
-      try {
-        BRIEFING_ARQUIVOS.ensureRenderedFrom(dadosImagens);
-      } catch (e) {
-        console.warn("Erro ao renderizar Briefing (Arquivos):", e);
-      }
 
       // Atualiza KPIs e gráficos TEA (usa dados já retornados por infosObra.php)
       try {
@@ -5741,8 +5887,8 @@ function infosObra(obraId) {
       addEventListenersToRows();
       // Cachear cliente_id para o modal de animação
       window.__obraClienteId = data.obra.cliente_id || "";
-      // Carregar tabela de animações
-      carregarAnimacoesObra(obraId);
+      // Animações e requisitos de arquivos são carregados somente quando a
+      // respectiva área é aberta ou entra na viewport.
       if (data.briefing && data.briefing.length > 0) {
         const br = data.briefing[0];
 
@@ -5899,15 +6045,18 @@ function infosObra(obraId) {
         const qFot = document.getElementById("quick_fotografico");
         const qDrive = document.getElementById("quick_drive");
         const qReview = document.getElementById("quick_review");
-        const qProductionPlan = document.getElementById("quick_production_plan");
+        const qProductionPlan = document.getElementById(
+          "quick_production_plan",
+        );
 
         if (qProductionPlan) {
-          const getPlanningObraId = () => String(
-            (typeof obraId !== "undefined" && obraId) ||
-              localStorage.getItem("obraId") ||
-              localStorage.getItem("idObra") ||
-              "",
-          ).trim();
+          const getPlanningObraId = () =>
+            String(
+              (typeof obraId !== "undefined" && obraId) ||
+                localStorage.getItem("obraId") ||
+                localStorage.getItem("idObra") ||
+                "",
+            ).trim();
           const currentObraId = getPlanningObraId();
           if (currentObraId && /^\d+$/.test(currentObraId)) {
             qProductionPlan.href = `../PlanejamentoProducao/index.php?obra_id=${encodeURIComponent(currentObraId)}`;
@@ -6229,8 +6378,20 @@ function infosObra(obraId) {
 
       // Limpa o conteúdo da div
       prazosDiv.innerHTML = "";
+      const statusToggle = document.getElementById("markInactiveBtn");
+      if (statusToggle && typeof setMarkBtnLabelByStatus === "function") {
+        setMarkBtnLabelByStatus(data.obra?.status_obra);
+      }
+      if (Number(data.obra?.status_obra) === 2) {
+        document.dispatchEvent(new Event("obra:onboarding-check"));
+      }
+      OBRA_LOAD.finish(load.request);
     })
-    .catch((error) => console.error("Erro ao carregar funções:", error));
+    .catch((error) => {
+      if (error?.name === "AbortError") return;
+      OBRA_LOAD.fail(load.request);
+      console.error("Erro ao carregar funções:", error);
+    });
 }
 
 var colunas = [
@@ -8717,8 +8878,23 @@ const form_edicao = document.getElementById("form-edicao");
 const idObra = localStorage.getItem("obraId");
 
 if (idObra) {
-  abrirModalAcompanhamento(idObra); // Carrega os acompanhamentos automaticamente
-  carregarArquivosObra(idObra); // Carrega arquivos da obra na nova seção
+  // Histórico e Arquivos não fazem parte da primeira leitura da obra.
+  // Carregam no primeiro atalho explícito, uma vez por sessão.
+  const loadSecondaryOnce = (selector, loader) => {
+    const target = document.querySelector(selector);
+    if (!target) return;
+    let loaded = false;
+    const load = () => {
+      if (loaded) return;
+      loaded = true;
+      loader();
+    };
+    document.querySelectorAll(`[href="${selector}"]`).forEach((link) => {
+      link.addEventListener("click", load, { once: true });
+    });
+  };
+  loadSecondaryOnce("#list_acomp", () => abrirModalAcompanhamento(idObra));
+  loadSecondaryOnce("#secao-arquivos", () => carregarArquivosObra(idObra));
 } else {
   console.warn("ID da obra não encontrado no localStorage.");
 }
@@ -8826,26 +9002,47 @@ function iconForTipo(tipo) {
   }
 }
 
-function carregarArquivosObra(obraId) {
+const OBRA_ARQUIVOS_CACHE = new Map();
+const OBRA_ARQUIVOS_IN_FLIGHT = new Map();
+
+function carregarArquivosObra(obraId, force = false) {
   const lista = document.getElementById("listaArquivos");
   if (!lista) return;
+  const cacheKey = String(obraId);
+  if (!force && OBRA_ARQUIVOS_CACHE.has(cacheKey)) {
+    renderArquivosList(OBRA_ARQUIVOS_CACHE.get(cacheKey));
+    return Promise.resolve(OBRA_ARQUIVOS_CACHE.get(cacheKey));
+  }
+  if (!force && OBRA_ARQUIVOS_IN_FLIGHT.has(cacheKey)) {
+    return OBRA_ARQUIVOS_IN_FLIGHT.get(cacheKey);
+  }
   lista.innerHTML =
     '<div class="arquivos-loading">Carregando arquivos...</div>';
-  fetch(`../FlowDrive/getArquivos.php?obra_id=${encodeURIComponent(obraId)}`)
+  const request = fetch(
+    `../FlowDrive/getArquivos.php?obra_id=${encodeURIComponent(obraId)}`,
+  )
     .then((r) => r.json())
     .then((data) => {
+      OBRA_ARQUIVOS_CACHE.set(cacheKey, Array.isArray(data) ? data : []);
       if (!Array.isArray(data) || data.length === 0) {
         lista.innerHTML =
           '<div class="arquivos-empty">Nenhum arquivo encontrado.</div>';
-        return;
+        return [];
       }
       renderArquivosList(data);
+      return data;
     })
     .catch((err) => {
       console.error("Erro ao carregar arquivos:", err);
       lista.innerHTML =
         '<div class="arquivos-error">Erro ao carregar arquivos.</div>';
+      throw err;
+    })
+    .finally(() => {
+      OBRA_ARQUIVOS_IN_FLIGHT.delete(cacheKey);
     });
+  OBRA_ARQUIVOS_IN_FLIGHT.set(cacheKey, request);
+  return request;
 }
 
 function renderArquivosList(arquivos) {
@@ -9183,7 +9380,7 @@ document
         // Recarrega tabela
         form.reset();
         modal.style.display = "none";
-        carregarArquivosObra(obra_id);
+        carregarArquivosObra(obra_id, true);
       }
 
       // Mensagens de erro
@@ -9227,7 +9424,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (btnRefresh) {
     btnRefresh.addEventListener("click", () => {
-      if (idObra) carregarArquivosObra(idObra);
+      if (idObra) carregarArquivosObra(idObra, true);
     });
   }
   // botão para adicionar arquivo específico da imagem (no form-edicao)
@@ -9349,7 +9546,7 @@ if (uploadFormImagem) {
         document.getElementById("uploadModalImagem").style.display = "none";
         const obraVal =
           form.obra_id.value || localStorage.getItem("obraId") || idObra || "";
-        if (obraVal) carregarArquivosObra(obraVal);
+        if (obraVal) carregarArquivosObra(obraVal, true);
       }
       if (result.errors && result.errors.length > 0) {
         result.errors.forEach((msg) => {
@@ -9568,70 +9765,96 @@ const __init_acomp_btns = () => {
 };
 __init_acomp_btns();
 
-function abrirModalAcompanhamento(obraId) {
-  fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
+const OBRA_ACOMP_CACHE = new Map();
+const OBRA_ACOMP_IN_FLIGHT = new Map();
+
+function renderAcompanhamentos(acompanhamentos) {
+  acompanhamentoConteudo.innerHTML = "";
+
+  // Create a single global popover appended to body (so it's not clipped by parent overflow)
+  if (!window.__acompPopover) {
+    const pop = document.createElement("div");
+    pop.id = "global-popover-entrega";
+    // prefer styling through CSS (styleObra.css). JS will only toggle visibility/position and set data-position.
+    pop.className = "popover-acomp hidden";
+    pop.setAttribute("aria-hidden", "true");
+    pop.innerHTML =
+      '<div class="popover-title">Imagens entregues</div><div class="itens"></div>';
+    document.body.appendChild(pop);
+
+    // Single document listener to close when clicking outside
+    const onDocClick = function (ev) {
+      if (pop.classList.contains("hidden")) return;
+      if (
+        !pop.contains(ev.target) &&
+        !(ev.target.closest && ev.target.closest(".btn-ver-entrega"))
+      ) {
+        pop.classList.add("hidden");
+        pop.setAttribute("aria-hidden", "true");
+        window.__acompPopover.openAcomp = null;
+      }
+    };
+    document.addEventListener("click", onDocClick);
+
+    // reposition on scroll/resize while open
+    const onReposition = function () {
+      if (pop.classList.contains("hidden") || !window.__acompPopover.anchor)
+        return;
+      positionPopover(pop, window.__acompPopover.anchor);
+    };
+    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", onReposition);
+
+    window.__acompPopover = {
+      el: pop,
+      cache: {},
+      openAcomp: null,
+      anchor: null,
+    };
+  }
+
+  if (acompanhamentos.length > 0) {
+    // store globally for client-side filtering
+    window.__acompFetched = acompanhamentos;
+    // render default view (Todos)
+    renderAcompanhamentosList(window.__acompFetched, "todos");
+  } else {
+    renderAcompanhamentosList([], "todos");
+  }
+}
+
+function abrirModalAcompanhamento(obraId, force = false) {
+  const cacheKey = String(obraId);
+  if (!force && OBRA_ACOMP_CACHE.has(cacheKey)) {
+    renderAcompanhamentos(OBRA_ACOMP_CACHE.get(cacheKey));
+    return Promise.resolve(OBRA_ACOMP_CACHE.get(cacheKey));
+  }
+  if (!force && OBRA_ACOMP_IN_FLIGHT.has(cacheKey)) {
+    return OBRA_ACOMP_IN_FLIGHT.get(cacheKey);
+  }
+  const request = fetch(
+    `../Obras/getAcompanhamentoEmail.php?idobra=${encodeURIComponent(obraId)}`,
+  )
     .then((response) => {
       if (!response.ok)
         throw new Error(`Erro ao carregar dados: ${response.status}`);
       return response.json();
     })
     .then((acompanhamentos) => {
-      acompanhamentoConteudo.innerHTML = "";
-
-      // Create a single global popover appended to body (so it's not clipped by parent overflow)
-      if (!window.__acompPopover) {
-        const pop = document.createElement("div");
-        pop.id = "global-popover-entrega";
-        // prefer styling through CSS (styleObra.css). JS will only toggle visibility/position and set data-position.
-        pop.className = "popover-acomp hidden";
-        pop.setAttribute("aria-hidden", "true");
-        pop.innerHTML =
-          '<div class="popover-title">Imagens entregues</div><div class="itens"></div>';
-        document.body.appendChild(pop);
-
-        // Single document listener to close when clicking outside
-        const onDocClick = function (ev) {
-          if (pop.classList.contains("hidden")) return;
-          if (
-            !pop.contains(ev.target) &&
-            !(ev.target.closest && ev.target.closest(".btn-ver-entrega"))
-          ) {
-            pop.classList.add("hidden");
-            pop.setAttribute("aria-hidden", "true");
-            window.__acompPopover.openAcomp = null;
-          }
-        };
-        document.addEventListener("click", onDocClick);
-
-        // reposition on scroll/resize while open
-        const onReposition = function () {
-          if (pop.classList.contains("hidden") || !window.__acompPopover.anchor)
-            return;
-          positionPopover(pop, window.__acompPopover.anchor);
-        };
-        window.addEventListener("scroll", onReposition, true);
-        window.addEventListener("resize", onReposition);
-
-        window.__acompPopover = {
-          el: pop,
-          cache: {},
-          openAcomp: null,
-          anchor: null,
-        };
-      }
-
-      if (acompanhamentos.length > 0) {
-        // store globally for client-side filtering
-        window.__acompFetched = acompanhamentos;
-        // render default view (Todos)
-        renderAcompanhamentosList(window.__acompFetched, "todos");
-      } else {
-        renderAcompanhamentosList([], "todos");
-      }
+      const data = Array.isArray(acompanhamentos) ? acompanhamentos : [];
+      OBRA_ACOMP_CACHE.set(cacheKey, data);
+      renderAcompanhamentos(data);
+      return data;
     })
     .catch((error) => {
       console.error("Erro:", error);
+      throw error;
+    })
+    .finally(() => {
+      OBRA_ACOMP_IN_FLIGHT.delete(cacheKey);
     });
+  OBRA_ACOMP_IN_FLIGHT.set(cacheKey, request);
+  return request;
 }
 
 // Posiciona o popover relativo a um elemento anchor (btn). Ajusta para ficar dentro da viewport.
@@ -12049,6 +12272,9 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
       if (panel) {
         panel.classList.add("is-active");
         panel.style.display = "";
+        if (target === "contatos") {
+          document.dispatchEvent(new Event("obra:contacts-open"));
+        }
       }
     });
   });
@@ -12206,6 +12432,9 @@ const btnMostrarAcomps = document.getElementById("btnMostrarAcomps");
 const acompanhamentoConteudo = document.getElementById("list_acomp");
 // Ao clicar no botão "Mostrar Todos"
 btnMostrarAcomps.addEventListener("click", () => {
+  if (!window.__acompFetched.length && idObra) {
+    abrirModalAcompanhamento(idObra).catch(() => {});
+  }
   acompanhamentoConteudo.classList.toggle("expanded");
   const isExpanded = acompanhamentoConteudo.classList.contains("expanded");
   btnMostrarAcomps.innerHTML = isExpanded
@@ -15358,42 +15587,8 @@ if (markInactiveBtn) {
     }
   }
 
-  // Tentativa inicial de obter o status da obra para ajustar o texto do botão
-  (function trySetInitialMarkLabel() {
-    var _obraIdInit =
-      typeof obraId !== "undefined" && obraId
-        ? obraId
-        : localStorage.getItem("obraId") ||
-          localStorage.getItem("idObra") ||
-          null;
-    if (!_obraIdInit) return;
-    const basePathInit = window.location.pathname.includes("/flow/ImproovWeb/")
-      ? "/flow/ImproovWeb/"
-      : "/ImproovWeb/";
-    const statusUrlInit = new URL(
-      basePathInit + "Obras/getObras.php",
-      window.location.origin,
-    ).toString();
-    fetch(statusUrlInit)
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (list) {
-        if (!Array.isArray(list)) return;
-        var found = list.find(function (o) {
-          return parseInt(o.idobra) === parseInt(_obraIdInit);
-        });
-        if (found && typeof found.status_obra !== "undefined") {
-          setMarkBtnLabelByStatus(found.status_obra);
-        }
-      })
-      .catch(function (e) {
-        console.warn(
-          "Não foi possível definir label inicial de markInactiveBtn:",
-          e,
-        );
-      });
-  })();
+  // O status já vem em infosObra.php; o rótulo inicial é atualizado quando
+  // a resposta crítica é renderizada, sem buscar a lista completa de obras.
   markInactiveBtn.addEventListener("click", function () {
     var _obraId =
       typeof obraId !== "undefined" && obraId
@@ -16228,6 +16423,8 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   let canEdit = false;
   let currentEvent = null;
   let cache = [];
+  let eventsLoaded = false;
+  let eventsInFlight = null;
 
   function currentObraId() {
     return typeof obraId !== "undefined" && obraId
@@ -16429,31 +16626,41 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       .join("");
   }
 
-  async function loadEventos() {
+  async function loadEventos(force = false) {
+    if (eventsLoaded && !force) return cache;
+    if (eventsInFlight && !force) return eventsInFlight;
     const id = currentObraId();
     if (!id) {
       list.innerHTML =
         '<div class="eventos-obra-empty">Obra nao identificada.</div>';
       return;
     }
-    try {
-      const res = await fetch(
-        `eventos_obra_list.php?obra_id=${encodeURIComponent(id)}`,
-      );
-      const json = await res.json();
-      if (!json || !json.success) {
-        throw new Error(
-          json && json.error ? json.error : "Erro ao carregar eventos.",
+    eventsInFlight = (async () => {
+      try {
+        const res = await fetch(
+          `eventos_obra_list.php?obra_id=${encodeURIComponent(id)}`,
         );
+        const json = await res.json();
+        if (!json || !json.success) {
+          throw new Error(
+            json && json.error ? json.error : "Erro ao carregar eventos.",
+          );
+        }
+        canEdit = !!json.can_edit;
+        if (btnNew) btnNew.style.display = canEdit ? "" : "none";
+        renderList(json.data || []);
+        eventsLoaded = true;
+        return cache;
+      } catch (err) {
+        console.error(err);
+        list.innerHTML =
+          '<div class="eventos-obra-empty eventos-obra-empty-error">Erro ao carregar eventos.</div>';
+        throw err;
+      } finally {
+        eventsInFlight = null;
       }
-      canEdit = !!json.can_edit;
-      if (btnNew) btnNew.style.display = canEdit ? "" : "none";
-      renderList(json.data || []);
-    } catch (err) {
-      console.error(err);
-      list.innerHTML =
-        '<div class="eventos-obra-empty eventos-obra-empty-error">Erro ao carregar eventos.</div>';
-    }
+    })();
+    return eventsInFlight;
   }
 
   async function openDetail(eventoId) {
@@ -16503,7 +16710,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       }
       notifyEvent("Evento salvo com sucesso.");
       closeModal();
-      await loadEventos();
+      await loadEventos(true);
     } catch (err) {
       console.error(err);
       notifyEvent(err.message || "Erro ao salvar evento.", "error");
@@ -16544,7 +16751,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
       }
       notifyEvent("Evento arquivado.");
       closeModal();
-      await loadEventos();
+      await loadEventos(true);
     } catch (err) {
       console.error(err);
       notifyEvent(err.message || "Erro ao arquivar evento.", "error");
@@ -16602,7 +16809,10 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
     if (ev.target === modal) closeModal();
   });
 
-  loadEventos();
+  const loadEventsOnce = () => loadEventos().catch(() => {});
+  [quickBtn, mobileBtn].filter(Boolean).forEach((button) => {
+    button.addEventListener("click", loadEventsOnce, { once: true });
+  });
 })();
 
 // ===== MÓDULO NOTIFICAR EQUIPE =====

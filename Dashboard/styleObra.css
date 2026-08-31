@@ -8,6 +8,80 @@
   box-sizing: border-box !important;
 }
 
+/* Carregamento contextual da Obra: estrutura já visível, sem overlay. */
+.obra-dashboard--loading .obra-dashboard-card-content strong,
+.obra-dashboard-card-content strong:empty {
+  position: relative;
+  display: inline-block;
+  min-width: 2.8rem;
+  min-height: 1.35rem;
+  color: transparent;
+  vertical-align: middle;
+}
+
+.obra-dashboard--loading .obra-dashboard-card-content strong::after,
+.obra-dashboard-card-content strong:empty::after,
+.obra-skeleton-line {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0.72rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    rgba(123, 139, 167, 0.17) 25%,
+    rgba(182, 198, 224, 0.34) 43%,
+    rgba(123, 139, 167, 0.17) 63%
+  );
+  background-size: 220% 100%;
+  animation: obra-shimmer 1.7s ease-in-out infinite;
+}
+
+.obra-region--refreshing {
+  opacity: 0.76;
+  transition: opacity 160ms ease;
+}
+
+#tabela-obra tbody .obra-table-skeleton td {
+  height: 42px;
+  padding: 9px 8px;
+  pointer-events: none;
+}
+
+.obra-skeleton-line {
+  width: 74%;
+}
+.obra-skeleton-line--1 {
+  width: 56%;
+}
+.obra-skeleton-line--2 {
+  width: 88%;
+}
+.obra-skeleton-line--3 {
+  width: 42%;
+}
+
+@keyframes obra-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obra-dashboard--loading .obra-dashboard-card-content strong::after,
+  .obra-dashboard-card-content strong:empty::after,
+  .obra-skeleton-line {
+    animation: none;
+  }
+  .obra-region--refreshing {
+    transition: none;
+  }
+}
+
 /* Global color variables — Dark Theme Premium */
 :root {
   --cor-principal: #6d9bff;

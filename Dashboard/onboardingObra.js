@@ -120,30 +120,30 @@
     statusCard.innerHTML = [
       '<div class="onboarding-obra-card-head">',
       '  <span class="onboarding-obra-eyebrow">Status onboarding</span>',
-      '  <h3>Fluxo bloqueante</h3>',
-      '</div>',
+      "  <h3>Fluxo bloqueante</h3>",
+      "</div>",
       '<div class="onboarding-obra-status-stack">',
       '  <span class="onboarding-obra-status-badge ' +
-        (isLocked ? 'is-locked' : 'is-ready') +
+        (isLocked ? "is-locked" : "is-ready") +
         '">' +
-        (isLocked ? 'Onboarding bloqueado' : 'Pronto para liberar') +
-        '</span>',
-      '  <p>' +
+        (isLocked ? "Onboarding bloqueado" : "Pronto para liberar") +
+        "</span>",
+      "  <p>" +
         escapeHtml(
           isLocked
-            ? 'A obra ainda nao deve operar como projeto ativo. Enquanto houver pendencias, a tela permanece restrita ao onboarding.'
-            : 'Checklist completo. A liberacao operacional acontece assim que o status for efetivado.',
+            ? "A obra ainda nao deve operar como projeto ativo. Enquanto houver pendencias, a tela permanece restrita ao onboarding."
+            : "Checklist completo. A liberacao operacional acontece assim que o status for efetivado.",
         ) +
-        '</p>',
+        "</p>",
       '  <div class="onboarding-obra-mini-metrics">',
-      '    <div><span>Concluidos</span><strong>' +
+      "    <div><span>Concluidos</span><strong>" +
         escapeHtml(String(data.completed_items || 0)) +
-        '/5</strong></div>',
-      '    <div><span>Pendentes</span><strong>' +
+        "/5</strong></div>",
+      "    <div><span>Pendentes</span><strong>" +
         escapeHtml(String(data.pending_items || 0)) +
-        '</strong></div>',
-      '  </div>',
-      '</div>',
+        "</strong></div>",
+      "  </div>",
+      "</div>",
     ].join("");
   }
 
@@ -158,53 +158,59 @@
           .map(
             (packageItem) =>
               '<div class="onboarding-obra-package-pill">' +
-              '<strong>' +
+              "<strong>" +
               escapeHtml(packageItem.label || packageItem.tipo || "Pacote") +
-              '</strong>' +
-              '<span>' +
+              "</strong>" +
+              "<span>" +
               escapeHtml(packageDetails(packageItem) || "Sem detalhamento") +
-              '</span>' +
-              '</div>',
+              "</span>" +
+              "</div>",
           )
           .join("")
       : '<div class="onboarding-obra-empty">Nenhum pacote registrado.</div>';
 
     const summaryItems = [
-      { label: 'Cliente', value: summary.client_name || 'Nao informado' },
-      { label: 'Projeto interno', value: summary.project_internal || 'Nao informado' },
-      { label: 'Projeto comercial', value: summary.project_commercial || 'Nao informado' },
-      { label: 'Codigo', value: summary.code || 'Nao informado' },
-      { label: 'Imagens', value: String(summary.images_count || 0) },
-      { label: 'Contatos', value: String(summary.contacts_count || 0) },
+      { label: "Cliente", value: summary.client_name || "Nao informado" },
+      {
+        label: "Projeto interno",
+        value: summary.project_internal || "Nao informado",
+      },
+      {
+        label: "Projeto comercial",
+        value: summary.project_commercial || "Nao informado",
+      },
+      { label: "Codigo", value: summary.code || "Nao informado" },
+      { label: "Imagens", value: String(summary.images_count || 0) },
+      { label: "Contatos", value: String(summary.contacts_count || 0) },
     ];
 
     summaryCard.innerHTML = [
       '<div class="onboarding-obra-card-head">',
       '  <span class="onboarding-obra-eyebrow">Resumo do projeto</span>',
-      '  <h3>Snapshot operacional</h3>',
-      '</div>',
+      "  <h3>Snapshot operacional</h3>",
+      "</div>",
       '<div class="onboarding-obra-summary-grid">',
       summaryItems
         .map(
           (item) =>
             '<div class="onboarding-obra-summary-item"><span>' +
             escapeHtml(item.label) +
-            '</span><strong>' +
+            "</span><strong>" +
             escapeHtml(item.value) +
-            '</strong></div>',
+            "</strong></div>",
         )
-        .join(''),
-      '</div>',
+        .join(""),
+      "</div>",
       '<div class="onboarding-obra-package-list">',
       packageHtml,
-      '</div>',
+      "</div>",
       summary.notes
         ? '<div class="onboarding-obra-note-inline">' +
-          '<span>Observacoes</span><strong>' +
+          "<span>Observacoes</span><strong>" +
           escapeHtml(summary.notes) +
-          '</strong></div>'
-        : '',
-    ].join('');
+          "</strong></div>"
+        : "",
+    ].join("");
   }
 
   function renderPendingCard(pendingItems) {
@@ -215,8 +221,8 @@
     pendingCard.innerHTML = [
       '<div class="onboarding-obra-card-head">',
       '  <span class="onboarding-obra-eyebrow">Pendencias operacionais</span>',
-      '  <h3>O que falta liberar</h3>',
-      '</div>',
+      "  <h3>O que falta liberar</h3>",
+      "</div>",
       pendingItems.length
         ? '<div class="onboarding-obra-pending-list">' +
           pendingItems
@@ -224,18 +230,18 @@
               (item) =>
                 '<div class="onboarding-obra-pending-item"><strong>' +
                 escapeHtml(item.label) +
-                '</strong><span>' +
+                "</strong><span>" +
                 escapeHtml(item.description) +
-                '</span></div>',
+                "</span></div>",
             )
-            .join('') +
-          '</div>'
+            .join("") +
+          "</div>"
         : '<div class="onboarding-obra-empty">Nenhuma pendencia restante.</div>',
       '<div class="onboarding-obra-note-inline is-accent">',
-      '  <span>Fechamento automatico</span>',
-      '  <strong>Ao concluir os grupos manualmente, a obra volta para o fluxo ativo e o evento ONBOARDING_COMPLETED eh registrado.</strong>',
-      '</div>',
-    ].join('');
+      "  <span>Fechamento automatico</span>",
+      "  <strong>Ao concluir os grupos manualmente, a obra volta para o fluxo ativo e o evento ONBOARDING_COMPLETED eh registrado.</strong>",
+      "</div>",
+    ].join("");
   }
 
   function resolveObraId() {
@@ -277,7 +283,7 @@
     progressLabel.textContent = completed + "/" + total + " concluídos";
     progressFill.style.width = (completed / total) * 100 + "%";
     if (pendingCount) {
-      pendingCount.textContent = remainingItems.length + ' pendência(s)';
+      pendingCount.textContent = remainingItems.length + " pendência(s)";
     }
 
     checklistContainer.innerHTML = entries
@@ -423,9 +429,9 @@
     completeItem(itemKey, button);
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", fetchChecklist);
-  } else {
-    fetchChecklist();
-  }
+  // O checklist só é relevante para obras em onboarding. O carregamento
+  // crítico informa esse status e dispara este evento quando necessário.
+  document.addEventListener("obra:onboarding-check", fetchChecklist, {
+    once: true,
+  });
 })();

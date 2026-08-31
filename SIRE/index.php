@@ -21,8 +21,9 @@ include '../conexaoMain.php';
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
 
-if (session_status() === PHP_SESSION_ACTIVE)
+if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
+}
 
 $conn2 = conectarBanco();
 $sireCanManage = sire_is_admin($conn2, (int) $idusuario);
@@ -47,8 +48,9 @@ $res_obras = $conn2->query("
     ORDER BY o.nomenclatura
 ");
 if ($res_obras) {
-    while ($row = $res_obras->fetch_assoc())
+    while ($row = $res_obras->fetch_assoc()) {
         $obras_list[] = $row;
+    }
     $res_obras->free();
 }
 
@@ -61,8 +63,9 @@ $res_amb = $conn2->query("
     ORDER BY i.tipo_imagem
 ");
 if ($res_amb) {
-    while ($row = $res_amb->fetch_assoc())
+    while ($row = $res_amb->fetch_assoc()) {
         $ambientes_list[] = $row['ambiente'];
+    }
     $res_amb->free();
 }
 
@@ -395,6 +398,9 @@ $sireAssetVersion = max(
             <div class="modal-footer">
                 <button type="button" class="btn-action btn-secundario" id="closeLightboxFooter">
                     <i class="fa-solid fa-xmark"></i> Fechar
+                </button>
+                <button type="button" class="btn-action btn-secundario" id="btnCopyModelPath" hidden>
+                    <i class="fa-regular fa-copy"></i> Copiar pasta do modelo
                 </button>
                 <button type="button" class="btn-action btn-primario" id="btnVerOriginal">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i> Ver original

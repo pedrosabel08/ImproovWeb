@@ -156,6 +156,13 @@ body {
   background: var(--text-tertiary);
 }
 
+.toastify {
+  border-radius: var(--radius-sm) !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
 /* ── Container ────────────────────────────────────────────────────── */
 .container {
   grid-column: 2;
@@ -891,6 +898,11 @@ body {
   background: var(--border-input);
   color: var(--text-primary);
   transform: rotate(90deg);
+}
+
+#btnCopyModelPath {
+  background: var(--sire-pillar-luz);
+  color: var(--text-primary);
 }
 
 .modal-body {

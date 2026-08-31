@@ -49,7 +49,7 @@ function sire_get_pillars(mysqli $conn): array
 
 function sire_get_reference(mysqli $conn, int $referenceId): ?array
 {
-    $stmt = $conn->prepare("SELECT sr.*, ri.nomenclatura AS flow_nomenclatura, ri.nome_arquivo AS flow_nome_arquivo,
+    $stmt = $conn->prepare("SELECT sr.*, ri.funcao_imagem_id, fi.imagem_id, ri.nomenclatura AS flow_nomenclatura, ri.nome_arquivo AS flow_nome_arquivo,
             ri.importado_em, i.obra_id, i.tipo_imagem AS ambiente, o.nomenclatura AS obra_nomenclatura
         FROM sire_referencia sr
         LEFT JOIN referencias_imagens ri ON ri.id = sr.referencia_imagem_id
@@ -67,6 +67,35 @@ function sire_get_reference(mysqli $conn, int $referenceId): ?array
     $reference['imagem_url'] = sire_reference_image_url($reference);
     $reference['nomenclatura'] = $reference['flow_nomenclatura'] ?: $reference['titulo'];
     $reference['nome_arquivo_exibicao'] = $reference['flow_nome_arquivo'] ?: $reference['nome_arquivo'];
+    $reference['modelo_pasta'] = null;
+    $reference['modelo_nome_arquivo'] = null;
+
+    $imagemId = (int) ($reference['imagem_id'] ?? 0);
+    if ($imagemId > 0) {
+        $stmt = $conn->prepare("SELECT caminho, nome_arquivo
+            FROM arquivo_log al
+            INNER JOIN funcao_imagem fi_modelo ON fi_modelo.idfuncao_imagem = al.funcao_imagem_id
+            WHERE fi_modelo.imagem_id = ?
+              AND LOWER(al.nome_arquivo) LIKE '%.max'
+            ORDER BY al.criado_em DESC, al.id DESC
+            LIMIT 1");
+        $stmt->bind_param('i', $imagemId);
+        $stmt->execute();
+        $modelo = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!empty($modelo['caminho'])) {
+            $caminhoModelo = (string) $modelo['caminho'];
+            $ultimoSeparador = max(
+                (int) strrpos($caminhoModelo, '\\'),
+                (int) strrpos($caminhoModelo, '/')
+            );
+            if ($ultimoSeparador > 0) {
+                $reference['modelo_pasta'] = substr($caminhoModelo, 0, $ultimoSeparador + 1);
+            }
+            $reference['modelo_nome_arquivo'] = $modelo['nome_arquivo'] ?? null;
+        }
+    }
     $reference['classificacoes'] = [];
     $stmt = $conn->prepare("SELECT p.codigo, v.id, v.nome, v.descricao, v.ativo
         FROM sire_referencia_valor rv
@@ -121,10 +150,14 @@ if ($action === 'saveClassificacao') {
     }
     $valid = [];
     foreach ($classification as $codigo => $values) {
-        if (!is_array($values)) continue;
+        if (!is_array($values)) {
+            continue;
+        }
         foreach ($values as $valueId) {
             $valueId = (int) $valueId;
-            if ($valueId > 0) $valid[$valueId] = $codigo;
+            if ($valueId > 0) {
+                $valid[$valueId] = $codigo;
+            }
         }
     }
     $conn->begin_transaction();
@@ -190,7 +223,9 @@ if ($action === 'addReference') {
             $conn->close();
             sire_json(['success' => false, 'message' => 'Informe uma URL válida.'], 422);
         }
-        if ($title === '') $title = $url;
+        if ($title === '') {
+            $title = $url;
+        }
     } else {
         $file = $_FILES['imagem'] ?? null;
         if (!$file || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
@@ -217,14 +252,18 @@ if ($action === 'addReference') {
         }
         $mime = mime_content_type($dir . '/' . $fileName) ?: ($file['type'] ?? null);
         $size = (int) filesize($dir . '/' . $fileName);
-        if ($title === '') $title = pathinfo($original, PATHINFO_FILENAME);
+        if ($title === '') {
+            $title = pathinfo($original, PATHINFO_FILENAME);
+        }
     }
     $stmt = $conn->prepare('INSERT INTO sire_referencia (titulo, origem, descricao, url_externa, nome_arquivo, caminho_arquivo, mime, tamanho_bytes, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->bind_param('sssssssii', $title, $origin, $description, $url, $fileName, $filePath, $mime, $size, $userId);
     if (!$stmt->execute()) {
         $error = $stmt->error;
         $stmt->close();
-        if ($filePath) @unlink(dirname(__DIR__) . '/' . $filePath);
+        if ($filePath) {
+            @unlink(dirname(__DIR__) . '/' . $filePath);
+        }
         $conn->close();
         sire_json(['success' => false, 'message' => $error], 500);
     }

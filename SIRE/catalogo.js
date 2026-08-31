@@ -73,6 +73,25 @@ function apiJson(url, options) {
   );
 }
 
+function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText)
+    return navigator.clipboard.writeText(text);
+
+  return new Promise((resolve, reject) => {
+    const input = document.createElement("textarea");
+    input.value = text;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.append(input);
+    input.select();
+
+    const copied = document.execCommand("copy");
+    input.remove();
+    copied ? resolve() : reject(new Error("Cópia não suportada."));
+  });
+}
+
 function select2ValueTemplate(value) {
   if (!value.id) return value.text;
   const description = value.element
@@ -495,6 +514,15 @@ function openLightbox(referenceId) {
       $("#lb_arquivo").text(
         reference.nome_arquivo_exibicao || reference.url_externa || "—",
       );
+      const modelPath = String(reference.modelo_pasta || "").trim();
+      $("#btnCopyModelPath")
+        .prop("hidden", !modelPath)
+        .attr(
+          "title",
+          modelPath
+            ? `Copiar a pasta de ${reference.modelo_nome_arquivo || "modelo .max"}`
+            : "",
+        );
       $("#lb_data").text(
         formatDate(reference.criado_em || reference.importado_em),
       );
@@ -1076,6 +1104,17 @@ $(function () {
     if (src) openFullscreen(src);
   });
   $("#btnSaveClassification").on("click", saveClassification);
+  $("#btnCopyModelPath").on("click", () => {
+    const modelPath = String(currentReference?.modelo_pasta || "").trim();
+    if (!modelPath) {
+      notify("Pasta do modelo .max não encontrada para esta imagem.", true);
+      return;
+    }
+
+    copyToClipboard(modelPath)
+      .then(() => notify("Pasta do modelo copiada."))
+      .catch(() => notify("Não foi possível copiar a pasta do modelo.", true));
+  });
   $("#lbDescription").on("input", () => {
     classificationDirty = true;
   });

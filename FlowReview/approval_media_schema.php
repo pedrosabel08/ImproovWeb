@@ -64,6 +64,10 @@ function fr_media_column_is_nullable(mysqli $conn, string $table, string $column
 
 function fr_approval_media_ensure_schema(mysqli $conn): void
 {
+    if (!fr_media_column_exists($conn, 'funcao_imagem', 'requires_render_send')) {
+        @$conn->query("ALTER TABLE funcao_imagem ADD COLUMN requires_render_send TINYINT(1) NOT NULL DEFAULT 0 AFTER requires_file_upload");
+    }
+
     if (!fr_media_column_is_nullable($conn, 'historico_aprovacoes_imagens', 'funcao_imagem_id')) {
         @$conn->query("ALTER TABLE historico_aprovacoes_imagens MODIFY funcao_imagem_id INT NULL");
     }

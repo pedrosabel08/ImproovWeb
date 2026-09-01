@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../config/secure_env.php';
 
@@ -86,8 +87,9 @@ function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
  */
 function normalize_name($s)
 {
-    if (!$s)
+    if (!$s) {
         return '';
+    }
     // tenta transliterar acentos
     $s = iconv('UTF-8', 'ASCII//TRANSLIT', $s);
     $s = strtolower($s);
@@ -270,7 +272,7 @@ function improov_review_locate_history_file(array $historyRow, string $uploadDir
 $resultadoFinal = ['logs' => []];
 
 // Lê sessão para verificar permissões de aprovação dupla
-$idusuario_session   = isset($_SESSION['idusuario'])    ? (int)$_SESSION['idusuario']    : 0;
+$idusuario_session   = isset($_SESSION['idusuario']) ? (int)$_SESSION['idusuario'] : 0;
 $idcolaborador_session = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -295,6 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sftp_suffix      = $data['sftp_suffix']      ?? null; // suffix string when action='add'
         $sftp_remote_path = $data['sftp_remote_path'] ?? null; // exact remote path returned on conflict
         $historico_id     = isset($data['historico_id']) ? (int)$data['historico_id'] : null; // ID exato da imagem sendo revisada
+        $direcao_alteracao_destino = trim((string)($data['direcao_alteracao_destino'] ?? ''));
         // Pode conter múltiplos nomes que serão aceitos ao buscar o usuário no Slack
         $nome_colaboradores = ['Pedro Sabel', 'Andre L. de Souza'];
 
@@ -689,6 +692,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         // ─────────────────────────────────────────────────────────────────────────
 
+        $isDirecaoAlteracaoFinal = (
+            !$is_animacao_review
+            && $isDirecaoAprovador
+            && (int)$funcao_id_context === 6
+            && in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'], true)
+        );
+        $destinosDirecaoAlteracaoValidos = ['render', 'entrega_previa', 'sem_entrega'];
+
+        if ($isDirecaoAlteracaoFinal && !in_array($direcao_alteracao_destino, $destinosDirecaoAlteracaoValidos, true)) {
+            echo json_encode([
+                'success' => false,
+                'requires_direcao_alteracao_decision' => true,
+                'message' => 'Informe o destino da aprovação da Alteração: render, entrega pela prévia ou sem entrega.',
+            ]);
+            exit;
+        }
+        if (!$isDirecaoAlteracaoFinal && $direcao_alteracao_destino !== '') {
+            echo json_encode(['success' => false, 'message' => 'A decisão de render/entrega é permitida somente na aprovação final da Direção para Alteração.']);
+            exit;
+        }
+
+        $direcaoAlteracaoRequerRender = $isDirecaoAlteracaoFinal && $direcao_alteracao_destino === 'render';
+        $direcaoAlteracaoEntregaPrevia = $isDirecaoAlteracaoFinal && $direcao_alteracao_destino === 'entrega_previa';
+
         // Para P00 + Finalização, só permite aprovar a função se TODOS os ângulos estiverem liberados.
         if (in_array($status, ['Aprovado'], true) && $imagem_id) {
             $isFinalizacao = (mb_strtolower((string) $nome_funcao, 'UTF-8') === 'finalização');
@@ -785,8 +812,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
-        $stmt->bind_param("si", $status, $idfuncao_imagem);
+        if ($isDirecaoAlteracaoFinal) {
+            $requires_render_send = $direcaoAlteracaoRequerRender ? 1 : 0;
+            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, requires_render_send = ? WHERE idfuncao_imagem = ?");
+            $stmt->bind_param("sii", $status, $requires_render_send, $idfuncao_imagem);
+        } else {
+            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
+            $stmt->bind_param("si", $status, $idfuncao_imagem);
+        }
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -809,12 +842,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'falha vps', 'publicacao enfileirada', 'publicando nas', 'falha publicacao'
             ], true) ? (int)($pdfLog['id'] ?? 0) : 0;
 
+            $observacoesAprovacao = $isDirecaoAlteracaoFinal
+                ? json_encode([
+                    'direcao_alteracao_destino' => $direcao_alteracao_destino,
+                    'requires_render_send' => $direcaoAlteracaoRequerRender,
+                    'historico_imagem_id' => $historico_id ?: null,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                : null;
+
             if ($pdfLogId > 0) {
-                $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel, arquivo_log_id) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("issiii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel, $pdfLogId);
+                $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel, arquivo_log_id, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("issiiis", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel, $pdfLogId, $observacoesAprovacao);
             } else {
-                $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel);
+                $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel, observacoes) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("issiis", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel, $observacoesAprovacao);
             }
             $stmt->execute();
             $historicoAprovacaoId = (int)$conn->insert_id;
@@ -962,15 +1003,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $deveAtualizarEntregaAprovada = (
                 $nomeFuncaoLower === 'pós-produção'
                 || ($nomeFuncaoLower === 'finalização' && $isImagemHumanizadaEntrega)
-                || ($nomeFuncaoLower === 'alteração' && $isImagemHumanizadaEntrega && $isDirecaoAprovador)
+                || (
+                    $nomeFuncaoLower === 'alteração'
+                    && $isDirecaoAprovador
+                    && ($direcaoAlteracaoEntregaPrevia || (!$isDirecaoAlteracaoFinal && $isImagemHumanizadaEntrega))
+                )
             );
             $statusPermiteAtualizarEntrega = (
                 in_array($status, ['Aprovado'], true)
                 || (
                     $status === 'Aprovado com ajustes'
                     && $nomeFuncaoLower === 'alteração'
-                    && $isImagemHumanizadaEntrega
                     && $isDirecaoAprovador
+                    && ($direcaoAlteracaoEntregaPrevia || (!$isDirecaoAlteracaoFinal && $isImagemHumanizadaEntrega))
                 )
             );
 
@@ -1064,8 +1109,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $resultadoFinal['logs'][] = "P00: entrega_item_id=$entrega_item_id vinculado aos ângulos (sem sobrescrever status).";
                                 } else {
                                     // Fluxo padrão (R00..EF): usa o último historico para preencher entregas_itens.historico_id
-                                    $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
-                                    $stmtHistImg->bind_param("i", $idfuncao_imagem);
+                                    if ($historico_id) {
+                                        $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1");
+                                        $stmtHistImg->bind_param("ii", $historico_id, $idfuncao_imagem);
+                                    } else {
+                                        $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                                        $stmtHistImg->bind_param("i", $idfuncao_imagem);
+                                    }
                                     $stmtHistImg->execute();
                                     $stmtHistImg->bind_result($hist_img_id);
                                     if ($stmtHistImg->fetch()) {
@@ -1088,9 +1138,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             } else {
                                 $stmtItem->close();
                                 $hist_img_id_pendente = null;
-                                $stmtHistPend = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                                if ($historico_id) {
+                                    $stmtHistPend = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1");
+                                } else {
+                                    $stmtHistPend = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                                }
                                 if ($stmtHistPend) {
-                                    $stmtHistPend->bind_param("i", $idfuncao_imagem);
+                                    if ($historico_id) {
+                                        $stmtHistPend->bind_param("ii", $historico_id, $idfuncao_imagem);
+                                    } else {
+                                        $stmtHistPend->bind_param("i", $idfuncao_imagem);
+                                    }
                                     $stmtHistPend->execute();
                                     $stmtHistPend->bind_result($hist_img_id_pendente);
                                     $stmtHistPend->fetch();
@@ -1143,7 +1201,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 🔸 Finalização ou Alteração de Planta Humanizada
                 in_array($nomeFuncaoLower, ['finalização', 'alteração'], true) &&
                 stripos((string)$tipo_imagem_nome, 'humanizada') !== false &&
-                $status === 'Aprovado'
+                $status === 'Aprovado' &&
+                (!$isDirecaoAlteracaoFinal || $direcaoAlteracaoEntregaPrevia)
+            )
+            || (
+                // Direção pode escolher entregar a prévia de qualquer tipo de Alteração.
+                $direcaoAlteracaoEntregaPrevia &&
+                in_array($status, ['Aprovado', 'Aprovado com ajustes'], true)
             )
         ) {
             if ($isP00ModelagemReview) {
@@ -1604,7 +1668,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($flowBlocksEncerradosAutomaticamente as $flowBlockEncerrado) {
             $issueId = (int) ($flowBlockEncerrado['id'] ?? 0);
             $blockedTaskId = (int) ($flowBlockEncerrado['funcao_imagem_id'] ?? 0);
-            if ($issueId <= 0 || $blockedTaskId <= 0) continue;
+            if ($issueId <= 0 || $blockedTaskId <= 0) {
+                continue;
+            }
             $blockedTask = flow_block_task($conn, $blockedTaskId);
             if ($blockedTask) {
                 flow_block_notify(
@@ -1708,7 +1774,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             continue;
                         }
                         // Token-subset fallback (tokens >= 3 chars)
-                        $tokens = array_values(array_filter(explode(' ', $t), fn($tok) => strlen($tok) >= 3));
+                        $tokens = array_values(array_filter(explode(' ', $t), fn ($tok) => strlen($tok) >= 3));
                         if (!empty($tokens)) {
                             $allPresent = true;
                             foreach ($tokens as $tok) {

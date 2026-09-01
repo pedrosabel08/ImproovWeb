@@ -152,10 +152,56 @@ async function revisarTarefa(
   tipoRevisao,
   tipo_tarefa = "imagem",
   funcao_animacao_id = null,
+  isDirecaoAlteracaoFinal = false,
 ) {
-  event.stopPropagation();
+  if (typeof event !== "undefined" && event?.stopPropagation) {
+    event.stopPropagation();
+  }
 
   const idcolaborador = localStorage.getItem("idcolaborador");
+  let direcaoAlteracaoDestino = null;
+
+  if (isDirecaoAlteracaoFinal) {
+    const renderDecision = await Swal.fire({
+      title: "A imagem precisará de render?",
+      text: "Essa decisão define se a tarefa ficará pendente de envio para render.",
+      icon: "question",
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Sim, precisa de render",
+      denyButtonText: "Não precisa de render",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#2ecc71",
+      denyButtonColor: "#64748b",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    });
+
+    if (renderDecision.isDismissed) return;
+    if (renderDecision.isConfirmed) {
+      direcaoAlteracaoDestino = "render";
+    } else {
+      const deliveryDecision = await Swal.fire({
+        title: "A entrega será feita por esta prévia aprovada?",
+        text: "Ao confirmar, este JPG será enviado ao NAS e ficará como entrega pendente.",
+        icon: "question",
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: "Sim, entregar esta prévia",
+        denyButtonText: "Não, apenas aprovar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#2ecc71",
+        denyButtonColor: "#64748b",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      });
+
+      if (deliveryDecision.isDismissed) return;
+      direcaoAlteracaoDestino = deliveryDecision.isConfirmed
+        ? "entrega_previa"
+        : "sem_entrega";
+    }
+  }
 
   let actionText = "";
   switch (tipoRevisao) {
@@ -251,6 +297,7 @@ async function revisarTarefa(
         tipo_tarefa,
         funcao_animacao_id,
         historico_id: ap_imagem_id ?? null,
+        direcao_alteracao_destino: direcaoAlteracaoDestino,
       }),
     });
 
@@ -259,6 +306,28 @@ async function revisarTarefa(
     if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
     const data = await response.json();
     // console.log("Resposta do servidor:", data);
+
+    // A validação do servidor também cobre aprovação direta da Direção,
+    // quando a tarefa ainda não passou por "Aguardando Direção".
+    if (
+      !data?.success &&
+      data?.requires_direcao_alteracao_decision &&
+      !direcaoAlteracaoDestino
+    ) {
+      Swal.close();
+      return revisarTarefa(
+        idfuncao_imagem,
+        nome_colaborador,
+        imagem_nome,
+        nome_funcao,
+        colaborador_id,
+        imagem_id,
+        tipoRevisao,
+        tipo_tarefa,
+        funcao_animacao_id,
+        true,
+      );
+    }
 
     // Barra a 100% antes de fechar
     Swal.update({
@@ -1035,8 +1104,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
   let colaboradorSelecionado =
     document.getElementById("filtro_colaborador").value;
   let funcaoSelecionada = document.getElementById("nome_funcao").value;
-  let statusSelecionado =
-    document.getElementById("filtro_status")?.value || "";
+  let statusSelecionado = document.getElementById("filtro_status")?.value || "";
   const buscaImagem = (document.getElementById("fr-search-funcao")?.value || "")
     .toLowerCase()
     .trim();
@@ -3174,12 +3242,18 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       });
       const radios = document.querySelectorAll('input[name="decision"]');
 
-      const { historico, imagens, pdf: pdfResponse, pdfs: pdfsResponse } = response;
-      const pdfsDisponiveis = Array.isArray(pdfsResponse) && pdfsResponse.length
-        ? pdfsResponse
-        : pdfResponse
-          ? [pdfResponse]
-          : [];
+      const {
+        historico,
+        imagens,
+        pdf: pdfResponse,
+        pdfs: pdfsResponse,
+      } = response;
+      const pdfsDisponiveis =
+        Array.isArray(pdfsResponse) && pdfsResponse.length
+          ? pdfsResponse
+          : pdfResponse
+            ? [pdfResponse]
+            : [];
       const pdf = pdfsDisponiveis[0] || null;
       const item = historico[0];
 
@@ -3292,9 +3366,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
         console.error("Erro ao preencher approval_info", e);
       }
 
-        const holdApprovalBlock = tarefaAtual?.flow_review_flow_block;
-        if (tarefaAtual?.flow_review_hold_approval && holdApprovalBlock) {
-          const blockDate = holdApprovalBlock.criado_em
+      const holdApprovalBlock = tarefaAtual?.flow_review_flow_block;
+      if (tarefaAtual?.flow_review_hold_approval && holdApprovalBlock) {
+        const blockDate = holdApprovalBlock.criado_em
           ? formatarDataComentario(holdApprovalBlock.criado_em)
           : "";
         const existingApprovalInfo = approvalContainer?.innerHTML || "";
@@ -3446,6 +3520,10 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
               selected,
               tipoRevisaoTarefa,
               tipoRevisaoTarefa === "animacao" ? tarefaRefId : null,
+              tipoRevisaoTarefa === "imagem" &&
+                Number(tarefaAtual?.funcao_id) === 6 &&
+                Boolean(tarefaAtual?.diretor_pode_aprovar) &&
+                ["aprovado", "aprovado_com_ajustes"].includes(selected),
             );
 
             modal.classList.add("hidden");
@@ -7364,7 +7442,10 @@ window.addEventListener("improov:funcaoAtualizada", (event) => {
   if (!payload?.issue_id) return;
   flowReviewRealtimeQueue = flowReviewRealtimeQueue
     .then(() =>
-      handleFlowReviewRealtimeEvent({ ...payload, event: "flow_block.updated" }),
+      handleFlowReviewRealtimeEvent({
+        ...payload,
+        event: "flow_block.updated",
+      }),
     )
     .catch((error) => console.error("FlowReview realtime:", error));
 });

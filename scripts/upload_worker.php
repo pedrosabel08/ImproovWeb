@@ -1009,9 +1009,28 @@ function mark_funcao_upload_quitado(array $meta): void
         return;
     }
 
+    $hasRequiresRenderSendColumn = false;
+    $renderSendColumnCheck = $conn->query("SHOW COLUMNS FROM funcao_imagem LIKE 'requires_render_send'");
+    if ($renderSendColumnCheck instanceof mysqli_result) {
+        $hasRequiresRenderSendColumn = $renderSendColumnCheck->num_rows > 0;
+        $renderSendColumnCheck->free();
+    }
+    if (!$hasRequiresRenderSendColumn) {
+        @$conn->query("ALTER TABLE funcao_imagem ADD COLUMN requires_render_send TINYINT(1) NOT NULL DEFAULT 0 AFTER requires_file_upload");
+        $retryColumnCheck = $conn->query("SHOW COLUMNS FROM funcao_imagem LIKE 'requires_render_send'");
+        if ($retryColumnCheck instanceof mysqli_result) {
+            $hasRequiresRenderSendColumn = $retryColumnCheck->num_rows > 0;
+            $retryColumnCheck->free();
+        }
+    }
+    $explicitRenderSendSql = $hasRequiresRenderSendColumn
+        ? "COALESCE(fi.requires_render_send, 0) = 1 OR "
+        : "";
+
     $chkRenderSend = $conn->prepare(
         "SELECT CASE
-            WHEN fi.funcao_id IN (4, 6)
+            WHEN {$explicitRenderSendSql}(
+                 fi.funcao_id IN (4, 6)
              AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
              AND (
                  fi.funcao_id <> 6
@@ -1039,6 +1058,7 @@ function mark_funcao_upload_quitado(array $meta): void
                     AND ra.status_id = ico.status_id
                   LIMIT 1
              )
+            )
             THEN 1
             ELSE 0
          END AS requires_render_send

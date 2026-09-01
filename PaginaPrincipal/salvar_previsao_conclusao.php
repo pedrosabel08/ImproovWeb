@@ -39,9 +39,16 @@ if (!$tarefa) {
     echo json_encode(['success' => false, 'message' => 'Tarefa não encontrada.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
-if ($atorColaboradorId && (int) $tarefa['colaborador_id'] !== $atorColaboradorId && (int) ($_SESSION['nivel_acesso'] ?? 0) < 2) {
+if (
+    $atorColaboradorId
+    && (int) $tarefa['colaborador_id'] !== $atorColaboradorId
+    && (int) ($_SESSION['nivel_acesso'] ?? 0) !== 1
+) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Você não pode alterar a previsão de outra pessoa.'], JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Você não pode alterar a previsão de outra pessoa.'
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

@@ -43,7 +43,7 @@ class Clausula1Service
             );
         }
 
-        $funcoesNomesNorm = array_map(fn($n) => $this->normalize($n), $funcoesOriginais);
+        $funcoesNomesNorm = array_map(fn ($n) => $this->normalize($n), $funcoesOriginais);
 
         $hasCaderno = $this->hasAny($funcoesNomesNorm, ['caderno']);
         $hasFiltroAssets = $this->hasAny($funcoesNomesNorm, ['filtro de assets', 'filtro assets', 'filtro']);
@@ -234,7 +234,7 @@ de imagens, separação de assets para a produção, pela parte CONTRATADA confo
 
     private function render(string $texto, string $listaImagens, string $listaCenas, string $etapas): string
     {
-        $parts = array_values(array_filter([$texto, $listaImagens, $listaCenas, $etapas], fn($v) => $v !== ''));
+        $parts = array_values(array_filter([$texto, $listaImagens, $listaCenas, $etapas], fn ($v) => $v !== ''));
         return implode("\n", $parts);
     }
 
@@ -266,7 +266,7 @@ de imagens, separação de assets para a produção, pela parte CONTRATADA confo
 
     private function joinFuncoes(array $funcoes): string
     {
-        $funcoes = array_values(array_filter($funcoes, fn($v) => trim((string)$v) !== ''));
+        $funcoes = array_values(array_filter($funcoes, fn ($v) => trim((string)$v) !== ''));
         // garantir que o nome das funções começa com letra minúscula (multibyte)
         $funcoes = array_map(function ($f) {
             $f = (string)$f;
@@ -301,10 +301,6 @@ de imagens, separação de assets para a produção, pela parte CONTRATADA confo
     private function hasFinalizacaoFunc(array $funcoes): bool
     {
         foreach ($funcoes as $f) {
-            $nivel = $f['nivel_finalizacao'] ?? null;
-            if ($nivel !== null && $nivel !== '') {
-                return true;
-            }
             $nome = isset($f['nome_funcao']) ? (string)$f['nome_funcao'] : '';
             if ($nome !== '' && $this->startsWith($this->normalize($nome), 'finalizacao')) {
                 return true;
@@ -337,7 +333,7 @@ de imagens, separação de assets para a produção, pela parte CONTRATADA confo
 
     private function hasContainsAny(array $haystack, array $needles): bool
     {
-        $needles = array_map(fn($n) => $this->normalize((string)$n), $needles);
+        $needles = array_map(fn ($n) => $this->normalize((string)$n), $needles);
         foreach ($haystack as $item) {
             $item = (string)$item;
             foreach ($needles as $needle) {
@@ -351,7 +347,7 @@ de imagens, separação de assets para a produção, pela parte CONTRATADA confo
 
     private function hasStartsWithAny(array $haystack, array $prefixes): bool
     {
-        $prefixes = array_map(fn($p) => $this->normalize((string)$p), $prefixes);
+        $prefixes = array_map(fn ($p) => $this->normalize((string)$p), $prefixes);
         foreach ($haystack as $item) {
             $item = (string)$item;
             foreach ($prefixes as $prefix) {

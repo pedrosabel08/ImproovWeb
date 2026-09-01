@@ -58,6 +58,7 @@ $funcoes = [];
 $funcoes_atuacao = [];
 $nivel_finalizacao = null;
 $nivel_arquitetura = null;
+$nivel_animacao = null;
 while ($row = $result_funcoes->fetch_assoc()) {
     $funcaoId = (int) $row['funcao_id'];
     $funcoes[] = $funcaoId;
@@ -73,6 +74,9 @@ while ($row = $result_funcoes->fetch_assoc()) {
     } elseif ($nomeFuncao === 'filtro de assets' && $nivel_arquitetura === null && $row['nivel_finalizacao'] !== null) {
         $nivel_arquitetura = (int) $row['nivel_finalizacao'];
     }
+    if (($nomeFuncao === 'animação' || $nomeFuncao === 'animacao') && $row['nivel_finalizacao'] !== null) {
+        $nivel_animacao = (int) $row['nivel_finalizacao'];
+    }
 }
 
 $response = [
@@ -81,7 +85,8 @@ $response = [
     'funcoes' => $funcoes,
     'funcoes_atuacao' => $funcoes_atuacao,
     'nivel_finalizacao' => $nivel_finalizacao,
-    'nivel_arquitetura' => $nivel_arquitetura
+    'nivel_arquitetura' => $nivel_arquitetura,
+    'nivel_animacao' => $nivel_animacao
 ];
 
 echo json_encode($response);

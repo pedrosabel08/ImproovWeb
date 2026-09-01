@@ -163,7 +163,8 @@ echo '</optgroup>';
                                     <option
                                         value="<?php echo (int) $funcao['idfuncao']; ?>"
                                         data-finalizacao="<?php echo $funcao['nome_funcao'] === html_entity_decode('Finaliza&ccedil;&atilde;o', ENT_QUOTES, 'UTF-8') ? '1' : '0'; ?>"
-                                        data-arquitetura="<?php echo in_array($funcao['nome_funcao'], ['Caderno', 'Filtro de assets'], true) ? '1' : '0'; ?>">
+                                        data-arquitetura="<?php echo in_array($funcao['nome_funcao'], ['Caderno', 'Filtro de assets'], true) ? '1' : '0'; ?>"
+                                        data-animacao="<?php echo $funcao['nome_funcao'] === 'Animação' ? '1' : '0'; ?>">
                                         <?php echo htmlspecialchars($funcao['nome_funcao']); ?>
                                     </option>
                                 <?php } ?>
@@ -186,6 +187,15 @@ echo '</optgroup>';
                         <div class="form-group" id="nivelArquiteturaGroup" hidden>
                             <label class="form-label" for="nivelArquitetura">N&iacute;vel de Arquitetura</label>
                             <select class="form-input" id="nivelArquitetura" name="nivel_arquitetura">
+                                <option value="">Selecione o n&iacute;vel</option>
+                                <option value="1">N&iacute;vel 1 — Heartstarter</option>
+                                <option value="2">N&iacute;vel 2 — Heartmaker</option>
+                                <option value="3">N&iacute;vel 3 — Heartmaster</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="nivelAnimacaoGroup" hidden>
+                            <label class="form-label" for="nivelAnimacao">N&iacute;vel de Anima&ccedil;&atilde;o</label>
+                            <select class="form-input" id="nivelAnimacao" name="nivel_animacao">
                                 <option value="">Selecione o n&iacute;vel</option>
                                 <option value="1">N&iacute;vel 1 — Heartstarter</option>
                                 <option value="2">N&iacute;vel 2 — Heartmaker</option>

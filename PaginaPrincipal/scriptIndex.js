@@ -8305,16 +8305,20 @@ async function carregarOverview() {
     btnLista.classList.remove("active");
   }
 
-  // ── Visão Geral (gestor-only: calendar + indicators) ──────────
+  // ── Visão Geral V1: camada de decisão por perfil ──────────────
   function showOverview() {
     hideSections();
     if (overviewSec) overviewSec.style.display = "flex";
-    if (gestorPanel) gestorPanel.style.display = "flex";
+    if (gestorPanel) gestorPanel.style.display = "none";
     if (colabPanel) colabPanel.style.display = "none";
     if (navRight) navRight.style.visibility = "hidden";
     clearActive();
     if (btnOverview) btnOverview.classList.add("active");
-    carregarOverview();
+    if (window.FlowOverviewV1) {
+      window.FlowOverviewV1.open();
+    } else {
+      console.error("Visão Geral V1 não foi carregada.");
+    }
   }
 
   // ── Painel de Produção (everyone: individual production) ───────

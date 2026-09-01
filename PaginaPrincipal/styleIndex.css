@@ -540,9 +540,13 @@ main header {
 }
 
 main header .top {
-  display: flex;
-  justify-content: space-between;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 24px;
 }
+
+
 
 main header h3 {
   font-size: 1.8rem;
@@ -553,21 +557,25 @@ main header h4 {
   color: #8a8a8a;
 }
 
-main nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid #dcdcdc;
-  padding: 10px 20px;
-  margin-top: 10px;
+header nav {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
 }
 
-main nav .nav-left,
-main nav .nav-right {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  transform: 0.3s all ease;
+header .nav-left,
+header .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+header .header-logo {
+    width: 200px;
+    height: auto;
+    flex-shrink: 0;
 }
 
 main nav .nav-left button.active {

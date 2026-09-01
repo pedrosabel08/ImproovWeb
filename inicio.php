@@ -103,6 +103,7 @@ $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 $obras_inativas = obterObras($conn, 1);
+$overviewGestor = improov_usuario_eh_gestor_sidebar($conn);
 
 $conn->close();
 ?>
@@ -133,6 +134,7 @@ $conn->close();
 
     <!-- Collaborator personal dashboard -->
     <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleColabDashboard.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.css'); ?>&v=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.css'); ?>">
 
     <title>Improov+Flow</title>
 </head>
@@ -143,69 +145,122 @@ $conn->close();
 
     include 'sidebar.php';
 
-    ?>
+?>
     <div class="container">
         <main class="main_inicio">
-            <header>
-                <div class="top">
-                    <!-- <h3 id="saudacao"></h3> -->
-                    <a class="perfil-colaborador" href="infos.php" aria-label="Abrir perfil">
-                        <div class="left">
-                            <?php
-                            $foto_colab = trim((string) ($_SESSION['foto_colaborador'] ?? ''));
-                            $nome_colab = trim((string) ($_SESSION['nome_usuario'] ?? ''));
-                            $initial = '';
-                            if ($nome_colab !== '') {
-                                $initial = mb_strtoupper(mb_substr($nome_colab, 0, 1, 'UTF-8'));
-                            }
-                            if ($foto_colab !== ''): ?>
-                                <img src="<?php echo htmlspecialchars($foto_colab); ?>"
-                                    alt="<?php echo htmlspecialchars($nome_colab); ?>" id="thumb-colab">
-                            <?php else: ?>
-                                <div id="thumb-colab" class="avatar-initial"><?php echo htmlspecialchars($initial); ?></div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="right">
-                            <h4 id="nome-colab"><?php echo htmlspecialchars($nome_colab); ?></h4>
-                            <span
-                                id="funcao-colab"><?php echo htmlspecialchars($_SESSION['cargo_colaborador'] ?? ''); ?></span>
-                        </div>
-                    </a>
-                    <img id="gif" src="gif/assinatura_preto.gif" alt="Assinatura" style="width: 200px;">
+<header>
+    <div class="top">
+
+        <!-- PERFIL -->
+        <a class="perfil-colaborador" href="infos.php" aria-label="Abrir perfil">
+            <div class="left">
+                <?php
+                $foto_colab = trim((string) ($_SESSION['foto_colaborador'] ?? ''));
+$nome_colab = trim((string) ($_SESSION['nome_usuario'] ?? ''));
+
+$initial = '';
+
+if ($nome_colab !== '') {
+    $initial = mb_strtoupper(
+        mb_substr($nome_colab, 0, 1, 'UTF-8')
+    );
+}
+
+if ($foto_colab !== ''):
+    ?>
+                    <img
+                        src="<?php echo htmlspecialchars($foto_colab); ?>"
+                        alt="<?php echo htmlspecialchars($nome_colab); ?>"
+                        id="thumb-colab"
+                    >
+                <?php else: ?>
+                    <div id="thumb-colab" class="avatar-initial">
+                        <?php echo htmlspecialchars($initial); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="right">
+                <h4 id="nome-colab">
+                    <?php echo htmlspecialchars($nome_colab); ?>
+                </h4>
+
+                <span id="funcao-colab">
+                    <?php echo htmlspecialchars($_SESSION['cargo_colaborador'] ?? ''); ?>
+                </span>
+            </div>
+        </a>
+
+
+        <!-- NAVEGAÇÃO -->
+        <nav>
+            <div class="nav-left">
+                <button id="overviewBtn">
+                    <i class="ri-dashboard-line"></i>
+                    <span>Visão Geral</span>
+                </button>
+
+                <button id="painelBtn" style="display:none;">
+                    <i class="ri-bar-chart-line"></i>
+                    <span>Painel de Produção</span>
+                </button>
+
+                <button id="kanbanBtn" class="active">
+                    <i class="ri-kanban-view"></i>
+                    <span>Kanban</span>
+                </button>
+
+                <button id="listBtn">
+                    <i class="ri-list-check"></i>
+                    <span>Lista</span>
+                </button>
+            </div>
+
+            <div class="nav-right">
+
+                <div
+                    id="mini-calendar-container"
+                    style="display:none; vertical-align: middle;"
+                >
+                    <div
+                        id="mini-calendar"
+                        style="width:350px; height:80px;"
+                    ></div>
                 </div>
-                <nav>
-                    <div class="nav-left">
-                        <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [1, 9, 21])): ?>
-                            <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Visão Geral</span></button>
-                        <?php endif; ?>
-                        <button id="painelBtn" style="display:none;"><i class="ri-bar-chart-line"></i><span>Painel de Produção</span></button>
-                        <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
-                        <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
-                        <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
-                        <!-- <button id="timeline"><span>Timeline</span></button> -->
-                    </div>
-                    <div class="nav-right">
-                        <!-- Mini calendar (semana) -->
 
-                        <div id="mini-calendar-container"
-                            style="display:none; vertical-align: middle; margin-right:8px;">
-                            <div id="mini-calendar" style="width:350px; height:80px;"></div>
-                        </div>
-                        <select name="idcolab" id="idcolab">
+                <select name="idcolab" id="idcolab">
+                    <option value="">Selecione um colaborador</option>
 
-                            <option value="">Selecione um colaborador</option>
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
-                        <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
-                        <!-- <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button> -->
-                    </div>
-                </nav>
-            </header>
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <button id="date">
+                    <i class="ri-calendar-todo-fill"></i>
+                    <span></span>
+                </button>
+
+                <button id="filter">
+                    <i class="ri-equalizer-fill"></i>
+                    <span>Filtros</span>
+                </button>
+            </div>
+        </nav>
+
+
+        <!-- LOGO -->
+        <img
+            id="gif"
+            src="gif/assinatura_preto.gif"
+            alt="Assinatura"
+            class="header-logo"
+        >
+
+    </div>
+</header>
             <div id="filtros-ativos-bar"></div>
             <div class="kanban" id="kanban-section">
                 <div class="kanban-box kanban-box-pendencias" id="pendencias-flowreview" aria-label="Pendências de aprovação do Flow Review">
@@ -299,6 +354,13 @@ $conn->close();
 
             <!-- Visão Geral -->
             <div id="overview-section" class="overview-section" style="display:none;">
+
+                <div id="overview-v1" class="flow-overview" aria-live="polite">
+                    <div class="flow-overview__loading" data-overview-loading>
+                        <i class="ri-loader-4-line"></i>
+                        <span>Preparando sua Visão Geral…</span>
+                    </div>
+                </div>
 
                 <!-- ── Manager view ── -->
                 <div id="overview-gestor">
@@ -994,7 +1056,7 @@ $conn->close();
         localStorage.setItem('idcolaborador', idColaborador);
 
         window.PAINEL = {
-            isGestor: <?php echo (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [9, 21])) ? 'true' : 'false'; ?>,
+            isGestor: <?php echo $overviewGestor ? 'true' : 'false'; ?>,
             colaboradorId: <?php echo intval($idcolaborador); ?>,
             nomeUsuario: <?php echo json_encode($nome_usuario); ?>
         };
@@ -1029,6 +1091,7 @@ $conn->close();
     <script src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
     <script src="<?php echo asset_url('notificacoes/render.js'); ?>"></script>
     <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
+    <script src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&v=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptColabDashboard.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>

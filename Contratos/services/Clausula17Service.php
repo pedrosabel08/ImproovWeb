@@ -57,9 +57,8 @@ class Clausula17Service
             $trechos = [];
             $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
             $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
-            $linhas = [];
-            $linhas[] = '<span class="titulo-funcao">Animação:</span>';
-            $linhas[] = '<span>Valor fixo de R$ 175,00 (Cento e setenta e cinco reais) por cena de animação preview entregue e R$ 175,00 (cento e setenta e cinco reais) por cena de animação renderizada e finalizada com pós-produção.</span><br>';
+            $animacaoInfo = $this->getAnimacaoInfo($this->getNivelAnimacao($funcoes));
+            $linhas = [$this->buildAnimacaoBlock($animacaoInfo)];
             $trechos[] = implode("\n", $linhas);
             $trechos[] = $this->buildParagrafos(false);
             $texto = implode("\n", $trechos);
@@ -75,13 +74,14 @@ class Clausula17Service
             $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
             $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
 
-            $finalizacaoInfo = $this->getFinalizacaoInfo($this->getNivelFinalizacao($funcoes));
-            $valor = $finalizacaoInfo['valor'] ?? 'valor a definir';
-            $titulo = $finalizacaoInfo['titulo'] ?? '';
+            $animacaoInfo = $this->getAnimacaoInfo($this->getNivelAnimacao($funcoes));
+            $valor = $animacaoInfo['valor'] ?? 'valor a definir';
+            $titulo = $animacaoInfo['titulo'] ?? '';
 
             $linhas = [];
             $linhas[] = '<p>';
             $linhas[] = '<span class="titulo-funcao">Animação:</span>';
+            $linhas[] = '<span class="titulo-funcao">' . $this->escapeHtmlInline($titulo) . '</span>';
             $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Produção mínima esperada de 20 cenas finalizadas;</span>';
             $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Pagamento de ' . $this->escapeHtmlInline($valor) . ' por cena produzida e finalizada;</span>';
             $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Bônus quando produzir de 21 a 30 cenas finalizadas;</span>';
@@ -99,34 +99,6 @@ class Clausula17Service
                 'funcoes' => [],
             ];
         }
-        if ($colaboradorId === 44) {
-            $trechos = [];
-            $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
-            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
-
-            $finalizacaoInfo = $this->getFinalizacaoInfo($this->getNivelFinalizacao($funcoes));
-            $valor = $finalizacaoInfo['valor'] ?? 'valor a definir';
-            $titulo = $finalizacaoInfo['titulo'] ?? '';
-
-            $linhas = [];
-            $linhas[] = '<p>';
-            $linhas[] = '<span class="titulo-funcao">Animação:</span>';
-            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Até 9 cenas: R$ 250,00 por cena</span>';
-            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">A partir de 10 cenas: R$ 260,00 por cena</span>';
-            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">A partir de 20 cenas: R$ 280,00 por cena</span>';
-            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">A partir de 30 cenas: R$ 300,00 por cena</span>';
-            $linhas[] = '</p>';
-
-            $trechos[] = implode("\n", $linhas);
-            $trechos[] = $this->buildParagrafos(false);
-            $texto = implode("\n", $trechos);
-
-            return [
-                'texto' => $texto,
-                'funcoes' => [],
-            ];
-        }
-
         $funcoesNomes = $this->getFuncoesNomes($funcoes);
 
         $temFinalizacao = $this->temFinalizacao($funcoesNomes);
@@ -139,6 +111,8 @@ class Clausula17Service
         $finalizacaoInfo = $this->getFinalizacaoInfo($nivelFinalizacao);
         $nivelArquitetura = $this->getNivelArquitetura($funcoes);
         $arquiteturaInfo = $this->getArquiteturaInfo($nivelArquitetura);
+        $nivelAnimacao = $this->getNivelAnimacao($funcoes);
+        $animacaoInfo = $this->getAnimacaoInfo($nivelAnimacao);
 
         // Se tiver planta humanizada + finalização, prioriza planta (não exibe bloco/parágrafos de finalização)
         $temFinalizacaoEfetiva = $temFinalizacao && !$temPlantaHumanizada;
@@ -165,7 +139,7 @@ class Clausula17Service
         }
 
         if ($temAnimacao = $this->hasFuncao($funcoesNomes, ['animação', 'animacao'])) {
-            $linhas[] = $this->buildAnimacaoBlock($finalizacaoInfo);
+            $linhas[] = $this->buildAnimacaoBlock($animacaoInfo);
         }
 
         if (!empty($linhas)) {
@@ -248,13 +222,11 @@ class Clausula17Service
         foreach ($funcoes as $f) {
             $nome = mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
 
-            if (in_array($nome, ['finalização', 'finalizacao', 'animação', 'animacao'], true)) {
+            if (in_array($nome, ['finalização', 'finalizacao'], true)) {
                 $nivel = null;
 
                 if (isset($f['nivel_finalizacao'])) {
                     $nivel = (int) $f['nivel_finalizacao'];
-                } elseif (isset($f['nivel_animacao'])) {
-                    $nivel = (int) $f['nivel_animacao'];
                 } elseif (isset($f['nivel'])) {
                     $nivel = (int) $f['nivel'];
                 }
@@ -279,6 +251,37 @@ class Clausula17Service
                 return ['titulo' => 'Artista digital Nivel III - Heartmaster', 'valor' => 'R$ 380,00'];
             default:
                 return ['titulo' => 'Artista digital Nivel não definido', 'valor' => 'valor a definir'];
+        }
+    }
+
+    private function getNivelAnimacao(array $funcoes): ?int
+    {
+        foreach ($funcoes as $f) {
+            $nome = mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
+            if (!in_array($nome, ['animação', 'animacao'], true)) {
+                continue;
+            }
+
+            $nivel = isset($f['nivel_finalizacao']) ? (int) $f['nivel_finalizacao'] : null;
+            if (in_array($nivel, [1, 2, 3], true)) {
+                return $nivel;
+            }
+        }
+
+        return null;
+    }
+
+    private function getAnimacaoInfo(?int $nivel): array
+    {
+        switch ($nivel) {
+            case 1:
+                return ['titulo' => 'Artista digital Nível I - Heartstarter', 'valor' => 'R$ 230,00 (Duzentos e trinta reais)'];
+            case 2:
+                return ['titulo' => 'Artista digital Nível II - Heartmaker', 'valor' => 'R$ 275,00 (Duzentos e setenta e cinco reais)'];
+            case 3:
+                return ['titulo' => 'Artista digital Nível III - Heartmaster', 'valor' => 'R$ 350,00 (Trezentos e cinquenta reais)'];
+            default:
+                return ['titulo' => 'Artista digital Nível não definido', 'valor' => 'valor a definir'];
         }
     }
 
@@ -394,18 +397,16 @@ class Clausula17Service
         return implode("\n", $html);
     }
 
-    private function buildAnimacaoBlock(array $finalizacaoInfo): string
+    private function buildAnimacaoBlock(array $animacaoInfo): string
     {
-        // Por enquanto, os valores informados são do Nível 1 (Heartstarter).
-        // Se vier outro nível, mantemos o título vindo do nível para não perder a informação.
+        $titulo = $animacaoInfo['titulo'] ?? '';
+        $valor = $animacaoInfo['valor'] ?? 'valor a definir';
 
         $html = [];
         $html[] = '<p>';
         $html[] = '<span class="titulo-funcao">Animação:</span>';
-        $html[] = '<span>Até 9 cenas: R$ 130,00 por cena</span>';
-        $html[] = '<span>A partir de 10 cenas: R$ 140,00 por cena</span>';
-        $html[] = '<span>A partir de 20 cenas: R$ 150,00 por cena</span>';
-        $html[] = '<span>A partir de 30 cenas: R$ 160,00 por cena</span>';
+        $html[] = '<span class="titulo-funcao">' . $this->escapeHtmlInline($titulo) . '</span>';
+        $html[] = '<span>Valor fixo de ' . $this->escapeHtmlInline($valor) . ' por cena de animação produzida e finalizada.</span>';
         $html[] = '</p>';
 
         return implode("\n", $html);

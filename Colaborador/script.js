@@ -53,23 +53,33 @@ function atualizarNivelFinalizacao() {
   const possuiArquitetura = funcoesSelecionadas.toArray().some((option) => {
     return option.dataset.arquitetura === "1";
   });
+  const possuiAnimacao = funcoesSelecionadas.toArray().some((option) => {
+    return option.dataset.animacao === "1";
+  });
   const grupoNivel = document.getElementById("nivelFinalizacaoGroup");
   const selectNivel = document.getElementById("nivelFinalizacao");
   const grupoNivelArquitetura = document.getElementById(
     "nivelArquiteturaGroup",
   );
   const selectNivelArquitetura = document.getElementById("nivelArquitetura");
+  const grupoNivelAnimacao = document.getElementById("nivelAnimacaoGroup");
+  const selectNivelAnimacao = document.getElementById("nivelAnimacao");
 
   grupoNivel.hidden = !possuiFinalizacao;
   selectNivel.required = possuiFinalizacao;
   grupoNivelArquitetura.hidden = !possuiArquitetura;
   selectNivelArquitetura.required = possuiArquitetura;
+  grupoNivelAnimacao.hidden = !possuiAnimacao;
+  selectNivelAnimacao.required = possuiAnimacao;
 
   if (!possuiFinalizacao) {
     selectNivel.value = "";
   }
   if (!possuiArquitetura) {
     selectNivelArquitetura.value = "";
+  }
+  if (!possuiAnimacao) {
+    selectNivelAnimacao.value = "";
   }
 }
 
@@ -175,6 +185,7 @@ function abrirModalEdicao(idusuario) {
       $("#funcaoSelect").val(data.funcoes).trigger("change");
       $("#nivelFinalizacao").val(data.nivel_finalizacao ?? "");
       $("#nivelArquitetura").val(data.nivel_arquitetura ?? "");
+      $("#nivelAnimacao").val(data.nivel_animacao ?? "");
       atualizarNivelFinalizacao();
       atualizarAtuacoesFuncoes();
       document.getElementById("elegivelCapacidade").checked =
@@ -209,6 +220,7 @@ function abrirModalNovo() {
   atuacoesFuncoes = {};
   $("#nivelFinalizacao").val("");
   $("#nivelArquitetura").val("");
+  $("#nivelAnimacao").val("");
   document.getElementById("elegivelCapacidade").checked = true;
   atualizarNivelFinalizacao();
   atualizarAtuacoesFuncoes();
@@ -363,6 +375,7 @@ $("#form").on("submit", function (e) {
     funcoes: $("#funcaoSelect").val(),
     nivel_finalizacao: $("#nivelFinalizacao").val(),
     nivel_arquitetura: $("#nivelArquitetura").val(),
+    nivel_animacao: $("#nivelAnimacao").val(),
     tipo_atuacao: Object.fromEntries(
       $("#funcaoSelect option:selected")
         .toArray()
@@ -391,6 +404,13 @@ $("#form").on("submit", function (e) {
     !formData.nivel_arquitetura
   ) {
     showToast("Selecione o nivel de Arquitetura.", "error");
+    return;
+  }
+  if (
+    document.getElementById("nivelAnimacao").required &&
+    !formData.nivel_animacao
+  ) {
+    showToast("Selecione o nivel de Animacao.", "error");
     return;
   }
 

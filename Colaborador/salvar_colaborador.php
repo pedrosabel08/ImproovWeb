@@ -13,7 +13,7 @@ function response($success, $message)
     exit;
 }
 
-function normalizarFuncoes($funcoes, $nivelFinalizacao, $nivelArquitetura)
+function normalizarFuncoes($funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao)
 {
     if (!is_array($funcoes)) {
         $funcoes = [];
@@ -27,6 +27,7 @@ function normalizarFuncoes($funcoes, $nivelFinalizacao, $nivelArquitetura)
         $funcoes,
         $nivelFinalizacao === '' ? null : (int) $nivelFinalizacao,
         $nivelArquitetura === '' ? null : (int) $nivelArquitetura,
+        $nivelAnimacao === '' ? null : (int) $nivelAnimacao,
     ];
 }
 
@@ -50,7 +51,7 @@ function normalizarAtuacoesFuncoes($atuacoes, array $funcoes): array
  * Sincroniza os vínculos sem apagar os que permanecem selecionados. Assim,
  * id, valor e tipo_atuacao sobrevivem a edições antigas que não enviam papel.
  */
-function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, array $atuacoes = [])
+function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao, array $atuacoes = [])
 {
     // nome_funcao usa utf8mb4_unicode_ci, enquanto parâmetros preparados no
     // MySQL atual chegam em utf8mb4_0900_ai_ci. A collation explícita evita
@@ -79,11 +80,25 @@ function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinaliz
         }
     }
 
+    $idAnimacao = 0;
+    $resultadoAnimacao = $conn->query(
+        "SELECT idfuncao
+           FROM funcao
+          WHERE nome_funcao = 'Animação'
+          LIMIT 1"
+    );
+    if ($resultadoAnimacao && ($animacao = $resultadoAnimacao->fetch_assoc())) {
+        $idAnimacao = (int) $animacao['idfuncao'];
+    }
+
     if ($idFinalizacao > 0 && in_array($idFinalizacao, $funcoes, true) && !in_array($nivelFinalizacao, [1, 2, 3], true)) {
         throw new InvalidArgumentException('Selecione um nivel de finalizacao valido.');
     }
     if (array_intersect(array_keys($funcoesArquitetura), $funcoes) && !in_array($nivelArquitetura, [1, 2, 3], true)) {
         throw new InvalidArgumentException('Selecione um nivel de Arquitetura valido.');
+    }
+    if ($idAnimacao > 0 && in_array($idAnimacao, $funcoes, true) && !in_array($nivelAnimacao, [1, 2, 3], true)) {
+        throw new InvalidArgumentException('Selecione um nivel de Animacao valido.');
     }
 
     $stmtExistentes = $conn->prepare(
@@ -131,6 +146,8 @@ function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinaliz
             $nivel = (int) $nivelFinalizacao;
         } elseif (isset($funcoesArquitetura[$idfuncao])) {
             $nivel = (int) $nivelArquitetura;
+        } elseif ($idfuncao === $idAnimacao) {
+            $nivel = (int) $nivelAnimacao;
         } else {
             $nivel = $existentes[$idfuncao]['nivel_finalizacao'] ?? 0;
         }
@@ -159,10 +176,11 @@ if ($action === 'create') {
     $senha = trim($_POST['senha'] ?? '');
     $nivel_acesso = $_POST['nivel_acesso'] !== '' ? (int)$_POST['nivel_acesso'] : null;
     $cargos = $_POST['cargos'] ?? [];
-    [$funcoes, $nivelFinalizacao, $nivelArquitetura] = normalizarFuncoes(
+    [$funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao] = normalizarFuncoes(
         $_POST['funcoes'] ?? [],
         $_POST['nivel_finalizacao'] ?? '',
-        $_POST['nivel_arquitetura'] ?? ''
+        $_POST['nivel_arquitetura'] ?? '',
+        $_POST['nivel_animacao'] ?? ''
     );
     $atuacoes = normalizarAtuacoesFuncoes($_POST['tipo_atuacao'] ?? [], $funcoes);
     $elegivelCapacidade = !array_key_exists('elegivel_capacidade', $_POST) || !empty($_POST['elegivel_capacidade']) ? 1 : 0;
@@ -193,7 +211,7 @@ if ($action === 'create') {
             }
         }
 
-        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $atuacoes);
+        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao, $atuacoes);
 
         $conn->commit();
         response(true, 'Colaborador criado com sucesso!');
@@ -213,10 +231,11 @@ if ($action === 'update') {
     $senha = trim($_POST['senha'] ?? '');
     $nivel_acesso = $_POST['nivel_acesso'] !== '' ? (int)$_POST['nivel_acesso'] : null;
     $cargos = $_POST['cargos'] ?? [];
-    [$funcoes, $nivelFinalizacao, $nivelArquitetura] = normalizarFuncoes(
+    [$funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao] = normalizarFuncoes(
         $_POST['funcoes'] ?? [],
         $_POST['nivel_finalizacao'] ?? '',
-        $_POST['nivel_arquitetura'] ?? ''
+        $_POST['nivel_arquitetura'] ?? '',
+        $_POST['nivel_animacao'] ?? ''
     );
     $atuacoes = normalizarAtuacoesFuncoes($_POST['tipo_atuacao'] ?? [], $funcoes);
     $elegivelCapacidadeInformada = array_key_exists('elegivel_capacidade', $_POST);
@@ -260,7 +279,7 @@ if ($action === 'update') {
             }
         }
 
-        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $atuacoes);
+        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao, $atuacoes);
 
         $conn->commit();
         response(true, 'Colaborador atualizado com sucesso!');

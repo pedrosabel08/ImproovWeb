@@ -44,8 +44,9 @@ while ($row = $result_cargos->fetch_assoc()) {
     $cargos[] = $row['cargo_id']; // Armazena o ID do cargo
 }
 
-$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao, fc.tipo_atuacao
+$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao, fc.tipo_atuacao, f.nome_funcao
                 FROM funcao_colaborador fc
+                JOIN funcao f ON f.idfuncao = fc.funcao_id
                 WHERE fc.colaborador_id = ?";
 
 $stmt_funcoes = $conn->prepare($sql_funcoes);
@@ -56,14 +57,21 @@ $result_funcoes = $stmt_funcoes->get_result();
 $funcoes = [];
 $funcoes_atuacao = [];
 $nivel_finalizacao = null;
+$nivel_arquitetura = null;
 while ($row = $result_funcoes->fetch_assoc()) {
     $funcaoId = (int) $row['funcao_id'];
     $funcoes[] = $funcaoId;
     $funcoes_atuacao[(string) $funcaoId] = strtoupper((string) ($row['tipo_atuacao'] ?? 'SECUNDARIA')) === 'PRINCIPAL'
         ? 'PRINCIPAL'
         : 'SECUNDARIA';
-    if ($row['nivel_finalizacao'] !== null) {
+    $nomeFuncao = mb_strtolower(trim((string) ($row['nome_funcao'] ?? '')), 'UTF-8');
+    if (($nomeFuncao === 'finalização' || $nomeFuncao === 'finalizacao') && $row['nivel_finalizacao'] !== null) {
         $nivel_finalizacao = (int) $row['nivel_finalizacao'];
+    }
+    if ($nomeFuncao === 'caderno' && $row['nivel_finalizacao'] !== null) {
+        $nivel_arquitetura = (int) $row['nivel_finalizacao'];
+    } elseif ($nomeFuncao === 'filtro de assets' && $nivel_arquitetura === null && $row['nivel_finalizacao'] !== null) {
+        $nivel_arquitetura = (int) $row['nivel_finalizacao'];
     }
 }
 
@@ -72,7 +80,8 @@ $response = [
     'cargos' => $cargos,
     'funcoes' => $funcoes,
     'funcoes_atuacao' => $funcoes_atuacao,
-    'nivel_finalizacao' => $nivel_finalizacao
+    'nivel_finalizacao' => $nivel_finalizacao,
+    'nivel_arquitetura' => $nivel_arquitetura
 ];
 
 echo json_encode($response);

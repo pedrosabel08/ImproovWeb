@@ -50,14 +50,26 @@ function atualizarNivelFinalizacao() {
   const possuiFinalizacao = funcoesSelecionadas.toArray().some((option) => {
     return option.dataset.finalizacao === "1";
   });
+  const possuiArquitetura = funcoesSelecionadas.toArray().some((option) => {
+    return option.dataset.arquitetura === "1";
+  });
   const grupoNivel = document.getElementById("nivelFinalizacaoGroup");
   const selectNivel = document.getElementById("nivelFinalizacao");
+  const grupoNivelArquitetura = document.getElementById(
+    "nivelArquiteturaGroup",
+  );
+  const selectNivelArquitetura = document.getElementById("nivelArquitetura");
 
   grupoNivel.hidden = !possuiFinalizacao;
   selectNivel.required = possuiFinalizacao;
+  grupoNivelArquitetura.hidden = !possuiArquitetura;
+  selectNivelArquitetura.required = possuiArquitetura;
 
   if (!possuiFinalizacao) {
     selectNivel.value = "";
+  }
+  if (!possuiArquitetura) {
+    selectNivelArquitetura.value = "";
   }
 }
 
@@ -162,6 +174,7 @@ function abrirModalEdicao(idusuario) {
       atuacoesFuncoes = data.funcoes_atuacao || {};
       $("#funcaoSelect").val(data.funcoes).trigger("change");
       $("#nivelFinalizacao").val(data.nivel_finalizacao ?? "");
+      $("#nivelArquitetura").val(data.nivel_arquitetura ?? "");
       atualizarNivelFinalizacao();
       atualizarAtuacoesFuncoes();
       document.getElementById("elegivelCapacidade").checked =
@@ -195,6 +208,7 @@ function abrirModalNovo() {
   $("#funcaoSelect").val([]).trigger("change");
   atuacoesFuncoes = {};
   $("#nivelFinalizacao").val("");
+  $("#nivelArquitetura").val("");
   document.getElementById("elegivelCapacidade").checked = true;
   atualizarNivelFinalizacao();
   atualizarAtuacoesFuncoes();
@@ -348,6 +362,7 @@ $("#form").on("submit", function (e) {
     cargos: $("#cargoSelect").val(),
     funcoes: $("#funcaoSelect").val(),
     nivel_finalizacao: $("#nivelFinalizacao").val(),
+    nivel_arquitetura: $("#nivelArquitetura").val(),
     tipo_atuacao: Object.fromEntries(
       $("#funcaoSelect option:selected")
         .toArray()
@@ -369,6 +384,13 @@ $("#form").on("submit", function (e) {
     !formData.nivel_finalizacao
   ) {
     showToast("Selecione o nivel de finalizacao.", "error");
+    return;
+  }
+  if (
+    document.getElementById("nivelArquitetura").required &&
+    !formData.nivel_arquitetura
+  ) {
+    showToast("Selecione o nivel de Arquitetura.", "error");
     return;
   }
 

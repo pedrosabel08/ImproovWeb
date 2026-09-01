@@ -133,8 +133,12 @@ class Clausula17Service
         $temPlantaHumanizada = $this->hasFuncao($funcoesNomes, ['planta humanizada', 'planta-humanizada']);
         $temPosProducao = $this->hasFuncao($funcoesNomes, ['pós-produção', 'pos-producao', 'pos producao', 'pos-produção']);
         $temCaderno = $this->hasFuncao($funcoesNomes, ['caderno']);
+        $temFiltroAssets = $this->hasFuncao($funcoesNomes, ['filtro de assets', 'filtro assets', 'filtro']);
+        $temArquitetura = $temCaderno || $temFiltroAssets;
         $nivelFinalizacao = $this->getNivelFinalizacao($funcoes);
         $finalizacaoInfo = $this->getFinalizacaoInfo($nivelFinalizacao);
+        $nivelArquitetura = $this->getNivelArquitetura($funcoes);
+        $arquiteturaInfo = $this->getArquiteturaInfo($nivelArquitetura);
 
         // Se tiver planta humanizada + finalização, prioriza planta (não exibe bloco/parágrafos de finalização)
         $temFinalizacaoEfetiva = $temFinalizacao && !$temPlantaHumanizada;
@@ -148,9 +152,8 @@ class Clausula17Service
             $linhas[] = '<span class="titulo-funcao">Pós-produção:</span>';
             $linhas[] = '<span>Valor fixo de R$ 60,00 (Sessenta reais) por desenvolvimento de pós-produção para os ambientes virtuais.</span>';
         }
-        if ($temCaderno) {
-            $linhas[] = '<span class="titulo-funcao">Caderno e filtro de assets:</span>';
-            $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por desenvolvimento de caderno de interiores e R$ 20,00 (vinte reais) pela separação de assets para a produção dos interiores dos ambientes virtuais.</span>';
+        if ($temArquitetura) {
+            $linhas[] = $this->buildArquiteturaBlock($arquiteturaInfo);
         }
 
         $linhas = array_merge($linhas, $this->buildModelagemComposicaoLines($funcoesNomes));
@@ -277,6 +280,78 @@ class Clausula17Service
             default:
                 return ['titulo' => 'Artista digital Nivel não definido', 'valor' => 'valor a definir'];
         }
+    }
+
+    private function getNivelArquitetura(array $funcoes): ?int
+    {
+        $nivelCaderno = null;
+        $nivelFiltroAssets = null;
+
+        foreach ($funcoes as $f) {
+            $nome = mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
+            if (!in_array($nome, ['caderno', 'filtro de assets', 'filtro assets', 'filtro'], true)) {
+                continue;
+            }
+
+            $nivel = isset($f['nivel_finalizacao']) ? (int) $f['nivel_finalizacao'] : null;
+            if (!in_array($nivel, [1, 2, 3], true)) {
+                continue;
+            }
+
+            if ($nome === 'caderno') {
+                $nivelCaderno = $nivel;
+            } elseif ($nivelFiltroAssets === null) {
+                $nivelFiltroAssets = $nivel;
+            }
+        }
+
+        return $nivelCaderno ?? $nivelFiltroAssets;
+    }
+
+    private function getArquiteturaInfo(?int $nivel): array
+    {
+        switch ($nivel) {
+            case 1:
+                return [
+                    'titulo' => 'Arquiteto(a) digital Nível I - Heartstarter',
+                    'valor_caderno' => 'R$ 50,00 (Cinquenta reais)',
+                    'valor_filtro_assets' => 'R$ 20,00 (Vinte reais)',
+                ];
+            case 2:
+                return [
+                    'titulo' => 'Arquiteto(a) digital Nível II - Heartmaker',
+                    'valor_caderno' => 'R$ 60,00 (Sessenta reais)',
+                    'valor_filtro_assets' => 'R$ 25,00 (Vinte e cinco reais)',
+                ];
+            case 3:
+                return [
+                    'titulo' => 'Arquiteto(a) digital Nível III - Heartmaster',
+                    'valor_caderno' => 'R$ 75,00 (Setenta e cinco reais)',
+                    'valor_filtro_assets' => 'R$ 30,00 (Trinta reais)',
+                ];
+            default:
+                return [
+                    'titulo' => 'Arquiteto(a) digital Nível não definido',
+                    'valor_caderno' => 'valor a definir',
+                    'valor_filtro_assets' => 'valor a definir',
+                ];
+        }
+    }
+
+    private function buildArquiteturaBlock(array $arquiteturaInfo): string
+    {
+        $titulo = $arquiteturaInfo['titulo'] ?? '';
+        $valorCaderno = $arquiteturaInfo['valor_caderno'] ?? 'valor a definir';
+        $valorFiltroAssets = $arquiteturaInfo['valor_filtro_assets'] ?? 'valor a definir';
+
+        $html = [];
+        $html[] = '<p>';
+        $html[] = '<span class="titulo-funcao">Caderno e filtro de assets:</span>';
+        $html[] = '<span class="titulo-funcao">' . $this->escapeHtmlInline($titulo) . '</span>';
+        $html[] = '<span>Valor fixo de ' . $this->escapeHtmlInline($valorCaderno) . ' por desenvolvimento de caderno de interiores e ' . $this->escapeHtmlInline($valorFiltroAssets) . ' pela separação de assets para a produção dos interiores dos ambientes virtuais.</span>';
+        $html[] = '</p>';
+
+        return implode("\n", $html);
     }
 
     private function buildFinalizacaoBlock(array $finalizacaoInfo): string

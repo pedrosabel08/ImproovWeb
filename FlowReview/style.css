@@ -3074,6 +3074,12 @@ nav.breadcrumb-nav a {
   color: #ffe8ac;
 }
 
+.tarefa-status--hold-approval {
+  background: rgba(189, 73, 73, 0.3);
+  border-color: rgba(255, 164, 164, 0.3);
+  color: #ffd1d1;
+}
+
 .tarefa-status--default {
   background: rgba(88, 104, 140, 0.24);
   border-color: rgba(161, 176, 208, 0.18);
@@ -5446,6 +5452,10 @@ nav.breadcrumb-nav a {
   --task-card-tone: #f04555;
 }
 
+.tarefasImagensObra .task-item[data-tone="hold-approval"] {
+  --task-card-tone: #e87575;
+}
+
 .task-card-media {
   position: relative;
   padding: 10px 10px 0;
@@ -5534,6 +5544,34 @@ nav.breadcrumb-nav a {
   background: rgba(202, 159, 53, 0.8);
   border-color: rgba(255, 224, 143, 0.26);
   color: #ffe8ac;
+}
+
+.task-status-badge--hold-approval,
+.task-time-badge--hold-approval {
+  background: rgba(154, 53, 53, 0.84);
+  border-color: rgba(255, 164, 164, 0.32);
+  color: #ffd4d4;
+}
+
+.flow-review-hold-context {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(190, 70, 70, 0.18);
+  color: #7f1d1d;
+}
+
+.flow-review-hold-context strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.flow-review-hold-context p {
+  margin: 5px 0;
+  line-height: 1.4;
+}
+
+.flow-review-hold-context small {
+  color: #6b7280;
 }
 
 .task-status-badge--approved-angle,

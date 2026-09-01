@@ -12,6 +12,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/ws_notify.php';
 
 $autoload = __DIR__ . '/vendor/autoload.php';
@@ -701,6 +702,7 @@ if (mb_strtolower(trim((string)$novoHistorico['nome_status_envio']), 'UTF-8') !=
 
 fr_troca_ensure_entrega_item_column($conn);
 
+$flowBlocksResolvidosPeloReview = [];
 $conn->begin_transaction();
 try {
     $old = null;
@@ -782,10 +784,27 @@ try {
         if (!$insHist->execute()) {
             throw new Exception('Erro ao inserir historico da troca.');
         }
+        $historicoAprovacaoId = (int) $conn->insert_id;
         $insHist->close();
     }
 
+    $flowBlocksResolvidosPeloReview = flow_block_resolve_review_approval_blocks(
+        $conn,
+        (int) $funcaoImagemId,
+        (int) $respHist,
+        (int) ($historicoAprovacaoId ?? 0),
+        'Ângulo definitivo alterado'
+    );
+
     $conn->commit();
+
+    foreach ($flowBlocksResolvidosPeloReview as $flowBlockResolvido) {
+        $issueId = (int) ($flowBlockResolvido['id'] ?? 0);
+        $taskId = (int) ($flowBlockResolvido['funcao_imagem_id'] ?? 0);
+        if ($issueId > 0 && $taskId > 0) {
+            flow_block_publish($issueId, $taskId, 'review_angle_changed');
+        }
+    }
 
     $response = [
         'success' => true,

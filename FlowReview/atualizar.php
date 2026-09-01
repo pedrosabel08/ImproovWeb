@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 include_once __DIR__ . '/../conexao.php'; // Conexão com o banco de dados
 require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/pdf_approval_helpers.php';
+require_once __DIR__ . '/../helpers/flow_review_eligibility_helper.php';
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -14,6 +15,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 $idusuario = $_SESSION['idusuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
+$flowReviewHoldApprovalBlock = flow_review_hold_approval_block_sql('f');
 
 try {
     fr_approval_media_ensure_schema($conn);
@@ -79,6 +81,7 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
+            OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock)
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
@@ -139,6 +142,7 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
+            OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock)
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
@@ -199,6 +203,7 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
+            OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock)
           )
           AND o.status_obra = 0 AND i.substatus_id <> 7
         ORDER BY data_aprovacao DESC";
@@ -262,6 +267,7 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
+            OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock)
           )
           AND o.idobra IN (
               SELECT i2.obra_id
@@ -328,6 +334,7 @@ try {
             OR (f.status = 'Em andamento' AND EXISTS (
                 SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem AND h.status_novo = 'Aguardando Direção'
             ))
+            OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock)
           )
           AND o.idobra IN (
               SELECT i2.obra_id
@@ -368,6 +375,7 @@ try {
             $tarefas[] = $row;
         }
     }
+    flow_review_enrich_hold_approval_blocks($conn, $tarefas);
 
     $sqlAnimacao = "SELECT
             fa.id AS idfuncao_imagem,

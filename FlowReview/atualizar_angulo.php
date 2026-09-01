@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../config/secure_env.php';
 
@@ -10,6 +11,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 
@@ -130,10 +132,18 @@ function resolve_slack_user_id_by_colaborador($conn, $colaborador_id, $token, &$
 
     foreach ($data['members'] as $m) {
         $candidates = [];
-        if (!empty($m['real_name'])) $candidates[] = $m['real_name'];
-        if (!empty($m['profile']['real_name_normalized'])) $candidates[] = $m['profile']['real_name_normalized'];
-        if (!empty($m['profile']['display_name'])) $candidates[] = $m['profile']['display_name'];
-        if (!empty($m['profile']['display_name_normalized'])) $candidates[] = $m['profile']['display_name_normalized'];
+        if (!empty($m['real_name'])) {
+            $candidates[] = $m['real_name'];
+        }
+        if (!empty($m['profile']['real_name_normalized'])) {
+            $candidates[] = $m['profile']['real_name_normalized'];
+        }
+        if (!empty($m['profile']['display_name'])) {
+            $candidates[] = $m['profile']['display_name'];
+        }
+        if (!empty($m['profile']['display_name_normalized'])) {
+            $candidates[] = $m['profile']['display_name_normalized'];
+        }
 
         foreach ($candidates as $cand) {
             if (normalize_name($cand) === $targetNorm) {
@@ -888,6 +898,7 @@ if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
 
 $flowConnectAngleEventId = 0;
 $historicoAprovacaoId = 0;
+$flowBlocksResolvidosPeloReview = [];
 $conn->begin_transaction();
 try {
     if ($acao === 'ajustes') {
@@ -973,6 +984,14 @@ try {
         $insHist->close();
     }
 
+    $flowBlocksResolvidosPeloReview = flow_block_resolve_review_approval_blocks(
+        $conn,
+        (int) $funcao_imagem_id,
+        (int) $respHist,
+        (int) $historicoAprovacaoId,
+        (string) $histStatusNovo
+    );
+
     $flowConnectAngleEvent = \FlowConnect\Application\FlowReviewEventFactory::angle([
         'angulo_id' => null,
         'historico_id' => (int)$historico_id,
@@ -1004,6 +1023,14 @@ try {
     exit;
 }
 
+foreach ($flowBlocksResolvidosPeloReview as $flowBlockResolvido) {
+    $issueId = (int) ($flowBlockResolvido['id'] ?? 0);
+    $taskId = (int) ($flowBlockResolvido['funcao_imagem_id'] ?? 0);
+    if ($issueId > 0 && $taskId > 0) {
+        flow_block_publish($issueId, $taskId, 'review_angle_decided');
+    }
+}
+
 $sftpInserido = false;
 $vpsInserido = false;
 if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
@@ -1021,10 +1048,10 @@ if ($legacyAngleBypassed) {
         $uidSlack = resolve_slack_user_id_by_colaborador($conn, (int)$colaborador_id, $slackToken, $logs);
     }
     if ($uidSlack) {
-    $msg = $mensagemSlack;
-    if ($observacao !== '') {
-        $msg .= "\nObservação: {$observacao}";
-    }
+        $msg = $mensagemSlack;
+        if ($observacao !== '') {
+            $msg .= "\nObservação: {$observacao}";
+        }
         slack_post_message($slackToken, $uidSlack, $msg, $logs);
     }
 }

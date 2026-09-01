@@ -479,6 +479,121 @@ if (!function_exists('flow_block_refresh_task_status')) {
     }
 }
 
+if (!function_exists('flow_block_review_decision_resolves_pending_approval')) {
+    function flow_block_review_decision_resolves_pending_approval(string $decision): bool
+    {
+        return in_array($decision, [
+            'Aprovado',
+            'Aprovado com ajustes',
+            'Ajuste',
+            'Ângulo definitivo alterado',
+        ], true);
+    }
+}
+
+if (!function_exists('flow_block_resolve_review_approval_blocks')) {
+    /**
+     * Fecha a pendência de aprovação que foi efetivamente decidida no Flow Review.
+     *
+     * Não encerra Issues de dependência entre etapas: elas possuem vínculo próprio e
+     * continuam sendo liberadas pela aprovação da tarefa predecessora.
+     * A tarefa em si não é alterada aqui; o endpoint do Flow Review permanece dono
+     * da transição normal de status.
+     *
+     * @return array<int, array{id: int, codigo: string, funcao_imagem_id: int}>
+     */
+    function flow_block_resolve_review_approval_blocks(
+        mysqli $conn,
+        int $taskId,
+        int $actorId,
+        int $approvalHistoryId,
+        string $decision
+    ): array {
+        if ($taskId <= 0 || $actorId <= 0 || !flow_block_review_decision_resolves_pending_approval($decision)) {
+            return [];
+        }
+
+        $dependencyTable = $conn->query("SHOW TABLES LIKE 'flow_issue_dependencia'");
+        $hasDependencyTable = $dependencyTable && $dependencyTable->num_rows > 0;
+        if ($dependencyTable instanceof mysqli_result) {
+            $dependencyTable->close();
+        }
+        $dependencyGuard = $hasDependencyTable
+            ? 'AND NOT EXISTS (SELECT 1 FROM flow_issue_dependencia fr_dependency WHERE fr_dependency.issue_id = fr_issue.id)'
+            : '';
+
+        $select = $conn->prepare("SELECT fr_issue.id, fr_issue.codigo, fr_issue.funcao_imagem_id
+            FROM flow_issue fr_issue
+            INNER JOIN flow_issue_tipo fr_type ON fr_type.id = fr_issue.tipo_id
+            WHERE fr_issue.funcao_imagem_id = ?
+              AND fr_type.codigo = 'APROVACAO_PENDENTE'
+              AND fr_issue.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')
+              {$dependencyGuard}
+            FOR UPDATE");
+        if (!$select) {
+            throw new RuntimeException('Falha ao localizar o Flow Block de aprovação: ' . $conn->error);
+        }
+        $select->bind_param('i', $taskId);
+        $select->execute();
+        $issues = $select->get_result()->fetch_all(MYSQLI_ASSOC);
+        $select->close();
+
+        $resolved = [];
+        foreach ($issues as $issue) {
+            $issueId = (int) $issue['id'];
+            $message = 'Decisão registrada no Flow Review: ' . $decision . '.';
+            $update = $conn->prepare("UPDATE flow_issue
+                SET status='RESOLVIDA', resolvido_por_colaborador_id=?, resolvido_em=NOW(),
+                    encerramento_observacao=?, confirmada_por_colaborador_id=?, confirmada_em=NOW(),
+                    confirmacao_observacao='Resolução automática por decisão do Flow Review.',
+                    proxima_cobranca_em=NULL
+                WHERE id=?");
+            if (!$update) {
+                throw new RuntimeException('Falha ao encerrar o Flow Block de aprovação: ' . $conn->error);
+            }
+            $update->bind_param('isii', $actorId, $message, $actorId, $issueId);
+            if (!$update->execute()) {
+                $error = $update->error;
+                $update->close();
+                throw new RuntimeException('Falha ao encerrar o Flow Block de aprovação: ' . $error);
+            }
+            $update->close();
+
+            $cycle = $conn->prepare("UPDATE flow_issue_ciclo
+                SET finalizado_em=NOW(), status_final='RESOLVIDA'
+                WHERE issue_id=? AND finalizado_em IS NULL
+                ORDER BY id DESC LIMIT 1");
+            if ($cycle) {
+                $cycle->bind_param('i', $issueId);
+                $cycle->execute();
+                $cycle->close();
+            }
+
+            $metadata = json_encode([
+                'origem' => 'flow_review',
+                'historico_aprovacao_id' => $approvalHistoryId ?: null,
+                'decisao' => $decision,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $activity = $conn->prepare("INSERT INTO flow_issue_atividade
+                (issue_id, tipo, conteudo, metadados, criado_por_colaborador_id)
+                VALUES (?, 'RESOLVIDA_AUTOMATICAMENTE', ?, ?, ?)");
+            if ($activity) {
+                $activity->bind_param('issi', $issueId, $message, $metadata, $actorId);
+                $activity->execute();
+                $activity->close();
+            }
+
+            $resolved[] = [
+                'id' => $issueId,
+                'codigo' => (string) ($issue['codigo'] ?? ''),
+                'funcao_imagem_id' => (int) $issue['funcao_imagem_id'],
+            ];
+        }
+
+        return $resolved;
+    }
+}
+
 if (!function_exists('flow_block_duration_label')) {
     function flow_block_duration_label(?string $startedAt, ?string $endedAt = null): string
     {

@@ -1,13 +1,16 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
-if (session_status() !== PHP_SESSION_ACTIVE)
+if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
+}
 
 require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/conexaoMain.php';
 require_once __DIR__ . '/Dashboard/onboarding_helpers.php';
 require_once __DIR__ . '/Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/Entregas/pendencias_entrega_helper.php';
+require_once __DIR__ . '/helpers/flow_review_eligibility_helper.php';
 
 // Basic auth check: require logged collaborator
 $userId = isset($_SESSION['idcolaborador']) ? intval($_SESSION['idcolaborador']) : null;
@@ -90,6 +93,7 @@ $render_count = ($res_render) ? intval($res_render->fetch_assoc()['cnt']) : 0;
 //  colaborador_id = 1  → funcoes Caderno (1), Modelagem (2), Composição (3), Filtro/Assets (8)
 //  colaborador_id = 21 → all funcoes
 $flow_review_count = 0;
+$flowReviewHoldApprovalBlock = flow_review_hold_approval_block_sql('f');
 if ($userId === 9) {
     $stmt_fr = $conn->prepare(
         "SELECT COUNT(*) AS cnt
@@ -97,7 +101,7 @@ if ($userId === 9) {
          JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
          JOIN obra o ON o.idobra = i.obra_id
          WHERE f.funcao_id IN (4, 5)
-           AND f.status = 'Em aprovação'
+            AND (f.status = 'Em aprovação' OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock))
            AND o.status_obra = 0"
     );
 } elseif ($userId === 1) {
@@ -107,7 +111,7 @@ if ($userId === 9) {
          JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
          JOIN obra o ON o.idobra = i.obra_id
          WHERE f.funcao_id IN (1, 2, 3, 8)
-           AND f.status = 'Em aprovação'
+            AND (f.status = 'Em aprovação' OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock))
            AND o.status_obra = 0"
     );
 } elseif ($userId === 21) {
@@ -116,7 +120,7 @@ if ($userId === 9) {
          FROM funcao_imagem f
          JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
          JOIN obra o ON o.idobra = i.obra_id
-         WHERE f.status = 'Em aprovação'
+          WHERE (f.status = 'Em aprovação' OR (f.status = 'HOLD' AND $flowReviewHoldApprovalBlock))
            AND o.status_obra = 0"
     );
 } else {

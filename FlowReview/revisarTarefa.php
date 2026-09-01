@@ -752,6 +752,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flowConnectTaskEventId = 0;
         $historicoAprovacaoId = 0;
         $flowBlocksEncerradosAutomaticamente = [];
+        $flowBlocksResolvidosPeloReview = [];
         $conn->begin_transaction();
 
         if (
@@ -820,6 +821,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
 
             $flowBlocksEncerradosAutomaticamente = flow_block_dependencia_encerrar_por_aprovacao(
+                $conn,
+                (int) $idfuncao_imagem,
+                (int) $responsavel,
+                (int) $historicoAprovacaoId,
+                (string) $status
+            );
+            $flowBlocksResolvidosPeloReview = flow_block_resolve_review_approval_blocks(
                 $conn,
                 (int) $idfuncao_imagem,
                 (int) $responsavel,
@@ -1607,6 +1615,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             }
             flow_block_publish($issueId, $blockedTaskId, 'approval_dependency_resolved');
+        }
+
+        foreach ($flowBlocksResolvidosPeloReview as $flowBlockResolvido) {
+            $issueId = (int) ($flowBlockResolvido['id'] ?? 0);
+            $taskId = (int) ($flowBlockResolvido['funcao_imagem_id'] ?? 0);
+            if ($issueId > 0 && $taskId > 0) {
+                flow_block_publish($issueId, $taskId, 'review_approval_resolved');
+            }
         }
 
         if (!empty($pdfPublicacaoEnfileirada)) {

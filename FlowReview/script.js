@@ -559,42 +559,11 @@ async function fetchObrasETarefas() {
     if (secObrasEl) secObrasEl.classList.remove("hidden");
     if (secTarefasEl) secTarefasEl.classList.add("hidden");
 
-    // Populate função filter na sidebar home
+    refreshHomeFilterOptions();
+
     const frFuncaoHome = document.getElementById("fr-funcao-home");
-    if (frFuncaoHome) {
-      frFuncaoHome.innerHTML = '<option value="">Todas</option>';
-      [...todasAsFuncoes].sort().forEach((funcao) => {
-        const option = document.createElement("option");
-        option.value = funcao;
-        option.textContent = funcao;
-        frFuncaoHome.appendChild(option);
-      });
-    }
-
-    // Populate colaborador filter na sidebar home
     const frColabHome = document.getElementById("fr-colaborador-home");
-    if (frColabHome) {
-      frColabHome.innerHTML = '<option value="">Todos</option>';
-      [...todosOsColaboradores].sort().forEach((colab) => {
-        const option = document.createElement("option");
-        option.value = colab;
-        option.textContent = colab;
-        frColabHome.appendChild(option);
-      });
-    }
-
-    // Populate status filter na sidebar home
-    const todosOsStatus = new Set(dadosTarefas.map((t) => t.status));
     const frStatusHome = document.getElementById("fr-status-home");
-    if (frStatusHome) {
-      frStatusHome.innerHTML = '<option value="">Todos</option>';
-      [...todosOsStatus].sort().forEach((status) => {
-        const option = document.createElement("option");
-        option.value = status;
-        option.textContent = status;
-        frStatusHome.appendChild(option);
-      });
-    }
 
     // Attach sidebar filter listeners only once
     const searchInput = document.getElementById("fr-search-obra");
@@ -623,6 +592,33 @@ async function fetchObrasETarefas() {
   } catch (error) {
     console.error(error);
   }
+}
+
+function refreshHomeFilterOptions() {
+  const populate = (id, emptyLabel, values) => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const selected = select.value;
+    select.innerHTML = `<option value="">${emptyLabel}</option>`;
+    [...values]
+      .filter(Boolean)
+      .sort()
+      .forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    select.value = [...values].includes(selected) ? selected : "";
+  };
+
+  populate("fr-funcao-home", "Todas", todasAsFuncoes);
+  populate("fr-colaborador-home", "Todos", todosOsColaboradores);
+  populate(
+    "fr-status-home",
+    "Todos",
+    new Set(dadosTarefas.map((task) => task.status)),
+  );
 }
 
 // Filtra os cards de obra com base nos filtros da sidebar home
@@ -1036,10 +1032,10 @@ function filtrarTarefasPorObra(obraSelecionada) {
   atualizarFiltrosDinamicos(tarefasDaObra);
 
   // Captura os novos valores dos selects após atualização
-  const colaboradorSelecionado =
+  let colaboradorSelecionado =
     document.getElementById("filtro_colaborador").value;
   let funcaoSelecionada = document.getElementById("nome_funcao").value;
-  const statusSelecionado =
+  let statusSelecionado =
     document.getElementById("filtro_status")?.value || "";
   const buscaImagem = (document.getElementById("fr-search-funcao")?.value || "")
     .toLowerCase()
@@ -1063,6 +1059,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     const opcoesColab = Array.from(selectColab.options).map((opt) => opt.value);
     if (opcoesColab.includes(colaboradorGlobalSelecionado)) {
       selectColab.value = colaboradorGlobalSelecionado;
+      colaboradorSelecionado = colaboradorGlobalSelecionado;
     }
     colaboradorGlobalSelecionado = null;
   }
@@ -1076,6 +1073,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
       );
       if (opcoesStatus.includes(statusGlobalSelecionado)) {
         selectStatus.value = statusGlobalSelecionado;
+        statusSelecionado = statusGlobalSelecionado;
       }
     }
     statusGlobalSelecionado = null;
@@ -1288,6 +1286,10 @@ function formatTaskElapsedTime(startValue) {
 }
 
 function getTaskStatusMeta(tarefa) {
+  if (tarefa.flow_review_hold_approval) {
+    return { key: "hold-approval", label: "HOLD · Aprovação pendente" };
+  }
+
   if (tarefa.pendente_direcao) {
     return { key: "direction", label: "Aguardando direção" };
   }
@@ -1314,6 +1316,10 @@ function getTaskStatusMeta(tarefa) {
 }
 
 function getTaskTone(tarefa, mentionCount) {
+  if (tarefa.flow_review_hold_approval) {
+    return "hold-approval";
+  }
+
   if (
     tarefa.prioridade_aprovacao == 1 &&
     tarefa.status_novo === "Em aprovação"
@@ -3205,8 +3211,8 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       let pdfShownOnce = false;
 
       // Preencher o container de aprovação (se houver um responsavel registrado)
+      const approvalContainer = document.getElementById("approval_info");
       try {
-        const approvalContainer = document.getElementById("approval_info");
         if (approvalContainer) {
           approvalContainer.style.display = "none";
           if (Array.isArray(historico) && historico.length > 0) {
@@ -3284,6 +3290,23 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
         }
       } catch (e) {
         console.error("Erro ao preencher approval_info", e);
+      }
+
+        const holdApprovalBlock = tarefaAtual?.flow_review_flow_block;
+        if (tarefaAtual?.flow_review_hold_approval && holdApprovalBlock) {
+          const blockDate = holdApprovalBlock.criado_em
+          ? formatarDataComentario(holdApprovalBlock.criado_em)
+          : "";
+        const existingApprovalInfo = approvalContainer?.innerHTML || "";
+        if (approvalContainer) {
+          approvalContainer.innerHTML = `${existingApprovalInfo}
+            <section class="flow-review-hold-context">
+              <strong>HOLD · Aprovação pendente</strong>
+              <p>${escapeHtml(holdApprovalBlock.descricao || "Aguardando decisão para continuidade da produção.")}</p>
+              <small>Registrado por ${escapeHtml(holdApprovalBlock.criador_nome || "—")}${blockDate ? ` em ${escapeHtml(blockDate)}` : ""}</small>
+            </section>`;
+          approvalContainer.style.display = "block";
+        }
       }
 
       const isFlowAngulo =
@@ -3818,8 +3841,9 @@ function exibirSidebarTabulator(tarefas) {
     }
 
     filtered.forEach((t) => {
-      const statusClass =
-        t.status_novo === "Em aprovação"
+      const statusClass = t.flow_review_hold_approval
+        ? "tarefa-status--hold-approval"
+        : t.status_novo === "Em aprovação"
           ? "tarefa-status--approval"
           : t.status_novo === "Ajuste"
             ? "tarefa-status--adjust"
@@ -3840,7 +3864,7 @@ function exibirSidebarTabulator(tarefas) {
       item.innerHTML = `
         <img src="${imgSrc}" class="tab-img" alt="${escapeHtml(t.imagem_nome || "")}">
         <div class="tarefa-item-body">
-          <span class="tarefa-status ${statusClass}">${escapeHtml(t.status_novo || "")}</span>
+          <span class="tarefa-status ${statusClass}">${escapeHtml(t.flow_review_hold_approval ? "HOLD · Aprovação pendente" : t.status_novo || t.status || "")}</span>
           <span class="tarefa-label">${escapeHtml(t.nome_colaborador || "")} — ${escapeHtml(t.imagem_nome || "")}</span>
         </div>
       `;
@@ -7207,6 +7231,7 @@ async function refreshFlowReviewTaskSnapshot() {
     dadosTarefas.map((task) => task.nome_colaborador),
   );
   todasAsFuncoes = new Set(dadosTarefas.map((task) => task.nome_funcao));
+  refreshHomeFilterOptions();
 
   if (responseData.server_now) {
     const serverDate = new Date(
@@ -7310,7 +7335,8 @@ async function handleFlowReviewRealtimeEvent(payload) {
 
   const isApproval = String(payload.event).startsWith("approval.");
   const isMedia = String(payload.event).startsWith("media.");
-  if (!isApproval && !isMedia) return;
+  const isFlowBlock = String(payload.event).startsWith("flow_block.");
+  if (!isApproval && !isMedia && !isFlowBlock) return;
 
   await refreshFlowReviewTaskSnapshot();
   if (scope.taskOpen && scope.funcaoId) {
@@ -7330,6 +7356,16 @@ async function handleFlowReviewRealtimeEvent(payload) {
 window.addEventListener("improov:flowReviewUpdated", (event) => {
   flowReviewRealtimeQueue = flowReviewRealtimeQueue
     .then(() => handleFlowReviewRealtimeEvent(event.detail))
+    .catch((error) => console.error("FlowReview realtime:", error));
+});
+
+window.addEventListener("improov:funcaoAtualizada", (event) => {
+  const payload = event.detail;
+  if (!payload?.issue_id) return;
+  flowReviewRealtimeQueue = flowReviewRealtimeQueue
+    .then(() =>
+      handleFlowReviewRealtimeEvent({ ...payload, event: "flow_block.updated" }),
+    )
     .catch((error) => console.error("FlowReview realtime:", error));
 });
 

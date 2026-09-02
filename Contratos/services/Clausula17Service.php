@@ -99,6 +99,31 @@ class Clausula17Service
                 'funcoes' => [],
             ];
         }
+        // Exceção: colaborador 44 possui tabela própria por volume de cenas.
+        if ($colaboradorId === 44) {
+            $animacaoInfo = $this->getAnimacaoInfo($this->getNivelAnimacao($funcoes));
+            $titulo = $animacaoInfo['titulo'] ?? 'Artista digital Nível não definido';
+            $trechos = [];
+            $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
+
+            $linhas = [];
+            $linhas[] = '<p>';
+            $linhas[] = '<span class="titulo-funcao">Animação:</span>';
+            $linhas[] = '<span class="titulo-funcao">' . $this->escapeHtmlInline($titulo) . '</span>';
+            $linhas[] = '<span>Até 9 cenas: R$ 275,00 por cena</span>';
+            $linhas[] = '<span>A partir de 10 cenas: R$ 300,00 por cena</span>';
+            $linhas[] = '</p>';
+
+            $trechos[] = implode("\n", $linhas);
+            $trechos[] = $this->buildParagrafos(false);
+
+            return [
+                'texto' => implode("\n", $trechos),
+                'funcoes' => [],
+            ];
+        }
+
         $funcoesNomes = $this->getFuncoesNomes($funcoes);
 
         $temFinalizacao = $this->temFinalizacao($funcoesNomes);

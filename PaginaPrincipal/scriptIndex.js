@@ -6634,8 +6634,25 @@ function configurarModalPlanejamento(card) {
 
 async function salvarPrevisaoPlanejamento(card) {
   if (!card || card.classList.contains("tarefa-criada")) return true;
-  const previsao = modalPrevisaoConclusao?.value || "";
+  // Na finalização, o modal de planejamento fica oculto e o único campo
+  // disponível é o prazo de entrega. Para esta etapa, ele representa a
+  // previsão do colaborador e deve ser usado na mesma persistência.
+  const previsaoPlanejamento = modalPrevisaoConclusao?.value?.trim() || "";
+  const prazoVisivel =
+    modalPrazo && modalPrazo.offsetParent !== null
+      ? modalPrazo.value?.trim() || ""
+      : "";
+  const planejamentoVisivel =
+    modalPlanejamento &&
+    !modalPlanejamento.hidden &&
+    modalPlanejamento.offsetParent !== null;
+  // Se o prazo de entrega estiver visível, ele é a fonte da previsão desta
+  // operação. Isso também evita reutilizar um valor antigo do campo oculto.
+  const previsao =
+    prazoVisivel || (planejamentoVisivel ? previsaoPlanejamento : "");
+
   if (card.dataset.planningAvailable !== "1" && !previsao) return true;
+  if (!previsao && !planejamentoVisivel) return true;
   if (!previsao) {
     throw new Error("Informe sua previsão de conclusão.");
   }
@@ -6700,6 +6717,20 @@ document.getElementById("fecharModal").addEventListener("click", () => {
 document.getElementById("salvarModal").addEventListener("click", async () => {
   if (!cardSelecionado) return;
 
+  // Verifica se o prazo está vazio
+  if (modalPrazo.offsetParent !== null && !modalPrazo.value) {
+    Toastify({
+      text: "Por favor, preencha o prazo antes de salvar.",
+      duration: 3000,
+      close: true,
+      gravity: "top",
+      position: "left",
+      backgroundColor: "red",
+    }).showToast();
+
+    return; // interrompe o envio
+  }
+
   if (!cardSelecionado.classList.contains("tarefa-criada")) {
     try {
       await salvarPrevisaoPlanejamento(cardSelecionado);
@@ -6714,20 +6745,6 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       }).showToast();
       return;
     }
-  }
-
-  // Verifica se o prazo está vazio
-  if (modalPrazo.offsetParent !== null && !modalPrazo.value) {
-    Toastify({
-      text: "Por favor, preencha o prazo antes de salvar.",
-      duration: 3000,
-      close: true,
-      gravity: "top",
-      position: "left",
-      backgroundColor: "red",
-    }).showToast();
-
-    return; // interrompe o envio
   }
 
   cardSelecionado.dataset.prazo = modalPrazo.value;

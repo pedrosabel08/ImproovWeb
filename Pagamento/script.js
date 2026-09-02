@@ -172,7 +172,7 @@ document.addEventListener(
       '<div class="financial-metrics"><div class="summary-metric"><span class="summary-label">Total da competência</span><strong id="totalValor">R$ 0,00</strong><small><span id="total-itens-resumo">0</span> itens</small></div><div class="summary-metric pending"><span class="summary-label">Pendente</span><strong id="totalValorNaoPago">R$ 0,00</strong><small><span id="total-imagens-nao-pagas">0</span> itens</small></div><div class="summary-metric paid"><span class="summary-label">Pago</span><strong id="totalValorPago">R$ 0,00</strong><small><span id="total-imagens-pagas">0</span> itens</small></div></div>';
     const documentArea = document.createElement("div");
     documentArea.className = "adendo-summary";
-    documentArea.innerHTML =
+    documentArea.innerHTML = 
       '<i class="fa-regular fa-file-lines adendo-summary-icon"></i><div class="adendo-copy"></div><div class="adendo-actions"></div>';
     const copy = documentArea.querySelector(".adendo-copy");
     if (statusWidget) {
@@ -1788,7 +1788,7 @@ document
         .filter((tr) => tr.offsetParent !== null)
         .map((tr) => {
           const cells = tr.querySelectorAll("td");
-          const imagem = cells[0]?.textContent?.trim() || "";
+          const imagem = cells[1]?.textContent?.trim() || "";
           const checkbox = tr.querySelector(".pagamento-checkbox");
           // Prefer the visible cell text (cleaned from badges) because data attributes may be stale
           let funcaoRaw = cells[2]?.textContent || "";

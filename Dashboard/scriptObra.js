@@ -5887,8 +5887,9 @@ function infosObra(obraId) {
       addEventListenersToRows();
       // Cachear cliente_id para o modal de animação
       window.__obraClienteId = data.obra.cliente_id || "";
-      // Animações e requisitos de arquivos são carregados somente quando a
-      // respectiva área é aberta ou entra na viewport.
+      // A tabela de animações fica abaixo da tabela principal e precisa ser
+      // carregada junto com os dados da obra para que a seção seja revelada.
+      carregarAnimacoesObra(obraId);
       if (data.briefing && data.briefing.length > 0) {
         const br = data.briefing[0];
 

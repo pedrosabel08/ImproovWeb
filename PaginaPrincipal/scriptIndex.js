@@ -1,4 +1,10 @@
-if (colaborador_id === 9 || colaborador_id === 21) {
+const initialFlowParams = new URLSearchParams(window.location.search);
+const focusedTaskColaborador = initialFlowParams.get("focus_task")
+  ? Number(initialFlowParams.get("colaborador_id") || 0)
+  : 0;
+if (focusedTaskColaborador > 0) colaborador_id = focusedTaskColaborador;
+
+if (colaborador_id === 9 || colaborador_id === 21 || focusedTaskColaborador > 0) {
   document.getElementById("idcolab").style.display = "flex"; // libera
 } else {
   document.getElementById("idcolab").style.display = "none"; // esconde
@@ -3341,43 +3347,18 @@ function fetchDailyPanel() {
   }
 }
 
-// Nav button handlers
-const btnOverview = document.getElementById("overview");
-const btnKanban = document.getElementById("kanban");
-const overviewSection = document.getElementById("overview-section");
-const kanbanSection = document.getElementById("kanban-section");
-
-function setActive(button) {
-  [btnOverview, btnKanban].forEach((b) => b.classList.remove("active"));
-  if (button) button.classList.add("active");
-}
-
-if (btnOverview)
-  btnOverview.addEventListener("click", () => {
-    overviewSection.style.display = "flex";
-    kanbanSection.style.display = "none";
-    setActive(btnOverview);
-  });
-
-if (btnKanban)
-  btnKanban.addEventListener("click", () => {
-    overviewSection.style.display = "none";
-    kanbanSection.style.display = "flex";
-    setActive(btnKanban);
-  });
-
-// Resumo modal button handlers
-document.getElementById("resumo-overview").addEventListener("click", () => {
+// Atalhos do resumo respeitam a separação entre Overview e Kanban.
+document.getElementById("resumo-overview")?.addEventListener("click", () => {
   document.getElementById("resumoModal").style.display = "none";
-  btnOverview.click();
+  document.getElementById("overviewBtn")?.click();
 });
 
-document.getElementById("resumo-kanban").addEventListener("click", () => {
+document.getElementById("resumo-kanban")?.addEventListener("click", () => {
   document.getElementById("resumoModal").style.display = "none";
-  btnKanban.click();
+  document.getElementById("kanbanBtn")?.click();
 });
 
-document.getElementById("resumo-close").addEventListener("click", () => {
+document.getElementById("resumo-close")?.addEventListener("click", () => {
   document.getElementById("resumoModal").style.display = "none";
 });
 
@@ -8017,367 +7998,87 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
 })();
 
 // ─────────────────────────────────────────────────────────────────
-//  Visão Geral (Overview) – carrega uma vez por sessão de página
-// ─────────────────────────────────────────────────────────────────
-let _overviewLoaded = false;
-
-async function carregarOverview() {
-  if (_overviewLoaded) return;
-  _overviewLoaded = true;
-
-  // ── Banner + Calendar ──────────────────────────────────────────
-  let entregas = [];
-  try {
-    const res = await fetch("Entregas/listar_entregas.php");
-    entregas = await res.json();
-    if (!Array.isArray(entregas)) entregas = [];
-  } catch (e) {
-    console.error("carregarOverview: erro ao buscar entregas", e);
-  }
-
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const em15 = new Date(hoje);
-  em15.setDate(em15.getDate() + 15);
-
-  const atrasadas = entregas.filter((e) => e.kanban_status === "atrasada");
-  const proximas = entregas.filter((e) => {
-    if (e.kanban_status === "concluida" || e.kanban_status === "atrasada")
-      return false;
-    const dp = new Date(e.data_prevista + "T00:00:00");
-    return dp >= hoje && dp <= em15;
-  });
-
-  function _fmtDt(str) {
-    if (!str) return "";
-    const [, m, d] = str.split("-");
-    return `${d}/${m}`;
-  }
-
-  const listAtrasadas = document.getElementById("banner-atrasadas-list");
-  if (listAtrasadas) {
-    if (atrasadas.length === 0) {
-      listAtrasadas.innerHTML =
-        '<p class="banner-empty">Nenhuma entrega atrasada ✓</p>';
-    } else {
-      listAtrasadas.innerHTML = atrasadas
-        .map(
-          (e) => `
-                <div class="banner-item banner-item-atrasada" data-obra-id="${e.obra_id}" data-entrega-id="${e.id}">
-                    <span class="banner-item-obra">${e.nomenclatura}</span>
-                    <span class="banner-item-etapa">${e.nome_etapa}</span>
-                    <span class="banner-item-data">${_fmtDt(e.data_prevista)}</span>
-                </div>`,
-        )
-        .join("");
-
-      // abrir modal ao clicar em uma entrega atrasada
-      listAtrasadas.addEventListener("click", (ev) => {
-        const item = ev.target.closest(".banner-item");
-        if (!item) return;
-        const obraId = item.dataset.obraId || item.getAttribute("data-obra-id");
-        const nome =
-          item.querySelector(".banner-item-obra")?.textContent || "Obra";
-        const etapa =
-          item.querySelector(".banner-item-etapa")?.textContent?.trim() || "";
-        if (obraId) openObraImagesModal(Number(obraId), nome, etapa);
-      });
-    }
-  }
-
-  const listProximas = document.getElementById("banner-proximas-list");
-  if (listProximas) {
-    if (proximas.length === 0) {
-      listProximas.innerHTML =
-        '<p class="banner-empty">Sem entregas nos próximos 15 dias</p>';
-    } else {
-      listProximas.innerHTML = proximas
-        .map((e) => {
-          const dp = new Date(e.data_prevista + "T00:00:00");
-          const diff = Math.round((dp - hoje) / 86400000);
-          return `
-                <div class="banner-item banner-item-proxima" data-obra-id="${e.obra_id}" data-entrega-id="${e.id}">
-                    <span class="banner-item-obra">${e.nomenclatura}</span>
-                    <span class="banner-item-etapa">${e.nome_etapa}</span>
-                    <span class="banner-item-data">${diff === 0 ? "Hoje" : diff + "d"}</span>
-                </div>`;
-        })
-        .join("");
-
-      listProximas.addEventListener("click", (ev) => {
-        const item = ev.target.closest(".banner-item");
-        if (!item) return;
-        const obraId = item.dataset.obraId || item.getAttribute("data-obra-id");
-        const nome =
-          item.querySelector(".banner-item-obra")?.textContent || "Obra";
-        const etapa =
-          item.querySelector(".banner-item-etapa")?.textContent?.trim() || "";
-        if (obraId) openObraImagesModal(Number(obraId), nome, etapa);
-      });
-    }
-  }
-
-  // ── Atualizar contadores dos indicadores compactos ──
-  const cntAtrasadas = document.getElementById("indicator-atrasadas-count");
-  if (cntAtrasadas) cntAtrasadas.textContent = atrasadas.length;
-  const cntProximas = document.getElementById("indicator-proximas-count");
-  if (cntProximas) cntProximas.textContent = proximas.length;
-
-  // ── Toggle dropdown dos indicator-cards ──
-  document.querySelectorAll(".indicator-card").forEach((card) => {
-    card.addEventListener("click", (e) => {
-      // Fecha outros abertos
-      document.querySelectorAll(".indicator-card.open").forEach((c) => {
-        if (c !== card) c.classList.remove("open");
-      });
-      card.classList.toggle("open");
-      e.stopPropagation();
-    });
-  });
-  // Fechar ao clicar fora
-  document.addEventListener("click", () => {
-    document
-      .querySelectorAll(".indicator-card.open")
-      .forEach((c) => c.classList.remove("open"));
-  });
-
-  // ── Calendar ───────────────────────────────────────────────────
-  const calendarEl = document.getElementById("overview-calendar");
-  if (calendarEl && window.FullCalendar) {
-    const eventos = entregas.map((e) => ({
-      id: e.id,
-      title: `${e.nomenclatura} – ${e.nome_etapa}`,
-      start: e.data_prevista,
-      allDay: true,
-      backgroundColor:
-        e.kanban_status === "atrasada"
-          ? "#ef4444"
-          : e.kanban_status === "hold"
-            ? "#6b7280"
-            : e.kanban_status === "parcial"
-              ? "#f59e0b"
-              : e.kanban_status === "concluida"
-                ? "#22c55e"
-                : "#3b82f6",
-      borderColor: "transparent",
-      textColor: "#fff",
-      extendedProps: {
-        obra_id: e.obra_id,
-        entrega_id: e.id,
-        kanban_status: e.kanban_status,
-      },
-    }));
-
-    const overviewCal = new FullCalendar.Calendar(calendarEl, {
-      initialView: "dayGridMonth",
-      locale: "pt-br",
-      height: "100%",
-      weekends: true,
-      headerToolbar: { left: "prev", center: "title", right: "next" },
-      events: eventos,
-      eventClick: function (info) {
-        try {
-          info.jsEvent?.stopPropagation();
-        } catch (e) {}
-        const obraId = info.event.extendedProps?.obra_id || null;
-        const titulo = info.event.title || "";
-        // Extrai etapa do título (formato: "NOMENCLATURA – ETAPA")
-        const etapaParts = titulo.split("–");
-        const etapaFromTitle =
-          etapaParts.length > 1 ? etapaParts[etapaParts.length - 1].trim() : "";
-        if (obraId) {
-          openObraImagesModal(Number(obraId), titulo, etapaFromTitle);
-        } else {
-          // fallback: show details
-          try {
-            showEventDetails(info.event, info.el);
-          } catch (e) {
-            console.error(e);
-          }
-        }
-      },
-    });
-    overviewCal.render();
-  }
-
-  // ── Dashboard de produção ──────────────────────────────────────
-  const now = new Date();
-  const mes = now.getMonth() + 1;
-  const ano = now.getFullYear();
-  const mesesNomes = [
-    "Janeiro",
-    "Fevereiro",
-    "Março",
-    "Abril",
-    "Maio",
-    "Junho",
-    "Julho",
-    "Agosto",
-    "Setembro",
-    "Outubro",
-    "Novembro",
-    "Dezembro",
-  ];
-
-  const labelEl = document.getElementById("overview-mes-label");
-  if (labelEl) labelEl.textContent = `${mesesNomes[mes - 1]} ${ano}`;
-
-  const tbody = document.getElementById("overview-prod-tbody");
-  try {
-    const resProd = await fetch(
-      `TelaGerencial/buscar_producao_funcao.php?mes=${mes}&ano=${ano}`,
-    );
-    const dadosProd = await resProd.json();
-
-    if (!dadosProd || dadosProd.error || !dadosProd.length) {
-      if (tbody)
-        tbody.innerHTML =
-          '<tr><td colspan="3" class="overview-loading">Sem dados para este mês</td></tr>';
-      return;
-    }
-
-    if (tbody) {
-      tbody.innerHTML = dadosProd
-        .map((row) => {
-          const qtd = parseInt(row.nao_pagas) || 0;
-          const recorde = parseInt(row.recorde_producao) || 0;
-          const bateRecorde = !!row.bate_recorde && recorde > 0;
-          if (bateRecorde) {
-            const linePct = Math.round((recorde / qtd) * 100);
-            return `
-                    <tr class="prod-row-recorde">
-                        <td class="prod-funcao">${row.nome_funcao}</td>
-                        <td class="prod-qtd">
-                            <div class="prod-bar-wrap">
-                                <div class="prod-bar-track prod-bar-track--record">
-                                    <div class="prod-bar prod-bar--record" style="width:100%"></div>
-                                    <div class="prod-bar-record-line" style="left:${linePct}%"></div>
-                                </div>
-                                <span class="prod-qty-record">${qtd}</span>
-                            </div>
-                        </td>
-                        <td class="prod-recorde prod-recorde--beaten">${recorde}</td>
-                    </tr>`;
-          }
-          const pct =
-            recorde > 0 ? Math.min(100, Math.round((qtd / recorde) * 100)) : 0;
-          return `
-                    <tr>
-                        <td class="prod-funcao">${row.nome_funcao}</td>
-                        <td class="prod-qtd">
-                            <div class="prod-bar-wrap">
-                                <div class="prod-bar-track">
-                                    <div class="prod-bar" style="width:${pct}%"></div>
-                                </div>
-                                <span>${qtd}</span>
-                            </div>
-                        </td>
-                        <td class="prod-recorde">${recorde || qtd}</td>
-                    </tr>`;
-        })
-        .join("");
-    }
-  } catch (e) {
-    console.error("carregarOverview: erro ao buscar produção", e);
-    if (tbody)
-      tbody.innerHTML =
-        '<tr><td colspan="3" class="overview-loading">Erro ao carregar dados</td></tr>';
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-//  Toggle entre Visão Geral, Kanban e Lista
+//  Visão Geral, Kanban e Lista são experiências irmãs no shell de início.
 // ─────────────────────────────────────────────────────────────────
 (function () {
   const btnOverview = document.getElementById("overviewBtn");
-  const btnPainel = document.getElementById("painelBtn");
   const btnKanban = document.getElementById("kanbanBtn");
   const btnLista = document.getElementById("listBtn");
   const overviewSec = document.getElementById("overview-section");
   const kanbanSec = document.getElementById("kanban-section");
   const listSec = document.getElementById("list-section");
   const navRight = document.querySelector("main nav .nav-right");
+  if (!btnOverview || !btnKanban || !btnLista || !overviewSec || !kanbanSec || !listSec) return;
 
-  if (!btnKanban || !btnLista || !kanbanSec || !listSec) return;
-
-  // Use PHP-injected role flag; fall back to collaborator-ID whitelist
-  const isGestorView = window.PAINEL
-    ? window.PAINEL.isGestor
-    : [1, 9, 21].includes(colaborador_id);
-
-  // Sub-panels inside #overview-section
-  const gestorPanel = document.getElementById("overview-gestor");
-  const colabPanel = document.getElementById("overview-colab");
-
-  function hideSections() {
-    if (kanbanSec) kanbanSec.style.display = "none";
-    if (listSec) listSec.style.display = "none";
-    if (overviewSec) overviewSec.style.display = "none";
-  }
-
-  function clearActive() {
-    if (btnOverview) btnOverview.classList.remove("active");
-    if (btnPainel) btnPainel.classList.remove("active");
+  function clearViews() {
+    document.body.classList.remove("overview-active");
+    overviewSec.style.display = "none";
+    kanbanSec.style.display = "none";
+    listSec.style.display = "none";
+    btnOverview.classList.remove("active");
     btnKanban.classList.remove("active");
     btnLista.classList.remove("active");
   }
 
-  // ── Visão Geral (gestor-only: calendar + indicators) ──────────
   function showOverview() {
-    hideSections();
-    if (overviewSec) overviewSec.style.display = "flex";
-    if (gestorPanel) gestorPanel.style.display = "flex";
-    if (colabPanel) colabPanel.style.display = "none";
+    clearViews();
+    document.body.classList.add("overview-active");
+    overviewSec.style.display = "block";
+    btnOverview.classList.add("active");
     if (navRight) navRight.style.visibility = "hidden";
-    clearActive();
-    if (btnOverview) btnOverview.classList.add("active");
-    carregarOverview();
-  }
-
-  // ── Painel de Produção (everyone: individual production) ───────
-  function showPainel() {
-    hideSections();
-    if (overviewSec) overviewSec.style.display = "flex";
-    if (gestorPanel) gestorPanel.style.display = "none";
-    if (colabPanel) colabPanel.style.display = "block";
-    if (navRight) navRight.style.visibility = "hidden";
-    clearActive();
-    if (btnPainel) btnPainel.classList.add("active");
-    if (typeof window.initColabDashboard === "function") {
-      window.initColabDashboard();
-    }
+    window.FlowOverviewV1?.open?.();
   }
 
   function showKanban() {
-    hideSections();
+    clearViews();
     kanbanSec.style.display = "grid";
-    if (navRight) navRight.style.visibility = "visible";
-    clearActive();
     btnKanban.classList.add("active");
+    if (navRight) navRight.style.visibility = "visible";
     atualizarTaskCount();
     agendarRecalculoDensidadeKanban();
   }
 
   function showLista() {
-    hideSections();
+    clearViews();
     listSec.style.display = "block";
-    if (navRight) navRight.style.visibility = "visible";
-    clearActive();
     btnLista.classList.add("active");
-    if (typeof window.renderizarListaTarefas === "function") {
-      window.renderizarListaTarefas();
-    }
+    if (navRight) navRight.style.visibility = "visible";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (listSec.style.display !== "none" && typeof window.renderizarListaTarefas === "function") {
+        window.renderizarListaTarefas();
+      }
+    }));
   }
 
-  // Gestores iniciam na Visão Geral; demais no Kanban
-  if (isGestorView) {
-    showOverview();
-  }
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("focus_task")) showKanban();
+  else if (params.get("view") === "list") showLista();
+  else showOverview();
 
-  if (btnOverview) btnOverview.addEventListener("click", showOverview);
-  if (btnPainel) btnPainel.addEventListener("click", showPainel);
+  btnOverview.addEventListener("click", showOverview);
   btnKanban.addEventListener("click", showKanban);
   btnLista.addEventListener("click", showLista);
+  window.FlowHomeViews = { showOverview, showKanban, showLista };
+
+  const focusTask = params.get("focus_task");
+  if (focusTask) {
+    const escaped = window.CSS?.escape ? window.CSS.escape(focusTask) : focusTask.replace(/[^0-9]/g, "");
+    const focusCard = () => {
+      const card = document.querySelector(`.kanban-card[data-id="${escaped}"]`);
+      if (!card) return false;
+      showKanban();
+      card.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      window.setTimeout(() => card.click(), 180);
+      return true;
+    };
+    if (!focusCard()) {
+      const observer = new MutationObserver(() => {
+        if (focusCard()) observer.disconnect();
+      });
+      observer.observe(kanbanSec, { childList: true, subtree: true });
+      window.setTimeout(() => observer.disconnect(), 12000);
+    }
+  }
 })();
 
 // -------------------------

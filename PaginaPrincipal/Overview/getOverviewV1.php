@@ -24,22 +24,24 @@ $section = in_array((string) ($_GET['section'] ?? 'all'), ['critical', 'secondar
 try {
     $conn = conectarBanco();
     $gestor = improov_usuario_eh_gestor_sidebar($conn);
+    $conn->close();
+    $colaboradorAlvo = (int) $_SESSION['idcolaborador'];
+
+    // A mesma carga usada pelo Kanban produz as pendências através de
+    // pendencias_operacionais_helper.php. A Overview apenas prioriza o payload.
+    define('FLOW_FUNCOES_COLABORADOR_INTERNAL', true);
+    ob_start();
+    require dirname(__DIR__) . '/getFuncoesPorColaborador.php';
+    ob_end_clean();
+    if (!isset($response) || !is_array($response)) {
+        throw new RuntimeException('Não foi possível carregar os dados operacionais.');
+    }
+
+    $conn = conectarBanco();
     if ($gestor) {
-        $overview = flow_overview_v1_gestor($conn, $section);
+        $overview = flow_overview_v1_gestor($conn, (array) ($response['pendencias_operacionais'] ?? []), $section);
     } else {
-        // O carregador canônico do Kanban permanece a fonte de verdade das
-        // regras de liberação, Flow Block, requisitos e pendências.
-        define('FLOW_FUNCOES_COLABORADOR_INTERNAL', true);
-        ob_start();
-        require dirname(__DIR__) . '/getFuncoesPorColaborador.php';
-        ob_end_clean();
-        if (!isset($response) || !is_array($response)) {
-            throw new RuntimeException('Não foi possível carregar as tarefas operacionais.');
-        }
-        // O carregador fecha sua própria conexão. Reabre-se uma conexão curta
-        // somente para carga planejada e histórico secundários.
-        $conn = conectarBanco();
-        $overview = flow_overview_v1_colaborador($conn, $response, (int) $_SESSION['idcolaborador'], $section);
+        $overview = flow_overview_v1_colaborador($conn, $response, $colaboradorAlvo, $section);
     }
     if ($conn instanceof mysqli) {
         $conn->close();

@@ -8,6 +8,7 @@
  */
 
 require_once __DIR__ . '/dashboard_colaborador_helper.php';
+require_once __DIR__ . '/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/planejamento_alocacao_helper.php';
 require_once __DIR__ . '/planejamento_capacidade_global_helper.php';
 require_once __DIR__ . '/planejamento_fila_confirmada_helper.php';
@@ -138,58 +139,78 @@ function flow_overview_v1_severidade_pendencia(array $item): string
     return dashboard_colaborador_severidade_pendencia($item) === 'critical' ? 'critical' : 'warning';
 }
 
+/**
+ * Converte exclusivamente a fonte canônica de pendências operacionais em uma
+ * fila curta de decisão. Nenhuma consulta paralela de alertas é feita aqui.
+ */
+function flow_overview_v1_atencao_pendencias(array $fonte, ?int $colaboradorId = null, int $limite = 6): array
+{
+    $itens = [];
+    foreach ($fonte as $entrada) {
+        if (isset($entrada['items']) && is_array($entrada['items'])) {
+            foreach ($entrada['items'] as $item) {
+                $item['module_name'] = (string) ($entrada['name'] ?? $entrada['key'] ?? 'Operação');
+                $itens[] = $item;
+            }
+        } else {
+            $itens[] = $entrada;
+        }
+    }
+
+    $resultado = [];
+    foreach ($itens as $item) {
+        $responsavelId = (int) ($item['responsavel_id'] ?? 0);
+        if ($colaboradorId !== null && $responsavelId !== $colaboradorId) {
+            continue;
+        }
+        $sourceType = (string) ($item['source_type'] ?? 'pending');
+        $sourceId = (int) ($item['source_id'] ?? 0);
+        $obraId = (int) ($item['obra_id'] ?? 0);
+        $obra = trim((string) ($item['obra_nome'] ?? ''));
+        $responsavel = trim((string) ($item['responsavel_nome'] ?? ''));
+        $tituloBase = trim((string) ($item['title'] ?? 'Pendência operacional'));
+        $contexto = $colaboradorId === null && $responsavel !== '' ? $responsavel : $obra;
+        $titulo = $contexto !== '' && stripos($tituloBase, $contexto) === false
+            ? $contexto . ' · ' . $tituloBase
+            : $tituloBase;
+        $detalhe = trim((string) ($item['module_name'] ?? '') . (($item['subtitle'] ?? '') !== '' ? ' · ' . (string) $item['subtitle'] : ''));
+        $actionUrl = trim((string) ($item['action_url'] ?? ''));
+        if ($actionUrl === 'Dashboard/obra.php' && $obraId > 0) {
+            $actionUrl .= '?obra_id=' . $obraId;
+        }
+        $actionType = $sourceType === 'flow_review' && $sourceId > 0
+            ? 'open_task'
+            : ($actionUrl !== '' ? 'open_pending' : ($obraId > 0 ? 'open_project' : 'open_kanban'));
+        $resultado[] = [
+            'entity_type' => 'pending',
+            'entity_id' => $sourceId,
+            'assignee_id' => $responsavelId,
+            'project_id' => $obraId,
+            'severity' => flow_overview_v1_severidade_pendencia($item),
+            'type' => $sourceType,
+            'title' => $titulo,
+            'detail' => $detalhe !== '' ? $detalhe : (string) ($item['sla_label'] ?? 'Ação necessária.'),
+            'action' => [
+                'type' => $actionType,
+                'url' => $actionUrl,
+            ],
+            'sla_status' => (string) ($item['sla_status'] ?? 'dentro'),
+            'operational_hold' => !empty($item['operational_hold']),
+        ];
+    }
+
+    $peso = ['critical' => 0, 'high' => 1, 'warning' => 2];
+    usort($resultado, static function (array $a, array $b) use ($peso): int {
+        return ($peso[$a['severity']] ?? 9) <=> ($peso[$b['severity']] ?? 9)
+            ?: ((int) empty($a['operational_hold']) <=> (int) empty($b['operational_hold']))
+            ?: strcmp($a['title'], $b['title']);
+    });
+    return array_slice($resultado, 0, $limite);
+}
+
 function flow_overview_v1_atencao_colaborador(array $tarefas, array $originais, array $pendencias, int $colaboradorId): array
 {
-    $porId = [];
-    foreach ($originais as $item) {
-        $porId[(int) ($item['idfuncao_imagem'] ?? 0)] = $item;
-    }
-    $atencao = [];
-    $adicionar = static function (string $chave, array $item) use (&$atencao): void {
-        $peso = ['critical' => 0, 'high' => 1, 'warning' => 2];
-        if (!isset($atencao[$chave]) || ($peso[$item['severity']] ?? 9) < ($peso[$atencao[$chave]['severity']] ?? 9)) {
-            $atencao[$chave] = $item;
-        }
-    };
-    foreach ($tarefas as $tarefa) {
-        if (!empty($tarefa['concluida'])) {
-            continue;
-        }
-        $id = (int) $tarefa['id'];
-        $excecao = flow_overview_v1_excecao_tarefa($tarefa, $porId[$id] ?? []);
-        if (!$excecao) {
-            continue;
-        }
-        $acionavel = in_array($excecao['state'], ['flow_block', 'hold', 'overdue', 'due_today'], true)
-            || (($tarefa['bloqueio']['responsavel_id'] ?? $colaboradorId) === $colaboradorId);
-        if (!$acionavel) {
-            continue;
-        }
-        $adicionar('task:' . $id, [
-            'entity_type' => 'task', 'entity_id' => $id,
-            'severity' => $excecao['severity'], 'type' => $excecao['state'],
-            'title' => trim((string) $tarefa['obra'] . ' · ' . (string) $tarefa['imagem']),
-            'detail' => $excecao['label'], 'action' => ['type' => 'open_task'],
-        ]);
-    }
-    foreach ($pendencias as $pendencia) {
-        if ((int) ($pendencia['responsavel_id'] ?? 0) !== $colaboradorId) {
-            continue;
-        }
-        $chave = 'pending:' . (string) ($pendencia['source_type'] ?? '') . ':' . (int) ($pendencia['source_id'] ?? 0);
-        $adicionar($chave, [
-            'entity_type' => 'pending', 'entity_id' => (int) ($pendencia['source_id'] ?? 0),
-            'severity' => flow_overview_v1_severidade_pendencia($pendencia),
-            'type' => (string) ($pendencia['source_type'] ?? 'pending'),
-            'title' => (string) ($pendencia['title'] ?? 'Pendência operacional'),
-            'detail' => (string) ($pendencia['subtitle'] ?? 'Ação necessária.'),
-            'action' => ['type' => 'open_pending', 'url' => (string) ($pendencia['action_url'] ?? '')],
-        ]);
-    }
-    $resultado = array_values($atencao);
-    $peso = ['critical' => 0, 'high' => 1, 'warning' => 2];
-    usort($resultado, static fn (array $a, array $b): int => ($peso[$a['severity']] ?? 9) <=> ($peso[$b['severity']] ?? 9) ?: strcmp($a['title'], $b['title']));
-    return array_slice($resultado, 0, 4);
+    return flow_overview_v1_atencao_pendencias($pendencias, $colaboradorId, 50);
 }
 
 function flow_overview_v1_carga_colaborador(mysqli $conn, int $colaboradorId, string $inicio, string $fim): array
@@ -371,7 +392,7 @@ function flow_overview_v1_equipes(mysqli $conn, array $alocacao): array
 /** Exceções de tarefa para a fila gerencial, sem carregar o payload inteiro do Kanban por pessoa. */
 function flow_overview_v1_excecoes_tarefas_gestor(mysqli $conn): array
 {
-    $sql = "SELECT fi.idfuncao_imagem, fi.status, fi.prazo, ico.idimagens_cliente_obra AS imagem_id,
+    $sql = "SELECT fi.idfuncao_imagem, fi.colaborador_id, fi.status, fi.prazo, ico.idimagens_cliente_obra AS imagem_id,
                    ico.imagem_nome, o.nomenclatura, f.nome_funcao,
                    (SELECT fbi.id FROM flow_issue fbi WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
                       AND fbi.bloqueante = 1 AND (fbi.status IN ('ABERTA','AGUARDANDO_ACAO','PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
@@ -403,45 +424,16 @@ function flow_overview_v1_excecoes_tarefas_gestor(mysqli $conn): array
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function flow_overview_v1_gestor(mysqli $conn, string $section = 'all'): array
+function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, string $section = 'all'): array
 {
     $inicio = flow_overview_v1_inicio_semana();
-    $fim = date('Y-m-d', strtotime($inicio . ' +25 days'));
+    // A grade resumida reproduz o horizonte de oito semanas do Planejamento
+    // de Capacidade, sem expor a composição de colaboradores.
+    $fim = date('Y-m-d', strtotime($inicio . ' +55 days'));
     $alocacao = flow_alocacao_consultar($conn, $inicio, $fim);
     $capacidade = flow_capacidade_consultar($conn, $inicio, $fim);
     $projecao = flow_fila_confirmada_projetar($conn);
-    $atencao = [];
-    $adicionar = static function (array $item) use (&$atencao): void {
-        $atencao[$item['key']] = $item;
-    };
-    foreach (flow_overview_v1_equipes($conn, $alocacao) as $pessoa) {
-        if ($pessoa['peak_percent'] <= 100) {
-            continue;
-        }
-        $adicionar(['key' => 'person:' . $pessoa['id'], 'entity_type' => 'person', 'entity_id' => $pessoa['id'], 'severity' => 'critical', 'title' => $pessoa['name'] . ' está com ' . round($pessoa['peak_percent']) . '% de carga planejada.', 'detail' => 'Pico em ' . date('d/m', strtotime((string) $pessoa['peak_date'])), 'causes' => ['overload'], 'action' => ['type' => 'open_capacity']]);
-    }
-    foreach (flow_overview_v1_excecoes_tarefas_gestor($conn) as $tarefa) {
-        $taskId = (int) $tarefa['idfuncao_imagem'];
-        $titulo = trim((string) $tarefa['nomenclatura'] . ' · ' . (string) $tarefa['imagem_nome']);
-        $temIssue = (int) ($tarefa['issue_id'] ?? 0) > 0;
-        if ($temIssue) {
-            $critico = strtoupper((string) ($tarefa['issue_urgency'] ?? '')) === 'CRITICA';
-            $detalhe = trim((string) ($tarefa['issue_reason'] ?? 'Bloqueio operacional ativo.'));
-            $adicionar(['key' => 'task:' . $taskId, 'entity_type' => 'task', 'entity_id' => $taskId, 'severity' => $critico ? 'critical' : 'high', 'title' => $titulo . ' está bloqueada.', 'detail' => $detalhe, 'causes' => ['flow_block'], 'action' => ['type' => 'open_task']]);
-        } elseif ((string) $tarefa['status'] === 'HOLD') {
-            $adicionar(['key' => 'task:' . $taskId, 'entity_type' => 'task', 'entity_id' => $taskId, 'severity' => 'high', 'title' => $titulo . ' está em HOLD.', 'detail' => 'Verifique o bloqueio e o impacto no planejamento.', 'causes' => ['hold'], 'action' => ['type' => 'open_task']]);
-        } else {
-            $adicionar(['key' => 'task:' . $taskId, 'entity_type' => 'task', 'entity_id' => $taskId, 'severity' => 'high', 'title' => $titulo . ' ultrapassou o prazo.', 'detail' => (string) $tarefa['nome_funcao'], 'causes' => ['overdue'], 'action' => ['type' => 'open_task']]);
-        }
-    }
-    foreach (($capacidade['resumo_etapas'] ?? []) as $etapa) {
-        $classificacao = (string) ($etapa['classificacao'] ?? '');
-        if (!in_array($classificacao, ['CONFLITO', 'NECESSITA_APOIO'], true)) {
-            continue;
-        }
-        $semana = (array) ($etapa['semana_critica'] ?? []);
-        $adicionar(['key' => 'function:' . (string) ($etapa['codigo_etapa'] ?? '') . ':' . (string) ($semana['semana'] ?? ''), 'entity_type' => 'capacity', 'entity_id' => (string) ($etapa['codigo_etapa'] ?? ''), 'severity' => $classificacao === 'CONFLITO' ? 'critical' : 'high', 'title' => (string) ($etapa['etapa'] ?? 'Função') . ' ' . ($classificacao === 'CONFLITO' ? 'está sem capacidade suficiente.' : 'precisa de apoio.'), 'detail' => 'Semana de ' . date('d/m', strtotime((string) ($semana['semana'] ?? $inicio))), 'causes' => ['capacity'], 'action' => ['type' => 'open_capacity']]);
-    }
+    $atencao = flow_overview_v1_atencao_pendencias($pendenciasOperacionais, null, 50);
     $riscos = [];
     foreach (($projecao['projecoes'] ?? []) as $item) {
         $margem = (int) ($item['margem_operacional_dias_uteis'] ?? 0);
@@ -453,7 +445,6 @@ function flow_overview_v1_gestor(mysqli $conn, string $section = 'all'): array
         }
         $risco = ['entity_type' => 'project', 'entity_id' => (int) ($item['obra_id'] ?? 0), 'delivery_id' => (int) ($item['entrega_id'] ?? 0), 'severity' => $critico ? 'critical' : 'warning', 'project' => (string) ($item['nomenclatura'] ?? $item['nome_obra'] ?? 'Projeto'), 'title' => $critico ? 'Projeção ultrapassa a entrega.' : 'Margem operacional curta.', 'detail' => $margem < 0 ? abs($margem) . ' dia(s) útil(eis) além da margem.' : 'Margem de ' . $margem . ' dia(s) útil(eis).', 'action' => ['type' => 'open_planning']];
         $riscos[] = $risco;
-        $adicionar(['key' => 'delivery:' . $risco['delivery_id'], 'entity_type' => 'project', 'entity_id' => $risco['entity_id'], 'severity' => $risco['severity'], 'title' => $risco['project'] . ': ' . $risco['title'], 'detail' => $risco['detail'], 'causes' => ['projection'], 'action' => $risco['action']]);
     }
     $lista = array_values($atencao);
     $peso = ['critical' => 0, 'high' => 1, 'warning' => 2];
@@ -461,7 +452,38 @@ function flow_overview_v1_gestor(mysqli $conn, string $section = 'all'): array
     $resultado = ['mode' => 'manager', 'summary' => ['critical_count' => count(array_filter($lista, static fn (array $item): bool => $item['severity'] === 'critical')), 'attention_count' => count($lista)], 'attention' => array_slice($lista, 0, 6)];
     if ($section !== 'critical') {
         $resultado['team'] = flow_overview_v1_equipes($conn, $alocacao);
-        $resultado['capacity'] = array_map(static fn (array $etapa): array => ['code' => (string) ($etapa['codigo_etapa'] ?? ''), 'name' => (string) ($etapa['etapa'] ?? ''), 'classification' => (string) ($etapa['classificacao'] ?? ''), 'weeks' => array_slice((array) ($etapa['semanas'] ?? []), 0, 4)], array_values(array_filter((array) ($capacidade['resumo_etapas'] ?? []), static fn (array $etapa): bool => in_array((string) ($etapa['classificacao'] ?? ''), ['CONFLITO', 'NECESSITA_APOIO'], true))));
+        $etapasPorCodigo = [];
+        foreach ((array) ($capacidade['etapas'] ?? []) as $etapa) {
+            $etapasPorCodigo[(string) ($etapa['codigo_etapa'] ?? '')] = $etapa;
+        }
+        $semanas = [];
+        for ($indice = 0; $indice < 8; $indice++) {
+            $semanas[] = date('Y-m-d', strtotime($inicio . ' +' . ($indice * 7) . ' days'));
+        }
+        $resultado['capacity'] = array_map(static function (array $catalogo) use ($etapasPorCodigo, $semanas, $capacidade): array {
+            $codigo = (string) ($catalogo['codigo_etapa'] ?? '');
+            $etapa = (array) ($etapasPorCodigo[$codigo] ?? []);
+            $capacidadePrincipal = (float) (($capacidade['capacidades'][$codigo]['capacidade_principal'] ?? 0));
+            $porSemana = [];
+            foreach ((array) ($etapa['semanas'] ?? []) as $semana) {
+                $porSemana[(string) ($semana['semana'] ?? '')] = $semana;
+            }
+            $weeks = array_map(static function (string $semana) use ($porSemana, $capacidadePrincipal): array {
+                $item = (array) ($porSemana[$semana] ?? []);
+                return [
+                    'semana' => $semana,
+                    'pico_demanda' => (float) ($item['pico_demanda'] ?? 0),
+                    'capacidade_principal_referencia' => $item['capacidade_principal_referencia'] ?? $capacidadePrincipal,
+                    'classificacao' => (string) ($item['classificacao'] ?? 'SEM_DEMANDA'),
+                ];
+            }, $semanas);
+            return [
+                'code' => $codigo,
+                'name' => (string) ($catalogo['nome_painel'] ?? $catalogo['etapa'] ?? 'Função'),
+                'classification' => (string) ($etapa['classificacao'] ?? 'SEM_DEMANDA'),
+                'weeks' => $weeks,
+            ];
+        }, array_slice((array) ($capacidade['catalogo_etapas'] ?? []), 0, 8));
         $resultado['risks'] = array_slice($riscos, 0, 5);
         $resultado['production'] = flow_overview_v1_metricas_conclusao($conn);
     }

@@ -104,6 +104,7 @@ $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 $obras_inativas = obterObras($conn, 1);
 $overviewGestor = improov_usuario_eh_gestor_sidebar($conn);
+$overviewModo = $overviewGestor ? 'manager' : 'collaborator';
 
 $conn->close();
 ?>
@@ -116,6 +117,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleIndex.css'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/styleIndex.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.css'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/modalNotificacoes.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/modalSessao.css'); ?>">
@@ -131,10 +133,6 @@ $conn->close();
 
     <!-- Tabulator (List view table) -->
     <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
-
-    <!-- Collaborator personal dashboard -->
-    <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleColabDashboard.css'); ?>">
-    <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.css'); ?>&v=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.css'); ?>">
 
     <title>Improov+Flow</title>
 </head>
@@ -198,11 +196,6 @@ if ($foto_colab !== ''):
                 <button id="overviewBtn">
                     <i class="ri-dashboard-line"></i>
                     <span>Visão Geral</span>
-                </button>
-
-                <button id="painelBtn" style="display:none;">
-                    <i class="ri-bar-chart-line"></i>
-                    <span>Painel de Produção</span>
                 </button>
 
                 <button id="kanbanBtn" class="active">
@@ -352,206 +345,11 @@ if ($foto_colab !== ''):
                 <div id="tarefas-table"></div>
             </div>
 
-            <!-- Visão Geral -->
-            <div id="overview-section" class="overview-section" style="display:none;">
+            <!-- Visão Geral: seção operacional irmã do Kanban e da Lista. -->
+            <section id="overview-section" class="overview-inline" style="display:none;" aria-label="Visão Geral">
+                <div id="overview-v1" class="flow-overview" aria-live="polite" aria-busy="true"></div>
+            </section>
 
-                <div id="overview-v1" class="flow-overview" aria-live="polite">
-                    <div class="flow-overview__loading" data-overview-loading>
-                        <i class="ri-loader-4-line"></i>
-                        <span>Preparando sua Visão Geral…</span>
-                    </div>
-                </div>
-
-                <!-- ── Manager view ── -->
-                <div id="overview-gestor">
-
-                    <!-- ① Faixa topo: indicadores compactos -->
-                    <div class="overview-indicators">
-                        <div class="indicator-card indicator-atrasadas">
-                            <div class="indicator-icon"><i class="ri-alarm-warning-line"></i></div>
-                            <div class="indicator-info">
-                                <span class="indicator-count" id="indicator-atrasadas-count">0</span>
-                                <span class="indicator-label">Atrasadas</span>
-                            </div>
-                            <div class="indicator-dropdown" id="dropdown-atrasadas">
-                                <div id="banner-atrasadas-list" class="banner-list"></div>
-                            </div>
-                        </div>
-                        <div class="indicator-card indicator-proximas">
-                            <div class="indicator-icon"><i class="ri-calendar-event-line"></i></div>
-                            <div class="indicator-info">
-                                <span class="indicator-count" id="indicator-proximas-count">0</span>
-                                <span class="indicator-label">Próximas (15d)</span>
-                            </div>
-                            <div class="indicator-dropdown" id="dropdown-proximas">
-                                <div id="banner-proximas-list" class="banner-list"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ② Corpo principal: calendário + dashboard -->
-                    <div class="overview-body">
-
-                        <!-- Calendário (foco) -->
-                        <div class="overview-calendar-wrap">
-                            <div id="overview-calendar"></div>
-                        </div>
-
-                        <!-- Dashboard de produção -->
-                        <div class="overview-right">
-                            <div class="overview-dashboard-header">
-                                <i class="ri-bar-chart-grouped-line"></i>
-                                <h3>Produção — <span id="overview-mes-label"></span></h3>
-                            </div>
-                            <table class="overview-prod-table">
-                                <thead>
-                                    <tr>
-                                        <th>Função</th>
-                                        <th>Quantidade</th>
-                                        <th>Recorde</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="overview-prod-tbody">
-                                    <tr>
-                                        <td colspan="3" class="overview-loading">Carregando...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                    </div>
-                </div><!-- /#overview-gestor -->
-
-                <!-- ── Collaborator personal dashboard ── -->
-                <div id="overview-colab" style="display:none;">
-
-                    <!-- Header + month selector -->
-                    <div class="colab-dash-header">
-                        <div class="colab-dash-title">
-                            <i class="ri-bar-chart-line"></i>
-                            <h2>Painel de Produção — <span id="colab-mes-nome"></span></h2>
-                        </div>
-                        <div class="colab-dash-controls">
-                            <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [9, 21])): ?>
-                                <select id="colab-colab-seletor" class="mes-select">
-                                    <option value="">Selecione um colaborador</option>
-                                    <?php foreach ($colaboradores as $colab): ?>
-                                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php endif; ?>
-                            <select id="colab-mes-seletor" class="mes-select">
-                                <option value="">Carregando...</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- KPI cards -->
-                    <div class="kpi-grid">
-                        <!-- <div class="kpi-card kpi-finalizadas">
-                            <div class="kpi-icon"><i class="ri-check-double-line"></i></div>
-                            <div class="kpi-body">
-                                <div class="kpi-value" id="colab-kpi-finalizadas">—</div>
-                                <div class="kpi-label">Finalizadas</div>
-                            </div>
-                        </div> -->
-                        <div class="kpi-card kpi-novas">
-                            <div class="kpi-icon"><i class="ri-add-circle-line"></i></div>
-                            <div class="kpi-body">
-                                <div class="kpi-value" id="colab-kpi-novas">—</div>
-                                <div class="kpi-label">Novas no mês</div>
-                            </div>
-                        </div>
-                        <div class="kpi-card kpi-valor">
-                            <div class="kpi-icon"><i class="ri-money-dollar-circle-line"></i></div>
-                            <div class="kpi-body">
-                                <div class="kpi-value" id="colab-kpi-valor">—</div>
-                                <div class="kpi-label">Valor a receber</div>
-                            </div>
-                        </div>
-                        <div class="kpi-card kpi-ajustes">
-                            <div class="kpi-icon"><i class="ri-repeat-line"></i></div>
-                            <div class="kpi-body">
-                                <div class="kpi-value" id="colab-kpi-ajustes">—</div>
-                                <div class="kpi-label">Média de ajustes</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Por etapa -->
-                    <div class="dashboard-section">
-                        <div class="section-header">
-                            <h2><i class="ri-layout-grid-line"></i> Por etapa</h2>
-                            <span class="count-badge" id="colab-etapas-count">0</span>
-                        </div>
-                        <div class="etapas-grid" id="colab-etapas-grid">
-                            <div class="etapa-skeleton"></div>
-                            <div class="etapa-skeleton"></div>
-                            <div class="etapa-skeleton"></div>
-                            <div class="etapa-skeleton"></div>
-                        </div>
-                    </div>
-
-                    <!-- Heatmap de atividade mensal do time -->
-                    <div class="dashboard-section" id="heatmap-section">
-                        <div class="section-header">
-                            <h2><i class="ri-calendar-2-line"></i> Atividade do Time — <span id="heatmap-mes-label"></span></h2>
-                            <div class="heatmap-filter-row">
-                                <select id="heatmap-funcao" class="mes-select">
-                                    <option value="0">Todas as etapas</option>
-                                </select>
-                                <select id="heatmap-tipo" class="mes-select">
-                                    <option value="">Todos os tipos</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="heatmap-container" class="heatmap-wrap">
-                            <div class="hm-loading">Carregando...</div>
-                        </div>
-                        <div class="heatmap-legend">
-                            <span class="legend-label">Menos</span>
-                            <span class="legend-cell hm-l0"></span>
-                            <span class="legend-cell hm-l1"></span>
-                            <span class="legend-cell hm-l2"></span>
-                            <span class="legend-cell hm-l3"></span>
-                            <span class="legend-label">Mais</span>
-                            <span class="legend-sep">·</span>
-                            <span id="heatmap-avg-label" class="heatmap-avg-label"></span>
-                        </div>
-                    </div>
-
-                    <!-- Tarefas do mês -->
-                    <div class="dashboard-section">
-                        <div class="section-header">
-                            <h2><i class="ri-list-check-3"></i> Tarefas do mês</h2>
-                            <span class="count-badge" id="colab-tarefas-count">0</span>
-                        </div>
-                        <div class="tasks-wrap">
-                            <table class="tasks-table">
-                                <thead>
-                                    <tr>
-                                        <th>Imagem</th>
-                                        <th>Etapa</th>
-                                        <th>Status</th>
-                                        <th class="col-right">Valor</th>
-                                        <th class="col-center">Pago</th>
-                                        <th class="col-center">Ajustes</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="colab-tasks-body">
-                                    <tr>
-                                        <td colspan="6" class="empty-row">Carregando...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div><!-- /#overview-colab -->
-
-            </div><!-- /#overview-section -->
 
         </main>
     </div>
@@ -1091,9 +889,19 @@ if ($foto_colab !== ''):
     <script src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
     <script src="<?php echo asset_url('notificacoes/render.js'); ?>"></script>
     <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
-    <script src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&v=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
+    <script>
+        window.FLOW_OVERVIEW_CONFIG = <?php echo json_encode([
+            'mode' => $overviewModo,
+            'overviewUrl' => 'PaginaPrincipal/Overview/getOverviewV1.php',
+            'deliveriesUrl' => 'Entregas/listar_entregas.php',
+            'kanbanUrl' => 'inicio.php',
+            'capacityUrl' => 'PlanejamentoCapacidade/',
+            'planningUrl' => 'PlanejamentoProducao/',
+            'deliveriesPageUrl' => 'Entregas/',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    </script>
+    <script src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
-    <script src="<?php echo asset_url('PaginaPrincipal/scriptColabDashboard.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
 

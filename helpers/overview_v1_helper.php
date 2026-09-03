@@ -213,6 +213,30 @@ function flow_overview_v1_atencao_colaborador(array $tarefas, array $originais, 
     return flow_overview_v1_atencao_pendencias($pendencias, $colaboradorId, 50);
 }
 
+/** Mantém a fonte, ordem, contadores e metadados canônicos do Kanban. */
+function flow_overview_v1_modulos_atencao(array $modulos, ?int $colaboradorId = null): array
+{
+    $resultado = [];
+    foreach ($modulos as $modulo) {
+        if (!is_array($modulo)) {
+            continue;
+        }
+        $itens = array_values(array_filter((array) ($modulo['items'] ?? []), static function (array $item) use ($colaboradorId): bool {
+            return $colaboradorId === null || (int) ($item['responsavel_id'] ?? 0) === $colaboradorId;
+        }));
+        if (!$itens) {
+            continue;
+        }
+        $modulo['items'] = $itens;
+        $modulo['total'] = count($itens);
+        $modulo['critical_count'] = count(array_filter($itens, static fn (array $item): bool => ($item['sla_status'] ?? '') === 'critico'));
+        $modulo['overdue_count'] = count(array_filter($itens, static fn (array $item): bool => ($item['sla_status'] ?? '') === 'estourado'));
+        $modulo['within_sla_count'] = max(0, $modulo['total'] - $modulo['critical_count'] - $modulo['overdue_count']);
+        $resultado[] = $modulo;
+    }
+    return $resultado;
+}
+
 function flow_overview_v1_carga_colaborador(mysqli $conn, int $colaboradorId, string $inicio, string $fim): array
 {
     $dias = [];
@@ -251,26 +275,68 @@ function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId =
     $inicio = date('Y-m-01 00:00:00');
     $fim = date('Y-m-01 00:00:00', strtotime('+1 month'));
     $inicioAnterior = date('Y-m-01 00:00:00', strtotime('-1 month'));
+    if (!pendencias_operacionais_table_exists($conn, 'funcao_imagem_prazo_historico')) {
+        return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => []];
+    }
     $where = $colaboradorId ? ' AND fi.colaborador_id = ?' : '';
-    $sql = "SELECT la.funcao_imagem_id, MIN(la.data) AS concluida_em, fi.prazo,
-                   h.prazo_necessario, ico.imagem_nome, o.nomenclatura, f.nome_funcao
-              FROM log_alteracoes la
-              JOIN funcao_imagem fi ON fi.idfuncao_imagem = la.funcao_imagem_id
+    // O primeiro prazo_novo é o compromisso original. A entrega é o primeiro
+    // prazo registrado no histórico por upload/aprovação/finalização. Assim,
+    // reenvios e alterações posteriores não mudam a data em que a pessoa
+    // efetivamente entregou a primeira versão. Tarefas antigas criadas já
+    // dentro do planejamento podem não ter nenhuma linha nesse histórico;
+    // nesses casos, usamos o prazo necessário confirmado no planejamento como
+    // fallback explícito, sem substituir a fonte principal.
+    $sql = "SELECT c.funcao_imagem_id, c.concluida_em, fi.prazo AS prazo_atual,
+                   COALESCE(original.prazo_original, planejamento.prazo_necessario) AS prazo_original,
+                   CASE WHEN original.prazo_original IS NOT NULL THEN entrega.prazo_entrega
+                        WHEN planejamento.prazo_necessario IS NOT NULL THEN DATE(c.concluida_em)
+                        ELSE NULL END AS prazo_entrega,
+                   ico.imagem_nome, o.nomenclatura, f.nome_funcao
+              FROM (
+                    SELECT la.funcao_imagem_id, MIN(la.data) AS concluida_em
+                      FROM log_alteracoes la
+                     WHERE la.data >= ? AND la.data < ?
+                       AND LOWER(TRIM(la.status_novo)) IN ('finalizado','aprovado','aprovado com ajustes')
+                     GROUP BY la.funcao_imagem_id
+              ) c
+              JOIN funcao_imagem fi ON fi.idfuncao_imagem = c.funcao_imagem_id
               JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
               JOIN obra o ON o.idobra = ico.obra_id
               JOIN funcao f ON f.idfuncao = fi.funcao_id
               LEFT JOIN (
-                  SELECT x.funcao_imagem_id, x.prazo_necessario
-                    FROM funcao_imagem_previsao_historico x
-                    JOIN (SELECT funcao_imagem_id, MAX(id) AS id
-                            FROM funcao_imagem_previsao_historico
-                           WHERE evento = 'CONCLUSAO_REGISTRADA'
-                           GROUP BY funcao_imagem_id) ult ON ult.id = x.id
-              ) h ON h.funcao_imagem_id = fi.idfuncao_imagem
-             WHERE la.data >= ? AND la.data < ? {$where}
-               AND LOWER(TRIM(la.status_novo)) IN ('finalizado','aprovado','aprovado com ajustes')
-             GROUP BY la.funcao_imagem_id, fi.prazo, h.prazo_necessario, ico.imagem_nome, o.nomenclatura, f.nome_funcao
-             ORDER BY concluida_em DESC";
+                  SELECT h.funcao_imagem_id, h.prazo_novo AS prazo_original
+                    FROM funcao_imagem_prazo_historico h
+                    JOIN (
+                        SELECT funcao_imagem_id, MIN(id) AS id
+                          FROM funcao_imagem_prazo_historico
+                         WHERE prazo_novo IS NOT NULL
+                         GROUP BY funcao_imagem_id
+                    ) primeiro ON primeiro.id = h.id
+              ) original ON original.funcao_imagem_id = fi.idfuncao_imagem
+              LEFT JOIN (
+                  SELECT h.funcao_imagem_id,
+                         COALESCE(h.prazo_novo, h.prazo_anterior) AS prazo_entrega
+                    FROM funcao_imagem_prazo_historico h
+                    JOIN (
+                        SELECT funcao_imagem_id, MIN(id) AS id
+                          FROM funcao_imagem_prazo_historico
+                         WHERE LOWER(TRIM(origem)) IN ('upload_previa', 'render_finalizado')
+                            OR LOWER(TRIM(status_novo)) IN ('em aprovação', 'aprovado', 'aprovado com ajustes', 'finalizado')
+                         GROUP BY funcao_imagem_id
+                    ) primeira_entrega ON primeira_entrega.id = h.id
+              ) entrega ON entrega.funcao_imagem_id = fi.idfuncao_imagem
+              LEFT JOIN (
+                  SELECT h.funcao_imagem_id, h.prazo_necessario
+                    FROM funcao_imagem_previsao_historico h
+                    JOIN (
+                        SELECT funcao_imagem_id, MAX(id) AS id
+                          FROM funcao_imagem_previsao_historico
+                         WHERE evento = 'CONCLUSAO_REGISTRADA'
+                         GROUP BY funcao_imagem_id
+                    ) ultima ON ultima.id = h.id
+              ) planejamento ON planejamento.funcao_imagem_id = fi.idfuncao_imagem
+             WHERE 1 = 1 {$where}
+             ORDER BY c.concluida_em DESC";
     try {
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
@@ -294,13 +360,13 @@ function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId =
         $stmt->execute();
         $anterior = (int) (($stmt->get_result()->fetch_assoc()['total'] ?? 0));
         $stmt->close();
-        $elegiveis = array_values(array_filter($atuais, static fn (array $item): bool => !empty($item['prazo_necessario'])));
-        $pontuais = count(array_filter($elegiveis, static fn (array $item): bool => substr((string) $item['concluida_em'], 0, 10) <= (string) $item['prazo_necessario']));
+        $elegiveis = array_values(array_filter($atuais, static fn (array $item): bool => !empty($item['prazo_original']) && !empty($item['prazo_entrega'])));
+        $pontuais = count(array_filter($elegiveis, static fn (array $item): bool => (string) $item['prazo_entrega'] <= (string) $item['prazo_original']));
         return [
             'available' => true, 'month_label' => strftime('%B %Y'), 'count' => count($atuais),
             'trend_percent' => $anterior > 0 ? round(((count($atuais) - $anterior) / $anterior) * 100, 1) : null,
             'punctuality_percent' => $elegiveis ? round(($pontuais / count($elegiveis)) * 100, 1) : null,
-            'recent' => array_map(static fn (array $item): array => ['task_id' => (int) $item['funcao_imagem_id'], 'project' => (string) $item['nomenclatura'], 'image_name' => (string) $item['imagem_nome'], 'function_name' => (string) $item['nome_funcao']], array_slice($atuais, 0, 3)),
+            'recent' => array_map(static fn (array $item): array => ['task_id' => (int) $item['funcao_imagem_id'], 'project' => (string) $item['nomenclatura'], 'image_name' => (string) $item['imagem_nome'], 'function_name' => (string) $item['nome_funcao']], $atuais),
         ];
     } catch (Throwable $erro) {
         return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => []];
@@ -322,22 +388,38 @@ function flow_overview_v1_colaborador(mysqli $conn, array $payloadKanban, int $c
         $tarefas[] = $normalizada;
     }
     $ativas = array_values(array_filter($tarefas, static fn (array $t): bool => empty($t['concluida'])));
-    $emAndamento = array_values(array_filter($ativas, static fn (array $t): bool => dashboard_colaborador_status_execucao((string) ($t['status'] ?? ''))));
+    $emAndamento = array_values(array_filter($ativas, static function (array $t) use ($porId): bool {
+        if (!dashboard_colaborador_status_execucao((string) ($t['status'] ?? ''))) {
+            return false;
+        }
+
+        // Imagens com status_id 7 não devem aparecer no bloco Em andamento,
+        // mesmo quando a funcao_imagem ainda estiver Em andamento ou Ajuste.
+        $original = $porId[(int) ($t['id'] ?? 0)] ?? [];
+        return (int) ($original['imagem_status_id'] ?? 0) !== 7;
+    }));
     usort($emAndamento, static function (array $a, array $b) use ($porId): int {
         $peso = ['flow_block' => 0, 'hold' => 1, 'overdue' => 2, 'requirement' => 3, 'due_today' => 4, 'due_soon' => 5];
         $ea = flow_overview_v1_excecao_tarefa($a, $porId[(int) $a['id']] ?? [])['state'] ?? '';
         $eb = flow_overview_v1_excecao_tarefa($b, $porId[(int) $b['id']] ?? [])['state'] ?? '';
         return ($peso[$ea] ?? 9) <=> ($peso[$eb] ?? 9) ?: dashboard_colaborador_rank_tarefa($a) <=> dashboard_colaborador_rank_tarefa($b);
     });
-    $proximas = array_values(array_filter($ativas, static fn (array $t): bool => dashboard_colaborador_status_nao_iniciado((string) ($t['status'] ?? '')) && !empty($t['pode_iniciar'])));
+    $proximas = array_values(array_filter($ativas, static function (array $t) use ($porId): bool {
+        if (!dashboard_colaborador_status_nao_iniciado((string) ($t['status'] ?? ''))) {
+            return false;
+        }
+        return !empty($t['pode_iniciar']);
+    }));
     flow_overview_v1_ordenar_proximas($proximas, $hoje);
-    $atencao = flow_overview_v1_atencao_colaborador($ativas, $originais, dashboard_colaborador_pendencias_acionaveis((array) ($payloadKanban['pendencias_operacionais'] ?? []), $colaboradorId), $colaboradorId);
+    $modulosAtencao = flow_overview_v1_modulos_atencao((array) ($payloadKanban['pendencias_operacionais'] ?? []), $colaboradorId);
+    $atencao = flow_overview_v1_atencao_colaborador($ativas, $originais, $modulosAtencao, $colaboradorId);
     $resultado = [
         'mode' => 'collaborator',
         'summary' => ['in_progress_count' => count($emAndamento), 'attention_count' => count($atencao)],
-        'in_progress' => array_map(static fn (array $t): array => flow_overview_v1_item_tarefa($t, $porId[(int) $t['id']] ?? []), array_slice($emAndamento, 0, 3)),
-        'next' => array_map(static fn (array $t): array => flow_overview_v1_item_tarefa($t, $porId[(int) $t['id']] ?? []), array_slice($proximas, 0, 3)),
+        'in_progress' => array_map(static fn (array $t): array => flow_overview_v1_item_tarefa($t, $porId[(int) $t['id']] ?? []), $emAndamento),
+        'next' => array_map(static fn (array $t): array => flow_overview_v1_item_tarefa($t, $porId[(int) $t['id']] ?? []), $proximas),
         'attention' => $atencao,
+        'attention_modules' => $modulosAtencao,
     ];
     if ($section !== 'critical') {
         $resultado['week_load'] = array_merge(['label' => 'Carga planejada da semana'], flow_overview_v1_carga_colaborador($conn, $colaboradorId, flow_overview_v1_inicio_semana($hoje), flow_overview_v1_fim_semana($hoje)));
@@ -389,6 +471,52 @@ function flow_overview_v1_equipes(mysqli $conn, array $alocacao): array
     return array_slice($lista, 0, 8);
 }
 
+/**
+ * Usa somente o primeiro prazo não nulo registrado no histórico. Itens legados
+ * sem histórico não entram no indicador, em vez de receberem o prazo atual.
+ */
+function flow_overview_v1_atrasos_prazo_original(mysqli $conn): array
+{
+    if (!pendencias_operacionais_table_exists($conn, 'funcao_imagem_prazo_historico')) {
+        return [];
+    }
+    $sql = "SELECT fi.idfuncao_imagem, fi.status AS situacao_atual, ico.imagem_nome,
+                   o.nomenclatura, c.nome_colaborador AS responsavel,
+                   historico.prazo_original,
+                   DATEDIFF(CURDATE(), historico.prazo_original) AS dias_atraso
+              FROM funcao_imagem fi
+              JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+              JOIN obra o ON o.idobra = ico.obra_id
+         LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+              JOIN (
+                  SELECT h.funcao_imagem_id, h.prazo_novo AS prazo_original
+                    FROM funcao_imagem_prazo_historico h
+                    JOIN (
+                        SELECT funcao_imagem_id, MIN(id) AS id
+                          FROM funcao_imagem_prazo_historico
+                         WHERE prazo_novo IS NOT NULL
+                         GROUP BY funcao_imagem_id
+                    ) primeiro ON primeiro.id = h.id
+              ) historico ON historico.funcao_imagem_id = fi.idfuncao_imagem
+             WHERE fi.status NOT IN ('Finalizado', 'Aprovado', 'Aprovado com ajustes', 'Cancelado', 'HOLD', 'Não iniciado')
+               AND historico.prazo_original < CURDATE()
+               AND (o.status_obra = 0 OR o.status_obra IS NULL OR o.idobra = 74)
+             ORDER BY dias_atraso DESC, historico.prazo_original ASC, fi.idfuncao_imagem ASC";
+    $result = $conn->query($sql);
+    if (!$result) {
+        return [];
+    }
+    return array_map(static fn (array $item): array => [
+        'task_id' => (int) $item['idfuncao_imagem'],
+        'project' => (string) ($item['nomenclatura'] ?? ''),
+        'image_name' => (string) ($item['imagem_nome'] ?? ''),
+        'assignee' => (string) ($item['responsavel'] ?? 'Não definido'),
+        'original_deadline' => (string) ($item['prazo_original'] ?? ''),
+        'days_overdue' => (int) ($item['dias_atraso'] ?? 0),
+        'status' => (string) ($item['situacao_atual'] ?? ''),
+    ], $result->fetch_all(MYSQLI_ASSOC));
+}
+
 /** Exceções de tarefa para a fila gerencial, sem carregar o payload inteiro do Kanban por pessoa. */
 function flow_overview_v1_excecoes_tarefas_gestor(mysqli $conn): array
 {
@@ -433,7 +561,8 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
     $alocacao = flow_alocacao_consultar($conn, $inicio, $fim);
     $capacidade = flow_capacidade_consultar($conn, $inicio, $fim);
     $projecao = flow_fila_confirmada_projetar($conn);
-    $atencao = flow_overview_v1_atencao_pendencias($pendenciasOperacionais, null, 50);
+    $modulosAtencao = flow_overview_v1_modulos_atencao($pendenciasOperacionais);
+    $atencao = flow_overview_v1_atencao_pendencias($modulosAtencao, null, 50);
     $riscos = [];
     foreach (($projecao['projecoes'] ?? []) as $item) {
         $margem = (int) ($item['margem_operacional_dias_uteis'] ?? 0);
@@ -449,7 +578,7 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
     $lista = array_values($atencao);
     $peso = ['critical' => 0, 'high' => 1, 'warning' => 2];
     usort($lista, static fn (array $a, array $b): int => ($peso[$a['severity']] ?? 9) <=> ($peso[$b['severity']] ?? 9) ?: strcmp($a['title'], $b['title']));
-    $resultado = ['mode' => 'manager', 'summary' => ['critical_count' => count(array_filter($lista, static fn (array $item): bool => $item['severity'] === 'critical')), 'attention_count' => count($lista)], 'attention' => array_slice($lista, 0, 6)];
+    $resultado = ['mode' => 'manager', 'summary' => ['critical_count' => count(array_filter($lista, static fn (array $item): bool => $item['severity'] === 'critical')), 'attention_count' => count($lista)], 'attention' => array_slice($lista, 0, 6), 'attention_modules' => $modulosAtencao];
     if ($section !== 'critical') {
         $resultado['team'] = flow_overview_v1_equipes($conn, $alocacao);
         $etapasPorCodigo = [];
@@ -457,7 +586,7 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
             $etapasPorCodigo[(string) ($etapa['codigo_etapa'] ?? '')] = $etapa;
         }
         $semanas = [];
-        for ($indice = 0; $indice < 8; $indice++) {
+        for ($indice = 0; $indice < 3; $indice++) {
             $semanas[] = date('Y-m-d', strtotime($inicio . ' +' . ($indice * 7) . ' days'));
         }
         $resultado['capacity'] = array_map(static function (array $catalogo) use ($etapasPorCodigo, $semanas, $capacidade): array {
@@ -485,6 +614,8 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
             ];
         }, array_slice((array) ($capacidade['catalogo_etapas'] ?? []), 0, 8));
         $resultado['risks'] = array_slice($riscos, 0, 5);
+        $resultado['original_deadlines'] = flow_overview_v1_atrasos_prazo_original($conn);
+        $resultado['summary']['original_overdue_count'] = count($resultado['original_deadlines']);
         $resultado['production'] = flow_overview_v1_metricas_conclusao($conn);
     }
     return $resultado;

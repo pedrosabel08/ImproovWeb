@@ -6,6 +6,7 @@ require_once __DIR__ . '/pos_referencias_helper.php';
 require_once __DIR__ . '/render_ws_notify.php';
 require_once __DIR__ . '/../Pos-Producao/ws_notify.php';
 require_once __DIR__ . '/../FlowReview/ws_notify.php';
+require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -339,52 +340,29 @@ function render_mark_finalizacao_file_pending($conn, int $imagemId, int $colabor
         throw new RuntimeException('Funcao de Finalizacao nao encontrada para esta imagem.');
     }
 
-    $stmt = $conn->prepare(
-        "UPDATE funcao_imagem
-         SET prazo = NOW(), status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL
-         WHERE idfuncao_imagem = ?"
+    $prazoResult = funcao_imagem_prazo_atualizar(
+        $conn,
+        $funcaoImagemId,
+        date('Y-m-d'),
+        [
+            'origem' => 'render_finalizado',
+            'alterado_por_colaborador_id' => $colaboradorId,
+            'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+            'status_novo' => 'Finalizado',
+        ]
     );
+    $sqlFinalizacaoFlags = $prazoResult['alterado']
+        ? 'UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?'
+        : "UPDATE funcao_imagem SET status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
+    $stmt = $conn->prepare($sqlFinalizacaoFlags);
     if (!$stmt) {
         throw new RuntimeException('Nao foi possivel finalizar a funcao da imagem.');
     }
     $stmt->bind_param('i', $funcaoImagemId);
     if (!$stmt->execute()) {
+        $error = $stmt->error;
         $stmt->close();
-        throw new RuntimeException('Nao foi possivel finalizar a funcao da imagem.');
-    }
-    $stmt->close();
-
-    $stmt = $conn->prepare(
-        'INSERT INTO funcao_imagem_prazo_historico
-            (funcao_imagem_id, prazo_anterior, prazo_novo,
-             alterado_por_colaborador_id, alterado_por_usuario_id,
-             origem, motivo, status_anterior, status_novo)
-         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)'
-    );
-    if (!$stmt) {
-        throw new RuntimeException('Nao foi possivel registrar o historico da Finalizacao.');
-    }
-
-    $prazoAnterior = $before['prazo'] ?? null;
-    $prazoNovo = date('Y-m-d');
-    $usuarioId = isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null;
-    $origem = 'render_finalizado';
-    $statusAnterior = $before['status'] ?? null;
-    $statusNovo = 'Finalizado';
-    $stmt->bind_param(
-        'issiisss',
-        $funcaoImagemId,
-        $prazoAnterior,
-        $prazoNovo,
-        $colaboradorId,
-        $usuarioId,
-        $origem,
-        $statusAnterior,
-        $statusNovo
-    );
-    if (!$stmt->execute()) {
-        $stmt->close();
-        throw new RuntimeException('Nao foi possivel registrar o historico da Finalizacao.');
+        throw new RuntimeException('Nao foi possivel finalizar a funcao da imagem: ' . $error);
     }
     $stmt->close();
 
@@ -1671,51 +1649,31 @@ if (isset($_POST['action'])) {
                                     $logs[] = 'finalizacao.funcao_imagem_id=' . ($funcaoImagemId ? $funcaoImagemId : 'null');
 
                                     if ($funcaoImagemId) {
-                                        // Lê prazo/status atuais antes de atualizar (SLA)
-                                        $fiPrazoP00  = null;
-                                        $fiStatusP00 = null;
-                                        if ($stFiCurP00 = $conn->prepare("SELECT prazo, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1")) {
-                                            $stFiCurP00->bind_param('i', $funcaoImagemId);
-                                            $stFiCurP00->execute();
-                                            $rowFiCurP00 = $stFiCurP00->get_result()->fetch_assoc();
-                                            $stFiCurP00->close();
-                                            $fiPrazoP00  = $rowFiCurP00['prazo']  ?? null;
-                                            $fiStatusP00 = $rowFiCurP00['status'] ?? null;
+                                        $prazoResultP00 = funcao_imagem_prazo_atualizar(
+                                            $conn,
+                                            (int) $funcaoImagemId,
+                                            date('Y-m-d'),
+                                            [
+                                                'origem' => 'render_p00_aprovado',
+                                                'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                                                'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+                                                'status_novo' => 'Em aprovação',
+                                            ]
+                                        );
+                                        $sqlP00Flags = $prazoResultP00['alterado']
+                                            ? 'UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?'
+                                            : "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
+                                        $stUpFi = $conn->prepare($sqlP00Flags);
+                                        if (!$stUpFi) {
+                                            throw new RuntimeException('Nao foi possivel preparar a atualizacao da Finalizacao P00.');
                                         }
-                                        // garantir que apareça na revisão
-                                        if ($stUpFi = $conn->prepare("UPDATE funcao_imagem SET prazo = NOW(), status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
-                                            $stUpFi->bind_param('i', $funcaoImagemId);
-                                            $stUpFi->execute();
+                                        $stUpFi->bind_param('i', $funcaoImagemId);
+                                        if (!$stUpFi->execute()) {
+                                            $error = $stUpFi->error;
                                             $stUpFi->close();
-                                            // Registra evento de entrega no histórico SLA
-                                            $stmtSlaP00 = $conn->prepare(
-                                                "INSERT INTO funcao_imagem_prazo_historico
-                                                    (funcao_imagem_id, prazo_anterior, prazo_novo,
-                                                     alterado_por_colaborador_id, alterado_por_usuario_id,
-                                                     origem, motivo, status_anterior, status_novo)
-                                                 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
-                                            );
-                                            if ($stmtSlaP00) {
-                                                $_ajaxColabIdP00   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
-                                                $_ajaxUsuarioIdP00 = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
-                                                $_ajaxOrigemP00    = 'render_p00_aprovado';
-                                                $_ajaxTodayP00     = date('Y-m-d');
-                                                $_ajaxStNovP00     = 'Em aprovação';
-                                                $stmtSlaP00->bind_param(
-                                                    'issiisss',
-                                                    $funcaoImagemId,
-                                                    $fiPrazoP00,
-                                                    $_ajaxTodayP00,
-                                                    $_ajaxColabIdP00,
-                                                    $_ajaxUsuarioIdP00,
-                                                    $_ajaxOrigemP00,
-                                                    $fiStatusP00,
-                                                    $_ajaxStNovP00
-                                                );
-                                                $stmtSlaP00->execute();
-                                                $stmtSlaP00->close();
-                                            }
+                                            throw new RuntimeException('Nao foi possivel atualizar a Finalizacao P00: ' . $error);
                                         }
+                                        $stUpFi->close();
 
                                         // índice de envio (um lote por aprovação)
                                         $nextIndice = 1;
@@ -1827,53 +1785,32 @@ if (isset($_POST['action'])) {
                                     }
 
                                     if ($funcaoImagemId) {
-                                        // Lê prazo/status atuais antes de atualizar (SLA)
-                                        $fiPrazoFin  = null;
-                                        $fiStatusFin = null;
-                                        if ($stFiCurFin = $conn->prepare("SELECT prazo, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1")) {
-                                            $stFiCurFin->bind_param('i', $funcaoImagemId);
-                                            $stFiCurFin->execute();
-                                            $rowFiCurFin = $stFiCurFin->get_result()->fetch_assoc();
-                                            $stFiCurFin->close();
-                                            $fiPrazoFin  = $rowFiCurFin['prazo']  ?? null;
-                                            $fiStatusFin = $rowFiCurFin['status'] ?? null;
+                                        $prazoResultFin = funcao_imagem_prazo_atualizar(
+                                            $conn,
+                                            (int) $funcaoImagemId,
+                                            date('Y-m-d'),
+                                            [
+                                                'origem' => 'render_finalizado',
+                                                'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                                                'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+                                                'status_novo' => 'Finalizado',
+                                            ]
+                                        );
+                                        $sqlFinFlags = $prazoResultFin['alterado']
+                                            ? 'UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?'
+                                            : "UPDATE funcao_imagem SET status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
+                                        $stUpd = $conn->prepare($sqlFinFlags);
+                                        if (!$stUpd) {
+                                            throw new RuntimeException('Nao foi possivel preparar a atualizacao da Finalizacao.');
                                         }
-                                        if ($stUpd = $conn->prepare("UPDATE funcao_imagem SET prazo = NOW(), status = 'Finalizado', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
-                                            $stUpd->bind_param('i', $funcaoImagemId);
-                                            $stUpd->execute();
+                                        $stUpd->bind_param('i', $funcaoImagemId);
+                                        if (!$stUpd->execute()) {
+                                            $error = $stUpd->error;
                                             $stUpd->close();
-                                            $logs[] = 'finalizacao.marked_finalizado.idfuncao_imagem=' . $funcaoImagemId . '.funcao_id=' . $chosenFuncaoId;
-                                            // Registra evento de finalização no histórico SLA
-                                            $stmtSlaFin = $conn->prepare(
-                                                "INSERT INTO funcao_imagem_prazo_historico
-                                                    (funcao_imagem_id, prazo_anterior, prazo_novo,
-                                                     alterado_por_colaborador_id, alterado_por_usuario_id,
-                                                     origem, motivo, status_anterior, status_novo)
-                                                 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
-                                            );
-                                            if ($stmtSlaFin) {
-                                                $_ajaxColabIdFin   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
-                                                $_ajaxUsuarioIdFin = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
-                                                $_ajaxOrigemFin    = 'render_finalizado';
-                                                $_ajaxTodayFin     = date('Y-m-d');
-                                                $_ajaxStNovFin     = 'Finalizado';
-                                                $stmtSlaFin->bind_param(
-                                                    'issiisss',
-                                                    $funcaoImagemId,
-                                                    $fiPrazoFin,
-                                                    $_ajaxTodayFin,
-                                                    $_ajaxColabIdFin,
-                                                    $_ajaxUsuarioIdFin,
-                                                    $_ajaxOrigemFin,
-                                                    $fiStatusFin,
-                                                    $_ajaxStNovFin
-                                                );
-                                                $stmtSlaFin->execute();
-                                                $stmtSlaFin->close();
-                                            }
-                                        } else {
-                                            $logs[] = 'finalizacao.update_prepare_error: ' . $conn->error;
+                                            throw new RuntimeException('Nao foi possivel atualizar a Finalizacao: ' . $error);
                                         }
+                                        $stUpd->close();
+                                        $logs[] = 'finalizacao.marked_finalizado.idfuncao_imagem=' . $funcaoImagemId . '.funcao_id=' . $chosenFuncaoId;
                                     } else {
                                         $logs[] = 'finalizacao.not_found_for_imagem_id=' . $imagem_id;
                                     }

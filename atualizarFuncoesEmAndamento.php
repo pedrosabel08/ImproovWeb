@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 include __DIR__ . '/conexao.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -95,30 +96,10 @@ try {
          WHERE idfuncao_imagem = ?"
     );
 
-    $updateContinuePrazoStmt = $conn->prepare(
-        "UPDATE funcao_imagem
-         SET status = 'Em andamento', prazo = ?
-         WHERE idfuncao_imagem = ?"
-    );
-
     $updateContinueStatusStmt = $conn->prepare(
         "UPDATE funcao_imagem
          SET status = 'Em andamento'
          WHERE idfuncao_imagem = ?"
-    );
-
-    $insertHistoryStmt = $conn->prepare(
-        'INSERT INTO funcao_imagem_prazo_historico (
-            funcao_imagem_id,
-            prazo_anterior,
-            prazo_novo,
-            alterado_por_colaborador_id,
-            alterado_por_usuario_id,
-            origem,
-            motivo,
-            status_anterior,
-            status_novo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     $updatedIds = [];
@@ -188,27 +169,25 @@ try {
         }
 
         if ($novoPrazo) {
-            $updateContinuePrazoStmt->bind_param('si', $novoPrazo, $idFuncaoImagem);
-            $updateContinuePrazoStmt->execute();
-
-            if ($prazoAtual !== $novoPrazo) {
-                $origem = 'primeiro_acesso';
-                $statusAnteriorLoop = $current['status'];
-                $statusNovoLoop     = 'Em andamento';
-                $insertHistoryStmt->bind_param(
-                    'issiissss',
-                    $idFuncaoImagem,
-                    $prazoAtual,
-                    $novoPrazo,
-                    $actorColaboradorId,
-                    $actorUsuarioId,
-                    $origem,
-                    $motivo,
-                    $statusAnteriorLoop,
-                    $statusNovoLoop
-                );
-                $insertHistoryStmt->execute();
+            $prazoResult = funcao_imagem_prazo_atualizar(
+                $conn,
+                $idFuncaoImagem,
+                $novoPrazo,
+                [
+                    'origem' => 'primeiro_acesso',
+                    'motivo' => $motivo,
+                    'alterado_por_colaborador_id' => $actorColaboradorId,
+                    'alterado_por_usuario_id' => $actorUsuarioId,
+                    'status_novo' => 'Em andamento',
+                ]
+            );
+            if ($prazoResult['alterado']) {
                 $historyCount++;
+            } else {
+                // O helper nao reescreve o prazo nem o historico se a data for
+                // igual, mas a transicao de status continua sendo necessaria.
+                $updateContinueStatusStmt->bind_param('i', $idFuncaoImagem);
+                $updateContinueStatusStmt->execute();
             }
         } else {
             $updateContinueStatusStmt->bind_param('i', $idFuncaoImagem);

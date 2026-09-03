@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
+require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_SESSION['logado'])) {
     http_response_code(401);
@@ -77,8 +78,21 @@ try {
     $justificativaDb = $justificativa !== '' ? $justificativa : null;
     $stmt = $conn->prepare('INSERT INTO funcao_imagem_previsao_conclusao (funcao_imagem_id, previsao_conclusao, justificativa, criado_por_colaborador_id, criado_por_usuario_id) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE previsao_conclusao = VALUES(previsao_conclusao), justificativa = VALUES(justificativa)');
     $stmt->bind_param('issii', $tarefaId, $previsao, $justificativaDb, $atorColaboradorId, $atorUsuarioId);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        throw new RuntimeException('Nao foi possivel salvar a previsao: ' . $error);
+    }
     $stmt->close();
+
+    // A previsao informada no planejamento tambem passa a ser o prazo
+    // operacional da funcao_imagem, com auditoria na mesma transacao.
+    funcao_imagem_prazo_atualizar($conn, $tarefaId, $previsao, [
+        'origem' => 'planejamento_previsao',
+        'motivo' => $justificativaDb,
+        'alterado_por_colaborador_id' => $atorColaboradorId,
+        'alterado_por_usuario_id' => $atorUsuarioId,
+    ]);
 
     $mudou = !$anterior || (string) $anterior['previsao_conclusao'] !== $previsao || (string) ($anterior['justificativa'] ?? '') !== (string) ($justificativaDb ?? '');
     if ($mudou) {

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/pre_alt_helpers.php';
 require_once __DIR__ . '/../Entregas/prazo_entrega_helper.php';
 require_once __DIR__ . '/../helpers/alteracoes_helper.php';
+require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 
 function pre_alt_next_status_id(int $statusId): ?int
 {
@@ -414,25 +415,49 @@ function pre_alt_upsert_funcao_alteracao(mysqli $conn, int $imagemId, string $pr
 
     if ($funcaoId > 0) {
         $status = 'Não iniciado';
-        $stmtUpdate = $conn->prepare('UPDATE funcao_imagem SET status = ?, prazo = ? WHERE idfuncao_imagem = ?');
-        if (!$stmtUpdate) {
-            throw new RuntimeException('Nao foi possivel atualizar a funcao de alteracao.');
+        $prazoResult = funcao_imagem_prazo_atualizar(
+            $conn,
+            $funcaoId,
+            $prazo,
+            [
+                'origem' => 'pre_alteracao',
+                'status_novo' => $status,
+            ]
+        );
+        if (!$prazoResult['alterado']) {
+            $stmtUpdate = $conn->prepare('UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?');
+            if (!$stmtUpdate) {
+                throw new RuntimeException('Nao foi possivel atualizar a funcao de alteracao.');
+            }
+            $stmtUpdate->bind_param('si', $status, $funcaoId);
+            if (!$stmtUpdate->execute()) {
+                $error = $stmtUpdate->error;
+                $stmtUpdate->close();
+                throw new RuntimeException('Nao foi possivel atualizar a funcao de alteracao: ' . $error);
+            }
+            $stmtUpdate->close();
         }
-        $stmtUpdate->bind_param('ssi', $status, $prazo, $funcaoId);
-        $stmtUpdate->execute();
-        $stmtUpdate->close();
         return $funcaoId;
     }
 
     $status = 'Não iniciado';
-    $stmtInsert = $conn->prepare('INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) VALUES (?, NULL, 6, ?, ?)');
+    $stmtInsert = $conn->prepare('INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) VALUES (?, NULL, 6, NULL, ?)');
     if (!$stmtInsert) {
         throw new RuntimeException('Nao foi possivel criar a funcao de alteracao.');
     }
-    $stmtInsert->bind_param('iss', $imagemId, $prazo, $status);
-    $stmtInsert->execute();
+    $stmtInsert->bind_param('is', $imagemId, $status);
+    if (!$stmtInsert->execute()) {
+        $error = $stmtInsert->error;
+        $stmtInsert->close();
+        throw new RuntimeException('Nao foi possivel criar a funcao de alteracao: ' . $error);
+    }
     $funcaoId = (int) $stmtInsert->insert_id;
     $stmtInsert->close();
+
+    funcao_imagem_prazo_atualizar($conn, $funcaoId, $prazo, [
+        'origem' => 'pre_alteracao',
+        'status_novo' => $status,
+    ]);
 
     return $funcaoId;
 }

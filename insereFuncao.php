@@ -14,6 +14,7 @@ include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/tarefa_planejamento_contexto_helper.php';
+require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 
 // Simple file logger for debugging
 function write_log_insere_funcao($msg)
@@ -182,12 +183,6 @@ try {
         $updates[] = 'funcao_id = VALUES(funcao_id)';
     }
 
-    if ($prazo !== null) {
-        $campos[] = 'prazo';
-        $valores[] = $prazo;
-        $updates[] = 'prazo = VALUES(prazo)';
-    }
-
     if ($status !== null) {
         $campos[] = 'status';
         $valores[] = $status;
@@ -294,36 +289,36 @@ try {
 
     $stmt->close();
 
-    if (
-        $prazo !== null &&
-        $existingFuncaoImagemId !== null &&
-        !sameDateValue($existingPrazo, $prazo)
-    ) {
-        $stmtPrazoHistory = $conn->prepare(
-            "INSERT INTO funcao_imagem_prazo_historico (
-                funcao_imagem_id,
-                prazo_anterior,
-                prazo_novo,
-                alterado_por_colaborador_id,
-                alterado_por_usuario_id,
-                origem,
-                motivo,
-                status_anterior,
-                status_novo
-            ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL)"
+    if ($prazo !== null) {
+        $stmtGetId = $conn->prepare(
+            'SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
         );
-        $stmtPrazoHistory->bind_param(
-            'issiiss',
-            $existingFuncaoImagemId,
-            $existingPrazo,
+        if (!$stmtGetId) {
+            throw new RuntimeException('Nao foi possivel localizar a funcao de imagem para atualizar o prazo.');
+        }
+        $stmtGetId->bind_param('ii', $imagem_id, $funcao_id);
+        $stmtGetId->execute();
+        $rowId = $stmtGetId->get_result()->fetch_assoc();
+        $stmtGetId->close();
+
+        if (empty($rowId['idfuncao_imagem'])) {
+            throw new RuntimeException('Funcao de imagem nao encontrada para atualizar o prazo.');
+        }
+
+        $prazoContexto = [
+            'origem' => $origemPrazo,
+            'alterado_por_colaborador_id' => $actorColaboradorId,
+            'alterado_por_usuario_id' => $actorUsuarioId,
+        ];
+        if ($status !== null) {
+            $prazoContexto['status_novo'] = $status;
+        }
+        funcao_imagem_prazo_atualizar(
+            $conn,
+            (int) $rowId['idfuncao_imagem'],
             $prazo,
-            $actorColaboradorId,
-            $actorUsuarioId,
-            $origemPrazo,
-            $existingStatus
+            $prazoContexto
         );
-        $stmtPrazoHistory->execute();
-        $stmtPrazoHistory->close();
     }
 
     // A conclusão guarda o prazo necessário efetivo no momento do fato. Assim,

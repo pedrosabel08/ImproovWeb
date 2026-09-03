@@ -7,6 +7,89 @@
   font-family: "Inter", sans-serif;
 }
 
+/* Navegação reutilizável da home: cápsula externa + item ativo interno. */
+main header nav {
+  position: relative;
+}
+main header nav .flow-view-tabs {
+  position: absolute;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--ov-surface-2);
+  border-radius: 999px;
+  background-color: var(--ov-surface);
+  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.2);
+  transform: translateX(-50%);
+}
+main header nav .flow-view-tabs > button {
+  display: inline-flex;
+  width: auto;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 20px;
+  color: #aab8c7;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-color: transparent;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+main header nav .flow-view-tabs > button i {
+  font-size: 19px;
+}
+main header nav .flow-view-tabs > button span {
+  display: none;
+}
+main header nav .flow-view-tabs > button.active span {
+  display: inline;
+}
+main header nav .flow-view-tabs > button:hover {
+  color: #edf5ff;
+  background-color: #121f2c;
+}
+main header nav .flow-view-tabs > button.active {
+  color: #edf7ff;
+  border-color: #1f74d1;
+  background-color: #102b4a;
+  box-shadow:
+    inset 0 0 0 1px rgba(83, 162, 255, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.22);
+}
+@media (max-width: 760px) {
+  main header nav .flow-view-tabs {
+    position: static;
+    width: 100%;
+    justify-content: space-between;
+    transform: none;
+  }
+  main header nav .flow-view-tabs > button {
+    min-width: 0;
+    flex: 1;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  main header nav .flow-view-tabs > button i {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main header nav .flow-view-tabs > button {
+    transition: none;
+  }
+}
+
 /* Carregamento contextual do Kanban: os tokens acompanham os temas do Flow. */
 #kanban-section {
   --kanban-loading-base: color-mix(
@@ -464,7 +547,10 @@ body {
 }
 
 .container > main.main_inicio > header {
+  display: flex;
+  flex-direction: column;
   flex: 0 0 auto;
+  gap: 12px;
 }
 
 .container > main.main_inicio > .kanban,
@@ -494,7 +580,6 @@ button {
 }
 
 main header {
-  border: 1px solid #dcdcdc;
   padding: 20px;
 }
 
@@ -540,13 +625,12 @@ main header {
 }
 
 main header .top {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 24px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  gap: 24px;
 }
-
-
 
 main header h3 {
   font-size: 1.8rem;
@@ -558,24 +642,33 @@ main header h4 {
 }
 
 header nav {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
 }
 
 header .nav-left,
 header .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+header .nav-right {
+  background: var(--ov-surface);
+  padding: 10px 15px;
+  border: 1px solid var(--sb-panel);
+  box-shadow: 0 4px 6px #00000000;
+  border-radius: 10px;
 }
 
 header .header-logo {
-    width: 200px;
-    height: auto;
-    flex-shrink: 0;
+  width: 200px;
+  height: auto;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 main nav .nav-left button.active {
@@ -602,7 +695,7 @@ main nav .nav-left button.active {
 } */
 
 main nav .nav-left button,
-main nav .nav-right button {
+main .nav-right button {
   font-size: 0.8rem;
   display: flex;
   align-items: center;
@@ -610,17 +703,17 @@ main nav .nav-right button {
   color: var(--cor-principal);
 }
 
-main nav .nav-right button,
-main nav .nav-right select {
+main .nav-right button,
+main .nav-right select {
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid #dcdcdc;
+  border: 1px solid var(--border-card);
+  background: var(--ov-surface);
+  color: var(--text-em);
 }
 
-main nav .nav-right button:last-child {
-  background-color: var(--cor-secundaria);
-  color: white;
-  border: none;
+main .nav-right button:last-child {
+  margin-left: auto;
 }
 
 main .kanban {
@@ -3616,8 +3709,8 @@ form#task-form button {
 #modalFilter .modal-content {
   max-width: 100%;
   width: 100%;
-  background: #fff;
-  border: 1px solid #e2e6eb;
+  background: var(--ov-surface-2);
+  border: 1px solid var(--ov-border);
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
   padding: 14px 16px;
@@ -3628,7 +3721,7 @@ form#task-form button {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #6b7280;
+  color: var(--ov-text);
   margin: 0 0 12px;
 }
 
@@ -3638,9 +3731,9 @@ form#task-form button {
 }
 
 #modalFilter .dropbtn {
-  background: #f8f9fb;
-  color: #1a1d23;
-  border: 1px solid #e2e6eb;
+  background: var(--ov-surface-2);
+  color: var(--ov-text);
+  border: 1px solid var(--ov-border);
   border-radius: 8px;
   padding: 7px 12px;
   cursor: pointer;
@@ -3656,21 +3749,21 @@ form#task-form button {
 }
 
 #modalFilter .dropbtn:hover {
-  background: #f0f4ff;
-  border-color: #a3bffa;
+  background: var(--ov-hover);
+  border-color: var(--ov-blue);
 }
 
 /* Indica filtro ativo no botão */
 #modalFilter .dropbtn.tem-filtro {
-  border-color: #4f80e1;
+  border-color: var(--ov-blue);
   background: rgba(79, 128, 225, 0.08);
-  color: #3b6fd6;
+  color: var(--ov-blue);
   font-weight: 700;
 }
 
 #modalFilter .dropdown-content {
-  background: #fff;
-  border: 1px solid #e2e6eb;
+  background: var(--ov-surface-2);
+  border: 1px solid var(--ov-border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   padding: 6px 4px;
@@ -3681,12 +3774,12 @@ form#task-form button {
   padding: 5px 10px;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: var(--ov-text);
 }
 
 #modalFilter .dropdown-content label:hover {
-  background: #f4f7ff;
-  color: #1a1d23;
+  background: var(--ov-hover);
+  color: var(--ov-text);
 }
 
 #modalFilter .dropdown-content input[type="checkbox"] {
@@ -3769,51 +3862,6 @@ form#task-form button {
   background: rgba(79, 128, 225, 0.07) !important;
   color: #3b6fd6 !important;
   font-weight: 600 !important;
-}
-
-/* dark mode */
-@media (prefers-color-scheme: dark) {
-  #modalFilter .modal-content {
-    background: #1e2130;
-    border-color: #2c3040;
-  }
-  #modalFilter .modal-content h3 {
-    color: #9aa3b0;
-  }
-  #modalFilter .dropbtn {
-    background: #1a1d2e;
-    color: #e8eaed;
-    border-color: #2c3040;
-  }
-  #modalFilter .dropbtn:hover {
-    background: #22263a;
-    border-color: #6d9bff;
-  }
-  #modalFilter .dropbtn.tem-filtro {
-    background: rgba(109, 155, 255, 0.12);
-    color: #6d9bff;
-    border-color: #6d9bff;
-  }
-  #modalFilter .dropdown-content {
-    background: #1e2130;
-    border-color: #2c3040;
-  }
-  #modalFilter .dropdown-content label {
-    color: #c9cdd4;
-  }
-  #modalFilter .dropdown-content label:hover {
-    background: #22263a;
-    color: #e8eaed;
-  }
-  #filtros-ativos-bar .filtro-tag {
-    background: rgba(109, 155, 255, 0.12);
-    color: #6d9bff;
-    border-color: rgba(109, 155, 255, 0.25);
-  }
-  #filter.filtro-ativo {
-    background: rgba(109, 155, 255, 0.12) !important;
-    color: #6d9bff !important;
-  }
 }
 
 .modal {
@@ -5528,7 +5576,7 @@ span.aprovadaComAjustes {
     transform 120ms ease,
     box-shadow 120ms ease;
   position: relative;
-  min-width: 180px;
+  width: max-content;
 }
 
 .perfil-colaborador .left {
@@ -5536,8 +5584,8 @@ span.aprovadaComAjustes {
 }
 
 .perfil-colaborador .left img#thumb-colab {
-  width: 44px;
-  height: 44px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 4px 12px rgba(2, 6, 23, 0.06);
@@ -5546,8 +5594,8 @@ span.aprovadaComAjustes {
 
 /* Fallback avatar when there is no photo: show initial */
 .perfil-colaborador .left #thumb-colab.avatar-initial {
-  width: 44px;
-  height: 44px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -5989,7 +6037,7 @@ img.thumb {
   }
 
   body {
-    background-color: #181818;
+    background-color: var(--ov-bg);
     color: #e0e0e0;
   }
 
@@ -5997,7 +6045,6 @@ img.thumb {
     content: url("../gif/assinatura_branco.gif") !important;
   }
 
-  main header,
   main nav,
   main .kanban div .header,
   main .kanban-box .content:not(:empty),
@@ -6008,7 +6055,7 @@ img.thumb {
   .popover,
   .secao-titulo,
   .secao-conteudo {
-    background-color: #232323;
+    background-color: var(--ov-surface-2);
     color: #e0e0e0;
     border-color: #333 !important;
   }
@@ -8787,15 +8834,15 @@ tr.prod-row-recorde td {
     border-color: #dce3ea !important;
   }
 
-  main nav .nav-left button,
+  /* main nav .nav-left button,
   main nav .nav-right button,
   main nav .nav-right select {
     color: #253746 !important;
-  }
+  } */
 
-  main nav .nav-right button:last-child {
+  /* main nav .nav-right button:last-child {
     color: #fff !important;
-  }
+  } */
 
   #kanban-section {
     background: #f6f8fb;

@@ -7,6 +7,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 
 // Simple file logger for debugging (insereFuncao2)
 function write_log_insere_funcao2($msg)
@@ -81,9 +82,9 @@ try {
     }
 
     // Prepara statement de insert/update
-    $insertSql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao, valor)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo),
+    $insertSql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, status, observacao, valor)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id),
                             status = VALUES(status), observacao = VALUES(observacao),
                             valor = VALUES(valor)";
     $stmt = $conn->prepare($insertSql);
@@ -167,9 +168,9 @@ try {
 
             write_log_insere_funcao2("Detected valorFuncao=" . var_export($valorFuncao, true) . " for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
 
-            $bound = $stmt->bind_param("iiisssd", $imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs, $valorFuncao);
+            $bound = $stmt->bind_param("iiissd", $imagem_id, $colaborador_id, $funcao_id, $status, $obs, $valorFuncao);
             if ($bound === false) {
-                write_log_insere_funcao2("bind_param failed (insert): " . $stmt->error . " | tipos=iiisssd | valores=" . json_encode([$imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs, $valorFuncao]));
+                write_log_insere_funcao2("bind_param failed (insert): " . $stmt->error . " | tipos=iiissd | valores=" . json_encode([$imagem_id, $colaborador_id, $funcao_id, $status, $obs, $valorFuncao]));
                 throw new Exception('Erro no bind_param (insert): ' . $stmt->error);
             }
 
@@ -177,6 +178,26 @@ try {
             write_log_insere_funcao2("EXECUTE insert: ok=" . ($execOk ? '1' : '0') . " | stmt_error=" . $stmt->error . " | affected_rows=" . $stmt->affected_rows);
             if ($execOk === false) {
                 throw new Exception('Erro no execute insert: ' . $stmt->error);
+            }
+
+            if ($prazo !== null) {
+                $stmtGetPrazoId = $conn->prepare(
+                    'SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
+                );
+                if (!$stmtGetPrazoId) {
+                    throw new RuntimeException('Nao foi possivel localizar a funcao para atualizar o prazo.');
+                }
+                $stmtGetPrazoId->bind_param('ii', $imagem_id, $funcao_id);
+                $stmtGetPrazoId->execute();
+                $rowPrazoId = $stmtGetPrazoId->get_result()->fetch_assoc();
+                $stmtGetPrazoId->close();
+                if (empty($rowPrazoId['idfuncao_imagem'])) {
+                    throw new RuntimeException('Funcao nao encontrada para atualizar o prazo.');
+                }
+                funcao_imagem_prazo_atualizar($conn, (int) $rowPrazoId['idfuncao_imagem'], $prazo, [
+                    'origem' => 'insereFuncao2',
+                    'status_novo' => $status,
+                ]);
             }
 
             // ─── Inserir em alteracoes se funcao_id = 6 ───────────────────────────

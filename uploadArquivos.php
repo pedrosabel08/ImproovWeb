@@ -125,6 +125,7 @@ require_once __DIR__ . '/conexao.php';
 require_once __DIR__ . '/config/secure_env.php';
 require_once __DIR__ . '/FlowReview/approval_media_schema.php';
 require_once __DIR__ . '/FlowReview/ws_notify.php';
+require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -682,40 +683,46 @@ unset($conn_ftp);
 
 if ($isNasDirectBypass) {
     // ---------- Bypass: status → Aprovado + envia direto ao NAS ----------
-    $stmt = $conn->prepare(
-        "UPDATE funcao_imagem
-         SET prazo = NOW(), status = 'Aprovado', requires_file_upload = 0, file_uploaded_at = NOW()
-         WHERE idfuncao_imagem = ?"
-    );
-    $stmt->bind_param("i", $idFuncaoImagem);
-    if (!$stmt->execute()) {
-        json_error('Erro ao atualizar status para Aprovado: ' . $stmt->error, 500);
-    }
-    $stmt->close();
-
-    // ---------- Registra evento de entrega no histórico SLA ----------
-    {
-        $_slaColabId   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
-        $_slaUsuarioId = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
-        $_slaOrigem    = 'upload_previa';
-        $_slaStatusAnt = $funcao_status;
-        $_slaStatusNov = 'Aprovado';
-        $stmtSlaHist = $conn->prepare(
-            "INSERT INTO funcao_imagem_prazo_historico
-                (funcao_imagem_id, prazo_anterior, prazo_novo,
-                 alterado_por_colaborador_id, alterado_por_usuario_id,
-                 origem, motivo, status_anterior, status_novo)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
+    $conn->begin_transaction();
+    try {
+        $prazoResult = funcao_imagem_prazo_atualizar(
+            $conn,
+            (int) $idFuncaoImagem,
+            date('Y-m-d'),
+            [
+                'origem' => 'upload_previa',
+                'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+                'status_novo' => 'Aprovado',
+            ]
         );
-        if ($stmtSlaHist) {
-            $_slaHoje = date('Y-m-d');
-            $stmtSlaHist->bind_param('issiisss',
-                $idFuncaoImagem, $funcao_prazo, $_slaHoje,
-                $_slaColabId, $_slaUsuarioId, $_slaOrigem,
-                $_slaStatusAnt, $_slaStatusNov);
-            $stmtSlaHist->execute();
-            $stmtSlaHist->close();
+        if (!$prazoResult['alterado']) {
+            $stmt = $conn->prepare(
+                "UPDATE funcao_imagem
+                 SET status = 'Aprovado', requires_file_upload = 0, file_uploaded_at = NOW()
+                 WHERE idfuncao_imagem = ?"
+            );
+            $stmt->bind_param("i", $idFuncaoImagem);
+            if (!$stmt->execute()) {
+                throw new RuntimeException('Erro ao atualizar status para Aprovado: ' . $stmt->error);
+            }
+            $stmt->close();
+        } else {
+            $stmt = $conn->prepare(
+                "UPDATE funcao_imagem
+                 SET requires_file_upload = 0, file_uploaded_at = NOW()
+                 WHERE idfuncao_imagem = ?"
+            );
+            $stmt->bind_param("i", $idFuncaoImagem);
+            if (!$stmt->execute()) {
+                throw new RuntimeException('Erro ao atualizar os dados do upload: ' . $stmt->error);
+            }
+            $stmt->close();
         }
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        json_error($e->getMessage(), 500);
     }
 
     // Busca nomenclatura original para montar o caminho no NAS
@@ -986,15 +993,33 @@ if (!$isAnimacaoUpload && $funcao_status_norm_pre === 'ajuste') {
 }
 // ---------- Fim bloqueio comentários pendentes ------------------------------
 
-// ---------- Atualiza status para Em aprovação sem alterar o prazo corrente ----------
+// ---------- Atualiza prazo operacional e status para Em aprovação ----------
+$prazoAuditTransactionOpen = false;
+if (!$isAnimacaoUpload) {
+    $conn->begin_transaction();
+    $prazoAuditTransactionOpen = true;
+}
 if ($isAnimacaoUpload) {
     $stmt = $conn->prepare("UPDATE funcao_animacao
                             SET status = 'Em aprovação'
                             WHERE id = ?");
 } else {
-    $stmt = $conn->prepare("UPDATE funcao_imagem
-                        SET prazo = NOW(), status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL
-                        WHERE idfuncao_imagem = ?");
+    $prazoResult = funcao_imagem_prazo_atualizar(
+        $conn,
+        (int) $idFuncaoImagem,
+        date('Y-m-d'),
+        [
+            'origem' => 'upload_previa',
+            'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+            'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+            'status_novo' => 'Em aprovação',
+        ]
+    );
+    $statusPrazoAtualizado = $prazoResult['alterado'];
+    $sqlUploadStatus = $statusPrazoAtualizado
+        ? "UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?"
+        : "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
+    $stmt = $conn->prepare($sqlUploadStatus);
 }
 $stmt->bind_param("i", $idFuncaoImagem);
 if (!$stmt->execute()) {
@@ -1042,26 +1067,9 @@ if ($isAnimacaoUpload) {
 
 // ---------- Registra evento de entrega no histórico SLA ----------
 if (!$isAnimacaoUpload) {
-    $_slaColabId   = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null;
-    $_slaUsuarioId = isset($_SESSION['idusuario'])     ? (int)$_SESSION['idusuario']     : null;
-    $_slaOrigem    = 'upload_previa';
-    $_slaStatusAnt = $funcao_status;
-    $_slaStatusNov = 'Em aprovação';
-    $stmtSlaHist = $conn->prepare(
-        "INSERT INTO funcao_imagem_prazo_historico
-            (funcao_imagem_id, prazo_anterior, prazo_novo,
-             alterado_por_colaborador_id, alterado_por_usuario_id,
-             origem, motivo, status_anterior, status_novo)
-         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
-    );
-    if ($stmtSlaHist) {
-        $_slaHoje = date('Y-m-d');
-        $stmtSlaHist->bind_param('issiisss',
-            $idFuncaoImagem, $funcao_prazo, $_slaHoje,
-            $_slaColabId, $_slaUsuarioId, $_slaOrigem,
-            $_slaStatusAnt, $_slaStatusNov);
-        $stmtSlaHist->execute();
-        $stmtSlaHist->close();
+    if ($prazoAuditTransactionOpen) {
+        $conn->commit();
+        $prazoAuditTransactionOpen = false;
     }
 }
 

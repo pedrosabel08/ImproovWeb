@@ -192,7 +192,7 @@ if ($foto_colab !== ''):
 
         <!-- NAVEGAÇÃO -->
         <nav>
-            <div class="nav-left">
+            <div class="nav-left flow-view-tabs">
                 <button id="overviewBtn">
                     <i class="ri-dashboard-line"></i>
                     <span>Visão Geral</span>
@@ -209,7 +209,19 @@ if ($foto_colab !== ''):
                 </button>
             </div>
 
-            <div class="nav-right">
+        </nav>
+
+
+        <!-- LOGO -->
+        <img
+            id="gif"
+            src="gif/assinatura_preto.gif"
+            alt="Assinatura"
+            class="header-logo"
+        >
+
+    </div>
+                <div class="nav-right">
 
                 <div
                     id="mini-calendar-container"
@@ -241,18 +253,6 @@ if ($foto_colab !== ''):
                     <span>Filtros</span>
                 </button>
             </div>
-        </nav>
-
-
-        <!-- LOGO -->
-        <img
-            id="gif"
-            src="gif/assinatura_preto.gif"
-            alt="Assinatura"
-            class="header-logo"
-        >
-
-    </div>
 </header>
             <div id="filtros-ativos-bar"></div>
             <div class="kanban" id="kanban-section">

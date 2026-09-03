@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -1022,29 +1023,36 @@ try {
         }
 
         $conn->begin_transaction();
-        $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em andamento', prazo = ? WHERE idfuncao_imagem = ? AND status = 'HOLD'");
-        $stmt->bind_param('si', $newDeadline, $taskId);
-        $stmt->execute();
-        if ($stmt->affected_rows !== 1) {
-            $stmt->close();
-            throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
-        }
-        $stmt->close();
-
         $statusBefore = 'HOLD';
         $statusAfter = 'Em andamento';
         $previousDeadline = $task['prazo'] ?? null;
         $actorUserId = (int) ($_SESSION['idusuario'] ?? 0);
-        $historyOrigin = 'flow_block';
         $historyNote = $replanNote !== '' ? $replanNote : null;
-        $deadlineHistory = $conn->prepare(
-            'INSERT INTO funcao_imagem_prazo_historico
-                (funcao_imagem_id, prazo_anterior, prazo_novo, alterado_por_colaborador_id, alterado_por_usuario_id, origem, motivo, status_anterior, status_novo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        $prazoResult = funcao_imagem_prazo_atualizar(
+            $conn,
+            $taskId,
+            $newDeadline,
+            [
+                'origem' => 'flow_block',
+                'motivo' => $historyNote,
+                'alterado_por_colaborador_id' => $actorId,
+                'alterado_por_usuario_id' => $actorUserId,
+                'status_novo' => $statusAfter,
+            ]
         );
-        $deadlineHistory->bind_param('issiissss', $taskId, $previousDeadline, $newDeadline, $actorId, $actorUserId, $historyOrigin, $historyNote, $statusBefore, $statusAfter);
-        $deadlineHistory->execute();
-        $deadlineHistory->close();
+        if (!$prazoResult['alterado']) {
+            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em andamento' WHERE idfuncao_imagem = ? AND status = 'HOLD'");
+            if (!$stmt) {
+                throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
+            }
+            $stmt->bind_param('i', $taskId);
+            $stmt->execute();
+            if ($stmt->affected_rows !== 1) {
+                $stmt->close();
+                throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
+            }
+            $stmt->close();
+        }
 
         $log = $conn->prepare('INSERT INTO log_alteracoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id) VALUES (?, ?, ?, ?)');
         $log->bind_param('issi', $taskId, $statusBefore, $statusAfter, $actorId);

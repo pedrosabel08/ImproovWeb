@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Inclua a conexão com o banco de dados
 include('conexao.php');
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 
 function same_caderno_date($left, $right)
 {
@@ -63,60 +64,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $conn->begin_transaction();
 
-    // Consulta de atualização (UPDATE)
-    $sql = "UPDATE funcao_imagem 
-            SET status = ?, prazo = ?
-            WHERE idfuncao_imagem = ?";
+    try {
+        $prazoResult = funcao_imagem_prazo_atualizar(
+            $conn,
+            $idfuncao_imagem,
+            $prazo,
+            [
+                'origem' => 'arquitetura_caderno',
+                'alterado_por_colaborador_id' => $actorColaboradorId,
+                'alterado_por_usuario_id' => $actorUsuarioId,
+                'status_novo' => $status,
+            ]
+        );
 
-    // Preparando a consulta para evitar SQL Injection
-    if ($stmt = $conn->prepare($sql)) {
-        // Vinculando os parâmetros
-        $stmt->bind_param('ssi', $status, $prazo, $idfuncao_imagem);
-
-        // Executa a consulta
-        if ($stmt->execute()) {
-            if (!same_caderno_date($prazoAnterior, $prazo)) {
-                $origem = 'arquitetura_caderno';
-                $stmtHistory = $conn->prepare(
-                    "INSERT INTO funcao_imagem_prazo_historico (
-                        funcao_imagem_id,
-                        prazo_anterior,
-                        prazo_novo,
-                        alterado_por_colaborador_id,
-                        alterado_por_usuario_id,
-                        origem,
-                        motivo,
-                        status_anterior,
-                        status_novo
-                    ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)"
-                );
-                $stmtHistory->bind_param(
-                    'issiisss',
-                    $idfuncao_imagem,
-                    $prazoAnterior,
-                    $prazo,
-                    $actorColaboradorId,
-                    $actorUsuarioId,
-                    $origem,
-                    $statusAnterior,
-                    $status
-                );
-                $stmtHistory->execute();
-                $stmtHistory->close();
+        if (!$prazoResult['alterado']) {
+            $stmtStatus = $conn->prepare('UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?');
+            if (!$stmtStatus) {
+                throw new RuntimeException('Erro de preparação da atualização de status: ' . $conn->error);
             }
-
-            $conn->commit();
-            echo "Atualização feita com sucesso!";
-        } else {
-            $conn->rollback();
-            echo "Erro ao atualizar: " . $stmt->error;
+            $stmtStatus->bind_param('si', $status, $idfuncao_imagem);
+            if (!$stmtStatus->execute()) {
+                $error = $stmtStatus->error;
+                $stmtStatus->close();
+                throw new RuntimeException('Erro ao atualizar status: ' . $error);
+            }
+            $stmtStatus->close();
         }
 
-        // Fecha a declaração
-        $stmt->close();
-    } else {
+        $conn->commit();
+        echo "Atualização feita com sucesso!";
+    } catch (Throwable $e) {
         $conn->rollback();
-        echo "Erro de preparação da consulta: " . $conn->error;
+        echo "Erro ao atualizar: " . $e->getMessage();
     }
 }
 

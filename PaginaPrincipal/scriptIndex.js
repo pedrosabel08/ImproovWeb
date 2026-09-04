@@ -4,7 +4,11 @@ const focusedTaskColaborador = initialFlowParams.get("focus_task")
   : 0;
 if (focusedTaskColaborador > 0) colaborador_id = focusedTaskColaborador;
 
-if (colaborador_id === 9 || colaborador_id === 21 || focusedTaskColaborador > 0) {
+if (
+  colaborador_id === 9 ||
+  colaborador_id === 21 ||
+  focusedTaskColaborador > 0
+) {
   document.getElementById("idcolab").style.display = "flex"; // libera
 } else {
   document.getElementById("idcolab").style.display = "none"; // esconde
@@ -2738,7 +2742,7 @@ function processarDados(data) {
                     <div class="card-footer">
                         <span class="date ${atrasada ? "atrasada" : ""}">
                             <i class="fa-regular fa-calendar"></i>
-                            ${tipo === "imagem" ? (planejamento.prazo_necessario ? formatarDataPlanejamento(planejamento.prazo_necessario) : (item.prazo ? formatarDataPlanejamento(item.prazo) : "Sem prazo")) : item.prazo ? formatarData(item.prazo) : "-"}
+                            ${tipo === "imagem" ? (planejamento.prazo_necessario ? formatarDataPlanejamento(planejamento.prazo_necessario) : item.prazo ? formatarDataPlanejamento(item.prazo) : "Sem prazo") : item.prazo ? formatarData(item.prazo) : "-"}
                         </span>
                         ${desvioPlanejamentoHtml}
                     </div>
@@ -4893,7 +4897,7 @@ function abrirSidebar(
           <div><span>Função atual</span><strong>${escapeKanbanText(planejamento.etapa_nome || funcao.nome_funcao || "Não definida")}</strong><small>Você está nesta etapa</small></div>
           <div><span>Janela da etapa</span><strong>${planejamento.janela_inicio && planejamento.janela_fim ? `${formatarData(planejamento.janela_inicio)} → ${formatarData(planejamento.janela_fim)}` : "Não definida"}</strong><small>${planejamento.plano_versao ? `Plano vigente v${planejamento.plano_versao}` : "Sem plano vigente"}</small></div>
           <div><span>Prazo necessário</span><strong class="tp-commitment-deadline">${formatarDataPlanejamento(prazoNecessario)}</strong><small>Definido pelo planejamento</small></div>
-          <div><span>Sua previsão</span><strong class="tp-commitment-prediction">${previsaoExibida ? formatarData(String(previsaoExibida).slice(0, 10)) : "Não informada"}</strong><small>${planejamento.diferenca_previsao_dias_uteis > 0 ? `+${planejamento.diferenca_previsao_dias_uteis} dias úteis` : (!planejamentoDisponivel && previsaoExibida ? "Prazo definido na função" : "")}</small></div>
+          <div><span>Sua previsão</span><strong class="tp-commitment-prediction">${previsaoExibida ? formatarData(String(previsaoExibida).slice(0, 10)) : "Não informada"}</strong><small>${planejamento.diferenca_previsao_dias_uteis > 0 ? `+${planejamento.diferenca_previsao_dias_uteis} dias úteis` : !planejamentoDisponivel && previsaoExibida ? "Prazo definido na função" : ""}</small></div>
         </div>
         ${
           timelineItens.length
@@ -4922,6 +4926,23 @@ function abrirSidebar(
         <div class="tp-commitment-message"><i class="ri-information-line"></i><span>${escapeKanbanText(planejamento.mensagem_contexto || "O planejamento ainda não definiu o contexto desta tarefa.")}</span></div>
       `;
       tpMain.appendChild(compromisso);
+
+      // Em telas compactas, mantém a etapa atual visível sem deslocar a página.
+      const processTimeline = compromisso.querySelector(".tp-process-timeline");
+      const currentProcessStage = processTimeline?.querySelector(
+        ".tp-process-stage.is-atual",
+      );
+      if (processTimeline && currentProcessStage) {
+        requestAnimationFrame(() => {
+          if (window.matchMedia("(max-width: 1279px)").matches) {
+            const targetLeft =
+              currentProcessStage.offsetLeft -
+              (processTimeline.clientWidth - currentProcessStage.offsetWidth) /
+                2;
+            processTimeline.scrollLeft = Math.max(0, targetLeft);
+          }
+        });
+      }
 
       // ─ Resumo da tarefa ─
       const summaryCard = document.createElement("div");
@@ -5469,7 +5490,7 @@ function abrirSidebar(
 
       // ─ Notificações ─
       const notifBlock = document.createElement("div");
-      notifBlock.className = "tp-sidebar-block";
+      notifBlock.className = "tp-sidebar-block tp-sidebar-block--notifications";
       const notificacoes = Array.isArray(data.notificacoes)
         ? data.notificacoes
         : [];
@@ -5526,7 +5547,7 @@ function abrirSidebar(
 
       // ─ Informações da Obra ─
       const obraBlock = document.createElement("div");
-      obraBlock.className = "tp-sidebar-block";
+      obraBlock.className = "tp-sidebar-block tp-sidebar-block--project";
       const BRIEFING_LABELS = {
         nivel: "Nível",
         conceito: "Conceito",
@@ -5593,7 +5614,7 @@ function abrirSidebar(
         : [];
       if (obs.length > 0) {
         const obsBlock = document.createElement("div");
-        obsBlock.className = "tp-sidebar-block";
+        obsBlock.className = "tp-sidebar-block tp-sidebar-block--observations";
         const obsText = obs
           .map((o) => o.descricao || "")
           .filter(Boolean)
@@ -5607,7 +5628,7 @@ function abrirSidebar(
 
       // ─ Acesso Rápido ─
       const quickBlock = document.createElement("div");
-      quickBlock.className = "tp-sidebar-block";
+      quickBlock.className = "tp-sidebar-block tp-sidebar-block--quick";
 
       const quickTitle = document.createElement("div");
       quickTitle.className = "tp-sidebar-block-title";
@@ -6611,14 +6632,17 @@ function configurarModalPlanejamento(card) {
   }
   const disponivel = card.dataset.planningAvailable === "1";
   const modalPrazoWrap = document.querySelector(".modalPrazo");
-  const prazoFallback = card.dataset.planningPredictionFallback || card.dataset.prazo || "";
-  if (modalPrazoWrap) modalPrazoWrap.style.display = disponivel ? "none" : "flex";
+  const prazoFallback =
+    card.dataset.planningPredictionFallback || card.dataset.prazo || "";
+  if (modalPrazoWrap)
+    modalPrazoWrap.style.display = disponivel ? "none" : "flex";
   modalPlanejamento.hidden = false;
   modalPlanejamento.dataset.taskId = card.dataset.id || "";
   modalPrazoNecessario.textContent = formatarDataPlanejamento(
     card.dataset.planningRequiredDue || "",
   );
-  modalPrevisaoConclusao.value = card.dataset.planningPrediction || (!disponivel ? prazoFallback : "");
+  modalPrevisaoConclusao.value =
+    card.dataset.planningPrediction || (!disponivel ? prazoFallback : "");
   modalPrevisaoConclusao.disabled = !disponivel;
   modalJustificativa.value = card.dataset.planningJustification || "";
   if (!disponivel) {
@@ -8058,7 +8082,15 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   const kanbanSec = document.getElementById("kanban-section");
   const listSec = document.getElementById("list-section");
   const navRight = document.querySelector("main header .nav-right");
-  if (!btnOverview || !btnKanban || !btnLista || !overviewSec || !kanbanSec || !listSec) return;
+  if (
+    !btnOverview ||
+    !btnKanban ||
+    !btnLista ||
+    !overviewSec ||
+    !kanbanSec ||
+    !listSec
+  )
+    return;
 
   function clearViews() {
     document.body.classList.remove("overview-active");
@@ -8095,11 +8127,16 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
     clearViews();
     listSec.style.display = "block";
     btnLista.classList.add("active");
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (listSec.style.display !== "none" && typeof window.renderizarListaTarefas === "function") {
-        window.renderizarListaTarefas();
-      }
-    }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (
+          listSec.style.display !== "none" &&
+          typeof window.renderizarListaTarefas === "function"
+        ) {
+          window.renderizarListaTarefas();
+        }
+      }),
+    );
   }
 
   const params = new URLSearchParams(window.location.search);
@@ -8114,12 +8151,18 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
 
   const focusTask = params.get("focus_task");
   if (focusTask) {
-    const escaped = window.CSS?.escape ? window.CSS.escape(focusTask) : focusTask.replace(/[^0-9]/g, "");
+    const escaped = window.CSS?.escape
+      ? window.CSS.escape(focusTask)
+      : focusTask.replace(/[^0-9]/g, "");
     const focusCard = () => {
       const card = document.querySelector(`.kanban-card[data-id="${escaped}"]`);
       if (!card) return false;
       showKanban();
-      card.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      card.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
       window.setTimeout(() => card.click(), 180);
       return true;
     };

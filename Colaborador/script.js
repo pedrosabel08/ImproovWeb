@@ -58,6 +58,8 @@ function atualizarNivelFinalizacao() {
   });
   const grupoNivel = document.getElementById("nivelFinalizacaoGroup");
   const selectNivel = document.getElementById("nivelFinalizacao");
+  const grupoTipo = document.getElementById("tipoFinalizacaoGroup");
+  const selectTipo = document.getElementById("tipoFinalizacao");
   const grupoNivelArquitetura = document.getElementById(
     "nivelArquiteturaGroup",
   );
@@ -67,6 +69,8 @@ function atualizarNivelFinalizacao() {
 
   grupoNivel.hidden = !possuiFinalizacao;
   selectNivel.required = possuiFinalizacao;
+  grupoTipo.hidden = !possuiFinalizacao;
+  selectTipo.required = possuiFinalizacao;
   grupoNivelArquitetura.hidden = !possuiArquitetura;
   selectNivelArquitetura.required = possuiArquitetura;
   grupoNivelAnimacao.hidden = !possuiAnimacao;
@@ -74,6 +78,7 @@ function atualizarNivelFinalizacao() {
 
   if (!possuiFinalizacao) {
     selectNivel.value = "";
+    $(selectTipo).val([]).trigger("change");
   }
   if (!possuiArquitetura) {
     selectNivelArquitetura.value = "";
@@ -184,6 +189,9 @@ function abrirModalEdicao(idusuario) {
       atuacoesFuncoes = data.funcoes_atuacao || {};
       $("#funcaoSelect").val(data.funcoes).trigger("change");
       $("#nivelFinalizacao").val(data.nivel_finalizacao ?? "");
+      $("#tipoFinalizacao")
+        .val(data.tipos_finalizacao || data.tipo_finalizacao || [])
+        .trigger("change");
       $("#nivelArquitetura").val(data.nivel_arquitetura ?? "");
       $("#nivelAnimacao").val(data.nivel_animacao ?? "");
       atualizarNivelFinalizacao();
@@ -219,6 +227,7 @@ function abrirModalNovo() {
   $("#funcaoSelect").val([]).trigger("change");
   atuacoesFuncoes = {};
   $("#nivelFinalizacao").val("");
+  $("#tipoFinalizacao").val([]).trigger("change");
   $("#nivelArquitetura").val("");
   $("#nivelAnimacao").val("");
   document.getElementById("elegivelCapacidade").checked = true;
@@ -321,6 +330,13 @@ $(document).ready(function () {
     dropdownParent: $("#modal"),
   });
 
+  $("#tipoFinalizacao").select2({
+    placeholder: "Selecione os tipos",
+    allowClear: true,
+    closeOnSelect: false,
+    dropdownParent: $("#modal"),
+  });
+
   $("#funcaoSelect").on("change", function () {
     atualizarNivelFinalizacao();
     atualizarAtuacoesFuncoes();
@@ -374,6 +390,7 @@ $("#form").on("submit", function (e) {
     cargos: $("#cargoSelect").val(),
     funcoes: $("#funcaoSelect").val(),
     nivel_finalizacao: $("#nivelFinalizacao").val(),
+    tipo_finalizacao: $("#tipoFinalizacao").val() || [],
     nivel_arquitetura: $("#nivelArquitetura").val(),
     nivel_animacao: $("#nivelAnimacao").val(),
     tipo_atuacao: Object.fromEntries(
@@ -397,6 +414,13 @@ $("#form").on("submit", function (e) {
     !formData.nivel_finalizacao
   ) {
     showToast("Selecione o nivel de finalizacao.", "error");
+    return;
+  }
+  if (
+    document.getElementById("tipoFinalizacao").required &&
+    !formData.tipo_finalizacao.length
+  ) {
+    showToast("Selecione o tipo de finalizacao.", "error");
     return;
   }
   if (

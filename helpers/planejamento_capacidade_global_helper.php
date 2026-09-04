@@ -229,10 +229,12 @@ function flow_capacidade_configuracao_por_colaboradores(array $colaboradores, st
 function flow_capacidade_carregar_configuracoes_colaboradores(mysqli $conn): array
 {
     $resultado = $conn->query(
-        "SELECT fc.funcao_id, fc.colaborador_id, fc.tipo_atuacao,
+        "SELECT fc.funcao_id, fc.colaborador_id, fc.tipo_atuacao, fct.tipo_finalizacao,
                 c.nome_colaborador, c.ativo, c.elegivel_capacidade
            FROM funcao_colaborador fc
            JOIN colaborador c ON c.idcolaborador = fc.colaborador_id
+           LEFT JOIN funcao_colaborador_tipo_finalizacao fct
+             ON fct.funcao_colaborador_id = fc.idfuncao_colaborador
           WHERE " . flow_colaborador_elegivel_capacidade_sql('c') . "
             AND fc.funcao_id IN (1, 2, 3, 4, 5, 8)
           ORDER BY fc.funcao_id, c.nome_colaborador, fc.colaborador_id"
@@ -242,7 +244,7 @@ function flow_capacidade_carregar_configuracoes_colaboradores(mysqli $conn): arr
     }
 
     $porFuncao = [];
-    $porNomeFinalizacao = [];
+    $porTipoFinalizacao = [];
     while ($linha = $resultado->fetch_assoc()) {
         $id = (int) $linha['colaborador_id'];
         $nome = trim((string) $linha['nome_colaborador']);
@@ -254,11 +256,12 @@ function flow_capacidade_carregar_configuracoes_colaboradores(mysqli $conn): arr
             'id' => $id,
             'nome' => $nome,
             'tipo_atuacao' => flow_capacidade_normalizar_tipo_atuacao($linha['tipo_atuacao'] ?? null),
+            'tipo_finalizacao' => $funcaoId === 4 ? (string) ($linha['tipo_finalizacao'] ?? '') : null,
             'capacidade_secundaria_potencial' => true,
         ];
         $porFuncao[$funcaoId][$id] = $registro;
-        if ($funcaoId === 4) {
-            $porNomeFinalizacao[flow_planejamento_normalizar($nome)][$id] = $registro;
+        if ($funcaoId === 4 && in_array($registro['tipo_finalizacao'], ['EXTERNA', 'INTERNA', 'PLANTA'], true)) {
+            $porTipoFinalizacao[$registro['tipo_finalizacao']][$id] = $registro;
         }
     }
     $resultado->free();
@@ -289,25 +292,22 @@ function flow_capacidade_carregar_configuracoes_colaboradores(mysqli $conn): arr
         );
     }
 
-    // Os pools de finalização são uma regra operacional explícita do Flow.
-    // Não usamos nivel_finalizacao para inferi-los silenciosamente: o cadastro
-    // atual possui níveis históricos que não correspondem aos pools por tipo.
+    // O tipo de finalização é informado no vínculo do colaborador com a
+    // função 4 e define em qual frente do Planejamento ele pode atuar.
     $poolsFinalizacao = [
-        'FINALIZACAO_EXTERNA' => ['marcio', 'heverton'],
-        'FINALIZACAO_INTERNA' => ['bruna', 'jose robson', 'jose'],
-        'FINALIZACAO_PLANTA' => ['jiulia'],
+        'FINALIZACAO_EXTERNA' => 'EXTERNA',
+        'FINALIZACAO_INTERNA' => 'INTERNA',
+        'FINALIZACAO_PLANTA' => 'PLANTA',
     ];
-    foreach ($poolsFinalizacao as $codigo => $nomes) {
+    foreach ($poolsFinalizacao as $codigo => $tipoFinalizacao) {
         $colaboradores = [];
-        foreach ($nomes as $nomeNormalizado) {
-            foreach (($porNomeFinalizacao[$nomeNormalizado] ?? []) as $id => $colaborador) {
-                $colaboradores[$id] = $colaborador;
-            }
+        foreach (($porTipoFinalizacao[$tipoFinalizacao] ?? []) as $id => $colaborador) {
+            $colaboradores[$id] = $colaborador;
         }
         $configuracoes[$codigo] = flow_capacidade_configuracao_por_colaboradores(
             $colaboradores,
-            'FUNCAO_COLABORADOR_ELEGIVEL_POOL_FINALIZACAO',
-            'pool operacional explícito; vínculo funcao_id=4 e colaborador elegível',
+            'FUNCAO_COLABORADOR_ELEGIVEL_TIPO_FINALIZACAO',
+            'tipo_finalizacao explícito no vínculo funcao_id=4; colaborador ativo e elegível',
             $codigo
         );
     }

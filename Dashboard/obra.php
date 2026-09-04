@@ -238,7 +238,7 @@ $conn->close();
                     <i class="fa-solid fa-file"></i>
                     <span class="qa-label">Arquivos</span>
                 </a>
-                <a class="quick-link" href="#secao-alma-obra" title="Ir para Direção Visual ALMA" aria-hidden="false">
+                <a class="quick-link alma-obra" href="" title="Ir para Direção Visual ALMA" aria-hidden="false">
                     <i class="fa-solid fa-compass"></i>
                     <span class="qa-label">ALMA</span>
                 </a>
@@ -310,7 +310,7 @@ $conn->close();
                                 class="fa-solid fa-clipboard-list"></i> <span>Info. Obra</span></a>
                         <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
                                 class="fa-solid fa-file"></i> <span>Arquivos</span></a>
-
+                        <a class="mobile-link alma-obra" id="mobile_alma" href="#"><i class="fa-solid fa-compass"></i> <span>ALMA</span></a>
                         <?php if ($pode_ver_plano_r00): ?>
                             <a class="mobile-link" id="mobile_production_plan" href="#" aria-hidden="true" style="display:none;"><i
                                     class="fa-solid fa-chart-gantt"></i> <span>Plano R00</span></a>
@@ -709,7 +709,7 @@ $conn->close();
                 <p id="revisoes" class="resumo-imagens-revisoes"></p>
             </section>
 
-            <section id="secao-alma-obra" class="obra-alma-section" aria-labelledby="obraAlmaTitle">
+            <!-- <section id="secao-alma-obra" class="obra-alma-section" aria-labelledby="obraAlmaTitle">
                 <header class="obra-alma-head">
                     <div>
                         <span>Direção visual</span>
@@ -721,7 +721,7 @@ $conn->close();
                     </a>
                 </header>
                 <iframe id="obraAlmaFrame" class="obra-alma-frame" title="Editor da Direção Visual ALMA" loading="lazy"></iframe>
-            </section>
+            </section> -->
 
             <div id="estrela-container" style="display: none;">
                 <span class="estrela" id="estrela1">★</span>

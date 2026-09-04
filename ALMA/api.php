@@ -3,14 +3,16 @@
 require_once __DIR__ . '/alma_helpers.php';
 require_once __DIR__ . '/../conexaoMain.php';
 
-alma_require_auth();
-if (session_status() === PHP_SESSION_ACTIVE) {
-    session_write_close();
+$almaApiLibraryOnly = defined('ALMA_API_LIBRARY_ONLY') && ALMA_API_LIBRARY_ONLY === true;
+if (!$almaApiLibraryOnly) {
+    alma_require_auth();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    $conn = conectarBanco();
+    $action = (string) ($_GET['action'] ?? $_POST['action'] ?? '');
+    $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 }
-
-$conn = conectarBanco();
-$action = (string) ($_GET['action'] ?? $_POST['action'] ?? '');
-$method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 
 function alma_positive_id(mixed $value, string $label): int
 {
@@ -257,7 +259,6 @@ function alma_save_revision(mysqli $conn, array $payload): array
         }
         $before = alma_edit_snapshot($conn, $revisionId);
         $intention = trim((string) ($payload['intencao_geral'] ?? ''));
-        $narrative = trim((string) ($payload['sintese_narrativa'] ?? ''));
         $selections = is_array($payload['selecoes'] ?? null) ? $payload['selecoes'] : [];
         $references = is_array($payload['referencias'] ?? null) ? $payload['referencias'] : [];
 
@@ -276,40 +277,22 @@ function alma_save_revision(mysqli $conn, array $payload): array
         $selectionMap = [];
         foreach ($selections as $order => $selection) {
             $code = trim((string) ($selection['dimensao_codigo'] ?? ''));
-            if (!isset($dimensions[$code])) {
+            if (!in_array($code, ALMA_IMAGE_DIMENSIONS, true) || !isset($dimensions[$code])) {
                 throw new RuntimeException('Dimensão ALMA inválida: ' . $code);
             }
             $dimension = $dimensions[$code];
             $itemId = !empty($selection['item_biblioteca_id']) ? (int) $selection['item_biblioteca_id'] : null;
-            if ((int) $dimension['exige_item_biblioteca'] === 1 && !$itemId) {
+            if (!$itemId) {
                 continue;
             }
-            if ($itemId) {
-                $stmt = $conn->prepare('SELECT id FROM alma_biblioteca_item WHERE id = ? AND dimensao_id = ? AND ativo = 1 LIMIT 1');
-                $stmt->bind_param('ii', $itemId, $dimension['id']);
-                $stmt->execute();
-                $valid = $stmt->get_result()->fetch_assoc();
-                $stmt->close();
-                if (!$valid) {
-                    throw new RuntimeException('Item da Biblioteca não pertence à dimensão selecionada.');
-                }
-            }
-            $contextSummary = trim((string) ($selection['resumo_contextual'] ?? '')) ?: null;
-            $application = trim((string) ($selection['aplicacao_imagem'] ?? '')) ?: null;
-            $rationale = trim((string) ($selection['justificativa'] ?? '')) ?: null;
-            $operational = trim((string) ($selection['observacao_operacional'] ?? '')) ?: null;
-            if (!$itemId && !$contextSummary && !$application && !$rationale && !$operational) {
-                continue;
-            }
+            alma_dimension_and_item($conn, (int) $revision['biblioteca_versao_id'], $code, $itemId);
             $principal = !isset($selection['principal']) || !empty($selection['principal']) ? 1 : 0;
             $sort = (int) ($selection['ordem'] ?? $order);
             $stmt = $conn->prepare(
-                'INSERT INTO alma_revisao_selecao
-                    (revisao_id, dimensao_id, item_biblioteca_id, principal, resumo_contextual,
-                     aplicacao_imagem, justificativa, observacao_operacional, ordem)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO alma_revisao_selecao (revisao_id, dimensao_id, item_biblioteca_id, principal, ordem)
+                 VALUES (?, ?, ?, ?, ?)'
             );
-            $stmt->bind_param('iiiissssi', $revisionId, $dimension['id'], $itemId, $principal, $contextSummary, $application, $rationale, $operational, $sort);
+            $stmt->bind_param('iiiii', $revisionId, $dimension['id'], $itemId, $principal, $sort);
             $stmt->execute();
             $selectionMap[$code] = (int) $conn->insert_id;
             $stmt->close();
@@ -317,41 +300,51 @@ function alma_save_revision(mysqli $conn, array $payload): array
 
         foreach ($references as $reference) {
             $code = trim((string) ($reference['dimensao_codigo'] ?? ''));
-            if (!isset($dimensions[$code])) {
+            if (!in_array($code, ALMA_IMAGE_DIMENSIONS, true) || !isset($dimensions[$code])) {
                 throw new RuntimeException('Dimensão da referência inválida: ' . $code);
             }
             $referenceId = alma_positive_id($reference['sire_referencia_id'] ?? 0, 'sire_referencia_id');
-            if (!alma_reference_data($conn, $referenceId)) {
-                throw new RuntimeException('Referência SIRE não encontrada.');
-            }
-            $represents = trim((string) ($reference['representa'] ?? ''));
-            $apply = trim((string) ($reference['aplicar'] ?? ''));
-            if ($represents === '' || $apply === '') {
-                throw new RuntimeException('Toda referência ALMA precisa informar o que representa e como aplicar.');
-            }
             $selectionId = $selectionMap[$code] ?? null;
-            $relevance = trim((string) ($reference['relevancia'] ?? '')) ?: null;
-            $dontCopy = trim((string) ($reference['nao_copiar'] ?? '')) ?: null;
-            $note = trim((string) ($reference['observacao'] ?? '')) ?: null;
+            if (!$selectionId) {
+                throw new RuntimeException('Selecione o item da dimensão antes de vincular referências.');
+            }
             $actor = alma_user_id();
             $stmt = $conn->prepare(
                 'INSERT INTO alma_revisao_referencia
                     (revisao_id, selecao_id, dimensao_id, sire_referencia_id, representa,
                      relevancia, aplicar, nao_copiar, observacao, criada_por_usuario_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                 VALUES (?, ?, ?, ?, "", NULL, "", NULL, NULL, ?)'
             );
-            $stmt->bind_param('iiiisssssi', $revisionId, $selectionId, $dimensions[$code]['id'], $referenceId, $represents, $relevance, $apply, $dontCopy, $note, $actor);
+            $stmt->bind_param('iiiii', $revisionId, $selectionId, $dimensions[$code]['id'], $referenceId, $actor);
             $stmt->execute();
             $stmt->close();
+        }
+
+        foreach ($selectionMap as $code => $selectionId) {
+            $itemId = null;
+            foreach ($selections as $selection) {
+                if (($selection['dimensao_codigo'] ?? '') === $code) {
+                    $itemId = (int) ($selection['item_biblioteca_id'] ?? 0);
+                    break;
+                }
+            }
+            $referenceIds = [];
+            foreach ($references as $reference) {
+                if (($reference['dimensao_codigo'] ?? '') === $code) {
+                    $referenceIds[] = (int) ($reference['sire_referencia_id'] ?? 0);
+                }
+            }
+            $taxonomy = alma_dimension_and_item($conn, (int) $revision['biblioteca_versao_id'], $code, (int) $itemId);
+            alma_classify_references($conn, $taxonomy, $referenceIds);
         }
 
         $actor = alma_user_id();
         $stmt = $conn->prepare(
             'UPDATE alma_direcao_revisao
-                SET intencao_geral = ?, sintese_narrativa = ?, atualizada_por_usuario_id = ?, lock_version = lock_version + 1
+                SET intencao_geral = ?, atualizada_por_usuario_id = ?, lock_version = lock_version + 1
               WHERE id = ?'
         );
-        $stmt->bind_param('ssii', $intention, $narrative, $actor, $revisionId);
+        $stmt->bind_param('sii', $intention, $actor, $revisionId);
         $stmt->execute();
         $stmt->close();
         $after = alma_edit_snapshot($conn, $revisionId);
@@ -359,11 +352,8 @@ function alma_save_revision(mysqli $conn, array $payload): array
         if (($before['intencao_geral'] ?? '') !== $intention) {
             alma_event($conn, $directionId, $revisionId, 'REVISAO', $revisionId, 'INTENCAO_ALTERADA', $before['intencao_geral'] ?? null, $intention);
         }
-        if (($before['sintese_narrativa'] ?? '') !== $narrative) {
-            alma_event($conn, $directionId, $revisionId, 'REVISAO', $revisionId, 'SINTESE_ALTERADA', $before['sintese_narrativa'] ?? null, $narrative);
-        }
         if (($before['selecoes'] ?? []) !== ($after['selecoes'] ?? [])) {
-            alma_event($conn, $directionId, $revisionId, 'SELECAO', null, 'SELECOES_E_CONTEXTO_ALTERADOS', $before['selecoes'] ?? [], $after['selecoes'] ?? []);
+            alma_event($conn, $directionId, $revisionId, 'SELECAO', null, 'SELECOES_ALTERADAS', $before['selecoes'] ?? [], $after['selecoes'] ?? []);
         }
         if (($before['referencias'] ?? []) !== ($after['referencias'] ?? [])) {
             $beforeReferences = [];
@@ -380,14 +370,393 @@ function alma_save_revision(mysqli $conn, array $payload): array
             foreach (array_diff_key($beforeReferences, $afterReferences) as $reference) {
                 alma_event($conn, $directionId, $revisionId, 'REFERENCIA', (int) $reference['sire_referencia_id'], 'REFERENCIA_DESVINCULADA', $reference, null);
             }
-            foreach (array_intersect_key($afterReferences, $beforeReferences) as $key => $reference) {
-                if ($reference !== $beforeReferences[$key]) {
-                    alma_event($conn, $directionId, $revisionId, 'REFERENCIA', (int) $reference['sire_referencia_id'], 'INTERPRETACAO_REFERENCIA_ALTERADA', $beforeReferences[$key], $reference);
-                }
-            }
         }
+        $oldActive = null;
+        $stmt = $conn->prepare('SELECT revisao_ativa_id FROM alma_direcao WHERE id = ? FOR UPDATE');
+        $stmt->bind_param('i', $directionId);
+        $stmt->execute();
+        $oldActive = $stmt->get_result()->fetch_assoc()['revisao_ativa_id'] ?? null;
+        $stmt->close();
+        if ($oldActive && (int) $oldActive !== $revisionId) {
+            $stmt = $conn->prepare("UPDATE alma_direcao_revisao SET estado='SUBSTITUIDA', ativa_token=NULL WHERE id=? AND direcao_id=?");
+            $oldActiveId = (int) $oldActive;
+            $stmt->bind_param('ii', $oldActiveId, $directionId);
+            $stmt->execute();
+            $stmt->close();
+        }
+        $stmt = $conn->prepare("UPDATE alma_direcao_revisao SET estado='ATIVA', ativa_token='ATIVA', ativada_em=NOW() WHERE id=?");
+        $stmt->bind_param('i', $revisionId);
+        $stmt->execute();
+        $stmt->close();
+        $stmt = $conn->prepare('UPDATE alma_direcao SET revisao_ativa_id=? WHERE id=?');
+        $stmt->bind_param('ii', $revisionId, $directionId);
+        $stmt->execute();
+        $stmt->close();
+        alma_event($conn, $directionId, $revisionId, 'REVISAO', $revisionId, 'ALMA_SALVO', ['revisao_ativa_id' => $oldActive], ['revisao_ativa_id' => $revisionId]);
         $conn->commit();
         return alma_direction_full($conn, (int) $revision['imagem_id'], $revisionId);
+    } catch (Throwable $error) {
+        $conn->rollback();
+        throw $error;
+    }
+}
+
+function alma_project_edit_snapshot(mysqli $conn, int $projectDirectionId): array
+{
+    $snapshot = alma_project_snapshot($conn, $projectDirectionId);
+    return [
+        'lock_version' => $snapshot['lock_version'] ?? 0,
+        'selecoes' => array_map(static function (array $selection): array {
+            return [
+                'dimensao' => $selection['dimensao_codigo'],
+                'item_id' => $selection['item_biblioteca_id'],
+                'item_titulo' => $selection['item_titulo'],
+                'referencias' => array_map(static fn(array $reference): int => (int) $reference['sire_referencia_id'], $selection['referencias'] ?? []),
+            ];
+        }, $snapshot['selecoes'] ?? []),
+    ];
+}
+
+function alma_save_project(mysqli $conn, array $payload): array
+{
+    alma_require_capability($conn, ALMA_CAP_EDIT);
+    $obraId = alma_positive_id($payload['obra_id'] ?? 0, 'obra_id');
+    $versionId = alma_positive_id($payload['biblioteca_versao_id'] ?? 0, 'biblioteca_versao_id');
+    $selections = is_array($payload['selecoes'] ?? null) ? $payload['selecoes'] : [];
+    $references = is_array($payload['referencias'] ?? null) ? $payload['referencias'] : [];
+    if (!alma_library_version($conn, $versionId, false)) {
+        throw new RuntimeException('A versão publicada da Biblioteca ALMA não existe.');
+    }
+    $conn->begin_transaction();
+    try {
+        $stmt = $conn->prepare('SELECT id, lock_version FROM alma_projeto_direcao WHERE obra_id = ? FOR UPDATE');
+        $stmt->bind_param('i', $obraId);
+        $stmt->execute();
+        $project = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $actor = alma_user_id();
+        if (!$project) {
+            $stmt = $conn->prepare('INSERT INTO alma_projeto_direcao (obra_id, biblioteca_versao_id, criada_por_usuario_id, atualizada_por_usuario_id) VALUES (?, ?, ?, ?)');
+            $stmt->bind_param('iiii', $obraId, $versionId, $actor, $actor);
+            $stmt->execute();
+            $projectDirectionId = (int) $conn->insert_id;
+            $stmt->close();
+            $before = ['lock_version' => 0, 'selecoes' => []];
+        } else {
+            $projectDirectionId = (int) $project['id'];
+            $clientLock = (int) ($payload['lock_version'] ?? 0);
+            if ($clientLock && $clientLock !== (int) $project['lock_version']) {
+                throw new RuntimeException('O ALMA do projeto foi alterado em outra sessão. Recarregue antes de salvar.');
+            }
+            $before = alma_project_edit_snapshot($conn, $projectDirectionId);
+        }
+
+        $conn->query('DELETE pr FROM alma_projeto_referencia pr JOIN alma_projeto_selecao ps ON ps.id = pr.selecao_id WHERE ps.projeto_direcao_id = ' . $projectDirectionId);
+        $conn->query('DELETE FROM alma_projeto_selecao WHERE projeto_direcao_id = ' . $projectDirectionId);
+        $selectionMap = [];
+        $taxonomyMap = [];
+        foreach ($selections as $order => $selection) {
+            $code = trim((string) ($selection['dimensao_codigo'] ?? ''));
+            if (!in_array($code, ALMA_PROJECT_DIMENSIONS, true)) {
+                throw new RuntimeException('Dimensão global ALMA inválida: ' . $code);
+            }
+            $itemId = (int) ($selection['item_biblioteca_id'] ?? 0);
+            if (!$itemId) {
+                continue;
+            }
+            $taxonomy = alma_dimension_and_item($conn, $versionId, $code, $itemId);
+            $dimensionId = (int) $taxonomy['dimensao_id'];
+            $stmt = $conn->prepare('INSERT INTO alma_projeto_selecao (projeto_direcao_id, dimensao_id, item_biblioteca_id, ordem) VALUES (?, ?, ?, ?)');
+            $stmt->bind_param('iiii', $projectDirectionId, $dimensionId, $itemId, $order);
+            $stmt->execute();
+            $selectionMap[$code] = (int) $conn->insert_id;
+            $taxonomyMap[$code] = $taxonomy;
+            $stmt->close();
+        }
+        $referenceMap = [];
+        foreach ($references as $reference) {
+            $code = trim((string) ($reference['dimensao_codigo'] ?? ''));
+            $referenceId = alma_positive_id($reference['sire_referencia_id'] ?? 0, 'sire_referencia_id');
+            if (empty($selectionMap[$code])) {
+                throw new RuntimeException('Selecione o item global antes de vincular referências.');
+            }
+            $stmt = $conn->prepare('INSERT INTO alma_projeto_referencia (selecao_id, sire_referencia_id, criada_por_usuario_id) VALUES (?, ?, ?)');
+            $stmt->bind_param('iii', $selectionMap[$code], $referenceId, $actor);
+            $stmt->execute();
+            $stmt->close();
+            $referenceMap[$code][] = $referenceId;
+        }
+        foreach ($taxonomyMap as $code => $taxonomy) {
+            alma_classify_references($conn, $taxonomy, $referenceMap[$code] ?? []);
+        }
+        $stmt = $conn->prepare('UPDATE alma_projeto_direcao SET biblioteca_versao_id=?, atualizada_por_usuario_id=?, lock_version=lock_version+1 WHERE id=?');
+        $stmt->bind_param('iii', $versionId, $actor, $projectDirectionId);
+        $stmt->execute();
+        $stmt->close();
+        $after = alma_project_edit_snapshot($conn, $projectDirectionId);
+        $beforeJson = json_encode($before, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $afterJson = json_encode($after, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $stmt = $conn->prepare('INSERT INTO alma_projeto_evento (projeto_direcao_id, ator_usuario_id, acao, antes_json, depois_json) VALUES (?, ?, "PROJETO_ALMA_SALVO", ?, ?)');
+        $stmt->bind_param('iiss', $projectDirectionId, $actor, $beforeJson, $afterJson);
+        $stmt->execute();
+        $stmt->close();
+        $conn->commit();
+        return alma_project_snapshot($conn, $projectDirectionId);
+    } catch (Throwable $error) {
+        $conn->rollback();
+        throw $error;
+    }
+}
+
+function alma_block_signature(?array $selection): string
+{
+    if (!$selection) {
+        return '';
+    }
+    $references = array_map(static fn(array $reference): int => (int) $reference['sire_referencia_id'], $selection['referencias'] ?? []);
+    sort($references);
+    return (string) ($selection['item_codigo'] ?? $selection['item_biblioteca_id'] ?? '') . ':' . implode(',', $references);
+}
+
+function alma_new_image_revision(mysqli $conn, int $imageId, ?int $preferredVersionId = null): array
+{
+    $image = alma_image_context($conn, $imageId);
+    if (!$image || $image['tipo_imagem'] === ALMA_EXCLUDED_IMAGE_TYPE) {
+        throw new RuntimeException('Imagem de destino inválida para o ALMA.');
+    }
+    $stmt = $conn->prepare('SELECT * FROM alma_direcao WHERE imagem_id=? FOR UPDATE');
+    $stmt->bind_param('i', $imageId);
+    $stmt->execute();
+    $direction = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $actor = alma_user_id();
+    if (!$direction) {
+        $stmt = $conn->prepare('INSERT INTO alma_direcao (imagem_id, criada_por_usuario_id) VALUES (?, ?)');
+        $stmt->bind_param('ii', $imageId, $actor);
+        $stmt->execute();
+        $directionId = (int) $conn->insert_id;
+        $stmt->close();
+        $sourceId = null;
+    } else {
+        $directionId = (int) $direction['id'];
+        $sourceId = !empty($direction['revisao_ativa_id']) ? (int) $direction['revisao_ativa_id'] : null;
+        if (!$sourceId) {
+            $stmt = $conn->prepare('SELECT id FROM alma_direcao_revisao WHERE direcao_id=? ORDER BY numero DESC LIMIT 1');
+            $stmt->bind_param('i', $directionId);
+            $stmt->execute();
+            $sourceId = (int) ($stmt->get_result()->fetch_assoc()['id'] ?? 0) ?: null;
+            $stmt->close();
+        }
+    }
+    $source = $sourceId ? alma_revision_snapshot($conn, $sourceId) : null;
+    $versionId = $source['biblioteca_versao_id'] ?? $preferredVersionId;
+    $library = alma_library_version($conn, $versionId ? (int) $versionId : null, false);
+    if (!$library) {
+        throw new RuntimeException('Biblioteca ALMA publicada não encontrada.');
+    }
+    $versionId = (int) $library['id'];
+    $stmt = $conn->prepare('SELECT COALESCE(MAX(numero),0)+1 n FROM alma_direcao_revisao WHERE direcao_id=?');
+    $stmt->bind_param('i', $directionId);
+    $stmt->execute();
+    $number = (int) $stmt->get_result()->fetch_assoc()['n'];
+    $stmt->close();
+    $intention = $source['intencao_geral'] ?? null;
+    $stmt = $conn->prepare("INSERT INTO alma_direcao_revisao (direcao_id,numero,biblioteca_versao_id,revisao_anterior_id,estado,intencao_geral,criada_por_usuario_id,atualizada_por_usuario_id) VALUES (?,?,?,?,'RASCUNHO',?,?,?)");
+    $stmt->bind_param('iiiisii', $directionId, $number, $versionId, $sourceId, $intention, $actor, $actor);
+    $stmt->execute();
+    $revisionId = (int) $conn->insert_id;
+    $stmt->close();
+    if ($sourceId) {
+        alma_clone_revision_graph($conn, $sourceId, $revisionId);
+    }
+    $allowedCodes = "'" . implode("','", ALMA_IMAGE_DIMENSIONS) . "'";
+    $conn->query(
+        "DELETE ar FROM alma_revisao_referencia ar
+          JOIN alma_biblioteca_dimensao d ON d.id=ar.dimensao_id
+         WHERE ar.revisao_id=$revisionId AND d.codigo NOT IN ($allowedCodes)"
+    );
+    $conn->query(
+        "DELETE s FROM alma_revisao_selecao s
+          JOIN alma_biblioteca_dimensao d ON d.id=s.dimensao_id
+         WHERE s.revisao_id=$revisionId AND d.codigo NOT IN ($allowedCodes)"
+    );
+    return ['direction_id' => $directionId, 'revision_id' => $revisionId, 'source_revision_id' => $sourceId, 'version_id' => $versionId, 'image' => $image];
+}
+
+function alma_copy_block_to_revision(mysqli $conn, array $sourceSelection, array $target, string $dimensionCode): void
+{
+    $stmt = $conn->prepare(
+        'SELECT d.id AS dimensao_id, i.id AS item_id, d.pilar_codigo, d.pilar_nome,
+                d.nome AS dimensao_nome, d.codigo AS dimensao_codigo, i.titulo AS item_titulo
+           FROM alma_biblioteca_dimensao d
+           JOIN alma_biblioteca_item i ON i.dimensao_id=d.id
+          WHERE d.versao_id=? AND d.codigo=? AND i.codigo=? AND d.ativa=1 AND i.ativo=1 LIMIT 1'
+    );
+    $itemCode = (string) $sourceSelection['item_codigo'];
+    $stmt->bind_param('iss', $target['version_id'], $dimensionCode, $itemCode);
+    $stmt->execute();
+    $taxonomy = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$taxonomy) {
+        throw new RuntimeException('O item da imagem base não existe na versão ALMA da imagem de destino.');
+    }
+    foreach (['dimensao_id', 'item_id'] as $field) {
+        $taxonomy[$field] = (int) $taxonomy[$field];
+    }
+    $stmt = $conn->prepare('DELETE FROM alma_revisao_referencia WHERE revisao_id=? AND dimensao_id IN (SELECT id FROM alma_biblioteca_dimensao WHERE versao_id=? AND codigo=?)');
+    $stmt->bind_param('iis', $target['revision_id'], $target['version_id'], $dimensionCode);
+    $stmt->execute();
+    $stmt->close();
+    $stmt = $conn->prepare('DELETE FROM alma_revisao_selecao WHERE revisao_id=? AND dimensao_id IN (SELECT id FROM alma_biblioteca_dimensao WHERE versao_id=? AND codigo=?)');
+    $stmt->bind_param('iis', $target['revision_id'], $target['version_id'], $dimensionCode);
+    $stmt->execute();
+    $stmt->close();
+    $stmt = $conn->prepare('INSERT INTO alma_revisao_selecao (revisao_id,dimensao_id,item_biblioteca_id,principal,ordem) VALUES (?,?,?,1,0)');
+    $stmt->bind_param('iii', $target['revision_id'], $taxonomy['dimensao_id'], $taxonomy['item_id']);
+    $stmt->execute();
+    $selectionId = (int) $conn->insert_id;
+    $stmt->close();
+    $referenceIds = [];
+    foreach (($sourceSelection['referencias'] ?? []) as $reference) {
+        $referenceId = (int) $reference['sire_referencia_id'];
+        $actor = alma_user_id();
+        $stmt = $conn->prepare('INSERT INTO alma_revisao_referencia (revisao_id,selecao_id,dimensao_id,sire_referencia_id,representa,aplicar,criada_por_usuario_id) VALUES (?,?,?, ?,"","",?)');
+        $stmt->bind_param('iiiii', $target['revision_id'], $selectionId, $taxonomy['dimensao_id'], $referenceId, $actor);
+        $stmt->execute();
+        $stmt->close();
+        $referenceIds[] = $referenceId;
+    }
+    alma_classify_references($conn, $taxonomy, $referenceIds);
+}
+
+function alma_activate_operational_revision(mysqli $conn, array $target, string $action, array $context): void
+{
+    $directionId = (int) $target['direction_id'];
+    $revisionId = (int) $target['revision_id'];
+    $oldActive = $target['source_revision_id'] ? (int) $target['source_revision_id'] : null;
+    if ($oldActive) {
+        $stmt = $conn->prepare("UPDATE alma_direcao_revisao SET estado='SUBSTITUIDA',ativa_token=NULL WHERE id=? AND direcao_id=?");
+        $stmt->bind_param('ii', $oldActive, $directionId);
+        $stmt->execute();
+        $stmt->close();
+    }
+    $actor = alma_user_id();
+    $stmt = $conn->prepare("UPDATE alma_direcao_revisao SET estado='ATIVA',ativa_token='ATIVA',ativada_em=NOW(),atualizada_por_usuario_id=? WHERE id=?");
+    $stmt->bind_param('ii', $actor, $revisionId);
+    $stmt->execute();
+    $stmt->close();
+    $stmt = $conn->prepare('UPDATE alma_direcao SET revisao_ativa_id=? WHERE id=?');
+    $stmt->bind_param('ii', $revisionId, $directionId);
+    $stmt->execute();
+    $stmt->close();
+    alma_event($conn, $directionId, $revisionId, 'COPIA', null, $action, null, $context);
+}
+
+function alma_copy_from_image(mysqli $conn, array $payload): array
+{
+    alma_require_capability($conn, ALMA_CAP_EDIT);
+    $sourceImageId = alma_positive_id($payload['imagem_origem_id'] ?? 0, 'imagem_origem_id');
+    $targetImageId = alma_positive_id($payload['imagem_destino_id'] ?? 0, 'imagem_destino_id');
+    $codes = array_values(array_intersect(ALMA_IMAGE_DIMENSIONS, array_map('strval', $payload['dimensoes'] ?? [])));
+    if (!$codes || $sourceImageId === $targetImageId) {
+        throw new InvalidArgumentException('Selecione uma imagem base e ao menos uma dimensão válida.');
+    }
+    $sourceImage = alma_image_context($conn, $sourceImageId);
+    $targetImage = alma_image_context($conn, $targetImageId);
+    if (!$sourceImage || !$targetImage || (int) $sourceImage['obra_id'] !== (int) $targetImage['obra_id']) {
+        throw new RuntimeException('A imagem base deve pertencer à mesma obra.');
+    }
+    $source = alma_direction_full($conn, $sourceImageId)['revisao'] ?? null;
+    if (!$source) {
+        throw new RuntimeException('A imagem base não possui ALMA persistido.');
+    }
+    $sourceMap = [];
+    foreach ($source['selecoes'] as $selection) {
+        $sourceMap[$selection['dimensao_codigo']] = $selection;
+    }
+    foreach ($codes as $code) {
+        if (empty($sourceMap[$code]['item_biblioteca_id'])) {
+            throw new RuntimeException('A imagem base não possui ' . $code . ' definido.');
+        }
+    }
+    $current = alma_direction_full($conn, $targetImageId)['revisao'] ?? null;
+    $currentMap = [];
+    foreach (($current['selecoes'] ?? []) as $selection) {
+        $currentMap[$selection['dimensao_codigo']] = $selection;
+    }
+    $conflicts = array_values(array_filter($codes, static fn(string $code): bool => !empty($currentMap[$code]) && alma_block_signature($currentMap[$code]) !== alma_block_signature($sourceMap[$code])));
+    if ($conflicts && empty($payload['confirmar_conflitos'])) {
+        throw new RuntimeException('Confirme explicitamente a substituição das dimensões já configuradas.');
+    }
+    $conn->begin_transaction();
+    try {
+        $target = alma_new_image_revision($conn, $targetImageId, (int) $source['biblioteca_versao_id']);
+        foreach ($codes as $code) {
+            alma_copy_block_to_revision($conn, $sourceMap[$code], $target, $code);
+        }
+        alma_activate_operational_revision($conn, $target, 'IMAGEM_BASE_APLICADA', ['imagem_origem_id' => $sourceImageId, 'dimensoes' => $codes, 'conflitos' => $conflicts]);
+        $conn->commit();
+        return alma_direction_full($conn, $targetImageId);
+    } catch (Throwable $error) {
+        $conn->rollback();
+        throw $error;
+    }
+}
+
+function alma_apply_dimension(mysqli $conn, array $payload): array
+{
+    alma_require_capability($conn, ALMA_CAP_EDIT);
+    $sourceImageId = alma_positive_id($payload['imagem_origem_id'] ?? 0, 'imagem_origem_id');
+    $code = trim((string) ($payload['dimensao_codigo'] ?? ''));
+    if (!in_array($code, ALMA_IMAGE_DIMENSIONS, true)) {
+        throw new InvalidArgumentException('Dimensão inválida para aplicação em lote.');
+    }
+    $targetIds = array_values(array_unique(array_filter(array_map('intval', $payload['imagens_destino_ids'] ?? []), static fn(int $id): bool => $id > 0 && $id !== $sourceImageId)));
+    $confirmedIds = array_values(array_unique(array_map('intval', $payload['conflitos_confirmados_ids'] ?? [])));
+    if (!$targetIds) {
+        throw new InvalidArgumentException('Selecione ao menos uma imagem de destino.');
+    }
+    $sourceImage = alma_image_context($conn, $sourceImageId);
+    $source = alma_direction_full($conn, $sourceImageId)['revisao'] ?? null;
+    $sourceSelection = null;
+    foreach (($source['selecoes'] ?? []) as $selection) {
+        if ($selection['dimensao_codigo'] === $code) {
+            $sourceSelection = $selection;
+            break;
+        }
+    }
+    if (!$sourceImage || !$sourceSelection || empty($sourceSelection['item_biblioteca_id'])) {
+        throw new RuntimeException('A dimensão de origem ainda não foi definida.');
+    }
+    $targets = [];
+    foreach ($targetIds as $targetId) {
+        $image = alma_image_context($conn, $targetId);
+        if (!$image || (int) $image['obra_id'] !== (int) $sourceImage['obra_id'] || $image['tipo_imagem'] === ALMA_EXCLUDED_IMAGE_TYPE) {
+            throw new RuntimeException('Uma imagem de destino não é elegível ou pertence a outra obra.');
+        }
+        $revision = alma_direction_full($conn, $targetId)['revisao'] ?? null;
+        $existing = null;
+        foreach (($revision['selecoes'] ?? []) as $selection) {
+            if ($selection['dimensao_codigo'] === $code) {
+                $existing = $selection;
+                break;
+            }
+        }
+        $conflict = $existing && alma_block_signature($existing) !== alma_block_signature($sourceSelection);
+        if ($conflict && !in_array($targetId, $confirmedIds, true)) {
+            throw new RuntimeException('Confirme explicitamente todas as substituições em conflito.');
+        }
+        $targets[] = ['id' => $targetId, 'conflict' => (bool) $conflict];
+    }
+    $conn->begin_transaction();
+    try {
+        foreach ($targets as $item) {
+            $target = alma_new_image_revision($conn, $item['id'], (int) $source['biblioteca_versao_id']);
+            alma_copy_block_to_revision($conn, $sourceSelection, $target, $code);
+            alma_activate_operational_revision($conn, $target, 'DIMENSAO_APLICADA_EM_LOTE', ['imagem_origem_id' => $sourceImageId, 'dimensao' => $code, 'conflito' => $item['conflict']]);
+        }
+        $conn->commit();
+        return ['imagens' => alma_project_images($conn, (int) $sourceImage['obra_id'])];
     } catch (Throwable $error) {
         $conn->rollback();
         throw $error;
@@ -766,6 +1135,10 @@ function alma_admin_publish_version(mysqli $conn, array $payload): array
     return alma_library_payload($conn, $versionId);
 }
 
+if ($almaApiLibraryOnly) {
+    return;
+}
+
 try {
     if ($method === 'GET') {
         switch ($action) {
@@ -789,6 +1162,39 @@ try {
                 alma_json(['success' => true, 'eventos' => alma_history($conn, $imageId)]);
             case 'sire_busca':
                 alma_json(['success' => true, 'referencias' => alma_sire_search($conn, trim((string) ($_GET['q'] ?? '')), (int) ($_GET['page'] ?? 1))]);
+            case 'sire_seletor':
+                $versionId = alma_positive_id($_GET['biblioteca_versao_id'] ?? 0, 'biblioteca_versao_id');
+                $itemId = alma_positive_id($_GET['item_id'] ?? 0, 'item_id');
+                $dimensionCode = trim((string) ($_GET['dimensao_codigo'] ?? ''));
+                alma_json(['success' => true] + alma_sire_picker(
+                    $conn,
+                    trim((string) ($_GET['q'] ?? '')),
+                    (int) ($_GET['page'] ?? 1),
+                    $versionId,
+                    $dimensionCode,
+                    $itemId,
+                    [
+                        'golden' => (int) ($_GET['golden'] ?? 0),
+                        'selected_ids' => explode(',', (string) ($_GET['selected'] ?? '')),
+                    ]
+                ));
+            case 'obra_contexto':
+                $obraId = alma_positive_id($_GET['obra_id'] ?? 0, 'obra_id');
+                $stmt = $conn->prepare('SELECT idobra AS obra_id, nomenclatura, nome_obra FROM obra WHERE idobra=? LIMIT 1');
+                $stmt->bind_param('i', $obraId);
+                $stmt->execute();
+                $obra = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if (!$obra) {
+                    throw new RuntimeException('Obra não encontrada.');
+                }
+                alma_json([
+                    'success' => true,
+                    'obra' => $obra,
+                    'projeto' => alma_project_direction($conn, $obraId),
+                    'imagens' => alma_project_images($conn, $obraId),
+                    'permissions' => alma_permissions($conn),
+                ]);
             case 'admin_versoes':
                 alma_json(['success' => true, 'versoes' => alma_admin_versions($conn), 'permissions' => alma_permissions($conn)]);
             default:
@@ -806,6 +1212,12 @@ try {
             alma_json(['success' => true] + alma_create_revision($conn, $payload));
         case 'salvar_revisao':
             alma_json(['success' => true] + alma_save_revision($conn, $payload));
+        case 'salvar_projeto':
+            alma_json(['success' => true, 'projeto' => alma_save_project($conn, $payload)]);
+        case 'usar_imagem_base':
+            alma_json(['success' => true] + alma_copy_from_image($conn, $payload));
+        case 'aplicar_dimensao':
+            alma_json(['success' => true] + alma_apply_dimension($conn, $payload));
         case 'ativar_revisao':
             alma_json(['success' => true] + alma_activate_revision($conn, $payload));
         case 'admin_clonar_versao':

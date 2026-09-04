@@ -5217,9 +5217,7 @@ form#dailyForm button {
 /* ALMA: resumo leve e assíncrono da Direção Visual vinculada à imagem. */
 .tp-alma-card {
   border-color: rgba(61, 199, 191, 0.28);
-  background:
-    radial-gradient(circle at 90% 0, rgba(61, 199, 191, 0.1), transparent 42%),
-    var(--tp-card);
+  background: var(--tp-card);
 }
 .tp-alma-card .tp-sidebar-block-title {
   display: flex;
@@ -5239,6 +5237,32 @@ form#dailyForm button {
 .tp-alma-status.is-active {
   color: #73e0aa;
   background: rgba(45, 180, 98, 0.16);
+}
+.tp-alma-status.is-completo {
+  color: #73e0aa;
+  background: rgba(45, 180, 98, 0.16);
+}
+.tp-alma-status.is-parcial {
+  color: #f0b35f;
+  background: rgba(240, 179, 95, 0.14);
+}
+.tp-alma-intention {
+  margin: 10px 0;
+  color: var(--tp-text-1);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.tp-alma-refs {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+.tp-alma-refs img {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(61, 199, 191, 0.25);
+  border-radius: 5px;
+  object-fit: cover;
 }
 .tp-alma-loading,
 .tp-alma-empty-text {

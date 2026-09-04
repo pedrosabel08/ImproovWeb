@@ -10,6 +10,8 @@ if (empty($_SESSION['logado'])) {
 }
 
 $imageId = (int) ($_GET['imagem_id'] ?? 0);
+$obraId = (int) ($_GET['obra_id'] ?? 0);
+$embedded = (string) ($_GET['embed'] ?? '') === '1';
 $conn = conectarBanco();
 $permissions = alma_permissions($conn);
 $conn->close();
@@ -28,9 +30,10 @@ $assetVersion = max((int) @filemtime(__DIR__ . '/alma.css'), (int) @filemtime(__
     <link rel="stylesheet" href="alma.css?v=<?php echo $assetVersion; ?>">
 </head>
 
-<body class="alma-page">
-    <?php include __DIR__ . '/../sidebar.php'; ?>
+<body class="alma-page<?php echo $embedded ? ' alma-embedded' : ''; ?>">
+    <?php if (!$embedded) include __DIR__ . '/../sidebar.php'; ?>
     <main id="almaApp" class="alma-app" data-image-id="<?php echo $imageId; ?>"
+        data-obra-id="<?php echo $obraId; ?>"
         data-can-edit="<?php echo !empty($permissions[ALMA_CAP_EDIT]) ? '1' : '0'; ?>"
         data-can-activate="<?php echo !empty($permissions[ALMA_CAP_ACTIVATE]) ? '1' : '0'; ?>">
         <div class="alma-loading" id="almaLoading"><span></span>
@@ -46,7 +49,7 @@ $assetVersion = max((int) @filemtime(__DIR__ . '/alma.css'), (int) @filemtime(__
     </div>
 
     <div class="alma-toast" id="almaToast" role="status" aria-live="polite" hidden></div>
-    <script src="../script/sidebar.js"></script>
+    <?php if (!$embedded): ?><script src="../script/sidebar.js"></script><?php endif; ?>
     <script src="alma.js?v=<?php echo $assetVersion; ?>"></script>
 </body>
 

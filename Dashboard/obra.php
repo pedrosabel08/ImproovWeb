@@ -238,6 +238,10 @@ $conn->close();
                     <i class="fa-solid fa-file"></i>
                     <span class="qa-label">Arquivos</span>
                 </a>
+                <a class="quick-link" href="#secao-alma-obra" title="Ir para Direção Visual ALMA" aria-hidden="false">
+                    <i class="fa-solid fa-compass"></i>
+                    <span class="qa-label">ALMA</span>
+                </a>
                 <?php if ($pode_ver_plano_r00): ?>
                     <a id="quick_production_plan" class="quick-link" href="#" title="Plano de Produção R00" aria-hidden="true" style="display:none;">
                         <i class="fa-solid fa-chart-gantt"></i>
@@ -703,6 +707,20 @@ $conn->close();
                     </section>
                 </div>
                 <p id="revisoes" class="resumo-imagens-revisoes"></p>
+            </section>
+
+            <section id="secao-alma-obra" class="obra-alma-section" aria-labelledby="obraAlmaTitle">
+                <header class="obra-alma-head">
+                    <div>
+                        <span>Direção visual</span>
+                        <h2 id="obraAlmaTitle">ALMA da obra</h2>
+                        <p>Defina os pilares globais do projeto e configure as imagens elegíveis.</p>
+                    </div>
+                    <a id="obraAlmaOpen" class="obra-alma-open" href="../ALMA/" target="_blank" rel="noopener">
+                        Abrir em tela cheia <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </a>
+                </header>
+                <iframe id="obraAlmaFrame" class="obra-alma-frame" title="Editor da Direção Visual ALMA" loading="lazy"></iframe>
             </section>
 
             <div id="estrela-container" style="display: none;">
@@ -3044,6 +3062,7 @@ $conn->close();
     <script src="<?php echo asset_url('scriptObra.js') . '&t=' . filemtime(__DIR__ . '/scriptObra.js'); ?>"></script>
     <script src="<?php echo asset_url('onboardingObra.js') . '&t=' . filemtime(__DIR__ . '/onboardingObra.js'); ?>"></script>
     <script src="<?php echo asset_url('obraContacts.js') . '&t=' . filemtime(__DIR__ . '/obraContacts.js'); ?>"></script>
+    <script src="<?php echo asset_url('almaObra.js') . '&t=' . filemtime(__DIR__ . '/almaObra.js'); ?>"></script>
     <script src="<?php echo asset_url('../Entregas/script.js') . '&t=' . filemtime(__DIR__ . '/../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>

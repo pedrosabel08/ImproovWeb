@@ -11759,3 +11759,77 @@ button.obra-dashboard-card:active {
     color: #f8c26f;
   }
 }
+/* ALMA da obra: o editor permanece isolado para não conflitar com o legado. */
+.obra-alma-section {
+  margin: 28px 0;
+  overflow: hidden;
+  border: 1px solid rgba(77, 214, 204, 0.22);
+  border-radius: 16px;
+  background: #0d1824;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+}
+
+.obra-alma-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(157, 180, 204, 0.16);
+  color: #edf5fb;
+}
+
+.obra-alma-head span {
+  color: #4dd6cc;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.obra-alma-head h2,
+.obra-alma-head p {
+  margin: 4px 0 0;
+}
+
+.obra-alma-head p {
+  color: #8da0b3;
+  font-size: 13px;
+}
+
+.obra-alma-open {
+  flex: none;
+  padding: 10px 13px;
+  border: 1px solid rgba(77, 214, 204, 0.36);
+  border-radius: 9px;
+  color: #4dd6cc;
+  background: rgba(77, 214, 204, 0.08);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.obra-alma-frame {
+  display: block;
+  width: 100%;
+  height: 980px;
+  border: 0;
+  background: #071019;
+}
+
+@media (max-width: 760px) {
+  .obra-alma-head {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .obra-alma-open {
+    width: 100%;
+    text-align: center;
+  }
+
+  .obra-alma-frame {
+    height: 900px;
+  }
+}

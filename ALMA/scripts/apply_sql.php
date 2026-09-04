@@ -13,6 +13,8 @@ $allowed = [
     realpath(__DIR__ . '/../../sql/2026-09-03_alma_v1.sql'),
     realpath(__DIR__ . '/../../sql/2026-09-03_alma_biblioteca_v1_seed.sql'),
     realpath(__DIR__ . '/../../sql/2026-09-03_alma_biblioteca_v1_import_correction.sql'),
+    realpath(__DIR__ . '/../../sql/2026-09-04_alma_operacional_v1.sql'),
+    realpath(__DIR__ . '/../../sql/2026-09-04_alma_operacional_fotografia.sql'),
 ];
 $requested = array_slice($argv, 1);
 if (!$requested) {

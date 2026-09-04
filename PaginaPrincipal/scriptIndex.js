@@ -5513,26 +5513,31 @@ function abrirSidebar(
         .then((alma) => {
           const possuiAlma = alma?.possui_alma === true;
           const pilares = Array.isArray(alma?.pilares) ? alma.pilares : [];
+          const statusLabel = {
+            NAO_INICIADO: "Não iniciado",
+            PARCIAL: "Parcial",
+            COMPLETO: "Completo",
+          }[alma?.status] || "Não iniciado";
           almaBlock.classList.remove("is-loading");
           almaBlock.classList.toggle("is-empty", !possuiAlma);
           almaBlock.innerHTML = `
             <div class="tp-sidebar-block-title">
               <span>Direção Visual (ALMA)</span>
-              ${possuiAlma ? `<span class="tp-alma-status is-active">${escapeKanbanText(alma.status || "ATIVA")}</span>` : ""}
+              <span class="tp-alma-status is-${String(alma?.status || "NAO_INICIADO").toLowerCase()}">${escapeKanbanText(statusLabel)}</span>
             </div>
             ${
               possuiAlma
-                ? `<dl class="tp-alma-summary">${pilares
+                ? `${alma.intencao_geral ? `<p class="tp-alma-intention">${escapeKanbanText(alma.intencao_geral)}</p>` : ""}<dl class="tp-alma-summary">${pilares
                     .map(
                       (pilar) =>
-                        `<div><dt>${escapeKanbanText(pilar.nome || "")}</dt><dd>${escapeKanbanText(pilar.resumo || "Direção definida")}</dd></div>`,
+                        `<div><dt>${escapeKanbanText(pilar.nome || "")}</dt><dd>${escapeKanbanText(pilar.resumo || "Não definido")}${Array.isArray(pilar.referencias) && pilar.referencias.length ? `<span class="tp-alma-refs">${pilar.referencias.map((ref) => `<img src="${escapeKanbanText(ref.thumbnail_url || "")}" alt="${escapeKanbanText(ref.titulo || "Referência SIRE")}" title="${escapeKanbanText(ref.titulo || "Referência SIRE")}">`).join("")}</span>` : ""}</dd></div>`,
                     )
                     .join("")}</dl>`
                 : '<p class="tp-alma-empty-text">Nenhuma direção definida para esta imagem.</p>'
             }
             <a class="tp-alma-open" href="ALMA/?imagem_id=${encodeURIComponent(String(idImagem))}">
               <i class="ri-compass-3-line"></i>
-              <span>${possuiAlma ? "Abrir ALMA" : "Definir ALMA"}</span>
+              <span>Abrir Direção Visual</span>
               <i class="ri-arrow-right-line"></i>
             </a>
           `;
@@ -5544,7 +5549,7 @@ function abrirSidebar(
             <div class="tp-sidebar-block-title"><span>Direção Visual (ALMA)</span></div>
             <p class="tp-alma-empty-text">Direção indisponível no momento.</p>
             <a class="tp-alma-open" href="ALMA/?imagem_id=${encodeURIComponent(String(idImagem))}">
-              <span>Abrir ALMA</span><i class="ri-arrow-right-line"></i>
+              <span>Abrir Direção Visual</span><i class="ri-arrow-right-line"></i>
             </a>
           `;
         });

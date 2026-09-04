@@ -1,0 +1,928 @@
+:root {
+  --alma-bg: #071019;
+  --alma-surface: #0d1824;
+  --alma-surface-2: #111f2d;
+  --alma-line: rgba(157, 180, 204, 0.16);
+  --alma-text: #edf5fb;
+  --alma-muted: #8da0b3;
+  --alma-accent: #4dd6cc;
+  --alma-accent-soft: rgba(77, 214, 204, 0.12);
+  --alma-warm: #f0b35f;
+  --alma-danger: #ff7185;
+  --alma-radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body.alma-page {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--alma-text);
+  background:
+    radial-gradient(
+      circle at 72% -10%,
+      rgba(45, 119, 136, 0.18),
+      transparent 34rem
+    ),
+    linear-gradient(145deg, #071019 0%, #09131e 52%, #060d15 100%);
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.alma-app {
+  min-height: 100vh;
+  padding: 30px 34px 70px 114px;
+}
+
+.alma-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.alma-loading {
+  min-height: 70vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  color: var(--alma-muted);
+}
+.alma-loading span {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--alma-line);
+  border-top-color: var(--alma-accent);
+  border-radius: 50%;
+  animation: alma-spin 0.8s linear infinite;
+}
+@keyframes alma-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.alma-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+.alma-back {
+  color: var(--alma-muted);
+  text-decoration: none;
+  font-size: 13px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.alma-breadcrumb {
+  color: var(--alma-muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.alma-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.alma-title-row h1 {
+  margin: 0;
+  font-size: clamp(23px, 2.5vw, 36px);
+  letter-spacing: -0.04em;
+}
+.alma-byline {
+  color: var(--alma-muted);
+  font-size: 13px;
+  margin: 10px 0 0;
+}
+.alma-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.alma-badge.is-ativa {
+  color: #83efad;
+  background: rgba(45, 180, 98, 0.16);
+}
+.alma-badge.is-rascunho {
+  color: #ffd083;
+  background: rgba(240, 179, 95, 0.15);
+}
+.alma-badge.is-substituida {
+  color: #9eb0c0;
+  background: rgba(142, 160, 179, 0.12);
+}
+.alma-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.alma-btn {
+  appearance: none;
+  border: 1px solid var(--alma-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--alma-text);
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.alma-btn:hover {
+  border-color: rgba(77, 214, 204, 0.48);
+  background: var(--alma-accent-soft);
+}
+.alma-btn.primary {
+  background: var(--alma-accent);
+  color: #04201f;
+  border-color: transparent;
+}
+.alma-btn.warn {
+  color: #ffd083;
+  border-color: rgba(240, 179, 95, 0.35);
+}
+.alma-btn.danger {
+  color: #ff9aaa;
+  border-color: rgba(255, 113, 133, 0.35);
+}
+.alma-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.alma-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--alma-line);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.alma-tab {
+  border: 0;
+  background: transparent;
+  color: var(--alma-muted);
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+.alma-tab.active {
+  color: var(--alma-accent);
+  border-bottom-color: var(--alma-accent);
+}
+
+.alma-card {
+  border: 1px solid var(--alma-line);
+  border-radius: var(--alma-radius);
+  background: linear-gradient(
+    145deg,
+    rgba(17, 31, 45, 0.96),
+    rgba(10, 20, 31, 0.97)
+  );
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+.alma-hero {
+  min-height: 310px;
+  overflow: hidden;
+  position: relative;
+  display: grid;
+  align-items: end;
+  padding: clamp(20px, 4vw, 42px);
+  background-position: center;
+  background-size: cover;
+}
+.alma-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(3, 10, 17, 0.18),
+    rgba(4, 12, 20, 0.94)
+  );
+}
+.alma-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1050px;
+}
+.alma-kicker {
+  color: var(--alma-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 10px;
+  font-weight: 900;
+}
+.alma-hero h2 {
+  font-size: clamp(22px, 3vw, 40px);
+  line-height: 1.18;
+  max-width: 1000px;
+  letter-spacing: -0.035em;
+  margin: 12px 0 0;
+}
+.alma-hero p {
+  color: #bccbd7;
+  max-width: 860px;
+  line-height: 1.65;
+}
+
+.alma-journey {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 18px;
+  overflow-x: auto;
+}
+.alma-journey-step {
+  min-width: 108px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--alma-line);
+  background: rgba(255, 255, 255, 0.018);
+  text-align: center;
+}
+.alma-journey-step b {
+  display: block;
+  color: var(--alma-accent);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.alma-journey-step strong {
+  display: block;
+  text-transform: uppercase;
+  font-size: 11px;
+  margin-top: 7px;
+}
+.alma-journey-step span {
+  display: block;
+  color: var(--alma-muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.alma-section {
+  margin-top: 28px;
+}
+.alma-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 13px;
+}
+.alma-section h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.alma-section-head p {
+  margin: 0;
+  color: var(--alma-muted);
+  font-size: 12px;
+}
+.alma-pillars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(145px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+.alma-pillar-card {
+  min-width: 145px;
+  min-height: 230px;
+  padding: 16px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+.alma-pillar-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(77, 214, 204, 0.38);
+}
+.alma-pillar-card .number {
+  font-weight: 900;
+  color: var(--alma-accent);
+  font-size: 11px;
+}
+.alma-pillar-card .stage {
+  color: var(--alma-muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+.alma-pillar-card h3 {
+  font-size: 12px;
+  color: var(--alma-muted);
+  margin: 16px 0 8px;
+}
+.alma-pillar-card strong {
+  display: block;
+  line-height: 1.35;
+  font-size: 15px;
+}
+.alma-pillar-card p {
+  color: var(--alma-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.alma-pillar-thumb {
+  height: 82px;
+  margin: 16px -16px -16px;
+  background: linear-gradient(
+    135deg,
+    rgba(77, 214, 204, 0.13),
+    rgba(128, 94, 196, 0.12)
+  );
+  background-position: center;
+  background-size: cover;
+  border-top: 1px solid var(--alma-line);
+}
+
+.alma-empty {
+  padding: clamp(28px, 8vw, 90px);
+  text-align: center;
+  max-width: 760px;
+  margin: 10vh auto 0;
+}
+.alma-empty-mark {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  color: var(--alma-accent);
+  background: var(--alma-accent-soft);
+  font-size: 30px;
+}
+.alma-empty h1 {
+  margin: 0 0 12px;
+}
+.alma-empty p {
+  color: var(--alma-muted);
+  line-height: 1.6;
+}
+
+.alma-form {
+  display: grid;
+  gap: 18px;
+}
+.alma-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.alma-field {
+  display: grid;
+  gap: 7px;
+}
+.alma-field label {
+  font-size: 11px;
+  color: #b8c6d2;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.alma-field input,
+.alma-field textarea,
+.alma-field select {
+  width: 100%;
+  border: 1px solid var(--alma-line);
+  border-radius: 10px;
+  background: #091520;
+  color: var(--alma-text);
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.alma-field textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.alma-field input:focus,
+.alma-field textarea:focus,
+.alma-field select:focus {
+  border-color: var(--alma-accent);
+  box-shadow: 0 0 0 3px var(--alma-accent-soft);
+}
+.alma-edit-pillar {
+  padding: 18px;
+}
+.alma-edit-pillar summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  font-weight: 800;
+}
+.alma-edit-pillar summary::-webkit-details-marker {
+  display: none;
+}
+.alma-edit-pillar summary span {
+  color: var(--alma-accent);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.alma-edit-body {
+  padding-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+.alma-dimension-block {
+  padding-top: 14px;
+  border-top: 1px solid var(--alma-line);
+}
+.alma-dimension-block:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.alma-dimension-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.alma-dimension-title h4 {
+  margin: 0;
+}
+
+.alma-reference-list {
+  display: grid;
+  gap: 10px;
+}
+.alma-reference-editor {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--alma-line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.alma-reference-editor img {
+  width: 100%;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.alma-reference-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.alma-reference-fields .wide {
+  grid-column: 1 / -1;
+}
+.alma-reference-fields input,
+.alma-reference-fields textarea {
+  min-height: auto;
+}
+
+.alma-detail {
+  padding: 4px;
+}
+.alma-detail-head {
+  padding: 26px;
+  border-bottom: 1px solid var(--alma-line);
+}
+.alma-detail-head h2 {
+  margin: 8px 0;
+  font-size: 30px;
+}
+.alma-detail-head p {
+  color: var(--alma-muted);
+  line-height: 1.6;
+}
+.alma-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.8fr);
+  gap: 16px;
+  padding: 18px;
+}
+.alma-detail-section {
+  padding: 18px;
+}
+.alma-detail-section h3 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--alma-accent);
+}
+.alma-detail-section p {
+  color: #bdcbd6;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.alma-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #bdcbd6;
+}
+.alma-list li {
+  margin: 7px 0;
+  line-height: 1.45;
+}
+.alma-context {
+  border-color: rgba(77, 214, 204, 0.3);
+  background: linear-gradient(
+    145deg,
+    rgba(77, 214, 204, 0.08),
+    rgba(11, 24, 35, 0.98)
+  );
+}
+.alma-reference-view {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--alma-line);
+}
+.alma-reference-view:first-of-type {
+  border-top: 0;
+}
+.alma-reference-view img {
+  width: 110px;
+  height: 90px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.alma-reference-view strong {
+  display: block;
+}
+.alma-reference-view p {
+  margin: 5px 0;
+  font-size: 12px;
+}
+
+.alma-history {
+  display: grid;
+  gap: 10px;
+}
+.alma-event {
+  padding: 15px 17px;
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 14px;
+}
+.alma-event time {
+  color: var(--alma-muted);
+  font-size: 11px;
+}
+.alma-event strong {
+  display: block;
+  font-size: 13px;
+}
+.alma-event p {
+  margin: 6px 0 0;
+  color: var(--alma-muted);
+  font-size: 12px;
+}
+.alma-event-change {
+  display: block;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+.alma-event-change b {
+  color: #b9c9d5;
+}
+.alma-event-change i {
+  margin: 0 5px;
+  color: var(--alma-accent);
+}
+
+.alma-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 8, 13, 0.82);
+  backdrop-filter: blur(7px);
+}
+.alma-dialog-backdrop[hidden] {
+  display: none;
+}
+.alma-dialog {
+  width: min(1120px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  border: 1px solid var(--alma-line);
+  border-radius: 18px;
+  background: #0b1621;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+.alma-dialog-close {
+  position: sticky;
+  z-index: 4;
+  float: right;
+  top: 12px;
+  margin: 12px 12px -50px 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--alma-line);
+  border-radius: 10px;
+  background: #101f2c;
+  color: var(--alma-text);
+  font-size: 23px;
+  cursor: pointer;
+}
+.alma-sire-search {
+  padding: 24px;
+}
+.alma-sire-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.alma-sire-card {
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  color: var(--alma-text);
+}
+.alma-sire-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+}
+.alma-sire-card span {
+  display: block;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.alma-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 11000;
+  max-width: 420px;
+  padding: 13px 16px;
+  border-radius: 11px;
+  background: #17312f;
+  color: #d9fff9;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+.alma-toast.error {
+  background: #3a1720;
+  color: #ffdbe1;
+}
+
+.alma-library-layout {
+  display: grid;
+  grid-template-columns: 255px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.alma-library-nav {
+  padding: 12px;
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+}
+.alma-library-version {
+  padding: 10px 8px 16px;
+  border-bottom: 1px solid var(--alma-line);
+  display: grid;
+  gap: 4px;
+}
+.alma-library-version strong {
+  color: var(--alma-accent);
+}
+.alma-library-version span {
+  color: var(--alma-muted);
+  font-size: 11px;
+}
+.alma-library-nav section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--alma-line);
+}
+.alma-library-stage {
+  padding: 0 8px 7px;
+  display: grid;
+  gap: 3px;
+}
+.alma-library-stage b {
+  color: var(--alma-text);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.alma-library-stage span {
+  color: var(--alma-muted);
+  font-size: 11px;
+}
+.alma-library-dimension {
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 8px;
+  color: var(--alma-muted);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.alma-library-dimension small {
+  opacity: 0.72;
+  white-space: nowrap;
+}
+.alma-library-dimension:hover,
+.alma-library-dimension.active {
+  color: var(--alma-text);
+  background: var(--alma-accent-soft);
+}
+.alma-library-dimension.active {
+  box-shadow: inset 2px 0 var(--alma-accent);
+}
+.alma-library-work {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+.alma-library-items,
+.alma-library-editor {
+  padding: 20px;
+}
+.alma-library-pane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+.alma-library-pane-head h2 {
+  margin: 5px 0 0;
+}
+.alma-library-pane-head > span {
+  color: var(--alma-muted);
+  font-size: 11px;
+}
+.alma-library-item-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+.alma-library-item-buttons button {
+  border: 1px solid var(--alma-line);
+  border-radius: 10px;
+  min-height: 88px;
+  padding: 12px;
+  color: var(--alma-text);
+  background: rgba(255, 255, 255, 0.018);
+  text-align: left;
+  cursor: pointer;
+}
+.alma-library-item-buttons button:hover,
+.alma-library-item-buttons button.active {
+  border-color: rgba(77, 214, 204, 0.42);
+  background: var(--alma-accent-soft);
+}
+.alma-library-item-buttons strong,
+.alma-library-item-buttons span {
+  display: block;
+}
+.alma-library-item-buttons span {
+  color: var(--alma-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 7px;
+}
+.alma-library-editor {
+  display: grid;
+  gap: 14px;
+}
+.alma-library-editor textarea.is-large {
+  min-height: 150px;
+}
+.alma-library-editor :disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+.alma-library-active {
+  color: var(--alma-muted);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.alma-library-section {
+  border: 1px solid var(--alma-line);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.alma-library-section legend {
+  padding: 0 7px;
+  color: var(--alma-accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.alma-library-source {
+  border-top: 1px solid var(--alma-line);
+  padding-top: 12px;
+  color: var(--alma-muted);
+}
+.alma-library-source summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.alma-library-source p {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 12px;
+}
+.alma-library-empty {
+  margin: 0;
+  padding: 32px;
+}
+
+@media (max-width: 1100px) {
+  .alma-app {
+    padding-left: 88px;
+    padding-right: 22px;
+  }
+  .alma-pillars {
+    grid-template-columns: repeat(4, minmax(170px, 1fr));
+  }
+  .alma-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .alma-library-layout {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .alma-app {
+    padding: 20px 14px 80px;
+  }
+  .alma-topbar {
+    flex-direction: column;
+  }
+  .alma-actions {
+    justify-content: flex-start;
+  }
+  .alma-form-grid,
+  .alma-reference-fields {
+    grid-template-columns: 1fr;
+  }
+  .alma-reference-fields .wide {
+    grid-column: auto;
+  }
+  .alma-reference-editor {
+    grid-template-columns: 1fr;
+  }
+  .alma-reference-editor img {
+    height: 170px;
+  }
+  .alma-event {
+    grid-template-columns: 1fr;
+  }
+  .alma-library-layout {
+    grid-template-columns: 1fr;
+  }
+  .alma-library-nav {
+    position: static;
+    max-height: none;
+  }
+}

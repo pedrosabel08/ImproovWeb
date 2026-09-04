@@ -237,6 +237,8 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                                 class="fa-solid fa-sitemap"></i><span> Projetos</span></a></li>
                     <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i
                                 class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+                    <li><a title="Biblioteca Oficial ALMA" href="<?php echo htmlspecialchars(improov_sidebar_url('ALMA/admin.php'), ENT_QUOTES, 'UTF-8'); ?>"><i
+                                class="fa-solid fa-compass-drafting"></i><span>Biblioteca ALMA</span></a></li>
                 </ul>
             <?php endif; ?>
 
@@ -402,6 +404,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                         <li><a title="Planejamento Global de Capacidade" href="<?php echo htmlspecialchars(improov_sidebar_url('PlanejamentoCapacidade'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-chart-column"></i><span>Capacidade da Produção</span></a></li>
                         <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-sitemap"></i><span>Projetos</span></a></li>
                         <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+                        <li><a title="Biblioteca Oficial ALMA" href="<?php echo htmlspecialchars(improov_sidebar_url('ALMA/admin.php'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-compass-drafting"></i><span>Biblioteca ALMA</span></a></li>
                     </ul>
                 </section>
             <?php endif; ?>

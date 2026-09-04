@@ -5488,6 +5488,67 @@ function abrirSidebar(
       tpSidebar.className = "tp-sidebar";
       tpBody.appendChild(tpSidebar);
 
+      // ─ Direção Visual (ALMA) ─
+      // Carrega em uma requisição separada para não aumentar o tempo crítico de
+      // abertura da tarefa. A fonte é sempre imagem_id, nunca funcao_imagem.
+      const almaBlock = document.createElement("section");
+      almaBlock.className = "tp-sidebar-block tp-alma-card is-loading";
+      almaBlock.innerHTML = `
+        <div class="tp-sidebar-block-title">
+          <span>Direção Visual (ALMA)</span>
+          <span class="tp-alma-status">Carregando</span>
+        </div>
+        <div class="tp-alma-loading"><i class="ri-loader-4-line"></i> Consultando direção da imagem...</div>
+      `;
+      tpSidebar.appendChild(almaBlock);
+
+      fetch(
+        `ALMA/api.php?action=resumo&imagem_id=${encodeURIComponent(String(idImagem))}`,
+        { headers: { Accept: "application/json" } },
+      )
+        .then((response) => {
+          if (!response.ok) throw new Error("ALMA indisponível");
+          return response.json();
+        })
+        .then((alma) => {
+          const possuiAlma = alma?.possui_alma === true;
+          const pilares = Array.isArray(alma?.pilares) ? alma.pilares : [];
+          almaBlock.classList.remove("is-loading");
+          almaBlock.classList.toggle("is-empty", !possuiAlma);
+          almaBlock.innerHTML = `
+            <div class="tp-sidebar-block-title">
+              <span>Direção Visual (ALMA)</span>
+              ${possuiAlma ? `<span class="tp-alma-status is-active">${escapeKanbanText(alma.status || "ATIVA")}</span>` : ""}
+            </div>
+            ${
+              possuiAlma
+                ? `<dl class="tp-alma-summary">${pilares
+                    .map(
+                      (pilar) =>
+                        `<div><dt>${escapeKanbanText(pilar.nome || "")}</dt><dd>${escapeKanbanText(pilar.resumo || "Direção definida")}</dd></div>`,
+                    )
+                    .join("")}</dl>`
+                : '<p class="tp-alma-empty-text">Nenhuma direção definida para esta imagem.</p>'
+            }
+            <a class="tp-alma-open" href="ALMA/?imagem_id=${encodeURIComponent(String(idImagem))}">
+              <i class="ri-compass-3-line"></i>
+              <span>${possuiAlma ? "Abrir ALMA" : "Definir ALMA"}</span>
+              <i class="ri-arrow-right-line"></i>
+            </a>
+          `;
+        })
+        .catch(() => {
+          almaBlock.classList.remove("is-loading");
+          almaBlock.classList.add("is-unavailable");
+          almaBlock.innerHTML = `
+            <div class="tp-sidebar-block-title"><span>Direção Visual (ALMA)</span></div>
+            <p class="tp-alma-empty-text">Direção indisponível no momento.</p>
+            <a class="tp-alma-open" href="ALMA/?imagem_id=${encodeURIComponent(String(idImagem))}">
+              <span>Abrir ALMA</span><i class="ri-arrow-right-line"></i>
+            </a>
+          `;
+        });
+
       // ─ Notificações ─
       const notifBlock = document.createElement("div");
       notifBlock.className = "tp-sidebar-block tp-sidebar-block--notifications";

@@ -44,9 +44,11 @@ while ($row = $result_cargos->fetch_assoc()) {
     $cargos[] = $row['cargo_id']; // Armazena o ID do cargo
 }
 
-$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao, fc.tipo_atuacao, f.nome_funcao
+$sql_funcoes = "SELECT fc.funcao_id, fc.nivel_finalizacao, fct.tipo_finalizacao, fc.tipo_atuacao, f.nome_funcao
                 FROM funcao_colaborador fc
                 JOIN funcao f ON f.idfuncao = fc.funcao_id
+                LEFT JOIN funcao_colaborador_tipo_finalizacao fct
+                    ON fct.funcao_colaborador_id = fc.idfuncao_colaborador
                 WHERE fc.colaborador_id = ?";
 
 $stmt_funcoes = $conn->prepare($sql_funcoes);
@@ -57,17 +59,26 @@ $result_funcoes = $stmt_funcoes->get_result();
 $funcoes = [];
 $funcoes_atuacao = [];
 $nivel_finalizacao = null;
+$tipos_finalizacao = [];
 $nivel_arquitetura = null;
 $nivel_animacao = null;
 while ($row = $result_funcoes->fetch_assoc()) {
     $funcaoId = (int) $row['funcao_id'];
-    $funcoes[] = $funcaoId;
+    if (!in_array($funcaoId, $funcoes, true)) {
+        $funcoes[] = $funcaoId;
+    }
     $funcoes_atuacao[(string) $funcaoId] = strtoupper((string) ($row['tipo_atuacao'] ?? 'SECUNDARIA')) === 'PRINCIPAL'
         ? 'PRINCIPAL'
         : 'SECUNDARIA';
     $nomeFuncao = mb_strtolower(trim((string) ($row['nome_funcao'] ?? '')), 'UTF-8');
     if (($nomeFuncao === 'finalização' || $nomeFuncao === 'finalizacao') && $row['nivel_finalizacao'] !== null) {
         $nivel_finalizacao = (int) $row['nivel_finalizacao'];
+    }
+    if (($nomeFuncao === 'finalização' || $nomeFuncao === 'finalizacao') && $row['tipo_finalizacao'] !== null) {
+        $tipo = (string) $row['tipo_finalizacao'];
+        if (!in_array($tipo, $tipos_finalizacao, true)) {
+            $tipos_finalizacao[] = $tipo;
+        }
     }
     if ($nomeFuncao === 'caderno' && $row['nivel_finalizacao'] !== null) {
         $nivel_arquitetura = (int) $row['nivel_finalizacao'];
@@ -85,6 +96,7 @@ $response = [
     'funcoes' => $funcoes,
     'funcoes_atuacao' => $funcoes_atuacao,
     'nivel_finalizacao' => $nivel_finalizacao,
+    'tipos_finalizacao' => $tipos_finalizacao,
     'nivel_arquitetura' => $nivel_arquitetura,
     'nivel_animacao' => $nivel_animacao
 ];

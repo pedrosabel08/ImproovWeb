@@ -13,7 +13,18 @@ function response($success, $message)
     exit;
 }
 
-function normalizarFuncoes($funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao)
+function normalizarTiposFinalizacao($tipos): array
+{
+    if (!is_array($tipos)) {
+        $tipos = $tipos === null || $tipos === '' ? [] : [$tipos];
+    }
+
+    $permitidos = ['EXTERNA', 'INTERNA', 'PLANTA'];
+    $tipos = array_map(static fn ($tipo): string => strtoupper(trim((string) $tipo)), $tipos);
+    return array_values(array_unique(array_filter($tipos, static fn (string $tipo): bool => in_array($tipo, $permitidos, true))));
+}
+
+function normalizarFuncoes($funcoes, $nivelFinalizacao, $tiposFinalizacao, $nivelArquitetura, $nivelAnimacao)
 {
     if (!is_array($funcoes)) {
         $funcoes = [];
@@ -26,6 +37,7 @@ function normalizarFuncoes($funcoes, $nivelFinalizacao, $nivelArquitetura, $nive
     return [
         $funcoes,
         $nivelFinalizacao === '' ? null : (int) $nivelFinalizacao,
+        normalizarTiposFinalizacao($tiposFinalizacao),
         $nivelArquitetura === '' ? null : (int) $nivelArquitetura,
         $nivelAnimacao === '' ? null : (int) $nivelAnimacao,
     ];
@@ -51,7 +63,29 @@ function normalizarAtuacoesFuncoes($atuacoes, array $funcoes): array
  * Sincroniza os vínculos sem apagar os que permanecem selecionados. Assim,
  * id, valor e tipo_atuacao sobrevivem a edições antigas que não enviam papel.
  */
-function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao, array $atuacoes = [])
+function sincronizarTiposFinalizacao($conn, int $idVinculo, array $tiposFinalizacao): void
+{
+    $stmtDelete = $conn->prepare('DELETE FROM funcao_colaborador_tipo_finalizacao WHERE funcao_colaborador_id = ?');
+    $stmtDelete->bind_param('i', $idVinculo);
+    $stmtDelete->execute();
+    $stmtDelete->close();
+
+    if (!$tiposFinalizacao) {
+        return;
+    }
+
+    $stmtInsert = $conn->prepare(
+        'INSERT IGNORE INTO funcao_colaborador_tipo_finalizacao (funcao_colaborador_id, tipo_finalizacao)
+         VALUES (?, ?)'
+    );
+    foreach ($tiposFinalizacao as $tipoFinalizacao) {
+        $stmtInsert->bind_param('is', $idVinculo, $tipoFinalizacao);
+        $stmtInsert->execute();
+    }
+    $stmtInsert->close();
+}
+
+function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, array $tiposFinalizacao, $nivelArquitetura, $nivelAnimacao, array $atuacoes = [])
 {
     // nome_funcao usa utf8mb4_unicode_ci, enquanto parâmetros preparados no
     // MySQL atual chegam em utf8mb4_0900_ai_ci. A collation explícita evita
@@ -91,8 +125,13 @@ function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinaliz
         $idAnimacao = (int) $animacao['idfuncao'];
     }
 
-    if ($idFinalizacao > 0 && in_array($idFinalizacao, $funcoes, true) && !in_array($nivelFinalizacao, [1, 2, 3], true)) {
-        throw new InvalidArgumentException('Selecione um nivel de finalizacao valido.');
+    if ($idFinalizacao > 0 && in_array($idFinalizacao, $funcoes, true)) {
+        if (!in_array($nivelFinalizacao, [1, 2, 3], true)) {
+            throw new InvalidArgumentException('Selecione um nivel de finalizacao valido.');
+        }
+        if (!$tiposFinalizacao) {
+            throw new InvalidArgumentException('Selecione ao menos um tipo de finalizacao valido.');
+        }
     }
     if (array_intersect(array_keys($funcoesArquitetura), $funcoes) && !in_array($nivelArquitetura, [1, 2, 3], true)) {
         throw new InvalidArgumentException('Selecione um nivel de Arquitetura valido.');
@@ -158,12 +197,21 @@ function salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinaliz
             $idVinculo = (int) $existentes[$idfuncao]['id'];
             $stmtUpdate->bind_param('sii', $tipo, $nivel, $idVinculo);
             $stmtUpdate->execute();
+            sincronizarTiposFinalizacao(
+                $conn,
+                $idVinculo,
+                $idfuncao === $idFinalizacao ? $tiposFinalizacao : []
+            );
             continue;
         }
 
         $tipo = $atuacoes[$idfuncao] ?? FLOW_TIPO_ATUACAO_SECUNDARIA;
         $stmtInsert->bind_param('iisi', $idcolaborador, $idfuncao, $tipo, $nivel);
         $stmtInsert->execute();
+        $idVinculo = (int) $conn->insert_id;
+        if ($idfuncao === $idFinalizacao) {
+            sincronizarTiposFinalizacao($conn, $idVinculo, $tiposFinalizacao);
+        }
     }
     $stmtInsert->close();
     $stmtUpdate->close();
@@ -176,9 +224,10 @@ if ($action === 'create') {
     $senha = trim($_POST['senha'] ?? '');
     $nivel_acesso = $_POST['nivel_acesso'] !== '' ? (int)$_POST['nivel_acesso'] : null;
     $cargos = $_POST['cargos'] ?? [];
-    [$funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao] = normalizarFuncoes(
+    [$funcoes, $nivelFinalizacao, $tiposFinalizacao, $nivelArquitetura, $nivelAnimacao] = normalizarFuncoes(
         $_POST['funcoes'] ?? [],
         $_POST['nivel_finalizacao'] ?? '',
+        $_POST['tipo_finalizacao'] ?? [],
         $_POST['nivel_arquitetura'] ?? '',
         $_POST['nivel_animacao'] ?? ''
     );
@@ -211,7 +260,7 @@ if ($action === 'create') {
             }
         }
 
-        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao, $atuacoes);
+        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $tiposFinalizacao, $nivelArquitetura, $nivelAnimacao, $atuacoes);
 
         $conn->commit();
         response(true, 'Colaborador criado com sucesso!');
@@ -231,9 +280,10 @@ if ($action === 'update') {
     $senha = trim($_POST['senha'] ?? '');
     $nivel_acesso = $_POST['nivel_acesso'] !== '' ? (int)$_POST['nivel_acesso'] : null;
     $cargos = $_POST['cargos'] ?? [];
-    [$funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao] = normalizarFuncoes(
+    [$funcoes, $nivelFinalizacao, $tiposFinalizacao, $nivelArquitetura, $nivelAnimacao] = normalizarFuncoes(
         $_POST['funcoes'] ?? [],
         $_POST['nivel_finalizacao'] ?? '',
+        $_POST['tipo_finalizacao'] ?? [],
         $_POST['nivel_arquitetura'] ?? '',
         $_POST['nivel_animacao'] ?? ''
     );
@@ -279,7 +329,7 @@ if ($action === 'update') {
             }
         }
 
-        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $nivelArquitetura, $nivelAnimacao, $atuacoes);
+        salvarFuncoesColaborador($conn, $idcolaborador, $funcoes, $nivelFinalizacao, $tiposFinalizacao, $nivelArquitetura, $nivelAnimacao, $atuacoes);
 
         $conn->commit();
         response(true, 'Colaborador atualizado com sucesso!');

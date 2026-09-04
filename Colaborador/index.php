@@ -184,6 +184,15 @@ echo '</optgroup>';
                                 <option value="3">N&iacute;vel 3 — Heartmaster</option>
                             </select>
                         </div>
+                        <div class="form-group" id="tipoFinalizacaoGroup" hidden>
+                            <label class="form-label" for="tipoFinalizacao">Tipo de finaliza&ccedil;&atilde;o</label>
+                            <select class="form-input" id="tipoFinalizacao" name="tipo_finalizacao[]" multiple="multiple">
+                                <option value="EXTERNA">Externas</option>
+                                <option value="INTERNA">Internas</option>
+                                <option value="PLANTA">Plantas Humanizadas</option>
+                            </select>
+                            <small class="form-help">Define em qual frente de imagens este finalizador entra no Planejamento.</small>
+                        </div>
                         <div class="form-group" id="nivelArquiteturaGroup" hidden>
                             <label class="form-label" for="nivelArquitetura">N&iacute;vel de Arquitetura</label>
                             <select class="form-input" id="nivelArquitetura" name="nivel_arquitetura">

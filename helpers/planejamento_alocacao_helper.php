@@ -14,7 +14,6 @@
 require_once __DIR__ . '/planejamento_capacidade_global_helper.php';
 
 const FLOW_ALOCACAO_STATUS_PENDENTE_MATERIALIZACAO = 'PENDENTE_MATERIALIZACAO';
-const FLOW_ALOCACAO_ALERTA_POOL_FINALIZACAO_HARDCODED = 'POOL_FINALIZACAO_HARDCODED';
 const FLOW_ALOCACAO_STATUS_NORMAL = 'NORMAL';
 const FLOW_ALOCACAO_STATUS_SOBRECARGA_NAO_VALIDADA = 'SOBRECARGA_NAO_VALIDADA';
 const FLOW_ALOCACAO_STATUS_SOBRECARGA_VALIDADA = 'SOBRECARGA_VALIDADA';
@@ -664,13 +663,6 @@ function flow_alocacao_consultar(mysqli $conn, string $inicio, string $fim, arra
         if ($duracao > 0 && count($dias) !== $duracao) {
             $excecoes[] = ['codigo' => 'JANELA_DE_CARGA_INCONSISTENTE', 'entrega_id' => (int) $plano['entrega_id'], 'codigo_etapa' => $codigo];
         }
-        if (in_array($codigo, ['FINALIZACAO_EXTERNA', 'FINALIZACAO_INTERNA', 'FINALIZACAO_PLANTA'], true)) {
-            $excecoes[FLOW_ALOCACAO_ALERTA_POOL_FINALIZACAO_HARDCODED] = [
-                'codigo' => FLOW_ALOCACAO_ALERTA_POOL_FINALIZACAO_HARDCODED,
-                'mensagem' => 'Pools de Finalização reutilizam a configuração central atual, que ainda identifica os pools por nome.',
-            ];
-        }
-
         $resultadoEtapas[$chave] = [
             'entrega_id' => (int) $plano['entrega_id'],
             'planejamento_id' => (int) $plano['planejamento_id'],

@@ -5488,6 +5488,84 @@ function abrirSidebar(
       tpSidebar.className = "tp-sidebar";
       tpBody.appendChild(tpSidebar);
 
+      // ─ Direção Visual (ALMA) ─
+      // Carrega em uma requisição separada para não aumentar o tempo crítico de
+      // abertura da tarefa. A fonte é sempre imagem_id, nunca funcao_imagem.
+      const almaBlock = document.createElement("section");
+      almaBlock.className = "tp-sidebar-block tp-alma-card is-loading";
+      almaBlock.innerHTML = `
+        <div class="tp-sidebar-block-title">
+          <span>Direção Visual (ALMA)</span>
+          <span class="tp-alma-status">Carregando</span>
+        </div>
+        <div class="tp-alma-loading"><i class="ri-loader-4-line"></i> Consultando direção da imagem...</div>
+      `;
+      tpSidebar.appendChild(almaBlock);
+
+      // O resumo permanece somente leitura; o link leva diretamente à imagem
+      // corrente na página completa do ALMA quando o obra_id estiver disponível.
+      const buildAlmaUrl = (obraId = null) => {
+        const params = new URLSearchParams();
+        if (Number(obraId) > 0) params.set("obra_id", String(Number(obraId)));
+        params.set("imagem_id", String(idImagem));
+        return `ALMA/?${params.toString()}`;
+      };
+
+      fetch(
+        `ALMA/api.php?action=resumo&imagem_id=${encodeURIComponent(String(idImagem))}`,
+        { headers: { Accept: "application/json" } },
+      )
+        .then((response) => {
+          if (!response.ok) throw new Error("ALMA indisponível");
+          return response.json();
+        })
+        .then((alma) => {
+          const possuiAlma = alma?.possui_alma === true;
+          const pilares = Array.isArray(alma?.pilares) ? alma.pilares : [];
+          const statusLabel =
+            {
+              NAO_INICIADO: "NÃO INICIADO",
+              PARCIAL: "PARCIAL",
+              COMPLETO: "COMPLETO",
+            }[alma?.status] || "NÃO INICIADO";
+          const intention = String(alma?.intencao_geral || "").trim();
+          const almaUrl = buildAlmaUrl(alma?.obra_id);
+          almaBlock.classList.remove("is-loading");
+          almaBlock.classList.toggle("is-empty", !possuiAlma);
+          almaBlock.innerHTML = `
+            <div class="tp-sidebar-block-title">
+              <span>Direção Visual (ALMA)</span>
+              <span class="tp-alma-status is-${String(alma?.status || "NAO_INICIADO").toLowerCase()}">${escapeKanbanText(statusLabel)}</span>
+            </div>
+            ${
+              possuiAlma
+                ? `${intention ? `<p class="tp-alma-intention">${escapeKanbanText(intention)}</p>` : ""}<dl class="tp-alma-summary">${pilares
+                    .map(
+                      (pilar) =>
+                        `<div><dt>${escapeKanbanText(pilar.nome || "")}</dt><dd>${escapeKanbanText(pilar.resumo || "Não definido")}</dd></div>`,
+                    )
+                    .join("")}</dl>`
+                : '<p class="tp-alma-empty-text">Direção visual ainda não definida para esta imagem.</p>'
+            }
+            <a class="tp-alma-open" href="${almaUrl}">
+              <i class="ri-compass-3-line"></i>
+              <span>Abrir Direção Visual</span>
+              <i class="ri-arrow-right-line"></i>
+            </a>
+          `;
+        })
+        .catch(() => {
+          almaBlock.classList.remove("is-loading");
+          almaBlock.classList.add("is-unavailable");
+          almaBlock.innerHTML = `
+            <div class="tp-sidebar-block-title"><span>Direção Visual (ALMA)</span><span class="tp-alma-status">INDISPONÍVEL</span></div>
+            <p class="tp-alma-empty-text">Direção indisponível no momento.</p>
+            <a class="tp-alma-open" href="${buildAlmaUrl()}">
+              <span>Abrir Direção Visual</span><i class="ri-arrow-right-line"></i>
+            </a>
+          `;
+        });
+
       // ─ Notificações ─
       const notifBlock = document.createElement("div");
       notifBlock.className = "tp-sidebar-block tp-sidebar-block--notifications";

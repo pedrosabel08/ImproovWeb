@@ -154,3 +154,5 @@ Render/logs/
 Render/deadline_worker.pid
 Render/deadline_worker.lock
 Render/deadline_worker.stop
+
+ALMA/scripts/reports

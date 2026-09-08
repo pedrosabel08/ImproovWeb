@@ -1277,30 +1277,74 @@ if (!empty($suppressedIndexes)) {
 // Urgência operacional usa o prazo necessário do plano vigente. A previsão
 // pessoal não muda a posição da tarefa na fila.
 usort($funcoesFinal, static function (array $a, array $b): int {
-    // A fila confirmada é granular por responsável + etapa. Só comparamos a
-    // posição quando as tarefas pertencem à mesma etapa; entre etapas, os
-    // critérios atuais continuam determinando a ordem.
+
+    // =========================================================
+    // 1. AÇÕES OBRIGATÓRIAS
+    // =========================================================
+
+    $requiresRenderA = (int) ($a['requires_render_send'] ?? 0);
+    $requiresRenderB = (int) ($b['requires_render_send'] ?? 0);
+
+    if ($requiresRenderA !== $requiresRenderB) {
+        return $requiresRenderB <=> $requiresRenderA;
+    }
+
+    $requiresUploadA = (int) ($a['requires_file_upload'] ?? 0);
+    $requiresUploadB = (int) ($b['requires_file_upload'] ?? 0);
+
+    if ($requiresUploadA !== $requiresUploadB) {
+        return $requiresUploadB <=> $requiresUploadA;
+    }
+
+    // =========================================================
+    // 2. FILA OPERACIONAL
+    // =========================================================
+
     $etapaA = $a['fila_operacional_etapa'] ?? null;
     $etapaB = $b['fila_operacional_etapa'] ?? null;
+
     if ($etapaA !== null && $etapaA === $etapaB) {
-        $posicaoA = isset($a['fila_operacional_posicao']) ? (int) $a['fila_operacional_posicao'] : PHP_INT_MAX;
-        $posicaoB = isset($b['fila_operacional_posicao']) ? (int) $b['fila_operacional_posicao'] : PHP_INT_MAX;
+        $posicaoA = isset($a['fila_operacional_posicao'])
+            ? (int) $a['fila_operacional_posicao']
+            : PHP_INT_MAX;
+
+        $posicaoB = isset($b['fila_operacional_posicao'])
+            ? (int) $b['fila_operacional_posicao']
+            : PHP_INT_MAX;
+
         if ($posicaoA !== $posicaoB) {
             return $posicaoA <=> $posicaoB;
         }
     }
 
+    // =========================================================
+    // 3. PRIORIDADE
+    // =========================================================
+
     $prioridadeA = (int) ($a['prioridade'] ?? 3);
     $prioridadeB = (int) ($b['prioridade'] ?? 3);
+
     if ($prioridadeA !== $prioridadeB) {
         return $prioridadeA <=> $prioridadeB;
     }
+
+    // =========================================================
+    // 4. PRAZO NECESSÁRIO
+    // =========================================================
+
     $prazoA = (string) ($a['planejamento']['prazo_necessario'] ?? '9999-12-31');
     $prazoB = (string) ($b['planejamento']['prazo_necessario'] ?? '9999-12-31');
+
     if ($prazoA !== $prazoB) {
         return strcmp($prazoA, $prazoB);
     }
-    return (int) ($a['idfuncao_imagem'] ?? 0) <=> (int) ($b['idfuncao_imagem'] ?? 0);
+
+    // =========================================================
+    // 5. DESEMPATE
+    // =========================================================
+
+    return (int) ($a['idfuncao_imagem'] ?? 0)
+        <=> (int) ($b['idfuncao_imagem'] ?? 0);
 });
 
 // ====================

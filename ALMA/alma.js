@@ -1,6 +1,23 @@
 (() => {
   const app = document.getElementById("almaApp");
   if (!app) return;
+  const content = document.getElementById("almaContent") || app;
+  const loadingRoot = document.getElementById("almaLoading");
+  const loader = window.AlmaBuildLoader
+    ? new window.AlmaBuildLoader(loadingRoot, content).start()
+    : {
+        setProgress() {},
+        setPillars() {},
+        finish() {
+          content.classList.add("is-ready");
+          content.setAttribute("aria-busy", "false");
+          if (loadingRoot) loadingRoot.hidden = true;
+          return Promise.resolve();
+        },
+        fail() {
+          this.finish();
+        },
+      };
 
   const state = {
     obraId: Number(app.dataset.obraId || 0),
@@ -166,6 +183,7 @@
     state.payload = state.imageId
       ? await api("direcao", { params: { imagem_id: state.imageId } })
       : null;
+    loader.setProgress(0.52, "Mapeando referências da imagem");
     state.permissions = state.payload?.permissions || state.permissions;
     state.imageRefs = {};
     for (const selection of state.payload?.revisao?.selecoes || [])
@@ -182,12 +200,14 @@
         params: { imagem_id: state.imageId },
       });
       state.obraId = Number(state.payload.imagem?.obra_id || 0);
+      loader.setProgress(0.18, "Lendo a direção atual");
     }
     if (!state.obraId)
       throw new Error("Abra o ALMA a partir de uma obra ou imagem do Flow.");
     state.context = await api("obra_contexto", {
       params: { obra_id: state.obraId },
     });
+    loader.setProgress(0.36, "Organizando o contexto do projeto");
     state.permissions = state.context.permissions || state.permissions;
     if (
       !state.imageId ||
@@ -196,21 +216,65 @@
       )
     )
       state.imageId = Number(state.context.imagens[0]?.imagem_id || 0);
-    if (
-      !state.payload ||
-      Number(state.payload.imagem?.imagem_id) !== state.imageId
-    )
-      await loadImage(state.imageId, false);
     const versionId =
       state.context.projeto?.biblioteca_versao_id ||
       state.payload?.revisao?.biblioteca_versao_id;
-    state.library = (
-      await api("biblioteca", {
-        params: versionId ? { versao_id: versionId } : {},
-      })
-    ).biblioteca;
+    loader.setProgress(0.44, "Preparando referências e pilares");
+    const imageRequest =
+      !state.payload ||
+      Number(state.payload.imagem?.imagem_id) !== state.imageId
+        ? loadImage(state.imageId, false)
+        : Promise.resolve();
+    const libraryRequest = api("biblioteca", {
+      params: versionId ? { versao_id: versionId } : {},
+    });
+    const [, libraryResponse] = await Promise.all([
+      imageRequest,
+      libraryRequest,
+    ]);
+    state.library = libraryResponse.biblioteca;
     hydrateReferences();
+    loader.setPillars(loaderPillars());
+    loader.startPillarSequence?.();
+    loader.setProgress(0.76, "Conectando os pilares do ALMA");
     render();
+    loader.setProgress(0.84, "Compondo o painel visual");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await loader.finish();
+  }
+
+  function loaderPillars() {
+    const projectSelections = state.context?.projeto?.selecoes || [];
+    const imageSelections = state.payload?.revisao?.selecoes || [];
+    const allSelections = [...projectSelections, ...imageSelections];
+    const dimensions = state.library?.dimensoes || [];
+
+    return (state.library?.pilares || []).slice(0, 7).map((pillar, index) => {
+      const code =
+        pillar.pilar_codigo || pillar.codigo || `pillar-${index + 1}`;
+      const pillarDimensions = dimensions.filter(
+        (candidate) =>
+          candidate.pilar_codigo === code || candidate.codigo === pillar.codigo,
+      );
+      const dimensionCodes = new Set(
+        pillarDimensions.map((candidate) => candidate.codigo),
+      );
+      const selection = allSelections.find(
+        (candidate) =>
+          candidate.pilar_codigo === code ||
+          dimensionCodes.has(candidate.dimensao_codigo),
+      );
+      const reference = selection?.referencias?.find(
+        (candidate) => candidate.thumbnail_url,
+      );
+
+      return {
+        code,
+        name: pillar.pilar_nome || pillar.nome || pillar.etapa_nome,
+        keyword: selection?.item_titulo || pillar.etapa_nome || "",
+        image: reference?.thumbnail_url || "",
+      };
+    });
   }
 
   function referenceCards(scope, code) {
@@ -247,9 +311,106 @@
     composicao: "ri-layout-4-line",
   };
 
+  const pillarGuideMap = {
+    atmosfera: [{ scope: "image", code: "atmosfera" }],
+    arquitetura: [{ scope: "project", code: "arquitetura" }],
+    materialidade: [{ scope: "project", code: "materialidade" }],
+    luz: [
+      { scope: "image", code: "luz_momento" },
+      { scope: "image", code: "luz_linguagem" },
+    ],
+    lifestyle: [{ scope: "project", code: "lifestyle" }],
+    fotografia_direcao: [{ scope: "image", code: "fotografia_direcao" }],
+    composicao: [{ scope: "image", code: "composicao" }],
+  };
+
+  function guideEntriesForPillar(pillar) {
+    return (pillarGuideMap[pillar] || []).map(({ scope, code }) => {
+      const dimensionData = dimension(code);
+      const selectedId = Number(
+        selectionFor(scope, code)?.item_biblioteca_id || 0,
+      );
+      return {
+        code,
+        dimension: dimensionData,
+        item: (dimensionData?.itens || []).find(
+          (candidate) => Number(candidate.id) === selectedId,
+        ),
+      };
+    });
+  }
+
+  function guideField(label, value) {
+    const content = String(value || "").trim();
+    if (!content) return "";
+    return `<article class="alma-guide-field"><h4>${esc(label)}</h4><p>${esc(content)}</p></article>`;
+  }
+
+  function guideSection(section) {
+    const entries = section.entradas || [];
+    return `<section class="alma-guide-section"><h4>${esc(section.titulo)}</h4>${section.conteudo ? `<p>${esc(section.conteudo)}</p>` : ""}${entries.length ? `<ul>${entries.map((entry) => `<li>${esc(entry.texto)}</li>`).join("")}</ul>` : ""}</section>`;
+  }
+
+  function guideStructuredBlock(block) {
+    const title = block.title ? `<h4>${esc(block.title)}</h4>` : "";
+    if (block.type === "text")
+      return `<section class="alma-content-block alma-content-block--text">${title}<p>${esc(block.content)}</p></section>`;
+    if (block.type === "principle")
+      return `<section class="alma-content-block alma-content-block--principle">${title}<p>${esc(block.content)}</p></section>`;
+    if (block.type === "positive_list" || block.type === "negative_list") {
+      const modifier = block.type === "positive_list" ? "positive" : "negative";
+      const marker = modifier === "positive" ? "✓" : "×";
+      return `<section class="alma-content-block alma-content-block--${modifier}">${title}<ul>${(block.items || []).map((entry) => `<li><i>${marker}</i>${esc(entry)}</li>`).join("")}</ul></section>`;
+    }
+    if (block.type === "material_guideline")
+      return `<section class="alma-content-block alma-content-block--material">${title}<div><strong>Priorizar</strong><ul>${(block.positive || []).map((entry) => `<li><i>✓</i>${esc(entry)}</li>`).join("")}</ul></div><div><strong>Evitar</strong><ul>${(block.negative || []).map((entry) => `<li><i>×</i>${esc(entry)}</li>`).join("")}</ul></div></section>`;
+    return "";
+  }
+
+  function guideItem(entry) {
+    const dimensionData = entry.dimension;
+    const item = entry.item;
+    if (!dimensionData) return "";
+    if (!item)
+      return `<article class="alma-guide-item is-empty"><span class="alma-kicker">${esc(dimensionData.nome)}</span><p>Nenhum item foi definido para esta dimensão.</p></article>`;
+
+    const sections = (item.secoes || []).filter(
+      (section) => section.codigo !== "fonte_oficial",
+    );
+    const provenance = (item.secoes || []).find(
+      (section) => section.codigo === "fonte_oficial",
+    );
+    const fields = [
+      ["Resumo", item.resumo],
+      ["Diferença principal", item.diferenca_principal],
+      ["Descrição", item.descricao],
+      ["Princípio fundamental", item.principio_fundamental],
+      ["Diretriz completa", item.diretriz_completa],
+    ]
+      .map(([label, value]) => guideField(label, value))
+      .join("");
+    const structured = item.conteudo_estruturado?.blocks || [];
+    const content = structured.length
+      ? `<div class="alma-structured-content">${structured.map(guideStructuredBlock).join("")}</div>`
+      : `${fields ? `<div class="alma-guide-fields">${fields}</div>` : '<p class="alma-no-references">Este item ainda não possui conteúdo-guia cadastrado.</p>'}${sections.map(guideSection).join("")}`;
+    return `<article class="alma-guide-item"><header><span class="alma-kicker">${esc(dimensionData.nome)}</span><h3>${esc(item.titulo)}</h3></header>${content}</article>`;
+  }
+
+  function openPillarGuide(pillar) {
+    const entries = guideEntriesForPillar(pillar);
+    const firstDimension = entries[0]?.dimension;
+    const title = firstDimension?.pilar_nome || firstDimension?.nome || "Pilar";
+    openDialog(
+      `<section class="alma-guide-dialog"><span class="alma-kicker">Guia do pilar</span><h2 id="almaDialogTitle">${esc(title)}</h2><p class="alma-guide-intro">Conteúdo oficial dos itens selecionados para esta direção visual.</p>${entries.map(guideItem).join("")}</section>`,
+    );
+  }
+
   function pillarTab(key, label, itemLabel) {
     const active = state.activePillar === key;
-    return `<button type="button" class="alma-pillar-tab ${active ? "is-active" : ""}" data-pillar-toggle="${key}" role="tab" aria-selected="${active ? "true" : "false"}"><span class="alma-pillar-icon"><i class="${pillarIcons[key] || "ri-checkbox-blank-circle-line"}"></i></span><span class="alma-pillar-tab-label"><strong>${esc(label)}</strong><span class="alma-pillar-tab-value ${itemLabel === "Não definido" ? "is-empty" : ""}">${esc(itemLabel)}</span></span></button>`;
+    const guideAvailable = guideEntriesForPillar(key).some(
+      (entry) => entry.item,
+    );
+    return `<div class="alma-pillar-tab-wrap"><button type="button" class="alma-pillar-tab ${active ? "is-active" : ""}" data-pillar-toggle="${key}" role="tab" aria-selected="${active ? "true" : "false"}"><span class="alma-pillar-icon"><i class="${pillarIcons[key] || "ri-checkbox-blank-circle-line"}"></i></span><span class="alma-pillar-tab-label"><strong>${esc(label)}</strong><span class="alma-pillar-tab-value ${itemLabel === "Não definido" ? "is-empty" : ""}">${esc(itemLabel)}</span></span></button><button type="button" class="alma-pillar-guide" data-pillar-guide="${key}" aria-label="Abrir guia de ${esc(label)}" title="Abrir guia" ${guideAvailable ? "" : "disabled"}><i class="ri-information-line"></i></button></div>`;
   }
 
   function pillarPanel(key, content) {
@@ -364,15 +525,34 @@
       return '<section class="alma-card alma-empty"><h2>Nenhuma imagem elegível</h2><p>Plantas Humanizadas não participam da configuração ALMA.</p></section>';
     const meta = statusMeta[image.alma_status] || statusMeta.NAO_INICIADO;
     return `<section class="alma-image-editor"><header class="alma-card alma-image-editor-head"><div><span class="alma-kicker">Imagem selecionada</span><h2>${esc(image.imagem_nome)}</h2><p>${esc(image.tipo_imagem || "")}</p></div><span class="alma-status-badge is-${meta[1]}">${meta[0]}</span></header>
-      <div class="alma-image-actions">${canEdit() ? '<button type="button" class="alma-btn" id="almaUseBase"><i class="ri-file-copy-line"></i> Usar outra imagem como base</button>' : ""}<button type="button" class="alma-btn" id="almaHistory"><i class="ri-history-line"></i> Histórico</button></div>
-      <label class="alma-card alma-field alma-intention"><span>Intenção Geral <small>opcional</small></span><textarea id="almaIntention" ${canEdit() ? "" : "disabled"} placeholder="Uma intenção breve para esta imagem, se for útil.">${esc(state.payload?.revisao?.intencao_geral || "")}</textarea></label>
+            <div class="alma-image-actions">
+              ${
+                canEdit()
+                  ? `
+                  <button type="button" class="alma-btn" id="almaUseBase">
+                    <i class="ri-file-copy-line"></i>
+                    Usar outra imagem como base
+                  </button>
+
+                  <button type="button" class="alma-btn" id="almaHistory">
+                    <i class="ri-history-line"></i>
+                    Histórico
+                  </button>
+                `
+                  : ""
+              }
+            </div>    
+       <label class="alma-card alma-field alma-intention"><span>Intenção Geral <small>opcional</small></span><textarea id="almaIntention" ${canEdit() ? "" : "disabled"} placeholder="Uma intenção breve para esta imagem, se for útil.">${esc(state.payload?.revisao?.intencao_geral || "")}</textarea></label>
       ${imagePillarSwitcher()}
       ${canEdit() ? '<div class="alma-sticky-save"><span>Referências e itens são persistidos juntos.</span><button type="button" class="alma-btn primary" id="almaSaveImage"><i class="ri-save-line"></i> Salvar ALMA da imagem</button></div>' : ""}</section>`;
   }
 
   function render() {
     const obra = state.context.obra;
-    app.innerHTML = `<div class="alma-shell"><header class="alma-topbar"><div><a class="alma-back" href="../Dashboard/obra.php"><i class="ri-arrow-left-line"></i> Voltar à obra</a><div class="alma-breadcrumb">${esc(obra.nomenclatura || obra.nome_obra)}</div><div class="alma-title-row"><h1>Direção Visual — ALMA</h1></div><p class="alma-byline">Configuração operacional do projeto e de suas imagens.</p></div></header>${projectSection()}<section class="alma-section"><div class="alma-section-head"><div><span class="alma-kicker">Configuração por imagem</span><h2>ALMA das imagens</h2><p>Atmosfera, Luz, Fotografia e Composição variam por imagem.</p></div></div><div class="alma-workspace">${imageNavigation()}${imageEditor()}</div></section></div>`;
+    const accessMode = canEdit()
+      ? '<span class="alma-access-mode is-edit"><i class="ri-edit-line"></i> Modo edição</span>'
+      : '<span class="alma-access-mode is-view"><i class="ri-eye-line"></i> Somente visualização</span>';
+    content.innerHTML = `<div class="alma-shell"><header class="alma-topbar"><div><a class="alma-back" href="../Dashboard/obra.php"><i class="ri-arrow-left-line"></i> Voltar à obra</a><div class="alma-breadcrumb">${esc(obra.nomenclatura || obra.nome_obra)}</div><div class="alma-title-row"><h1>Direção Visual — ALMA</h1>${accessMode}</div><p class="alma-byline">Configuração operacional do projeto e de suas imagens.</p></div></header>${canEdit() ? projectSection() : ""}<section class="alma-section"><div class="alma-section-head"><div><span class="alma-kicker">Configuração por imagem</span><h2>ALMA das imagens</h2><p>Atmosfera, Luz, Fotografia e Composição variam por imagem.</p></div></div><div class="alma-workspace">${imageNavigation()}${imageEditor()}</div></section></div>`;
     bind();
     notifyHeight();
   }
@@ -833,6 +1013,13 @@
       }),
     );
     document
+      .querySelectorAll("[data-pillar-guide]")
+      .forEach((button) =>
+        button.addEventListener("click", () =>
+          openPillarGuide(button.dataset.pillarGuide),
+        ),
+      );
+    document
       .querySelectorAll("[data-alma-item]")
       .forEach((select) =>
         select.addEventListener("change", () => itemChanged(select)),
@@ -912,6 +1099,7 @@
   });
   new ResizeObserver(notifyHeight).observe(document.body);
   load().catch((error) => {
-    app.innerHTML = `<section class="alma-card alma-empty"><div class="alma-empty-mark">!</div><h1>Não foi possível abrir o ALMA</h1><p>${esc(error.message)}</p><a class="alma-btn" href="../inicio.php">Voltar ao Flow</a></section>`;
+    content.innerHTML = `<section class="alma-card alma-empty"><div class="alma-empty-mark">!</div><h1>Não foi possível abrir o ALMA</h1><p>${esc(error.message)}</p><a class="alma-btn" href="../inicio.php">Voltar ao Flow</a></section>`;
+    loader.fail();
   });
 })();

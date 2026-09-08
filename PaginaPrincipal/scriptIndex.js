@@ -5502,6 +5502,15 @@ function abrirSidebar(
       `;
       tpSidebar.appendChild(almaBlock);
 
+      // O resumo permanece somente leitura; o link leva diretamente à imagem
+      // corrente na página completa do ALMA quando o obra_id estiver disponível.
+      const buildAlmaUrl = (obraId = null) => {
+        const params = new URLSearchParams();
+        if (Number(obraId) > 0) params.set("obra_id", String(Number(obraId)));
+        params.set("imagem_id", String(idImagem));
+        return `ALMA/?${params.toString()}`;
+      };
+
       fetch(
         `ALMA/api.php?action=resumo&imagem_id=${encodeURIComponent(String(idImagem))}`,
         { headers: { Accept: "application/json" } },
@@ -5513,11 +5522,14 @@ function abrirSidebar(
         .then((alma) => {
           const possuiAlma = alma?.possui_alma === true;
           const pilares = Array.isArray(alma?.pilares) ? alma.pilares : [];
-          const statusLabel = {
-            NAO_INICIADO: "Não iniciado",
-            PARCIAL: "Parcial",
-            COMPLETO: "Completo",
-          }[alma?.status] || "Não iniciado";
+          const statusLabel =
+            {
+              NAO_INICIADO: "NÃO INICIADO",
+              PARCIAL: "PARCIAL",
+              COMPLETO: "COMPLETO",
+            }[alma?.status] || "NÃO INICIADO";
+          const intention = String(alma?.intencao_geral || "").trim();
+          const almaUrl = buildAlmaUrl(alma?.obra_id);
           almaBlock.classList.remove("is-loading");
           almaBlock.classList.toggle("is-empty", !possuiAlma);
           almaBlock.innerHTML = `
@@ -5527,15 +5539,15 @@ function abrirSidebar(
             </div>
             ${
               possuiAlma
-                ? `${alma.intencao_geral ? `<p class="tp-alma-intention">${escapeKanbanText(alma.intencao_geral)}</p>` : ""}<dl class="tp-alma-summary">${pilares
+                ? `${intention ? `<p class="tp-alma-intention">${escapeKanbanText(intention)}</p>` : ""}<dl class="tp-alma-summary">${pilares
                     .map(
                       (pilar) =>
-                        `<div><dt>${escapeKanbanText(pilar.nome || "")}</dt><dd>${escapeKanbanText(pilar.resumo || "Não definido")}${Array.isArray(pilar.referencias) && pilar.referencias.length ? `<span class="tp-alma-refs">${pilar.referencias.map((ref) => `<img src="${escapeKanbanText(ref.thumbnail_url || "")}" alt="${escapeKanbanText(ref.titulo || "Referência SIRE")}" title="${escapeKanbanText(ref.titulo || "Referência SIRE")}">`).join("")}</span>` : ""}</dd></div>`,
+                        `<div><dt>${escapeKanbanText(pilar.nome || "")}</dt><dd>${escapeKanbanText(pilar.resumo || "Não definido")}</dd></div>`,
                     )
                     .join("")}</dl>`
-                : '<p class="tp-alma-empty-text">Nenhuma direção definida para esta imagem.</p>'
+                : '<p class="tp-alma-empty-text">Direção visual ainda não definida para esta imagem.</p>'
             }
-            <a class="tp-alma-open" href="ALMA/?imagem_id=${encodeURIComponent(String(idImagem))}">
+            <a class="tp-alma-open" href="${almaUrl}">
               <i class="ri-compass-3-line"></i>
               <span>Abrir Direção Visual</span>
               <i class="ri-arrow-right-line"></i>
@@ -5546,9 +5558,9 @@ function abrirSidebar(
           almaBlock.classList.remove("is-loading");
           almaBlock.classList.add("is-unavailable");
           almaBlock.innerHTML = `
-            <div class="tp-sidebar-block-title"><span>Direção Visual (ALMA)</span></div>
+            <div class="tp-sidebar-block-title"><span>Direção Visual (ALMA)</span><span class="tp-alma-status">INDISPONÍVEL</span></div>
             <p class="tp-alma-empty-text">Direção indisponível no momento.</p>
-            <a class="tp-alma-open" href="ALMA/?imagem_id=${encodeURIComponent(String(idImagem))}">
+            <a class="tp-alma-open" href="${buildAlmaUrl()}">
               <span>Abrir Direção Visual</span><i class="ri-arrow-right-line"></i>
             </a>
           `;

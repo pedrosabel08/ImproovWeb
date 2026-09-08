@@ -322,6 +322,112 @@ def list_values(text: str | None) -> list[str]:
     return [compact(part) for part in parts if compact(part)]
 
 
+COMPLEMENTARY_LABELS = [
+    "Superfícies e Pinturas",
+    "Elementos Naturais",
+    "Presença Humana",
+    "Quantidade de Pessoas",
+    "Tipos de Ação",
+    "Intensidade da Cena",
+    "Nível de Movimento",
+    "Número de Pontos de Interesse",
+    "Velocidade de Leitura",
+    "Relação Arquitetura × Lifestyle",
+    "Recursos Compositivos Comuns",
+    "Aplicação na IMPROOV",
+    "Quando utilizar",
+    "Quando evitar",
+    "Madeiras",
+    "Pedras",
+    "Metais",
+    "Tecidos",
+    "Vidros",
+    "Protagonismo",
+]
+
+
+def heading_segments(text: str | None, labels: list[str]) -> list[tuple[str, str]]:
+    if not text:
+        return []
+    ordered = sorted(labels, key=len, reverse=True)
+    pattern = re.compile(
+        r"(?<![\wÀ-ÿ])("
+        + "|".join(re.escape(label) for label in ordered)
+        + r")(?=\s|:|$)",
+        flags=re.IGNORECASE,
+    )
+    matches = list(pattern.finditer(text))
+    segments: list[tuple[str, str]] = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        label = compact(match.group(1))
+        value = compact(text[match.end() : end].strip(" :-"))
+        if value:
+            segments.append((label, value))
+    return segments
+
+
+def complementary_sections(
+    text: str | None,
+) -> list[tuple[str, str, str | None, str, list[str]]]:
+    sections: list[tuple[str, str, str | None, str, list[str]]] = []
+    for label, value in heading_segments(text, COMPLEMENTARY_LABELS):
+        code = "complementar_" + slug(label)
+        entries: list[str] = []
+        content: str | None = value
+        if re.search(r"\bPriorizar\b|\bEvitar\b", value, flags=re.IGNORECASE):
+            content = None
+            for match in re.finditer(
+                r"\b(Priorizar|Evitar)\b", value, flags=re.IGNORECASE
+            ):
+                next_match = re.search(
+                    r"\b(Priorizar|Evitar)\b", value[match.end() :], flags=re.IGNORECASE
+                )
+                end = match.end() + next_match.start() if next_match else len(value)
+                entries.extend(
+                    f"{match.group(1).upper()}|{entry}"
+                    for entry in list_values(value[match.end() : end])
+                )
+        elif "✓" in value or "✕" in value or "●" in value:
+            entries = list_values(value)
+            content = None
+        sections.append((code, label, content, "ITEM", entries))
+    return sections
+
+
+def directive_sections(
+    directive: str | None,
+) -> list[tuple[str, str, str | None, str, list[str]]]:
+    if not directive:
+        return []
+    text = compact(directive)
+    question_pattern = re.compile(
+        r"(Como [^?]+\?|O que define [^?]+\?|O que deve dominar [^?]+\?|"
+        r"O que deve ser percebido [^?]+\?|O que deve receber [^?]+\?)",
+        flags=re.IGNORECASE,
+    )
+    matches = list(question_pattern.finditer(text))
+    if not matches:
+        return []
+    sections: list[tuple[str, str, str | None, str, list[str]]] = []
+    for index, match in enumerate(matches[:2]):
+        answer_end = (
+            matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        )
+        answer = compact(text[match.end() : answer_end])
+        if not answer:
+            continue
+        question = compact(match.group(1)).lower()
+        if question.startswith("como "):
+            code, title = "diretriz_sensacao", "Sensação desejada"
+        elif question.startswith("o que define "):
+            code, title = "diretriz_definicao", "Definição operacional"
+        else:
+            code, title = "diretriz_percepcao", "Percepção dominante"
+        sections.append((code, title, answer, "ITEM", []))
+    return sections
+
+
 def extract_item(reader: PdfReader, spec: ItemSpec) -> dict[str, object]:
     raw = " ".join(
         (reader.pages[i - 1].extract_text() or "")
@@ -361,6 +467,18 @@ def extract_item(reader: PdfReader, spec: ItemSpec) -> dict[str, object]:
         ["Diferença Principal"],
         ["Descrição", "Características", "Evitar", "Diretriz Completa"],
     )
+    if difference:
+        difference = (
+            compact(
+                re.sub(
+                    r"Versão Resumida(?:\s*\(Exibida no Card\))?",
+                    "",
+                    difference,
+                    flags=re.IGNORECASE,
+                )
+            )
+            or None
+        )
     characteristics_text = between(
         text,
         ["Características"],
@@ -446,7 +564,9 @@ def extract_item(reader: PdfReader, spec: ItemSpec) -> dict[str, object]:
                 "EVITAR",
                 list_values(avoid_text or weaken),
             ),
+            *directive_sections(directive),
             ("complementar", "Conteúdo complementar", complementary, "ITEM", []),
+            *complementary_sections(complementary),
             ("fonte_oficial", "Conteúdo oficial integral", text, "ITEM", []),
         ],
     }
@@ -534,9 +654,15 @@ def generate(pdf: Path) -> str:
                 ]
             )
             for entry_order, entry in enumerate(entries, 1):
+                entry_type = entry_type
+                entry_text = entry
+                if isinstance(entry, str) and "|" in entry:
+                    candidate_type, candidate_text = entry.split("|", 1)
+                    if candidate_type and candidate_text:
+                        entry_type, entry_text = candidate_type, candidate_text
                 out.append(
                     "INSERT INTO alma_biblioteca_secao_entrada (secao_id, tipo, texto, ordem) "
-                    f"SELECT @alma_secao, {sql(entry_type)}, {sql(entry)}, {entry_order} "
+                    f"SELECT @alma_secao, {sql(entry_type)}, {sql(entry_text)}, {entry_order} "
                     "WHERE NOT EXISTS (SELECT 1 FROM alma_biblioteca_secao_entrada WHERE secao_id=@alma_secao AND ordem="
                     f"{entry_order});"
                 )

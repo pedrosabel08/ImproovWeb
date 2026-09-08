@@ -133,6 +133,59 @@
     return `<section class="alma-card alma-library-items"><div class="alma-library-pane-head"><div><div class="alma-kicker">${esc(dim.etapa_nome)} / ${esc(dim.pilar_nome)}</div><h2>${esc(dim.nome)}</h2></div><span>${dim.exige_item_biblioteca ? "Seleções oficiais" : "Dimensão contextual"}</span></div>${dim.itens?.length ? `<div class="alma-library-item-buttons">${dim.itens.map((item) => `<button type="button" class="${Number(state.itemId) === item.id ? "active" : ""}" data-library-item="${item.id}"><strong>${esc(item.titulo)}</strong><span>${esc(item.resumo || "Sem resumo")}</span></button>`).join("")}</div>` : `<div class="alma-empty alma-library-empty"><p>Esta dimensão não possui itens oficiais na Biblioteca v${esc(state.library.versao.codigo)}. A direção registra somente contexto da imagem, sem inventar categorias.</p></div>`}</section>`;
   }
 
+  const contentBlockTypes = {
+    text: "Texto",
+    positive_list: "Lista positiva",
+    negative_list: "Lista negativa",
+    principle: "Princípio fundamental",
+    material_guideline: "Material / recomendações",
+  };
+  const contentItems = (name, values = [], disabled = "") =>
+    `<div class="alma-content-editor-items" data-content-items="${name}">${values
+      .map(
+        (value) =>
+          `<div><input data-content-item value="${esc(value)}" ${disabled}><button type="button" class="alma-btn compact" data-remove-content-item ${disabled}>×</button></div>`,
+      )
+      .join(
+        "",
+      )}</div><button type="button" class="alma-btn compact" data-add-content-item="${name}" ${disabled}><i class="ri-add-line"></i> Adicionar item</button>`;
+  const contentBlock = (block, disabled = "") => {
+    const type = contentBlockTypes[block.type] ? block.type : "text";
+    const title = `<label class="alma-field"><span>Título</span><input data-content-field="title" value="${esc(block.title || "")}" ${disabled}></label>`;
+    const controls = `<div class="alma-content-block-actions"><button type="button" class="alma-btn compact" data-move-content-block="up" ${disabled} aria-label="Mover bloco para cima">↑</button><button type="button" class="alma-btn compact" data-move-content-block="down" ${disabled} aria-label="Mover bloco para baixo">↓</button><button type="button" class="alma-btn compact danger" data-remove-content-block ${disabled}>Remover</button></div>`;
+    let fields = "";
+    if (type === "text" || type === "principle") {
+      fields = `${title}<label class="alma-field"><span>Conteúdo</span><textarea data-content-field="content" class="is-large" ${disabled}>${esc(block.content || "")}</textarea></label>`;
+    } else if (type === "positive_list" || type === "negative_list") {
+      fields = `${title}${contentItems("items", block.items || [], disabled)}`;
+    } else {
+      fields = `${title}<div class="alma-content-material-columns"><section><strong>Priorizar</strong>${contentItems("positive", block.positive || [], disabled)}</section><section><strong>Evitar</strong>${contentItems("negative", block.negative || [], disabled)}</section></div>`;
+    }
+    return `<article class="alma-content-block alma-content-block--${type}" data-content-block data-content-type="${type}"><header><strong>${esc(contentBlockTypes[type])}</strong>${controls}</header>${fields}</article>`;
+  };
+  const structuredContentEditor = (item, isDraft) => {
+    const content = item.conteudo_estruturado || { version: 1, blocks: [] };
+    const disabled = isDraft ? "" : "disabled";
+    const legacy = [
+      item.descricao,
+      item.principio_fundamental,
+      item.diretriz_completa,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return `<fieldset class="alma-content-editor"><legend>Conteúdo estruturado</legend><p class="alma-content-editor-intro">Blocos semânticos reutilizáveis. O conteúdo legado permanece preservado como fallback até ser convertido.</p><div id="almaContentBlocks">${(content.blocks || []).map((block) => contentBlock(block, disabled)).join("")}</div>${
+      isDraft
+        ? `<div class="alma-content-editor-add"><select id="almaContentBlockType">${Object.entries(
+            contentBlockTypes,
+          )
+            .map(([type, label]) => `<option value="${type}">${label}</option>`)
+            .join(
+              "",
+            )}</select><button type="button" class="alma-btn" id="almaAddContentBlock"><i class="ri-add-line"></i> Adicionar bloco</button></div>`
+        : ""
+    }${legacy ? `<details class="alma-library-source"><summary>Conteúdo legado preservado</summary><p>${esc(legacy)}</p></details>` : ""}</fieldset>`;
+  };
+
   function itemEditor() {
     const item = currentItem();
     if (!item)
@@ -147,14 +200,26 @@
     const disabled = isDraft ? "" : "disabled";
     const field = (name, label, value, large = false) =>
       `<label class="alma-field"><span>${esc(label)}</span><textarea name="${name}" ${disabled} class="${large ? "is-large" : ""}">${esc(value || "")}</textarea></label>`;
+    const sectionEntries = (section) => {
+      const entries = section.entradas || [];
+      const types = new Set(
+        entries.map((entry) => String(entry.tipo || "ITEM").toUpperCase()),
+      );
+      return [...types].length > 1
+        ? entries
+            .map(
+              (entry) =>
+                `[${String(entry.tipo || "ITEM").toUpperCase()}] ${entry.texto}`,
+            )
+            .join("\n")
+        : entries.map((entry) => entry.texto).join("\n");
+    };
     return `<form class="alma-card alma-library-editor" id="almaLibraryItemForm" data-item-id="${item.id}">
       <div class="alma-library-pane-head"><div><div class="alma-kicker">Item oficial</div><h2>${esc(item.titulo)}</h2></div>${isDraft ? `<label class="alma-library-active"><input type="checkbox" name="ativo" ${item.ativo ? "checked" : ""}> Disponível para seleção</label>` : `<span>Somente leitura</span>`}</div>
       <label class="alma-field"><span>Título</span><input name="titulo" value="${esc(item.titulo)}" ${disabled}></label>
       <div class="alma-form-grid">${field("resumo", "Resumo", item.resumo)}${field("diferenca_principal", "Diferença principal", item.diferenca_principal)}</div>
-      ${field("descricao", "Descrição", item.descricao, true)}
-      ${field("principio_fundamental", "Princípio fundamental", item.principio_fundamental, true)}
-      ${field("diretriz_completa", "Diretriz completa", item.diretriz_completa, true)}
-      ${editableSections.map((section) => `<fieldset class="alma-library-section" data-section-id="${section.id}" data-section-code="${esc(section.codigo)}"><legend>${esc(section.titulo)}</legend><label class="alma-field"><span>Título da seção</span><input data-section-field="titulo" value="${esc(section.titulo)}" ${disabled}></label><label class="alma-field"><span>Conteúdo</span><textarea data-section-field="conteudo" ${disabled}>${esc(section.conteudo || "")}</textarea></label><label class="alma-field"><span>Entradas — uma por linha</span><textarea data-section-field="entradas" ${disabled}>${esc((section.entradas || []).map((entry) => entry.texto).join("\n"))}</textarea></label><input type="hidden" data-section-entry-type value="${esc(section.entradas?.[0]?.tipo || "ITEM")}"></fieldset>`).join("")}
+      ${structuredContentEditor(item, isDraft)}
+      ${editableSections.map((section) => `<fieldset class="alma-library-section" data-section-id="${section.id}" data-section-code="${esc(section.codigo)}"><legend>${esc(section.titulo)}</legend><label class="alma-field"><span>Título da seção</span><input data-section-field="titulo" value="${esc(section.titulo)}" ${disabled}></label><label class="alma-field"><span>Conteúdo</span><textarea data-section-field="conteudo" ${disabled}>${esc(section.conteudo || "")}</textarea></label><label class="alma-field"><span>Entradas — uma por linha${(section.entradas || []).some((entry, index, entries) => index > 0 && entry.tipo !== entries[0].tipo) ? " · use [TIPO] texto para preservar categorias" : ""}</span><textarea data-section-field="entradas" ${disabled}>${esc(sectionEntries(section))}</textarea></label><input type="hidden" data-section-entry-type value="${esc(section.entradas?.[0]?.tipo || "ITEM")}"></fieldset>`).join("")}
       ${provenance ? `<details class="alma-library-source"><summary>Conteúdo oficial integral importado</summary><p>${esc(provenance.conteudo)}</p></details>` : ""}
       ${isDraft ? `<div class="alma-actions"><button class="alma-btn primary" id="almaSaveLibraryItem" type="submit"><i class="ri-save-line"></i> Salvar item</button></div>` : ""}
     </form>`;
@@ -163,6 +228,42 @@
   function render() {
     app.innerHTML = `<div class="alma-shell">${versionHeader()}<div class="alma-library-layout">${navigation()}<main class="alma-library-work">${itemsList()}${itemEditor()}</main></div></div>`;
     bind();
+  }
+
+  function serializeStructuredContent(form) {
+    const blocks = [...form.querySelectorAll("[data-content-block]")]
+      .map((element) => {
+        const type = element.dataset.contentType;
+        const title =
+          element.querySelector('[data-content-field="title"]')?.value.trim() ||
+          "";
+        const values = (name) =>
+          [
+            ...element.querySelectorAll(
+              `[data-content-items="${name}"] [data-content-item]`,
+            ),
+          ]
+            .map((input) => input.value.trim())
+            .filter(Boolean);
+        if (type === "text" || type === "principle") {
+          const content =
+            element
+              .querySelector('[data-content-field="content"]')
+              ?.value.trim() || "";
+          return title || content ? { type, title, content } : null;
+        }
+        if (type === "positive_list" || type === "negative_list") {
+          const items = values("items");
+          return title || items.length ? { type, title, items } : null;
+        }
+        const positive = values("positive");
+        const negative = values("negative");
+        return title || positive.length || negative.length
+          ? { type, title, positive, negative }
+          : null;
+      })
+      .filter(Boolean);
+    return blocks.length ? { version: 1, blocks } : null;
   }
 
   function bind() {
@@ -265,11 +366,17 @@
               entradas: section
                 .querySelector('[data-section-field="entradas"]')
                 .value.split(/\r?\n/)
-                .map((text, index) => ({
-                  texto: text.trim(),
-                  tipo: type,
-                  ordem: index + 1,
-                }))
+                .map((line, index) => {
+                  const match = line
+                    .trim()
+                    .match(/^\[([A-Za-z0-9_]+)\]\s*(.*)$/);
+                  return {
+                    texto: (match ? match[2] : line).trim(),
+                    tipo:
+                      (match ? match[1] : type).trim().toUpperCase() || "ITEM",
+                    ordem: index + 1,
+                  };
+                })
                 .filter((entry) => entry.texto),
             };
           },
@@ -278,6 +385,7 @@
         body.item_id = Number(form.dataset.itemId);
         body.ativo = form.querySelector('[name="ativo"]')?.checked ?? false;
         body.secoes = sections;
+        body.conteudo_estruturado = serializeStructuredContent(form);
         try {
           busy(button, true, "Salvando...");
           const data = await api("admin_salvar_item", { method: "POST", body });
@@ -288,6 +396,36 @@
           toast(error.message, true);
         } finally {
           busy(button, false);
+        }
+      });
+    document
+      .getElementById("almaLibraryItemForm")
+      ?.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        if (button.id === "almaAddContentBlock") {
+          const type =
+            document.getElementById("almaContentBlockType")?.value || "text";
+          document
+            .getElementById("almaContentBlocks")
+            ?.insertAdjacentHTML("beforeend", contentBlock({ type }));
+        } else if (button.matches("[data-remove-content-block]")) {
+          button.closest("[data-content-block]")?.remove();
+        } else if (button.matches("[data-move-content-block]")) {
+          const block = button.closest("[data-content-block]");
+          if (button.dataset.moveContentBlock === "up")
+            block?.previousElementSibling?.before(block);
+          else block?.nextElementSibling?.after(block);
+        } else if (button.matches("[data-add-content-item]")) {
+          const holder = button.parentElement?.querySelector(
+            `[data-content-items="${button.dataset.addContentItem}"]`,
+          );
+          holder?.insertAdjacentHTML(
+            "beforeend",
+            '<div><input data-content-item><button type="button" class="alma-btn compact" data-remove-content-item>×</button></div>',
+          );
+        } else if (button.matches("[data-remove-content-item]")) {
+          button.parentElement.remove();
         }
       });
   }

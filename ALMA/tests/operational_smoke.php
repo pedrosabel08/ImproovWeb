@@ -41,10 +41,15 @@ function operational_throws(callable $operation, string $expectedMessage, string
 
 $conn = conectarBanco();
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-$admin = $conn->query("SELECT idusuario FROM usuario WHERE ativo=1 AND nivel_acesso=1 ORDER BY idusuario LIMIT 1")->fetch_assoc();
-operational_test((bool) $admin, 'há usuário administrativo para o teste');
+$manager = $conn->query("SELECT idusuario, idcolaborador FROM usuario WHERE ativo=1 AND idcolaborador IN (1, 9, 21) ORDER BY idusuario LIMIT 1")->fetch_assoc();
+operational_test((bool) $manager, 'há gestor ALMA ativo para o teste');
 $_SESSION['logado'] = true;
-$_SESSION['idusuario'] = (int) $admin['idusuario'];
+$_SESSION['idusuario'] = (int) $manager['idusuario'];
+$_SESSION['idcolaborador'] = (int) $manager['idcolaborador'];
+operational_test(alma_can($conn, ALMA_CAP_EDIT), 'gestor configurado possui edição do ALMA');
+$_SESSION['idcolaborador'] = 999999;
+operational_test(!alma_can($conn, ALMA_CAP_EDIT), 'colaborador fora da lista possui somente visualização');
+$_SESSION['idcolaborador'] = (int) $manager['idcolaborador'];
 
 $version = alma_library_version($conn);
 $library = alma_library_payload($conn, (int) $version['id']);
@@ -87,7 +92,7 @@ $unclassifiedFilter = $existingAtmosphereValue
     : '';
 $referenceRows = $conn->query('SELECT r.id FROM sire_referencia r' . $unclassifiedFilter . ' ORDER BY r.id LIMIT 2')->fetch_all(MYSQLI_ASSOC);
 operational_test(count($referenceRows) === 2, 'há referências SIRE para os cenários');
-$referenceIds = array_map(static fn(array $row): int => (int) $row['id'], $referenceRows);
+$referenceIds = array_map(static fn (array $row): int => (int) $row['id'], $referenceRows);
 $initialValueIds = array_map('intval', array_column($conn->query('SELECT id FROM sire_pilar_valor')->fetch_all(MYSQLI_ASSOC), 'id'));
 $initialLinks = [];
 $result = $conn->query('SELECT referencia_id, valor_id FROM sire_referencia_valor WHERE referencia_id IN (' . implode(',', $referenceIds) . ')');
@@ -114,7 +119,7 @@ try {
     ]);
     operational_test($sourceSaved['revisao']['estado'] === 'ATIVA', 'Salvar ALMA persiste e torna a revisão vigente sem aprovação manual');
     operational_test(trim((string) $sourceSaved['revisao']['intencao_geral']) === '', 'Intenção Geral vazia não impede salvar');
-    operational_test(count(array_filter($sourceSaved['revisao']['selecoes'], static fn(array $selection): bool => in_array($selection['dimensao_codigo'], ALMA_IMAGE_DIMENSIONS, true))) === 5, 'completo depende apenas das cinco decisões específicas');
+    operational_test(count(array_filter($sourceSaved['revisao']['selecoes'], static fn (array $selection): bool => in_array($selection['dimensao_codigo'], ALMA_IMAGE_DIMENSIONS, true))) === 5, 'completo depende apenas das cinco decisões específicas');
 
     $atmosphere = operational_selection($sourceSaved['revisao'], 'atmosfera');
     $taxonomy = alma_dimension_and_item($conn, (int) $version['id'], 'atmosfera', (int) $atmosphere['item_biblioteca_id']);
@@ -137,7 +142,7 @@ try {
         'referencias' => [],
     ]);
     operational_throws(
-        static fn() => alma_copy_from_image($conn, [
+        static fn () => alma_copy_from_image($conn, [
             'imagem_origem_id' => $sourceImageId,
             'imagem_destino_id' => $targetImageId,
             'dimensoes' => ['atmosfera'],
@@ -167,7 +172,7 @@ try {
         'referencias' => [],
     ]);
     operational_throws(
-        static fn() => alma_apply_dimension($conn, [
+        static fn () => alma_apply_dimension($conn, [
             'imagem_origem_id' => $sourceImageId,
             'dimensao_codigo' => 'luz_momento',
             'imagens_destino_ids' => [$batchImageId],
@@ -201,13 +206,13 @@ try {
     $removeDraft = alma_create_revision($conn, ['imagem_id' => $sourceImageId, 'forcar_nova' => true]);
     $withoutAtmosphereReference = array_values(array_filter(
         $sourceSaved['revisao']['referencias'],
-        static fn(array $reference): bool => !($reference['dimensao_codigo'] === 'atmosfera' && (int) $reference['sire_referencia_id'] === $referenceIds[0])
+        static fn (array $reference): bool => !($reference['dimensao_codigo'] === 'atmosfera' && (int) $reference['sire_referencia_id'] === $referenceIds[0])
     ));
     alma_save_revision($conn, [
         'revisao_id' => $removeDraft['revisao']['id'],
         'lock_version' => $removeDraft['revisao']['lock_version'],
         'selecoes' => $imageSelections,
-        'referencias' => array_map(static fn(array $reference): array => ['dimensao_codigo' => $reference['dimensao_codigo'], 'sire_referencia_id' => $reference['sire_referencia_id']], $withoutAtmosphereReference),
+        'referencias' => array_map(static fn (array $reference): array => ['dimensao_codigo' => $reference['dimensao_codigo'], 'sire_referencia_id' => $reference['sire_referencia_id']], $withoutAtmosphereReference),
     ]);
     $stillClassified = (int) $conn->query('SELECT COUNT(*) n FROM sire_referencia_valor WHERE referencia_id=' . $referenceIds[0] . ' AND valor_id=' . $value['id'])->fetch_assoc()['n'];
     operational_test($stillClassified === 1, 'remover referência do ALMA não remove classificação do SIRE');

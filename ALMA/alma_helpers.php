@@ -8,9 +8,129 @@ const ALMA_CAP_EDIT = 'alma.editar';
 const ALMA_CAP_ACTIVATE = 'alma.ativar';
 const ALMA_CAP_LIBRARY_ADMIN = 'alma.administrar_biblioteca';
 
+const ALMA_MANAGER_COLLABORATOR_IDS = [1, 9, 21];
+
 const ALMA_PROJECT_DIMENSIONS = ['arquitetura', 'materialidade', 'lifestyle'];
 const ALMA_IMAGE_DIMENSIONS = ['atmosfera', 'luz_momento', 'luz_linguagem', 'fotografia_direcao', 'composicao'];
 const ALMA_EXCLUDED_IMAGE_TYPE = 'Planta Humanizada';
+const ALMA_CONTENT_VERSION = 1;
+const ALMA_CONTENT_BLOCK_TYPES = ['text', 'positive_list', 'negative_list', 'principle', 'material_guideline'];
+
+/**
+ * Normaliza e valida o documento semântico de um item da Biblioteca ALMA.
+ * O retorno nunca contém HTML: textos são preservados como texto puro para
+ * que cada consumidor escolha sua própria marcação e escape corretamente.
+ */
+function alma_normalize_structured_content(mixed $document, bool $rejectInvalid = true): ?array
+{
+    if ($document === null || $document === '' || $document === []) {
+        return null;
+    }
+    if (!is_array($document) || array_diff(array_keys($document), ['version', 'blocks'])) {
+        if ($rejectInvalid) {
+            throw new InvalidArgumentException('Conteúdo estruturado inválido.');
+        }
+        return null;
+    }
+    if (($document['version'] ?? null) !== ALMA_CONTENT_VERSION || !is_array($document['blocks'] ?? null)) {
+        if ($rejectInvalid) {
+            throw new InvalidArgumentException('Versão ou blocos do conteúdo estruturado inválidos.');
+        }
+        return null;
+    }
+    if (count($document['blocks']) > 60) {
+        throw new InvalidArgumentException('O conteúdo estruturado aceita no máximo 60 blocos.');
+    }
+
+    $text = static function (mixed $value, int $max = 12000): string {
+        $value = trim((string) $value);
+        if (mb_strlen($value) > $max) {
+            throw new InvalidArgumentException('Um campo de conteúdo excede o tamanho permitido.');
+        }
+        return $value;
+    };
+    $items = static function (mixed $value) use ($text): array {
+        if (!is_array($value) || count($value) > 80) {
+            throw new InvalidArgumentException('Lista de conteúdo inválida.');
+        }
+        $normalized = [];
+        foreach ($value as $item) {
+            if (!is_string($item)) {
+                throw new InvalidArgumentException('Itens de lista devem ser textuais.');
+            }
+            $item = $text($item, 600);
+            if ($item !== '') {
+                $normalized[] = $item;
+            }
+        }
+        return $normalized;
+    };
+
+    $blocks = [];
+    foreach ($document['blocks'] as $block) {
+        if (!is_array($block) || !isset($block['type']) || !is_string($block['type'])) {
+            throw new InvalidArgumentException('Bloco de conteúdo inválido.');
+        }
+        $type = $block['type'];
+        if (!in_array($type, ALMA_CONTENT_BLOCK_TYPES, true)) {
+            throw new InvalidArgumentException('Tipo de bloco de conteúdo não suportado.');
+        }
+        $title = $text($block['title'] ?? '', 240);
+        if (in_array($type, ['text', 'principle'], true)) {
+            $content = $text($block['content'] ?? '');
+            if ($title === '' && $content === '') {
+                continue;
+            }
+            if ($content === '') {
+                throw new InvalidArgumentException('Blocos textuais exigem conteúdo.');
+            }
+            $blocks[] = ['type' => $type, 'title' => $title, 'content' => $content];
+            continue;
+        }
+        if (in_array($type, ['positive_list', 'negative_list'], true)) {
+            $list = $items($block['items'] ?? []);
+            if ($title === '' && !$list) {
+                continue;
+            }
+            if (!$list) {
+                throw new InvalidArgumentException('Listas exigem ao menos um item.');
+            }
+            $blocks[] = ['type' => $type, 'title' => $title, 'items' => $list];
+            continue;
+        }
+        $positive = $items($block['positive'] ?? []);
+        $negative = $items($block['negative'] ?? []);
+        if ($title === '' && !$positive && !$negative) {
+            continue;
+        }
+        if ($title === '' || (!$positive && !$negative)) {
+            throw new InvalidArgumentException('Material/recomendações exige título e ao menos uma orientação.');
+        }
+        $blocks[] = ['type' => $type, 'title' => $title, 'positive' => $positive, 'negative' => $negative];
+    }
+    return $blocks ? ['version' => ALMA_CONTENT_VERSION, 'blocks' => $blocks] : null;
+}
+
+function alma_decode_structured_content(?string $json): ?array
+{
+    if ($json === null || trim($json) === '') {
+        return null;
+    }
+    try {
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        return alma_normalize_structured_content($decoded, false);
+    } catch (Throwable) {
+        return null;
+    }
+}
+
+function alma_content_payload(array $item): array
+{
+    $structured = alma_decode_structured_content($item['conteudo_estruturado'] ?? null);
+    $item['conteudo_estruturado'] = $structured;
+    $item['conteudo_fonte'] = $structured ? 'ESTRUTURADO' : 'LEGADO';
+    return $item;
+}
 
 function alma_json(array $payload, int $status = 200): void
 {
@@ -34,19 +154,17 @@ function alma_user_id(): ?int
     return $id > 0 ? $id : null;
 }
 
-function alma_normalize_role(string $value): string
+function alma_collaborator_id(): ?int
 {
-    $value = mb_strtolower(trim($value), 'UTF-8');
-    $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-    return preg_replace('/[^a-z0-9]+/', ' ', $ascii !== false ? $ascii : $value) ?: '';
+    $id = (int) ($_SESSION['idcolaborador'] ?? 0);
+    return $id > 0 ? $id : null;
 }
 
 /**
- * Capability boundary for V1.
- * Flow has no granular permission table yet, so this adapter centralizes the
- * legacy access level and role-name fallback without collaborator IDs.
+ * Direção Visual: toda pessoa autenticada pode consultar, mas somente os
+ * gestores definidos pelo identificador de colaborador podem alterá-la.
  */
-function alma_can(mysqli $conn, string $capability, ?int $userId = null): bool
+function alma_can(mysqli $conn, string $capability): bool
 {
     if (empty($_SESSION['logado'])) {
         return false;
@@ -55,47 +173,13 @@ function alma_can(mysqli $conn, string $capability, ?int $userId = null): bool
         return true;
     }
 
-    $userId = $userId ?? alma_user_id();
-    if (!$userId) {
+    $collaboratorId = alma_collaborator_id();
+    if (!$collaboratorId) {
         return false;
     }
-
-    static $profiles = [];
-    if (!isset($profiles[$userId])) {
-        $stmt = $conn->prepare(
-            'SELECT u.nivel_acesso, GROUP_CONCAT(DISTINCT c.nome SEPARATOR "|") AS cargos
-               FROM usuario u
-               LEFT JOIN usuario_cargo uc ON uc.usuario_id = u.idusuario
-               LEFT JOIN cargo c ON c.id = uc.cargo_id
-              WHERE u.idusuario = ? AND u.ativo = 1
-              GROUP BY u.idusuario, u.nivel_acesso'
-        );
-        $stmt->bind_param('i', $userId);
-        $stmt->execute();
-        $profiles[$userId] = $stmt->get_result()->fetch_assoc() ?: [];
-        $stmt->close();
-    }
-    $profile = $profiles[$userId];
-    if ((int) ($profile['nivel_acesso'] ?? 0) === 1) {
-        return true;
-    }
-
-    $roles = array_filter(array_map('alma_normalize_role', explode('|', (string) ($profile['cargos'] ?? ''))));
-    $hasRole = static function (array $needles) use ($roles): bool {
-        foreach ($roles as $role) {
-            foreach ($needles as $needle) {
-                if (str_contains($role, $needle)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
 
     return match ($capability) {
-        ALMA_CAP_EDIT => $hasRole(['diretor', 'gestor de projetos', 'arquiteta']),
-        ALMA_CAP_ACTIVATE => $hasRole(['diretor', 'gestor de projetos']),
-        ALMA_CAP_LIBRARY_ADMIN => false,
+        ALMA_CAP_EDIT, ALMA_CAP_ACTIVATE, ALMA_CAP_LIBRARY_ADMIN => in_array($collaboratorId, ALMA_MANAGER_COLLABORATOR_IDS, true),
         default => false,
     };
 }
@@ -246,7 +330,8 @@ function alma_library_payload(mysqli $conn, int $versionId): array
         $ids = implode(',', array_map('intval', array_keys($dimensionById)));
         $items = $conn->query(
             "SELECT id, dimensao_id, codigo, titulo, resumo, diferenca_principal, descricao,
-                    principio_fundamental, diretriz_completa, ordem, ativo
+                    principio_fundamental, diretriz_completa, conteudo_estruturado,
+                    conteudo_estruturado_revisao_status, ordem, ativo
                FROM alma_biblioteca_item
               WHERE dimensao_id IN ($ids)
               ORDER BY dimensao_id, ordem, titulo"
@@ -257,6 +342,7 @@ function alma_library_payload(mysqli $conn, int $versionId): array
             $item['dimensao_id'] = (int) $item['dimensao_id'];
             $item['ordem'] = (int) $item['ordem'];
             $item['ativo'] = (bool) $item['ativo'];
+            $item = alma_content_payload($item);
             $item['secoes'] = [];
             $itemById[$item['id']] = $item;
         }
@@ -310,7 +396,7 @@ function alma_library_payload(mysqli $conn, int $versionId): array
             }
         }
     }
-    $roots = array_values(array_filter($dimensions, static fn(array $dimension): bool => $dimension['dimensao_pai_id'] === null));
+    $roots = array_values(array_filter($dimensions, static fn (array $dimension): bool => $dimension['dimensao_pai_id'] === null));
     return ['versao' => $version, 'pilares' => $roots, 'dimensoes' => array_values($dimensions)];
 }
 
@@ -423,7 +509,7 @@ function alma_sire_value_for_item(mysqli $conn, array $taxonomy): array
 
 function alma_classify_references(mysqli $conn, array $taxonomy, array $referenceIds): int
 {
-    $ids = array_values(array_unique(array_filter(array_map('intval', $referenceIds), static fn(int $id): bool => $id > 0)));
+    $ids = array_values(array_unique(array_filter(array_map('intval', $referenceIds), static fn (int $id): bool => $id > 0)));
     if (!$ids) {
         return 0;
     }
@@ -502,8 +588,8 @@ function alma_sire_picker(mysqli $conn, string $query, int $page, int $versionId
         }
     }
     $stmt->close();
-    $selectedIds = array_values(array_unique(array_filter(array_map('intval', $filters['selected_ids'] ?? []), static fn(int $id): bool => $id > 0)));
-    $missingSelected = array_values(array_filter($selectedIds, static fn(int $id): bool => empty($seen[$id])));
+    $selectedIds = array_values(array_unique(array_filter(array_map('intval', $filters['selected_ids'] ?? []), static fn (int $id): bool => $id > 0)));
+    $missingSelected = array_values(array_filter($selectedIds, static fn (int $id): bool => empty($seen[$id])));
     if ($missingSelected) {
         $selectedSql = 'SELECT sr.*, ri.nome_arquivo AS flow_nome_arquivo, ri.nomenclatura AS flow_nomenclatura,
                                i.imagem_nome, i.tipo_imagem AS ambiente, o.nomenclatura AS obra_nomenclatura,
@@ -741,7 +827,8 @@ function alma_revision_snapshot(mysqli $conn, int $revisionId): ?array
                 d.etapa_codigo, d.etapa_nome, d.ordem_jornada, d.ordem_no_pilar,
                 i.codigo AS item_codigo, i.titulo AS item_titulo, i.resumo AS item_resumo,
                 i.diferenca_principal, i.descricao AS item_descricao,
-                i.principio_fundamental, i.diretriz_completa
+                i.principio_fundamental, i.diretriz_completa, i.conteudo_estruturado,
+                i.conteudo_estruturado_revisao_status
            FROM alma_revisao_selecao s
            JOIN alma_biblioteca_dimensao d ON d.id = s.dimensao_id
            LEFT JOIN alma_biblioteca_item i ON i.id = s.item_biblioteca_id
@@ -756,6 +843,7 @@ function alma_revision_snapshot(mysqli $conn, int $revisionId): ?array
             $row[$key] = $row[$key] !== null ? (int) $row[$key] : null;
         }
         $row['principal'] = (bool) $row['principal'];
+        $row = alma_content_payload($row);
         $row['referencias'] = [];
         $selectionById[$row['id']] = count($revision['selecoes']);
         $revision['selecoes'][] = $row;
@@ -855,11 +943,11 @@ function alma_summary(mysqli $conn, int $imageId): array
     $project = alma_project_direction($conn, (int) $image['obra_id']);
     $projectSelections = array_values(array_filter(
         $project['selecoes'] ?? [],
-        static fn(array $selection): bool => in_array($selection['dimensao_codigo'] ?? '', ALMA_PROJECT_DIMENSIONS, true)
+        static fn (array $selection): bool => in_array($selection['dimensao_codigo'] ?? '', ALMA_PROJECT_DIMENSIONS, true)
     ));
     $imageSelections = array_values(array_filter(
         $revision['selecoes'] ?? [],
-        static fn(array $selection): bool => in_array($selection['dimensao_codigo'] ?? '', ALMA_IMAGE_DIMENSIONS, true)
+        static fn (array $selection): bool => in_array($selection['dimensao_codigo'] ?? '', ALMA_IMAGE_DIMENSIONS, true)
     ));
     $selections = array_merge($projectSelections, $imageSelections);
     $pillars = [];
@@ -919,7 +1007,7 @@ function alma_summary(mysqli $conn, int $imageId): array
         $pillar['resumo'] = implode(' · ', array_column($pillar['escolhas'], 'valor')) ?: 'Não definido';
     }
     unset($pillar);
-    usort($pillars, static fn(array $a, array $b): int => $a['ordem'] <=> $b['ordem']);
+    usort($pillars, static fn (array $a, array $b): int => $a['ordem'] <=> $b['ordem']);
     $decisionCount = 0;
     foreach (($revision['selecoes'] ?? []) as $selection) {
         if (in_array($selection['dimensao_codigo'], ALMA_IMAGE_DIMENSIONS, true) && !empty($selection['item_biblioteca_id'])) {

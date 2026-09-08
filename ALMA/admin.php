@@ -28,6 +28,7 @@ $assetVersion = max((int) @filemtime(__DIR__ . '/alma.css'), (int) @filemtime(__
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="alma.css?v=<?php echo $assetVersion; ?>">
 </head>
 

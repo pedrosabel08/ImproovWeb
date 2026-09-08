@@ -411,7 +411,7 @@ function alma_project_edit_snapshot(mysqli $conn, int $projectDirectionId): arra
                 'dimensao' => $selection['dimensao_codigo'],
                 'item_id' => $selection['item_biblioteca_id'],
                 'item_titulo' => $selection['item_titulo'],
-                'referencias' => array_map(static fn(array $reference): int => (int) $reference['sire_referencia_id'], $selection['referencias'] ?? []),
+                'referencias' => array_map(static fn (array $reference): int => (int) $reference['sire_referencia_id'], $selection['referencias'] ?? []),
             ];
         }, $snapshot['selecoes'] ?? []),
     ];
@@ -513,7 +513,7 @@ function alma_block_signature(?array $selection): string
     if (!$selection) {
         return '';
     }
-    $references = array_map(static fn(array $reference): int => (int) $reference['sire_referencia_id'], $selection['referencias'] ?? []);
+    $references = array_map(static fn (array $reference): int => (int) $reference['sire_referencia_id'], $selection['referencias'] ?? []);
     sort($references);
     return (string) ($selection['item_codigo'] ?? $selection['item_biblioteca_id'] ?? '') . ':' . implode(',', $references);
 }
@@ -684,7 +684,7 @@ function alma_copy_from_image(mysqli $conn, array $payload): array
     foreach (($current['selecoes'] ?? []) as $selection) {
         $currentMap[$selection['dimensao_codigo']] = $selection;
     }
-    $conflicts = array_values(array_filter($codes, static fn(string $code): bool => !empty($currentMap[$code]) && alma_block_signature($currentMap[$code]) !== alma_block_signature($sourceMap[$code])));
+    $conflicts = array_values(array_filter($codes, static fn (string $code): bool => !empty($currentMap[$code]) && alma_block_signature($currentMap[$code]) !== alma_block_signature($sourceMap[$code])));
     if ($conflicts && empty($payload['confirmar_conflitos'])) {
         throw new RuntimeException('Confirme explicitamente a substituição das dimensões já configuradas.');
     }
@@ -711,7 +711,7 @@ function alma_apply_dimension(mysqli $conn, array $payload): array
     if (!in_array($code, ALMA_IMAGE_DIMENSIONS, true)) {
         throw new InvalidArgumentException('Dimensão inválida para aplicação em lote.');
     }
-    $targetIds = array_values(array_unique(array_filter(array_map('intval', $payload['imagens_destino_ids'] ?? []), static fn(int $id): bool => $id > 0 && $id !== $sourceImageId)));
+    $targetIds = array_values(array_unique(array_filter(array_map('intval', $payload['imagens_destino_ids'] ?? []), static fn (int $id): bool => $id > 0 && $id !== $sourceImageId)));
     $confirmedIds = array_values(array_unique(array_map('intval', $payload['conflitos_confirmados_ids'] ?? [])));
     if (!$targetIds) {
         throw new InvalidArgumentException('Selecione ao menos uma imagem de destino.');
@@ -811,7 +811,7 @@ function alma_activate_revision(mysqli $conn, array $payload): array
         }
         $stmt->close();
         $required = ['atmosfera', 'arquitetura', 'materialidade', 'luz_momento', 'luz_linguagem', 'lifestyle', 'composicao'];
-        $missing = array_values(array_filter($required, static fn(string $code): bool => empty($selected[$code])));
+        $missing = array_values(array_filter($required, static fn (string $code): bool => empty($selected[$code])));
         if (!$photoContext) {
             $missing[] = 'fotografia';
         }
@@ -973,10 +973,11 @@ function alma_admin_clone_version(mysqli $conn, array $payload): array
             $stmt = $conn->prepare(
                 'INSERT INTO alma_biblioteca_item
                     (dimensao_id, codigo, titulo, resumo, diferenca_principal, descricao,
-                     principio_fundamental, diretriz_completa, ordem, ativo)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                     principio_fundamental, diretriz_completa, conteudo_estruturado,
+                     conteudo_estruturado_revisao_status, ordem, ativo)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $stmt->bind_param('isssssssii', $newDimensionId, $item['codigo'], $item['titulo'], $item['resumo'], $item['diferenca_principal'], $item['descricao'], $item['principio_fundamental'], $item['diretriz_completa'], $item['ordem'], $item['ativo']);
+            $stmt->bind_param('isssssssssii', $newDimensionId, $item['codigo'], $item['titulo'], $item['resumo'], $item['diferenca_principal'], $item['descricao'], $item['principio_fundamental'], $item['diretriz_completa'], $item['conteudo_estruturado'], $item['conteudo_estruturado_revisao_status'], $item['ordem'], $item['ativo']);
             $stmt->execute();
             $itemMap[(int) $item['id']] = (int) $conn->insert_id;
             $stmt->close();
@@ -1038,18 +1039,28 @@ function alma_admin_save_item(mysqli $conn, array $payload): array
     $fields = ['resumo', 'diferenca_principal', 'descricao', 'principio_fundamental', 'diretriz_completa'];
     $values = [];
     foreach ($fields as $field) {
-        $values[$field] = trim((string) ($payload[$field] ?? '')) ?: null;
+        $values[$field] = array_key_exists($field, $payload)
+            ? (trim((string) $payload[$field]) ?: null)
+            : $item[$field];
     }
+    $structured = array_key_exists('conteudo_estruturado', $payload)
+        ? alma_normalize_structured_content($payload['conteudo_estruturado'])
+        : alma_decode_structured_content($item['conteudo_estruturado'] ?? null);
+    $structuredJson = $structured
+        ? json_encode($structured, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+        : null;
+    $structuredStatus = $structured ? 'MANUAL' : ($item['conteudo_estruturado_revisao_status'] ?? 'PENDENTE');
     $active = !isset($payload['ativo']) || !empty($payload['ativo']) ? 1 : 0;
     $sections = is_array($payload['secoes'] ?? null) ? $payload['secoes'] : [];
     $conn->begin_transaction();
     try {
         $stmt = $conn->prepare(
             'UPDATE alma_biblioteca_item
-                SET titulo=?, resumo=?, diferenca_principal=?, descricao=?, principio_fundamental=?, diretriz_completa=?, ativo=?
+                SET titulo=?, resumo=?, diferenca_principal=?, descricao=?, principio_fundamental=?, diretriz_completa=?,
+                    conteudo_estruturado=?, conteudo_estruturado_revisao_status=?, ativo=?
               WHERE id=?'
         );
-        $stmt->bind_param('ssssssii', $title, $values['resumo'], $values['diferenca_principal'], $values['descricao'], $values['principio_fundamental'], $values['diretriz_completa'], $active, $itemId);
+        $stmt->bind_param('ssssssssii', $title, $values['resumo'], $values['diferenca_principal'], $values['descricao'], $values['principio_fundamental'], $values['diretriz_completa'], $structuredJson, $structuredStatus, $active, $itemId);
         $stmt->execute();
         $stmt->close();
 
@@ -1144,24 +1155,30 @@ try {
         switch ($action) {
             case 'permissions':
                 alma_json(['success' => true, 'permissions' => alma_permissions($conn)]);
+                // no break
             case 'resumo':
                 $imageId = alma_positive_id($_GET['imagem_id'] ?? 0, 'imagem_id');
                 alma_json(['success' => true] + alma_summary($conn, $imageId));
+                // no break
             case 'direcao':
                 $imageId = alma_positive_id($_GET['imagem_id'] ?? 0, 'imagem_id');
                 $revisionId = !empty($_GET['revisao_id']) ? (int) $_GET['revisao_id'] : null;
                 alma_json(['success' => true, 'permissions' => alma_permissions($conn)] + alma_direction_full($conn, $imageId, $revisionId));
+                // no break
             case 'biblioteca':
                 $version = alma_library_version($conn, !empty($_GET['versao_id']) ? (int) $_GET['versao_id'] : null, alma_can($conn, ALMA_CAP_LIBRARY_ADMIN));
                 if (!$version) {
                     throw new RuntimeException('Biblioteca ALMA não encontrada.');
                 }
                 alma_json(['success' => true, 'biblioteca' => alma_library_payload($conn, (int) $version['id'])]);
+                // no break
             case 'historico':
                 $imageId = alma_positive_id($_GET['imagem_id'] ?? 0, 'imagem_id');
                 alma_json(['success' => true, 'eventos' => alma_history($conn, $imageId)]);
+                // no break
             case 'sire_busca':
                 alma_json(['success' => true, 'referencias' => alma_sire_search($conn, trim((string) ($_GET['q'] ?? '')), (int) ($_GET['page'] ?? 1))]);
+                // no break
             case 'sire_seletor':
                 $versionId = alma_positive_id($_GET['biblioteca_versao_id'] ?? 0, 'biblioteca_versao_id');
                 $itemId = alma_positive_id($_GET['item_id'] ?? 0, 'item_id');
@@ -1178,6 +1195,7 @@ try {
                         'selected_ids' => explode(',', (string) ($_GET['selected'] ?? '')),
                     ]
                 ));
+                // no break
             case 'obra_contexto':
                 $obraId = alma_positive_id($_GET['obra_id'] ?? 0, 'obra_id');
                 $stmt = $conn->prepare('SELECT idobra AS obra_id, nomenclatura, nome_obra FROM obra WHERE idobra=? LIMIT 1');
@@ -1195,8 +1213,10 @@ try {
                     'imagens' => alma_project_images($conn, $obraId),
                     'permissions' => alma_permissions($conn),
                 ]);
+                // no break
             case 'admin_versoes':
                 alma_json(['success' => true, 'versoes' => alma_admin_versions($conn), 'permissions' => alma_permissions($conn)]);
+                // no break
             default:
                 alma_json(['success' => false, 'message' => 'Ação GET inválida.'], 400);
         }
@@ -1210,22 +1230,31 @@ try {
     switch ($action) {
         case 'criar_revisao':
             alma_json(['success' => true] + alma_create_revision($conn, $payload));
+            // no break
         case 'salvar_revisao':
             alma_json(['success' => true] + alma_save_revision($conn, $payload));
+            // no break
         case 'salvar_projeto':
             alma_json(['success' => true, 'projeto' => alma_save_project($conn, $payload)]);
+            // no break
         case 'usar_imagem_base':
             alma_json(['success' => true] + alma_copy_from_image($conn, $payload));
+            // no break
         case 'aplicar_dimensao':
             alma_json(['success' => true] + alma_apply_dimension($conn, $payload));
+            // no break
         case 'ativar_revisao':
             alma_json(['success' => true] + alma_activate_revision($conn, $payload));
+            // no break
         case 'admin_clonar_versao':
             alma_json(['success' => true, 'biblioteca' => alma_admin_clone_version($conn, $payload)]);
+            // no break
         case 'admin_salvar_item':
             alma_json(['success' => true, 'biblioteca' => alma_admin_save_item($conn, $payload)]);
+            // no break
         case 'admin_publicar_versao':
             alma_json(['success' => true, 'biblioteca' => alma_admin_publish_version($conn, $payload)]);
+            // no break
         default:
             alma_json(['success' => false, 'message' => 'Ação POST inválida.'], 400);
     }

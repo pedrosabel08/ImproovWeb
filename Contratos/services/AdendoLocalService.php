@@ -103,6 +103,7 @@ class AdendoLocalService
             'data_atual' => $this->escapeHtml($dataAtual),
             'contratado_nome' => $this->escapeHtml($contratadoNome),
             'contratado_cnpj' => $contratadoCnpj,
+            'assinatura_cnpj_contratado' => $this->buildAssinaturaCnpj((string)($colab['cnpj'] ?? '')),
             'contratado_cpf' => $contratadoCpf,
             'contratado_nome_empresarial' => $contratadoNomeEmpresarial,
         ];
@@ -135,6 +136,15 @@ class AdendoLocalService
             'arquivo_nome' => $nomeArquivo,
             'arquivo_path' => $pdf['file_path'],
         ];
+    }
+
+    private function buildAssinaturaCnpj(string $cnpj): string
+    {
+        $cnpj = trim($cnpj);
+
+        return $cnpj === ''
+            ? ''
+            : '<div>CNPJ: ' . $this->escapeHtml($cnpj) . '</div>';
     }
 
     private function getContratanteInfo(int $colaboradorId, array $colab): array

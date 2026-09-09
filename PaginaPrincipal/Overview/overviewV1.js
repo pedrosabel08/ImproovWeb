@@ -113,18 +113,109 @@
     }).join("")}</div>`;
   }
 
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function taskDisplayName(task) {
+    const project = String(task.project || "").trim();
+    const original = String(task.image_name || "Tarefa").trim();
+    if (!project || !original) return original || "Tarefa";
+
+    const withoutProject = original
+      .replace(
+        new RegExp(`(^|[\\s._-])${escapeRegExp(project)}(?=$|[\\s._-])`, "i"),
+        "$1",
+      )
+      .replace(/^[\\s._-]+|[\\s_-]+$/g, "")
+      .replace(/\\s{2,}/g, " ");
+    const numbered = withoutProject.match(/^(\\d+)\\s*[._-]?\\s*(.+)$/);
+    return numbered ? `${numbered[1]}. ${numbered[2]}` : withoutProject || original;
+  }
+
+  function unifiedStatusClass(status, scope) {
+    return typeof window.getUnifiedStatusClass === "function"
+      ? window.getUnifiedStatusClass(status, scope)
+      : "si-outro";
+  }
+
+  function isFinalizationStage(stage) {
+    return /^finaliza[cç][aã]o\s+(?:de\s+)?(externa|interna|planta)/i.test(
+      String(stage?.label || "").trim(),
+    );
+  }
+
+  function compactTimeline(task) {
+    const fullTimeline = Array.isArray(task.timeline) ? task.timeline : [];
+    const stages = fullTimeline.filter((stage, index) => {
+      if (!isFinalizationStage(stage)) return true;
+      const finalizationStages = fullTimeline
+        .map((item, itemIndex) => ({ item, itemIndex }))
+        .filter(({ item }) => isFinalizationStage(item));
+      const currentFinalization = finalizationStages.find(
+        ({ item }) => String(item.state || "").toLowerCase() === "atual",
+      );
+      const selected = currentFinalization || finalizationStages[0];
+      return index === selected?.itemIndex;
+    });
+    if (!stages.length) return [];
+    let currentIndex = stages.findIndex(
+      (stage) => String(stage.state || "").toLowerCase() === "atual",
+    );
+    if (currentIndex < 0) {
+      currentIndex = stages.findIndex(
+        (stage) => String(stage.label || "").trim() === String(task.function_name || "").trim(),
+      );
+    }
+    if (currentIndex < 0) currentIndex = 0;
+
+    return [
+      currentIndex > 0 ? { ...stages[currentIndex - 1], role: "previous" } : null,
+      { ...stages[currentIndex], role: "current" },
+      currentIndex < stages.length - 1
+        ? { ...stages[currentIndex + 1], role: "next" }
+        : null,
+    ].filter(Boolean);
+  }
+
   function timeline(task) {
-    const stages = Array.isArray(task.timeline) ? task.timeline : [];
+    const stages = compactTimeline(task);
     if (!stages.length) return "";
-    return `<div class="task-timeline" aria-label="Etapas da tarefa">${stages.map((stage) => `<span class="is-${esc(stage.state)}"><i></i><small>${esc(stage.label)}</small></span>`).join("")}</div>`;
+    const labels = { previous: "Anterior", current: "Atual", next: "Próxima" };
+    return `<div class="task-timeline task-timeline--compact" aria-label="Contexto da etapa atual">${stages.map((stage) => `<span class="is-${stage.role}" aria-label="${labels[stage.role]}: ${esc(stage.label)}"><i aria-hidden="true"></i><strong>${esc(stage.label)}</strong><small>${labels[stage.role]}</small></span>`).join("")}</div>`;
+  }
+
+  function taskOperationalState(task) {
+    const status = String(task.status || "").trim();
+    const statusClass = unifiedStatusClass(status, "etapa");
+    const isAdjustment = /ajuste/i.test(status);
+    if (isAdjustment) {
+      return { label: "Ajuste", statusClass, icon: "ri-refresh-line" };
+    }
+    if (
+      task.exception?.label &&
+      ["flow_block", "hold", "requirement"].includes(task.exception.state)
+    ) {
+      return {
+        label: task.exception.label,
+        statusClass,
+        icon: "ri-error-warning-line",
+      };
+    }
+    return {
+      label: status || "Em andamento",
+      statusClass,
+      icon: "ri-play-circle-line",
+    };
   }
 
   function taskCard(task) {
     const thumb = task.thumbnail_url
       ? `<img src="${esc(task.thumbnail_url)}" alt="" loading="lazy">`
       : `<span class="task-thumb__empty"><i class="ri-image-line"></i></span>`;
-    const exception = task.exception;
-    return `<article class="task-card"><div class="task-thumb">${thumb}</div><div class="task-card__body"><span class="task-card__project">${esc(task.project || "Projeto")}</span><h3>${esc(task.image_name || "Tarefa")}</h3><p><i class="ri-shape-line"></i>${esc(task.function_name || "Etapa")}${task.substatus ? `<em>${esc(task.substatus)}</em>` : ""}</p>${timeline(task)}<div class="task-card__meta"><span class="${exception ? `is-${esc(exception.severity)}` : ""}"><i class="${exception ? "ri-error-warning-line" : "ri-play-circle-line"}"></i>${esc(exception?.label || task.status || "Em andamento")}</span><time><i class="ri-calendar-line"></i>${esc(task.deadline?.label || "Sem prazo")}</time></div></div><button type="button" class="flow-button" data-action="open_task" data-task-id="${num(task.task_id)}">Abrir tarefa</button></article>`;
+    const operational = taskOperationalState(task);
+    const substatusClass = unifiedStatusClass(task.substatus, "substatus");
+    return `<article class="task-card task-card--compact"><div class="task-thumb">${thumb}</div><div class="task-card__body"><span class="task-card__project">${esc(task.project || "Projeto")}</span><h3 title="${esc(task.image_name || "Tarefa")}">${esc(taskDisplayName(task))}</h3><div class="task-card__function"><span><i class="ri-shape-line"></i>${esc(task.function_name || "Etapa")}</span>${task.substatus ? `<em class="${esc(substatusClass)}">${esc(task.substatus)}</em>` : ""}</div>${timeline(task)}</div><div class="task-card__meta"><span class="task-operational ${esc(operational.statusClass)}"><i class="${esc(operational.icon)}"></i>${esc(operational.label)}</span><time class="is-${esc(task.deadline?.state || "sem_prazo")}"><i class="ri-calendar-line"></i>${esc(task.deadline?.label || "Sem prazo")}</time></div><button type="button" class="task-card__open" data-action="open_task" data-task-id="${num(task.task_id)}" aria-label="Abrir tarefa: ${esc(taskDisplayName(task))}"><span>Abrir</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></article>`;
   }
 
   function nextList(tasks) {

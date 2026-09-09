@@ -1,13 +1,13 @@
 @import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap");
 
 :root {
-  --sb-bg: #12121e;
-  --sb-panel: #1a1a2a;
+  --sb-bg: #171a1c;
+  --sb-panel: #171a1c;
   --sb-hover: rgba(255, 255, 255, 0.07);
   --sb-accent: #7487ff;
-  --sb-icon: #aeb5dc;
+  --sb-icon: #b1b8d6;
   --sb-text: #e6e9fa;
-  --sb-muted: #8d94ba;
+  --sb-muted: #969bb8;
   --sb-divider: rgba(255, 255, 255, 0.1);
   --sb-shadow: 12px 0 30px rgba(0, 0, 0, 0.26);
 }

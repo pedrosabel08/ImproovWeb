@@ -254,18 +254,16 @@ $sql = "SELECT
           AND n.lida = 0
           AND n.colaborador_id = ?
     ) AS notificacoes_nao_lidas,
-        (
-            CASE WHEN fi.funcao_id = 4 THEN
-                COALESCE(
-                    -- Se houver arquivo da categoria 7 (ângulo definido) para esta imagem, use-o (mais recente)
-                    (SELECT a.caminho FROM arquivos a WHERE a.imagem_id = ico.idimagens_cliente_obra AND a.categoria_id = 7 AND a.status = 'atualizado' ORDER BY a.idarquivo DESC LIMIT 1),
-                    -- Senão, fallback para o histórico de aprovações como antes
-                    (SELECT MAX(hi.caminho_imagem) FROM historico_aprovacoes_imagens hi WHERE hi.funcao_imagem_id = fi.idfuncao_imagem AND hi.caminho_imagem NOT LIKE '%imagem_%')
-                )
-            ELSE
-                (SELECT MAX(hi2.caminho_imagem) FROM historico_aprovacoes_imagens hi2 WHERE hi2.funcao_imagem_id = fi.idfuncao_imagem AND hi2.caminho_imagem NOT LIKE '%imagem_%')
-            END
-        ) AS ultima_imagem
+    (
+        SELECT hi2.imagem
+        FROM historico_aprovacoes_imagens hi2
+        WHERE hi2.funcao_imagem_id = fi.idfuncao_imagem
+        AND hi2.imagem IS NOT NULL
+        AND hi2.imagem <> ''
+        AND hi2.imagem NOT LIKE '%imagem_%'
+        ORDER BY hi2.id DESC
+        LIMIT 1
+    ) AS ultima_imagem
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
 LEFT JOIN status_imagem si ON ico.status_id = si.idstatus
@@ -652,12 +650,19 @@ if ($mostrarPendenciasFlowReview) {
     ) AS comentarios_ultima_versao,
     (
         CASE
-            WHEN hi_latest.id IS NULL AND al_latest.id IS NOT NULL THEN al_latest.caminho
+            WHEN hi_latest.id IS NULL
+                AND al_latest.id IS NOT NULL
+            THEN al_latest.caminho
+
             ELSE (
-                SELECT MAX(hi_img.caminho_imagem)
+                SELECT hi_img.imagem
                 FROM historico_aprovacoes_imagens hi_img
                 WHERE hi_img.funcao_imagem_id = fi.idfuncao_imagem
-                  AND hi_img.caminho_imagem NOT LIKE '%imagem_%'
+                AND hi_img.imagem IS NOT NULL
+                AND hi_img.imagem <> ''
+                AND hi_img.imagem NOT LIKE '%imagem_%'
+                ORDER BY hi_img.id DESC
+                LIMIT 1
             )
         END
     ) AS ultima_imagem,

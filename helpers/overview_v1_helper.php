@@ -24,19 +24,20 @@ function flow_overview_v1_fim_semana(?string $data = null): string
     return date('Y-m-d', strtotime(flow_overview_v1_inicio_semana($data) . ' +4 days'));
 }
 
-function flow_overview_v1_rotulo_prazo(?string $data, string $statusTemporal = ''): string
+function flow_overview_v1_rotulo_prazo(?string $data, string $statusTemporal = '', ?int $dias = null): string
 {
     if (!$data) {
         return 'Sem prazo definido';
     }
     if ($statusTemporal === 'PRAZO_HOJE') {
-        return 'Prazo hoje';
+        return 'Vence hoje';
     }
     if ($statusTemporal === 'PRAZO_PROXIMO') {
         return 'Prazo amanhã';
     }
     if ($statusTemporal === 'ATRASADO') {
-        return 'Prazo ultrapassado';
+        $dias = max(1, (int) ($dias ?? 0));
+        return 'Atrasada há ' . $dias . ' ' . ($dias === 1 ? 'dia útil' : 'dias úteis');
     }
     return 'Prazo ' . date('d/m', strtotime($data . ' 12:00:00'));
 }
@@ -83,14 +84,10 @@ function flow_overview_v1_excecao_tarefa(array $tarefa, array $original = []): ?
     return null;
 }
 
-/** A timeline já é calculada pelo planejamento; aqui apenas a reduzimos para o card. */
+/** A timeline já é calculada pelo planejamento; o card escolhe no front-end o contexto imediato. */
 function flow_overview_v1_timeline(array $original): array
 {
     $timeline = array_values(array_filter((array) (($original['planejamento']['timeline'] ?? [])), static fn ($item): bool => is_array($item)));
-    if (count($timeline) > 5) {
-        $atual = array_values(array_filter($timeline, static fn (array $item): bool => ($item['estado'] ?? '') === 'ATUAL'));
-        $timeline = array_values(array_unique(array_merge(array_slice($timeline, 0, 2), array_slice($atual, 0, 1), array_slice($timeline, -2)), SORT_REGULAR));
-    }
     return array_map(static fn (array $item): array => [
         'label' => (string) ($item['nome'] ?? $item['codigo'] ?? 'Etapa'),
         'state' => strtolower((string) ($item['estado'] ?? 'FUTURA')),
@@ -99,7 +96,18 @@ function flow_overview_v1_timeline(array $original): array
 
 function flow_overview_v1_item_tarefa(array $tarefa, array $original = []): array
 {
-    $excecao = flow_overview_v1_excecao_tarefa($tarefa, $original);
+    // O card Em andamento usa o compromisso registrado em funcao_imagem,
+    // sem substituir a fonte usada pelas regras operacionais do Kanban.
+    $prazoFuncao = flow_tarefa_planejamento_data_valida($original['prazo'] ?? $tarefa['prazo'] ?? null);
+    $statusTemporal = flow_tarefa_planejamento_status_temporal(
+        $prazoFuncao,
+        (string) ($tarefa['status'] ?? ''),
+        null,
+        !empty($tarefa['bloqueada'])
+    );
+    $tarefaParaCard = $tarefa;
+    $tarefaParaCard['status_temporal'] = (string) ($statusTemporal['codigo'] ?? 'SEM_PRAZO');
+    $excecao = flow_overview_v1_excecao_tarefa($tarefaParaCard, $original);
     return [
         'task_id' => (int) ($tarefa['id'] ?? 0),
         'image_id' => (int) ($tarefa['imagem_id'] ?? 0),
@@ -110,10 +118,10 @@ function flow_overview_v1_item_tarefa(array $tarefa, array $original = []): arra
         'status' => (string) ($tarefa['status'] ?? ''),
         'thumbnail_url' => flow_overview_v1_thumbnail($original),
         'deadline' => [
-            'date' => $tarefa['prazo'] ?? null,
-            'label' => flow_overview_v1_rotulo_prazo($tarefa['prazo'] ?? null, (string) ($tarefa['status_temporal'] ?? '')),
-            'state' => strtolower((string) ($tarefa['status_temporal'] ?? 'SEM_PRAZO')),
-            'source' => (string) ($tarefa['prazo_origem'] ?? 'indisponivel'),
+            'date' => $prazoFuncao,
+            'label' => flow_overview_v1_rotulo_prazo($prazoFuncao, (string) ($statusTemporal['codigo'] ?? ''), isset($statusTemporal['dias']) ? (int) $statusTemporal['dias'] : null),
+            'state' => strtolower((string) ($statusTemporal['codigo'] ?? 'SEM_PRAZO')),
+            'source' => $prazoFuncao ? 'funcao_imagem' : 'indisponivel',
         ],
         'exception' => $excecao,
         'timeline' => flow_overview_v1_timeline($original),

@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -134,7 +135,16 @@ try {
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
         $avaliacaoInicio = motor_requisitos_avaliar_funcao_imagem($conn, $existingFuncaoImagemId);
-        $hasNonConfirmable = !empty(array_filter((array) ($avaliacaoInicio['bloqueios'] ?? []), static fn(array $item): bool => !empty($item['nao_confirmavel'])));
+        if (motor_requisitos_tem_bloqueio_producao($avaliacaoInicio)) {
+            $conn->rollback();
+            http_response_code(422);
+            echo json_encode([
+                'error' => 'Conclua todas as pendências de Produção antes de iniciar a tarefa.',
+                'avaliacao' => $avaliacaoInicio,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        $hasNonConfirmable = !empty(array_filter((array) ($avaliacaoInicio['bloqueios'] ?? []), static fn (array $item): bool => !empty($item['nao_confirmavel'])));
         if ($hasNonConfirmable) {
             $conn->rollback();
             http_response_code(422);
@@ -289,6 +299,37 @@ try {
 
     $stmt->close();
 
+    // Funções incluídas diretamente neste endpoint também precisam respeitar
+    // o motor. A transação será revertida caso alguém tente criá-las já em
+    // andamento com pendências produtivas abertas.
+    if (
+        !$existingFuncaoImagemId
+        && $funcao_id !== null
+        && strcasecmp((string) $status, 'Em andamento') === 0
+    ) {
+        $stmtInicio = $conn->prepare(
+            'SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
+        );
+        if (!$stmtInicio) {
+            throw new RuntimeException('Não foi possível localizar a tarefa criada para validar os requisitos.');
+        }
+        $stmtInicio->bind_param('ii', $imagem_id, $funcao_id);
+        $stmtInicio->execute();
+        $rowInicio = $stmtInicio->get_result()->fetch_assoc();
+        $stmtInicio->close();
+
+        $avaliacaoInicio = motor_requisitos_avaliar_funcao_imagem(
+            $conn,
+            (int) ($rowInicio['idfuncao_imagem'] ?? 0)
+        );
+        if (motor_requisitos_tem_bloqueio_producao($avaliacaoInicio)) {
+            throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
+        }
+        if (!$avaliacaoInicio['elegivel'] && !$confirmarPendencias) {
+            throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
+        }
+    }
+
     if ($prazo !== null) {
         $stmtGetId = $conn->prepare(
             'SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
@@ -367,7 +408,9 @@ try {
 
     $conn->commit();
     try {
-        if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+        }
         if (class_exists('\Predis\Client')) {
             (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'insereFuncao']));
         }
@@ -385,7 +428,13 @@ try {
     );
 
     $conn->rollback();
-    echo json_encode(['error' => 'Erro ao executar a transação: ' . $e->getMessage()]);
+    if ($e instanceof DomainException) {
+        http_response_code(422);
+    }
+    echo json_encode([
+        'error' => 'Erro ao executar a transação: ' . $e->getMessage(),
+        'avaliacao' => $avaliacaoInicio ?? null,
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 $conn->close();

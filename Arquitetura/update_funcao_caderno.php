@@ -50,6 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
         $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idfuncao_imagem);
+        if (motor_requisitos_tem_bloqueio_producao($evaluation)) {
+            http_response_code(422);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Conclua todas as pendências de Produção antes de iniciar a tarefa.',
+                'avaliacao' => $evaluation,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         if (!$evaluation['elegivel'] && !$confirmarPendencias) {
             http_response_code(422);
             header('Content-Type: application/json; charset=utf-8');

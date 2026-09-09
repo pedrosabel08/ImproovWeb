@@ -151,6 +151,9 @@ try {
 
         if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0) {
             $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
+            if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
+                throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
+            }
             $hasNonConfirmable = !empty(array_filter((array) ($blockedEvaluation['bloqueios'] ?? []), static fn(array $item): bool => !empty($item['nao_confirmavel'])));
             if ($hasNonConfirmable) {
                 throw new DomainException('A tarefa depende de uma aprovação pendente e não pode ser iniciada antes da liberação.');

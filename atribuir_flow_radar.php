@@ -33,6 +33,14 @@ try {
     }
     if ($res && strcasecmp((string) ($res['status'] ?? ''), 'Não iniciado') === 0) {
         $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcao_imagem_id);
+        if (motor_requisitos_tem_bloqueio_producao($evaluation)) {
+            http_response_code(422);
+            echo json_encode([
+                'error' => 'Conclua todas as pendências de Produção antes de iniciar a tarefa.',
+                'avaliacao' => $evaluation,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         if (!$evaluation['elegivel'] && !$confirmarPendencias) {
             http_response_code(422);
             echo json_encode([

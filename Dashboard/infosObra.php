@@ -368,6 +368,13 @@ foreach (($queueDataset['groups'] ?? []) as $queueGroup) {
     }
 }
 
+// A resposta desta rota é de leitura. Buscamos os checklists em lote, sem
+// sincronizar ou escrever uma vez por imagem durante o refresh da tabela.
+$checklistsPorImagem = pendencias_operacionais_image_checklists_for_cards(
+    $conn,
+    array_column($response['imagens'], 'imagem_id')
+);
+
 foreach ($response['imagens'] as &$imageRow) {
     $imagemId = (int) ($imageRow['imagem_id'] ?? 0);
     $statusId = (int) ($imageRow['status_id'] ?? 0);
@@ -395,26 +402,12 @@ foreach ($response['imagens'] as &$imageRow) {
 
     $imageRow['planned_unlinked_funcoes'] = array_keys($unlinked);
 
-    // Checklist somente para imagens com status_id 1 ou 2
-    if (in_array($statusId, [1, 2], true) || !empty($imageRow['imagem_principal_id'])) {
-        pendencias_operacionais_sync_image_checklist($conn, $imagemId);
-
-        $checklistCard = pendencias_operacionais_image_checklist_for_card(
-            $conn,
-            $imagemId
-        );
-        $checklistSourceId = (int) ($checklistCard['origem_imagem_id'] ?? $imagemId);
-        $checklistRow = pendencias_operacionais_find_checklist(
-            $conn,
-            'imagem',
-            'imagem',
-            $checklistSourceId
-        );
-
+    $checklistCard = $checklistsPorImagem[$imagemId] ?? null;
+    if ($checklistCard) {
         $imageRow['imagem_checklist_pendente'] = $checklistCard ? 1 : 0;
         $imageRow['imagem_checklist_id'] = $checklistCard['checklist_id'] ?? null;
         $imageRow['imagem_checklist_items'] = $checklistCard['items'] ?? [];
-        $imageRow['imagem_checklist_status'] = $checklistRow['status'] ?? null;
+        $imageRow['imagem_checklist_status'] = $checklistCard['status'] ?? null;
         $imageRow['checklist_origem_imagem_id'] = $checklistCard['origem_imagem_id'] ?? $imagemId;
         $imageRow['checklist_origem_imagem_nome'] = $checklistCard['origem_imagem_nome'] ?? $imageRow['imagem_nome'];
     } else {

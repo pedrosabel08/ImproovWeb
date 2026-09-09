@@ -88,29 +88,10 @@ function dashboard_validate_image_principal(mysqli $conn, int $imageId, ?int $pr
         return ['success' => false, 'message' => 'Desvincule os ângulos desta imagem antes de torná-la secundária.'];
     }
 
-    $stmtExecution = $conn->prepare(
-        "SELECT 1
-           FROM funcao_imagem
-          WHERE imagem_id = ?
-            AND funcao_id <> ?
-            AND (
-                colaborador_id IS NOT NULL
-                OR LOWER(TRIM(COALESCE(status, ''))) NOT IN ('', 'não iniciado', 'nao iniciado')
-            )
-          LIMIT 1"
-    );
-    if (!$stmtExecution) {
-        return ['success' => false, 'message' => $conn->error];
-    }
-    $finalizacaoId = DASHBOARD_FUNCAO_FINALIZACAO_ID;
-    $stmtExecution->bind_param('ii', $imageId, $finalizacaoId);
-    $stmtExecution->execute();
-    $hasStartedNonFinal = $stmtExecution->get_result()->num_rows > 0;
-    $stmtExecution->close();
-    if ($hasStartedNonFinal) {
-        return ['success' => false, 'message' => 'A imagem já possui outra etapa alocada ou iniciada e não pode virar ângulo secundário.'];
-    }
-
+    // O vínculo pode ser criado mesmo quando a imagem já possui etapas em
+    // andamento. A partir deste momento, essas dependências passam a ser
+    // herdadas da imagem principal pelo Motor de Requisitos; bloquear aqui
+    // impediria justamente a regularização de imagens já iniciadas.
     return ['success' => true, 'image' => $image, 'principal' => $principal];
 }
 

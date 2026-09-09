@@ -38,6 +38,9 @@ try {
             $stmtAtual->close();
             if ($atual && strcasecmp((string) $atual['status'], 'Não iniciado') === 0) {
                 $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcaoId);
+                if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
+                    throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
+                }
                 if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                     throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
                 }

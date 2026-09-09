@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -8,6 +9,7 @@ include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/helpers/pendencias_operacionais_helper.php';
 
 // Simple file logger for debugging (insereFuncao2)
 function write_log_insere_funcao2($msg)
@@ -21,6 +23,13 @@ function write_log_insere_funcao2($msg)
     @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
 }
 
+function write_debug_insere_funcao2($msg)
+{
+    if (defined('IMPROOV_DEBUG_TASK_LOG') && IMPROOV_DEBUG_TASK_LOG) {
+        write_log_insere_funcao2($msg);
+    }
+}
+
 function emptyToNull($value)
 {
     return ($value !== '' && $value !== null) ? $value : null;
@@ -31,6 +40,34 @@ $imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : null;
 $status_id = isset($data['status_id']) ? (int)$data['status_id'] : null;
 $blockedEvaluation = null;
 $confirmarPendencias = !empty($data['confirmar_pendencias']);
+$mutationId = trim((string) ($data['mutation_id'] ?? ''));
+$statusChanged = !empty($data['status_changed']);
+
+// A tela moderna envia somente as funções realmente alteradas. Mantemos o
+// formato antigo como fallback para não quebrar fluxos legados.
+$changedFunctions = null;
+if (array_key_exists('changed_functions', $data)) {
+    $decodedChanges = json_decode((string) $data['changed_functions'], true);
+    if (!is_array($decodedChanges)) {
+        http_response_code(422);
+        echo json_encode([
+            'error' => 'Formato de alterações de tarefas inválido.',
+        ], JSON_UNESCAPED_UNICODE);
+        $conn->close();
+        exit;
+    }
+    $changedFunctions = [];
+    foreach ($decodedChanges as $change) {
+        if (!is_array($change)) {
+            continue;
+        }
+        $functionId = (int) ($change['funcao_id'] ?? 0);
+        if ($functionId <= 0) {
+            continue;
+        }
+        $changedFunctions[$functionId] = $change;
+    }
+}
 
 $funcao_ids = [
     'Caderno' => 1,
@@ -59,18 +96,25 @@ $funcao_parametros = [
 $conn->begin_transaction();
 
 try {
-    // Atualiza o status da imagem
-    $update_image_status = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?");
-    $update_image_status->bind_param('ii', $status_id, $imagem_id);
-    $update_image_status->execute();
-    $update_image_status->close();
+    if ($changedFunctions === null || $statusChanged) {
+        // Evita UPDATE/trigger desnecessário quando o status não mudou.
+        $update_image_status = $conn->prepare(
+            "UPDATE imagens_cliente_obra
+                SET status_id = ?
+              WHERE idimagens_cliente_obra = ?
+                AND (status_id <> ? OR status_id IS NULL)"
+        );
+        $update_image_status->bind_param('iii', $status_id, $imagem_id, $status_id);
+        $update_image_status->execute();
+        $update_image_status->close();
+    }
 
     // Busca o nome da imagem (para calcular valor de Planta Humanizada)
     $imagem_nome_atual = null;
-    $stmtImgNome = $conn->prepare("SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? LIMIT 1");
+    $stmtImgNome = $conn->prepare("SELECT imagem_nome, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? LIMIT 1");
     $stmtImgNome->bind_param('i', $imagem_id);
     $stmtImgNome->execute();
-    $stmtImgNome->bind_result($imagem_nome_atual);
+    $stmtImgNome->bind_result($imagem_nome_atual, $obra_id);
     $stmtImgNome->fetch();
     $stmtImgNome->close();
 
@@ -93,14 +137,25 @@ try {
         throw new Exception('Erro no prepare insert: ' . $conn->error);
     }
 
+    $changedFunctionIds = [];
     foreach ($funcao_ids as $funcao => $funcao_id) {
         $parametro = $funcao_parametros[$funcao];
 
-        if (!empty($data[$parametro . '_id'])) {
-            $colaborador_id = (int)emptyToNull($data[$parametro . '_id']);
-            $prazo = emptyToNull($data['prazo_' . $parametro]);
-            $status = emptyToNull($data['status_' . $parametro]);
-            $obs = emptyToNull($data['obs_' . $parametro]);
+        $delta = $changedFunctions[$funcao_id] ?? null;
+        if ($changedFunctions !== null && $delta === null) {
+            continue;
+        }
+
+        $colaboradorInput = $changedFunctions !== null
+            ? ($delta['colaborador_id'] ?? null)
+            : ($data[$parametro . '_id'] ?? null);
+
+        if (!empty($colaboradorInput)) {
+            $colaborador_id = (int)emptyToNull($colaboradorInput);
+            $prazo = emptyToNull($changedFunctions !== null ? ($delta['prazo'] ?? null) : ($data['prazo_' . $parametro] ?? null));
+            $status = emptyToNull($changedFunctions !== null ? ($delta['status'] ?? null) : ($data['status_' . $parametro] ?? null));
+            $obs = emptyToNull($changedFunctions !== null ? ($delta['observacao'] ?? null) : ($data['obs_' . $parametro] ?? null));
+            $funcaoCriadaEmAndamento = false;
 
             if (strcasecmp((string) $status, 'Em andamento') === 0) {
                 $stmtCurrent = $conn->prepare(
@@ -110,8 +165,12 @@ try {
                 $stmtCurrent->execute();
                 $current = $stmtCurrent->get_result()->fetch_assoc();
                 $stmtCurrent->close();
+                $funcaoCriadaEmAndamento = !$current;
                 if ($current && strcasecmp((string) $current['status'], 'Não iniciado') === 0) {
                     $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, (int) $current['idfuncao_imagem']);
+                    if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
+                        throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
+                    }
                     if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                         throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
                     }
@@ -166,7 +225,7 @@ try {
                 }
             }
 
-            write_log_insere_funcao2("Detected valorFuncao=" . var_export($valorFuncao, true) . " for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
+            write_debug_insere_funcao2("Detected valorFuncao=" . var_export($valorFuncao, true) . " for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
 
             $bound = $stmt->bind_param("iiissd", $imagem_id, $colaborador_id, $funcao_id, $status, $obs, $valorFuncao);
             if ($bound === false) {
@@ -175,9 +234,33 @@ try {
             }
 
             $execOk = $stmt->execute();
-            write_log_insere_funcao2("EXECUTE insert: ok=" . ($execOk ? '1' : '0') . " | stmt_error=" . $stmt->error . " | affected_rows=" . $stmt->affected_rows);
+            write_debug_insere_funcao2("EXECUTE insert: ok=" . ($execOk ? '1' : '0') . " | stmt_error=" . $stmt->error . " | affected_rows=" . $stmt->affected_rows);
             if ($execOk === false) {
                 throw new Exception('Erro no execute insert: ' . $stmt->error);
+            }
+
+            if ($funcaoCriadaEmAndamento) {
+                $stmtInicio = $conn->prepare(
+                    'SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
+                );
+                if (!$stmtInicio) {
+                    throw new RuntimeException('Não foi possível localizar a tarefa criada para validar os requisitos.');
+                }
+                $stmtInicio->bind_param('ii', $imagem_id, $funcao_id);
+                $stmtInicio->execute();
+                $rowInicio = $stmtInicio->get_result()->fetch_assoc();
+                $stmtInicio->close();
+
+                $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem(
+                    $conn,
+                    (int) ($rowInicio['idfuncao_imagem'] ?? 0)
+                );
+                if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
+                    throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
+                }
+                if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
+                    throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
+                }
             }
 
             if ($prazo !== null) {
@@ -218,21 +301,39 @@ try {
                 }
             }
             // ──────────────────────────────────────────────────────────────────────
+            $changedFunctionIds[] = $funcao_id;
         }
     }
 
     $stmt->close();
     $stmtValor->close();
 
+    if ($statusChanged) {
+        pendencias_operacionais_sync_image_checklist($conn, $imagem_id);
+    }
+
     $conn->commit();
     try {
-        if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';
-        if (class_exists('\Predis\Client')) {
-            (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'insereFuncao2']));
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
         }
-    } catch (Exception $e) { /* ignore Redis failures */ }
+        if (class_exists('\Predis\Client')) {
+            (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode([
+                'source' => 'insereFuncao2',
+                'obra_id' => (int) $obra_id,
+                'imagem_id' => (int) $imagem_id,
+                'funcao_ids' => $changedFunctionIds,
+                'mutation_id' => $mutationId,
+            ]));
+        }
+    } catch (Exception $e) { /* ignore Redis failures */
+    }
     echo json_encode([
-        'success' => 'Dados inseridos/atualizados com sucesso!'
+        'success' => 'Dados inseridos/atualizados com sucesso!',
+        'obra_id' => (int) $obra_id,
+        'imagem_id' => (int) $imagem_id,
+        'funcao_ids' => $changedFunctionIds,
+        'mutation_id' => $mutationId,
     ]);
 } catch (Exception $e) {
     $conn->rollback();

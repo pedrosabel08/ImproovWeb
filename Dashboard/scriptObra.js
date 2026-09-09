@@ -3037,6 +3037,8 @@ function atualizarModal(idImagem) {
         statusMs.value = response.status_id;
       }
       renderModernAllocationModal(response, idImagem);
+      // Base para o envio por delta: salvar só as funções que o usuário mudou.
+      window.__obraFuncoesFormOriginal = criarSnapshotFuncoesObra();
 
       // Carrega informações adicionais da imagem na coluna direita
       try {
@@ -3694,6 +3696,10 @@ const OBRA_LOAD = (() => {
   }
 
   function begin() {
+    if (window.__obraRemoteRefreshTimer) {
+      window.clearTimeout(window.__obraRemoteRefreshTimer);
+      window.__obraRemoteRefreshTimer = null;
+    }
     if (state.controller) state.controller.abort();
     if (state.timer) clearTimeout(state.timer);
     state.request += 1;
@@ -6062,7 +6068,11 @@ function infosObra(obraId) {
                 "",
             ).trim();
           const currentObraId = getPlanningObraId();
-          if (hasProductionPlan && currentObraId && /^\d+$/.test(currentObraId)) {
+          if (
+            hasProductionPlan &&
+            currentObraId &&
+            /^\d+$/.test(currentObraId)
+          ) {
             qProductionPlan.href = `../PlanejamentoProducao/index.php?obra_id=${encodeURIComponent(currentObraId)}`;
             qProductionPlan.style.display = "inline-flex";
             qProductionPlan.setAttribute("aria-hidden", "false");
@@ -8292,6 +8302,134 @@ statusSelects.forEach((select) => {
 const selectStatus = document.getElementById("opcao_status");
 const statusHold = document.getElementById("status_hold");
 
+const OBRA_FUNCOES_FORM = [
+  { funcaoId: 1, prefix: "caderno", selectId: "caderno", cell: "caderno" },
+  { funcaoId: 2, prefix: "modelagem", selectId: "model", cell: "modelagem" },
+  { funcaoId: 3, prefix: "comp", selectId: "comp", cell: "composicao" },
+  {
+    funcaoId: 4,
+    prefix: "finalizacao",
+    selectId: "final",
+    cell: "finalizacao",
+  },
+  { funcaoId: 5, prefix: "pos", selectId: "pos", cell: "pos_producao" },
+  {
+    funcaoId: 6,
+    prefix: "alteracao",
+    selectId: "alteracao",
+    cell: "alteracao",
+  },
+  { funcaoId: 7, prefix: "planta", selectId: "planta", cell: "planta" },
+  { funcaoId: 8, prefix: "filtro", selectId: "filtro", cell: "filtro" },
+  { funcaoId: 9, prefix: "pre", selectId: "pre", cell: "pre" },
+];
+
+function obraFormValue(id) {
+  return document.getElementById(id)?.value || "";
+}
+
+function criarSnapshotFuncoesObra() {
+  const functions = {};
+  OBRA_FUNCOES_FORM.forEach(({ funcaoId, prefix, selectId }) => {
+    functions[funcaoId] = {
+      colaborador_id: obraFormValue(`opcao_${selectId}`),
+      status: obraFormValue(`status_${prefix}`),
+      prazo: obraFormValue(`prazo_${prefix}`),
+      observacao: obraFormValue(`obs_${prefix}`),
+    };
+  });
+  return {
+    status_id: obraFormValue("opcao_status"),
+    functions,
+  };
+}
+
+function coletarAlteracoesFuncoesObra() {
+  const original = window.__obraFuncoesFormOriginal || null;
+  const current = criarSnapshotFuncoesObra();
+  const changes = [];
+
+  OBRA_FUNCOES_FORM.forEach(({ funcaoId, prefix, cell }) => {
+    const value = current.functions[funcaoId];
+    const before = original?.functions?.[funcaoId];
+    const changed =
+      !before ||
+      ["colaborador_id", "status", "prazo", "observacao"].some(
+        (field) => String(value[field] || "") !== String(before[field] || ""),
+      );
+    if (changed && value.colaborador_id) {
+      changes.push({ funcao_id: funcaoId, ...value, cell });
+    }
+  });
+
+  return {
+    current,
+    changes,
+    statusChanged:
+      !original ||
+      String(current.status_id || "") !== String(original.status_id || ""),
+  };
+}
+
+function aplicarAtualizacaoTarefaLocal(imagemId, statusId, changes) {
+  const row = document.querySelector(
+    `#tabela-obra tbody tr[data-id="${Number(imagemId)}"]`,
+  );
+  if (!row) return;
+
+  const statusSelect = document.getElementById("opcao_status");
+  const statusName = statusSelect?.selectedOptions?.[0]?.textContent?.trim();
+  if (statusName) {
+    row.setAttribute("data-status-id", String(statusId || ""));
+    const cell = row.querySelector('[data-field="status_etapa"]');
+    if (cell) {
+      cell.textContent = statusName;
+      applyStatusImagem(cell, statusName, "");
+    }
+  }
+
+  changes.forEach((change) => {
+    const definition = OBRA_FUNCOES_FORM.find(
+      ({ funcaoId }) => funcaoId === Number(change.funcao_id),
+    );
+    if (!definition) return;
+    let cell = row.querySelector(`.func-${definition.cell}`);
+    if (
+      (definition.cell === "caderno" || definition.cell === "filtro") &&
+      row.querySelector(".func-pair-unified")
+    ) {
+      cell = row.querySelector(".func-pair-unified");
+    }
+    if (!cell) return;
+    const collaborator =
+      document
+        .getElementById(`opcao_${definition.selectId}`)
+        ?.selectedOptions?.[0]?.textContent?.trim() || "-";
+    cell.textContent = collaborator;
+    cell.setAttribute("data-status", change.status || "-");
+    applyStatusStyle(cell, change.status || "-", collaborator);
+  });
+
+  const image = (dadosImagens || []).find(
+    (item) => Number(item.imagem_id) === Number(imagemId),
+  );
+  if (image) {
+    image.status_id = Number(statusId || image.status_id || 0);
+    changes.forEach((change) => {
+      const definition = OBRA_FUNCOES_FORM.find(
+        ({ funcaoId }) => funcaoId === Number(change.funcao_id),
+      );
+      if (!definition) return;
+      image[`${definition.cell}_colaborador`] =
+        document
+          .getElementById(`opcao_${definition.selectId}`)
+          ?.selectedOptions?.[0]?.textContent?.trim() || "-";
+      image[`${definition.cell}_status`] = change.status || "-";
+    });
+  }
+  updateFunctionHeaderIndicators();
+}
+
 selectStatus.addEventListener("change", function () {
   if (parseInt(this.value) === 9) {
     statusHold.style.display = "block";
@@ -8428,65 +8566,36 @@ document
       return el && el.value === "Aprovado com ajustes";
     });
 
-    var textos = {};
-    document.querySelectorAll(".form-edicao p").forEach(function (p) {
-      textos[p.id] = p.textContent.trim();
-    });
-
+    const taskDelta = coletarAlteracoesFuncoesObra();
+    const hasTaskChanges =
+      taskDelta.statusChanged || taskDelta.changes.length > 0;
+    const mutationId = `obra-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const dados = {
       imagem_id: idImagemSelecionada,
-      caderno_id: document.getElementById("opcao_caderno").value || "",
-      status_caderno: document.getElementById("status_caderno").value || "",
-      prazo_caderno: document.getElementById("prazo_caderno").value || "",
-      obs_caderno: document.getElementById("obs_caderno").value || "",
-      comp_id: document.getElementById("opcao_comp").value || "",
-      status_comp: document.getElementById("status_comp").value || "",
-      prazo_comp: document.getElementById("prazo_comp").value || "",
-      obs_comp: document.getElementById("obs_comp").value || "",
-      modelagem_id: document.getElementById("opcao_model").value || "",
-      status_modelagem: document.getElementById("status_modelagem").value || "",
-      prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
-      obs_modelagem: document.getElementById("obs_modelagem").value || "",
-      finalizacao_id: document.getElementById("opcao_final").value || "",
-      status_finalizacao:
-        document.getElementById("status_finalizacao").value || "",
-      prazo_finalizacao:
-        document.getElementById("prazo_finalizacao").value || "",
-      obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
-      pre_id: document.getElementById("opcao_pre").value || "",
-      status_pre: document.getElementById("status_pre").value || "",
-      prazo_pre: document.getElementById("prazo_pre").value || "",
-      obs_pre: document.getElementById("obs_pre").value || "",
-      pos_id: document.getElementById("opcao_pos").value || "",
-      status_pos: document.getElementById("status_pos").value || "",
-      prazo_pos: document.getElementById("prazo_pos").value || "",
-      obs_pos: document.getElementById("obs_pos").value || "",
-      alteracao_id: document.getElementById("opcao_alteracao").value || "",
-      status_alteracao: document.getElementById("status_alteracao").value || "",
-      prazo_alteracao: document.getElementById("prazo_alteracao").value || "",
-      obs_alteracao: document.getElementById("obs_alteracao").value || "",
-      planta_id: document.getElementById("opcao_planta").value || "",
-      status_planta: document.getElementById("status_planta").value || "",
-      prazo_planta: document.getElementById("prazo_planta").value || "",
-      obs_planta: document.getElementById("obs_planta").value || "",
-      filtro_id: document.getElementById("opcao_filtro").value || "",
-      status_filtro: document.getElementById("status_filtro").value || "",
-      prazo_filtro: document.getElementById("prazo_filtro").value || "",
-      obs_filtro: document.getElementById("obs_filtro").value || "",
-      textos: textos,
-      status_id: document.getElementById("opcao_status").value || "",
+      status_id: taskDelta.current.status_id || "",
+      status_changed: taskDelta.statusChanged ? "1" : "0",
+      changed_functions: JSON.stringify(taskDelta.changes),
+      mutation_id: mutationId,
       confirmar_pendencias: 0,
     };
 
     const loadingBar = document.getElementById("loadingBar");
-    loadingBar.style.display = "block"; // mostra a barra
+    if (hasTaskChanges) loadingBar.style.display = "block";
 
     function enviarFormulario() {
+      window.__obraLocalMutationIds ||= new Set();
+      window.__obraLocalMutationIds.add(mutationId);
       $.ajax({
         type: "POST",
         url: "../insereFuncao2.php",
         data: dados,
         success: function (response) {
+          aplicarAtualizacaoTarefaLocal(
+            response?.imagem_id || idImagemSelecionada,
+            dados.status_id,
+            taskDelta.changes,
+          );
+          window.__obraFuncoesFormOriginal = criarSnapshotFuncoesObra();
           Toastify({
             text: "Dados salvos com sucesso!",
             duration: 3000,
@@ -8530,7 +8639,9 @@ document
       });
     }
 
-    if (statusAnteriorAjuste) {
+    if (!hasTaskChanges) {
+      loadingBar.style.display = "none";
+    } else if (statusAnteriorAjuste) {
       Swal.fire({
         title: "Atenção!",
         text: "Há uma função anterior com o status 'Aprovado com ajustes'. Você já conferiu?",
@@ -8912,23 +9023,13 @@ const form_edicao = document.getElementById("form-edicao");
 const idObra = localStorage.getItem("obraId");
 
 if (idObra) {
-  // Histórico e Arquivos não fazem parte da primeira leitura da obra.
-  // Carregam no primeiro atalho explícito, uma vez por sessão.
-  const loadSecondaryOnce = (selector, loader) => {
-    const target = document.querySelector(selector);
-    if (!target) return;
-    let loaded = false;
-    const load = () => {
-      if (loaded) return;
-      loaded = true;
-      loader();
-    };
-    document.querySelectorAll(`[href="${selector}"]`).forEach((link) => {
-      link.addEventListener("click", load, { once: true });
-    });
-  };
-  loadSecondaryOnce("#list_acomp", () => abrirModalAcompanhamento(idObra));
-  loadSecondaryOnce("#secao-arquivos", () => carregarArquivosObra(idObra));
+  // Conteúdo secundário precisa estar disponível já na abertura da obra. As
+  // requisições são independentes, não bloqueiam infosObra() e usam os caches
+  // dos próprios módulos para evitar duplicações posteriores pelos atalhos.
+  window.setTimeout(() => {
+    Promise.resolve(abrirModalAcompanhamento(idObra)).catch(() => {});
+    Promise.resolve(carregarArquivosObra(idObra)).catch(() => {});
+  }, 0);
 } else {
   console.warn("ID da obra não encontrado no localStorage.");
 }
@@ -16847,6 +16948,11 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   [quickBtn, mobileBtn].filter(Boolean).forEach((button) => {
     button.addEventListener("click", loadEventsOnce, { once: true });
   });
+
+  // Eventos não dependem mais de um atalho para serem exibidos. O carregamento
+  // é assíncrono e compartilha eventsInFlight com qualquer clique feito antes
+  // da resposta chegar.
+  loadEventsOnce();
 })();
 
 // ===== MÓDULO NOTIFICAR EQUIPE =====
@@ -17073,10 +17179,35 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   });
 })();
 
-// Atualiza infosObra automaticamente quando uma função for inserida/atualizada (via WebSocket)
-window.addEventListener("improov:funcaoAtualizada", () => {
+// Atualizações locais já aplicam o delta na própria linha. Para mudanças
+// remotas, agrupamos eventos próximos em um único refresh da obra.
+window.addEventListener("improov:funcaoAtualizada", (event) => {
+  let detail = event.detail || {};
+  if (typeof detail === "string") {
+    try {
+      detail = JSON.parse(detail);
+    } catch (_) {
+      detail = {};
+    }
+  }
+
+  const mutationId = String(detail?.mutation_id || "");
+  if (mutationId && window.__obraLocalMutationIds?.has(mutationId)) {
+    window.__obraLocalMutationIds.delete(mutationId);
+    return;
+  }
+
   const id = localStorage.getItem("obraId");
-  if (id) infosObra(id);
+  if (!id) return;
+  if (detail?.obra_id && Number(detail.obra_id) !== Number(id)) return;
+
+  if (window.__obraRemoteRefreshTimer) {
+    window.clearTimeout(window.__obraRemoteRefreshTimer);
+  }
+  window.__obraRemoteRefreshTimer = window.setTimeout(() => {
+    window.__obraRemoteRefreshTimer = null;
+    infosObra(id);
+  }, 450);
 });
 
 // =============================================================

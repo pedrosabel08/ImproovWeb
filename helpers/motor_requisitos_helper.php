@@ -54,6 +54,9 @@ function motor_requisitos_resultado(
     $bloqueios = array_values(array_filter($requisitos, static function (array $item): bool {
         return !empty($item['bloqueia_inicio']);
     }));
+    $bloqueiosProducao = array_values(array_filter($bloqueios, static function (array $item): bool {
+        return strtoupper(trim((string) ($item['tipo'] ?? ''))) === 'PRODUCAO';
+    }));
     // Não aplicável não significa liberada. A decisão precisa continuar
     // respeitando a compatibilidade legada ou o bloqueio seguro de configuração.
     $elegivel = $erroConfiguracao === null && empty($bloqueios) && $legacyLiberada;
@@ -70,13 +73,35 @@ function motor_requisitos_resultado(
         'erro_configuracao' => $erroConfiguracao,
         'requisitos_avaliados' => array_values($requisitos),
         'bloqueios' => $bloqueios,
+        // Pendências produtivas nunca podem ser confirmadas para iniciar. O
+        // campo também permite que a interface diferencie bloqueio definitivo
+        // de uma pendência que ainda pode seguir seu fluxo próprio.
+        'bloqueios_producao' => $bloqueiosProducao,
         'resumo' => [
             'total' => count($requisitos),
             'atendidos' => $atendidos,
             'pendentes' => $pendentes,
             'bloqueantes' => count($bloqueios),
+            'bloqueantes_producao' => count($bloqueiosProducao),
         ],
     ];
+}
+
+function motor_requisitos_bloqueios_producao(array $resultado): array
+{
+    $bloqueios = $resultado['bloqueios_producao'] ?? null;
+    if (is_array($bloqueios)) {
+        return array_values($bloqueios);
+    }
+
+    return array_values(array_filter((array) ($resultado['bloqueios'] ?? []), static function (array $item): bool {
+        return strtoupper(trim((string) ($item['tipo'] ?? ''))) === 'PRODUCAO';
+    }));
+}
+
+function motor_requisitos_tem_bloqueio_producao(array $resultado): bool
+{
+    return !empty(motor_requisitos_bloqueios_producao($resultado));
 }
 
 function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
@@ -658,14 +683,22 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
                 f.nome_funcao,
                 ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id,
+                ico.imagem_principal_id,
                 o.liberar_modelagem,
                 c.nome_colaborador AS tarefa_responsavel_nome,
-                ico.status_id AS imagem_status_id, si.nome_status AS imagem_status_nome
+                ico.status_id AS imagem_status_id, si.nome_status AS imagem_status_nome,
+                principal.imagem_nome AS imagem_principal_nome,
+                principal.tipo_imagem AS imagem_principal_tipo_imagem,
+                principal.subtipo_id AS imagem_principal_subtipo_id,
+                principal.status_id AS imagem_principal_status_id,
+                principalStatus.nome_status AS imagem_principal_status_nome
            FROM funcao_imagem fi
            JOIN funcao f ON f.idfuncao = fi.funcao_id
            JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
            JOIN obra o ON o.idobra = ico.obra_id
            LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
+           LEFT JOIN imagens_cliente_obra principal ON principal.idimagens_cliente_obra = ico.imagem_principal_id
+           LEFT JOIN status_imagem principalStatus ON principalStatus.idstatus = principal.status_id
            LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
           WHERE fi.idfuncao_imagem = ?
           LIMIT 1"
@@ -699,8 +732,26 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     ] : null;
     $funcaoId = (int) $context['funcao_id'];
     $imagemId = (int) $context['imagem_id'];
+    // Uma imagem secundária executa sua Finalização, mas o fluxo produtivo é o
+    // da imagem principal. A tarefa atual permanece no contexto (para card,
+    // permissões e Flow Block); somente os requisitos passam a consultar a
+    // imagem de origem.
+    $imagemDependenciasId = (int) ($context['imagem_principal_id'] ?? 0) ?: $imagemId;
+    $usaImagemPrincipal = $imagemDependenciasId !== $imagemId;
+    $tipoImagemDependencias = $usaImagemPrincipal
+        ? (string) ($context['imagem_principal_tipo_imagem'] ?? '')
+        : (string) ($context['tipo_imagem'] ?? '');
+    $subtipoDependenciasId = $usaImagemPrincipal
+        ? (int) ($context['imagem_principal_subtipo_id'] ?? 0)
+        : (int) ($context['subtipo_id'] ?? 0);
+    $statusImagemDependenciasId = $usaImagemPrincipal
+        ? (int) ($context['imagem_principal_status_id'] ?? 0)
+        : (int) ($context['imagem_status_id'] ?? 0);
+    $statusImagemDependenciasNome = $usaImagemPrincipal
+        ? (string) ($context['imagem_principal_status_nome'] ?? '')
+        : (string) ($context['imagem_status_nome'] ?? '');
     $requisitos = [];
-    $taskUrl = '/ImproovWeb/inicio.php?imagem_id=' . $imagemId;
+    $taskUrl = '/ImproovWeb/inicio.php?imagem_id=' . $imagemDependenciasId;
 
     if ($funcaoId === 1) {
         $requisitos[] = motor_requisitos_projeto($projectItems, 'briefing', 'Briefing', true, $checklistVersionado, $checklistResponsavel);
@@ -712,11 +763,11 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     } elseif ($funcaoId === 3) {
         // Composição não depende do requisito de Referências do projeto.
     } elseif ($funcaoId === 4 || $funcaoId === 7) {
-        $isPlanta = $funcaoId === 7 || trim((string) $context['tipo_imagem']) === 'Planta Humanizada';
+        $isPlanta = $funcaoId === 7 || trim($tipoImagemDependencias) === 'Planta Humanizada';
         if ($isPlanta) {
             $requisitos[] = motor_requisitos_projeto($projectItems, 'arquivos_tecnicos', 'Arquivos Tecnicos', true, $checklistVersionado, $checklistResponsavel);
-            $subtipoId = (int) ($context['subtipo_id'] ?? 0);
-            $requisitos[] = motor_requisitos_item('subtipo_definido', 'Subtipo definido', 'PROJETO', $subtipoId > 0 ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Cadastro da imagem', $imagemId, '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId, motor_requisitos_metadados_origem(null, $checklistResponsavel));
+            $subtipoId = $subtipoDependenciasId;
+            $requisitos[] = motor_requisitos_item('subtipo_definido', 'Subtipo definido', 'PROJETO', $subtipoId > 0 ? 'ATENDIDO' : 'NAO_ATENDIDO', true, 'Cadastro da imagem', $imagemDependenciasId, '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId, motor_requisitos_metadados_origem(null, $checklistResponsavel));
             if ($subtipoId <= 0) {
                 $estadoArquivos = 'NAO_ATENDIDO';
             } else {
@@ -748,7 +799,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             $requisitos[] = motor_requisitos_fotografico($conn, $obraId);
         }
     } elseif ($funcaoId === 5) {
-        $imagemStatusId = (int) ($context['imagem_status_id'] ?? 0);
+        $imagemStatusId = $statusImagemDependenciasId;
         $stmtRender = $conn->prepare(
             "SELECT r.idrender_alta, r.status, r.responsavel_id, c.nome_colaborador
                FROM render_alta r
@@ -756,7 +807,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
               WHERE r.imagem_id = ? AND r.status_id = ? AND r.excluido_em IS NULL
               ORDER BY r.idrender_alta DESC LIMIT 1"
         );
-        $stmtRender->bind_param('ii', $imagemId, $imagemStatusId);
+        $stmtRender->bind_param('ii', $imagemDependenciasId, $imagemStatusId);
         $stmtRender->execute();
         $render = $stmtRender->get_result()->fetch_assoc();
         $stmtRender->close();
@@ -769,10 +820,10 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
         $entrega = motor_requisitos_entrega_registrada_na_etapa(
             $conn,
             $obraId,
-            $imagemId,
-            (int) ($context['imagem_status_id'] ?? 0)
+            $imagemDependenciasId,
+            $statusImagemDependenciasId
         );
-        $etapa = trim((string) ($context['imagem_status_nome'] ?? ''));
+        $etapa = trim($statusImagemDependenciasNome);
         $requisitos[] = motor_requisitos_item(
             'entrega_registrada_etapa_atual',
             'Entrega registrada para a imagem na etapa atual',
@@ -785,7 +836,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             motor_requisitos_metadados_origem(null, $checklistResponsavel)
         );
 
-        $finalizacao = motor_requisitos_finalizacao_da_imagem($conn, $imagemId);
+        $finalizacao = motor_requisitos_finalizacao_da_imagem($conn, $imagemDependenciasId);
         $requisitos[] = motor_requisitos_item(
             'ARQUIVO_FINALIZACAO_ENVIADO',
             'Arquivo da Finalizacao enviado',
@@ -802,7 +853,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     // A cadeia produtiva usa a predecessora existente mais próxima. Alteração
     // e Pré-Finalização preservam suas regras próprias, sem pré-requisito linear.
     if (!in_array($funcaoId, [1, 6, 9], true)) {
-        $tipoImagem = mb_strtolower(trim((string) ($context['tipo_imagem'] ?? '')), 'UTF-8');
+        $tipoImagem = mb_strtolower(trim($tipoImagemDependencias), 'UTF-8');
         $predecessora = null;
         $origem = 'Tarefa produtiva anterior';
         $urlPredecessora = $taskUrl;
@@ -821,7 +872,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             // existirem na imagem, ambos precisam estar concluídos junto da
             // Modelagem antes de a Composição ser liberada.
             foreach ([1, 8, 2] as $funcaoAnteriorId) {
-                $predecessora = motor_requisitos_predecessora($conn, $imagemId, $funcaoAnteriorId);
+                $predecessora = motor_requisitos_predecessora($conn, $imagemDependenciasId, $funcaoAnteriorId);
                 if ($predecessora) {
                     motor_requisitos_adicionar_predecessora(
                         $conn,
@@ -851,7 +902,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
                 motor_requisitos_adicionar_predecessora($conn, $requisitos, $predecessora, $origem, $urlPredecessora);
             }
         } else {
-            $predecessora = motor_requisitos_predecessora_anterior_existente($conn, $imagemId, $funcaoId);
+            $predecessora = motor_requisitos_predecessora_anterior_existente($conn, $imagemDependenciasId, $funcaoId);
             motor_requisitos_adicionar_predecessora(
                 $conn,
                 $requisitos,
@@ -865,6 +916,10 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
 
     $fallbackResponsavelId = (int) ($checklist['responsavel_id'] ?? 0);
     foreach ($requisitos as &$requisito) {
+        if ($usaImagemPrincipal) {
+            $requisito['origem_imagem_id'] = $imagemDependenciasId;
+            $requisito['origem_imagem_nome'] = (string) ($context['imagem_principal_nome'] ?? '');
+        }
         if (($requisito['origem'] ?? '') === 'Checklist do projeto') {
             $requisito['url_acao'] = '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId;
         }

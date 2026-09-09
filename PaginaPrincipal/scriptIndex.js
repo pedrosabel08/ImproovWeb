@@ -2629,8 +2629,17 @@ function processarDados(data) {
     const pendenciasInicio = Array.isArray(requisitos.bloqueios)
       ? requisitos.bloqueios
       : [];
+    const pendenciasProducaoInicio = Array.isArray(requisitos.bloqueios_producao)
+      ? requisitos.bloqueios_producao
+      : pendenciasInicio.filter(
+          (requisito) =>
+            String(requisito?.tipo || "").trim().toUpperCase() === "PRODUCAO",
+        );
     card.dataset.requirementBlockReasons = pendenciasInicio
       .map((requisito) => String(requisito.label || "Requisito"))
+      .join("||");
+    card.dataset.productionBlockReasons = pendenciasProducaoInicio
+      .map((requisito) => String(requisito.label || "Pendência de Produção"))
       .join("||");
     const resumoPendenciasInicio =
       status === "Não iniciado" && pendenciasInicio.length > 0
@@ -6836,6 +6845,33 @@ function mensagemConfirmacaoPendencias(avaliacao) {
   return `Esta tarefa possui pendências ativas.${detalhes}\n\nDeseja continuar e colocá-la em andamento?`;
 }
 
+function bloqueiosProducao(avaliacao) {
+  const bloqueios = Array.isArray(avaliacao?.bloqueios_producao)
+    ? avaliacao.bloqueios_producao
+    : Array.isArray(avaliacao?.bloqueios)
+      ? avaliacao.bloqueios.filter(
+          (item) => String(item?.tipo || "").trim().toUpperCase() === "PRODUCAO",
+        )
+      : [];
+  return bloqueios.map((item) => item?.label).filter(Boolean);
+}
+
+function mostrarBloqueioProducao(motivos) {
+  const itens = motivos
+    .map((motivo) => `<li>${escapeKanbanText(motivo)}</li>`)
+    .join("");
+  return Swal.fire({
+    icon: "error",
+    title: "Início bloqueado",
+    html: `
+      <p>Finalize todas as pendências de Produção antes de colocar a tarefa em andamento.</p>
+      ${itens ? `<ul style="text-align:left; margin:10px 0 0 20px;">${itens}</ul>` : ""}
+    `,
+    confirmButtonText: "Entendi",
+    confirmButtonColor: "#3085d6",
+  });
+}
+
 // Fechar modal
 document.getElementById("fecharModal").addEventListener("click", () => {
   cardModal.classList.remove("active");
@@ -7180,6 +7216,12 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       },
       error: async function (jqXHR, textStatus, errorThrown) {
         const payload = jqXHR.responseJSON || {};
+        const pendenciasProducao = bloqueiosProducao(payload.avaliacao);
+
+        if (pendenciasProducao.length) {
+          await mostrarBloqueioProducao(pendenciasProducao);
+          return;
+        }
 
         if (payload.avaliacao && dados.confirmar_pendencias !== 1) {
           const result = await Swal.fire({
@@ -7363,6 +7405,14 @@ if (typeof Sortable !== "undefined") {
         if (
           toId === "in-progress" &&
           dragged?.dataset?.liberado === "0" &&
+          String(dragged?.dataset?.productionBlockReasons || "").trim() !== "" &&
+          !holdMovel
+        )
+          return false;
+
+        if (
+          toId === "in-progress" &&
+          dragged?.dataset?.liberado === "0" &&
           !holdMovel
         )
           return true;
@@ -7400,6 +7450,19 @@ if (typeof Sortable !== "undefined") {
         }
 
         if (novaColuna?.id === "in-progress" && !holdMovel) {
+          const motivosProducao = String(
+            card.dataset.productionBlockReasons || "",
+          )
+            .split("||")
+            .map((motivo) => motivo.trim())
+            .filter(Boolean);
+
+          if (motivosProducao.length > 0) {
+            evt.from.appendChild(card);
+            await mostrarBloqueioProducao(motivosProducao);
+            return;
+          }
+
           const motivos = String(card.dataset.requirementBlockReasons || "")
             .split("||")
             .map((motivo) => motivo.trim())

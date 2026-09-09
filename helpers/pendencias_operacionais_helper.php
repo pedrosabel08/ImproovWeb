@@ -1616,3 +1616,115 @@ function pendencias_operacionais_image_checklist_for_card(mysqli $conn, int $ima
             : (string) ($context['imagem_principal_nome'] ?? ''),
     ];
 }
+
+/**
+ * Busca os checklists pendentes de várias imagens sem alterar o banco.
+ *
+ * A tela da obra consulta este conjunto a cada renderização. Manter a leitura
+ * livre de sincronização evita que abrir ou atualizar uma única tarefa gere
+ * writes em todas as imagens TO-DO da obra.
+ *
+ * @return array<int, array{checklist_id:int, status:string, items:array, origem_imagem_id:int, origem_imagem_nome:string}>
+ */
+function pendencias_operacionais_image_checklists_for_cards(mysqli $conn, array $imagemIds): array
+{
+    if (!pendencias_operacionais_table_exists($conn, 'checklist_operacional')) {
+        return [];
+    }
+
+    $ids = array_values(array_unique(array_filter(array_map('intval', $imagemIds), static fn (int $id): bool => $id > 0)));
+    $idsList = pendencias_operacionais_int_list_sql($ids);
+    if ($idsList === '') {
+        return [];
+    }
+
+    $resImages = $conn->query(
+        "SELECT ico.idimagens_cliente_obra AS imagem_id,
+                ico.imagem_nome,
+                ico.imagem_principal_id,
+                principal.imagem_nome AS imagem_principal_nome
+           FROM imagens_cliente_obra ico
+           LEFT JOIN imagens_cliente_obra principal
+             ON principal.idimagens_cliente_obra = ico.imagem_principal_id
+          WHERE ico.idimagens_cliente_obra IN ({$idsList})"
+    );
+    if (!$resImages) {
+        return [];
+    }
+
+    $sourcesByImage = [];
+    $sourceIds = [];
+    while ($image = $resImages->fetch_assoc()) {
+        $imageId = (int) ($image['imagem_id'] ?? 0);
+        if ($imageId <= 0) {
+            continue;
+        }
+        $sourceId = (int) ($image['imagem_principal_id'] ?? 0) ?: $imageId;
+        $sourcesByImage[$imageId] = [
+            'source_id' => $sourceId,
+            'source_name' => $sourceId === $imageId
+                ? (string) ($image['imagem_nome'] ?? '')
+                : (string) ($image['imagem_principal_nome'] ?? ''),
+        ];
+        $sourceIds[] = $sourceId;
+    }
+    $resImages->close();
+
+    $sourceIdsList = pendencias_operacionais_int_list_sql($sourceIds);
+    if ($sourceIdsList === '') {
+        return [];
+    }
+
+    $resChecklists = $conn->query(
+        "SELECT id, entity_id, status
+           FROM checklist_operacional
+          WHERE module_key = 'imagem'
+            AND entity_type = 'imagem'
+            AND status = 'aberto'
+            AND entity_id IN ({$sourceIdsList})"
+    );
+    if (!$resChecklists) {
+        return [];
+    }
+
+    $checklistsBySource = [];
+    $checklistIds = [];
+    while ($checklist = $resChecklists->fetch_assoc()) {
+        $sourceId = (int) ($checklist['entity_id'] ?? 0);
+        $checklistId = (int) ($checklist['id'] ?? 0);
+        if ($sourceId <= 0 || $checklistId <= 0) {
+            continue;
+        }
+        $checklistsBySource[$sourceId] = [
+            'checklist_id' => $checklistId,
+            'status' => (string) ($checklist['status'] ?? 'aberto'),
+        ];
+        $checklistIds[] = $checklistId;
+    }
+    $resChecklists->close();
+
+    $itemsByChecklist = pendencias_operacionais_fetch_checklist_items_map($conn, $checklistIds);
+    $result = [];
+    foreach ($sourcesByImage as $imageId => $source) {
+        $checklist = $checklistsBySource[(int) $source['source_id']] ?? null;
+        if (!$checklist) {
+            continue;
+        }
+        $items = $itemsByChecklist[(int) $checklist['checklist_id']] ?? [];
+        $hasPending = !empty(array_filter($items, static function (array $item): bool {
+            return (int) ($item['required'] ?? 0) === 1 && (int) ($item['done'] ?? 0) === 0;
+        }));
+        if (!$hasPending) {
+            continue;
+        }
+        $result[(int) $imageId] = [
+            'checklist_id' => (int) $checklist['checklist_id'],
+            'status' => (string) $checklist['status'],
+            'items' => $items,
+            'origem_imagem_id' => (int) $source['source_id'],
+            'origem_imagem_nome' => (string) $source['source_name'],
+        ];
+    }
+
+    return $result;
+}

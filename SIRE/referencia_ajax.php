@@ -117,6 +117,40 @@ function sire_get_reference(mysqli $conn, int $referenceId): ?array
     return $reference;
 }
 
+function sire_normalize_uploads(string $field): array
+{
+    $files = $_FILES[$field] ?? null;
+    if (!$files || !isset($files['name'])) {
+        return [];
+    }
+
+    if (!is_array($files['name'])) {
+        return [$files];
+    }
+
+    $normalized = [];
+    foreach (array_keys($files['name']) as $index) {
+        $normalized[] = [
+            'name' => $files['name'][$index] ?? '',
+            'type' => $files['type'][$index] ?? '',
+            'tmp_name' => $files['tmp_name'][$index] ?? '',
+            'error' => $files['error'][$index] ?? UPLOAD_ERR_NO_FILE,
+            'size' => $files['size'][$index] ?? 0,
+        ];
+    }
+    return $normalized;
+}
+
+function sire_upload_error_message(int $error): string
+{
+    return match ($error) {
+        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Uma das imagens excede o tamanho máximo permitido.',
+        UPLOAD_ERR_PARTIAL => 'Uma das imagens foi enviada parcialmente. Tente novamente.',
+        UPLOAD_ERR_NO_FILE => 'Selecione pelo menos uma imagem.',
+        default => 'Não foi possível receber uma das imagens enviadas.',
+    };
+}
+
 if ($action === 'getPilares') {
     $pillars = sire_get_pillars($conn);
     $conn->close();
@@ -213,10 +247,6 @@ if ($action === 'addReference') {
     }
     $origin = $type;
     $url = null;
-    $fileName = null;
-    $filePath = null;
-    $mime = null;
-    $size = null;
     if ($type === 'URL') {
         $url = trim((string) ($_POST['url'] ?? ''));
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
@@ -227,51 +257,91 @@ if ($action === 'addReference') {
             $title = $url;
         }
     } else {
-        $file = $_FILES['imagem'] ?? null;
-        if (!$file || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        $files = sire_normalize_uploads('imagem');
+        if (!$files) {
             $conn->close();
-            sire_json(['success' => false, 'message' => 'Selecione uma imagem válida.'], 422);
-        }
-        $original = (string) $file['name'];
-        $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
-        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
-            $conn->close();
-            sire_json(['success' => false, 'message' => 'Envie JPG, PNG, WEBP ou GIF.'], 422);
+            sire_json(['success' => false, 'message' => 'Selecione pelo menos uma imagem.'], 422);
         }
         $dir = dirname(__DIR__) . '/uploads/sire_referencias';
         if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
             $conn->close();
             sire_json(['success' => false, 'message' => 'Não foi possível preparar o diretório de imagens.'], 500);
         }
-        $safeBase = preg_replace('/[^A-Za-z0-9._-]+/', '_', pathinfo($original, PATHINFO_FILENAME)) ?: 'referencia';
-        $fileName = date('YmdHis') . '_' . bin2hex(random_bytes(5)) . '_' . $safeBase . '.' . $ext;
-        $filePath = 'uploads/sire_referencias/' . $fileName;
-        if (!move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $fileName)) {
-            $conn->close();
-            sire_json(['success' => false, 'message' => 'Não foi possível salvar a imagem.'], 500);
-        }
-        $mime = mime_content_type($dir . '/' . $fileName) ?: ($file['type'] ?? null);
-        $size = (int) filesize($dir . '/' . $fileName);
-        if ($title === '') {
-            $title = pathinfo($original, PATHINFO_FILENAME);
-        }
     }
-    $stmt = $conn->prepare('INSERT INTO sire_referencia (titulo, origem, descricao, url_externa, nome_arquivo, caminho_arquivo, mime, tamanho_bytes, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->bind_param('sssssssii', $title, $origin, $description, $url, $fileName, $filePath, $mime, $size, $userId);
-    if (!$stmt->execute()) {
-        $error = $stmt->error;
-        $stmt->close();
-        if ($filePath) {
-            @unlink(dirname(__DIR__) . '/' . $filePath);
+
+    $createdIds = [];
+    $storedPaths = [];
+    $conn->begin_transaction();
+    try {
+        if ($type === 'URL') {
+            $stmt = $conn->prepare('INSERT INTO sire_referencia (titulo, origem, descricao, url_externa, nome_arquivo, caminho_arquivo, mime, tamanho_bytes, criado_por) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)');
+            if (!$stmt) {
+                throw new RuntimeException('Não foi possível preparar a referência.');
+            }
+            $stmt->bind_param('ssssi', $title, $origin, $description, $url, $userId);
+            if (!$stmt->execute()) {
+                throw new RuntimeException($stmt->error);
+            }
+            $createdIds[] = (int) $stmt->insert_id;
+            $stmt->close();
+        } else {
+            $stmt = $conn->prepare('INSERT INTO sire_referencia (titulo, origem, descricao, url_externa, nome_arquivo, caminho_arquivo, mime, tamanho_bytes, criado_por) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
+            if (!$stmt) {
+                throw new RuntimeException('Não foi possível preparar as referências.');
+            }
+            foreach ($files as $file) {
+                $uploadError = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+                if ($uploadError !== UPLOAD_ERR_OK) {
+                    throw new RuntimeException(sire_upload_error_message($uploadError));
+                }
+                $original = (string) ($file['name'] ?? '');
+                $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                    throw new RuntimeException('Envie apenas JPG, PNG, WEBP ou GIF.');
+                }
+                $safeBase = preg_replace('/[^A-Za-z0-9._-]+/', '_', pathinfo($original, PATHINFO_FILENAME)) ?: 'referencia';
+                $fileName = date('YmdHis') . '_' . bin2hex(random_bytes(5)) . '_' . $safeBase . '.' . $ext;
+                $filePath = 'uploads/sire_referencias/' . $fileName;
+                $absolutePath = $dir . '/' . $fileName;
+                if (!move_uploaded_file((string) ($file['tmp_name'] ?? ''), $absolutePath)) {
+                    throw new RuntimeException('Não foi possível salvar uma das imagens.');
+                }
+                $storedPaths[] = $absolutePath;
+                $mime = mime_content_type($absolutePath) ?: ($file['type'] ?? null);
+                $size = (int) filesize($absolutePath);
+                $itemTitle = $title !== '' ? $title : pathinfo($original, PATHINFO_FILENAME);
+                $stmt->bind_param('ssssssii', $itemTitle, $origin, $description, $fileName, $filePath, $mime, $size, $userId);
+                if (!$stmt->execute()) {
+                    throw new RuntimeException($stmt->error);
+                }
+                $createdIds[] = (int) $stmt->insert_id;
+            }
+            $stmt->close();
+        }
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        foreach ($storedPaths as $storedPath) {
+            @unlink($storedPath);
         }
         $conn->close();
-        sire_json(['success' => false, 'message' => $error], 500);
+        sire_json(['success' => false, 'message' => $e->getMessage()], 422);
     }
-    $id = (int) $stmt->insert_id;
-    $stmt->close();
-    $reference = sire_get_reference($conn, $id);
+
+    $references = [];
+    foreach ($createdIds as $createdId) {
+        $reference = sire_get_reference($conn, $createdId);
+        if ($reference) {
+            $references[] = $reference;
+        }
+    }
     $conn->close();
-    sire_json(['success' => true, 'referencia' => $reference]);
+    sire_json([
+        'success' => true,
+        'referencia' => $references[0] ?? null,
+        'referencias' => $references,
+        'total' => count($references),
+    ]);
 }
 
 $conn->close();

@@ -428,8 +428,9 @@ $sireAssetVersion = max(
                 <label for="addReferenceTitle">Título</label>
                 <input id="addReferenceTitle" name="titulo" maxlength="255" placeholder="Opcional">
                 <div id="addReferenceUploadGroup">
-                    <label for="addReferenceFile">Imagem</label>
-                    <input id="addReferenceFile" type="file" name="imagem" accept="image/jpeg,image/png,image/webp,image/gif">
+                    <label for="addReferenceFile">Imagens</label>
+                    <input id="addReferenceFile" type="file" name="imagem[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+                    <small id="addReferenceFileHint" class="add-reference-file-hint">Selecione uma ou mais imagens para enviar em lote.</small>
                 </div>
                 <div id="addReferenceUrlGroup" hidden>
                     <label for="addReferenceUrl">URL da imagem</label>

@@ -1008,6 +1008,7 @@ function openAddReference() {
 function closeAddReference() {
   $("#addReferenceModal").removeClass("is-open");
   $("#addReferenceForm")[0].reset();
+  $("#addReferenceFileHint").text("Selecione uma ou mais imagens para enviar em lote.");
   $("#addReferenceType").trigger("change");
 }
 
@@ -1016,11 +1017,20 @@ function submitAddReference(form) {
   data.append("action", "addReference");
   apiJson(REFERENCE_API, { method: "POST", body: data })
     .then((response) => {
+      const references = Array.isArray(response.referencias)
+        ? response.referencias
+        : response.referencia
+          ? [response.referencia]
+          : [];
       closeAddReference();
-      notify("Referência adicionada.");
+      notify(
+        references.length > 1
+          ? `${references.length} referências adicionadas.`
+          : "Referência adicionada.",
+      );
       currentPage = 1;
       loadReferences();
-      openLightbox(response.referencia.id);
+      if (references.length === 1) openLightbox(references[0].id);
     })
     .catch((error) => notify(error.message, true));
 }
@@ -1213,6 +1223,14 @@ $(function () {
       $("#addReferenceUrl").prop("required", !isUpload);
     })
     .trigger("change");
+  $("#addReferenceFile").on("change", function () {
+    const total = this.files?.length || 0;
+    $("#addReferenceFileHint").text(
+      total
+        ? `${total} ${total === 1 ? "imagem selecionada" : "imagens selecionadas"}.`
+        : "Selecione uma ou mais imagens para enviar em lote.",
+    );
+  });
   $("#addReferenceForm").on("submit", function (event) {
     event.preventDefault();
     submitAddReference(this);

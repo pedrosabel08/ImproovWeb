@@ -1814,6 +1814,11 @@ body {
 .add-reference-form .modal-footer {
   margin: 10px -22px 0;
 }
+.add-reference-file-hint {
+  margin-top: -2px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
 @media (max-width: 1100px) {
   .pilar-filters {
     grid-template-columns: repeat(3, minmax(155px, 1fr));

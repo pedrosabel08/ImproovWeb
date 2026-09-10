@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 
 header('Content-Type: application/json');
 
@@ -359,6 +360,11 @@ try {
 }
 
 $response['imagens'] = $imagens;
+$unidadesPorImagem = flow_unidade_por_imagens($conn, array_column($imagens, 'imagem_id'));
+foreach ($response['imagens'] as &$imageRow) {
+    $imageRow['unidades_trabalho'] = $unidadesPorImagem[(int) ($imageRow['imagem_id'] ?? 0)] ?? [];
+}
+unset($imageRow);
 
 $queueDataset = dashboard_fetch_planned_queue_dataset($conn, $obraId);
 $queueByImage = [];

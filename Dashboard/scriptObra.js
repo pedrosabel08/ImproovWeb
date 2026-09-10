@@ -5592,6 +5592,16 @@ function infosObra(obraId) {
 
         const cfUnificado =
           !isSecondaryImage && item.caderno_filtro_unificado == 1;
+        const unidadesOperacionais = Array.isArray(item.unidades_trabalho)
+          ? item.unidades_trabalho
+          : [];
+        const unidadePorFuncao = new Map();
+        unidadesOperacionais.forEach((unidade) => {
+          (unidade.membros || []).forEach((membro) => {
+            unidadePorFuncao.set(Number(membro.funcao_id), unidade);
+          });
+        });
+        const unidadesRenderizadas = new Set();
         const unlinkedFuncoes = new Set(
           Array.isArray(item.planned_unlinked_funcoes)
             ? item.planned_unlinked_funcoes.map(Number)
@@ -5604,6 +5614,57 @@ function infosObra(obraId) {
         let ci = 0;
         while (ci < colunas.length) {
           const coluna = colunas[ci];
+
+          const unidadeOperacional = unidadePorFuncao.get(coluna.funcaoId);
+          if (
+            unidadeOperacional &&
+            !unidadesRenderizadas.has(Number(unidadeOperacional.id))
+          ) {
+            const memberIds = new Set(
+              (unidadeOperacional.membros || []).map((m) => Number(m.funcao_id)),
+            );
+            const memberColumns = colunas.filter((c) => memberIds.has(c.funcaoId));
+            const firstMemberIndex = colunas.findIndex((c) => memberIds.has(c.funcaoId));
+            if (ci === firstMemberIndex && memberColumns.length > 1) {
+              const cellUnit = document.createElement("td");
+              cellUnit.colSpan = memberColumns.length;
+              cellUnit.classList.add(
+                "func-cell",
+                "func-modelagem",
+                "func-composicao",
+                "func-pair-unified",
+              );
+              cellUnit.dataset.workUnitId = String(unidadeOperacional.id);
+              const owner =
+                item[`${memberColumns[0].col}_colaborador`] || "Não definido";
+              const repSt = unidadeOperacional.status_operacional || "-";
+              cellUnit.textContent = owner;
+              cellUnit.setAttribute("data-status", repSt);
+              cellUnit.setAttribute("data-funcao", "modelagem");
+              cellUnit.addEventListener("mouseenter", (event) => {
+                tooltip.textContent = `${owner} — ${repSt}`;
+                tooltip.style.display = "block";
+                tooltip.style.left = event.clientX + "px";
+                tooltip.style.top = event.clientY - 30 + "px";
+              });
+              cellUnit.addEventListener("mouseleave", () => {
+                tooltip.style.display = "none";
+              });
+              cellUnit.addEventListener("mousemove", (event) => {
+                tooltip.style.left = event.clientX + "px";
+                tooltip.style.top = event.clientY - 30 + "px";
+              });
+              row.appendChild(cellUnit);
+              if (
+                !(item.imagem_status === "EF" && item.imagem_sub_status === "EF")
+              ) {
+                applyStatusStyle(cellUnit, repSt, owner);
+              }
+              unidadesRenderizadas.add(Number(unidadeOperacional.id));
+              ci += memberColumns.length;
+              continue;
+            }
+          }
 
           // Par unificado caderno+filtro (only)
           if (coluna.col === "caderno" && cfUnificado) {
@@ -8273,27 +8334,31 @@ function applyStyleNone(cell, cell2, nome) {
 }
 
 // Seleciona todos os selects com id que começam com 'status_'
-const statusSelects = document.querySelectorAll("select[id^='status_']");
+const statusSelects = document.querySelectorAll(
+  ".funcao select[id^='status_']",
+);
 
 statusSelects.forEach((select) => {
   select.addEventListener("change", function () {
-    // Pega o próximo elemento irmão que possui a classe 'revisao_imagem'
-    const revisaoImagem =
-      this.closest(".funcao").querySelector(".revisao_imagem");
+    // Os controles são movidos para o modal moderno após a inicialização.
+    const funcao =
+      this.closest(".funcao") || this.closest(".alloc-task-row");
+    if (!funcao) return;
 
-    if (this.value === "Em aprovação") {
+    const revisaoImagem = funcao.querySelector(".revisao_imagem");
+
+    if (revisaoImagem && this.value === "Em aprovação") {
       revisaoImagem.style.display = "block";
-    } else {
+    } else if (revisaoImagem) {
       revisaoImagem.style.display = "none";
     }
 
     // Pega o próximo elemento de prazo
-    const prazoInput =
-      this.closest(".funcao").querySelector('input[type="date"]');
+    const prazoInput = funcao.querySelector('input[type="date"]');
 
-    if (this.value === "Em andamento") {
+    if (prazoInput && this.value === "Em andamento") {
       prazoInput.required = true;
-    } else {
+    } else if (prazoInput) {
       prazoInput.required = false;
     }
   });

@@ -16,6 +16,7 @@ require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 
 // Simple file logger for debugging
 function write_log_insere_funcao($msg)
@@ -64,6 +65,7 @@ function sameDateValue($left, $right)
 }
 
 $data = $_POST;
+$statusJaAplicadoNaUnidade = false;
 
 $imagem_id = isset($data['imagem_id']) ? intToNull($data['imagem_id']) : null;
 
@@ -112,10 +114,10 @@ try {
     $existingStatus = null;
     if ($funcao_id !== null) {
         $stmtCurrentPrazo = $conn->prepare(
-            "SELECT idfuncao_imagem, prazo, status
+            "SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, prazo, status
              FROM funcao_imagem
              WHERE imagem_id = ? AND funcao_id = ?
-             LIMIT 1"
+             LIMIT 1 FOR UPDATE"
         );
         $stmtCurrentPrazo->bind_param('ii', $imagem_id, $funcao_id);
         $stmtCurrentPrazo->execute();
@@ -134,6 +136,8 @@ try {
         && strcasecmp((string) $existingStatus, 'Não iniciado') === 0
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
+        $inicioColaboradorId = $colaborador_id ?: (int) ($currentRow['colaborador_id'] ?? 0);
+        flow_wip_assert_novo_inicio($conn, $inicioColaboradorId, $currentRow);
         $avaliacaoInicio = motor_requisitos_avaliar_funcao_imagem($conn, $existingFuncaoImagemId);
         if (motor_requisitos_tem_bloqueio_producao($avaliacaoInicio)) {
             $conn->rollback();
@@ -162,6 +166,38 @@ try {
                 'avaliacao' => $avaliacaoInicio,
             ], JSON_UNESCAPED_UNICODE);
             exit;
+        }
+    }
+    if (
+        !$existingFuncaoImagemId
+        && $funcao_id !== null
+        && strcasecmp((string) $status, 'Em andamento') === 0
+    ) {
+        flow_wip_assert_novo_inicio($conn, (int) $colaborador_id);
+    }
+
+    // Em marcos de entrega de uma unidade Modelagem + Composição, a
+    // Composição é a tarefa principal. Isso também protege os caminhos
+    // antigos que ainda podem enviar a Modelagem como origem do arraste.
+    if (
+        $existingFuncaoImagemId
+        && in_array((string) $status, ['Em aprovação', 'HOLD'], true)
+    ) {
+        $promocaoUnidade = flow_unidade_promover_composicao_principal(
+            $conn,
+            $existingFuncaoImagemId,
+            (string) $status,
+            $actorColaboradorId,
+            $actorUsuarioId,
+            'kanban'
+        );
+        if (!empty($promocaoUnidade['aplicada'])) {
+            $funcao_id = FLOW_FUNCAO_COMPOSICAO;
+            $existingFuncaoImagemId = (int) $promocaoUnidade['tarefa_principal_id'];
+            $currentRow = $promocaoUnidade['unit']['composicao'];
+            $existingPrazo = $currentRow['prazo'] ?? null;
+            $existingStatus = $currentRow['status'] ?? null;
+            $statusJaAplicadoNaUnidade = true;
         }
     }
 
@@ -193,7 +229,7 @@ try {
         $updates[] = 'funcao_id = VALUES(funcao_id)';
     }
 
-    if ($status !== null) {
+    if ($status !== null && !$statusJaAplicadoNaUnidade) {
         $campos[] = 'status';
         $valores[] = $status;
         $updates[] = 'status = VALUES(status)';
@@ -351,7 +387,7 @@ try {
             'alterado_por_colaborador_id' => $actorColaboradorId,
             'alterado_por_usuario_id' => $actorUsuarioId,
         ];
-        if ($status !== null) {
+        if ($status !== null && !$statusJaAplicadoNaUnidade) {
             $prazoContexto['status_novo'] = $status;
         }
         funcao_imagem_prazo_atualizar(
@@ -417,7 +453,7 @@ try {
     } catch (Exception $e) { /* ignore Redis failures */
     }
     echo json_encode(['success' => 'Dados inseridos/atualizados com sucesso!']);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     // Log exception details for debugging
     write_log_insere_funcao(
         "EXCEPTION: " . $e->getMessage() .
@@ -428,6 +464,12 @@ try {
     );
 
     $conn->rollback();
+    if ($e instanceof FlowWipException) {
+        http_response_code(409);
+        echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $conn->close();
+        exit;
+    }
     if ($e instanceof DomainException) {
         http_response_code(422);
     }

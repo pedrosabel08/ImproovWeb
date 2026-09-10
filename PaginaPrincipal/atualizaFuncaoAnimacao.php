@@ -4,8 +4,10 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 
 function emptyToNull($value)
 {
@@ -21,43 +23,40 @@ if ($idFuncaoAnimacao <= 0) {
     echo json_encode(['error' => 'Parâmetro cardId é obrigatório']);
     exit;
 }
+if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'code' => 'UNAUTHENTICATED', 'message' => 'Sessão inválida.']);
+    exit;
+}
 
-$stmtCurrent = $conn->prepare('SELECT status FROM funcao_animacao WHERE id = ? LIMIT 1');
-$stmtCurrent->bind_param('i', $idFuncaoAnimacao);
-$stmtCurrent->execute();
-$current = $stmtCurrent->get_result()->fetch_assoc();
-$stmtCurrent->close();
-if (
-    $current
-    && strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0
-    && strcasecmp((string) $status, 'Em andamento') === 0
-) {
-    $avaliacao = motor_requisitos_avaliar_funcao_animacao($conn, $idFuncaoAnimacao);
-    if (!$avaliacao['elegivel']) {
-        http_response_code(422);
-        echo json_encode([
-            'error' => 'A tarefa possui requisitos pendentes para iniciar.',
-            'avaliacao' => $avaliacao,
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+try {
+    $conn->begin_transaction();
+    $stmtCurrent = $conn->prepare('SELECT status, colaborador_id FROM funcao_animacao WHERE id = ? LIMIT 1 FOR UPDATE');
+    $stmtCurrent->bind_param('i', $idFuncaoAnimacao);
+    $stmtCurrent->execute();
+    $current = $stmtCurrent->get_result()->fetch_assoc();
+    $stmtCurrent->close();
+    if ($current && strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0 && strcasecmp((string) $status, 'Em andamento') === 0) {
+        flow_wip_assert_novo_inicio($conn, (int) ($current['colaborador_id'] ?? 0));
+        $avaliacao = motor_requisitos_avaliar_funcao_animacao($conn, $idFuncaoAnimacao);
+        if (!$avaliacao['elegivel']) {
+            throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
+        }
+    }
+    $stmt = $conn->prepare("UPDATE funcao_animacao SET status = ?, prazo = ?, observacao = ? WHERE id = ?");
+    $stmt->bind_param('sssi', $status, $prazo, $observacao, $idFuncaoAnimacao);
+    $stmt->execute();
+    $stmt->close();
+    $conn->commit();
+    echo json_encode(['success' => true, 'message' => 'Função de animação atualizada com sucesso']);
+} catch (Throwable $e) {
+    try { $conn->rollback(); } catch (Throwable $ignored) {}
+    if ($e instanceof FlowWipException) {
+        http_response_code(409);
+        echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } else {
+        http_response_code($e instanceof DomainException ? 422 : 500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'avaliacao' => $avaliacao ?? null], JSON_UNESCAPED_UNICODE);
     }
 }
-
-$stmt = $conn->prepare("UPDATE funcao_animacao SET status = ?, prazo = ?, observacao = ? WHERE id = ?");
-if ($stmt === false) {
-    echo json_encode(['error' => 'Erro no prepare: ' . $conn->error]);
-    exit;
-}
-
-$stmt->bind_param('sssi', $status, $prazo, $observacao, $idFuncaoAnimacao);
-if (!$stmt->execute()) {
-    echo json_encode(['error' => 'Erro ao atualizar funcao_animacao: ' . $stmt->error]);
-    $stmt->close();
-    $conn->close();
-    exit;
-}
-
-$stmt->close();
 $conn->close();
-
-echo json_encode(['success' => true, 'message' => 'Função de animação atualizada com sucesso']);

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -529,6 +530,12 @@ try {
         $requirementType = trim((string) ($payload['requirement_type'] ?? ''));
         $requirementSourceUrl = trim((string) ($payload['requirement_source_url'] ?? ''));
         $requirementContext = trim((string) ($payload['requirement_context'] ?? ''));
+        // O Flow Block também deve ser aberto sobre a Composição para que o
+        // HOLD da unidade não deixe a Modelagem como tarefa operacional.
+        $unitForHold = flow_unidade_modelagem_composicao_da_tarefa($conn, $taskId);
+        if ($unitForHold) {
+            $taskId = (int) $unitForHold['composicao']['idfuncao_imagem'];
+        }
         $task = flow_block_task($conn, $taskId);
         if (!$task || !flow_block_can_access_task($task)) flow_block_json_response(['ok' => false, 'message' => 'Você não pode bloquear esta tarefa.'], 403);
         if (!$typeId || $description === '') flow_block_json_response(['ok' => false, 'message' => 'Tipo e observação são obrigatórios.'], 422);
@@ -571,6 +578,15 @@ try {
         }
         $conn->begin_transaction();
         $beforeStatus = $beforeStatusOriginal;
+        $promocaoHold = flow_unidade_promover_composicao_principal(
+            $conn,
+            $taskId,
+            'HOLD',
+            $actorId ?: null,
+            isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+            'flow_block'
+        );
+        $taskId = (int) ($promocaoHold['tarefa_principal_id'] ?? $taskId);
         $stmt = $conn->prepare("INSERT INTO flow_issue (funcao_imagem_id,tipo_id,fila_id,responsavel_colaborador_id,descricao,urgencia,status,bloqueante,criado_por_colaborador_id,sla_atendimento_em,proxima_cobranca_em) VALUES (?,?,?,?,?,?, 'ABERTA',1,?,DATE_ADD(NOW(), INTERVAL 2 HOUR),DATE_ADD(NOW(), INTERVAL 2 HOUR))");
         $stmt->bind_param('iiiissi', $taskId, $typeId, $queueId, $responsibleId, $description, $urgency, $actorId);
         $stmt->execute();
@@ -595,8 +611,8 @@ try {
             'requirement_source_url' => $requirementSourceUrl,
             'requirement_context' => $requirementContext,
         ]);
-        $taskStatusChanged = false;
-        if ($beforeStatus !== 'HOLD') {
+        $taskStatusChanged = !empty($promocaoHold['aplicada']) && $beforeStatus !== 'HOLD';
+        if ($beforeStatus !== 'HOLD' && empty($promocaoHold['aplicada'])) {
             $hold = $conn->prepare("UPDATE funcao_imagem SET status='HOLD', observacao=? WHERE idfuncao_imagem=?");
             $hold->bind_param('si', $description, $taskId);
             $hold->execute();

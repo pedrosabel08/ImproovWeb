@@ -126,6 +126,7 @@ require_once __DIR__ . '/config/secure_env.php';
 require_once __DIR__ . '/FlowReview/approval_media_schema.php';
 require_once __DIR__ . '/FlowReview/ws_notify.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -421,6 +422,14 @@ if ($idimagem > 0 && ($nomenclatura === '' || $numeroImagem === '')) {
 }
 
 $idFuncaoImagem = $dataIdFuncoes;
+// Em uma unidade explícita Modelagem + Composição, a prévia pertence à
+// Composição. A resolução é feita antes de criar qualquer histórico de mídia.
+if (!$isAnimacaoUpload && $idFuncaoImagem > 0) {
+    $unidadePrevia = flow_unidade_modelagem_composicao_da_tarefa($conn, $idFuncaoImagem);
+    if ($unidadePrevia) {
+        $idFuncaoImagem = (int) $unidadePrevia['composicao']['idfuncao_imagem'];
+    }
+}
 $processo = getProcesso($nomeFuncao);
 
 // ---------- Índice de envio ----------
@@ -1004,19 +1013,31 @@ if ($isAnimacaoUpload) {
                             SET status = 'Em aprovação'
                             WHERE id = ?");
 } else {
+    $promocaoUnidade = flow_unidade_promover_composicao_principal(
+        $conn,
+        (int) $idFuncaoImagem,
+        'Em aprovação',
+        isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+        isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+        'upload_previa'
+    );
+    $idFuncaoImagem = (int) ($promocaoUnidade['tarefa_principal_id'] ?? $idFuncaoImagem);
+    $prazoContexto = [
+        'origem' => 'upload_previa',
+        'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+        'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+    ];
+    if (empty($promocaoUnidade['aplicada'])) {
+        $prazoContexto['status_novo'] = 'Em aprovação';
+    }
     $prazoResult = funcao_imagem_prazo_atualizar(
         $conn,
         (int) $idFuncaoImagem,
         date('Y-m-d'),
-        [
-            'origem' => 'upload_previa',
-            'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
-            'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
-            'status_novo' => 'Em aprovação',
-        ]
+        $prazoContexto
     );
     $statusPrazoAtualizado = $prazoResult['alterado'];
-    $sqlUploadStatus = $statusPrazoAtualizado
+    $sqlUploadStatus = ($statusPrazoAtualizado || !empty($promocaoUnidade['aplicada']))
         ? "UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?"
         : "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
     $stmt = $conn->prepare($sqlUploadStatus);

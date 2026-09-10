@@ -1515,7 +1515,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
   exibirSidebarTabulator(tarefasCompletas);
 
   if (tarefas.length > 0) {
-    const tarefasOrdenadas = [...tarefas].sort((a, b) => {
+    let tarefasOrdenadas = [...tarefas].sort((a, b) => {
       const pA =
         a.prioridade_aprovacao == 1 && a.status_novo === "Em aprovação" ? 1 : 0;
       const pB =
@@ -1532,10 +1532,24 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         ] || 0;
       return mB - mA;
     });
+    const emittedReviewUnits = new Set();
+    tarefasOrdenadas = tarefasOrdenadas.flatMap((task) => {
+      const unitId = Number(task.work_unit?.id || 0);
+      if (!unitId) return [task];
+      if (emittedReviewUnits.has(unitId)) return [];
+      emittedReviewUnits.add(unitId);
+      return tarefasOrdenadas
+        .filter((candidate) => Number(candidate.work_unit?.id || 0) === unitId)
+        .sort((a, b) => Number(a.funcao_id || 0) - Number(b.funcao_id || 0));
+    });
 
     tarefasOrdenadas.forEach((tarefa) => {
       const taskItem = document.createElement("div");
       taskItem.classList.add("task-item");
+      if (tarefa.work_unit?.id) {
+        taskItem.classList.add("task-item--work-unit");
+        taskItem.dataset.workUnitId = String(tarefa.work_unit.id);
+      }
       taskItem.addEventListener("click", () => {
         historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa));
       });
@@ -1565,6 +1579,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       const pairBadge = tarefa.par_primario_nome
         ? `<span class="task-card-pair-badge" title="${escapeHtml(`${tarefa.par_primario_nome}: ${tarefa.par_primario_status}`)}">+ ${escapeHtml(tarefa.par_primario_nome)}</span>`
         : "";
+      const workUnitMembers = "";
       const taskTitle =
         tarefa.nome_obra || tarefa.imagem_nome || tarefa.nome_funcao;
       const taskSubtitle = tarefa.imagem_nome || tarefa.nomenclatura || "";
@@ -1585,9 +1600,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         </div>
         <div class="task-card-body">
           <div class="task-card-kicker-row">
-            <span class="task-card-kicker"><i class="fa-regular fa-folder-open"></i>${escapeHtml(tarefa.nome_funcao || "Função")}</span>
+            <span class="task-card-kicker"><i class="fa-regular fa-folder-open"></i>${escapeHtml(tarefa.work_unit?.label || tarefa.nome_funcao || "Função")}</span>
             ${pairBadge}
           </div>
+          ${workUnitMembers}
           <p class="task-card-subtitle" data-obra="${escapeHtml(tarefa.nomenclatura || "")}">${escapeHtml(taskSubtitle)}</p>
           <div class="task-card-footer">
             <div class="task-card-author">

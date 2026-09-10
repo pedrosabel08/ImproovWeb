@@ -12,6 +12,7 @@ require_once __DIR__ . '/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/planejamento_alocacao_helper.php';
 require_once __DIR__ . '/planejamento_capacidade_global_helper.php';
 require_once __DIR__ . '/planejamento_fila_confirmada_helper.php';
+require_once __DIR__ . '/unidade_trabalho_helper.php';
 
 function flow_overview_v1_inicio_semana(?string $data = null): string
 {
@@ -114,6 +115,7 @@ function flow_overview_v1_item_tarefa(array $tarefa, array $original = []): arra
         'project' => (string) ($tarefa['obra'] ?? ''),
         'image_name' => (string) ($tarefa['imagem'] ?? ''),
         'function_name' => (string) ($tarefa['funcao'] ?? ''),
+        'work_unit' => $original['work_unit'] ?? null,
         'substatus' => (string) ($tarefa['substatus'] ?? ''),
         'status' => (string) ($tarefa['status'] ?? ''),
         'thumbnail_url' => flow_overview_v1_thumbnail($original),
@@ -424,11 +426,13 @@ function flow_overview_v1_colaborador(mysqli $conn, array $payloadKanban, int $c
     $resultado = [
         'mode' => 'collaborator',
         'summary' => ['in_progress_count' => count($emAndamento), 'attention_count' => count($atencao)],
+        'wip' => $payloadKanban['wip'] ?? flow_wip_resumo($conn, $colaboradorId),
         'in_progress' => array_map(static fn (array $t): array => flow_overview_v1_item_tarefa($t, $porId[(int) $t['id']] ?? []), $emAndamento),
         'next' => array_map(static fn (array $t): array => flow_overview_v1_item_tarefa($t, $porId[(int) $t['id']] ?? []), $proximas),
         'attention' => $atencao,
         'attention_modules' => $modulosAtencao,
     ];
+    $resultado['summary']['wip_units'] = (int) ($resultado['wip']['active_count'] ?? 0);
     if ($section !== 'critical') {
         $resultado['week_load'] = array_merge(['label' => 'Carga planejada da semana'], flow_overview_v1_carga_colaborador($conn, $colaboradorId, flow_overview_v1_inicio_semana($hoje), flow_overview_v1_fim_semana($hoje)));
         $resultado['completed'] = flow_overview_v1_metricas_conclusao($conn, $colaboradorId);
@@ -458,7 +462,7 @@ function flow_overview_v1_equipes(mysqli $conn, array $alocacao): array
             }
         }
     }
-    $sql = "SELECT fi.colaborador_id, COUNT(CASE WHEN fi.status IN ('Em andamento','Ajuste') THEN 1 END) AS wip, COUNT(CASE WHEN fi.status IN ('Em andamento','Ajuste') AND fi.prazo < CURDATE() THEN 1 END) AS overdue, COUNT(CASE WHEN fi.status = 'HOLD' THEN 1 END) AS holds FROM funcao_imagem fi WHERE fi.colaborador_id IS NOT NULL GROUP BY fi.colaborador_id";
+    $sql = "SELECT fi.colaborador_id, COUNT(CASE WHEN fi.status IN ('Em andamento','Ajuste') AND fi.prazo < CURDATE() THEN 1 END) AS overdue, COUNT(CASE WHEN fi.status = 'HOLD' THEN 1 END) AS holds FROM funcao_imagem fi WHERE fi.colaborador_id IS NOT NULL GROUP BY fi.colaborador_id";
     $result = $conn->query($sql);
     $operacao = [];
     if ($result) {
@@ -466,9 +470,10 @@ function flow_overview_v1_equipes(mysqli $conn, array $alocacao): array
             $operacao[(int) $row['colaborador_id']] = $row;
         }
     }
+    $wipUnits = flow_wip_contagens_colaboradores($conn, array_keys($porPessoa));
     foreach ($porPessoa as $id => &$pessoa) {
         $op = $operacao[$id] ?? [];
-        $pessoa['wip'] = (int) ($op['wip'] ?? 0);
+        $pessoa['wip'] = (int) ($wipUnits[$id] ?? 0);
         $pessoa['overdue_count'] = (int) ($op['overdue'] ?? 0);
         $pessoa['hold_count'] = (int) ($op['holds'] ?? 0);
         $pessoa['state'] = $pessoa['peak_percent'] > 100 ? 'overload' : ($pessoa['overdue_count'] || $pessoa['hold_count'] ? 'attention' : 'normal');

@@ -24,7 +24,9 @@ const BASE = (function () {
 const ENTREGAS_KPI_DEFAULT_DAYS = 30;
 
 function formatarData(data) {
-  const partes = data.split("-");
+  if (!data) return "-";
+  const partes = String(data).split("-");
+  if (partes.length !== 3) return String(data);
   const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
   return dataFormatada;
 }

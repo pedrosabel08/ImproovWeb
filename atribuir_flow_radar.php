@@ -1,8 +1,10 @@
 <?php
 header('Content-Type: application/json');
 // Flow Radar - Atribuir tarefa a colaborador
+require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 
 $conn = conectarBanco();
 
@@ -19,8 +21,14 @@ if (!$colaborador_id || !$funcao_imagem_id) {
 }
 
 try {
+    if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'code' => 'UNAUTHENTICATED', 'message' => 'Sessão inválida.']);
+        exit;
+    }
+    $conn->begin_transaction();
     // Proteção: só atribuir se tarefa estiver sem colaborador
-    $sql_check = "SELECT colaborador_id, status FROM funcao_imagem WHERE idfuncao_imagem = ?";
+    $sql_check = "SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, status FROM funcao_imagem WHERE idfuncao_imagem = ? FOR UPDATE";
     $stmt = $conn->prepare($sql_check);
     $stmt->bind_param('i', $funcao_imagem_id);
     $stmt->execute();
@@ -28,26 +36,17 @@ try {
     $stmt->close();
 
     if ($res && !empty($res['colaborador_id']) && $res['colaborador_id'] != 0) {
-        echo json_encode(['error' => 'Tarefa já está atribuída a outro colaborador']);
-        exit;
+        throw new DomainException('Tarefa já está atribuída a outro colaborador.');
     }
     if ($res && strcasecmp((string) ($res['status'] ?? ''), 'Não iniciado') === 0) {
+        $res['colaborador_id'] = $colaborador_id;
+        flow_wip_assert_novo_inicio($conn, $colaborador_id, $res);
         $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcao_imagem_id);
         if (motor_requisitos_tem_bloqueio_producao($evaluation)) {
-            http_response_code(422);
-            echo json_encode([
-                'error' => 'Conclua todas as pendências de Produção antes de iniciar a tarefa.',
-                'avaliacao' => $evaluation,
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
+            throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
         }
         if (!$evaluation['elegivel'] && !$confirmarPendencias) {
-            http_response_code(422);
-            echo json_encode([
-                'error' => 'A tarefa possui requisitos pendentes para iniciar.',
-                'avaliacao' => $evaluation,
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
+            throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
         }
     }
 
@@ -67,13 +66,26 @@ try {
             }
         }
 
+        $conn->commit();
         echo json_encode(['success' => true, 'message' => 'Tarefa atribuída com sucesso.']);
     } else {
+        $conn->rollback();
         echo json_encode(['error' => 'Falha ao atribuir tarefa', 'db_error' => $stmt->error]);
     }
     $stmt->close();
     $conn->close();
-} catch (Exception $e) {
-    echo json_encode(['error' => 'Erro ao atribuir tarefa', 'message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    try { $conn->rollback(); } catch (Throwable $ignored) {}
+    if ($e instanceof FlowWipException) {
+        http_response_code(409);
+        echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+    http_response_code($e instanceof DomainException ? 422 : 500);
+    echo json_encode([
+        'error' => 'Erro ao atribuir tarefa',
+        'message' => $e->getMessage(),
+        'avaliacao' => $evaluation ?? null,
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }

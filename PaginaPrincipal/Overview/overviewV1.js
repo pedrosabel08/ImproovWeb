@@ -229,7 +229,10 @@
         "Sua fila está livre",
         "Não há uma próxima tarefa liberada neste momento.",
       );
-    return `<ol class="next-list">${tasks.map((task, index) => `<li><span>${String(index + 1).padStart(2, "0")}</span><button type="button" data-action="open_task" data-task-id="${num(task.task_id)}"><strong>${esc(task.project)}</strong><small>${esc(task.image_name)}</small></button><em>${esc(task.function_name)}</em><time class="is-${esc(task.deadline?.state)}">${esc(task.deadline?.label)}</time></li>`).join("")}</ol><button type="button" class="flow-panel__footer" data-action="open_kanban">Ver toda a fila <i class="ri-arrow-right-line"></i></button>`;
+    const wipNotice = overviewData?.wip?.can_start_new === false
+      ? `<div class="overview-wip-notice"><i class="ri-focus-3-line"></i><span><strong>Conclua ou avance o trabalho atual</strong><small>Sua fila permanece visível, mas uma nova tarefa não pode ser iniciada enquanto houver trabalho aguardando sua ação.</small></span></div>`
+      : "";
+    return `${wipNotice}<ol class="next-list${wipNotice ? " is-wip-blocked" : ""}">${tasks.map((task, index) => `<li><span>${String(index + 1).padStart(2, "0")}</span><button type="button" data-action="open_task" data-task-id="${num(task.task_id)}"><strong>${esc(task.project)}</strong><small>${esc(task.image_name)}</small></button><em>${esc(task.function_name)}</em><time class="is-${esc(task.deadline?.state)}">${esc(task.deadline?.label)}</time></li>`).join("")}</ol><button type="button" class="flow-panel__footer" data-action="open_kanban">Ver toda a fila <i class="ri-arrow-right-line"></i></button>`;
   }
 
   function weekLoad(load) {
@@ -279,7 +282,7 @@
     return `<div class="team-list">${team
       .map(
         (person) =>
-          `<article class="is-${esc(person.state)}"><span class="team-avatar">${esc((person.name || "?").trim().charAt(0))}</span><div><strong>${esc(person.name)}</strong><small>${esc(person.function_name || "Sem função planejada")}</small></div><div class="team-load"><strong>${Math.round(num(person.peak_percent))}%</strong><i><b style="width:${clamp(person.peak_percent, 0, 100)}%"></b></i></div><span>${num(person.wip)} tarefas</span><i class="ri-arrow-right-s-line"></i></article>`,
+          `<article class="is-${esc(person.state)}"><span class="team-avatar">${esc((person.name || "?").trim().charAt(0))}</span><div><strong>${esc(person.name)}</strong><small>${esc(person.function_name || "Sem função planejada")}</small></div><div class="team-load"><strong>${Math.round(num(person.peak_percent))}%</strong><i><b style="width:${clamp(person.peak_percent, 0, 100)}%"></b></i></div><span>${num(person.wip)} ${num(person.wip) === 1 ? "unidade" : "unidades"} de WIP</span><i class="ri-arrow-right-s-line"></i></article>`,
       )
       .join("")}</div>`;
   }

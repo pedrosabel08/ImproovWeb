@@ -7,6 +7,20 @@
   font-family: "Inter", sans-serif;
 }
 
+#kanban-section .wip-card-warning {
+  align-items: center;
+  background: #fff7e6;
+  border: 1px solid #f3d18a;
+  border-radius: 7px;
+  color: #805b16;
+  display: flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 5px;
+  margin: 7px 0;
+  padding: 5px 7px;
+}
+
 /* Navegação reutilizável da home: cápsula externa + item ativo interno. */
 main header nav {
   position: relative;
@@ -2011,6 +2025,10 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
 .kanban-card.bloqueado {
   opacity: 1;
   cursor: pointer;
+}
+.kanban-card.tarefa-imagem.wip-blocked {
+  opacity: 0.75 !important;
+  filter: saturate(0.55);
 }
 
 .kanban .header-kanban {
@@ -9679,4 +9697,18 @@ tr.prod-row-recorde td {
   .tp-commitment-grid > div {
     padding: 11px;
   }
+}
+
+/* O nome da unidade precisa permanecer legível mesmo nas colunas compactas. */
+#kanban-section .kanban-card--work-unit .header-kanban .funcao-badge,
+#kanban-section.kanban--compact
+  .kanban-card--work-unit
+  .header-kanban
+  .funcao-badge {
+  height: auto;
+  line-height: 1.15;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }

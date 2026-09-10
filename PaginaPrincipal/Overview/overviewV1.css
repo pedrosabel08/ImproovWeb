@@ -24,6 +24,38 @@
   --ov-font-metric: clamp(26px, calc(16.3px + 0.458vw), 36px);
 }
 
+.overview-wip-notice {
+  align-items: center;
+  background: #fff7e6;
+  border: 1px solid #f0cf87;
+  border-radius: 10px;
+  color: #6e5017;
+  display: flex;
+  gap: 9px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  font-size: var(--ov-font-micro);
+  overflow: hidden !important;
+  height: auto;
+}
+
+.overview-wip-notice > i {
+  font-size: 14px;
+}
+
+.overview-wip-notice span,
+.overview-wip-notice small {
+  display: block;
+}
+
+.overview-wip-notice small {
+  margin-top: 2px;
+}
+
+.next-list.is-wip-blocked {
+  opacity: 0.72;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -253,7 +285,7 @@ body.overview-page a:focus-visible {
   min-width: 0;
 }
 .flow-overview--collaborator {
-  --overview-row-3-min: calc(100dvh - 715px);
+  --overview-row-3-min: calc(100dvh - 540px);
   grid-template-rows: auto clamp(320px, 48dvh, 415px) auto;
 }
 
@@ -2687,10 +2719,9 @@ body.overview-page a:focus-visible {
 
 /* Em andamento: contexto produtivo imediato, sem alterar os demais painéis. */
 .area-progress .task-card--compact {
-  grid-template-columns: clamp(210px, 19vw, 238px) minmax(280px, 1fr) minmax(
-      148px,
-      175px
-    ) 42px;
+  grid-template-columns:
+    clamp(210px, 19vw, 238px) minmax(280px, 1fr) minmax(148px, 175px)
+    42px;
   align-items: center;
   gap: clamp(16px, 1.7vw, 28px);
   min-height: 0;

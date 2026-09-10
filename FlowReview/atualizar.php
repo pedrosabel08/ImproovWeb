@@ -6,6 +6,7 @@ include_once __DIR__ . '/../conexao.php'; // Conexão com o banco de dados
 require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/pdf_approval_helpers.php';
 require_once __DIR__ . '/../helpers/flow_review_eligibility_helper.php';
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -478,12 +479,12 @@ try {
     // ==== END ÂNGULO APROVADO FLAG ====
 
     // ==== UNIFIED PAIR BADGE ====
-    // For secondary functions (Filtro=8, Composição=3), detect if they belong to a unified pair
+    // O par legado Caderno/Filtro permanece visual. Modelagem/Composição só é
+    // associado quando existe unidade operacional explicitamente persistida.
     // by checking if the corresponding primary (Caderno=1, Modelagem=2) is "Finalizado"
     // for the same imagem_id and colaborador_id, and the pair is not explicitly separated.
     $pairMap = [
-      8 => ['primary_id' => 1, 'primary_nome' => 'Caderno', 'par_tipo' => 'caderno_filtro'],
-      3 => ['primary_id' => 2, 'primary_nome' => 'Modelagem', 'par_tipo' => 'modelagem_composicao']
+      8 => ['primary_id' => 1, 'primary_nome' => 'Caderno', 'par_tipo' => 'caderno_filtro']
     ];
 
     $imagemIdsSec = [];
@@ -554,6 +555,46 @@ try {
         unset($t);
     }
     // ==== END UNIFIED PAIR BADGE ====
+
+    $reviewImageTaskIds = [];
+    foreach ($tarefas as $reviewTask) {
+        if (($reviewTask['tipo_tarefa'] ?? 'imagem') === 'imagem') {
+            $reviewImageTaskIds[] = (int) ($reviewTask['idfuncao_imagem'] ?? 0);
+        }
+    }
+    $reviewUnits = flow_unidade_mapa_explicito($conn, $reviewImageTaskIds);
+    $reviewUnitByTask = [];
+    foreach ($reviewUnits as $reviewUnit) {
+        $reviewUnit['label'] = $reviewUnit['tipo'] === FLOW_UNIDADE_TIPO_MODELAGEM_COMPOSICAO
+            ? 'Composição + Modelagem'
+            : $reviewUnit['tipo'];
+        $reviewUnit['status_operacional'] = flow_unidade_status_operacional($reviewUnit['membros']);
+        if ($reviewUnit['tipo'] === FLOW_UNIDADE_TIPO_MODELAGEM_COMPOSICAO) {
+            $reviewUnit['tarefa_principal_id'] = 0;
+            foreach ($reviewUnit['membros'] as $reviewMember) {
+                if ((int) ($reviewMember['funcao_id'] ?? 0) === FLOW_FUNCAO_COMPOSICAO) {
+                    $reviewUnit['tarefa_principal_id'] = (int) ($reviewMember['idfuncao_imagem'] ?? 0);
+                    break;
+                }
+            }
+        }
+        foreach ($reviewUnit['membros'] as $reviewMember) {
+            $reviewUnitByTask[(int) $reviewMember['idfuncao_imagem']] = $reviewUnit;
+        }
+    }
+    foreach ($tarefas as &$reviewTask) {
+        $reviewTaskId = (int) ($reviewTask['idfuncao_imagem'] ?? 0);
+        if (isset($reviewUnitByTask[$reviewTaskId])) {
+            $reviewTask['work_unit'] = $reviewUnitByTask[$reviewTaskId];
+        }
+    }
+    unset($reviewTask);
+    $tarefas = array_values(array_filter($tarefas, static function (array $reviewTask): bool {
+        $unit = $reviewTask['work_unit'] ?? null;
+        return !$unit
+            || ($unit['tipo'] ?? '') !== FLOW_UNIDADE_TIPO_MODELAGEM_COMPOSICAO
+            || (int) ($reviewTask['idfuncao_imagem'] ?? 0) === (int) ($unit['tarefa_principal_id'] ?? 0);
+    }));
 
     // ==== FINALIZADOR PODE APROVAR PÓS-PRODUÇÃO ====
     // Se o colaborador atual tem uma tarefa de Finalização (funcao_id=4)

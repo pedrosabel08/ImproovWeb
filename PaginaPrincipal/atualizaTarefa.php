@@ -2,7 +2,9 @@
 header('Content-Type: application/json');
 
 // conexão com o banco
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php'; // ajuste para seu arquivo de conexão
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 
 $tarefa_id = $_POST['tarefa_id'] ?? null;
 $prazo = $_POST['prazo'] ?? null;
@@ -11,6 +13,11 @@ $status = $_POST['status'] ?? null;
 
 if (!$tarefa_id) {
     echo json_encode(['success' => false, 'message' => 'ID da tarefa não informado']);
+    exit;
+}
+if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'code' => 'UNAUTHENTICATED', 'message' => 'Sessão inválida.']);
     exit;
 }
 
@@ -44,15 +51,25 @@ if (count($sets) === 0) {
     exit;
 }
 
+$conn->begin_transaction();
+try {
+    $currentStmt = $conn->prepare('SELECT status, colaborador_id FROM tarefas WHERE id = ? LIMIT 1 FOR UPDATE');
+    $taskIdInt = (int) $tarefa_id;
+    $currentStmt->bind_param('i', $taskIdInt);
+    $currentStmt->execute();
+    $current = $currentStmt->get_result()->fetch_assoc();
+    $currentStmt->close();
+    if ($current && strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0 && strcasecmp((string) $status, 'Em andamento') === 0) {
+        flow_wip_assert_novo_inicio($conn, (int) ($current['colaborador_id'] ?? 0));
+    }
+
 $sql = 'UPDATE tarefas SET ' . implode(', ', $sets) . ' WHERE id = ?';
 $types .= 'i'; // id é inteiro
 $values[] = $tarefa_id;
 
 $stmt = $conn->prepare($sql);
 if ($stmt === false) {
-    echo json_encode(['success' => false, 'message' => 'Erro na preparação da query: ' . $conn->error]);
-    $conn->close();
-    exit;
+    throw new RuntimeException('Erro na preparação da query: ' . $conn->error);
 }
 
 // Bind dinamicamente
@@ -66,11 +83,22 @@ for ($i = 0; $i < count($values); $i++) {
 call_user_func_array([$stmt, 'bind_param'], $bind_names);
 
 if ($stmt->execute()) {
+    $conn->commit();
     echo json_encode(['success' => true, 'message' => 'Tarefa atualizada com sucesso']);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Erro ao atualizar tarefa: ' . $stmt->error]);
+    throw new RuntimeException('Erro ao atualizar tarefa: ' . $stmt->error);
 }
 
 $stmt->close();
+} catch (Throwable $e) {
+    try { $conn->rollback(); } catch (Throwable $ignored) {}
+    if ($e instanceof FlowWipException) {
+        http_response_code(409);
+        echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    }
+}
 $conn->close();
 ?>

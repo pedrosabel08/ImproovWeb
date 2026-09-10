@@ -10,6 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 include __DIR__ . '/conexao.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -84,10 +85,10 @@ try {
     $conn->begin_transaction();
 
     $selectStmt = $conn->prepare(
-        'SELECT idfuncao_imagem, colaborador_id, status, prazo, observacao
+        'SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, status, prazo, observacao
          FROM funcao_imagem
          WHERE idfuncao_imagem = ?
-         LIMIT 1'
+         LIMIT 1 FOR UPDATE'
     );
 
     $updateHoldStmt = $conn->prepare(
@@ -150,6 +151,7 @@ try {
         }
 
         if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0) {
+            flow_wip_assert_novo_inicio($conn, $ownerColaboradorId, $current);
             $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
             if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
                 throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
@@ -213,6 +215,9 @@ try {
     } catch (Throwable $rollbackError) {
     }
 
+    if ($e instanceof FlowWipException) {
+        json_response(409, flow_wip_exception_payload($e));
+    }
     json_response(422, [
         'success' => false,
         'message' => $e->getMessage(),

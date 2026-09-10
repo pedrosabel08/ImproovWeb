@@ -10,6 +10,7 @@ require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 
 // Simple file logger for debugging (insereFuncao2)
 function write_log_insere_funcao2($msg)
@@ -159,14 +160,19 @@ try {
 
             if (strcasecmp((string) $status, 'Em andamento') === 0) {
                 $stmtCurrent = $conn->prepare(
-                    'SELECT idfuncao_imagem, status FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
+                    'SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, status FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1 FOR UPDATE'
                 );
                 $stmtCurrent->bind_param('ii', $imagem_id, $funcao_id);
                 $stmtCurrent->execute();
                 $current = $stmtCurrent->get_result()->fetch_assoc();
                 $stmtCurrent->close();
                 $funcaoCriadaEmAndamento = !$current;
+                if ($funcaoCriadaEmAndamento) {
+                    flow_wip_assert_novo_inicio($conn, $colaborador_id);
+                }
                 if ($current && strcasecmp((string) $current['status'], 'Não iniciado') === 0) {
+                    $current['colaborador_id'] = $colaborador_id;
+                    flow_wip_assert_novo_inicio($conn, $colaborador_id, $current);
                     $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, (int) $current['idfuncao_imagem']);
                     if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
                         throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
@@ -335,8 +341,14 @@ try {
         'funcao_ids' => $changedFunctionIds,
         'mutation_id' => $mutationId,
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $conn->rollback();
+    if ($e instanceof FlowWipException) {
+        http_response_code(409);
+        echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $conn->close();
+        exit;
+    }
     if ($e instanceof DomainException) {
         http_response_code(422);
     }

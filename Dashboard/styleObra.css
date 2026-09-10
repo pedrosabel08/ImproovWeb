@@ -4772,6 +4772,10 @@ span#obras_finalizadas {
   box-sizing: border-box;
 }
 
+#modalObservacao .obs-modal-textarea {
+  min-height: 180px;
+}
+
 .obs-modal-textarea:focus {
   outline: none;
   border-color: var(--accent, #4f80e1);
@@ -6108,6 +6112,7 @@ table#tabela-logs tbody tr:hover {
 .imagem-principal-badge {
   cursor: pointer;
   font: inherit;
+  font-size: 10px;
 }
 
 .func-cell--dependent {
@@ -11831,5 +11836,19 @@ button.obra-dashboard-card:active {
 
   .obra-alma-frame {
     height: 900px;
+  }
+}
+
+@media (max-width: 760px) {
+  .filtro-tabela .tabela {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filtro-tabela #tabela-obra {
+    width: 980px;
+    min-width: 980px;
   }
 }

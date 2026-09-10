@@ -10,6 +10,7 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 
 function flow_funcoes_colaborador_falhar_autorizacao(int $status, string $mensagem): void
 {
@@ -1279,6 +1280,10 @@ if (!empty($suppressedIndexes)) {
     $funcoesFinal = array_values($funcoesFinal);
 }
 
+// Unidades explícitas são projetadas por uma fonte central e carregam todos
+// os membros. Diferente do par legado, a interface não precisa inferir vínculo.
+$funcoesFinal = flow_unidade_agrupar_funcoes_payload($conn, $funcoesFinal);
+
 // Urgência operacional usa o prazo necessário do plano vigente. A previsão
 // pessoal não muda a posição da tarefa na fila.
 usort($funcoesFinal, static function (array $a, array $b): int {
@@ -1356,6 +1361,12 @@ usort($funcoesFinal, static function (array $a, array $b): int {
 // RESPONSE FINAL ÚNICO
 // ====================
 $pendenciasOperacionais = pendencias_operacionais_fetch($conn, $colaboradorId, $nivelAcesso, $pendenciasFlowReview);
+$wipResumo = flow_wip_resumo($conn, $colaboradorId);
+foreach ($funcoesFinal as &$funcaoFinal) {
+    $funcaoFinal['wip_blocked_for_new_start'] =
+        (string) ($funcaoFinal['status'] ?? '') === 'Não iniciado'
+        && !$wipResumo['can_start_new'];
+}
 
 // foreach ($funcoesFinal as &$funcaoFinal) {
 //     $imagemIdChecklist = isset($funcaoFinal['imagem_id']) ? (int) $funcaoFinal['imagem_id'] : 0;
@@ -1381,7 +1392,8 @@ $response = [
     "mostrar_coluna_pendencias" => $mostrarColunaPendencias,
     "pendencias_flowreview"   => $pendenciasFlowReview,
     "pendencias_operacionais" => $pendenciasOperacionais,
-    "media_tempo_em_andamento" => $mediaTemposPorFuncao
+    "media_tempo_em_andamento" => $mediaTemposPorFuncao,
+    "wip"                     => $wipResumo,
 ];
 
 if (!defined('FLOW_FUNCOES_COLABORADOR_INTERNAL')) {

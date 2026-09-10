@@ -2353,6 +2353,9 @@ function processarDados(data) {
     if (tipo === "imagem" && item.par_tipo === "caderno_filtro") {
       subtitulo = "Caderno + Filtro de Assets";
     }
+    if (tipo === "imagem" && item.work_unit?.label) {
+      subtitulo = item.work_unit.label;
+    }
 
     function getTempoClass(tempo, media) {
       if (!tempo || tempo === 0) return ""; // sem tempo registrado
@@ -2467,6 +2470,15 @@ function processarDados(data) {
           : "";
         card.dataset.parRepresentative = item.par_representative || "primary";
       }
+      if (item.work_unit?.id) {
+        card.dataset.workUnitId = String(item.work_unit.id);
+        card.dataset.workUnitType = item.work_unit.tipo || "";
+        card.dataset.workUnitMembers = JSON.stringify(
+          item.work_unit.membros || [],
+        );
+        card.classList.add("kanban-card--work-unit");
+      }
+      card.dataset.wipBlocked = item.wip_blocked_for_new_start ? "1" : "0";
 
       // Animação attributes
       if (item.is_animacao) {
@@ -2610,6 +2622,9 @@ function processarDados(data) {
     if (tipo === "imagem" && item.par_tipo === "caderno_filtro") {
       subtitulo = "Caderno + Filtro de Assets";
       funcaoIdBadge = 1;
+    } else if (tipo === "imagem" && item.work_unit?.id) {
+      subtitulo = "MODELAGEM + COMPOSIÇÃO";
+      funcaoIdBadge = 2;
     } else if (tipo === "imagem" && item.nome_funcao === "Escolha de Ângulos") {
       subtitulo = "Escolha de Ângulos";
       funcaoIdBadge = 11; // escolha um ID/classe para estilização
@@ -2622,6 +2637,14 @@ function processarDados(data) {
       tipo === "imagem"
         ? `<span class="funcao-badge funcao-id-${funcaoIdBadge}">${subtitulo || ""}</span>`
         : `<span class="priority ${item.prioridade || "medium"}">${item.prioridade || "Medium"}</span>`;
+    // const wipBlockedHTML =
+    //   status === "Não iniciado" && item.wip_blocked_for_new_start
+    //     ? `<div class="wip-card-warning" title="Conclua ou avance o trabalho que já aguarda sua ação."><i class="ri-lock-2-line"></i> WIP ocupado</div>`
+    //     : "";
+
+    if(item.wip_blocked_for_new_start) {
+      card.classList.add("wip-blocked");
+    }
 
     const tempoDisplay = item.tempo_calculado;
 
@@ -6872,6 +6895,38 @@ function mostrarBloqueioProducao(motivos) {
   });
 }
 
+async function avaliarInicioConjuntoModelagem(modelagemId) {
+  const response = await fetch(
+    `PaginaPrincipal/avaliarInicioConjunto.php?modelagem_id=${encodeURIComponent(modelagemId)}`,
+    { headers: { Accept: "application/json" } },
+  );
+  const payload = await response.json();
+  if (!response.ok || payload.success === false) {
+    throw new Error(payload.message || "Não foi possível avaliar o início conjunto.");
+  }
+  return payload;
+}
+
+async function iniciarModelagemComComposicao(modelagemId, prazoModelagem) {
+  const response = await fetch("PaginaPrincipal/iniciarUnidadeTrabalho.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      modelagem_id: Number(modelagemId),
+      prazo_modelagem: prazoModelagem || null,
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.success === false) {
+    const error = new Error(
+      payload.message || "Não foi possível iniciar as tarefas juntas.",
+    );
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
 // Fechar modal
 document.getElementById("fecharModal").addEventListener("click", () => {
   cardModal.classList.remove("active");
@@ -7000,6 +7055,59 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
     const saveUrl = isAnimacaoCard
       ? "PaginaPrincipal/atualizaFuncaoAnimacao.php"
       : "insereFuncao.php";
+
+    const isNewModelagemStart =
+      !isAnimacaoCard &&
+      Number(dados.funcao_id) === 2 &&
+      dados.status === "Em andamento" &&
+      cardSelecionado.dataset.status === "Não iniciado" &&
+      !cardSelecionado.dataset.workUnitId;
+    if (isNewModelagemStart) {
+      try {
+        const joint = await avaliarInicioConjuntoModelagem(dados.cardId);
+        if (joint.joint_start_available) {
+          const choice = await Swal.fire({
+            icon: "question",
+            title: "Iniciar Modelagem e Composição juntas?",
+            text: "Você também é responsável pela Composição desta imagem e ela pode ser executada junto com a Modelagem.",
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: "Iniciar juntas",
+            denyButtonText: "Somente Modelagem",
+            cancelButtonText: "Cancelar",
+            reverseButtons: true,
+          });
+          if (choice.isDismissed) return;
+          if (choice.isConfirmed) {
+            await iniciarModelagemComComposicao(dados.cardId, dados.prazo);
+            delete cardModal.dataset.confirmarPendencias;
+            cardModal.classList.remove("active");
+            cardSelecionado = null;
+            carregarDados(colaborador_id);
+            Toastify({
+              text: "Modelagem e Composição iniciadas como uma unidade de trabalho.",
+              duration: 4000,
+              close: true,
+              gravity: "top",
+              position: "left",
+              backgroundColor: "green",
+            }).showToast();
+            return;
+          }
+        }
+      } catch (error) {
+        Toastify({
+          text: error?.message || "Não foi possível iniciar as tarefas juntas.",
+          duration: 4500,
+          close: true,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "red",
+        }).showToast();
+        carregarDados(colaborador_id);
+        return;
+      }
+    }
 
     $.ajax({
       type: "POST",
@@ -7249,7 +7357,7 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
         console.error("Erro ao salvar dados:", textStatus, errorThrown);
 
         Toastify({
-          text: "Erro ao salvar dados.",
+          text: payload.message || payload.error || "Erro ao salvar dados.",
           duration: 3000,
           close: true,
           gravity: "top",
@@ -7450,6 +7558,16 @@ if (typeof Sortable !== "undefined") {
         }
 
         if (novaColuna?.id === "in-progress" && !holdMovel) {
+          if (card.dataset.wipBlocked === "1") {
+            evt.from.appendChild(card);
+            await Swal.fire({
+              icon: "info",
+              title: "Conclua o trabalho atual",
+              text: "Você já possui trabalho iniciado aguardando sua ação. Conclua ou avance essas tarefas antes de iniciar uma nova.",
+              confirmButtonText: "Entendi",
+            });
+            return;
+          }
           const motivosProducao = String(
             card.dataset.productionBlockReasons || "",
           )

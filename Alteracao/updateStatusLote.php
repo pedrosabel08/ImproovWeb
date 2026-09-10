@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
+require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
 header('Content-Type: application/json');
 
 $payload = json_decode(file_get_contents('php://input'), true);
@@ -31,12 +32,17 @@ try {
 
     foreach ($funcaoIds as $funcaoId) {
         if (mb_strtolower($statusDestino, 'UTF-8') === 'em andamento') {
-            $stmtAtual = $conn->prepare('SELECT status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1');
+            $stmtAtual = $conn->prepare('SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1 FOR UPDATE');
             $stmtAtual->bind_param('i', $funcaoId);
             $stmtAtual->execute();
             $atual = $stmtAtual->get_result()->fetch_assoc();
             $stmtAtual->close();
             if ($atual && strcasecmp((string) $atual['status'], 'Não iniciado') === 0) {
+                $inicioColaboradorId = ($atribuirLogado && $usuarioLogadoId)
+                    ? (int) $usuarioLogadoId
+                    : (int) ($atual['colaborador_id'] ?? 0);
+                $atual['colaborador_id'] = $inicioColaboradorId;
+                flow_wip_assert_novo_inicio($conn, $inicioColaboradorId, $atual);
                 $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcaoId);
                 if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
                     throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
@@ -62,6 +68,12 @@ try {
     echo json_encode(['success' => true]);
 } catch (Throwable $e) {
     $conn->rollback();
+    if ($e instanceof FlowWipException) {
+        http_response_code(409);
+        echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $conn->close();
+        exit;
+    }
     if ($e instanceof DomainException) {
         http_response_code(422);
     }

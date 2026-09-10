@@ -580,6 +580,7 @@ function alma_sire_picker(mysqli $conn, string $query, int $page, int $versionId
         $row['relacionada'] = (bool) $row['relacionada'];
         $row['titulo_exibicao'] = $row['titulo'] ?: $row['flow_nomenclatura'] ?: $row['flow_nome_arquivo'] ?: ('Referência #' . $row['id']);
         $row['thumbnail_url'] = sire_reference_thumbnail_url($row, 360, 75);
+        $row['imagem_url'] = sire_reference_image_url($row);
         $seen[$row['id']] = true;
         if ($row['relacionada']) {
             $related[] = $row;
@@ -604,6 +605,7 @@ function alma_sire_picker(mysqli $conn, string $query, int $page, int $versionId
             $row['relacionada'] = (bool) $row['relacionada'];
             $row['titulo_exibicao'] = $row['titulo'] ?: $row['flow_nomenclatura'] ?: $row['flow_nome_arquivo'] ?: ('Referência #' . $row['id']);
             $row['thumbnail_url'] = sire_reference_thumbnail_url($row, 360, 75);
+            $row['imagem_url'] = sire_reference_image_url($row);
             if ($row['relacionada']) {
                 array_unshift($related, $row);
             } else {
@@ -677,6 +679,7 @@ function alma_project_snapshot(mysqli $conn, int $projectDirectionId): array
             $row['sire_referencia_id'] = (int) $row['sire_referencia_id'];
             $row['titulo_exibicao'] = $row['titulo'] ?: $row['flow_nomenclatura'] ?: $row['flow_nome_arquivo'] ?: ('Referência #' . $row['sire_referencia_id']);
             $row['thumbnail_url'] = sire_reference_thumbnail_url($row, 480, 78);
+            $row['imagem_url'] = sire_reference_image_url($row);
             $project['selecoes'][$index[$row['selecao_id']]]['referencias'][] = $row;
         }
     }
@@ -789,6 +792,7 @@ function alma_sire_search(mysqli $conn, string $query, int $page = 1): array
         $row['id'] = (int) $row['id'];
         $row['titulo_exibicao'] = $row['titulo'] ?: $row['flow_nomenclatura'] ?: $row['flow_nome_arquivo'] ?: ('Referência #' . $row['id']);
         $row['thumbnail_url'] = sire_reference_thumbnail_url($row, 360, 75);
+        $row['imagem_url'] = sire_reference_image_url($row);
         $items[] = $row;
     }
     $stmt->close();

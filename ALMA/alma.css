@@ -725,6 +725,30 @@ body.alma-page {
   box-shadow: 0 30px 100px rgba(0, 0, 0, 0.55);
   position: relative;
 }
+.alma-reference-preview-dialog {
+  padding: 28px;
+}
+.alma-reference-preview-dialog h2 {
+  margin: 8px 0 18px;
+  font-size: 22px;
+}
+.alma-reference-preview-stage {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  padding: 12px;
+  border: 1px solid var(--alma-line);
+  border-radius: 12px;
+  background: #050b11;
+}
+.alma-reference-preview-stage img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 76vh;
+  height: auto;
+  object-fit: contain;
+}
 .alma-dialog-close {
   position: sticky;
   z-index: 4;
@@ -1114,6 +1138,19 @@ body.alma-page {
   height: 82px;
   object-fit: cover;
 }
+.alma-reference-preview {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: zoom-in;
+}
+.alma-reference-preview:focus-visible {
+  outline: 2px solid var(--alma-accent);
+  outline-offset: -2px;
+}
 .alma-selected-reference span {
   display: block;
   padding: 8px;
@@ -1123,7 +1160,7 @@ body.alma-page {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.alma-selected-reference button {
+.alma-selected-reference button.alma-btn-remove {
   position: absolute;
   top: 5px;
   right: 5px;

@@ -281,7 +281,18 @@
     const refs = refsFor(scope, code);
     if (!refs.length)
       return '<p class="alma-no-references">Nenhuma referência selecionada.</p>';
-    return `<div class="alma-selected-references">${refs.map((reference) => `<article class="alma-selected-reference"><img src="${attr(reference.thumbnail_url)}" alt="" loading="lazy"><span>${esc(reference.titulo_exibicao || `Referência #${reference.sire_referencia_id}`)}</span>${canEdit() ? `<button type="button" data-remove-reference="${reference.sire_referencia_id}" data-scope="${scope}" data-code="${code}" aria-label="Remover referência">×</button>` : ""}</article>`).join("")}</div>`;
+    return `<div class="alma-selected-references">${refs.map((reference) => {
+      const title = reference.titulo_exibicao || `Referência #${reference.sire_referencia_id}`;
+      const imageUrl = reference.imagem_url || reference.thumbnail_url || "";
+      return `<article class="alma-selected-reference"><button type="button" class="alma-reference-preview" data-preview-reference="${attr(imageUrl)}" data-preview-title="${attr(title)}" aria-label="Ampliar ${attr(title)}"><img src="${attr(reference.thumbnail_url)}" alt="${attr(title)}" loading="lazy"></button><span>${esc(title)}</span>${canEdit() ? `<button type="button" class="alma-btn-remove" data-remove-reference="${reference.sire_referencia_id}" data-scope="${scope}" data-code="${code}" aria-label="Remover referência">×</button>` : ""}</article>`;
+    }).join("")}</div>`;
+  }
+
+  function openReferencePreview(imageUrl, title) {
+    if (!imageUrl) return;
+    openDialog(
+      `<section class="alma-reference-preview-dialog"><span class="alma-kicker">Referência visual</span><h2 id="almaDialogTitle">${esc(title || "Imagem de referência")}</h2><div class="alma-reference-preview-stage"><img src="${attr(imageUrl)}" alt="${attr(title || "Imagem de referência")}"></div></section>`,
+    );
   }
 
   function dimensionBlock(scope, code, options = {}) {
@@ -689,7 +700,8 @@
 
   function pickerCard(reference) {
     const checked = state.picker.selected.has(Number(reference.id));
-    return `<button type="button" class="alma-sire-card ${checked ? "selected" : ""}" data-picker-reference="${reference.id}"><span class="alma-sire-check">${checked ? "✓" : ""}</span><img src="${attr(reference.thumbnail_url)}" alt="" loading="lazy"><strong>${esc(reference.titulo_exibicao)}</strong><small>${esc(reference.obra_nomenclatura || reference.ambiente || "SIRE")}</small></button>`;
+    const imageUrl = reference.imagem_url || reference.thumbnail_url || "";
+    return `<button type="button" class="alma-sire-card ${checked ? "selected" : ""}" data-picker-reference="${reference.id}"><span class="alma-sire-check">${checked ? "✓" : ""}</span><img src="${attr(reference.thumbnail_url)}" data-preview-reference="${attr(imageUrl)}" data-preview-title="${attr(reference.titulo_exibicao)}" alt="${attr(reference.titulo_exibicao)}" loading="lazy"><strong>${esc(reference.titulo_exibicao)}</strong><small>${esc(reference.obra_nomenclatura || reference.ambiente || "SIRE")}</small></button>`;
   }
 
   async function loadPickerPage() {
@@ -1045,6 +1057,15 @@
         render();
       }),
     );
+    document.querySelectorAll("[data-preview-reference]").forEach((element) =>
+      element.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openReferencePreview(
+          element.dataset.previewReference,
+          element.dataset.previewTitle,
+        );
+      }),
+    );
     document
       .querySelectorAll(".alma-image-option[data-image-id]")
       .forEach((button) =>
@@ -1077,6 +1098,16 @@
     ?.addEventListener("click", closeDialog);
   document.getElementById("almaDialog")?.addEventListener("click", (event) => {
     if (event.target.id === "almaDialog") closeDialog();
+    const preview = event.target.closest("[data-preview-reference]");
+    if (preview) {
+      event.preventDefault();
+      event.stopPropagation();
+      openReferencePreview(
+        preview.dataset.previewReference,
+        preview.dataset.previewTitle,
+      );
+      return;
+    }
     const card = event.target.closest("[data-picker-reference]");
     if (card && state.picker) {
       const id = Number(card.dataset.pickerReference);

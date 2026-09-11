@@ -33,18 +33,6 @@ if ($status === null) {
 
 $mes_ref = PagamentoService::competencia($mes, $ano);
 
-if ($status === 'pago') {
-    require_once __DIR__ . '/financeiro_v2.php';
-    try {
-        $items = financeiro_pagar($conn, $input, $usuario_id);
-        pagamento_json(['success' => true, 'itens' => $items]);
-    } catch (InvalidArgumentException | DomainException $e) {
-        pagamento_json(['success' => false, 'error' => $e->getMessage()], 422);
-    } catch (Throwable $e) {
-        error_log('Pagamento lote: ' . $e->getMessage());
-        pagamento_json(['success' => false, 'error' => 'Falha ao registrar lote. Nenhum item alterado.'], 500);
-    }
-}
 $conn->begin_transaction();
 try {
     $paymentService = new PagamentoService($conn, $usuario_id);
@@ -60,8 +48,7 @@ try {
         $upd->close();
 
         $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'lista_enviada';
-        $d = 'Lista enviada para validação / status: ' . $status;
+        $t = 'lista_enviada'; $d = 'Lista enviada para validação / status: ' . $status;
         $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
         $ev->execute();
         $ev->close();
@@ -73,8 +60,7 @@ try {
         $upd->close();
 
         $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'lista_respondida';
-        $d = 'Lista respondida e validada';
+        $t = 'lista_respondida'; $d = 'Lista respondida e validada';
         $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
         $ev->execute();
         $ev->close();
@@ -86,8 +72,121 @@ try {
         $upd->close();
 
         $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'adendo_gerado';
-        $d = 'Adendo gerado para este pagamento';
+        $t = 'adendo_gerado'; $d = 'Adendo gerado para este pagamento';
+        $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
+        $ev->execute();
+        $ev->close();
+    } elseif ($status === 'pago') {
+        // Collect all unpaid items for the month
+    $idsFI = [];$idsAC = [];$idsAN = [];$valor_total = 0.0;
+    // funcao_imagem by prazo (also fetch imagem status_id to detect Finalização Parcial)
+    // include funcao_id and imagem_id and detect if a 'Pré-Finalização' exists for the same imagem
+    $q = $conn->prepare("SELECT fi.idfuncao_imagem, IFNULL(fi.valor,0) AS valor, i.status_id, fi.funcao_id, fi.imagem_id, (SELECT COUNT(1) FROM funcao_imagem fi_sub JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao WHERE fi_sub.imagem_id = fi.imagem_id AND f_sub.nome_funcao = 'Pré-Finalização') AS has_prefinalizacao FROM funcao_imagem fi LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra WHERE fi.colaborador_id = ? AND fi.pagamento = 0 AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?");
+    $q->bind_param('iii', $colaborador_id, $ano, $mes);
+    $q->execute(); $rs = $q->get_result();
+    while ($row = $rs->fetch_assoc()) { $idsFI[] = ['id' => (int)$row['idfuncao_imagem'], 'valor' => (float)$row['valor'], 'status_id' => isset($row['status_id']) ? intval($row['status_id']) : null, 'funcao_id' => isset($row['funcao_id']) ? intval($row['funcao_id']) : null, 'imagem_id' => isset($row['imagem_id']) ? intval($row['imagem_id']) : null, 'has_prefinalizacao' => isset($row['has_prefinalizacao']) ? intval($row['has_prefinalizacao']) : 0 ]; $valor_total += (float)$row['valor']; }
+    $q->close();
+    // acompanhamento by data
+    $q = $conn->prepare("SELECT idacompanhamento, IFNULL(valor,0) AS valor FROM acompanhamento WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data) = ? AND MONTH(data) = ?");
+    $q->bind_param('iii', $colaborador_id, $ano, $mes);
+    $q->execute(); $rs = $q->get_result();
+    while ($row = $rs->fetch_assoc()) { $idsAC[] = ['id' => (int)$row['idacompanhamento'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
+    $q->close();
+    // funcao_animacao by animacao.data_anima
+    $q = $conn->prepare("SELECT fa.id, IFNULL(fa.valor,0) AS valor FROM funcao_animacao fa JOIN animacao an ON fa.animacao_id = an.idanimacao WHERE fa.colaborador_id = ? AND fa.pagamento = 0 AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?");
+    $q->bind_param('iii', $colaborador_id, $ano, $mes);
+    $q->execute(); $rs = $q->get_result();
+    while ($row = $rs->fetch_assoc()) { $idsAN[] = ['id' => (int)$row['id'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
+    $q->close();
+
+        // Update origin tables: mark as paid
+        if (!empty($idsFI)) {
+            $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsFI));
+            $conn->query("UPDATE funcao_imagem SET pagamento = 1, data_pagamento = NOW() WHERE idfuncao_imagem IN ($ids)");
+        }
+        if (!empty($idsAC)) {
+            $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsAC));
+            $conn->query("UPDATE acompanhamento SET pagamento = 1, data_pagamento = NOW() WHERE idacompanhamento IN ($ids)");
+        }
+        if (!empty($idsAN)) {
+            $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsAN));
+            $conn->query("UPDATE funcao_animacao SET pagamento = 1, data_pagamento = NOW() WHERE id IN ($ids)");
+        }
+
+        // Insert items rows with valor and observacao (if applicable)
+        // Some environments might not yet have the 'observacao' column in pagamento_itens.
+        // Detect column existence and prepare the appropriate INSERT to avoid failing the whole transaction.
+        $hasObservacao = false;
+        $colChk = $conn->query("SHOW COLUMNS FROM pagamento_itens LIKE 'observacao'");
+        if ($colChk && $colChk->num_rows > 0) $hasObservacao = true;
+
+        if ($hasObservacao) {
+            $insItem = $conn->prepare("INSERT INTO pagamento_itens (pagamento_id, origem, origem_id, valor, observacao) VALUES (?,?,?,?,?)");
+            if (!$insItem) throw new Exception('Prepare failed (pagamento_itens with observacao): ' . $conn->error);
+            foreach ($idsFI as $item) {
+                $o = 'funcao_imagem';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $isFinalizacaoFunc = (isset($item['funcao_id']) && intval($item['funcao_id']) === 4);
+                $hasPrefinal = (isset($item['has_prefinalizacao']) && intval($item['has_prefinalizacao']) > 0);
+                $obs = ($isFinalizacaoFunc && ( (isset($item['status_id']) && intval($item['status_id']) === 1) || $hasPrefinal )) ? 'Finalização Parcial' : null;
+                $insItem->bind_param('isids', $pagamento_id, $o, $id, $v, $obs);
+                $insItem->execute();
+            }
+            foreach ($idsAC as $item) {
+                $o = 'acompanhamento';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $obs = null;
+                $insItem->bind_param('isids', $pagamento_id, $o, $id, $v, $obs);
+                $insItem->execute();
+            }
+            foreach ($idsAN as $item) {
+                $o = 'funcao_animacao';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $obs = null;
+                $insItem->bind_param('isids', $pagamento_id, $o, $id, $v, $obs);
+                $insItem->execute();
+            }
+            $insItem->close();
+        } else {
+            // Fallback: table has no 'observacao' column; insert without it
+            $insItem = $conn->prepare("INSERT INTO pagamento_itens (pagamento_id, origem, origem_id, valor) VALUES (?,?,?,?)");
+            if (!$insItem) throw new Exception('Prepare failed (pagamento_itens without observacao): ' . $conn->error);
+            foreach ($idsFI as $item) {
+                $o = 'funcao_imagem';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);
+                $insItem->execute();
+            }
+            foreach ($idsAC as $item) {
+                $o = 'acompanhamento';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);
+                $insItem->execute();
+            }
+            foreach ($idsAN as $item) {
+                $o = 'funcao_animacao';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);
+                $insItem->execute();
+            }
+            $insItem->close();
+        }
+
+    // Update aggregate pagamento (use new lowercase status and set data_pagamento)
+    $upd = $conn->prepare("UPDATE pagamentos SET status='pago', valor_total = ?, data_pagamento = NOW(), pago_em = NOW() WHERE idpagamento = ?");
+    $upd->bind_param('di', $valor_total, $pagamento_id);
+        $upd->execute();
+        $upd->close();
+
+        // Log evento
+        $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
+        $t = 'pago'; $d = 'Pagamento marcado como PAGO e itens confirmados (' . (count($idsFI)+count($idsAC)+count($idsAN)) . ' itens)';
         $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
         $ev->execute();
         $ev->close();

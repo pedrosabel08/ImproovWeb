@@ -84,6 +84,8 @@
   background: transparent;
 }
 .custos-page {
+  display: grid;
+  grid-template-columns: 60px 1fr;
   margin: 0;
   background: var(--cost-bg);
   color: var(--cost-text);
@@ -99,9 +101,9 @@
   display: none !important;
 }
 .cost-main {
-  margin-left: 64px;
   padding: 26px 34px 24px;
   max-width: 1900px;
+  grid-column: 2;
 }
 .cost-main h1,
 .cost-main h2,

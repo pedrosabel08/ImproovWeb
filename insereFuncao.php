@@ -17,6 +17,7 @@ require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/helpers/inicio_operacional_helper.php';
 
 // Simple file logger for debugging
 function write_log_insere_funcao($msg)
@@ -129,6 +130,56 @@ try {
             $existingPrazo          = $currentRow['prazo']   ?? null;
             $existingStatus         = $currentRow['status']  ?? null;
         }
+    }
+
+    // Depois da migration, qualquer primeiro inicio que ainda alcance o
+    // endpoint legado e redirecionado ao mesmo servico atomico do Kanban.
+    // Assim nao existe caminho "status iniciado sem snapshot".
+    if (
+        flow_janela_schema_disponivel($conn)
+        && $existingFuncaoImagemId
+        && strcasecmp((string) $existingStatus, 'Não iniciado') === 0
+        && strcasecmp((string) $status, 'Em andamento') === 0
+    ) {
+        if ($colaborador_id !== null && $colaborador_id !== (int) ($currentRow['colaborador_id'] ?? 0)) {
+            throw new DomainException('Atribua o novo responsavel antes de iniciar a tarefa.');
+        }
+        $resultadoInicio = flow_inicio_operacional_iniciar($conn, [
+            'funcao_imagem_id' => $existingFuncaoImagemId,
+            'previsao' => $prazo,
+            'observacao' => $observacao,
+            'motivo_codigo' => $data['motivo_codigo'] ?? null,
+            'motivo_texto' => $data['motivo_texto'] ?? ($data['justificativa'] ?? null),
+            'confirmar_pendencias' => $confirmarPendencias,
+            'iniciar_modelagem_composicao' => !empty($data['iniciar_modelagem_composicao']),
+            'ator_colaborador_id' => $actorColaboradorId,
+            'ator_usuario_id' => $actorUsuarioId,
+            'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+        ]);
+        $conn->commit();
+        echo json_encode($resultadoInicio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $conn->close();
+        exit;
+    }
+
+    if (
+        flow_janela_schema_disponivel($conn)
+        && $existingFuncaoImagemId
+        && $colaborador_id !== null
+        && $colaborador_id !== (int) ($currentRow['colaborador_id'] ?? 0)
+        && flow_wip_status_ativo((string) $existingStatus)
+    ) {
+        flow_inicio_operacional_transferir($conn, [
+            'funcao_imagem_id' => $existingFuncaoImagemId,
+            'novo_responsavel_id' => $colaborador_id,
+            'nova_previsao' => $prazo,
+            'motivo_transferencia' => $data['motivo_transferencia'] ?? ($observacao ?: 'Transferencia solicitada pelo fluxo legado.'),
+            'motivo_operacional_codigo' => $data['motivo_codigo'] ?? null,
+            'motivo_operacional_texto' => $data['motivo_texto'] ?? null,
+            'ator_colaborador_id' => $actorColaboradorId,
+            'ator_usuario_id' => $actorUsuarioId,
+        ]);
+        $currentRow['colaborador_id'] = $colaborador_id;
     }
 
     if (
@@ -441,6 +492,17 @@ try {
         }
     }
     // ──────────────────────────────────────────────────────────────────────
+
+    if ($existingFuncaoImagemId && $status !== null && flow_janela_schema_disponivel($conn)) {
+        if ((string) $status === 'HOLD' && (string) $existingStatus !== 'HOLD') {
+            flow_janela_pausar($conn, $existingFuncaoImagemId, $actorColaboradorId, $actorUsuarioId);
+        } elseif ((string) $existingStatus === 'HOLD' && in_array((string) $status, ['Em andamento', 'Ajuste'], true)) {
+            flow_janela_retomar($conn, $existingFuncaoImagemId, $actorColaboradorId, $actorUsuarioId);
+        }
+        if (flow_planejamento_status_finalizado((string) $status)) {
+            flow_janela_encerrar_se_unidade_finalizada($conn, $existingFuncaoImagemId, $actorColaboradorId, $actorUsuarioId);
+        }
+    }
 
     $conn->commit();
     try {

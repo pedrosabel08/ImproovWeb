@@ -18,6 +18,7 @@ require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/pdf_approval_helpers.php';
 require_once __DIR__ . '/ws_notify.php';
@@ -1661,6 +1662,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'producer' => 'FlowReview/revisarTarefa.php',
         ]);
         $flowConnectTaskEventId = flow_connect_publish_if_enabled($conn, 'task', $flowConnectTaskEvent, $resultadoFinal['logs']);
+
+        if (flow_planejamento_status_finalizado((string) $status) && flow_janela_schema_disponivel($conn)) {
+            flow_janela_encerrar_se_unidade_finalizada(
+                $conn,
+                (int) $idfuncao_imagem,
+                (int) ($_SESSION['idcolaborador'] ?? 0) ?: null,
+                (int) ($_SESSION['idusuario'] ?? 0) ?: null
+            );
+        }
 
         // Commit: BD confirmado (SFTP enviado, conflito pendente ou SFTP não necessário)
         $conn->commit();

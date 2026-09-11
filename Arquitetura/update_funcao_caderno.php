@@ -10,6 +10,7 @@ include('conexao.php');
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/../helpers/inicio_operacional_helper.php';
 
 function same_caderno_date($left, $right)
 {
@@ -47,6 +48,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $prazoAnterior = $rowAtual['prazo'] ?? null;
         $statusAnterior = $rowAtual['status'] ?? null;
+        if (
+            flow_janela_schema_disponivel($conn)
+            && strcasecmp((string) $statusAnterior, 'Não iniciado') === 0
+            && strcasecmp((string) $status, 'Em andamento') === 0
+        ) {
+            $resultadoInicio = flow_inicio_operacional_iniciar($conn, [
+                'funcao_imagem_id' => $idfuncao_imagem,
+                'previsao' => $prazo,
+                'motivo_codigo' => $_POST['motivo_codigo'] ?? null,
+                'motivo_texto' => $_POST['motivo_texto'] ?? null,
+                'confirmar_pendencias' => $confirmarPendencias,
+                'ator_colaborador_id' => $actorColaboradorId,
+                'ator_usuario_id' => $actorUsuarioId,
+                'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+            ]);
+            $conn->commit();
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($resultadoInicio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $conn->close();
+            exit;
+        }
         if (strcasecmp((string) $statusAnterior, 'Não iniciado') === 0 && strcasecmp((string) $status, 'Em andamento') === 0) {
             flow_wip_assert_novo_inicio($conn, (int) ($rowAtual['colaborador_id'] ?? 0), $rowAtual);
             $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idfuncao_imagem);

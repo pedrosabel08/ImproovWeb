@@ -6679,59 +6679,158 @@ const modalPrevisaoConclusao = document.getElementById(
 );
 const modalPrazoNecessario = document.getElementById("modalPrazoNecessario");
 const modalPrevisaoFeedback = document.getElementById("modalPrevisaoFeedback");
+const modalJanelaOperacional = document.getElementById(
+  "modalJanelaOperacional",
+);
+const modalLimiteOperacional = document.getElementById(
+  "modalLimiteOperacional",
+);
+const modalLimiteOperacionalAjuda = document.getElementById(
+  "modalLimiteOperacionalAjuda",
+);
+const modalMotivoWrap = document.getElementById("modalMotivoWrap");
+const modalMotivo = document.getElementById("modalMotivo");
 const modalJustificativaWrap = document.getElementById(
   "modalJustificativaWrap",
 );
 const modalJustificativa = document.getElementById("modalJustificativa");
+const modalJustificativaObrigatoria = document.getElementById(
+  "modalJustificativaObrigatoria",
+);
+const modalJustificativaAjuda = document.getElementById(
+  "modalJustificativaAjuda",
+);
 let cardSelecionado = null;
+let janelaPreviewRequest = 0;
 
 function ocultarPlanejamentoModal() {
   if (!modalPlanejamento) return;
+  janelaPreviewRequest++;
   modalPlanejamento.hidden = true;
   modalPlanejamento.dataset.taskId = "";
+  modalPlanejamento.dataset.cycleId = "";
+  modalPlanejamento.dataset.operationalState = "";
   if (modalPrevisaoConclusao) {
     modalPrevisaoConclusao.value = "";
     modalPrevisaoConclusao.disabled = false;
   }
   if (modalPrevisaoFeedback) modalPrevisaoFeedback.textContent = "";
+  if (modalJanelaOperacional) modalJanelaOperacional.hidden = true;
+  if (modalMotivoWrap) modalMotivoWrap.hidden = true;
+  if (modalMotivo) modalMotivo.value = "";
   if (modalJustificativaWrap) modalJustificativaWrap.hidden = true;
 }
 
 function renderizarFeedbackPrevisao(resultado) {
   if (!modalPrevisaoFeedback || !modalJustificativaWrap) return;
-  const diferenca = Number(resultado?.diferenca_dias_uteis);
-  const temPrazo = !!resultado?.prazo_necessario;
-  if (!temPrazo) {
-    modalPrevisaoFeedback.textContent =
-      "O planejamento ainda não definiu um prazo necessário para esta tarefa.";
-    modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
-    modalJustificativaWrap.hidden = true;
+  const avaliacao = resultado?.evaluation || resultado || {};
+  const aplicaRegra = avaliacao.aplica_regra === true;
+  const estado = avaliacao.estado || "NORMAL";
+  modalPlanejamento.dataset.cycleId = avaliacao.ciclo_id || "";
+  modalPlanejamento.dataset.operationalState = estado;
+  if (modalPrazoNecessario) {
+    modalPrazoNecessario.textContent = formatarDataPlanejamento(
+      avaliacao.prazo_necessario || "",
+    );
+  }
+  if (modalJanelaOperacional) modalJanelaOperacional.hidden = !aplicaRegra;
+  if (aplicaRegra && modalLimiteOperacional) {
+    modalLimiteOperacional.textContent = `Até ${formatarDataPlanejamento(avaliacao.limite_data || "")}`;
+    modalLimiteOperacionalAjuda.textContent = `${avaliacao.limite_dias_uteis} ${Number(avaliacao.limite_dias_uteis) === 1 ? "dia útil" : "dias úteis"} após o início`;
+  }
+  const exigeJustificativa = avaliacao.exige_justificativa === true;
+  if (modalMotivoWrap) modalMotivoWrap.hidden = !exigeJustificativa;
+  modalJustificativaWrap.hidden = !exigeJustificativa;
+
+  if (!aplicaRegra) {
+    if (estado === "CONFLITO_PLANEJAMENTO") {
+      modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa o prazo necessário do planejamento.<br><small>Prazo necessário: ${formatarDataPlanejamento(avaliacao.prazo_necessario || "")} · Sua previsão: ${formatarDataPlanejamento(avaliacao.previsao || "")}</small>`;
+      modalPrevisaoFeedback.className =
+        "modal-planning-feedback is-conflict";
+    } else if (avaliacao.prazo_necessario) {
+      modalPrevisaoFeedback.innerHTML =
+        '<i class="ri-checkbox-circle-line"></i> Dentro do prazo necessário';
+      modalPrevisaoFeedback.className = "modal-planning-feedback is-ok";
+    } else {
+      modalPrevisaoFeedback.textContent =
+        "O planejamento ainda não definiu um prazo necessário para esta tarefa.";
+      modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
+    }
     return;
   }
-  if (!Number.isFinite(diferenca) || diferenca <= 0) {
-    modalPrevisaoFeedback.innerHTML =
-      '<i class="ri-checkbox-circle-line"></i> Dentro do prazo necessário';
+  if (estado === "NORMAL") {
+    modalPrevisaoFeedback.innerHTML = avaliacao.prazo_necessario
+      ? '<i class="ri-checkbox-circle-line"></i> Dentro da janela operacional e do prazo necessário'
+      : '<i class="ri-checkbox-circle-line"></i> Dentro da janela operacional';
     modalPrevisaoFeedback.className = "modal-planning-feedback is-ok";
-    modalJustificativaWrap.hidden = true;
     return;
   }
-  modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa o prazo necessário em ${diferenca} ${diferenca === 1 ? "dia útil" : "dias úteis"}.`;
+  if (estado === "CONFLITO_PLANEJAMENTO") {
+    modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa o prazo necessário do planejamento.<br><small>Prazo necessário: ${formatarDataPlanejamento(avaliacao.prazo_necessario || "")} · Sua previsão: ${formatarDataPlanejamento(avaliacao.previsao || "")}</small>`;
+    modalPrevisaoFeedback.className =
+      "modal-planning-feedback is-conflict";
+    return;
+  }
+  modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa a janela operacional desta tarefa.<br><small>Janela: até ${formatarDataPlanejamento(avaliacao.limite_data || "")} · Sua previsão: ${formatarDataPlanejamento(avaliacao.previsao || "")}</small>`;
   modalPrevisaoFeedback.className = "modal-planning-feedback is-risk";
-  modalJustificativaWrap.hidden = false;
+}
+
+function preencherMotivosJanela(motivos) {
+  if (!modalMotivo || !Array.isArray(motivos)) return;
+  const selecionado = modalMotivo.value;
+  modalMotivo.innerHTML = '<option value="">Selecione um motivo</option>';
+  motivos.forEach((motivo) => {
+    const option = document.createElement("option");
+    option.value = motivo.codigo;
+    option.textContent = motivo.label;
+    option.dataset.requiresText = motivo.exige_texto ? "1" : "0";
+    modalMotivo.appendChild(option);
+  });
+  if (selecionado) modalMotivo.value = selecionado;
+  atualizarObrigatoriedadeJustificativa();
+}
+
+function atualizarObrigatoriedadeJustificativa() {
+  const option = modalMotivo?.selectedOptions?.[0];
+  const obrigatoria = option?.dataset.requiresText === "1";
+  if (modalJustificativaObrigatoria)
+    modalJustificativaObrigatoria.hidden = !obrigatoria;
+  if (modalJustificativaAjuda) {
+    modalJustificativaAjuda.textContent = obrigatoria
+      ? "Descreva o motivo para prosseguir."
+      : "Acrescente um contexto, se necessário.";
+  }
 }
 
 async function atualizarFeedbackPrevisao() {
   const taskId = modalPlanejamento?.dataset.taskId;
   const previsao = modalPrevisaoConclusao?.value;
   if (!taskId || !previsao) return;
+  const requestId = ++janelaPreviewRequest;
+  modalPlanejamento.setAttribute("aria-busy", "true");
+  modalPrevisaoFeedback.textContent = "Recalculando janela e prazo…";
+  modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
   try {
     const response = await fetch(
-      `PaginaPrincipal/validar_previsao_conclusao.php?funcao_imagem_id=${encodeURIComponent(taskId)}&previsao_conclusao=${encodeURIComponent(previsao)}`,
+      `PaginaPrincipal/avaliar_janela_operacional.php?funcao_imagem_id=${encodeURIComponent(taskId)}&previsao=${encodeURIComponent(previsao)}`,
     );
     const resultado = await response.json();
-    if (resultado?.success) renderizarFeedbackPrevisao(resultado);
+    if (requestId !== janelaPreviewRequest) return;
+    if (resultado?.success) {
+      preencherMotivosJanela(resultado.reasons || []);
+      renderizarFeedbackPrevisao(resultado);
+    } else {
+      throw new Error(resultado?.message || "Falha ao calcular a prévia.");
+    }
   } catch (_) {
-    // A validação definitiva ocorre no salvamento; não interrompe a edição local.
+    if (requestId !== janelaPreviewRequest) return;
+    modalPrevisaoFeedback.textContent =
+      "Não foi possível calcular a prévia. O servidor validará novamente ao salvar.";
+    modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
+  } finally {
+    if (requestId === janelaPreviewRequest) {
+      modalPlanejamento.removeAttribute("aria-busy");
+    }
   }
 }
 
@@ -6744,26 +6843,47 @@ function configurarModalPlanejamento(card) {
   const modalPrazoWrap = document.querySelector(".modalPrazo");
   const prazoFallback =
     card.dataset.planningPredictionFallback || card.dataset.prazo || "";
-  if (modalPrazoWrap)
-    modalPrazoWrap.style.display = disponivel ? "none" : "flex";
+  if (modalPrazoWrap) modalPrazoWrap.style.display = "none";
   modalPlanejamento.hidden = false;
   modalPlanejamento.dataset.taskId = card.dataset.id || "";
+  modalPlanejamento.dataset.cycleId = "";
+  modalPlanejamento.dataset.operationalState = "";
   modalPrazoNecessario.textContent = formatarDataPlanejamento(
     card.dataset.planningRequiredDue || "",
   );
   modalPrevisaoConclusao.value =
     card.dataset.planningPrediction || (!disponivel ? prazoFallback : "");
-  modalPrevisaoConclusao.disabled = !disponivel;
+  modalPrevisaoConclusao.disabled = false;
   modalJustificativa.value = card.dataset.planningJustification || "";
-  if (!disponivel) {
-    if (modalPrevisaoFeedback) {
-      modalPrevisaoFeedback.textContent = prazoFallback
-        ? "Esta previsão vem do prazo definido para a função."
-        : "O planejamento ainda não definiu um prazo necessário para esta tarefa.";
-      modalPrevisaoFeedback.className = "modal-planning-feedback is-neutral";
-    }
-    modalJustificativaWrap.hidden = true;
-    return true;
+  if (modalMotivo) modalMotivo.value = "";
+  const salvarButton = document.getElementById("salvarModal");
+  if (salvarButton) {
+    const destinoPorColuna = {
+      "to-do": "Não iniciado",
+      hold: "HOLD",
+      "in-progress": "Em andamento",
+      "in-review": "Em aprovação",
+      "aguardando-direcao": "Aguardando Direção",
+      ajuste: "Ajuste",
+      aprovado: "Aprovado",
+      "aprovado-ajustes": "Aprovado com ajustes",
+      done: "Finalizado",
+    };
+    const destino = destinoPorColuna[card.closest(".kanban-box")?.id] || "";
+    const primeiroInicio =
+      card.dataset.status === "Não iniciado" && destino === "Em andamento";
+    const reabertura =
+      destino === "Em andamento" &&
+      ["Aprovado", "Aprovado com ajustes", "Finalizado"].includes(
+        card.dataset.status,
+      );
+    salvarButton.textContent = primeiroInicio
+      ? "Salvar previsão e iniciar"
+      : reabertura
+        ? "Salvar previsão e reabrir"
+        : destino === card.dataset.status
+          ? "Atualizar previsão"
+          : "Salvar alterações";
   }
   if (modalPrevisaoConclusao.value) {
     atualizarFeedbackPrevisao();
@@ -6778,11 +6898,6 @@ function configurarModalPlanejamento(card) {
 
 async function salvarPrevisaoPlanejamento(card) {
   if (!card || card.classList.contains("tarefa-criada")) return true;
-  // Sem planejamento confirmado, o campo "Sua previsão" é apenas a
-  // visualização do prazo legado de funcao_imagem. O prazo/observação seguem
-  // sendo salvos pelo fluxo normal do modal, mas não criamos um registro de
-  // previsão de planejamento inexistente.
-  if (card.dataset.planningAvailable !== "1") return true;
   // Na finalização, o modal de planejamento fica oculto e o único campo
   // disponível é o prazo de entrega. Para esta etapa, ele representa a
   // previsão do colaborador e deve ser usado na mesma persistência.
@@ -6805,6 +6920,35 @@ async function salvarPrevisaoPlanejamento(card) {
   if (!previsao) {
     throw new Error("Informe sua previsão de conclusão.");
   }
+  const cicloAtivo = modalPlanejamento?.dataset.cycleId;
+  if (cicloAtivo) {
+    if (previsao === (card.dataset.planningPrediction || "")) return true;
+    const response = await fetch(
+      "PaginaPrincipal/atualizar_previsao_operacional.php",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          funcao_imagem_id: Number(card.dataset.id || 0),
+          previsao,
+          motivo_codigo: modalMotivo?.value || null,
+          motivo_texto: modalJustificativa?.value.trim() || null,
+        }),
+      },
+    );
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      throw new Error(
+        payload?.message || "Não foi possível atualizar sua previsão.",
+      );
+    }
+    card.dataset.planningPrediction = previsao;
+    return true;
+  }
+  if (card.dataset.planningAvailable !== "1") return true;
   const body = new URLSearchParams({
     funcao_imagem_id: card.dataset.id || "",
     previsao_conclusao: previsao,
@@ -6833,6 +6977,7 @@ async function salvarPrevisaoPlanejamento(card) {
 }
 
 modalPrevisaoConclusao?.addEventListener("change", atualizarFeedbackPrevisao);
+modalMotivo?.addEventListener("change", atualizarObrigatoriedadeJustificativa);
 
 function restaurarCardModalPadrao() {
   if (!cardModal) return;
@@ -6907,20 +7052,23 @@ async function avaliarInicioConjuntoModelagem(modelagemId) {
   return payload;
 }
 
-async function iniciarModelagemComComposicao(modelagemId, prazoModelagem) {
-  const response = await fetch("PaginaPrincipal/iniciarUnidadeTrabalho.php", {
+async function iniciarOperacaoAtomica(card, dados, iniciarConjunto = false) {
+  const response = await fetch("PaginaPrincipal/iniciar_operacao.php", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
-      modelagem_id: Number(modelagemId),
-      prazo_modelagem: prazoModelagem || null,
+      funcao_imagem_id: Number(card.dataset.id || 0),
+      previsao: modalPrevisaoConclusao?.value?.trim() || dados.prazo || "",
+      observacao: modalObs?.value || "",
+      motivo_codigo: modalMotivo?.value || null,
+      motivo_texto: modalJustificativa?.value.trim() || null,
+      confirmar_pendencias: dados.confirmar_pendencias === 1,
+      iniciar_modelagem_composicao: iniciarConjunto,
     }),
   });
   const payload = await response.json();
-  if (!response.ok || payload.success === false) {
-    const error = new Error(
-      payload.message || "Não foi possível iniciar as tarefas juntas.",
-    );
+  if (!response.ok || payload?.success === false) {
+    const error = new Error(payload?.message || "Não foi possível iniciar a tarefa.");
     error.payload = payload;
     throw error;
   }
@@ -6938,6 +7086,29 @@ document.getElementById("fecharModal").addEventListener("click", () => {
 document.getElementById("salvarModal").addEventListener("click", async () => {
   if (!cardSelecionado) return;
 
+  const statusMap = {
+    "to-do": "Não iniciado",
+    hold: "HOLD",
+    "in-progress": "Em andamento",
+    "in-review": "Em aprovação",
+    "aguardando-direcao": "Aguardando Direção",
+    ajuste: "Ajuste",
+    aprovado: "Aprovado",
+    "aprovado-ajustes": "Aprovado com ajustes",
+    done: "Finalizado",
+  };
+  const statusDestino =
+    statusMap[cardSelecionado.closest(".kanban-box")?.id] || null;
+  const statusOrigem = cardSelecionado.dataset.status || "";
+  const isAnimacao = cardSelecionado.dataset.isAnimacao === "1";
+  const inicioOuReaberturaAtomica =
+    !cardSelecionado.classList.contains("tarefa-criada") &&
+    !isAnimacao &&
+    statusDestino === "Em andamento" &&
+    ["Não iniciado", "Aprovado", "Aprovado com ajustes", "Finalizado"].includes(
+      statusOrigem,
+    );
+
   // Verifica se o prazo está vazio
   if (modalPrazo.offsetParent !== null && !modalPrazo.value) {
     Toastify({
@@ -6952,7 +7123,10 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
     return; // interrompe o envio
   }
 
-  if (!cardSelecionado.classList.contains("tarefa-criada")) {
+  if (
+    !cardSelecionado.classList.contains("tarefa-criada") &&
+    !inicioOuReaberturaAtomica
+  ) {
     try {
       await salvarPrevisaoPlanejamento(cardSelecionado);
     } catch (error) {
@@ -6970,19 +7144,6 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
 
   cardSelecionado.dataset.prazo = modalPrazo.value;
   cardSelecionado.dataset.observacao = modalObs.value;
-
-  // Mapeamento de IDs de coluna para status
-  const statusMap = {
-    "to-do": "Não iniciado",
-    hold: "HOLD",
-    "in-progress": "Em andamento",
-    "in-review": "Em aprovação",
-    "aguardando-direcao": "Aguardando Direção",
-    ajuste: "Ajuste",
-    aprovado: "Aprovado",
-    "aprovado-ajustes": "Aprovado com ajustes",
-    done: "Finalizado",
-  };
 
   if (cardSelecionado.classList.contains("tarefa-criada")) {
     // Se for tarefa criada, atualiza via outro script
@@ -7034,7 +7195,9 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
     ).toString();
 
     const prazoFuncaoImagem =
-      cardSelecionado.dataset.planningAvailable === "1"
+      cardSelecionado.dataset.isAnimacao !== "1" &&
+      modalPlanejamento &&
+      !modalPlanejamento.hidden
         ? modalPrevisaoConclusao?.value?.trim() || ""
         : modalPrazo.value;
     const dados = {
@@ -7043,8 +7206,8 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       cardId: cardSelecionado.dataset.id,
       animacao_id: cardSelecionado.dataset.animacaoId || "",
       status: statusMap[cardSelecionado.closest(".kanban-box").id] || null,
-      // O prazo operacional continua sendo funcao_imagem.prazo mesmo quando
-      // o planejamento tambem registra a previsao do colaborador.
+      // Mantém a sincronização legada de funcao_imagem.prazo; a janela
+      // operacional e o prazo necessário são resolvidos separadamente.
       prazo: prazoFuncaoImagem,
       observacao: modalObs.value,
       confirmar_pendencias:
@@ -7062,53 +7225,76 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       dados.status === "Em andamento" &&
       cardSelecionado.dataset.status === "Não iniciado" &&
       !cardSelecionado.dataset.workUnitId;
-    if (isNewModelagemStart) {
+    if (inicioOuReaberturaAtomica) {
+      const salvarButton = document.getElementById("salvarModal");
+      const salvarButtonLabel = salvarButton?.textContent || "";
+      let iniciarConjunto = false;
       try {
-        const joint = await avaliarInicioConjuntoModelagem(dados.cardId);
-        if (joint.joint_start_available) {
-          const choice = await Swal.fire({
-            icon: "question",
-            title: "Iniciar Modelagem e Composição juntas?",
-            text: "Você também é responsável pela Composição desta imagem e ela pode ser executada junto com a Modelagem.",
-            showCancelButton: true,
-            showDenyButton: true,
-            confirmButtonText: "Iniciar juntas",
-            denyButtonText: "Somente Modelagem",
-            cancelButtonText: "Cancelar",
-            reverseButtons: true,
-          });
-          if (choice.isDismissed) return;
-          if (choice.isConfirmed) {
-            await iniciarModelagemComComposicao(dados.cardId, dados.prazo);
-            delete cardModal.dataset.confirmarPendencias;
-            cardModal.classList.remove("active");
-            cardSelecionado = null;
-            carregarDados(colaborador_id);
-            Toastify({
-              text: "Modelagem e Composição iniciadas como uma unidade de trabalho.",
-              duration: 4000,
-              close: true,
-              gravity: "top",
-              position: "left",
-              backgroundColor: "green",
-            }).showToast();
-            return;
+        if (isNewModelagemStart) {
+          const joint = await avaliarInicioConjuntoModelagem(dados.cardId);
+          if (joint.joint_start_available) {
+            const choice = await Swal.fire({
+              icon: "question",
+              title: "Iniciar Modelagem e Composição juntas?",
+              text: "A unidade conjunta terá uma única janela operacional de 4 dias úteis.",
+              showCancelButton: true,
+              showDenyButton: true,
+              confirmButtonText: "Iniciar juntas",
+              denyButtonText: "Somente Modelagem",
+              cancelButtonText: "Cancelar",
+              reverseButtons: true,
+            });
+            if (choice.isDismissed) return;
+            iniciarConjunto = choice.isConfirmed;
           }
         }
-      } catch (error) {
+        if (salvarButton) {
+          salvarButton.disabled = true;
+          salvarButton.classList.add("is-loading");
+          salvarButton.textContent = "Salvando e iniciando…";
+        }
+        const result = await iniciarOperacaoAtomica(
+          cardSelecionado,
+          dados,
+          iniciarConjunto,
+        );
+        delete cardModal.dataset.confirmarPendencias;
+        cardModal.classList.remove("active");
+        cardSelecionado = null;
+        carregarDados(colaborador_id);
         Toastify({
-          text: error?.message || "Não foi possível iniciar as tarefas juntas.",
-          duration: 4500,
+          text: result.message || "Previsão salva e tarefa iniciada.",
+          duration: 4000,
           close: true,
           gravity: "top",
           position: "left",
-          backgroundColor: "red",
+          backgroundColor: "green",
         }).showToast();
+        return;
+      } catch (error) {
+        const pendenciasProducao = bloqueiosProducao(error?.payload?.avaliacao);
+        if (pendenciasProducao.length) {
+          await mostrarBloqueioProducao(pendenciasProducao);
+        } else {
+          Toastify({
+            text: error?.message || "Não foi possível iniciar a tarefa.",
+            duration: 4500,
+            close: true,
+            gravity: "top",
+            position: "left",
+            backgroundColor: "red",
+          }).showToast();
+        }
         carregarDados(colaborador_id);
         return;
+      } finally {
+        if (salvarButton) {
+          salvarButton.disabled = false;
+          salvarButton.classList.remove("is-loading");
+          salvarButton.textContent = salvarButtonLabel;
+        }
       }
     }
-
     $.ajax({
       type: "POST",
       url: saveUrl,

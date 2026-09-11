@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/planejamento_execucao_helper.php';
+require_once __DIR__ . '/janela_operacional_helper.php';
 
 function dashboard_colaborador_data_valida(?string $data): ?string
 {
@@ -31,6 +32,9 @@ function dashboard_colaborador_status_execucao(string $status): bool
 function dashboard_colaborador_prazo_efetivo(array $tarefa): array
 {
     $planejamento = (array) ($tarefa['planejamento'] ?? []);
+    $janelaOperacional = isset($tarefa['janela_operacional']) && is_array($tarefa['janela_operacional'])
+        ? $tarefa['janela_operacional']
+        : null;
     $prazoPlanejamento = dashboard_colaborador_data_valida($planejamento['prazo_necessario'] ?? null);
     if (!empty($planejamento['planejamento_disponivel']) && $prazoPlanejamento) {
         return [
@@ -113,6 +117,7 @@ function dashboard_colaborador_normalizar_tarefa(array $tarefa): array
         'prazo_origem' => $prazo['prazo_origem'],
         'planejamento_confirmado' => $prazo['planejamento_confirmado'],
         'planejamento_tipo' => $prazo['planejamento_confirmado'] ? 'confirmado' : ($prazo['prazo'] ? 'fallback_funcao' : 'indisponivel'),
+        'janela_operacional' => $janelaOperacional,
         'janela_inicio' => dashboard_colaborador_data_valida($planejamento['janela_inicio'] ?? null),
         'status_temporal' => (string) ($statusTemporal['codigo'] ?? 'SEM_PRAZO'),
         'status_temporal_label' => (string) ($statusTemporal['rotulo'] ?? ''),
@@ -246,7 +251,14 @@ function dashboard_colaborador_montar(array $payloadKanban, int $colaboradorId, 
     foreach ($ativas as $tarefa) {
         $chave = 'task:' . (int) $tarefa['id'];
         if (isset($atencaoPorChave[$chave])) continue;
-        if (($tarefa['status_temporal'] ?? '') === 'ATRASADO' && !empty($tarefa['pode_iniciar'])) {
+        if (($tarefa['janela_operacional']['estado_atual'] ?? '') === FLOW_JANELA_ESTADO_CONFLITO) {
+            $atencaoPorChave[$chave] = [
+                'type' => 'planning_conflict', 'severity' => 'critical', 'task_id' => $tarefa['id'],
+                'title' => dashboard_colaborador_titulo($tarefa),
+                'message' => 'A previsão atual ultrapassa o prazo necessário do planejamento.',
+                'action' => 'open_task',
+            ];
+        } elseif (($tarefa['status_temporal'] ?? '') === 'ATRASADO' && !empty($tarefa['pode_iniciar'])) {
             $atencaoPorChave[$chave] = [
                 'type' => 'late_task', 'severity' => 'critical', 'task_id' => $tarefa['id'],
                 'title' => dashboard_colaborador_titulo($tarefa),

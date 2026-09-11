@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
 require_once __DIR__ . '/../PreAlteracao/pre_alt_helpers.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 
 function review_batch_action_active_p00_items(array $batch): array
 {
@@ -122,6 +123,16 @@ function review_batch_action_requeue_funcao_for_change(mysqli $conn, int $funcao
     $funcaoImagem = review_batch_action_fetch_funcao_imagem($conn, $funcaoImagemId);
     if (!$funcaoImagem) {
         throw new RuntimeException('Função de modelagem vinculada não encontrada.');
+    }
+
+    if (flow_janela_schema_disponivel($conn)) {
+        flow_janela_encerrar_ciclo(
+            $conn,
+            $funcaoImagemId,
+            'REABERTURA_SOLICITADA',
+            (int) ($_SESSION['idcolaborador'] ?? 0) ?: null,
+            (int) ($_SESSION['idusuario'] ?? 0) ?: null
+        );
     }
 
     $stmtUpdate = $conn->prepare('UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?');

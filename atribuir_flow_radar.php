@@ -38,20 +38,9 @@ try {
     if ($res && !empty($res['colaborador_id']) && $res['colaborador_id'] != 0) {
         throw new DomainException('Tarefa já está atribuída a outro colaborador.');
     }
-    if ($res && strcasecmp((string) ($res['status'] ?? ''), 'Não iniciado') === 0) {
-        $res['colaborador_id'] = $colaborador_id;
-        flow_wip_assert_novo_inicio($conn, $colaborador_id, $res);
-        $evaluation = motor_requisitos_avaliar_funcao_imagem($conn, $funcao_imagem_id);
-        if (motor_requisitos_tem_bloqueio_producao($evaluation)) {
-            throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
-        }
-        if (!$evaluation['elegivel'] && !$confirmarPendencias) {
-            throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
-        }
-    }
-
-    // Atualiza a função_imagem
-    $sql_update = "UPDATE funcao_imagem SET colaborador_id = ?, status = 'Em andamento' WHERE idfuncao_imagem = ?";
+    // O Radar aloca, mas nao inicia: o primeiro inicio exige que o proprio
+    // fluxo atomico receba a previsao e fotografe a janela operacional.
+    $sql_update = "UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ?";
     $stmt = $conn->prepare($sql_update);
     $stmt->bind_param('ii', $colaborador_id, $funcao_imagem_id);
     if ($stmt->execute()) {
@@ -67,7 +56,7 @@ try {
         }
 
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => 'Tarefa atribuída com sucesso.']);
+        echo json_encode(['success' => true, 'message' => 'Tarefa atribuída. O colaborador deverá informar a previsão ao iniciar.']);
     } else {
         $conn->rollback();
         echo json_encode(['error' => 'Falha ao atribuir tarefa', 'db_error' => $stmt->error]);

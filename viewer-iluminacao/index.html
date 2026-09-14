@@ -126,6 +126,28 @@
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
 
+      let model;
+      let waterMeshCount = 0;
+      const noiseNormalTexture = new THREE.TextureLoader().load(
+        "../assets/Noise_Normal_002.jpg",
+        (texture) => {
+          texture.colorSpace = THREE.NoColorSpace;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(10, 10);
+          texture.flipY = false;
+          texture.needsUpdate = true;
+          applyNoiseToWater(texture);
+        },
+        undefined,
+        (error) => {
+          console.error(
+            "Não foi possível carregar ../assets/Noise_Normal_002.jpg.",
+            error,
+          );
+        },
+      );
+
       const overlay = document.getElementById("comment-overlay");
       const commentCard = document.getElementById("comment-card");
       const commentTitle = document.getElementById("comment-title");
@@ -155,10 +177,45 @@
       scene.add(directionalLight);
       scene.add(directionalLight.target);
 
-      let model;
       let modelRadius = 1;
       let ground;
       let modelCentered = false;
+
+      function isWaterMesh(child) {
+        const materialNames = Array.isArray(child.material)
+          ? child.material.map((material) => material?.name || "").join(" ")
+          : child.material?.name || "";
+        const label = `${child.name} ${materialNames}`.toLowerCase();
+        return label.includes("agua") || label.includes("water");
+      }
+
+      function applyNoiseToWater(texture) {
+        if (!model) return;
+
+        waterMeshCount = 0;
+        model.traverse((child) => {
+          if (!child.isMesh || !isWaterMesh(child)) return;
+
+          const materials = Array.isArray(child.material)
+            ? child.material
+            : [child.material];
+          materials.forEach((material) => {
+            if (!material) return;
+            material.bumpMap = texture;
+            material.bumpScale = 0.45;
+            material.normalMap = texture;
+            material.normalScale.set(0.65, 0.65);
+            material.needsUpdate = true;
+          });
+          waterMeshCount += 1;
+        });
+
+        if (!waterMeshCount) {
+          console.warn(
+            "Nenhuma malha de água foi encontrada para receber Noise_Normal_002.jpg.",
+          );
+        }
+      }
 
       function openComment(comment) {
         activeComment = comment;
@@ -371,7 +428,7 @@
       }
 
       new GLTFLoader().load(
-        "../assets/Fachada_GLB_001.glb",
+        "../assets/Teste_GLB_001.glb",
         (gltf) => {
           model = gltf.scene;
           model.traverse((child) => {
@@ -380,13 +437,14 @@
               child.receiveShadow = true;
             }
           });
+          applyNoiseToWater(noiseNormalTexture);
           scene.add(model);
           frameModel(true);
         },
         undefined,
         (error) => {
           console.error(
-            "Não foi possível carregar assets/Fachada_GLB_001.glb.",
+            "Não foi possível carregar ../assets/Teste_GLB_001.glb.",
             error,
           );
         },

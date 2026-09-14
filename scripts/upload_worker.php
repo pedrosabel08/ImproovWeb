@@ -1029,14 +1029,20 @@ function mark_funcao_upload_quitado(array $meta): void
 
     $chkRenderSend = $conn->prepare(
         "SELECT CASE
-            WHEN {$explicitRenderSendSql}(
-                 fi.funcao_id IN (4, 6)
+            WHEN (
+                 (
+                   {$explicitRenderSendSql}(
+                    (
+                        (fi.funcao_id = 4 AND ico.status_id = 2)
+                        OR (
+                            fi.funcao_id = 6
+                            AND (
+                                ico.tipo_imagem IS NULL
+                                OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
+                            )
+                        )
+                    )
              AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
-             AND (
-                 fi.funcao_id <> 6
-                 OR ico.tipo_imagem IS NULL
-                 OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
-             )
              AND EXISTS (
                  SELECT 1
                    FROM historico_aprovacoes ha
@@ -1051,13 +1057,16 @@ function mark_funcao_upload_quitado(array $meta): void
                     )
                   LIMIT 1
              )
-             AND NOT EXISTS (
+                   )
+                 )
+                 AND NOT EXISTS (
                  SELECT 1
                    FROM render_alta ra
-                  WHERE ra.imagem_id = ico.idimagens_cliente_obra
-                    AND ra.status_id = ico.status_id
+                 WHERE ra.imagem_id = ico.idimagens_cliente_obra
+                   AND ra.status_id = ico.status_id
+                   AND COALESCE(ra.status, '') <> 'Arquivado'
                   LIMIT 1
-             )
+                 )
             )
             THEN 1
             ELSE 0
@@ -1088,6 +1097,38 @@ function mark_funcao_upload_quitado(array $meta): void
             error_log("[upload_worker] mark_funcao_upload_quitado: erro ao executar UPDATE requires_file_upload para id={$fidInt}: " . ($upd->error ?? 'sem detalhe'));
         } else {
             error_log("[upload_worker] mark_funcao_upload_quitado: requires_file_upload=0 aplicado para id={$fidInt}, affected_rows={$upd->affected_rows}");
+        }
+
+        $renderConfirmed = false;
+        if ($hasRequiresRenderSendColumn) {
+            $clearRenderSend = $conn->prepare(
+                "UPDATE funcao_imagem fi
+                    JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+                   SET fi.requires_render_send = 0
+                 WHERE fi.idfuncao_imagem = ?
+                   AND EXISTS (
+                       SELECT 1
+                         FROM render_alta ra
+                        WHERE ra.imagem_id = ico.idimagens_cliente_obra
+                          AND ra.status_id = ico.status_id
+                          AND COALESCE(ra.status, '') <> 'Arquivado'
+                        LIMIT 1
+                   )"
+            );
+            if (!$clearRenderSend) {
+                error_log('[upload_worker] mark_funcao_upload_quitado: falha ao preparar limpeza de requires_render_send: ' . ($conn->error ?? 'sem detalhe'));
+            } else {
+                $clearRenderSend->bind_param('i', $fidInt);
+                if (!$clearRenderSend->execute()) {
+                    error_log("[upload_worker] mark_funcao_upload_quitado: erro ao limpar requires_render_send para id={$fidInt}: " . ($clearRenderSend->error ?? 'sem detalhe'));
+                } else {
+                    $renderConfirmed = $clearRenderSend->affected_rows > 0;
+                }
+                $clearRenderSend->close();
+            }
+        }
+        if ($renderConfirmed) {
+            error_log("[upload_worker] mark_funcao_upload_quitado: render confirmado; requires_render_send=0 aplicado para id={$fidInt}");
         }
 
         $requiresRenderSend = false;

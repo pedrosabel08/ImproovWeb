@@ -462,11 +462,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $imagem_id_context = $imagem_id ? (int)$imagem_id : null;
         $colaborador_id_context = 0;
         $status_funcao_context = null;
+        $status_id_context = 0;
         $obra_id_context = 0;
         $obra_nome_context = '';
         $imagem_nome_context = (string)$imagem_nome;
         $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id, fi.colaborador_id, fi.status,
-                ico.imagem_nome, o.idobra, COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra)
+                ico.imagem_nome, ico.status_id, o.idobra, COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra)
             FROM funcao_imagem fi
             LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
             LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
@@ -476,7 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmtFuncaoContext) {
             $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
             $stmtFuncaoContext->execute();
-            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context, $imagem_nome_context, $obra_id_context, $obra_nome_context);
+            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context, $imagem_nome_context, $status_id_context, $obra_id_context, $obra_nome_context);
             $stmtFuncaoContext->fetch();
             $stmtFuncaoContext->close();
             if ($imagem_id_context_db) {
@@ -715,6 +716,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $direcaoAlteracaoRequerRender = $isDirecaoAlteracaoFinal && $direcao_alteracao_destino === 'render';
         $direcaoAlteracaoEntregaPrevia = $isDirecaoAlteracaoFinal && $direcao_alteracao_destino === 'entrega_previa';
+        $isDirecaoFinalizacaoR00 = (
+            !$is_animacao_review
+            && $isDirecaoAprovador
+            && (int)$funcao_id_context === 4
+            && (int)$status_id_context === 2
+            && $isTipoAprovacaoComDirecao
+        );
 
         // Para P00 + Finalização, só permite aprovar a função se TODOS os ângulos estiverem liberados.
         if (in_array($status, ['Aprovado'], true) && $imagem_id) {
@@ -816,6 +824,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $requires_render_send = $direcaoAlteracaoRequerRender ? 1 : 0;
             $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, requires_render_send = ? WHERE idfuncao_imagem = ?");
             $stmt->bind_param("sii", $status, $requires_render_send, $idfuncao_imagem);
+        } elseif ($isDirecaoFinalizacaoR00) {
+            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, requires_render_send = 1 WHERE idfuncao_imagem = ?");
+            $stmt->bind_param("si", $status, $idfuncao_imagem);
         } else {
             $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
             $stmt->bind_param("si", $status, $idfuncao_imagem);

@@ -224,7 +224,7 @@ try {
         $countStmt->execute();
         $total = (int) $countStmt->get_result()->fetch_assoc()['total'];
         $countStmt->close();
-        $sql = fb_issue_select() . $whereSql . ' ORDER BY i.atualizado_em DESC, i.id DESC LIMIT ? OFFSET ?';
+        $sql = fb_issue_select() . $whereSql . ' ORDER BY i.status = "ABERTA" DESC, i.atualizado_em DESC, i.id DESC LIMIT ? OFFSET ?';
         $stmt = $conn->prepare($sql);
         $listTypes = $types . 'ii';
         $listValues = array_merge($values, [$perPage, $offset]);

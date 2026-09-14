@@ -444,7 +444,7 @@ WHERE
     }
 
     // ORDER BY usa alias de coluna, não de tabela
-$sql .= "
+    $sql .= "
 ORDER BY
     obra_id,
     tem_par_animacao_pos ASC,
@@ -734,6 +734,42 @@ $funcoes = array_values(array_filter($funcoes, function ($f) {
     return stripos($f['nome_funcao'] ?? '', 'parcial') === false;
 }));
 
+// Custos V2: same eligibility as batch, snapshot amounts, ledger installments.
+if ($mesNumero && $ano) {
+    require_once __DIR__ . '/financeiro_v2.php';
+    $eligible = financeiro_elegiveis($conn, $colaboradorId, $mesNumero, $ano);
+    $existing = [];
+    foreach ($funcoes as $f) $existing[$f['origem'] . ':' . $f['identificador']] = $f;
+    $funcoes = [];
+    foreach ($eligible as $r) {
+        if (!empty($r['parcial'])) continue;
+        $key = $r['origem'] . ':' . $r['origem_id'];
+        $f = $existing[$key] ?? array_merge($r, ['identificador' => $r['origem_id'], 'nome_funcao' => $r['origem'] === 'acompanhamento' ? 'Acompanhamento' : 'Animação', 'imagem_nome' => $r['imagem_nome'] ?? 'Custo geral da obra', 'pago_parcial_count' => 0, 'pago_completa_count' => 0]);
+        $f['comissao_gestor'] = !empty($r['comissao_gestor']);
+        $snapshot = (float)$r['valor'];
+        if ($f['comissao_gestor']) $snapshot = ($r['tipo_imagem'] === 'Fachada' && mb_stripos($r['imagem_nome'], 'embasamento') === false) ? 100 : 80;
+        $f['valor_exibido'] = $snapshot;
+        $f['custo'] = $snapshot;
+        $f['valor_esperado'] = $snapshot;
+        $funcoes[] = $f;
+    }
+    // One bulk query, no per-task ledger lookups.
+    $ledger = custos_query($conn, 'SELECT pi.* FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
+    $paid = [];
+    foreach ($ledger as $l) {
+        $k = $l['origem'] . ':' . $l['origem_id'] . ':' . (custos_tipo($l) === 'COMISSAO' ? '1' : '0');
+        $paid[$k] = ($paid[$k] ?? 0) + custos_centavos($l['valor']);
+    }
+    foreach ($funcoes as &$f) {
+        $k = $f['origem'] . ':' . $f['identificador'] . ':' . (!empty($f['comissao_gestor']) ? '1' : '0');
+        $p = $paid[$k] ?? 0;
+        $v = custos_centavos($f['valor_exibido']);
+        $f['valor_exibido'] = max(0, $v - $p) / 100;
+        $f['divergencia_financeira'] = $p > $v;
+        $f['pagamento'] = $p >= $v && $v > 0 ? 1 : 0;
+    }
+    unset($f);
+}
 $custoTotal = 0.0;
 foreach ($funcoes as $f) {
     $custoTotal += (float) ($f['custo'] ?? 0);

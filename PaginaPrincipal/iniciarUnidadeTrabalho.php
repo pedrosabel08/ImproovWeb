@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
-require_once __DIR__ . '/../helpers/inicio_conjunto_helper.php';
+require_once __DIR__ . '/../helpers/inicio_operacional_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -29,29 +29,32 @@ $evaluation = [];
 
 try {
     $conn->begin_transaction();
-    $evaluation = flow_inicio_conjunto_avaliar_modelagem_composicao($conn, $modelagemId, true, true);
-    if (empty($evaluation['joint_start_available'])) {
-        throw new DomainException((string) ($evaluation['joint_start_reason'] ?? 'JOINT_START_NOT_AVAILABLE'));
-    }
-    $ownerId = (int) ($evaluation['colaborador_id'] ?? 0);
-    $nivel = (int) ($_SESSION['nivel_acesso'] ?? 0);
-    $manager = in_array($nivel, [1, 5], true) || in_array($actorColaboradorId, [9, 21], true);
-    if ($ownerId !== $actorColaboradorId && !$manager) {
-        throw new RuntimeException('Você não tem permissão para iniciar esta unidade.');
-    }
-    $unit = flow_inicio_conjunto_registrar($conn, $evaluation, $prazo, $actorColaboradorId ?: null, $actorUsuarioId ?: null);
+    $resultadoInicio = flow_inicio_operacional_iniciar($conn, [
+        'funcao_imagem_id' => $modelagemId,
+        'previsao' => $prazo,
+        'motivo_codigo' => $payload['motivo_codigo'] ?? null,
+        'motivo_texto' => $payload['motivo_texto'] ?? null,
+        'confirmar_pendencias' => !empty($payload['confirmar_pendencias']),
+        'iniciar_modelagem_composicao' => true,
+        'ator_colaborador_id' => $actorColaboradorId ?: null,
+        'ator_usuario_id' => $actorUsuarioId ?: null,
+        'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+    ]);
+    $evaluation = $resultadoInicio['evaluation'];
+    $ownerId = (int) ($evaluation['responsavel_id'] ?? 0);
+    $unit = $resultadoInicio['work_unit'];
     $conn->commit();
     error_log(sprintf(
         '[FLOW][INICIO_CONJUNTO] unidade=%d usuario=%d ator_colaborador=%d colaborador=%d imagem=%d modelagem=%d composicao=%d resultado=COMMIT',
-        (int) $unit['unit_id'],
+        (int) ($unit['unit_id'] ?? 0),
         $actorUsuarioId,
         $actorColaboradorId,
         $ownerId,
-        (int) $evaluation['imagem_id'],
-        (int) $evaluation['modelagem_id'],
-        (int) $evaluation['composicao_id']
+        0,
+        $modelagemId,
+        (int) (($unit['member_ids'][1] ?? 0))
     ));
-    flow_joint_response(200, ['success' => true, 'message' => 'Modelagem e Composição iniciadas juntas.', 'work_unit' => $unit]);
+    flow_joint_response(200, ['success' => true, 'message' => 'Modelagem e Composição iniciadas juntas.', 'work_unit' => $unit, 'cycle' => $resultadoInicio['cycle'], 'evaluation' => $resultadoInicio['evaluation']]);
 } catch (FlowWipException $error) {
     $conn->rollback();
     error_log(sprintf(

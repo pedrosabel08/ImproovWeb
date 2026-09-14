@@ -11,6 +11,7 @@ require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 
 function flow_funcoes_colaborador_falhar_autorizacao(int $status, string $mensagem): void
 {
@@ -1292,6 +1293,13 @@ if (!empty($suppressedIndexes)) {
     }
     $funcoesFinal = array_values($funcoesFinal);
 }
+
+$contextosJanela = flow_janela_contextos_lote($conn, array_column($funcoesFinal, 'idfuncao_imagem'));
+foreach ($funcoesFinal as &$funcaoComJanela) {
+    $taskIdJanela = (int) ($funcaoComJanela['idfuncao_imagem'] ?? 0);
+    $funcaoComJanela['janela_operacional'] = $contextosJanela[$taskIdJanela] ?? null;
+}
+unset($funcaoComJanela);
 
 // Unidades explícitas são projetadas por uma fonte central e carregam todos
 // os membros. Diferente do par legado, a interface não precisa inferir vínculo.

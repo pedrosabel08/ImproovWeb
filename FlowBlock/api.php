@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -619,6 +620,15 @@ try {
             $hold->close();
             $taskStatusChanged = true;
         }
+        if ($taskStatusChanged && flow_janela_schema_disponivel($conn)) {
+            flow_janela_pausar(
+                $conn,
+                $taskId,
+                $actorId ?: null,
+                isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+                (int) $issueId
+            );
+        }
         flow_block_notify($conn, $responsibleId ?? 0, $taskId, "$code foi atribuída a você no Flow Block.");
         $conn->commit();
         flow_block_publish_operational_lifecycle($conn, fb_get_issue($conn, $issueId) ?: ['id' => $issueId], 'criada', $actorId);
@@ -1074,6 +1084,10 @@ try {
         $log->bind_param('issi', $taskId, $statusBefore, $statusAfter, $actorId);
         $log->execute();
         $log->close();
+
+        if (flow_janela_schema_disponivel($conn)) {
+            flow_janela_retomar($conn, $taskId, $actorId ?: null, $actorUserId ?: null);
+        }
 
         $lastIssue = $conn->prepare("SELECT id FROM flow_issue WHERE funcao_imagem_id = ? AND bloqueante = 1 AND (status = 'CANCELADA' OR (status = 'RESOLVIDA' AND confirmada_em IS NOT NULL)) ORDER BY COALESCE(confirmada_em, resolvido_em, atualizado_em) DESC, id DESC LIMIT 1");
         $lastIssue->bind_param('i', $taskId);

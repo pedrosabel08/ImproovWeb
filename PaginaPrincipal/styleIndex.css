@@ -5049,7 +5049,7 @@ form#dailyForm button {
   text-transform: uppercase;
 }
 .modalPlanejamento small {
-  color: var(--text-log, #64748b);
+  color: var(--text-muted);
   font-size: 0.74rem;
   font-weight: 500;
   text-transform: none;
@@ -5062,9 +5062,73 @@ form#dailyForm button {
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.25);
 }
+
+.modal-operational-window {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #dce4ee;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.modal-operational-window span,
+.modal-planning-reason {
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.modal-operational-window strong {
+  color: #172033;
+  font-size: 1rem;
+}
+
+.modal-planning-reason,
+.modal-planning-justification {
+  display: grid;
+  gap: 6px;
+}
+
+.modal-planning-reason select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.modal-planning-feedback.is-conflict {
+  border-color: #ef4444;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+#salvarModal.is-loading {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+@media (max-width: 600px) {
+  .modal-operational-window,
+  .modal-planning-required {
+    padding: 10px 12px;
+  }
+
+  .modalPlanejamento {
+    gap: 10px;
+  }
+}
 .modal-planning-required span,
 .modal-planning-justification {
-  color: var(--cor-principal);
+  color: var(--kanban-modal-text);
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -5090,7 +5154,7 @@ form#dailyForm button {
   border: 1px solid rgba(245, 158, 11, 0.42);
 }
 .modal-planning-feedback.is-neutral {
-  color: var(--text-log, #64748b);
+  color: var(--text-muted);
   background: rgba(148, 163, 184, 0.12);
 }
 .modal-planning-note {

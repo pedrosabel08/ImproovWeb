@@ -12,6 +12,7 @@
  */
 
 require_once __DIR__ . '/planejamento_capacidade_global_helper.php';
+require_once __DIR__ . '/inicio_operacional_helper.php';
 
 const FLOW_ALOCACAO_STATUS_PENDENTE_MATERIALIZACAO = 'PENDENTE_MATERIALIZACAO';
 const FLOW_ALOCACAO_STATUS_NORMAL = 'NORMAL';
@@ -1378,14 +1379,33 @@ function flow_alocacao_aplicar_movimentos(mysqli $conn, string $inicio, string $
         }
         $mudancasPorPlano = [];
         $indiceTarefas = flow_alocacao_indexar_tarefas($atual);
+        $transferidasComoUnidade = [];
         foreach ($movimentos as $movimento) {
             $id = (int) $movimento['tarefa_id'];
             $de = (int) ($atuais[$id]['colaborador_id'] ?? 0);
             $para = (int) $movimento['para_colaborador_id'];
-            $update->bind_param('iii', $para, $id, $de);
-            $update->execute();
-            if ($update->affected_rows !== 1) {
-                throw new RuntimeException('A tarefa ' . $id . ' mudou durante a aplicação. Recalcule a simulação.');
+            if (!isset($transferidasComoUnidade[$id])) {
+                $cicloAtivo = flow_janela_schema_disponivel($conn)
+                    && flow_wip_status_ativo((string) ($atuais[$id]['status'] ?? ''));
+                if ($cicloAtivo) {
+                    $transferencia = flow_inicio_operacional_transferir($conn, [
+                        'funcao_imagem_id' => $id,
+                        'novo_responsavel_id' => $para,
+                        'nova_previsao' => $movimento['nova_previsao'] ?? null,
+                        'motivo_transferencia' => $observacao !== '' ? $observacao : 'Realocacao confirmada pela Central de Alocacao.',
+                        'ator_colaborador_id' => $atorId,
+                        'ator_usuario_id' => null,
+                    ]);
+                    foreach ((array) ($transferencia['membros'] ?? [$id]) as $membroId) {
+                        $transferidasComoUnidade[(int) $membroId] = true;
+                    }
+                } else {
+                    $update->bind_param('iii', $para, $id, $de);
+                    $update->execute();
+                    if ($update->affected_rows !== 1) {
+                        throw new RuntimeException('A tarefa ' . $id . ' mudou durante a aplicação. Recalcule a simulação.');
+                    }
+                }
             }
             $projeto = $indiceTarefas[$id]['projeto'] ?? [];
             $chavePlano = (int) ($projeto['planejamento_id'] ?? 0) . ':' . (int) ($projeto['entrega_id'] ?? 0);

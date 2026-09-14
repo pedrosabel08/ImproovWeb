@@ -7,7 +7,6 @@ $entryPoints = [
     'atualizarFuncoesEmAndamento.php',
     'Alteracao/updateStatusLote.php',
     'Arquitetura/update_funcao_caderno.php',
-    'atribuir_flow_radar.php',
     'PaginaPrincipal/atualizaFuncaoAnimacao.php',
     'PaginaPrincipal/atualizaTarefa.php',
 ];
@@ -17,6 +16,11 @@ foreach ($entryPoints as $relative) {
     if ($source === false || !str_contains($source, 'flow_wip_assert_novo_inicio')) {
         throw new RuntimeException($relative . ' não passa pelo motor central de WIP.');
     }
+}
+
+$radar = file_get_contents($root . '/atribuir_flow_radar.php');
+if ($radar === false || str_contains($radar, "status = 'Em andamento'")) {
+    throw new RuntimeException('O Flow Radar deve apenas alocar; o inicio com WIP e previsao ocorre no servico atomico.');
 }
 
 $flowBlock = file_get_contents($root . '/FlowBlock/api.php');
@@ -30,4 +34,3 @@ if ($review === false || str_contains($review, 'flow_wip_assert_novo_inicio')) {
 }
 
 echo "WipEntryPointsTest: OK\n";
-

@@ -11,6 +11,7 @@ include __DIR__ . '/conexao.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/helpers/inicio_operacional_helper.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -150,7 +151,7 @@ try {
             throw new InvalidArgumentException('Uma tarefa em HOLD só pode continuar pelo Flow Block, após confirmar as Issues e informar o novo prazo.');
         }
 
-        if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0) {
+        if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0 && !flow_janela_schema_disponivel($conn)) {
             flow_wip_assert_novo_inicio($conn, $ownerColaboradorId, $current);
             $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, $idFuncaoImagem);
             if (motor_requisitos_tem_bloqueio_producao($blockedEvaluation)) {
@@ -171,6 +172,23 @@ try {
 
         if ($novoPrazo && $novoPrazo < $today) {
             throw new InvalidArgumentException('O novo prazo da tarefa ' . $idFuncaoImagem . ' deve ser hoje ou uma data futura.');
+        }
+
+        if (strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0 && flow_janela_schema_disponivel($conn)) {
+            $previsaoInicio = $novoPrazo ?: $prazoAtual;
+            flow_inicio_operacional_iniciar($conn, [
+                'funcao_imagem_id' => $idFuncaoImagem,
+                'previsao' => $previsaoInicio,
+                'motivo_codigo' => $item['motivo_codigo'] ?? ($motivo ? 'OUTRO' : null),
+                'motivo_texto' => $motivo,
+                'confirmar_pendencias' => $confirmarPendencias,
+                'ator_colaborador_id' => $actorColaboradorId,
+                'ator_usuario_id' => $actorUsuarioId,
+                'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+            ]);
+            $updatedIds[] = $idFuncaoImagem;
+            $historyCount++;
+            continue;
         }
 
         if ($novoPrazo) {

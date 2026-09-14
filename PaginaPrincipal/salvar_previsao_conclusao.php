@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/../helpers/inicio_operacional_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_SESSION['logado'])) {
     http_response_code(401);
@@ -50,6 +51,43 @@ if (
         'success' => false,
         'message' => 'Você não pode alterar a previsão de outra pessoa.'
     ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Escritas legadas de uma tarefa ja iniciada tambem convergem para o ciclo
+// append-only. O texto antigo e classificado como OUTRO para nao perder
+// auditoria enquanto clientes antigos ainda nao enviam motivo_codigo.
+if (flow_janela_schema_disponivel($conn) && flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId)) {
+    try {
+        $conn->begin_transaction();
+        $motivoCodigo = trim((string) ($_POST['motivo_codigo'] ?? ''));
+        if ($motivoCodigo === '' && $justificativa !== '') {
+            $motivoCodigo = 'OUTRO';
+        }
+        $resultado = flow_janela_atualizar_previsao(
+            $conn,
+            $tarefaId,
+            $previsao,
+            $motivoCodigo ?: null,
+            $justificativa ?: null,
+            $atorColaboradorId,
+            $atorUsuarioId
+        );
+        $unidade = flow_janela_resolver_unidade($conn, $tarefaId, true);
+        $motivo = flow_janela_validar_justificativa($conn, $resultado['estado'], $motivoCodigo ?: null, $justificativa ?: null);
+        flow_inicio_operacional_salvar_previsao_legada($conn, $unidade['membros'], $previsao, $motivo, $atorColaboradorId, $atorUsuarioId, 'PREVISAO_ALTERADA');
+        $conn->commit();
+        echo json_encode(['success' => true, 'janela_operacional' => $resultado], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } catch (DomainException $error) {
+        $conn->rollback();
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => $error->getMessage()], JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $error) {
+        $conn->rollback();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Nao foi possivel atualizar sua previsao.'], JSON_UNESCAPED_UNICODE);
+    }
+    $conn->close();
     exit;
 }
 

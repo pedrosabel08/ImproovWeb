@@ -413,14 +413,25 @@ if ($foto_colab !== ''):
                     <strong id="modalPrazoNecessario">Não definido pelo planejamento</strong>
                     <small>Definido pelo planejamento da produção.</small>
                 </div>
-                <label for="modalPrevisaoConclusao">Sua previsão de conclusão <b aria-hidden="true">*</b></label>
+                <div class="modal-operational-window" id="modalJanelaOperacional" hidden>
+                    <span>Janela operacional</span>
+                    <strong id="modalLimiteOperacional">Calculando…</strong>
+                    <small id="modalLimiteOperacionalAjuda"></small>
+                </div>
+                <label for="modalPrevisaoConclusao">Sua previsão <b aria-hidden="true">*</b></label>
                 <small>Informe quando você acredita que irá concluir esta tarefa.</small>
                 <input type="date" id="modalPrevisaoConclusao">
                 <div class="modal-planning-feedback" id="modalPrevisaoFeedback" aria-live="polite"></div>
+                <label class="modal-planning-reason" id="modalMotivoWrap" for="modalMotivo" hidden>
+                    Motivo <b aria-hidden="true">*</b>
+                    <select id="modalMotivo">
+                        <option value="">Selecione um motivo</option>
+                    </select>
+                </label>
                 <label class="modal-planning-justification" id="modalJustificativaWrap" for="modalJustificativa" hidden>
-                    Justificativa <b aria-hidden="true">*</b>
-                    <small>Explique o que está impedindo a conclusão dentro do prazo necessário.</small>
-                    <textarea id="modalJustificativa" rows="3" maxlength="500" placeholder="Informe o motivo"></textarea>
+                    Justificativa complementar <b id="modalJustificativaObrigatoria" aria-hidden="true" hidden>*</b>
+                    <small id="modalJustificativaAjuda">Acrescente um contexto, se necessário.</small>
+                    <textarea id="modalJustificativa" rows="3" maxlength="500" placeholder="Contexto adicional"></textarea>
                 </label>
                 <p class="modal-planning-note"><i class="ri-information-line"></i> Sua previsão é uma estimativa pessoal e não altera o prazo necessário.</p>
             </section>

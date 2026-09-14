@@ -553,6 +553,143 @@ function mapFuncaoParaPasta($nome_funcao)
     return '';
 }
 
+/**
+ * dataIdFuncoes e a referencia canonica da tarefa no worker. O campo pode
+ * chegar como array, valor unico ou JSON serializado dentro de post.
+ *
+ * @return array<int, int>
+ */
+function normalizar_data_id_funcoes_worker($valor): array
+{
+    if (is_string($valor)) {
+        $decodificado = json_decode($valor, true);
+        $valor = is_array($decodificado) ? $decodificado : [$valor];
+    }
+    if (!is_array($valor)) {
+        $valor = [$valor];
+    }
+
+    $ids = [];
+    foreach ($valor as $id) {
+        $id = (int) $id;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+    return array_values($ids);
+}
+
+/**
+ * Mapeia somente os IDs de funcao persistidos em funcao_imagem. O nome vindo
+ * do POST permanece apenas como fallback de compatibilidade para jobs antigos.
+ */
+function contexto_por_funcao_id_worker(int $funcaoId, ?string $tipoImagem = null): ?array
+{
+    $tipoImagem = mb_strtolower(trim((string) $tipoImagem), 'UTF-8');
+    if (str_contains($tipoImagem, 'planta')) {
+        return [
+            'codigo' => 'PLANTA',
+            'nome' => 'Planta Humanizada',
+            'pasta' => '04.Finalizacao',
+            'subpasta' => null,
+            'processo' => 'PLA',
+        ];
+    }
+
+    $mapa = [
+        1 => ['codigo' => 'CADERNO', 'nome' => 'Caderno', 'pasta' => '02.Projetos', 'subpasta' => null, 'processo' => 'CAD'],
+        2 => ['codigo' => 'MODELAGEM', 'nome' => 'Modelagem', 'pasta' => '03.Models', 'subpasta' => 'MT', 'processo' => 'MOD'],
+        3 => ['codigo' => 'COMPOSICAO', 'nome' => 'Composição', 'pasta' => '03.Models', 'subpasta' => 'Comp', 'processo' => 'COM'],
+        4 => ['codigo' => 'FINALIZACAO', 'nome' => 'Finalização', 'pasta' => '03.Models', 'subpasta' => 'Final', 'processo' => 'FIN'],
+        5 => ['codigo' => 'POS_PRODUCAO', 'nome' => 'Pós-Produção', 'pasta' => '04.Finalizacao', 'subpasta' => null, 'processo' => 'POS'],
+        6 => ['codigo' => 'ALTERACAO', 'nome' => 'Alteração', 'pasta' => '03.Models', 'subpasta' => 'Final', 'processo' => 'ALT'],
+        7 => ['codigo' => 'PLANTA', 'nome' => 'Planta Humanizada', 'pasta' => '04.Finalizacao', 'subpasta' => null, 'processo' => 'PLA'],
+        8 => ['codigo' => 'FILTRO_ASSETS', 'nome' => 'Filtro de assets', 'pasta' => '02.Projetos', 'subpasta' => null, 'processo' => 'FIL'],
+        9 => ['codigo' => 'PRE_FINALIZACAO', 'nome' => 'Pré-Finalização', 'pasta' => '03.Models', 'subpasta' => 'Final', 'processo' => 'PRE'],
+    ];
+    return $mapa[$funcaoId] ?? null;
+}
+
+/**
+ * Resolve o contexto do upload consultando funcao_imagem pelos IDs recebidos.
+ * A primeira funcao valida no array e a dona do arquivo; isso preserva a
+ * ordem do request em envios em lote e elimina dependencia de nome_funcao.
+ */
+function resolver_contexto_funcao_worker(array $dataIdFuncoes, string $nomeLegado = ''): array
+{
+    global $conn;
+
+    $ids = normalizar_data_id_funcoes_worker($dataIdFuncoes);
+    $fallback = [
+        'origem' => 'legado',
+        'data_id_funcoes' => $ids,
+        'funcao_id' => null,
+        'funcao_ids' => [],
+        'codigo' => null,
+        'nome' => fix_mojibake_worker($nomeLegado),
+        'pasta' => mapFuncaoParaPasta(fix_mojibake_worker($nomeLegado)),
+        'subpasta' => null,
+        'processo' => null,
+    ];
+    if (!$ids) {
+        return $fallback;
+    }
+
+    if (function_exists('ensure_db_connection_local')) {
+        ensure_db_connection_local();
+    }
+    if (!isset($conn) || !($conn instanceof mysqli)) {
+        error_log('[upload_worker] contexto de funcao: conexao indisponivel; usando fallback legado.');
+        return $fallback;
+    }
+
+    $stmt = $conn->prepare(
+        'SELECT fi.idfuncao_imagem, fi.funcao_id, ico.tipo_imagem
+           FROM funcao_imagem fi
+      LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+          WHERE fi.idfuncao_imagem = ?
+          LIMIT 1'
+    );
+    if (!$stmt) {
+        error_log('[upload_worker] contexto de funcao: falha ao preparar consulta: ' . ($conn->error ?? 'sem detalhe'));
+        return $fallback;
+    }
+
+    $funcoesEncontradas = [];
+    foreach ($ids as $funcaoImagemId) {
+        $stmt->bind_param('i', $funcaoImagemId);
+        if (!$stmt->execute()) {
+            continue;
+        }
+        $row = $stmt->get_result()->fetch_assoc();
+        if (!$row) {
+            continue;
+        }
+        $funcaoId = (int) $row['funcao_id'];
+        $funcoesEncontradas[$funcaoImagemId] = $funcaoId;
+        $contexto = contexto_por_funcao_id_worker($funcaoId, $row['tipo_imagem'] ?? null);
+        if ($contexto !== null) {
+            $stmt->close();
+            return array_merge($contexto, [
+                'origem' => 'funcao_imagem',
+                'data_id_funcoes' => $ids,
+                'funcao_id' => $funcaoId,
+                'funcao_ids' => array_values($funcoesEncontradas),
+            ]);
+        }
+    }
+    $stmt->close();
+
+    $fallback['funcao_ids'] = array_values($funcoesEncontradas);
+    if ($funcoesEncontradas) {
+        $fallback['funcao_id'] = reset($funcoesEncontradas);
+        error_log('[upload_worker] contexto de funcao: funcao_id sem mapeamento (' . implode(',', $fallback['funcao_ids']) . '); usando fallback legado.');
+    } else {
+        error_log('[upload_worker] contexto de funcao: dataIdFuncoes sem correspondencia em funcao_imagem (' . implode(',', $ids) . '); usando fallback legado.');
+    }
+    return $fallback;
+}
+
 // --- New: daemon mode, atomic claim, retries, signal handling ---
 
 $opts = getopt('', ['daemon', 'sleep:']);
@@ -1479,6 +1616,9 @@ do {
         // extract post fields
         $nomenclatura = normalize_nomenclatura_worker((string)($meta['post']['nomenclatura'] ?? ''));
         $nome_funcao = $meta['post']['nome_funcao'] ?? '';
+        $dataIdFuncoes = normalizar_data_id_funcoes_worker(
+            $meta['dataIdFuncoes'] ?? ($meta['post']['dataIdFuncoes'] ?? [])
+        );
         $numeroImagem = $meta['post']['numeroImagem'] ?? '';
         $primeiraPalavra = $meta['post']['primeiraPalavra'] ?? '';
         $nome_imagem = $meta['post']['nome_imagem'] ?? '';
@@ -1491,16 +1631,28 @@ do {
         $nome_imagem = fix_mojibake_worker($nome_imagem);
         $nome_imagem_original = fix_mojibake_worker($nome_imagem_original);
         $primeiraPalavra = fix_mojibake_worker($primeiraPalavra);
-        error_log("[upload_worker] decoded fields: nome_funcao={$nome_funcao} | nome_imagem={$nome_imagem} | primeiraPalavra={$primeiraPalavra}");
+        $contextoFuncao = resolver_contexto_funcao_worker($dataIdFuncoes, $nome_funcao);
+        $nome_funcao_efetivo = $contextoFuncao['nome'] ?: $nome_funcao;
+        error_log(
+            '[upload_worker] contexto da funcao: origem=' . $contextoFuncao['origem']
+            . ' dataIdFuncoes=' . implode(',', $dataIdFuncoes)
+            . ' funcao_id=' . ($contextoFuncao['funcao_id'] ?? 'n/a')
+            . ' codigo=' . ($contextoFuncao['codigo'] ?? 'n/a')
+            . " | nome legado={$nome_funcao}"
+        );
         // Normalizar componentes do nome do arquivo removendo acentos
         $nomenclatura_clean = removerTodosAcentos_worker($nomenclatura);
         $primeiraPalavra_clean = removerTodosAcentos_worker($primeiraPalavra);
         $nome_imagem_clean = removerTodosAcentos_worker($nome_imagem);
 
         if ($taskType !== 'animacao') {
-            $pasta_funcao = mapFuncaoParaPasta($nome_funcao);
+            $pasta_funcao = $contextoFuncao['pasta'];
             if (!$pasta_funcao) {
-                worker_log("Função sem pasta mapeada: {$nome_funcao}", 'ERROR');
+                worker_log(
+                    'Função sem pasta mapeada: dataIdFuncoes=' . implode(',', $dataIdFuncoes)
+                    . " | nome legado={$nome_funcao}",
+                    'ERROR'
+                );
                 rename($staged, $failedDir . '/' . basename($staged));
                 rename($processingMeta, $failedDir . '/' . basename($processingMeta));
                 continue;
@@ -1600,38 +1752,35 @@ do {
             $remote_dir = $remote_dir . '/' . build_animation_folder_name_worker($nome_imagem_original, $tipo_animacao);
             $nome_final = build_animation_file_name_worker($numeroImagem, $nomenclatura, $tipo_animacao, $ext, $nome_funcao);
         } else {
-            $semAcento = removerTodosAcentos_worker($nome_funcao);
-            $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
+            $semAcento = removerTodosAcentos_worker($nome_funcao_efetivo);
+            $processo = $contextoFuncao['processo']
+                ?: strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
             $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipo}-{$processo}";
-            $revisao = resolve_revisao_worker($meta['dataIdFuncoes'] ?? []);
+            $revisao = resolve_revisao_worker($dataIdFuncoes);
             $nome_final = "{$nome_base}-{$revisao}.{$ext}";
 
-            // Regras especiais iguais ao uploadFinal.php
+            // Regras de pasta determinadas pelo funcao_id de funcao_imagem.
+            // O nome legado e usado apenas para jobs antigos sem referencia.
+            $codigoFuncao = $contextoFuncao['codigo'];
             $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
             if ($pasta_funcao === '03.Models') {
                 $nomeImagemSanitizado = sanitizeFilename_worker($nome_imagem);
-                $funcao_key = $funcao_normalizada;
-                if ($funcao_key === 'alteração' || $funcao_key === 'alteracao') {
+                if ($codigoFuncao === 'ALTERACAO' || ($codigoFuncao === null && ($funcao_normalizada === 'alteração' || $funcao_normalizada === 'alteracao'))) {
                     $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/Final/{$revisao}";
                 } else {
-                    $mapa_sub = [
-                        'modelagem' => 'MT',
-                        'composição' => 'Comp',
-                        'composicao' => 'Comp',
-                        'finalização' => 'Final',
-                        'finalizacao' => 'Final',
-                        'escolha de ângulos' => 'Final',
-                        'pré-finalização' => 'Final',
-                        'pre-finalizacao' => 'Final'
+                    $mapaSubLegado = [
+                        'modelagem' => 'MT', 'composição' => 'Comp', 'composicao' => 'Comp',
+                        'finalização' => 'Final', 'finalizacao' => 'Final',
+                        'escolha de ângulos' => 'Final', 'pré-finalização' => 'Final', 'pre-finalizacao' => 'Final',
                     ];
-                    $subpasta_funcao = $mapa_sub[$funcao_key] ?? 'OUTROS';
+                    $subpasta_funcao = $contextoFuncao['subpasta'] ?? ($mapaSubLegado[$funcao_normalizada] ?? 'OUTROS');
                     $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/{$subpasta_funcao}";
                 }
-            } elseif ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção') {
+            } elseif ($codigoFuncao === 'POS_PRODUCAO' || ($codigoFuncao === null && ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção'))) {
                 // Pós-Produção: nome_final = nome_imagem_revisao.ext em pasta revisao
                 $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
                 $remote_dir = $remote_dir . "/{$revisao}";
-            } elseif ($funcao_normalizada === 'planta humanizada') {
+            } elseif ($codigoFuncao === 'PLANTA' || ($codigoFuncao === null && $funcao_normalizada === 'planta humanizada')) {
                 $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
                 $remote_dir = $remote_dir . "/{$revisao}/PH";
             }
@@ -1720,8 +1869,17 @@ do {
         writeMeta($processingMeta, $meta);
 
         $isDeferredPdf = !empty($meta['pdf_approval_deferred']) && strtoupper($tipo) === 'PDF';
+        $isDeferredByFuncaoId = in_array(
+            $contextoFuncao['codigo'] ?? null,
+            ['CADERNO', 'FILTRO_ASSETS'],
+            true
+        );
         $isPdfPreviewRequired = strtoupper($tipo) === 'PDF'
-            && ($isDeferredPdf || pdf_approval_is_deferred_function($nome_funcao));
+            && (
+                $isDeferredPdf
+                || $isDeferredByFuncaoId
+                || (($contextoFuncao['codigo'] ?? null) === null && pdf_approval_is_deferred_function($nome_funcao))
+            );
         if ($isPdfPreviewRequired) {
             $previewPath = generate_pdf_preview_worker($staged, $meta, (string)$jobId, $pdfPreviewDir);
             if ($previewPath !== null) {

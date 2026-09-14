@@ -5,12 +5,14 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
 require_once __DIR__ . '/helpers/alteracoes_helper.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/helpers/pendencias_operacionais_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/helpers/inicio_operacional_helper.php';
 
 // Simple file logger for debugging (insereFuncao2)
 function write_log_insere_funcao2($msg)
@@ -43,6 +45,8 @@ $blockedEvaluation = null;
 $confirmarPendencias = !empty($data['confirmar_pendencias']);
 $mutationId = trim((string) ($data['mutation_id'] ?? ''));
 $statusChanged = !empty($data['status_changed']);
+$actorColaboradorId = !empty($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null;
+$actorUsuarioId = !empty($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null;
 
 // A tela moderna envia somente as funções realmente alteradas. Mantemos o
 // formato antigo como fallback para não quebrar fluxos legados.
@@ -157,6 +161,7 @@ try {
             $status = emptyToNull($changedFunctions !== null ? ($delta['status'] ?? null) : ($data['status_' . $parametro] ?? null));
             $obs = emptyToNull($changedFunctions !== null ? ($delta['observacao'] ?? null) : ($data['obs_' . $parametro] ?? null));
             $funcaoCriadaEmAndamento = false;
+            $inicioAtomicoPendente = false;
 
             if (strcasecmp((string) $status, 'Em andamento') === 0) {
                 $stmtCurrent = $conn->prepare(
@@ -167,10 +172,13 @@ try {
                 $current = $stmtCurrent->get_result()->fetch_assoc();
                 $stmtCurrent->close();
                 $funcaoCriadaEmAndamento = !$current;
-                if ($funcaoCriadaEmAndamento) {
+                $statusAtualNormalizado = (string) ($current['status'] ?? 'Não iniciado');
+                $inicioAtomicoPendente = flow_janela_schema_disponivel($conn)
+                    && (!$current || in_array($statusAtualNormalizado, ['Não iniciado', 'Aprovado', 'Aprovado com ajustes', 'Finalizado'], true));
+                if ($funcaoCriadaEmAndamento && !$inicioAtomicoPendente) {
                     flow_wip_assert_novo_inicio($conn, $colaborador_id);
                 }
-                if ($current && strcasecmp((string) $current['status'], 'Não iniciado') === 0) {
+                if ($current && strcasecmp((string) $current['status'], 'Não iniciado') === 0 && !$inicioAtomicoPendente) {
                     $current['colaborador_id'] = $colaborador_id;
                     flow_wip_assert_novo_inicio($conn, $colaborador_id, $current);
                     $blockedEvaluation = motor_requisitos_avaliar_funcao_imagem($conn, (int) $current['idfuncao_imagem']);
@@ -180,6 +188,16 @@ try {
                     if (!$blockedEvaluation['elegivel'] && !$confirmarPendencias) {
                         throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
                     }
+                }
+                if ($current && flow_wip_status_ativo((string) $current['status']) && (int) $current['colaborador_id'] !== $colaborador_id && flow_janela_schema_disponivel($conn)) {
+                    flow_inicio_operacional_transferir($conn, [
+                        'funcao_imagem_id' => (int) $current['idfuncao_imagem'],
+                        'novo_responsavel_id' => $colaborador_id,
+                        'nova_previsao' => $prazo,
+                        'motivo_transferencia' => $obs ?: 'Transferencia registrada pela edicao em lote.',
+                        'ator_colaborador_id' => $actorColaboradorId ?? null,
+                        'ator_usuario_id' => $actorUsuarioId ?? null,
+                    ]);
                 }
             }
 
@@ -233,7 +251,10 @@ try {
 
             write_debug_insere_funcao2("Detected valorFuncao=" . var_export($valorFuncao, true) . " for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
 
-            $bound = $stmt->bind_param("iiissd", $imagem_id, $colaborador_id, $funcao_id, $status, $obs, $valorFuncao);
+            $statusPersistencia = $inicioAtomicoPendente
+                ? (string) ($current['status'] ?? 'Não iniciado')
+                : $status;
+            $bound = $stmt->bind_param("iiissd", $imagem_id, $colaborador_id, $funcao_id, $statusPersistencia, $obs, $valorFuncao);
             if ($bound === false) {
                 write_log_insere_funcao2("bind_param failed (insert): " . $stmt->error . " | tipos=iiissd | valores=" . json_encode([$imagem_id, $colaborador_id, $funcao_id, $status, $obs, $valorFuncao]));
                 throw new Exception('Erro no bind_param (insert): ' . $stmt->error);
@@ -245,7 +266,26 @@ try {
                 throw new Exception('Erro no execute insert: ' . $stmt->error);
             }
 
-            if ($funcaoCriadaEmAndamento) {
+            if ($inicioAtomicoPendente) {
+                $stmtInicioAtomico = $conn->prepare('SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1 FOR UPDATE');
+                $stmtInicioAtomico->bind_param('ii', $imagem_id, $funcao_id);
+                $stmtInicioAtomico->execute();
+                $idInicioAtomico = (int) ($stmtInicioAtomico->get_result()->fetch_assoc()['idfuncao_imagem'] ?? 0);
+                $stmtInicioAtomico->close();
+                flow_inicio_operacional_iniciar($conn, [
+                    'funcao_imagem_id' => $idInicioAtomico,
+                    'previsao' => $prazo,
+                    'observacao' => $obs,
+                    'motivo_codigo' => $delta['motivo_codigo'] ?? ($data['motivo_codigo'] ?? null),
+                    'motivo_texto' => $delta['motivo_texto'] ?? ($data['motivo_texto'] ?? null),
+                    'confirmar_pendencias' => $confirmarPendencias,
+                    'ator_colaborador_id' => $actorColaboradorId ?? null,
+                    'ator_usuario_id' => $actorUsuarioId ?? null,
+                    'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+                ]);
+            }
+
+            if ($funcaoCriadaEmAndamento && !$inicioAtomicoPendente) {
                 $stmtInicio = $conn->prepare(
                     'SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1'
                 );

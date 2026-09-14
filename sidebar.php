@@ -423,14 +423,12 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
             <section class="sidebar-panel-section" id="sidebar-panel-ferramentas" data-sidebar-section="ferramentas" aria-labelledby="sidebar-panel-ferramentas-title" hidden>
                 <h3 id="sidebar-panel-ferramentas-title">Ferramentas</h3>
                 <ul class="sidebar-panel-links">
-                    <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
-                        <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span>Mapa Compatib.</span></a></li>
-                        <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span>SIRE</span></a></li>
-                    <?php endif; ?>
-                    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                        <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
-                        <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i class="fas fa-paperclip"></i><span>Flow Referências</span></a></li>
-                    <?php endif; ?>
+                    <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span>SIRE</span></a></li>
+                     <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                    <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span>Mapa Compatib.</span></a></li>
+                    <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
+                    <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i class="fas fa-paperclip"></i><span>Flow Referências</span></a></li>
+                   <?php endif; ?>
                 </ul>
             </section>
 

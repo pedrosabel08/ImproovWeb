@@ -190,32 +190,45 @@ $sql = "SELECT
     fi.file_uploaded_at,
     fi.requires_file_upload,
     CASE
-        WHEN fi.funcao_id IN (4, 6)
-         AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
-         AND (
-             fi.funcao_id <> 6
-             OR ico.tipo_imagem IS NULL
-             OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
-         )
-         AND EXISTS (
-             SELECT 1
-             FROM historico_aprovacoes ha
-             WHERE ha.funcao_imagem_id = fi.idfuncao_imagem
-               AND ha.status_novo IN ('Aprovado', 'Aprovado com ajustes')
-               AND ha.responsavel IN (21, 2, 9, 31)
-               AND NOT EXISTS (
-                   SELECT 1
-                   FROM historico_aprovacoes ha2
-                   WHERE ha2.funcao_imagem_id = ha.funcao_imagem_id
-                     AND ha2.id > ha.id
-               )
-             LIMIT 1
-         )
+        WHEN (
+            (
+                COALESCE(fi.requires_render_send, 0) = 1
+                OR (
+                    (
+                        (fi.funcao_id = 4 AND ico.status_id = 2)
+                        OR (
+                            fi.funcao_id = 6
+                            AND (
+                                ico.tipo_imagem IS NULL
+                                OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
+                            )
+                        )
+                    )
+                    AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
+                    AND EXISTS (
+                        SELECT 1
+                        FROM historico_aprovacoes ha
+                        WHERE ha.funcao_imagem_id = fi.idfuncao_imagem
+                          AND ha.status_novo IN ('Aprovado', 'Aprovado com ajustes')
+                          AND ha.responsavel IN (21, 2, 9, 31)
+                          AND NOT EXISTS (
+                              SELECT 1
+                              FROM historico_aprovacoes ha2
+                              WHERE ha2.funcao_imagem_id = ha.funcao_imagem_id
+                                AND ha2.id > ha.id
+                          )
+                        LIMIT 1
+                    )
+                )
+            )
+            AND fi.status IN ('Aprovado', 'Aprovado com ajustes')
+        )
          AND NOT EXISTS (
              SELECT 1
              FROM render_alta ra
              WHERE ra.imagem_id = ico.idimagens_cliente_obra
                AND ra.status_id = ico.status_id
+               AND COALESCE(ra.status, '') <> 'Arquivado'
              LIMIT 1
          )
         THEN 1

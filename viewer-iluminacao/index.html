@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visualizador GLB</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #242424;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      #comment-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .comment-marker {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        background: #d97706;
+        color: #ffffff;
+        font:
+          600 13px/1 system-ui,
+          sans-serif;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 45%);
+        cursor: pointer;
+        pointer-events: auto;
+        transform: translate(-50%, -50%);
+      }
+
+      #comment-card {
+        position: fixed;
+        z-index: 2;
+        top: 20px;
+        right: 20px;
+        width: min(280px, calc(100vw - 40px));
+        padding: 14px;
+        border: 1px solid #5b5b5b;
+        border-radius: 8px;
+        background: #252525;
+        color: #f5f5f5;
+        box-shadow: 0 10px 28px rgb(0 0 0 / 35%);
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+      }
+
+      #comment-card h2 {
+        margin: 0 0 8px;
+        font-size: 15px;
+      }
+
+      #comment-card p {
+        margin: 0 0 14px;
+        white-space: pre-wrap;
+      }
+
+      #comment-card button {
+        padding: 6px 10px;
+        border: 0;
+        border-radius: 4px;
+        background: #575757;
+        color: #ffffff;
+        cursor: pointer;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="comment-overlay"></div>
+    <section id="comment-card" hidden aria-live="polite">
+      <h2 id="comment-title"></h2>
+      <p id="comment-text"></p>
+      <button id="close-comment" type="button">Fechar</button>
+    </section>
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x242424);
+
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000,
+      );
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+
+      let model;
+      let waterMeshCount = 0;
+      const noiseNormalTexture = new THREE.TextureLoader().load(
+        "../assets/Noise_Normal_002.jpg",
+        (texture) => {
+          texture.colorSpace = THREE.NoColorSpace;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(10, 10);
+          texture.flipY = false;
+          texture.needsUpdate = true;
+          applyNoiseToWater(texture);
+        },
+        undefined,
+        (error) => {
+          console.error(
+            "Não foi possível carregar ../assets/Noise_Normal_002.jpg.",
+            error,
+          );
+        },
+      );
+
+      const overlay = document.getElementById("comment-overlay");
+      const commentCard = document.getElementById("comment-card");
+      const commentTitle = document.getElementById("comment-title");
+      const commentText = document.getElementById("comment-text");
+      const closeCommentButton = document.getElementById("close-comment");
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const projectedPosition = new THREE.Vector3();
+      const cameraToComment = new THREE.Vector3();
+      const cameraDirection = new THREE.Vector3();
+      const frustum = new THREE.Frustum();
+      const projectionMatrix = new THREE.Matrix4();
+      const comments = [];
+      let pointerDownPosition;
+      let activeComment;
+
+      const hemisphereLight = new THREE.HemisphereLight(
+        0xffffff,
+        0x3b3b3b,
+        1.2,
+      );
+      scene.add(hemisphereLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.set(2048, 2048);
+      scene.add(directionalLight);
+      scene.add(directionalLight.target);
+
+      let modelRadius = 1;
+      let ground;
+      let modelCentered = false;
+
+      function isWaterMesh(child) {
+        const materialNames = Array.isArray(child.material)
+          ? child.material.map((material) => material?.name || "").join(" ")
+          : child.material?.name || "";
+        const label = `${child.name} ${materialNames}`.toLowerCase();
+        return label.includes("agua") || label.includes("water");
+      }
+
+      function applyNoiseToWater(texture) {
+        if (!model) return;
+
+        waterMeshCount = 0;
+        model.traverse((child) => {
+          if (!child.isMesh || !isWaterMesh(child)) return;
+
+          const materials = Array.isArray(child.material)
+            ? child.material
+            : [child.material];
+          materials.forEach((material) => {
+            if (!material) return;
+            material.bumpMap = texture;
+            material.bumpScale = 0.45;
+            material.normalMap = texture;
+            material.normalScale.set(0.65, 0.65);
+            material.needsUpdate = true;
+          });
+          waterMeshCount += 1;
+        });
+
+        if (!waterMeshCount) {
+          console.warn(
+            "Nenhuma malha de água foi encontrada para receber Noise_Normal_002.jpg.",
+          );
+        }
+      }
+
+      function openComment(comment) {
+        activeComment = comment;
+        commentTitle.textContent = `Comentário ${comment.id}`;
+        commentText.textContent = comment.text;
+        commentCard.hidden = false;
+      }
+
+      closeCommentButton.addEventListener("click", () => {
+        activeComment = undefined;
+        commentCard.hidden = true;
+      });
+
+      function createComment(intersection) {
+        const text = window.prompt("Digite o comentário:");
+        if (!text || !text.trim()) return;
+
+        const comment = {
+          id: comments.length + 1,
+          text: text.trim(),
+          worldPosition: intersection.point.clone(),
+          object: intersection.object,
+          createdAt: new Date().toISOString(),
+        };
+        const marker = document.createElement("button");
+        marker.type = "button";
+        marker.className = "comment-marker";
+        marker.textContent = String(comment.id);
+        marker.setAttribute("aria-label", `Abrir comentário ${comment.id}`);
+        marker.addEventListener("click", (event) => {
+          event.stopPropagation();
+          openComment(comment);
+        });
+
+        comment.marker = marker;
+        comments.push(comment);
+        overlay.appendChild(marker);
+        openComment(comment);
+      }
+
+      function createCommentFromClick(event) {
+        if (!model) return;
+
+        const bounds = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+        pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+
+        const intersections = raycaster.intersectObject(model, true);
+        if (intersections.length) createComment(intersections[0]);
+      }
+
+      renderer.domElement.addEventListener("pointerdown", (event) => {
+        pointerDownPosition = { x: event.clientX, y: event.clientY };
+      });
+
+      renderer.domElement.addEventListener("pointerup", (event) => {
+        if (!pointerDownPosition) return;
+
+        const movedDistance = Math.hypot(
+          event.clientX - pointerDownPosition.x,
+          event.clientY - pointerDownPosition.y,
+        );
+        pointerDownPosition = undefined;
+        if (movedDistance < 5) createCommentFromClick(event);
+      });
+
+      function updateCommentMarkers() {
+        if (!comments.length || !model) return;
+
+        projectionMatrix.multiplyMatrices(
+          camera.projectionMatrix,
+          camera.matrixWorldInverse,
+        );
+        frustum.setFromProjectionMatrix(projectionMatrix);
+        const bounds = renderer.domElement.getBoundingClientRect();
+        camera.getWorldDirection(cameraDirection);
+
+        for (const comment of comments) {
+          const point = comment.worldPosition;
+          cameraToComment.copy(point).sub(camera.position);
+          const distance = cameraToComment.length();
+          const pointIsInFront = cameraToComment.dot(cameraDirection) > 0;
+          const pointIsInFrustum = frustum.containsPoint(point);
+
+          projectedPosition.copy(point).project(camera);
+          const pointIsOnScreen =
+            projectedPosition.x >= -1 &&
+            projectedPosition.x <= 1 &&
+            projectedPosition.y >= -1 &&
+            projectedPosition.y <= 1 &&
+            projectedPosition.z >= -1 &&
+            projectedPosition.z <= 1;
+
+          let isOccluded = false;
+          if (pointIsInFront && pointIsInFrustum && pointIsOnScreen) {
+            raycaster.set(camera.position, cameraToComment.normalize());
+            const hits = raycaster.intersectObject(model, true);
+            const tolerance = Math.max(distance * 0.0001, 0.0001);
+            isOccluded = hits.some(
+              (hit) => hit.distance < distance - tolerance,
+            );
+          }
+
+          const visible =
+            pointIsInFront &&
+            pointIsInFrustum &&
+            pointIsOnScreen &&
+            !isOccluded;
+          comment.marker.hidden = !visible;
+          if (!visible && activeComment === comment) {
+            activeComment = undefined;
+            commentCard.hidden = true;
+          }
+          if (!visible) continue;
+
+          comment.marker.style.left = `${(projectedPosition.x * 0.5 + 0.5) * bounds.width}px`;
+          comment.marker.style.top = `${(-projectedPosition.y * 0.5 + 0.5) * bounds.height}px`;
+        }
+      }
+
+      function updateGroundAndSun(box, size) {
+        const maxDimension = Math.max(size.x, size.y, size.z, 0.001);
+        const center = box.getCenter(new THREE.Vector3());
+        const floorY = box.min.y - maxDimension * 0.001;
+        const horizontalRadius = Math.hypot(size.x, size.z) / 2;
+        const sunOffset = new THREE.Vector3(
+          maxDimension * 1.25,
+          maxDimension * 2,
+          maxDimension * 1.5,
+        );
+        const shadowLength =
+          size.y *
+          (Math.hypot(sunOffset.x, sunOffset.z) / Math.max(sunOffset.y, 0.001));
+        const shadowHalfSize = Math.max(
+          horizontalRadius * 1.25,
+          horizontalRadius + shadowLength + maxDimension * 0.25,
+        );
+        const groundSize = shadowHalfSize * 2.2;
+
+        if (!ground) {
+          ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(groundSize, groundSize),
+            new THREE.MeshStandardMaterial({
+              color: 0x4a4a4a,
+              roughness: 0.95,
+              metalness: 0,
+            }),
+          );
+          ground.rotation.x = -Math.PI / 2;
+          ground.receiveShadow = true;
+          scene.add(ground);
+        }
+
+        ground.position.set(center.x, floorY, center.z);
+
+        directionalLight.position.copy(center).add(sunOffset);
+        directionalLight.target.position.set(center.x, floorY, center.z);
+        directionalLight.target.updateMatrixWorld();
+
+        const shadowCamera = directionalLight.shadow.camera;
+        const lightDistance = sunOffset.length();
+        shadowCamera.left = -shadowHalfSize;
+        shadowCamera.right = shadowHalfSize;
+        shadowCamera.top = shadowHalfSize;
+        shadowCamera.bottom = -shadowHalfSize;
+        shadowCamera.near = Math.max(maxDimension * 0.001, 0.001);
+        shadowCamera.far = lightDistance + shadowHalfSize * 2 + maxDimension;
+        shadowCamera.updateProjectionMatrix();
+      }
+
+      function frameModel(resetView = false) {
+        if (!model) return;
+
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        if (!modelCentered) {
+          model.position.sub(center);
+          model.updateMatrixWorld(true);
+          modelCentered = true;
+        }
+
+        const centeredBox = new THREE.Box3().setFromObject(model);
+        const centeredSize = centeredBox.getSize(new THREE.Vector3());
+        modelRadius = centeredSize.length() / 2;
+        updateGroundAndSun(centeredBox, centeredSize);
+
+        controls.target.set(0, 0, 0);
+
+        const halfVerticalFov = THREE.MathUtils.degToRad(camera.fov / 2);
+        const halfHorizontalFov = Math.atan(
+          Math.tan(halfVerticalFov) * camera.aspect,
+        );
+        const limitingFov = Math.min(halfVerticalFov, halfHorizontalFov);
+        const distance = (modelRadius / Math.sin(limitingFov)) * 1.2;
+
+        const direction = resetView
+          ? new THREE.Vector3(1, 0.7, 1).normalize()
+          : camera.position.clone().sub(controls.target).normalize();
+        camera.position.copy(direction.multiplyScalar(distance));
+        camera.near = Math.max(modelRadius / 1000, 0.000001);
+        camera.far = Math.max(distance + modelRadius * 10, camera.near * 1000);
+        camera.updateProjectionMatrix();
+
+        controls.minDistance = Math.max(modelRadius * 0.05, 0.000001);
+        controls.maxDistance = modelRadius * 100;
+        controls.update();
+      }
+
+      new GLTFLoader().load(
+        "../assets/Teste_GLB_001.glb",
+        (gltf) => {
+          model = gltf.scene;
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          applyNoiseToWater(noiseNormalTexture);
+          scene.add(model);
+          frameModel(true);
+        },
+        undefined,
+        (error) => {
+          console.error(
+            "Não foi possível carregar ../assets/Teste_GLB_001.glb.",
+            error,
+          );
+        },
+      );
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        frameModel();
+      });
+
+      function render() {
+        requestAnimationFrame(render);
+        controls.update();
+        camera.updateMatrixWorld();
+        updateCommentMarkers();
+        renderer.render(scene, camera);
+      }
+
+      render();
+    </script>
+  </body>
+</html>

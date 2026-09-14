@@ -25,6 +25,45 @@ $notificar = isset($data['notificar']) && $data['notificar'] == "1";
 $finalizador_id = isset($data['finalizador']) ? intval($data['finalizador']) : null;
 $data_id_funcao = isset($data['data_id_funcao']) ? intval($data['data_id_funcao']) : null;
 
+function clear_requires_render_send_for_render(mysqli $conn, int $imagem_id, int $status_id): void
+{
+    $columnCheck = $conn->query("SHOW COLUMNS FROM funcao_imagem LIKE 'requires_render_send'");
+    if (!($columnCheck instanceof mysqli_result)) {
+        return;
+    }
+
+    $hasColumn = $columnCheck->num_rows > 0;
+    $columnCheck->free();
+    if (!$hasColumn) {
+        return;
+    }
+
+    $stmt = $conn->prepare(
+        "UPDATE funcao_imagem fi
+            SET fi.requires_render_send = 0
+          WHERE fi.imagem_id = ?
+            AND fi.requires_render_send = 1
+            AND EXISTS (
+                SELECT 1
+                 FROM render_alta ra
+                 WHERE ra.imagem_id = fi.imagem_id
+                   AND ra.status_id = ?
+                   AND COALESCE(ra.status, '') <> 'Arquivado'
+                 LIMIT 1
+            )"
+    );
+    if (!$stmt) {
+        error_log('[addRender] falha ao preparar limpeza de requires_render_send: ' . ($conn->error ?? 'sem detalhe'));
+        return;
+    }
+
+    $stmt->bind_param('ii', $imagem_id, $status_id);
+    if (!$stmt->execute()) {
+        error_log('[addRender] falha ao limpar requires_render_send: ' . ($stmt->error ?? 'sem detalhe'));
+    }
+    $stmt->close();
+}
+
 // Se notificar for verdadeiro, apenas envia a notificação e encerra
 if ($notificar && $finalizador_id) {
     // Busca o nome da imagem
@@ -90,6 +129,7 @@ if ($notificar && $finalizador_id) {
             $stmt_render->close();
             deadline_flow_ensure_initial_attempt($conn, (int) $idRenderAdicionado);
         }
+        clear_requires_render_send_for_render($conn, (int) $imagem_id, (int) $status_id);
         $conn->commit();
 
         $response = [
@@ -152,6 +192,8 @@ try {
         $stmt1->close();
         deadline_flow_ensure_initial_attempt($conn, (int) $idRenderAdicionado);
     }
+
+    clear_requires_render_send_for_render($conn, (int) $imagem_id, (int) $status_id);
 
     $response['idrender'] = $idRenderAdicionado;
 

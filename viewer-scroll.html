@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizonte Alto | Portal do cliente</title>
+
+    <style>
+      :root {
+        color-scheme: dark;
+        --background: #101312;
+        --surface: rgba(25, 31, 29, 0.94);
+        --line: rgba(255, 255, 255, 0.13);
+        --text: #f4f6f3;
+        --muted: #a8b2ac;
+        --accent: #cbed88;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--background);
+      }
+
+      body {
+        overflow-x: hidden;
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .experience {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 72% 44%, #2b332f 0%, transparent 34%),
+          linear-gradient(135deg, #151918 0%, #0d100f 72%);
+      }
+
+      .experience::before {
+        position: absolute;
+        inset: 0;
+        content: "";
+        pointer-events: none;
+        background-image: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.025) 1px,
+          transparent 1px
+        );
+        background-size: 12.5vw 100%;
+        mask-image: linear-gradient(to bottom, transparent, black, transparent);
+      }
+
+      .scene-layer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 4;
+        overflow: hidden;
+        width: 300px;
+        height: 360px;
+        transform-origin: 0 0;
+        will-change: transform, border-radius;
+        background: rgba(23, 28, 26, 0);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0);
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      canvas:active {
+        cursor: grabbing;
+      }
+
+      .hero-copy {
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        left: clamp(28px, 6.5vw, 116px);
+        width: min(520px, 42vw);
+        transform: translateY(-50%);
+        will-change: transform, opacity;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 20px;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 720;
+        letter-spacing: 0.19em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 30px;
+        height: 1px;
+        content: "";
+        background: currentColor;
+      }
+
+      h1 {
+        max-width: 8ch;
+        margin: 0;
+        font-size: clamp(54px, 7vw, 108px);
+        font-weight: 520;
+        letter-spacing: -0.075em;
+        line-height: 0.88;
+      }
+
+      .location {
+        margin: 26px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        letter-spacing: 0.025em;
+      }
+
+      .scroll-hint {
+        position: absolute;
+        z-index: 2;
+        right: clamp(26px, 5vw, 76px);
+        bottom: 38px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 680;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        will-change: transform, opacity;
+      }
+
+      .scroll-hint::before {
+        width: 36px;
+        height: 1px;
+        content: "";
+        background: currentColor;
+      }
+
+      .minimap-label {
+        position: fixed;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        background: rgba(12, 16, 14, 0.76);
+        color: #e5ebe6;
+        font-size: 9px;
+        font-weight: 720;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        visibility: hidden;
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      .minimap-label::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        content: "";
+        background: var(--accent);
+      }
+
+      .pending-area {
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        left: calc((100vw - 348px) / 2);
+        width: min(720px, calc(100vw - 396px));
+        transform: translate(-50%, -50%);
+        visibility: hidden;
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      .pending-kicker {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 720;
+        letter-spacing: 0.17em;
+        text-transform: uppercase;
+      }
+
+      .pending-heading {
+        margin-bottom: 22px;
+      }
+
+      .pending-heading h2,
+      .pending-heading p {
+        margin: 0;
+      }
+
+      .pending-heading h2 {
+        font-size: clamp(40px, 5vw, 68px);
+        font-weight: 520;
+        letter-spacing: -0.06em;
+        line-height: 1;
+      }
+
+      .pending-heading p {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .pending-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .pending-item {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr);
+        align-items: center;
+        padding: 18px 22px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(15px);
+        will-change: transform, opacity;
+      }
+
+      .pending-number {
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+      }
+
+      .pending-item strong {
+        display: block;
+        font-size: 15px;
+        font-weight: 610;
+      }
+      .pending-item small {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (max-width: 820px) {
+        .hero-copy {
+          top: auto;
+          bottom: 84px;
+          width: calc(100vw - 56px);
+          transform: none;
+        }
+
+        h1 {
+          font-size: clamp(48px, 16vw, 76px);
+        }
+        .scroll-hint {
+          right: 24px;
+          bottom: 28px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .pending-area {
+          top: 62%;
+          left: 50%;
+          width: calc(100vw - 48px);
+        }
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+  </head>
+
+  <body>
+    <main class="experience" id="experience">
+      <div class="scene-layer" id="scene-layer" aria-label="Prédio 3D">
+        <canvas id="model-canvas"></canvas>
+      </div>
+
+      <div class="hero-copy" id="hero-copy">
+        <p class="eyebrow">Residencial</p>
+        <h1>Horizonte Alto</h1>
+        <p class="location">Vila Madalena, São Paulo — SP</p>
+      </div>
+
+      <div class="scroll-hint" id="scroll-hint">Role para explorar</div>
+      <div class="minimap-label" id="minimap-label">Viewer 3D</div>
+
+      <section
+        class="pending-area"
+        id="pending-area"
+        aria-labelledby="pending-title"
+      >
+        <p class="pending-kicker">Portal do cliente</p>
+        <header class="pending-heading">
+          <h2 id="pending-title">Pendências</h2>
+          <p>03 itens aguardando você</p>
+        </header>
+
+        <ol class="pending-list">
+          <li class="pending-item">
+            <span class="pending-number">01</span>
+            <div>
+              <strong>Aprovar ângulo da piscina</strong
+              ><small>Aguardando sua aprovação</small>
+            </div>
+          </li>
+          <li class="pending-item">
+            <span class="pending-number">02</span>
+            <div>
+              <strong>Enviar referência do lobby</strong
+              ><small>Arquivo necessário para produção</small>
+            </div>
+          </li>
+          <li class="pending-item">
+            <span class="pending-number">03</span>
+            <div>
+              <strong>Revisar fachada principal</strong
+              ><small>Nova versão disponível</small>
+            </div>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      // ==================================================
+      // AJUSTES MANUAIS DO POC
+      // ==================================================
+      // Todos os valores que normalmente precisam de calibração visual ficam aqui.
+      const CONFIG = {
+        debug: {
+          // true mostra a caixa verde usada para enquadrar somente o edifício.
+          // false (recomendado) mantém o helper invisível no POC.
+          buildingBounds: false,
+        },
+
+        hero: {
+          // FOV da câmera. Menor = visual mais teleobjetivo; maior = mais perspectiva.
+          fov: 35,
+
+          // Fração vertical ocupada pelo prédio dentro do viewer.
+          // Aumente para aproximar; diminua para deixar mais respiro. Recomendado: 0.8.
+          buildingHeightCoverage: 0.8,
+
+          // Multiplicador da distância calculada. Menor aproxima; maior afasta.
+          // Recomendado: 0.92.
+          cameraDistanceMultiplier: 0.92,
+
+          // Offsets do ponto observado, em unidades do GLB.
+          // X positivo move o target à direita; Y positivo sobe; Z positivo avança.
+          targetOffsetX: 0,
+          targetOffsetY: 0,
+          targetOffsetZ: 0,
+
+          // Desloca o target como fração da largura do prédio.
+          // Mantenha 0 para a rotação ocorrer exatamente no centro do edifício.
+          compositionOffsetXRatio: 0,
+
+          // Ângulo horizontal inicial ao redor do prédio, em graus.
+          // Aumente/diminua para escolher outra fachada. Recomendado: 38.
+          initialAzimuthDegrees: 38,
+
+          // Inclinação inicial. Maior mostra mais cobertura; menor fica mais frontal.
+          // A rotação vertical permanece travada. Recomendado: 0.32.
+          elevationRatio: 0.32,
+
+          // Limites de zoom relativos à distância calculada.
+          // Menor mínimo aproxima mais; maior máximo afasta mais.
+          minZoomMultiplier: 0.65,
+          maxZoomMultiplier: 1.4,
+
+          // Altura visual do viewer no Hero. 0.86 = 86% da viewport.
+          viewerHeightRatio: 0.86,
+
+          // Centro horizontal do viewer. Maior move à direita; menor à esquerda.
+          viewerCenterXRatio: 0.68,
+        },
+
+        minimap: {
+          // Dimensões finais reais do único viewer. Aumente para deixá-lo maior.
+          width: 300,
+          height: 360,
+
+          // Recuos finais. Aumente para afastar da borda correspondente.
+          top: 24,
+          right: 24,
+
+          // Ocupação vertical do prédio. Maior aproxima; menor cria respiro.
+          buildingHeightCoverage: 0.8,
+
+          // Distância do minimapa. Menor aproxima; maior afasta. Recomendado: 0.92.
+          cameraDistanceMultiplier: 0.92,
+
+          // Offsets do target do minimapa em unidades do GLB.
+          targetOffsetX: 0,
+          targetOffsetY: 0,
+          targetOffsetZ: 0,
+
+          // Fator extra de zoom. Menor aproxima; maior afasta. Recomendado: 1.
+          cameraZoomFactor: 1,
+
+          // true oculta terreno/ruas somente no fim; false mantém todo o GLB visível.
+          hideTerrain: false,
+        },
+
+        animation: {
+          // Pixels de scroll da transição. Aumente para alongar; diminua para encurtar.
+          scrollDistance: 900,
+
+          // Inércia do playhead. Aumente para mais suavidade; diminua para resposta direta.
+          scrub: 1.2,
+
+          // Arredondamento final do minimapa em pixels.
+          borderRadius: 18,
+        },
+      };
+
+      const TERRAIN_NAME_PATTERN =
+        /(^|[_\s-])(terreno|rua|calcada|calçada|meio[_\s-]?fio|grama|concregrama)([_\s-]|$)/i;
+
+      const canvas = document.querySelector("#model-canvas");
+      const sceneLayer = document.querySelector("#scene-layer");
+      const heroCopy = document.querySelector("#hero-copy");
+      const scrollHint = document.querySelector("#scroll-hint");
+      const minimapLabel = document.querySelector("#minimap-label");
+      const pendingArea = document.querySelector("#pending-area");
+      const pendingItems = gsap.utils.toArray(".pending-item");
+
+      history.scrollRestoration = "manual";
+      window.scrollTo(0, 0);
+      gsap.registerPlugin(ScrollTrigger);
+
+      sceneLayer.style.width = `${CONFIG.minimap.width}px`;
+      sceneLayer.style.height = `${CONFIG.minimap.height}px`;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        CONFIG.hero.fov,
+        CONFIG.minimap.width / CONFIG.minimap.height,
+        0.1,
+        1000,
+      );
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
+      const RENDER_WIDTH = 900;
+      const RENDER_HEIGHT = 1080;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
+      camera.aspect = RENDER_WIDTH / RENDER_HEIGHT;
+      camera.updateProjectionMatrix();
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 0.9;
+
+      scene.add(new THREE.HemisphereLight(0xdce9f3, 0x17211c, 1.35));
+      const sun = new THREE.DirectionalLight(0xfff3dc, 2.15);
+      sun.position.set(12, 20, 14);
+      scene.add(sun, sun.target);
+
+      const controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.enablePan = false;
+      controls.enableZoom = true;
+      controls.zoomSpeed = 0.7;
+
+      let buildingSubject = null;
+      let terrainEntries = [];
+      let fullSceneBounds = new THREE.Box3();
+      let heroFit = null;
+      let minimapFit = null;
+      let resizeFrame = 0;
+      const cameraTransition = { mix: 0 };
+      const directionScratch = new THREE.Vector3();
+      const targetScratch = new THREE.Vector3();
+
+      function vectorDetails(vector) {
+        return { x: vector.x, y: vector.y, z: vector.z };
+      }
+
+      function boxDetails(box) {
+        return { min: vectorDetails(box.min), max: vectorDetails(box.max) };
+      }
+
+      function analyzeModel(root) {
+        root.updateWorldMatrix(true, true);
+        const sceneBounds = new THREE.Box3().setFromObject(root);
+        const sceneSize = sceneBounds.getSize(new THREE.Vector3());
+        const meshEntries = [];
+        const namedBuildingGroups = [];
+
+        root.traverse((child) => {
+          if (child === root) return;
+
+          if (
+            /edificio|edifício|predio|prédio|building|tower|torre/i.test(
+              child.name,
+            )
+          ) {
+            const bounds = new THREE.Box3().setFromObject(child);
+            const size = bounds.getSize(new THREE.Vector3());
+            if (!bounds.isEmpty() && size.y > 0)
+              namedBuildingGroups.push({ object: child, bounds, size });
+          }
+
+          if (!child.isMesh) return;
+          const bounds = new THREE.Box3().setFromObject(child);
+          if (bounds.isEmpty()) return;
+
+          const size = bounds.getSize(new THREE.Vector3());
+          const horizontalSpan = Math.max(size.x, size.z, 0.0001);
+          const flatness = size.y / horizontalSpan;
+          const explicitTerrain = TERRAIN_NAME_PATTERN.test(child.name);
+          const heuristicTerrain =
+            flatness < 0.035 && horizontalSpan > sceneSize.y * 0.7;
+
+          meshEntries.push({
+            object: child,
+            bounds,
+            size,
+            flatness,
+            isTerrain: explicitTerrain || heuristicTerrain,
+            terrainReason: explicitTerrain
+              ? "nome"
+              : heuristicTerrain
+                ? "superfície larga/plana"
+                : "",
+          });
+        });
+
+        namedBuildingGroups.sort((a, b) => b.size.y - a.size.y);
+        let subjectObject = root;
+        let subjectBounds = new THREE.Box3().makeEmpty();
+        let detectionMethod = "união dos meshes arquitetônicos";
+
+        if (namedBuildingGroups.length) {
+          subjectObject = namedBuildingGroups[0].object;
+          subjectBounds.copy(namedBuildingGroups[0].bounds);
+          detectionMethod = `grupo nomeado: ${subjectObject.name}`;
+        } else {
+          meshEntries
+            .filter((entry) => !entry.isTerrain)
+            .forEach((entry) => subjectBounds.union(entry.bounds));
+        }
+
+        if (subjectBounds.isEmpty()) {
+          subjectBounds.copy(sceneBounds);
+          detectionMethod = "fallback: cena completa";
+        }
+
+        console.groupCollapsed("[Portal 3D] Análise da hierarquia do GLB");
+        console.table(
+          meshEntries.map((entry) => ({
+            mesh: entry.object.name || "(sem nome)",
+            x: Number(entry.size.x.toFixed(3)),
+            y: Number(entry.size.y.toFixed(3)),
+            z: Number(entry.size.z.toFixed(3)),
+            flatness: Number(entry.flatness.toFixed(4)),
+            classificação: entry.isTerrain
+              ? `terreno (${entry.terrainReason})`
+              : "edifício",
+          })),
+        );
+        console.info("Método de identificação:", detectionMethod);
+        console.info("Bounding box da cena completa:", boxDetails(sceneBounds));
+        console.info(
+          "Bounding box usado para o prédio:",
+          boxDetails(subjectBounds),
+        );
+        console.groupEnd();
+
+        return {
+          subject: {
+            object: subjectObject,
+            bounds: subjectBounds,
+            detectionMethod,
+          },
+          terrainEntries: meshEntries.filter((entry) => entry.isTerrain),
+          sceneBounds,
+        };
+      }
+
+      function getCameraDirection() {
+        const azimuth = THREE.MathUtils.degToRad(
+          CONFIG.hero.initialAzimuthDegrees,
+        );
+        return new THREE.Vector3(
+          Math.sin(azimuth),
+          CONFIG.hero.elevationRatio,
+          Math.cos(azimuth),
+        ).normalize();
+      }
+
+      function calculateBuildingFit(building, mode) {
+        const settings = CONFIG[mode];
+        const size = building.bounds.getSize(new THREE.Vector3());
+        const center = building.bounds.getCenter(new THREE.Vector3());
+        center.add(
+          new THREE.Vector3(
+            settings.targetOffsetX,
+            settings.targetOffsetY,
+            settings.targetOffsetZ,
+          ),
+        );
+        if (mode === "hero")
+          center.x += size.x * CONFIG.hero.compositionOffsetXRatio;
+
+        const verticalFov = THREE.MathUtils.degToRad(CONFIG.hero.fov);
+        const horizontalFov =
+          2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+        const cameraDirection = getCameraDirection();
+        const horizontalRadius = Math.hypot(size.x, size.z) / 2;
+        const verticalProjectionHalf =
+          (size.y / 2) * Math.sqrt(1 - cameraDirection.y ** 2) +
+          horizontalRadius * Math.abs(cameraDirection.y);
+        const heightDistance =
+          verticalProjectionHalf /
+          Math.tan(verticalFov / 2) /
+          settings.buildingHeightCoverage;
+        const widthDistance =
+          horizontalRadius / Math.tan(horizontalFov / 2) / 0.86;
+        const zoomFactor = mode === "minimap" ? settings.cameraZoomFactor : 1;
+        const distance =
+          Math.max(heightDistance, widthDistance) *
+          settings.cameraDistanceMultiplier *
+          zoomFactor;
+        return { center, size, distance };
+      }
+
+      function applyCameraFit(fit, resetDirection = false) {
+        if (!fit) return;
+        const direction = resetDirection
+          ? getCameraDirection()
+          : directionScratch
+              .copy(camera.position)
+              .sub(controls.target)
+              .normalize();
+        if (!Number.isFinite(direction.x) || direction.lengthSq() < 0.5)
+          direction.copy(getCameraDirection());
+
+        controls.target.copy(fit.center);
+        camera.position
+          .copy(fit.center)
+          .addScaledVector(direction, fit.distance);
+        controls.minDistance = fit.distance * CONFIG.hero.minZoomMultiplier;
+        controls.maxDistance = fit.distance * CONFIG.hero.maxZoomMultiplier;
+
+        const polarAngle = direction.angleTo(new THREE.Vector3(0, 1, 0));
+        controls.minPolarAngle = polarAngle;
+        controls.maxPolarAngle = polarAngle;
+
+        const fullSize = fullSceneBounds.getSize(new THREE.Vector3());
+        camera.near = Math.max(fit.distance / 100, 0.01);
+        camera.far = Math.max(fit.distance * 12, fullSize.length() * 5);
+        camera.updateProjectionMatrix();
+        controls.update();
+      }
+
+      function fitCameraToBuilding(building) {
+        heroFit = calculateBuildingFit(building, "hero");
+        minimapFit = calculateBuildingFit(building, "minimap");
+        applyCameraFit(heroFit, true);
+
+        console.groupCollapsed("[Portal 3D] Enquadramento do edifício");
+        console.info("Size do prédio:", vectorDetails(heroFit.size));
+        console.info("Center do prédio:", vectorDetails(heroFit.center));
+        console.info(
+          "Posição inicial da câmera:",
+          vectorDetails(camera.position),
+        );
+        console.info("Distância calculada:", heroFit.distance);
+        console.info("FOV atual:", camera.fov);
+        console.groupEnd();
+      }
+
+      function setTerrainForProgress(progress) {
+        const shouldHide = CONFIG.minimap.hideTerrain && progress > 0.72;
+        terrainEntries.forEach((entry) => {
+          entry.object.visible = shouldHide ? false : entry.originalVisible;
+        });
+      }
+
+      function updateCameraTransition() {
+        if (!heroFit || !minimapFit) return;
+        const mix = cameraTransition.mix;
+        const direction = directionScratch
+          .copy(camera.position)
+          .sub(controls.target)
+          .normalize();
+        const target = targetScratch.lerpVectors(
+          heroFit.center,
+          minimapFit.center,
+          mix,
+        );
+        const distance = THREE.MathUtils.lerp(
+          heroFit.distance,
+          minimapFit.distance,
+          mix,
+        );
+        controls.target.copy(target);
+        camera.position.copy(target).addScaledVector(direction, distance);
+        controls.minDistance = distance * CONFIG.hero.minZoomMultiplier;
+        controls.maxDistance = distance * CONFIG.hero.maxZoomMultiplier;
+        camera.updateProjectionMatrix();
+        setTerrainForProgress(mix);
+      }
+
+      function getResponsiveMinimapPose() {
+        const availableWidth = Math.max(window.innerWidth - 32, 1);
+        const availableHeight = Math.max(window.innerHeight - 32, 1);
+        const responsiveLimit = window.innerWidth < 760 ? 0.62 : 1;
+        const scale = Math.min(
+          responsiveLimit,
+          availableWidth / CONFIG.minimap.width,
+          availableHeight / CONFIG.minimap.height,
+        );
+        const renderedWidth = CONFIG.minimap.width * scale;
+        const edge = window.innerWidth < 760 ? 16 : CONFIG.minimap.right;
+        return {
+          x: window.innerWidth - renderedWidth - edge,
+          y: window.innerWidth < 760 ? 16 : CONFIG.minimap.top,
+          scale,
+        };
+      }
+
+      function getHeroPose() {
+        if (window.innerWidth < 820) {
+          const scale = Math.min(
+            (window.innerWidth * 0.72) / CONFIG.minimap.width,
+            (window.innerHeight * 0.58) / CONFIG.minimap.height,
+          );
+          return {
+            x: (window.innerWidth - CONFIG.minimap.width * scale) / 2,
+            y: 16,
+            scale,
+          };
+        }
+
+        const heightScale =
+          (window.innerHeight * CONFIG.hero.viewerHeightRatio) /
+          CONFIG.minimap.height;
+        const widthScale = (window.innerWidth * 0.54) / CONFIG.minimap.width;
+        const scale = Math.min(heightScale, widthScale);
+        const renderedWidth = CONFIG.minimap.width * scale;
+        const renderedHeight = CONFIG.minimap.height * scale;
+        return {
+          x:
+            window.innerWidth * CONFIG.hero.viewerCenterXRatio -
+            renderedWidth / 2,
+          y: Math.max((window.innerHeight - renderedHeight) / 2, 16),
+          scale,
+        };
+      }
+
+      function positionMinimapLabel() {
+        const pose = getResponsiveMinimapPose();
+        const labelWidth = minimapLabel.offsetWidth || 88;
+        gsap.set(minimapLabel, {
+          x: pose.x + CONFIG.minimap.width * pose.scale - labelWidth - 12,
+          y: pose.y + 12,
+        });
+      }
+
+      const loader = new GLTFLoader();
+      loader.load(
+        "assets/Fachada_GLB_001.glb",
+        (gltf) => {
+          const model = gltf.scene;
+          scene.add(model);
+          const analysis = analyzeModel(model);
+          buildingSubject = analysis.subject;
+          fullSceneBounds.copy(analysis.sceneBounds);
+          terrainEntries = analysis.terrainEntries.map((entry) => ({
+            ...entry,
+            originalVisible: entry.object.visible,
+          }));
+
+          fitCameraToBuilding(buildingSubject);
+          if (CONFIG.debug.buildingBounds)
+            scene.add(new THREE.Box3Helper(buildingSubject.bounds, 0xcbed88));
+
+          const buildingCenter = buildingSubject.bounds.getCenter(
+            new THREE.Vector3(),
+          );
+          const buildingSize = buildingSubject.bounds.getSize(
+            new THREE.Vector3(),
+          );
+          sun.position
+            .copy(buildingCenter)
+            .add(
+              new THREE.Vector3(
+                buildingSize.x,
+                buildingSize.y * 1.25,
+                buildingSize.z,
+              ),
+            );
+          sun.target.position.copy(buildingCenter);
+          sun.target.updateMatrixWorld();
+
+          window.__PORTAL_3D_DEBUG__ = {
+            buildingDetection: buildingSubject.detectionMethod,
+            fullSceneBounds: boxDetails(fullSceneBounds),
+            buildingBounds: boxDetails(buildingSubject.bounds),
+            buildingSize: vectorDetails(heroFit.size),
+            buildingCenter: vectorDetails(heroFit.center),
+            heroDistance: heroFit.distance,
+            minimapDistance: minimapFit.distance,
+            terrainMeshes: terrainEntries.map((entry) => entry.object.name),
+          };
+          ScrollTrigger.refresh();
+        },
+        undefined,
+        (error) =>
+          console.error(
+            "[Portal 3D] Não foi possível carregar assets/Fachada_GLB_001.glb:",
+            error,
+          ),
+      );
+
+      gsap.set(pendingArea, { autoAlpha: 0, y: 48 });
+      gsap.set(pendingItems, { autoAlpha: 0, y: 24 });
+      positionMinimapLabel();
+
+      const transitionTimeline = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: "#experience",
+          start: "top top",
+          end: () => `+=${CONFIG.animation.scrollDistance}`,
+          scrub: CONFIG.animation.scrub,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
+      });
+
+      transitionTimeline
+        .fromTo(
+          sceneLayer,
+          {
+            x: () => getHeroPose().x,
+            y: () => getHeroPose().y,
+            scale: () => getHeroPose().scale,
+            borderRadius: 0,
+            backgroundColor: "rgba(23, 28, 26, 0)",
+            boxShadow: "0 22px 70px rgba(0, 0, 0, 0)",
+          },
+          {
+            x: () => getResponsiveMinimapPose().x,
+            y: () => getResponsiveMinimapPose().y,
+            scale: () => getResponsiveMinimapPose().scale,
+            borderRadius: CONFIG.animation.borderRadius,
+            backgroundColor: "rgba(23, 28, 26, 0.96)",
+            boxShadow: "0 22px 70px rgba(0, 0, 0, 0.42)",
+            duration: 1,
+          },
+          0,
+        )
+        .to(
+          cameraTransition,
+          { mix: 1, duration: 1, onUpdate: updateCameraTransition },
+          0,
+        )
+        .to(heroCopy, { autoAlpha: 0, y: -24, duration: 0.36 }, 0)
+        .to(scrollHint, { autoAlpha: 0, y: 12, duration: 0.28 }, 0)
+        .to(pendingArea, { autoAlpha: 1, y: 0, duration: 0.38 }, 0.34)
+        .to(
+          pendingItems,
+          { autoAlpha: 1, y: 0, stagger: 0.075, duration: 0.3 },
+          0.43,
+        )
+        .to(minimapLabel, { autoAlpha: 1, duration: 0.18 }, 0.78);
+
+      function handleResize() {
+        cancelAnimationFrame(resizeFrame);
+        resizeFrame = requestAnimationFrame(() => {
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
+          camera.aspect = RENDER_WIDTH / RENDER_HEIGHT;
+          camera.updateProjectionMatrix();
+          camera.aspect = CONFIG.minimap.width / CONFIG.minimap.height;
+          camera.updateProjectionMatrix();
+          positionMinimapLabel();
+
+          if (buildingSubject) {
+            heroFit = calculateBuildingFit(buildingSubject, "hero");
+            minimapFit = calculateBuildingFit(buildingSubject, "minimap");
+            updateCameraTransition();
+          }
+        });
+      }
+
+      window.addEventListener("resize", handleResize);
+
+      function render() {
+        controls.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      render();
+    </script>
+  </body>
+</html>

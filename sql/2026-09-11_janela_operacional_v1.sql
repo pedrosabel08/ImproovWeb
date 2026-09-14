@@ -19,12 +19,17 @@ CREATE TABLE IF NOT EXISTS janela_operacional_perfil (
     UNIQUE KEY uq_janela_perfil_vigente (codigo, vigente_token),
     KEY idx_janela_perfil_consulta (codigo, vigente),
     CONSTRAINT chk_janela_perfil_limite CHECK (
-        (aplica_regra = 1 AND limite_dias_uteis IS NOT NULL AND limite_dias_uteis > 0)
-        OR (aplica_regra = 0 AND limite_dias_uteis IS NULL)
+        (
+            aplica_regra = 1
+            AND limite_dias_uteis IS NOT NULL
+            AND limite_dias_uteis > 0
+        )
+        OR (
+            aplica_regra = 0
+            AND limite_dias_uteis IS NULL
+        )
     ),
-    CONSTRAINT fk_janela_perfil_criador
-        FOREIGN KEY (criado_por_colaborador_id) REFERENCES colaborador (idcolaborador)
-        ON DELETE SET NULL
+    CONSTRAINT fk_janela_perfil_criador FOREIGN KEY (criado_por_colaborador_id) REFERENCES colaborador (idcolaborador) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS janela_operacional_motivo (
@@ -59,15 +64,27 @@ CREATE TABLE IF NOT EXISTS janela_operacional_ciclo (
     planejamento_versao_id_snapshot BIGINT NULL,
     previsao_original DATE NOT NULL,
     previsao_atual DATE NOT NULL,
-    estado_original ENUM('NORMAL', 'EXCECAO_OPERACIONAL', 'CONFLITO_PLANEJAMENTO') NOT NULL,
-    estado_atual ENUM('NORMAL', 'EXCECAO_OPERACIONAL', 'CONFLITO_PLANEJAMENTO') NOT NULL,
+    estado_original ENUM(
+        'NORMAL',
+        'EXCECAO_OPERACIONAL',
+        'CONFLITO_PLANEJAMENTO'
+    ) NOT NULL,
+    estado_atual ENUM(
+        'NORMAL',
+        'EXCECAO_OPERACIONAL',
+        'CONFLITO_PLANEJAMENTO'
+    ) NOT NULL,
     motivo_original_id BIGINT UNSIGNED NULL,
     motivo_original_codigo VARCHAR(50) NULL,
     motivo_original_label VARCHAR(120) NULL,
     motivo_original_texto VARCHAR(500) NULL,
     responsavel_original_id INT NOT NULL,
     responsavel_atual_id INT NOT NULL,
-    situacao ENUM('ATIVO', 'PAUSADO', 'ENCERRADO') NOT NULL DEFAULT 'ATIVO',
+    situacao ENUM(
+        'ATIVO',
+        'PAUSADO',
+        'ENCERRADO'
+    ) NOT NULL DEFAULT 'ATIVO',
     ativo_token VARCHAR(10) NULL DEFAULT 'ATIVO',
     encerrado_em DATETIME NULL,
     motivo_encerramento VARCHAR(50) NULL,
@@ -77,34 +94,35 @@ CREATE TABLE IF NOT EXISTS janela_operacional_ciclo (
     atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_janela_ciclo_ativo (chave_referencia, ativo_token),
-    KEY idx_janela_ciclo_estado (situacao, estado_atual, responsavel_atual_id),
-    KEY idx_janela_ciclo_inicio (inicio_em),
-    KEY idx_janela_ciclo_perfil (perfil_codigo_snapshot, criado_em),
-    CONSTRAINT chk_janela_ciclo_limite CHECK (
-        (aplica_regra_snapshot = 1 AND limite_dias_uteis_snapshot IS NOT NULL AND limite_data_original IS NOT NULL)
-        OR (aplica_regra_snapshot = 0 AND limite_dias_uteis_snapshot IS NULL AND limite_data_original IS NULL)
+    KEY idx_janela_ciclo_estado (
+        situacao,
+        estado_atual,
+        responsavel_atual_id
     ),
-    CONSTRAINT fk_janela_ciclo_anterior
-        FOREIGN KEY (ciclo_anterior_id) REFERENCES janela_operacional_ciclo (id)
-        ON DELETE SET NULL,
-    CONSTRAINT fk_janela_ciclo_unidade
-        FOREIGN KEY (unidade_trabalho_id) REFERENCES unidade_trabalho (id)
-        ON DELETE SET NULL,
-    CONSTRAINT fk_janela_ciclo_perfil
-        FOREIGN KEY (perfil_id) REFERENCES janela_operacional_perfil (id)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_janela_ciclo_motivo_original
-        FOREIGN KEY (motivo_original_id) REFERENCES janela_operacional_motivo (id)
-        ON DELETE SET NULL,
-    CONSTRAINT fk_janela_ciclo_resp_original
-        FOREIGN KEY (responsavel_original_id) REFERENCES colaborador (idcolaborador)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_janela_ciclo_resp_atual
-        FOREIGN KEY (responsavel_atual_id) REFERENCES colaborador (idcolaborador)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_janela_ciclo_criador
-        FOREIGN KEY (criado_por_colaborador_id) REFERENCES colaborador (idcolaborador)
-        ON DELETE SET NULL
+    KEY idx_janela_ciclo_inicio (inicio_em),
+    KEY idx_janela_ciclo_perfil (
+        perfil_codigo_snapshot,
+        criado_em
+    ),
+    CONSTRAINT chk_janela_ciclo_limite CHECK (
+        (
+            aplica_regra_snapshot = 1
+            AND limite_dias_uteis_snapshot IS NOT NULL
+            AND limite_data_original IS NOT NULL
+        )
+        OR (
+            aplica_regra_snapshot = 0
+            AND limite_dias_uteis_snapshot IS NULL
+            AND limite_data_original IS NULL
+        )
+    ),
+    CONSTRAINT fk_janela_ciclo_anterior FOREIGN KEY (ciclo_anterior_id) REFERENCES janela_operacional_ciclo (id) ON DELETE SET NULL,
+    CONSTRAINT fk_janela_ciclo_unidade FOREIGN KEY (unidade_trabalho_id) REFERENCES unidade_trabalho (id) ON DELETE SET NULL,
+    CONSTRAINT fk_janela_ciclo_perfil FOREIGN KEY (perfil_id) REFERENCES janela_operacional_perfil (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_janela_ciclo_motivo_original FOREIGN KEY (motivo_original_id) REFERENCES janela_operacional_motivo (id) ON DELETE SET NULL,
+    CONSTRAINT fk_janela_ciclo_resp_original FOREIGN KEY (responsavel_original_id) REFERENCES colaborador (idcolaborador) ON DELETE RESTRICT,
+    CONSTRAINT fk_janela_ciclo_resp_atual FOREIGN KEY (responsavel_atual_id) REFERENCES colaborador (idcolaborador) ON DELETE RESTRICT,
+    CONSTRAINT fk_janela_ciclo_criador FOREIGN KEY (criado_por_colaborador_id) REFERENCES colaborador (idcolaborador) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS janela_operacional_ciclo_item (
@@ -114,12 +132,8 @@ CREATE TABLE IF NOT EXISTS janela_operacional_ciclo_item (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (ciclo_id, funcao_imagem_id),
     KEY idx_janela_item_tarefa (funcao_imagem_id, ciclo_id),
-    CONSTRAINT fk_janela_item_ciclo
-        FOREIGN KEY (ciclo_id) REFERENCES janela_operacional_ciclo (id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_janela_item_tarefa
-        FOREIGN KEY (funcao_imagem_id) REFERENCES funcao_imagem (idfuncao_imagem)
-        ON DELETE RESTRICT
+    CONSTRAINT fk_janela_item_ciclo FOREIGN KEY (ciclo_id) REFERENCES janela_operacional_ciclo (id) ON DELETE CASCADE,
+    CONSTRAINT fk_janela_item_tarefa FOREIGN KEY (funcao_imagem_id) REFERENCES funcao_imagem (idfuncao_imagem) ON DELETE RESTRICT
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS janela_operacional_pausa (
@@ -139,9 +153,7 @@ CREATE TABLE IF NOT EXISTS janela_operacional_pausa (
     PRIMARY KEY (id),
     UNIQUE KEY uq_janela_pausa_ativa (ciclo_id, ativa_token),
     KEY idx_janela_pausa_periodo (ciclo_id, inicio_em, fim_em),
-    CONSTRAINT fk_janela_pausa_ciclo
-        FOREIGN KEY (ciclo_id) REFERENCES janela_operacional_ciclo (id)
-        ON DELETE CASCADE
+    CONSTRAINT fk_janela_pausa_ciclo FOREIGN KEY (ciclo_id) REFERENCES janela_operacional_ciclo (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS janela_operacional_evento (
@@ -168,38 +180,172 @@ CREATE TABLE IF NOT EXISTS janela_operacional_evento (
     PRIMARY KEY (id),
     KEY idx_janela_evento_ciclo_data (ciclo_id, criado_em),
     KEY idx_janela_evento_tipo_data (evento, criado_em),
-    KEY idx_janela_evento_motivo (motivo_codigo_snapshot, criado_em),
-    CONSTRAINT fk_janela_evento_ciclo
-        FOREIGN KEY (ciclo_id) REFERENCES janela_operacional_ciclo (id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_janela_evento_motivo
-        FOREIGN KEY (motivo_id) REFERENCES janela_operacional_motivo (id)
-        ON DELETE SET NULL
+    KEY idx_janela_evento_motivo (
+        motivo_codigo_snapshot,
+        criado_em
+    ),
+    CONSTRAINT fk_janela_evento_ciclo FOREIGN KEY (ciclo_id) REFERENCES janela_operacional_ciclo (id) ON DELETE CASCADE,
+    CONSTRAINT fk_janela_evento_motivo FOREIGN KEY (motivo_id) REFERENCES janela_operacional_motivo (id) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-INSERT INTO janela_operacional_motivo (codigo, label, exige_texto, ordem)
-VALUES
-    ('COMPLEXIDADE_TAREFA', 'Complexidade da tarefa', 0, 10),
-    ('DEPENDENCIA_PROJETO', 'Dependência de projeto', 0, 20),
-    ('PRIORIDADE_DIRECIONADA', 'Prioridade direcionada', 0, 30),
-    ('AUSENCIA_PROGRAMADA', 'Ausência / viagem programada', 0, 40),
-    ('DEPENDENCIA_TECNICA', 'Dependência técnica', 0, 50),
+INSERT INTO
+    janela_operacional_motivo (
+        codigo,
+        label,
+        exige_texto,
+        ordem
+    )
+VALUES (
+        'COMPLEXIDADE_TAREFA',
+        'Complexidade da tarefa',
+        0,
+        10
+    ),
+    (
+        'DEPENDENCIA_PROJETO',
+        'Dependência de projeto',
+        0,
+        20
+    ),
+    (
+        'PRIORIDADE_DIRECIONADA',
+        'Prioridade direcionada',
+        0,
+        30
+    ),
+    (
+        'AUSENCIA_PROGRAMADA',
+        'Ausência / viagem programada',
+        0,
+        40
+    ),
+    (
+        'DEPENDENCIA_TECNICA',
+        'Dependência técnica',
+        0,
+        50
+    ),
     ('OUTRO', 'Outro', 1, 60)
-ON DUPLICATE KEY UPDATE codigo = VALUES(codigo);
+ON DUPLICATE KEY UPDATE
+    codigo = VALUES(codigo);
 
-INSERT INTO janela_operacional_perfil
-    (codigo, versao, nome, aplica_regra, limite_dias_uteis, vigente, vigente_token)
-VALUES
-    ('CADERNO_FILTRO', 1, 'Caderno + Filtro', 1, 2, 1, 'VIGENTE'),
-    ('CADERNO', 1, 'Caderno', 1, 2, 1, 'VIGENTE'),
-    ('FILTRO_ASSETS', 1, 'Filtro de Assets', 1, 2, 1, 'VIGENTE'),
-    ('MODELAGEM_COMUM', 1, 'Modelagem comum', 1, 2, 1, 'VIGENTE'),
-    ('MODELAGEM_FACHADA', 1, 'Modelagem fachada', 1, 10, 1, 'VIGENTE'),
-    ('MODELAGEM_COMPOSICAO', 1, 'Modelagem + Composição', 1, 4, 1, 'VIGENTE'),
-    ('COMPOSICAO', 1, 'Composição', 1, 2, 1, 'VIGENTE'),
-    ('FINALIZACAO_INTERNA', 1, 'Finalização interna', 1, 2, 1, 'VIGENTE'),
-    ('FINALIZACAO_EXTERNA', 1, 'Finalização externa', 1, 2, 1, 'VIGENTE'),
-    ('FINALIZACAO_PLANTA', 1, 'Finalização planta', 1, 2, 1, 'VIGENTE'),
-    ('POS_PRODUCAO', 1, 'Pós-produção', 1, 1, 1, 'VIGENTE'),
-    ('ALTERACAO', 1, 'Alteração', 0, NULL, 1, 'VIGENTE')
-ON DUPLICATE KEY UPDATE codigo = VALUES(codigo);
+INSERT INTO
+    janela_operacional_perfil (
+        codigo,
+        versao,
+        nome,
+        aplica_regra,
+        limite_dias_uteis,
+        vigente,
+        vigente_token
+    )
+VALUES (
+        'CADERNO_FILTRO',
+        1,
+        'Caderno + Filtro',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'CADERNO',
+        1,
+        'Caderno',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'FILTRO_ASSETS',
+        1,
+        'Filtro de Assets',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'MODELAGEM_COMUM',
+        1,
+        'Modelagem comum',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'MODELAGEM_FACHADA',
+        1,
+        'Modelagem fachada',
+        1,
+        10,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'MODELAGEM_COMPOSICAO',
+        1,
+        'Modelagem + Composição',
+        1,
+        4,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'COMPOSICAO',
+        1,
+        'Composição',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'FINALIZACAO_INTERNA',
+        1,
+        'Finalização interna',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'FINALIZACAO_EXTERNA',
+        1,
+        'Finalização externa',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'FINALIZACAO_PLANTA',
+        1,
+        'Finalização planta',
+        1,
+        2,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'POS_PRODUCAO',
+        1,
+        'Pós-produção',
+        1,
+        1,
+        1,
+        'VIGENTE'
+    ),
+    (
+        'ALTERACAO',
+        1,
+        'Alteração',
+        0,
+        NULL,
+        1,
+        'VIGENTE'
+    )
+ON DUPLICATE KEY UPDATE
+    codigo = VALUES(codigo);

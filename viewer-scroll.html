@@ -360,6 +360,7 @@
       import * as THREE from "three";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
       // ==================================================
       // AJUSTES MANUAIS DO POC
@@ -374,15 +375,15 @@
 
         hero: {
           // FOV da câmera. Menor = visual mais teleobjetivo; maior = mais perspectiva.
-          fov: 35,
+          fov: 30,
 
           // Fração vertical ocupada pelo prédio dentro do viewer.
           // Aumente para aproximar; diminua para deixar mais respiro. Recomendado: 0.8.
-          buildingHeightCoverage: 0.8,
+          buildingHeightCoverage: 0.86,
 
           // Multiplicador da distância calculada. Menor aproxima; maior afasta.
-          // Recomendado: 0.92.
-          cameraDistanceMultiplier: 0.92,
+          // Recomendado: 0.94.
+          cameraDistanceMultiplier: 0.94,
 
           // Offsets do ponto observado, em unidades do GLB.
           // X positivo move o target à direita; Y positivo sobe; Z positivo avança.
@@ -396,22 +397,26 @@
 
           // Ângulo horizontal inicial ao redor do prédio, em graus.
           // Aumente/diminua para escolher outra fachada. Recomendado: 38.
-          initialAzimuthDegrees: 38,
+          initialAzimuthDegrees: 32,
 
           // Inclinação inicial. Maior mostra mais cobertura; menor fica mais frontal.
           // A rotação vertical permanece travada. Recomendado: 0.32.
-          elevationRatio: 0.32,
+          elevationRatio: 0.12,
 
           // Limites de zoom relativos à distância calculada.
           // Menor mínimo aproxima mais; maior máximo afasta mais.
-          minZoomMultiplier: 0.65,
-          maxZoomMultiplier: 1.4,
+          minZoomMultiplier: 0.7,
+          maxZoomMultiplier: 1.25,
 
           // Altura visual do viewer no Hero. 0.86 = 86% da viewport.
-          viewerHeightRatio: 0.86,
+          viewerHeightRatio: 0.92,
 
           // Centro horizontal do viewer. Maior move à direita; menor à esquerda.
-          viewerCenterXRatio: 0.68,
+          viewerCenterXRatio: 0.7,
+
+          hideTerrain: true,
+
+          contactShadowOpacity: 0.18,
         },
 
         minimap: {
@@ -438,7 +443,7 @@
           cameraZoomFactor: 1,
 
           // true oculta terreno/ruas somente no fim; false mantém todo o GLB visível.
-          hideTerrain: false,
+          hideTerrain: true,
         },
 
         animation: {
@@ -490,13 +495,44 @@
       renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
       camera.aspect = RENDER_WIDTH / RENDER_HEIGHT;
       camera.updateProjectionMatrix();
+
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 0.9;
+      renderer.toneMappingExposure = 0.7;
 
-      scene.add(new THREE.HemisphereLight(0xdce9f3, 0x17211c, 1.35));
-      const sun = new THREE.DirectionalLight(0xfff3dc, 2.15);
-      sun.position.set(12, 20, 14);
+      // Environment temporário para materiais PBR.
+      // Isso NÃO aparece como fundo.
+      // Serve para reflexos, vidro, metal e leitura geral dos materiais.
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+
+      const roomEnvironment = new RoomEnvironment();
+
+      const environmentRenderTarget = pmremGenerator.fromScene(
+        roomEnvironment,
+        0.04,
+      );
+
+      scene.environment = environmentRenderTarget.texture;
+
+      roomEnvironment.dispose();
+      pmremGenerator.dispose();
+
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const ambientLight = new THREE.HemisphereLight(0xdce9f3, 0x17211c, 0.35);
+
+      scene.add(ambientLight);
+
+      const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
+      
+      sun.castShadow = true;
+
+      sun.shadow.mapSize.set(2048, 2048);
+
+      sun.shadow.bias = -0.0002;
+      sun.shadow.normalBias = 0.02;
+
       scene.add(sun, sun.target);
 
       const controls = new OrbitControls(camera, canvas);
@@ -512,6 +548,44 @@
       let heroFit = null;
       let minimapFit = null;
       let resizeFrame = 0;
+
+      let shadowCatcher = null;
+
+      function createShadowCatcher(building) {
+        if (shadowCatcher) {
+          scene.remove(shadowCatcher);
+          shadowCatcher.geometry.dispose();
+          shadowCatcher.material.dispose();
+        }
+
+        const size = building.bounds.getSize(new THREE.Vector3());
+
+        const center = building.bounds.getCenter(new THREE.Vector3());
+
+        const planeSize = Math.max(size.x, size.z) * 2.4;
+
+        const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+
+        const material = new THREE.ShadowMaterial({
+          opacity: CONFIG.hero.contactShadowOpacity,
+        });
+
+        shadowCatcher = new THREE.Mesh(geometry, material);
+
+        shadowCatcher.rotation.x = -Math.PI / 2;
+
+        // Coloca o chão exatamente na base do prédio.
+        shadowCatcher.position.set(
+          center.x,
+          building.bounds.min.y - size.y * 0.002,
+          center.z,
+        );
+
+        shadowCatcher.receiveShadow = true;
+
+        scene.add(shadowCatcher);
+      }
+
       const cameraTransition = { mix: 0 };
       const directionScratch = new THREE.Vector3();
       const targetScratch = new THREE.Vector3();
@@ -716,12 +790,15 @@
       }
 
       function setTerrainForProgress(progress) {
-        const shouldHide = CONFIG.minimap.hideTerrain && progress > 0.72;
+        const shouldHide =
+          progress < 0.72
+            ? CONFIG.hero.hideTerrain
+            : CONFIG.minimap.hideTerrain;
+
         terrainEntries.forEach((entry) => {
           entry.object.visible = shouldHide ? false : entry.originalVisible;
         });
       }
-
       function updateCameraTransition() {
         if (!heroFit || !minimapFit) return;
         const mix = cameraTransition.mix;
@@ -809,6 +886,35 @@
         (gltf) => {
           const model = gltf.scene;
           scene.add(model);
+          model.traverse((child) => {
+            if (!child.isMesh) return;
+
+            const materials = Array.isArray(child.material)
+              ? child.material
+              : [child.material];
+
+            const hasTransmission = materials.some(
+              (material) =>
+                material &&
+                typeof material.transmission === "number" &&
+                material.transmission > 0.1,
+            );
+
+            // Objetos sólidos projetam e recebem sombra.
+            // Vidro normalmente fica melhor sem projetar aquela
+            // sombra preta pesada padrão.
+            child.castShadow = !hasTransmission;
+            child.receiveShadow = !hasTransmission;
+
+            materials.forEach((material) => {
+              if (!material) return;
+
+              // Intensidade de reflexão do environment.
+              if ("envMapIntensity" in material) {
+                material.envMapIntensity = 1.0;
+              }
+            });
+          });
           const analysis = analyzeModel(model);
           buildingSubject = analysis.subject;
           fullSceneBounds.copy(analysis.sceneBounds);
@@ -816,8 +922,9 @@
             ...entry,
             originalVisible: entry.object.visible,
           }));
-
+          setTerrainForProgress(0);
           fitCameraToBuilding(buildingSubject);
+          createShadowCatcher(buildingSubject);
           if (CONFIG.debug.buildingBounds)
             scene.add(new THREE.Box3Helper(buildingSubject.bounds, 0xcbed88));
 
@@ -838,6 +945,21 @@
             );
           sun.target.position.copy(buildingCenter);
           sun.target.updateMatrixWorld();
+
+          const shadowArea =
+            Math.max(buildingSize.x, buildingSize.z, buildingSize.y * 0.65) *
+            1.4;
+
+          sun.shadow.camera.left = -shadowArea;
+          sun.shadow.camera.right = shadowArea;
+          sun.shadow.camera.top = shadowArea;
+          sun.shadow.camera.bottom = -shadowArea;
+
+          sun.shadow.camera.near = Math.max(buildingSize.y * 0.05, 0.1);
+
+          sun.shadow.camera.far = buildingSize.y * 4;
+
+          sun.shadow.camera.updateProjectionMatrix();
 
           window.__PORTAL_3D_DEBUG__ = {
             buildingDetection: buildingSubject.detectionMethod,

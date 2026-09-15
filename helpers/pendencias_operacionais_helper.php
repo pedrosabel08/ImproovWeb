@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/pendencias_links_obra_helper.php';
 require_once __DIR__ . '/flow_block_operacional_helper.php';
 
@@ -204,7 +205,10 @@ function pendencias_operacionais_project_items(): array
         'briefing' => ['label' => 'Briefing', 'required' => 1, 'update_mode' => 'MANUAL'],
         'kickoff' => ['label' => 'Kickoff', 'required' => 0, 'update_mode' => 'MANUAL'],
         'arquivos_tecnicos' => ['label' => 'Arquivos Tecnicos', 'required' => 1, 'update_mode' => 'MANUAL'],
-        'referencias_mood' => ['label' => 'Referencias', 'required' => 1, 'update_mode' => 'MANUAL'],
+        // A direção global do ALMA passou a ser a fonte oficial das referências
+        // do projeto. Mantemos a chave histórica para não quebrar integrações
+        // existentes, mas a conclusão não pode mais ser marcada manualmente.
+        'referencias_mood' => ['label' => 'ALMA', 'required' => 1, 'update_mode' => 'AUTOMATICO'],
         'fotografico' => ['label' => 'Fotografico', 'required' => 0, 'update_mode' => 'AUTOMATICO'],
     ];
 }
@@ -305,7 +309,9 @@ function pendencias_operacionais_update_checklist_status(mysqli $conn, int $chec
 function pendencias_operacionais_find_checklist_by_id(mysqli $conn, int $checklistId): ?array
 {
     $stmt = $conn->prepare('SELECT * FROM checklist_operacional WHERE id=? LIMIT 1');
-    if (!$stmt) return null;
+    if (!$stmt) {
+        return null;
+    }
     $stmt->bind_param('i', $checklistId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -315,7 +321,9 @@ function pendencias_operacionais_find_checklist_by_id(mysqli $conn, int $checkli
 
 function pendencias_operacionais_flow_connect_lifecycle(mysqli $conn, array $checklist, string $action): void
 {
-    if ($checklist === []) return;
+    if ($checklist === []) {
+        return;
+    }
     require_once dirname(__DIR__) . '/FlowConnect/bootstrap.php';
     $module = (string) ($checklist['module_key'] ?? '');
     $id = (int) ($checklist['id'] ?? 0);
@@ -366,6 +374,7 @@ function pendencias_operacionais_ensure_project_checklist(mysqli $conn, int $obr
     $stmt->close();
 
     pendencias_operacionais_sync_items($conn, $checklistId, pendencias_operacionais_project_items());
+    pendencias_operacionais_sync_alma_requirement($conn, $obraId);
     pendencias_operacionais_sync_fotografico_requirement($conn, $obraId, false);
     pendencias_operacionais_update_checklist_status($conn, $checklistId);
     $created = pendencias_operacionais_find_checklist_by_id($conn, $checklistId);
@@ -436,6 +445,114 @@ function pendencias_operacionais_fotografico_plano_estado(mysqli $conn, int $obr
     return $resultado;
 }
 
+/**
+ * Resolve a evidência operacional do Fotográfico.
+ *
+ * O requisito é atendido quando há um link cadastrado na obra ou quando o
+ * plano fotográfico está concluído. Um plano aberto continua aplicável e
+ * pendente somente quando não há link para atendê-lo.
+ */
+function pendencias_operacionais_fotografico_requirement_estado(mysqli $conn, int $obraId): array
+{
+    $fotografico = pendencias_operacionais_fotografico_plano_estado($conn, $obraId);
+    $resultado = array_merge($fotografico, [
+        'possui_link' => false,
+        'link' => '',
+        'evidencia' => 'NAO_APLICAVEL',
+    ]);
+
+    if ($obraId <= 0) {
+        return $resultado;
+    }
+
+    $stmt = $conn->prepare("SELECT NULLIF(TRIM(COALESCE(fotografico, '')), '') AS link FROM obra WHERE idobra = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('i', $obraId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $resultado['link'] = trim((string) ($row['link'] ?? ''));
+        $resultado['possui_link'] = $resultado['link'] !== '';
+    }
+
+    if ($resultado['possui_link']) {
+        $resultado['estado'] = 'ATENDIDO';
+        $resultado['evidencia'] = 'LINK_OBRA';
+        return $resultado;
+    }
+
+    if ($fotografico['estado'] === 'ATENDIDO') {
+        $resultado['evidencia'] = 'PLANO_CONCLUIDO';
+    } elseif ($fotografico['estado'] === 'NAO_ATENDIDO') {
+        $resultado['evidencia'] = 'PLANO_PENDENTE';
+    }
+
+    return $resultado;
+}
+
+/**
+ * Sincroniza o item histórico referencias_mood com a existência do ALMA da
+ * obra. A chave é preservada por compatibilidade, mas o item passa a ser
+ * automático e apresentado como ALMA.
+ */
+function pendencias_operacionais_sync_alma_requirement(mysqli $conn, int $obraId): void
+{
+    if ($obraId <= 0 || !pendencias_operacionais_table_exists($conn, 'alma_projeto_direcao')) {
+        return;
+    }
+
+    $checklist = pendencias_operacionais_find_checklist($conn, 'projeto', 'obra', $obraId);
+    if (!$checklist) {
+        return;
+    }
+
+    $stmtAlma = $conn->prepare('SELECT 1 FROM alma_projeto_direcao WHERE obra_id = ? LIMIT 1');
+    if (!$stmtAlma) {
+        return;
+    }
+    $stmtAlma->bind_param('i', $obraId);
+    $stmtAlma->execute();
+    $stmtAlma->store_result();
+    $atendido = $stmtAlma->num_rows > 0;
+    $stmtAlma->close();
+
+    $checklistId = (int) $checklist['id'];
+    // Uma referência marcada manualmente antes da adoção do ALMA é uma
+    // evidência legada válida. Após convertida para automática, ela não deve
+    // reabrir o Projeto apenas por não haver um registro novo de ALMA.
+    $conclusaoLegada = false;
+    $stmtItem = $conn->prepare("SELECT done FROM checklist_operacional_item WHERE checklist_id = ? AND item_key = 'referencias_mood' LIMIT 1");
+    if ($stmtItem) {
+        $stmtItem->bind_param('i', $checklistId);
+        $stmtItem->execute();
+        $item = $stmtItem->get_result()->fetch_assoc();
+        $stmtItem->close();
+        $conclusaoLegada = (int) ($item['done'] ?? 0) === 1;
+    }
+
+    $done = ($atendido || $conclusaoLegada) ? 1 : 0;
+    $systemUser = (int) PENDENCIAS_IMAGEM_RESPONSAVEL_ID;
+    $stmt = $conn->prepare(
+        "INSERT INTO checklist_operacional_item
+            (checklist_id, item_key, label, required, update_mode, done, done_by, done_at)
+         VALUES (?, 'referencias_mood', 'ALMA', 1, 'AUTOMATICO', ?, CASE WHEN ? = 1 THEN ? ELSE NULL END, CASE WHEN ? = 1 THEN NOW() ELSE NULL END)
+         ON DUPLICATE KEY UPDATE
+            label = VALUES(label),
+            required = 1,
+            update_mode = 'AUTOMATICO',
+            done = VALUES(done),
+            done_by = CASE WHEN VALUES(done) = 1 THEN COALESCE(done_by, VALUES(done_by)) ELSE NULL END,
+            done_at = CASE WHEN VALUES(done) = 1 THEN COALESCE(done_at, NOW()) ELSE NULL END"
+    );
+    if (!$stmt) {
+        return;
+    }
+    $stmt->bind_param('iiiii', $checklistId, $done, $done, $systemUser, $done);
+    $stmt->execute();
+    $stmt->close();
+    pendencias_operacionais_update_checklist_status($conn, $checklistId);
+}
+
 function pendencias_operacionais_sync_fotografico_requirement(mysqli $conn, int $obraId, bool $forceApplicable = false): void
 {
     if ($obraId <= 0) {
@@ -447,9 +564,9 @@ function pendencias_operacionais_sync_fotografico_requirement(mysqli $conn, int 
         return;
     }
 
-    $fotografico = pendencias_operacionais_fotografico_plano_estado($conn, $obraId);
-    // A existência do plano é a única evidência de aplicabilidade. O parâmetro
-    // é mantido para compatibilidade com os gatilhos existentes.
+    $fotografico = pendencias_operacionais_fotografico_requirement_estado($conn, $obraId);
+    // O link cadastrado ou um plano concluído atendem o requisito. Um plano
+    // aberto sem link mantém a pendência aplicável.
     $applicable = $fotografico['estado'] !== 'NAO_APLICAVEL';
     $done = $fotografico['estado'] === 'ATENDIDO';
     $checklistId = (int) $checklist['id'];
@@ -820,17 +937,23 @@ function pendencias_operacionais_apply_operational_holds(mysqli $conn, array &$m
              WHERE op.liberado_em IS NULL
                AND (i.status IN ('ABERTA','AGUARDANDO_ACAO','PAUSADA') OR (i.status='RESOLVIDA' AND i.confirmada_em IS NULL))";
     $res = $conn->query($sql);
-    if (!$res) return;
+    if (!$res) {
+        return;
+    }
     $holds = [];
     while ($row = $res->fetch_assoc()) {
         $holds[(string) $row['source_type'] . ':' . (int) $row['source_id']] = $row;
     }
     $res->close();
-    if (!$holds) return;
+    if (!$holds) {
+        return;
+    }
     foreach ($modules as &$module) {
         foreach ($module['items'] as &$item) {
             $key = (string) ($item['source_type'] ?? '') . ':' . (int) ($item['source_id'] ?? 0);
-            if (!isset($holds[$key])) continue;
+            if (!isset($holds[$key])) {
+                continue;
+            }
             $hold = $holds[$key];
             $item['operational_hold'] = true;
             $item['operational_issue_id'] = (int) $hold['issue_id'];

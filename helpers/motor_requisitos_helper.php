@@ -536,16 +536,26 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
 
 function motor_requisitos_fotografico(mysqli $conn, int $obraId): array
 {
-    $fotografico = pendencias_operacionais_fotografico_plano_estado($conn, $obraId);
+    $fotografico = pendencias_operacionais_fotografico_requirement_estado($conn, $obraId);
+    $evidencia = (string) ($fotografico['evidencia'] ?? 'NAO_APLICAVEL');
+    $origem = match ($evidencia) {
+        'LINK_OBRA' => 'Link do Fotográfico cadastrado na obra',
+        'PLANO_CONCLUIDO' => 'Plano fotográfico concluído',
+        'PLANO_PENDENTE' => 'Plano fotográfico',
+        default => 'Link e plano fotográfico inexistentes',
+    };
+    $url = $evidencia === 'LINK_OBRA'
+        ? '/ImproovWeb/Dashboard/obra.php?obra_id=' . $obraId
+        : '/ImproovWeb/Fotografico/index.php?obra_id=' . $obraId . ($fotografico['plano_id'] ? '&plano_id=' . (int) $fotografico['plano_id'] : '');
     return motor_requisitos_item(
         'fotografico',
         'Fotografico',
         'PROJETO',
         (string) $fotografico['estado'],
         true,
-        $fotografico['estado'] === 'NAO_APLICAVEL' ? 'Plano fotográfico inexistente' : 'Plano fotográfico',
+        $origem,
         $fotografico['plano_id'] ? (int) $fotografico['plano_id'] : null,
-        '/ImproovWeb/Fotografico/index.php?obra_id=' . $obraId . ($fotografico['plano_id'] ? '&plano_id=' . (int) $fotografico['plano_id'] : ''),
+        $url,
         motor_requisitos_metadados_origem(null, [
             'responsavel_id' => $fotografico['responsavel_id'] ?? null,
             'responsavel_nome' => $fotografico['responsavel_nome'] ?? '',
@@ -795,7 +805,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
                 : null;
             $requisitos[] = motor_requisitos_item('arquivos_finais_subtipo', 'Arquivos finais do subtipo', 'PRODUCAO', $estadoArquivos, true, 'Composicoes do subtipo', $subtipoId ?: null, $taskUrl, motor_requisitos_metadados_origem($composicaoPendente, $checklistResponsavel));
         } else {
-            $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'Referencias', true, $checklistVersionado, $checklistResponsavel);
+            $requisitos[] = motor_requisitos_projeto($projectItems, 'referencias_mood', 'ALMA', true, $checklistVersionado, $checklistResponsavel);
             $requisitos[] = motor_requisitos_fotografico($conn, $obraId);
         }
     } elseif ($funcaoId === 5) {

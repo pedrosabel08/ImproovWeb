@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -34,7 +35,7 @@ if ($checklistId <= 0 || empty($items)) {
 
 pendencias_operacionais_ensure_schema($conn);
 
-$stmtChecklist = $conn->prepare('SELECT id, module_key, responsavel_id, status FROM checklist_operacional WHERE id = ? LIMIT 1');
+$stmtChecklist = $conn->prepare('SELECT id, module_key, entity_id, responsavel_id, status FROM checklist_operacional WHERE id = ? LIMIT 1');
 if (!$stmtChecklist) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Nao foi possivel consultar checklist.']);
@@ -62,6 +63,13 @@ if ($moduleKey === 'imagem' && !in_array($nivelAcesso, [1, 2, 3, 5], true) && $r
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Sem permissao para atualizar este checklist.']);
     exit;
+}
+
+// Referências é a chave legada da evidência automática do ALMA. Sincronizar
+// antes de qualquer tentativa de edição evita que checklists antigos ainda
+// marcados como MANUAL aceitem uma atualização forçada pelo cliente.
+if ($moduleKey === 'projeto') {
+    pendencias_operacionais_sync_alma_requirement($conn, (int) ($checklist['entity_id'] ?? 0));
 }
 
 try {
@@ -99,7 +107,8 @@ try {
         $stmtMode->bind_param('is', $checklistId, $itemKey);
         $stmtMode->execute();
         $modeRow = $stmtMode->get_result()->fetch_assoc();
-        if (!$modeRow || strtoupper((string) ($modeRow['update_mode'] ?? '')) === 'AUTOMATICO') {
+        $automaticoLegado = $moduleKey === 'projeto' && $itemKey === 'referencias_mood';
+        if (!$modeRow || $automaticoLegado || strtoupper((string) ($modeRow['update_mode'] ?? '')) === 'AUTOMATICO') {
             continue;
         }
 

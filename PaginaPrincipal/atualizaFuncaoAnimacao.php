@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -39,8 +40,8 @@ try {
     if ($current && strcasecmp((string) ($current['status'] ?? ''), 'Não iniciado') === 0 && strcasecmp((string) $status, 'Em andamento') === 0) {
         flow_wip_assert_novo_inicio($conn, (int) ($current['colaborador_id'] ?? 0));
         $avaliacao = motor_requisitos_avaliar_funcao_animacao($conn, $idFuncaoAnimacao);
-        if (!$avaliacao['elegivel']) {
-            throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
+        if (motor_requisitos_tem_bloqueio_producao($avaliacao)) {
+            throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
         }
     }
     $stmt = $conn->prepare("UPDATE funcao_animacao SET status = ?, prazo = ?, observacao = ? WHERE id = ?");
@@ -50,7 +51,10 @@ try {
     $conn->commit();
     echo json_encode(['success' => true, 'message' => 'Função de animação atualizada com sucesso']);
 } catch (Throwable $e) {
-    try { $conn->rollback(); } catch (Throwable $ignored) {}
+    try {
+        $conn->rollback();
+    } catch (Throwable $ignored) {
+    }
     if ($e instanceof FlowWipException) {
         http_response_code(409);
         echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

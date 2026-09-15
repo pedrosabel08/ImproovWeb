@@ -23,16 +23,9 @@ function flow_inicio_operacional_validar_requisitos(mysqli $conn, array $tarefa,
     if (motor_requisitos_tem_bloqueio_producao($avaliacao)) {
         throw new DomainException('Conclua todas as pendencias de Producao antes de iniciar a tarefa.');
     }
-    $naoConfirmavel = !empty(array_filter(
-        (array) ($avaliacao['bloqueios'] ?? []),
-        static fn(array $item): bool => !empty($item['nao_confirmavel'])
-    ));
-    if ($naoConfirmavel) {
-        throw new DomainException('A tarefa depende de uma aprovacao pendente e nao pode ser iniciada antes da liberacao.');
-    }
-    if (empty($avaliacao['elegivel']) && !$confirmarPendencias) {
-        throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
-    }
+    // Pendências de Projeto e demais requisitos informativos não bloqueiam o
+    // início. A regra de negócio para puxar uma tarefa é exclusivamente a
+    // ausência de pendências ativas de Produção.
     return $avaliacao;
 }
 
@@ -140,7 +133,7 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
     $unidade = flow_janela_resolver_unidade($conn, $tarefaId, true, $iniciarConjunto);
     flow_inicio_operacional_validar_permissao($unidade['tarefa_principal'], $atorColaboradorId, $nivelAcesso);
 
-    $statusMembros = array_values(array_unique(array_map(static fn(array $m): string => (string) $m['status'], $unidade['membros'])));
+    $statusMembros = array_values(array_unique(array_map(static fn (array $m): string => (string) $m['status'], $unidade['membros'])));
     $primeiroInicio = count($statusMembros) === 1 && $statusMembros[0] === 'Não iniciado';
     $statusReabriveis = ['Aprovado', 'Aprovado com ajustes', 'Finalizado'];
     $ultimoCicloExistente = flow_janela_ultimo_ciclo_por_tarefa($conn, $tarefaId, true);
@@ -229,7 +222,7 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
         'work_unit' => [
             'type' => $unidade['tipo_unidade'],
             'unit_id' => $unidade['unidade_trabalho_id'],
-            'member_ids' => array_map(static fn(array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
+            'member_ids' => array_map(static fn (array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
         ],
         'reopened' => $reabertura,
     ];

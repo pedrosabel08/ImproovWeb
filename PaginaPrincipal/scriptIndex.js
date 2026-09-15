@@ -820,22 +820,16 @@ function criarGrupoPendenciaOperacional(module, index) {
   return group;
 }
 
-function renderizarPendenciasOperacionais(data) {
-  const coluna = document
-    .getElementById("pendencias-flowreview")
-    ?.querySelector(".content");
-  const box = document.getElementById("pendencias-flowreview");
-  if (!coluna || !box) return;
-
+function renderizarPendenciasOperacionaisEm(container, data) {
+  if (!container) return;
   const modules = Array.isArray(data?.pendencias_operacionais)
     ? data.pendencias_operacionais
     : [];
   const resumo = obterResumoPendenciasOperacionais(data);
-  box.dataset.totalPendencias = String(resumo.total);
-  coluna.innerHTML = "";
+  container.innerHTML = "";
 
   if (resumo.total <= 0) {
-    return;
+    return resumo;
   }
 
   const header = document.createElement("div");
@@ -845,12 +839,34 @@ function renderizarPendenciasOperacionais(data) {
     <div><strong>${resumo.atrasadas}</strong><span>Em atraso</span></div>
     <div><strong>${resumo.dentro}</strong><span>Dentro do SLA</span></div>
   `;
-  coluna.appendChild(header);
+  container.appendChild(header);
 
   modules.forEach((module, index) => {
-    coluna.appendChild(criarGrupoPendenciaOperacional(module, index));
+    container.appendChild(criarGrupoPendenciaOperacional(module, index));
   });
+
+  return resumo;
 }
+
+function renderizarPendenciasOperacionais(data) {
+  const coluna = document
+    .getElementById("pendencias-flowreview")
+    ?.querySelector(".content");
+  const box = document.getElementById("pendencias-flowreview");
+  if (!coluna || !box) return;
+
+  const resumo = renderizarPendenciasOperacionaisEm(coluna, data);
+  box.dataset.totalPendencias = String(resumo?.total || 0);
+}
+
+// A Visão geral e a coluna do Kanban usam o mesmo renderizador para manter
+// estrutura, interações, estilos e regras de checklist idênticos.
+window.flowRenderOperationalPendingGroups = renderizarPendenciasOperacionaisEm;
+window.setTimeout(
+  () =>
+    window.dispatchEvent(new Event("flow:operational-pending-renderer-ready")),
+  0,
+);
 
 function obterLabelCriticidadePendencia(nivel) {
   const labels = {
@@ -1329,6 +1345,23 @@ function pendenciaChecklistPossuiPendencias(items) {
   );
 }
 
+function pendenciaOperacionalEhAutomatica(check, module) {
+  const itemKey = String(check?.item_key || "");
+  return (
+    String(check?.update_mode || "").toUpperCase() === "AUTOMATICO" ||
+    (module?.key === "imagem" && itemKey === "subtipo_definido") ||
+    // Compatibilidade para checklists de Projeto criados antes da migration.
+    // Referências é a chave histórica do requisito automático de ALMA.
+    (module?.key === "projeto" && itemKey === "referencias_mood")
+  );
+}
+
+function pendenciaOperacionalLabel(check, module) {
+  return module?.key === "projeto" && check?.item_key === "referencias_mood"
+    ? "ALMA"
+    : check?.label || check?.item_key || "";
+}
+
 function criarPendenciaOperacionalChecklistCard(item, module) {
   const card = document.createElement("article");
   card.className = `pendencia-op-card sla-${item.sla_status || "dentro"}`;
@@ -1377,8 +1410,10 @@ function criarPendenciaOperacionalChecklistCard(item, module) {
         ${checklistItems
           .map((check) => {
             const itemKey = String(check.item_key || "");
-            const isAutomatico =
-              module.key === "imagem" && itemKey === "subtipo_definido";
+            const isAutomatico = pendenciaOperacionalEhAutomatica(
+              check,
+              module,
+            );
             const meta = isAutomatico
               ? "Automatico"
               : Number(check.required || 0) === 1
@@ -1394,7 +1429,7 @@ function criarPendenciaOperacionalChecklistCard(item, module) {
                   ${isAutomatico ? "disabled" : ""}
                 >
                 <span>
-                  <strong>${escapeKanbanText(check.label || itemKey)}</strong>
+                  <strong>${escapeKanbanText(pendenciaOperacionalLabel(check, module))}</strong>
                   <small>${escapeKanbanText(meta)}</small>
                 </span>
               </label>`;
@@ -1512,14 +1547,17 @@ function abrirChecklistOperacionalModalLegacySwal(item) {
   if (!checklistId || !Array.isArray(checklistItems)) return;
 
   const rows = checklistItems
-    .map(
-      (check) => `
+    .map((check) => {
+      const isAutomatico = pendenciaOperacionalEhAutomatica(check, {
+        key: item.source_type || "",
+      });
+      return `
         <label class="pendencia-check-row">
-          <input type="checkbox" data-check-key="${escapeKanbanText(check.item_key || "")}" ${Number(check.done || 0) === 1 ? "checked" : ""}>
-          <span>${escapeKanbanText(check.label || check.item_key || "")}</span>
+          <input type="checkbox" data-check-key="${escapeKanbanText(check.item_key || "")}" data-manual="${isAutomatico ? "0" : "1"}" ${Number(check.done || 0) === 1 ? "checked" : ""} ${isAutomatico ? "disabled" : ""}>
+          <span>${escapeKanbanText(pendenciaOperacionalLabel(check, { key: item.source_type || "" }))}${isAutomatico ? " <small>Automático</small>" : ""}</span>
         </label>
-      `,
-    )
+      `;
+    })
     .join("");
 
   Swal.fire({
@@ -1531,7 +1569,7 @@ function abrirChecklistOperacionalModalLegacySwal(item) {
     preConfirm: async () => {
       const values = {};
       document
-        .querySelectorAll(".pendencia-check-row input[type='checkbox']")
+        .querySelectorAll(".pendencia-check-row input[data-manual='1']")
         .forEach((input) => {
           values[input.dataset.checkKey] = input.checked ? 1 : 0;
         });
@@ -2642,7 +2680,7 @@ function processarDados(data) {
     //     ? `<div class="wip-card-warning" title="Conclua ou avance o trabalho que já aguarda sua ação."><i class="ri-lock-2-line"></i> WIP ocupado</div>`
     //     : "";
 
-    if(item.wip_blocked_for_new_start) {
+    if (item.wip_blocked_for_new_start) {
       card.classList.add("wip-blocked");
     }
 
@@ -2652,11 +2690,15 @@ function processarDados(data) {
     const pendenciasInicio = Array.isArray(requisitos.bloqueios)
       ? requisitos.bloqueios
       : [];
-    const pendenciasProducaoInicio = Array.isArray(requisitos.bloqueios_producao)
+    const pendenciasProducaoInicio = Array.isArray(
+      requisitos.bloqueios_producao,
+    )
       ? requisitos.bloqueios_producao
       : pendenciasInicio.filter(
           (requisito) =>
-            String(requisito?.tipo || "").trim().toUpperCase() === "PRODUCAO",
+            String(requisito?.tipo || "")
+              .trim()
+              .toUpperCase() === "PRODUCAO",
         );
     card.dataset.requirementBlockReasons = pendenciasInicio
       .map((requisito) => String(requisito.label || "Requisito"))
@@ -6745,8 +6787,7 @@ function renderizarFeedbackPrevisao(resultado) {
   if (!aplicaRegra) {
     if (estado === "CONFLITO_PLANEJAMENTO") {
       modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa o prazo necessário do planejamento.<br><small>Prazo necessário: ${formatarDataPlanejamento(avaliacao.prazo_necessario || "")} · Sua previsão: ${formatarDataPlanejamento(avaliacao.previsao || "")}</small>`;
-      modalPrevisaoFeedback.className =
-        "modal-planning-feedback is-conflict";
+      modalPrevisaoFeedback.className = "modal-planning-feedback is-conflict";
     } else if (avaliacao.prazo_necessario) {
       modalPrevisaoFeedback.innerHTML =
         '<i class="ri-checkbox-circle-line"></i> Dentro do prazo necessário';
@@ -6767,8 +6808,7 @@ function renderizarFeedbackPrevisao(resultado) {
   }
   if (estado === "CONFLITO_PLANEJAMENTO") {
     modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa o prazo necessário do planejamento.<br><small>Prazo necessário: ${formatarDataPlanejamento(avaliacao.prazo_necessario || "")} · Sua previsão: ${formatarDataPlanejamento(avaliacao.previsao || "")}</small>`;
-    modalPrevisaoFeedback.className =
-      "modal-planning-feedback is-conflict";
+    modalPrevisaoFeedback.className = "modal-planning-feedback is-conflict";
     return;
   }
   modalPrevisaoFeedback.innerHTML = `<i class="ri-error-warning-line"></i> Sua previsão ultrapassa a janela operacional desta tarefa.<br><small>Janela: até ${formatarDataPlanejamento(avaliacao.limite_data || "")} · Sua previsão: ${formatarDataPlanejamento(avaliacao.previsao || "")}</small>`;
@@ -7018,7 +7058,10 @@ function bloqueiosProducao(avaliacao) {
     ? avaliacao.bloqueios_producao
     : Array.isArray(avaliacao?.bloqueios)
       ? avaliacao.bloqueios.filter(
-          (item) => String(item?.tipo || "").trim().toUpperCase() === "PRODUCAO",
+          (item) =>
+            String(item?.tipo || "")
+              .trim()
+              .toUpperCase() === "PRODUCAO",
         )
       : [];
   return bloqueios.map((item) => item?.label).filter(Boolean);
@@ -7047,7 +7090,9 @@ async function avaliarInicioConjuntoModelagem(modelagemId) {
   );
   const payload = await response.json();
   if (!response.ok || payload.success === false) {
-    throw new Error(payload.message || "Não foi possível avaliar o início conjunto.");
+    throw new Error(
+      payload.message || "Não foi possível avaliar o início conjunto.",
+    );
   }
   return payload;
 }
@@ -7068,7 +7113,9 @@ async function iniciarOperacaoAtomica(card, dados, iniciarConjunto = false) {
   });
   const payload = await response.json();
   if (!response.ok || payload?.success === false) {
-    const error = new Error(payload?.message || "Não foi possível iniciar a tarefa.");
+    const error = new Error(
+      payload?.message || "Não foi possível iniciar a tarefa.",
+    );
     error.payload = payload;
     throw error;
   }
@@ -7699,7 +7746,8 @@ if (typeof Sortable !== "undefined") {
         if (
           toId === "in-progress" &&
           dragged?.dataset?.liberado === "0" &&
-          String(dragged?.dataset?.productionBlockReasons || "").trim() !== "" &&
+          String(dragged?.dataset?.productionBlockReasons || "").trim() !==
+            "" &&
           !holdMovel
         )
           return false;

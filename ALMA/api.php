@@ -501,6 +501,14 @@ function alma_save_project(mysqli $conn, array $payload): array
         $stmt->execute();
         $stmt->close();
         $conn->commit();
+        try {
+            require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+            pendencias_operacionais_sync_alma_requirement($conn, $obraId);
+        } catch (Throwable $syncError) {
+            // O ALMA já foi persistido. Uma falha no reflexo do checklist não
+            // pode transformar o salvamento concluído em uma resposta de erro.
+            error_log('[ALMA] Falha ao sincronizar pendência de Projeto: ' . $syncError->getMessage());
+        }
         return alma_project_snapshot($conn, $projectDirectionId);
     } catch (Throwable $error) {
         $conn->rollback();

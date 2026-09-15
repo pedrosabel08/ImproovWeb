@@ -2425,6 +2425,24 @@ body.overview-page a:focus-visible {
   display: grid;
   align-content: start;
 }
+
+/* A lista expansível precisa ocupar o espaço restante do painel. Sem esta
+   restrição, o grupo aberto cresce fora do painel pai e é cortado pelo
+   overflow usado na grade da Visão geral. */
+.flow-overview > .flow-panel.area-attention > .overview-attention {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* No grid da Visão geral, overflow hidden reduz o tamanho intrínseco do
+   grupo ao cabeçalho. Ao abrir, a lista passa a participar do cálculo da
+   linha e fica acessível pela rolagem do painel. */
+.overview-attention
+  .pendencia-op-group:has(.pendencia-op-summary[aria-expanded="true"]) {
+  overflow: visible;
+}
 .overview-pending-group {
   border-top: 1px solid var(--ov-border);
 }

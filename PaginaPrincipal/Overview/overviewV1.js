@@ -81,7 +81,9 @@
   }
 
   function kpi(icon, label, value, detail, tone, trend = null) {
-    const numeric = String(value).replace(/[^0-9.,-]/g, "").replace(",", ".");
+    const numeric = String(value)
+      .replace(/[^0-9.,-]/g, "")
+      .replace(",", ".");
     return `<article class="flow-kpi is-${tone}"><span><i class="${icon}"></i></span><div><label>${esc(label)}</label><strong class="flow-count-up" data-count="${esc(numeric)}" data-suffix="${esc(String(value).replace(/[0-9.,-]/g, ""))}">${esc(value)}</strong><small>${esc(detail)}</small></div>${sparkline(trend == null ? numeric : trend, tone)}</article>`;
   }
 
@@ -98,19 +100,18 @@
           ? "Nenhum sinal exige intervenção operacional agora."
           : "Nenhuma ação pendente depende de você agora.",
       );
-    return `<div class="overview-attention">${modules.map((module, index) => {
-      const items = Array.isArray(module.items) ? module.items : [];
-      const visible = items.slice(0, 3);
-      const remaining = Math.max(0, items.length - visible.length);
-      const open = index === 0;
-      return `<article class="overview-pending-group" style="--module-color:${esc(module.color || "#7c3aed")}">
-        <button type="button" class="overview-pending-summary" data-action="toggle_pending" aria-expanded="${open}">
-          <span><i class="${esc(module.icon || "ri-inbox-archive-line")}"></i></span><div><strong>${esc(module.name || "Pendências")}</strong><small>${esc(module.description || "")}</small></div>
-          <em>${num(module.critical_count) ? `<b>${num(module.critical_count)}</b>` : ""}<b>${num(module.total)}</b></em><i class="ri-arrow-down-s-line"></i>
-        </button>
-        <div class="overview-pending-items" ${open ? "" : "hidden"}>${visible.map((item) => `<button type="button" class="overview-pending-item is-${esc(item.sla_status || "dentro")}" data-action="open_pending" data-url="${esc(item.action_url || "")}" data-task-id="${num(item.source_type === "flow_review" ? item.source_id : 0)}"><strong>${esc(item.title || "Pendência")}</strong><small>${esc(item.subtitle || module.description || "")}</small><span>${esc(item.responsavel_nome || "Não definido")}${item.sla_label ? ` · ${esc(item.sla_label)}` : ""}</span></button>`).join("")}${remaining ? `<button type="button" class="overview-pending-more" data-action="open_pending_module" data-module-key="${esc(module.key || "")}">+${remaining} pendências <span>Ver todas <i class="ri-arrow-right-line"></i></span></button>` : ""}</div>
-      </article>`;
-    }).join("")}</div>`;
+    // O conteúdo é hidratado pelo renderizador compartilhado do Kanban. Assim
+    // cartões, expansão, checklist e "Ver todas" não divergirão entre telas.
+    return '<div class="overview-attention kanban-pendencies-shared" data-kanban-pendencies></div>';
+  }
+
+  function hydrateKanbanPendingGroups(modules) {
+    const container = root.querySelector("[data-kanban-pendencies]");
+    if (!container || !Array.isArray(modules) || !modules.length) return;
+    if (typeof window.flowRenderOperationalPendingGroups !== "function") return;
+    window.flowRenderOperationalPendingGroups(container, {
+      pendencias_operacionais: modules,
+    });
   }
 
   function escapeRegExp(value) {
@@ -130,7 +131,9 @@
       .replace(/^[\\s._-]+|[\\s_-]+$/g, "")
       .replace(/\\s{2,}/g, " ");
     const numbered = withoutProject.match(/^(\\d+)\\s*[._-]?\\s*(.+)$/);
-    return numbered ? `${numbered[1]}. ${numbered[2]}` : withoutProject || original;
+    return numbered
+      ? `${numbered[1]}. ${numbered[2]}`
+      : withoutProject || original;
   }
 
   function unifiedStatusClass(status, scope) {
@@ -164,13 +167,17 @@
     );
     if (currentIndex < 0) {
       currentIndex = stages.findIndex(
-        (stage) => String(stage.label || "").trim() === String(task.function_name || "").trim(),
+        (stage) =>
+          String(stage.label || "").trim() ===
+          String(task.function_name || "").trim(),
       );
     }
     if (currentIndex < 0) currentIndex = 0;
 
     return [
-      currentIndex > 0 ? { ...stages[currentIndex - 1], role: "previous" } : null,
+      currentIndex > 0
+        ? { ...stages[currentIndex - 1], role: "previous" }
+        : null,
       { ...stages[currentIndex], role: "current" },
       currentIndex < stages.length - 1
         ? { ...stages[currentIndex + 1], role: "next" }
@@ -229,9 +236,10 @@
         "Sua fila está livre",
         "Não há uma próxima tarefa liberada neste momento.",
       );
-    const wipNotice = overviewData?.wip?.can_start_new === false
-      ? `<div class="overview-wip-notice"><i class="ri-focus-3-line"></i><span><strong>Conclua ou avance o trabalho atual</strong><small>Sua fila permanece visível, mas uma nova tarefa não pode ser iniciada enquanto houver trabalho aguardando sua ação.</small></span></div>`
-      : "";
+    const wipNotice =
+      overviewData?.wip?.can_start_new === false
+        ? `<div class="overview-wip-notice"><i class="ri-focus-3-line"></i><span><strong>Conclua ou avance o trabalho atual</strong><small>Sua fila permanece visível, mas uma nova tarefa não pode ser iniciada enquanto houver trabalho aguardando sua ação.</small></span></div>`
+        : "";
     return `${wipNotice}<ol class="next-list${wipNotice ? " is-wip-blocked" : ""}">${tasks.map((task, index) => `<li><span>${String(index + 1).padStart(2, "0")}</span><button type="button" data-action="open_task" data-task-id="${num(task.task_id)}"><strong>${esc(task.project)}</strong><small>${esc(task.image_name)}</small></button><em>${esc(task.function_name)}</em><time class="is-${esc(task.deadline?.state)}">${esc(task.deadline?.label)}</time></li>`).join("")}</ol><button type="button" class="flow-panel__footer" data-action="open_kanban">Ver toda a fila <i class="ri-arrow-right-line"></i></button>`;
   }
 
@@ -363,15 +371,26 @@
   }
 
   function originalDeadlineList(items) {
-    if (!Array.isArray(items)) return sectionError("Indicador indisponível", "Não foi possível consultar os compromissos históricos.");
-    if (!items.length) return empty("Nenhum prazo original ultrapassado", "As tarefas com histórico de prazo vencido aparecerão aqui.", "ri-shield-check-line");
+    if (!Array.isArray(items))
+      return sectionError(
+        "Indicador indisponível",
+        "Não foi possível consultar os compromissos históricos.",
+      );
+    if (!items.length)
+      return empty(
+        "Nenhum prazo original ultrapassado",
+        "As tarefas com histórico de prazo vencido aparecerão aqui.",
+        "ri-shield-check-line",
+      );
     return `<div class="original-deadline-list">${items.map((item) => `<button type="button" data-action="open_task" data-task-id="${num(item.task_id)}"><div><strong>${esc(item.project)}</strong><span>${esc(item.image_name)}</span><small>${esc(item.assignee)}</small></div><time>Original: ${esc(formatDate(item.original_deadline))}</time><em>${num(item.days_overdue)}d</em><i>${esc(item.status || "")}</i></button>`).join("")}</div>`;
   }
 
   function formatDate(value) {
     if (!value) return "—";
     const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("pt-BR");
+    return Number.isNaN(date.getTime())
+      ? String(value)
+      : date.toLocaleDateString("pt-BR");
   }
 
   function deliveryTone(status) {
@@ -473,7 +492,10 @@
     const delayed = deliveries.filter(
       (item) => item.kanban_status === "atrasada",
     ).length;
-    const punctuality = production.available && production.punctuality_percent != null ? Math.round(num(production.punctuality_percent)) : null;
+    const punctuality =
+      production.available && production.punctuality_percent != null
+        ? Math.round(num(production.punctuality_percent))
+        : null;
     return `<div class="flow-kpis">${kpi("ri-alarm-warning-line", "Situações críticas", String(num(data.summary?.critical_count)), "sem comparativo anterior", "danger")}${kpi("ri-user-unfollow-line", "Sobrecargas", String(team.filter((person) => num(person.peak_percent) > 100).length), "carga acima de 100%", "warning")}${kpi("ri-time-line", "Prazos originais vencidos", String(num(data.summary?.original_overdue_count)), "histórico do compromisso inicial", "attention")}${kpi("ri-focus-3-line", "Pontualidade", punctuality == null ? "—" : `${punctuality}%`, production.trend_percent == null ? "sem base anterior" : `${num(production.trend_percent) > 0 ? "+" : ""}${production.trend_percent}% vs mês anterior`, "healthy", punctuality)}</div>`;
   }
 
@@ -501,13 +523,14 @@
             "ri-play-circle-line",
           );
     root.className = "flow-overview flow-overview--collaborator";
-    root.innerHTML = `${collaboratorKpis(data)}${panel("Em andamento", "ri-loader-4-line", ongoing, { count: data.summary?.in_progress_count, className: "area-progress", subtitle: "O trabalho que concentra seu foco agora." })}${panel("Atenção necessária", "ri-alarm-warning-line", attentionAccordion(data.attention_modules, "collaborator"), { count: data.summary?.attention_count, className: "area-attention"})}${panel("A seguir", "ri-arrow-right-line", nextList(data.next), { count: data.next?.length || 0, className: "area-next" })}${panel("Concluído recentemente", "ri-check-double-line", completedBlock(data.completed), { className: "area-completed", action: `<span class="completion-summary">${data.completed?.punctuality_percent == null ? "" : `${Math.round(num(data.completed.punctuality_percent))}% pontuais`}</span>` })}`;
+    root.innerHTML = `${collaboratorKpis(data)}${panel("Em andamento", "ri-loader-4-line", ongoing, { count: data.summary?.in_progress_count, className: "area-progress", subtitle: "O trabalho que concentra seu foco agora." })}${panel("Atenção necessária", "ri-alarm-warning-line", attentionAccordion(data.attention_modules, "collaborator"), { count: data.summary?.attention_count, className: "area-attention" })}${panel("A seguir", "ri-arrow-right-line", nextList(data.next), { count: data.next?.length || 0, className: "area-next" })}${panel("Concluído recentemente", "ri-check-double-line", completedBlock(data.completed), { className: "area-completed", action: `<span class="completion-summary">${data.completed?.punctuality_percent == null ? "" : `${Math.round(num(data.completed.punctuality_percent))}% pontuais`}</span>` })}`;
   }
 
   function renderCurrent() {
     if (!overviewData) return;
     if (overviewData.mode === "manager") renderManager(overviewData);
     else renderCollaborator(overviewData);
+    hydrateKanbanPendingGroups(overviewData.attention_modules);
     root.setAttribute("aria-busy", "false");
     requestAnimationFrame(animateOverview);
   }
@@ -525,7 +548,9 @@
   function animateOverview() {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     root.querySelectorAll(".flow-count-up").forEach((element) => {
-      const target = Number(String(element.dataset.count || "").replace(",", "."));
+      const target = Number(
+        String(element.dataset.count || "").replace(",", "."),
+      );
       if (!Number.isFinite(target)) return;
       const suffix = element.dataset.suffix || "";
       const startedAt = performance.now();
@@ -550,7 +575,10 @@
       const open = summary.getAttribute("aria-expanded") === "true";
       root.querySelectorAll(".overview-pending-summary").forEach((item) => {
         item.setAttribute("aria-expanded", "false");
-        item.closest(".overview-pending-group")?.querySelector(".overview-pending-items")?.setAttribute("hidden", "");
+        item
+          .closest(".overview-pending-group")
+          ?.querySelector(".overview-pending-items")
+          ?.setAttribute("hidden", "");
       });
       if (!open) {
         summary.setAttribute("aria-expanded", "true");
@@ -558,12 +586,16 @@
       }
       return;
     }
-    if (action === "open_pending_module") return window.location.assign(config.kanbanUrl);
+    if (action === "open_pending_module")
+      return window.location.assign(config.kanbanUrl);
     if (action === "open_task") {
       // A tarefa já está disponível no DOM do Kanban carregado nesta página.
       // Abra o modal diretamente para preservar o contexto da Visão Geral;
       // a navegação continua como fallback para cards ainda não renderizados.
-      if (typeof window.flowOpenTaskModal === "function" && window.flowOpenTaskModal(control.dataset.taskId || "")) {
+      if (
+        typeof window.flowOpenTaskModal === "function" &&
+        window.flowOpenTaskModal(control.dataset.taskId || "")
+      ) {
         return;
       }
       const params = new URLSearchParams({
@@ -599,9 +631,12 @@
       return window.location.assign(config.deliveriesPageUrl);
     if (action === "open_pending") {
       if (control.dataset.taskId && num(control.dataset.taskId) > 0) {
-        return window.location.assign(`${config.kanbanUrl}?focus_task=${encodeURIComponent(control.dataset.taskId)}`);
+        return window.location.assign(
+          `${config.kanbanUrl}?focus_task=${encodeURIComponent(control.dataset.taskId)}`,
+        );
       }
-      if (control.dataset.url) return window.location.assign(control.dataset.url);
+      if (control.dataset.url)
+        return window.location.assign(control.dataset.url);
       return window.location.assign(config.kanbanUrl);
     }
     if (action === "calendar_prev" || action === "calendar_next") {
@@ -626,6 +661,10 @@
   root.addEventListener("click", (event) => {
     const control = event.target.closest("[data-action]");
     if (control) navigateAction(control);
+  });
+  window.addEventListener("flow:operational-pending-renderer-ready", () => {
+    if (overviewData)
+      hydrateKanbanPendingGroups(overviewData.attention_modules);
   });
   refreshButton?.addEventListener("click", () => load(true));
 

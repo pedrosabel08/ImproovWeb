@@ -199,25 +199,6 @@ try {
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
-        $hasNonConfirmable = !empty(array_filter((array) ($avaliacaoInicio['bloqueios'] ?? []), static fn (array $item): bool => !empty($item['nao_confirmavel'])));
-        if ($hasNonConfirmable) {
-            $conn->rollback();
-            http_response_code(422);
-            echo json_encode([
-                'error' => 'A tarefa depende de uma aprovação pendente e não pode ser iniciada antes da liberação.',
-                'avaliacao' => $avaliacaoInicio,
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        if (!$avaliacaoInicio['elegivel'] && !$confirmarPendencias) {
-            $conn->rollback();
-            http_response_code(422);
-            echo json_encode([
-                'error' => 'A tarefa possui requisitos pendentes para iniciar.',
-                'avaliacao' => $avaliacaoInicio,
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
     }
     if (
         !$existingFuncaoImagemId
@@ -411,9 +392,6 @@ try {
         );
         if (motor_requisitos_tem_bloqueio_producao($avaliacaoInicio)) {
             throw new DomainException('Conclua todas as pendências de Produção antes de iniciar a tarefa.');
-        }
-        if (!$avaliacaoInicio['elegivel'] && !$confirmarPendencias) {
-            throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');
         }
     }
 

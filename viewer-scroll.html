@@ -48,20 +48,6 @@
           linear-gradient(135deg, #151918 0%, #0d100f 72%);
       }
 
-      .experience::before {
-        position: absolute;
-        inset: 0;
-        content: "";
-        pointer-events: none;
-        background-image: linear-gradient(
-          90deg,
-          rgba(255, 255, 255, 0.025) 1px,
-          transparent 1px
-        );
-        background-size: 12.5vw 100%;
-        mask-image: linear-gradient(to bottom, transparent, black, transparent);
-      }
-
       .scene-layer {
         position: fixed;
         top: 0;
@@ -360,7 +346,11 @@
       import * as THREE from "three";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+      import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+      import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+      import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+      import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+      import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
       // ==================================================
       // AJUSTES MANUAIS DO POC
@@ -373,17 +363,71 @@
           buildingBounds: false,
         },
 
+        environment: {
+          // Caminho do HDRI. Use outro arquivo .hdr aqui para trocar o ambiente.
+          hdriUrl: "assets/hdri/HDRI_Sunrise_004.hdr",
+
+          // Exibe o panorama HDRI atrás do prédio no hero e no minimapa.
+          // false mantém o fundo escuro do portal, mas ainda usa o HDRI na iluminação.
+          showBackground: false,
+
+          // Intensidade visual do panorama quando showBackground estiver ativo.
+          backgroundIntensity: 0.4,
+
+          // Desfoque do panorama: 0 mostra a imagem nítida; 1 evita distração visual.
+          backgroundBlurriness: 0.3,
+
+          // Multiplicador das reflexões/iluminação PBR do HDRI nos materiais originais.
+          // Diminua se vidro e metais ficarem fortes demais; aumente para mais presença.
+          reflectionIntensity: 0.6,
+
+          // Faz a orientação visual do HDRI acompanhar o azimute da câmera.
+          followCamera: false,
+
+          // Deslocamento angular manual do HDRI em relação à câmera.
+          rotationOffsetDegrees: 0,
+
+          // Faz a luz solar acompanhar a posição da câmera.
+          followSunCamera: true,
+
+          // Deslocamento da luz em relação à câmera, em unidades do modelo.
+          sunFollowOffset: { x: 0, y: 20, z: 80 },
+        },
+
+        ground: {
+          // Cor do chão.
+          // Tente deixar próxima ao background do portal.
+          color: 0x8c8b8b,
+
+          // Tamanho em relação ao footprint do edifício.
+          // 2 = pequeno
+          // 3 = equilibrado
+          // 5 = grande
+          sizeMultiplier: 15,
+
+          // 1 = completamente fosco.
+          // Reduza se quiser alguns reflexos.
+          roughness: 1,
+
+          // Para concreto/chão comum deixe 0.
+          metalness: 0,
+
+          // Quanto abaixo da base do prédio fica o piso.
+          // Evita sobreposição/z-fighting.
+          yOffsetRatio: 0.002,
+        },
+
         hero: {
           // FOV da câmera. Menor = visual mais teleobjetivo; maior = mais perspectiva.
-          fov: 30,
+          fov: 35,
 
           // Fração vertical ocupada pelo prédio dentro do viewer.
           // Aumente para aproximar; diminua para deixar mais respiro. Recomendado: 0.8.
-          buildingHeightCoverage: 0.86,
+          buildingHeightCoverage: 0.75,
 
           // Multiplicador da distância calculada. Menor aproxima; maior afasta.
           // Recomendado: 0.94.
-          cameraDistanceMultiplier: 0.94,
+          cameraDistanceMultiplier: 0.88,
 
           // Offsets do ponto observado, em unidades do GLB.
           // X positivo move o target à direita; Y positivo sobe; Z positivo avança.
@@ -397,7 +441,7 @@
 
           // Ângulo horizontal inicial ao redor do prédio, em graus.
           // Aumente/diminua para escolher outra fachada. Recomendado: 38.
-          initialAzimuthDegrees: 32,
+          initialAzimuthDegrees: 140,
 
           // Inclinação inicial. Maior mostra mais cobertura; menor fica mais frontal.
           // A rotação vertical permanece travada. Recomendado: 0.32.
@@ -409,12 +453,12 @@
           maxZoomMultiplier: 1.25,
 
           // Altura visual do viewer no Hero. 0.86 = 86% da viewport.
-          viewerHeightRatio: 0.92,
+          viewerHeightRatio: 0.9,
 
           // Centro horizontal do viewer. Maior move à direita; menor à esquerda.
-          viewerCenterXRatio: 0.7,
+          viewerCenterXRatio: 0.72,
 
-          hideTerrain: true,
+          hideTerrain: false,
 
           contactShadowOpacity: 0.18,
         },
@@ -498,37 +542,19 @@
 
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 0.7;
-
-      // Environment temporário para materiais PBR.
-      // Isso NÃO aparece como fundo.
-      // Serve para reflexos, vidro, metal e leitura geral dos materiais.
-      const pmremGenerator = new THREE.PMREMGenerator(renderer);
-
-      const roomEnvironment = new RoomEnvironment();
-
-      const environmentRenderTarget = pmremGenerator.fromScene(
-        roomEnvironment,
-        0.04,
-      );
-
-      scene.environment = environmentRenderTarget.texture;
-
-      roomEnvironment.dispose();
-      pmremGenerator.dispose();
+      renderer.toneMappingExposure = 0.82;
 
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-      const ambientLight = new THREE.HemisphereLight(0xdce9f3, 0x17211c, 0.35);
+      const ambientLight = new THREE.HemisphereLight(0xdce9f3, 0x17211c, 0.5);
 
       scene.add(ambientLight);
 
-      const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
-      
+      const sun = new THREE.DirectionalLight(0xffe8cb, 2.0);
       sun.castShadow = true;
 
-      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.mapSize.set(1000, 1000);
 
       sun.shadow.bias = -0.0002;
       sun.shadow.normalBias = 0.02;
@@ -543,13 +569,129 @@
       controls.zoomSpeed = 0.7;
 
       let buildingSubject = null;
+      let modelRoot = null;
       let terrainEntries = [];
       let fullSceneBounds = new THREE.Box3();
       let heroFit = null;
       let minimapFit = null;
       let resizeFrame = 0;
+      let hdriEnvironment = null;
 
       let shadowCatcher = null;
+
+      function applyHdriIntensity(root) {
+        if (!root) return;
+
+        const processedMaterials = new Set();
+        root.traverse((child) => {
+          if (!child.isMesh) return;
+
+          const materials = Array.isArray(child.material)
+            ? child.material
+            : [child.material];
+
+          materials.forEach((material) => {
+            if (
+              !material ||
+              processedMaterials.has(material) ||
+              !("envMapIntensity" in material)
+            )
+              return;
+
+            processedMaterials.add(material);
+
+            // Guarda a configuração exportada para preservar o material original.
+            if (material.userData.portalOriginalEnvMapIntensity === undefined) {
+              material.userData.portalOriginalEnvMapIntensity =
+                material.envMapIntensity;
+            }
+
+            material.envMapIntensity =
+              material.userData.portalOriginalEnvMapIntensity *
+              CONFIG.environment.reflectionIntensity;
+            material.needsUpdate = true;
+          });
+        });
+      }
+
+      function loadHdriEnvironment() {
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        new RGBELoader().load(
+          CONFIG.environment.hdriUrl,
+          (hdrTexture) => {
+            hdrTexture.mapping = THREE.EquirectangularReflectionMapping;
+            hdriEnvironment =
+              pmremGenerator.fromEquirectangular(hdrTexture).texture;
+            scene.environment = hdriEnvironment;
+
+            if (CONFIG.environment.showBackground) {
+              scene.background = hdrTexture;
+              scene.backgroundIntensity =
+                CONFIG.environment.backgroundIntensity;
+              scene.backgroundBlurriness =
+                CONFIG.environment.backgroundBlurriness;
+            } else {
+              hdrTexture.dispose();
+            }
+
+            pmremGenerator.dispose();
+            applyHdriIntensity(modelRoot);
+            console.info(
+              `[Portal 3D] HDRI carregado: ${CONFIG.environment.hdriUrl}`,
+            );
+          },
+          undefined,
+          (error) => {
+            pmremGenerator.dispose();
+            console.error(
+              `[Portal 3D] Não foi possível carregar o HDRI ${CONFIG.environment.hdriUrl}:`,
+              error,
+            );
+          },
+        );
+      }
+
+      loadHdriEnvironment();
+
+      function syncSunWithCamera() {
+        if (!CONFIG.environment.followSunCamera || !buildingSubject) return;
+
+        sun.position
+          .copy(camera.position)
+          .add(
+            new THREE.Vector3(
+              CONFIG.environment.sunFollowOffset.x,
+              CONFIG.environment.sunFollowOffset.y,
+              CONFIG.environment.sunFollowOffset.z,
+            ),
+          );
+        sun.target.position.copy(controls.target);
+        sun.target.updateMatrixWorld();
+      }
+
+      function syncHdriWithCamera() {
+        if (!CONFIG.environment.followCamera) return;
+
+        const azimuth = Math.atan2(
+          camera.position.x - controls.target.x,
+          camera.position.z - controls.target.z,
+        );
+        const rotation =
+          azimuth +
+          THREE.MathUtils.degToRad(CONFIG.environment.rotationOffsetDegrees);
+
+        // Mantém o panorama e os reflexos do HDRI com a mesma orientação.
+        // O fallback cria os Eulers quando uma versão diferente do Three.js
+        // ainda não os inicializou automaticamente na Scene.
+        if (!scene.environmentRotation)
+          scene.environmentRotation = new THREE.Euler();
+        if (!scene.backgroundRotation)
+          scene.backgroundRotation = new THREE.Euler();
+        scene.environmentRotation.y = rotation;
+        scene.backgroundRotation.y = rotation;
+      }
 
       function createShadowCatcher(building) {
         if (shadowCatcher) {
@@ -562,12 +704,13 @@
 
         const center = building.bounds.getCenter(new THREE.Vector3());
 
-        const planeSize = Math.max(size.x, size.z) * 2.4;
+        const planeSize =
+          Math.max(size.x, size.z) * CONFIG.ground.sizeMultiplier;
 
         const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
 
         const material = new THREE.ShadowMaterial({
-          opacity: CONFIG.hero.contactShadowOpacity,
+          opacity: 0.22,
         });
 
         shadowCatcher = new THREE.Mesh(geometry, material);
@@ -577,7 +720,7 @@
         // Coloca o chão exatamente na base do prédio.
         shadowCatcher.position.set(
           center.x,
-          building.bounds.min.y - size.y * 0.002,
+          building.bounds.min.y - size.y * CONFIG.ground.yOffsetRatio,
           center.z,
         );
 
@@ -882,11 +1025,11 @@
 
       const loader = new GLTFLoader();
       loader.load(
-        "assets/Fachada_GLB_001.glb",
+        "assets/Fachada_GLB_002.glb",
         (gltf) => {
-          const model = gltf.scene;
-          scene.add(model);
-          model.traverse((child) => {
+          modelRoot = gltf.scene;
+          scene.add(modelRoot);
+          modelRoot.traverse((child) => {
             if (!child.isMesh) return;
 
             const materials = Array.isArray(child.material)
@@ -905,17 +1048,9 @@
             // sombra preta pesada padrão.
             child.castShadow = !hasTransmission;
             child.receiveShadow = !hasTransmission;
-
-            materials.forEach((material) => {
-              if (!material) return;
-
-              // Intensidade de reflexão do environment.
-              if ("envMapIntensity" in material) {
-                material.envMapIntensity = 1.0;
-              }
-            });
           });
-          const analysis = analyzeModel(model);
+          applyHdriIntensity(modelRoot);
+          const analysis = analyzeModel(modelRoot);
           buildingSubject = analysis.subject;
           fullSceneBounds.copy(analysis.sceneBounds);
           terrainEntries = analysis.terrainEntries.map((entry) => ({
@@ -938,9 +1073,9 @@
             .copy(buildingCenter)
             .add(
               new THREE.Vector3(
-                buildingSize.x,
-                buildingSize.y * 1.25,
-                buildingSize.z,
+                buildingSize.x - buildingSize.x * 1.5,
+                buildingSize.y + buildingSize.y * 1.6,
+                buildingSize.z + buildingSize.z * 1.2,
               ),
             );
           sun.target.position.copy(buildingCenter);
@@ -976,7 +1111,7 @@
         undefined,
         (error) =>
           console.error(
-            "[Portal 3D] Não foi possível carregar assets/Fachada_GLB_001.glb:",
+            "[Portal 3D] Não foi possível carregar assets/Fachada_GLB_002.glb:",
             error,
           ),
       );
@@ -1058,6 +1193,8 @@
 
       function render() {
         controls.update();
+        syncSunWithCamera();
+        syncHdriWithCamera();
         renderer.render(scene, camera);
         requestAnimationFrame(render);
       }

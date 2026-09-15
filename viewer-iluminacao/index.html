@@ -125,6 +125,7 @@
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
+      controls.maxPolarAngle = Math.PI / 2 - 0.08;
 
       let model;
       let waterMeshCount = 0;
@@ -173,13 +174,14 @@
 
       const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
       directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.set(2048, 2048);
+      directionalLight.shadow.mapSize.set(4096, 4096);
+      directionalLight.shadow.bias = -0.00005;
       scene.add(directionalLight);
       scene.add(directionalLight.target);
 
       let modelRadius = 1;
-      let ground;
       let modelCentered = false;
+      let shadowCasterBounds;
 
       function isWaterMesh(child) {
         const materialNames = Array.isArray(child.material)
@@ -187,6 +189,30 @@
           : child.material?.name || "";
         const label = `${child.name} ${materialNames}`.toLowerCase();
         return label.includes("agua") || label.includes("water");
+      }
+
+      function configureMeshShadows(root) {
+        shadowCasterBounds = new THREE.Box3().makeEmpty();
+
+        root.traverse((child) => {
+          if (!child.isMesh) return;
+
+          child.receiveShadow = true;
+          child.updateWorldMatrix(true, false);
+          const meshBounds = new THREE.Box3().setFromObject(child);
+          const meshSize = meshBounds.getSize(new THREE.Vector3());
+          const horizontalSize = Math.max(meshSize.x, meshSize.z);
+          const isLargeFlatSurface =
+            horizontalSize > 25 && meshSize.y < horizontalSize * 0.01;
+          const meshName = `${child.name} ${child.material?.name || ""}`.toLowerCase();
+          const isGroundLike = /terreno|rua|calcada|grama|ground|floor/.test(
+            meshName,
+          );
+
+          // Large terrain-like planes reduce shadow-map precision and cause acne.
+          child.castShadow = !isLargeFlatSurface && !isGroundLike;
+          if (child.castShadow) shadowCasterBounds.union(meshBounds);
+        });
       }
 
       function applyNoiseToWater(texture) {
@@ -338,46 +364,43 @@
       }
 
       function updateGroundAndSun(box, size) {
-        const maxDimension = Math.max(size.x, size.y, size.z, 0.001);
-        const center = box.getCenter(new THREE.Vector3());
+        const casterBox =
+          shadowCasterBounds && !shadowCasterBounds.isEmpty()
+            ? shadowCasterBounds
+            : box;
+        const casterSize = casterBox.getSize(new THREE.Vector3());
+        const maxDimension = Math.max(
+          casterSize.x,
+          casterSize.y,
+          casterSize.z,
+          0.001,
+        );
+        const center = casterBox.getCenter(new THREE.Vector3());
         const floorY = box.min.y - maxDimension * 0.001;
-        const horizontalRadius = Math.hypot(size.x, size.z) / 2;
+        const horizontalRadius = Math.hypot(casterSize.x, casterSize.z) / 2;
         const sunOffset = new THREE.Vector3(
           maxDimension * 1.25,
           maxDimension * 2,
           maxDimension * 1.5,
         );
         const shadowLength =
-          size.y *
+          casterSize.y *
           (Math.hypot(sunOffset.x, sunOffset.z) / Math.max(sunOffset.y, 0.001));
         const shadowHalfSize = Math.max(
           horizontalRadius * 1.25,
           horizontalRadius + shadowLength + maxDimension * 0.25,
         );
-        const groundSize = shadowHalfSize * 2.2;
-
-        if (!ground) {
-          ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(groundSize, groundSize),
-            new THREE.MeshStandardMaterial({
-              color: 0x4a4a4a,
-              roughness: 0.95,
-              metalness: 0,
-            }),
-          );
-          ground.rotation.x = -Math.PI / 2;
-          ground.receiveShadow = true;
-          scene.add(ground);
-        }
-
-        ground.position.set(center.x, floorY, center.z);
-
         directionalLight.position.copy(center).add(sunOffset);
         directionalLight.target.position.set(center.x, floorY, center.z);
         directionalLight.target.updateMatrixWorld();
 
         const shadowCamera = directionalLight.shadow.camera;
         const lightDistance = sunOffset.length();
+        directionalLight.shadow.normalBias = THREE.MathUtils.clamp(
+          maxDimension * 0.00025,
+          0.002,
+          0.02,
+        );
         shadowCamera.left = -shadowHalfSize;
         shadowCamera.right = shadowHalfSize;
         shadowCamera.top = shadowHalfSize;
@@ -400,6 +423,7 @@
           modelCentered = true;
         }
 
+        configureMeshShadows(model);
         const centeredBox = new THREE.Box3().setFromObject(model);
         const centeredSize = centeredBox.getSize(new THREE.Vector3());
         modelRadius = centeredSize.length() / 2;
@@ -428,15 +452,9 @@
       }
 
       new GLTFLoader().load(
-        "../assets/Teste_GLB_001.glb",
+        "../assets/Fachada_GLB_001.glb",
         (gltf) => {
           model = gltf.scene;
-          model.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
           applyNoiseToWater(noiseNormalTexture);
           scene.add(model);
           frameModel(true);
@@ -444,7 +462,7 @@
         undefined,
         (error) => {
           console.error(
-            "Não foi possível carregar ../assets/Teste_GLB_001.glb.",
+            "Não foi possível carregar ../assets/Fachada_GLB_001.glb.",
             error,
           );
         },

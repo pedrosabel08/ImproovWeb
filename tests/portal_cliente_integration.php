@@ -32,9 +32,18 @@ try {
     $ids=array_map('intval',array_column(portal_rows($db,"SELECT id FROM flow_disciplina WHERE codigo IN ('ARQUITETURA','INTERIORES','PAISAGISMO')"),'id'));
     check(count($ids)===3,'three requested disciplines available');
     portal_profile($db,$p,$central,['nome'=>'Pessoa Central Teste','telefone'=>'47900000001','disciplinas'=>[]]);
+    portal_exec($db,"INSERT INTO briefing_tipo_imagem(obra_id,tipo_imagem) VALUES (?,'Fachada')",'i',[$a]);$legacyType=(int)$db->insert_id;
+    $architecture=(int)briefing_scalar($db,"SELECT categoria_id FROM flow_disciplina WHERE codigo='ARQUITETURA'");
+    $category=(string)briefing_scalar($db,'SELECT nome_categoria FROM categorias WHERE idcategoria=?','i',[$architecture]);
+    portal_exec($db,"INSERT INTO briefing_requisitos_arquivo(briefing_tipo_imagem_id,categoria,origem,tipo_arquivo) VALUES (?,?,'cliente','DWG')",'is',[$legacyType,$category]);$legacyRequirement=(int)$db->insert_id;
     portal_prepare($db,$p,$central,['question'=>'disciplinas','disciplinas'=>$ids,'revisao'=>$p['revisao']]);
     $p=portal_project($db,$a,true);check(count(portal_selected($db,$a))===3,'scenario 2 relational project disciplines');
     check(count(portal_data($db,$p)['materials'])===3,'scenario 8 category based suggestions');
+    check((int)briefing_scalar($db,'SELECT COUNT(*) FROM portal_material_origem WHERE requisito_id=?','i',[$legacyRequirement])===2,'existing architectural requirement reused for architecture and interiors');
+    check(count(portal_data($db,$p)['materials'][0]['formatos'])===1,'formats suggested from existing project requirements');
+    portal_exec($db,'DELETE FROM briefing_requisitos_arquivo WHERE id=?','i',[$legacyRequirement]);
+    check(count(portal_data($db,$p)['materials'])===3,'legacy requirement deletion remains compatible');
+    check((int)briefing_scalar($db,"SELECT COUNT(*) FROM portal_evento WHERE obra_id=? AND tipo='material.suggested' AND JSON_LENGTH(dados->'$.sources')>0",'i',[$a])===2,'deleted legacy source provenance remains auditable');
     check(count(portal_data($db,$p,$central)['materials'])===0,'draft materials never exposed');
     rejects(fn()=>portal_publish($db,$p,(int)$ordinary['idusuario'],['revisao'=>$p['revisao']]),422,'unreviewed suggestions cannot publish');
     $land=(int)briefing_scalar($db,"SELECT id FROM flow_disciplina WHERE codigo='PAISAGISMO'");
@@ -73,6 +82,8 @@ try {
     $p=portal_project($db,$a,true);portal_internal_mutate($db,$p,$ordinary,'participant.restore',['contato_id'=>$second,'revisao'=>$p['revisao']]);portal_member($db,$a,$second);check(true,'explicit internal restoration');
     $body['obra_id']=$b;$body['email']='central-b-'.$suffix.'@example.invalid';$entryB=portal_configure($db,$admin,$body);$pb=portal_link($db,$entryB['token']);
     rejects(fn()=>portal_member($db,(int)$pb['obra_id'],$central),403,'scenario 12 project A identity cannot read B');
+    try { portal_exec($db,'UPDATE portal_projeto SET administrador_contato_id=? WHERE obra_id=?','ii',[(int)$pb['administrador_contato_id'],$a]);throw new RuntimeException('Cross-project administrator accepted'); } catch(mysqli_sql_exception $e) { check($e->getCode()===1452,'database rejects administrator from another obra'); }
+    try { portal_exec($db,'INSERT INTO portal_participante_disciplina(obra_id,contato_id,disciplina_id) VALUES (?,?,?)','iii',[$b,(int)$pb['administrador_contato_id'],$land]);throw new RuntimeException('Foreign project discipline accepted'); } catch(mysqli_sql_exception $e) { check($e->getCode()===1452,'database rejects discipline outside project'); }
     $p=portal_project($db,$a,true);$old=$entry['token'];portal_internal_mutate($db,$p,$ordinary,'invite.rotate',['revisao'=>$p['revisao']]);
     rejects(fn()=>portal_link($db,$old),404,'revoked invitation rejected');
     $p=portal_project($db,$a,true);portal_internal_mutate($db,$p,$admin,'project.settings',['revisao'=>$p['revisao'],'curador_usuario_id'=>$ordinary['idusuario'],'estado'=>'ABERTO','inscricoes_abertas'=>false]);

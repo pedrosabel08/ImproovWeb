@@ -160,6 +160,7 @@
   }
   function render(target) {
     view = target;
+    notice.hidden = true;
     nav
       .querySelectorAll("[data-view]")
       .forEach((b) =>
@@ -276,6 +277,10 @@
   nav.addEventListener("click", (e) => {
     const b = e.target.closest("[data-view]");
     if (b && !busy) run(() => refresh(b.dataset.view));
+  });
+  document.querySelector(".brand a").addEventListener("click", (event) => {
+    event.preventDefault();
+    if (data && !busy) run(() => refresh("inicio"));
   });
   document.querySelector("#logout").onclick = () =>
     run(async () => {

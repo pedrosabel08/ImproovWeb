@@ -128,7 +128,7 @@
     };
   }
   function itemForm(m = {}) {
-    return `<form class="form material" data-id="${m.id || 0}"><label>Nome do material<input name="titulo" required maxlength="180" value="${esc(m.titulo)}"></label><div class="grid-fields"><label>Tipo do material<select name="categoria_id">${data.categories.map((c) => `<option value="${+c.idcategoria}" ${+c.idcategoria === +m.categoria_id ? "selected" : ""}>${esc(c.nome_categoria)}</option>`).join("")}</select></label><label>Disciplina<select name="disciplina_id">${data.catalog
+    return `<form class="form material" data-id="${m.id || 0}"><label>Nome do material<input name="titulo" required maxlength="180" value="${esc(m.titulo)}"></label><div class="grid-fields"><label>Tipo do material<select name="categoria_id" required><option value="">Selecione o tipo</option>${data.categories.map((c) => `<option value="${+c.idcategoria}" ${+c.idcategoria === +m.categoria_id ? "selected" : ""}>${esc(c.nome_categoria)}</option>`).join("")}</select></label><label>Disciplina<select name="disciplina_id" required><option value="">Selecione a disciplina</option>${data.catalog
       .filter((d) => data.disciplinas.includes(+d.id))
       .map(
         (d) =>
@@ -238,7 +238,7 @@
       if (project.portal_obra_id) await load();
       else if (boot.admin) setup();
     });
-  run(async () => {
+  async function start() {
     boot = await api("bootstrap");
     projectSelect.innerHTML =
       '<option value="">Selecione um projeto</option>' +
@@ -251,5 +251,11 @@
     main.innerHTML = boot.projects.length
       ? "<p>Selecione um projeto para preparar o convite ou revisar sua solicitação de materiais.</p>"
       : "<p>Nenhum projeto foi designado para sua curadoria. Peça à gestão para vincular seu usuário.</p>";
+  }
+  run(start).then(() => {
+    if (!boot) {
+      main.innerHTML = '<p>Não foi possível carregar seus projetos.</p><button class="primary" id="retry">Tentar novamente</button>';
+      main.querySelector("#retry").onclick = () => run(start);
+    }
   });
 })();

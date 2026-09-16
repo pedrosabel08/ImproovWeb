@@ -175,15 +175,21 @@ function portal_configure(mysqli $db, array $user, array $body): array
     return ['token' => $token,'obra_id' => $obra];
 }
 
-/** Small preparation handler; add new keyed handlers, not a form engine. */
+/** Small keyed preparation handlers; each owns its relational answer. */
 function portal_prepare(mysqli $db, array $p, int $contact, array $body): void
 {
     portal_open($p);
     portal_revision($p, $body['revisao'] ?? null);
     portal_draft($db, (int)$p['obra_id']);
-    if (($body['question'] ?? '') !== 'disciplinas') {
+    $handlers = ['disciplinas' => 'portal_prepare_disciplines'];
+    $handler = $handlers[$body['question'] ?? ''] ?? null;
+    if (!$handler) {
         throw new PortalError('Pergunta indisponível.');
     }
+    $handler($db, $p, $contact, $body);
+}
+function portal_prepare_disciplines(mysqli $db, array $p, int $contact, array $body): void
+{
     $ids = portal_ids($body['disciplinas'] ?? null);
     $valid = array_map('intval', array_column(portal_catalog($db), 'id'));
     if (!$ids || array_diff($ids, $valid)) {
@@ -225,6 +231,9 @@ function portal_suggest(mysqli $db, int $obra): void
                 portal_exec($db, 'INSERT IGNORE INTO portal_material_formato(material_id,formato) VALUES (?,?)', 'is', [$mid,$format]);
             }
         }
+        // Legacy requirements can be deleted/reconfigured by Dashboard. Keep
+        // provenance in the audit, but never block that existing workflow.
+        portal_event($db, $obra, 'material.suggested', null, null, ['material_id' => $mid, 'categoria_id' => (int)$d['categoria_id'], 'disciplina_id' => (int)$d['id'], 'sources' => $sources]);
     }
 }
 function portal_profile(mysqli $db, array $p, int $contact, array $body): void

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../includes/flow-motion-assets.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -63,7 +64,7 @@ $conn->close();
     <div class="container">
 
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header" data-motion="header">
             <div class="page-header-left">
                 <img src="../gif/assinatura_preto.gif" id="gif" style="height:34px;opacity:0.85;"
                     onerror="this.style.display='none'">
@@ -80,7 +81,7 @@ $conn->close();
         </div>
 
         <!-- Filter Bar -->
-        <div class="filters">
+        <div class="filters" data-motion="toolbar">
             <div class="filter-group">
                 <label class="filter-label">Obra</label>
                 <select id="filterObra" class="filter-select">
@@ -121,7 +122,7 @@ $conn->close();
             <div id="pendenciasEntregaList" class="delivery-pending-list"></div>
         </section>
 
-        <section class="kpi-panel" aria-label="KPIs de entregas">
+        <section class="kpi-panel" aria-label="KPIs de entregas" data-motion="section">
             <div class="kpi-grid" id="entregasKpiGrid">
                 <div class="kpi-card kpi-blue" data-kpi-card="total">
                     <div class="kpi-card-top">
@@ -172,8 +173,8 @@ $conn->close();
         </section>
 
         <!-- Kanban Board -->
-        <div class="kanban-scroll-area">
-            <div class="kanban-board" id="kanban">
+        <div class="kanban-scroll-area" data-motion="section">
+            <div class="kanban-board" id="kanban" data-motion-group="cards">
                 <div class="column" data-status="atrasada">
                     <div class="column-header">
                         <span class="column-title">
@@ -531,7 +532,9 @@ echo json_encode($statusArr);
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <?php flow_motion_assets('../'); ?>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
+    <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>

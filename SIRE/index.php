@@ -548,6 +548,9 @@ $sireAssetVersion = max(
     <script src="../script/sidebar.js"></script>
     <script src="../script/controleSessao.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- GSAP -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+
     <script src="<?php echo asset_url('catalogo.js') . '&sire=' . $sireAssetVersion; ?>"></script>
 </body>
 

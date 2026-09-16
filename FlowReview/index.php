@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../config/kpi_access.php';
+require_once __DIR__ . '/../includes/flow-motion-assets.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -95,14 +96,14 @@ $conn->close();
 
     include '../sidebar.php';
 
-    ?>
+?>
 
 
     <div class="main">
         <div class="fr-layout">
 
             <!-- ══ SIDEBAR LATERAL DE FILTROS ══ -->
-            <aside class="fr-sidebar" id="fr-sidebar">
+            <aside class="fr-sidebar" id="fr-sidebar" data-motion="sidebar">
 
                 <!-- Seção 1: visão geral (lista de obras) -->
                 <div class="fr-sidebar-section" id="fr-section-obras">
@@ -198,7 +199,7 @@ $conn->close();
 
             <!-- Conteúdo principal -->
             <div class="fr-content">
-                <div class="container-main">
+                <div class="container-main" data-motion="section">
                     <select id="filtroFuncao" style="display: none;">
                         <option value="">Todas as funções</option>
                     </select>
@@ -223,7 +224,7 @@ $conn->close();
     </div>
 
     <div class="container-aprovacao hidden">
-        <header class="fr-header">
+        <header class="fr-header" data-motion="header">
             <!-- Breadcrumb: home → obra -->
             <div class="fr-header-start">
                 <a href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php"
@@ -468,16 +469,18 @@ $conn->close();
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
     <script src="<?php echo asset_url('../assets/pdfjs/pdf.min.js'); ?>"></script>
+    <?php flow_motion_assets('../'); ?>
 
     <script>
         window.FR_KPI_CONFIG = <?php echo json_encode([
-                                    'endpointScope' => 'management',
-                                    'permissions' => $frKpiPermissions,
-                                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+                                'endpointScope' => 'management',
+                                'permissions' => $frKpiPermissions,
+                            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
 
     <script src="<?php echo asset_url('script.js'); ?>&fr_rt=<?php echo filemtime(__DIR__ . '/script.js'); ?>"></script>
+    <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

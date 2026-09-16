@@ -18,6 +18,7 @@ var cardSelecionado = null;
 let arquivosFinais = [];
 let imagensSelecionadas = [];
 let altApprovalColaboradorId = window.ALTERACAO_LOGGED_COLAB_ID || null;
+let alteracaoMotionInitial = true;
 
 function isCompactConferenceLayout() {
   return window.matchMedia("(max-width: 1180px)").matches;
@@ -465,6 +466,7 @@ function getPrazoClass(prazo) {
 function criarCard(item) {
   const card = document.createElement("div");
   card.className = "imagem-card";
+  card.setAttribute("data-motion-item", "");
   card.dataset.imagemId = item.imagem_id;
   card.dataset.funcaoId = String(item.funcao_id);
 
@@ -645,6 +647,17 @@ function renderKanban(items) {
   });
 
   inicializarDragAndDrop();
+
+  const board = document.getElementById("kanban-board");
+  const cards = board ? board.querySelectorAll(".imagem-card") : [];
+  if (window.FlowMotion && cards.length) {
+    window.FlowMotion.enterItems(board, {
+      items: cards,
+      initial: alteracaoMotionInitial,
+      preset: "card",
+    });
+    alteracaoMotionInitial = false;
+  }
 }
 
 function inicializarDragAndDrop() {
@@ -693,9 +706,7 @@ function inicializarDragAndDrop() {
 
 function mensagemPendenciasParaConfirmacao(avaliacao) {
   const pendencias = Array.isArray(avaliacao?.bloqueios)
-    ? avaliacao.bloqueios
-        .map((item) => item?.label)
-        .filter(Boolean)
+    ? avaliacao.bloqueios.map((item) => item?.label).filter(Boolean)
     : [];
   const detalhes = pendencias.length
     ? `\n\nPendências: ${pendencias.join(", ")}.`
@@ -1268,6 +1279,7 @@ function abrirModalEnvioAprovacao() {
   if (modal) {
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
+    window.FlowMotion?.openModal(modal.querySelector(".modal-content"));
   }
 }
 
@@ -1939,6 +1951,7 @@ function abrirModal(idimagem) {
     altSidePanelActive = isCompactConferenceLayout() ? "summary" : "files";
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
+    window.FlowMotion?.openModal(modal.querySelector(".modal-content"));
     closeMoreActionsPanel();
     syncSidePanelState();
   }
@@ -2030,7 +2043,8 @@ document
       status: document.getElementById("status_alteracao").value || "",
       prazo: document.getElementById("prazo_alteracao").value || "",
       observacao: document.getElementById("obs_alteracao").value || "",
-      confirmar_pendencias: saveButton.dataset.confirmarPendencias === "1" ? 1 : 0,
+      confirmar_pendencias:
+        saveButton.dataset.confirmarPendencias === "1" ? 1 : 0,
     };
 
     $.ajax({

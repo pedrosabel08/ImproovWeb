@@ -662,6 +662,10 @@ body {
   animation: cardSlideIn var(--transition-normal) backwards;
 }
 
+.flow-motion-ready .render-card {
+  animation: none;
+}
+
 .render-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
@@ -1184,6 +1188,10 @@ body {
   transition:
     background var(--transition-slow),
     border-color var(--transition-slow);
+}
+
+.flow-motion-ready .modal-content {
+  animation: none;
 }
 
 @keyframes modalSlideUp {

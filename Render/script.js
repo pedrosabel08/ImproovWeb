@@ -5,6 +5,7 @@ const PAGE_LIMIT = 200;
 let renderFilterOptions = null;
 let filterSearchTimeout = null;
 let renderRequestSequence = 0;
+let renderMotionInitial = true;
 const RENDER_KPI_DEFAULT_DAYS = 30;
 const renderKpiState = {
   mode: "quick",
@@ -476,7 +477,7 @@ function renderDeadlineProgress(render) {
     </div>`;
 }
 
-function renderCards(renders) {
+function renderCards(renders, motionStartIndex) {
   const grid = document.getElementById("renderGrid");
 
   if (!renders.length) {
@@ -511,7 +512,7 @@ function renderCards(renders) {
     const colab = render.nome_colaborador || "—";
 
     html += `
-      <div class="render-card" data-id="${render.idrender_alta}" data-status="${render.status}">
+      <div class="render-card" data-motion-item data-id="${render.idrender_alta}" data-status="${render.status}">
         <div class="card-thumb-wrap">
           <img loading="lazy" decoding="async" src="${imgUrl}" alt="" class="loading"
                onload="this.classList.remove('loading')">
@@ -546,6 +547,18 @@ function renderCards(renders) {
 
   grid.innerHTML = html;
   updateResultsBadge(renders.length, isFilterActive(), totalRenders);
+  if (window.FlowMotion) {
+    const cards = Array.prototype.slice.call(
+      grid.querySelectorAll(".render-card"),
+    );
+    const newCards = cards.slice(Math.max(0, Number(motionStartIndex) || 0));
+    window.FlowMotion.enterItems(grid, {
+      items: newCards,
+      initial: renderMotionInitial,
+      preset: "card",
+    });
+    renderMotionInitial = false;
+  }
 }
 
 // Use event delegation to avoid re-attaching handlers on every re-render
@@ -615,6 +628,7 @@ function loadRenders(page) {
     success: function (response) {
       if (requestSequence !== renderRequestSequence) return;
       if (response.status === "sucesso") {
+        const loadedBefore = allRenders.length;
         if (page === 1) {
           allRenders = response.renders;
         } else {
@@ -633,7 +647,7 @@ function loadRenders(page) {
         renderStatusFilter();
         renderStatusImagemFilter();
         updateFilterActions();
-        renderCards(allRenders);
+        renderCards(allRenders, page === 1 ? 0 : loadedBefore);
 
         // Show / hide "Carregar mais"
         const wrap = document.getElementById("loadMoreWrap");
@@ -950,6 +964,9 @@ function editRender(idrender_alta) {
 
         // — Open modal —
         $("#myModal").addClass("is-open");
+        window.FlowMotion?.openModal(
+          document.querySelector("#myModal .modal-content"),
+        );
 
         // — Load timeline —
         loadRenderTimeline(idrender_alta);

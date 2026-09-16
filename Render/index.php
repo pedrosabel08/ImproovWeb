@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../includes/flow-motion-assets.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -91,7 +92,7 @@ $conn->close();
     <div class="container">
 
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header" data-motion="header">
             <div class="page-header-left">
                 <img src="../gif/assinatura_preto.gif" alt="Improov" class="page-header-logo" id="gif">
                 <div class="page-title-wrap">
@@ -109,7 +110,7 @@ $conn->close();
         </div>
 
         <!-- Filter Bar -->
-        <div class="filters" id="filters">
+        <div class="filters" id="filters" data-motion="toolbar">
 
             <div class="filter-search">
                 <label for="filterSearch"> <i class="fa-solid fa-magnifying-glass"></i> Buscar</label>
@@ -155,7 +156,7 @@ $conn->close();
 
         </div>
 
-        <section class="kpi-panel" aria-label="KPIs de renders">
+        <section class="kpi-panel" aria-label="KPIs de renders" data-motion="section">
             <div class="kpi-grid" id="renderKpiGrid">
                 <div class="kpi-card kpi-green" data-kpi-card="aprovados">
                     <div class="kpi-card-top">
@@ -202,8 +203,8 @@ $conn->close();
         </button>
 
         <!-- Render Grid + Load More (scrollable area) -->
-        <div class="grid-scroll-area">
-            <div id="renderGrid" class="render-grid">
+        <div class="grid-scroll-area" data-motion="section">
+            <div id="renderGrid" class="render-grid" data-motion-group="cards">
                 <!-- Skeleton placeholders shown while loading -->
                 <?php for ($i = 0; $i < 8; $i++): ?>
                     <div class="skeleton-card">
@@ -465,8 +466,10 @@ $conn->close();
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php flow_motion_assets('../'); ?>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script src="<?php echo asset_url('reference-review.js') . '&t=' . filemtime(__DIR__ . '/reference-review.js'); ?>"></script>
+    <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 

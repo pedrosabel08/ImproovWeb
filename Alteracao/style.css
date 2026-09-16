@@ -1925,6 +1925,11 @@ body {
   animation: cardSlideIn var(--transition-normal) backwards;
 }
 
+.flow-motion-ready .imagem-card,
+.flow-motion-ready .modal-content {
+  animation: none;
+}
+
 .imagem-card::before {
   content: "";
   position: absolute;

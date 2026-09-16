@@ -728,7 +728,8 @@ body::-webkit-scrollbar-track {
 }
 
 /* Comment text body */
-.comment-input {
+.comment-input,
+.resposta-texto {
   padding: 4px 0;
   line-height: 1.5;
   word-break: break-word;

@@ -2195,6 +2195,7 @@ function alertarPendenciasSeNecessario(data) {
 
 // extrai a lógica do fetch para uma função reutilizável
 function processarDados(data) {
+  const motionInitial = !processarDados.motionEntered;
   const statusMap = {
     "Não iniciado": "to-do",
     "Em andamento": "in-progress",
@@ -2418,6 +2419,7 @@ function processarDados(data) {
     // Cria card
     const card = document.createElement("div");
     card.className = `kanban-card ${tipoClasse}`; // só a classe base
+    card.setAttribute("data-motion-item", "");
     const hasPendingFile =
       tipo === "imagem" && Number(item.requires_file_upload || 0) === 1;
     const hasPendingRender =
@@ -3051,6 +3053,19 @@ function processarDados(data) {
 
   preencherFiltros();
   alertarPendenciasSeNecessario(data);
+
+  const kanban = document.getElementById("kanban-section");
+  const cards = kanban
+    ? kanban.querySelectorAll(".kanban-card[data-motion-item]")
+    : [];
+  if (window.FlowMotion && cards.length) {
+    window.FlowMotion.enterItems(kanban, {
+      items: cards,
+      initial: motionInitial,
+      preset: "card",
+    });
+    processarDados.motionEntered = true;
+  }
 
   // Reaplica filtros ativos (obra, função, status, prazo) após recarregar os cards
   aplicarFiltros();

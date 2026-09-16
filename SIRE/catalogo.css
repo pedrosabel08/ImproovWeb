@@ -75,39 +75,55 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-body: #0f1117;
-    --bg-surface: #1e2130;
-    --bg-card: #1e2130;
-    --bg-card-hover: #25293a;
-    --bg-filter: #1e2130;
-    --bg-input: #1a1d2e;
-    --bg-modal: #1e2130;
-    --bg-section: #141824;
-    --bg-overlay: rgba(0, 0, 0, 0.72);
-    --border-card: #2c3040;
-    --border-card-hover: #42547c;
-    --border-input: #2c3040;
-    --border-modal: #2c3040;
-    --text-primary: #e8eaed;
-    --text-secondary: #9aa3b0;
-    --text-tertiary: #7f8998;
-    --text-muted: #4b5563;
+    /* Backgrounds */
+    --bg-body: #0d0e10;
+    --bg-surface: #17181b;
+    --bg-card: #191a1d;
+    --bg-card-hover: #202125;
+    --bg-filter: #17181b;
+    --bg-input: #141518;
+    --bg-modal: #191a1d;
+    --bg-section: #111214;
+    --bg-overlay: rgba(0, 0, 0, 0.78);
+
+    /* Borders */
+    --border-card: #292b30;
+    --border-card-hover: #3a3d43;
+    --border-input: #2c2e33;
+    --border-modal: #2c2e33;
+
+    /* Text */
+    --text-primary: #eeeeef;
+    --text-secondary: #a3a5aa;
+    --text-tertiary: #7f8288;
+    --text-muted: #55585e;
+
+    /* Accent */
     --accent: #6d9bff;
-    --accent-hover: #5a8af0;
-    --accent-subtle: rgba(109, 155, 255, 0.12);
+    --accent-hover: #82aaff;
+    --accent-subtle: rgba(109, 155, 255, 0.1);
+
+    /* Status */
     --success: #3aa762;
     --danger: #f87171;
-    --success-subtle: #173b27;
-    --danger-subtle: #472125;
-    --bg-count: #232638;
-    --bg-surface-alt: #1a1d2e;
-    --bg-skeleton: #1e2130;
-    --bg-skeleton-shine: #252840;
+    --success-subtle: #152a1d;
+    --danger-subtle: #32191c;
+
+    /* Auxiliary surfaces */
+    --bg-count: #222326;
+    --bg-surface-alt: #141518;
+
+    /* Skeleton */
+    --bg-skeleton: #1b1c1f;
+    --bg-skeleton-shine: #27282c;
+
+    /* Golden */
     --golden: #fbbf24;
     --golden-hover: #f59e0b;
-    --golden-subtle: rgba(251, 191, 36, 0.12);
-    --golden-glow: rgba(251, 191, 36, 0.3);
+    --golden-subtle: rgba(251, 191, 36, 0.1);
+    --golden-glow: rgba(251, 191, 36, 0.25);
   }
+
   #gif {
     content: url("../gif/assinatura_branco.gif");
   }
@@ -525,7 +541,7 @@ body {
 }
 
 /* Card animation stagger */
-@keyframes cardSlideIn {
+/* @keyframes cardSlideIn {
   from {
     opacity: 0;
     transform: translateY(14px) scale(0.97);
@@ -558,7 +574,7 @@ body {
 }
 .ref-card:nth-child(8) {
   animation-delay: 210ms;
-}
+} */
 
 /* Thumbnail */
 .card-thumb-wrap {

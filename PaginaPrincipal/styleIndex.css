@@ -5502,6 +5502,10 @@ form#dailyForm button {
   animation-delay: var(--kanban-enter-delay, 0ms);
 }
 
+.flow-motion-ready #kanban-section .kanban-card--enter {
+  animation: none;
+}
+
 #kanban-section .kanban-card {
   transition:
     transform 150ms ease,

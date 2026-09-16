@@ -5,6 +5,7 @@ if (empty($_SESSION['logado'])) {
     exit;
 }
 require_once __DIR__ . '/../config/version.php';
+require_once __DIR__ . '/../includes/flow-motion-assets.php';
 
 // Carrega conexão com o banco antes de executar atualizações de logs
 include '../conexaoMain.php';
@@ -54,7 +55,7 @@ $conn->close();
 <body class="flow-block-page">
     <?php include __DIR__ . '/../sidebar.php'; ?>
     <main class="flow-block-shell" id="flow-block-app">
-        <header class="fb-page-header">
+        <header class="fb-page-header" data-motion="header">
             <div>
                 <h1>Flow Block</h1>
                 <p>Issues operacionais das tarefas</p>
@@ -62,7 +63,7 @@ $conn->close();
             <button class="fb-button fb-button--primary" id="new-issue"><i class="ri-add-line"></i> Nova Issue</button>
         </header>
 
-        <section class="fb-toolbar" aria-label="Pesquisa e filtros">
+        <section class="fb-toolbar" aria-label="Pesquisa e filtros" data-motion="toolbar">
             <label class="fb-search"><i class="ri-search-line"></i><input id="search" placeholder="Buscar código, tarefa, obra ou observação"></label>
             <button class="fb-filter-toggle" id="filter-toggle"><i class="ri-equalizer-2-line"></i> Filtros</button>
             <div class="fb-filter-panel" id="filter-panel" hidden>
@@ -101,7 +102,7 @@ $conn->close();
             <button data-mentioned="1">Mencionaram você <span>0</span></button>
         </nav>
 
-        <section class="fb-list-wrap">
+        <section class="fb-list-wrap" data-motion="section" data-motion-group="cards">
             <div class="fb-loading" id="loading"><i class="ri-loader-4-line"></i> Carregando Issues…</div>
             <div class="fb-table-scroll">
                 <table class="fb-table" id="issues-table">
@@ -163,7 +164,9 @@ $conn->close();
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <?php flow_motion_assets('../'); ?>
     <script src="<?= asset_url('app.js') ?>&fb=<?= filemtime(__DIR__ . '/app.js') ?>"></script>
+    <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?= asset_url('../script/sidebar.js') ?>"></script>
     <script src="<?= asset_url('../script/controleSessao.js') ?>"></script>
 </body>

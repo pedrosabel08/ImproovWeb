@@ -3,6 +3,7 @@ require_once 'config/version.php';
 // require_once __DIR__ . '/Contratos/access_gate.php';
 
 require_once __DIR__ . '/config/session_bootstrap.php';
+require_once __DIR__ . '/includes/flow-motion-assets.php';
 
 // Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -146,7 +147,7 @@ $conn->close();
 ?>
     <div class="container">
         <main class="main_inicio">
-<header>
+<header data-motion="header">
     <div class="top">
 
         <!-- PERFIL -->
@@ -254,8 +255,8 @@ if ($foto_colab !== ''):
                 </button>
             </div>
 </header>
-            <div id="filtros-ativos-bar"></div>
-            <div class="kanban" id="kanban-section">
+            <div id="filtros-ativos-bar" data-motion="toolbar"></div>
+            <div class="kanban" id="kanban-section" data-motion="section" data-motion-group="cards">
                 <div class="kanban-box kanban-box-pendencias" id="pendencias-flowreview" aria-label="Pendências de aprovação do Flow Review">
                     <div class="header">
                         <div class="title"><i class="ri-inbox-archive-line"></i><span>Pendências</span></div>
@@ -898,6 +899,7 @@ if ($foto_colab !== ''):
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
     <script src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
+    <?php flow_motion_assets(); ?>
     <script src="<?php echo asset_url('notificacoes/render.js'); ?>"></script>
     <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
     <script>
@@ -913,6 +915,7 @@ if ($foto_colab !== ''):
     </script>
     <script src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
+    <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
 

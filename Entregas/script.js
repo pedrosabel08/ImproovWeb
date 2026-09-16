@@ -22,6 +22,7 @@ const BASE = (function () {
 })();
 
 const ENTREGAS_KPI_DEFAULT_DAYS = 30;
+let entregasMotionInitial = true;
 
 function formatarData(data) {
   if (!data) return "-";
@@ -471,6 +472,17 @@ document.addEventListener("DOMContentLoaded", () => {
         col.classList.toggle("is-hidden", count === 0);
       }
     });
+
+    const board = document.getElementById("kanban");
+    const cards = board ? board.querySelectorAll(".card-entrega") : [];
+    if (window.FlowMotion && cards.length) {
+      window.FlowMotion.enterItems(board, {
+        items: cards,
+        initial: entregasMotionInitial,
+        preset: "card",
+      });
+      entregasMotionInitial = false;
+    }
   }
   // Populate filter selects (obra/status) from the fetched entregas
   function populateFiltersFrom(entregas) {

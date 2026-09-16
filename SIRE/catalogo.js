@@ -19,6 +19,194 @@ let adminSelectedPillarId = null;
 let adminSearchTimer = null;
 let lastAdminTrigger = null;
 
+// ============================================================================
+// SIRE — Motion System
+// ============================================================================
+
+const SIRE_REDUCE_MOTION = window.matchMedia(
+  "(prefers-reduced-motion: reduce)",
+).matches;
+
+let sireFirstReferenceLoad = true;
+
+function sireCanAnimate() {
+  return !SIRE_REDUCE_MOTION && typeof window.gsap !== "undefined";
+}
+
+function animateSireShell() {
+  if (!sireCanAnimate()) return;
+
+  const tl = gsap.timeline({
+    defaults: {
+      ease: "power3.out",
+    },
+  });
+
+  tl.from(".page-header-left", {
+    opacity: 0,
+    y: -6,
+    duration: 0.38,
+  });
+
+  tl.from(
+    ".search-bar-wrap",
+    {
+      opacity: 0,
+      y: -6,
+      duration: 0.42,
+    },
+    "-=0.28",
+  );
+
+  tl.from(
+    ".results-summary",
+    {
+      opacity: 0,
+      y: -5,
+      duration: 0.36,
+    },
+    "-=0.3",
+  );
+
+  tl.from(
+    ".sire-library-context",
+    {
+      opacity: 0,
+      y: -6,
+      duration: 0.42,
+    },
+    "-=0.22",
+  );
+
+  tl.from(
+    "#filters",
+    {
+      opacity: 0,
+      x: -14,
+      duration: 0.48,
+    },
+    "-=0.28",
+  );
+
+  tl.from(
+    ".grid-scroll-area",
+    {
+      opacity: 0,
+      duration: 0.28,
+    },
+    "-=0.32",
+  );
+}
+
+function animateInitialStats() {
+  if (!sireCanAnimate()) return;
+
+  gsap.fromTo(
+    [
+      "#contextRefsCount",
+      "#contextInteriorsCount",
+      "#contextExteriorsCount",
+      "#contextNewCount",
+    ],
+    {
+      opacity: 0,
+      y: 4,
+    },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.28,
+      stagger: 0.045,
+      ease: "power2.out",
+      clearProps: "transform,opacity",
+    },
+  );
+}
+
+function animatePillarFilters() {
+  if (!sireCanAnimate()) return;
+
+  const filters = document.querySelectorAll(
+    "#pilarFilters .sire-filter-accordion",
+  );
+
+  if (!filters.length) return;
+
+  gsap.fromTo(
+    filters,
+    {
+      opacity: 0,
+      x: -7,
+    },
+    {
+      opacity: 1,
+      x: 0,
+      duration: 0.32,
+      stagger: 0.035,
+      ease: "power3.out",
+      clearProps: "transform,opacity",
+    },
+  );
+}
+
+function animateReferenceCards(cards, options = {}) {
+  if (!sireCanAnimate() || !cards?.length) return;
+
+  const { initial = false } = options;
+
+  gsap.fromTo(
+    cards,
+    {
+      opacity: 0,
+      y: initial ? 12 : 6,
+      scale: initial ? 0.975 : 0.99,
+    },
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: initial ? 0.55 : 0.35,
+      ease: "power3.out",
+      stagger: initial
+        ? {
+            each: 0.035,
+            from: "start",
+            grid: "auto",
+          }
+        : 0.015,
+      clearProps: "transform,opacity",
+    },
+  );
+}
+
+function animateGoldenSamples(cards) {
+  if (!sireCanAnimate() || !cards?.length) return;
+
+  const stars = cards
+    .map((card) => card.querySelector(".card-heart.is-golden i"))
+    .filter(Boolean);
+
+  if (!stars.length) return;
+
+  gsap.fromTo(
+    stars,
+    {
+      opacity: 0,
+      scale: 0.4,
+      rotate: -18,
+    },
+    {
+      opacity: 1,
+      scale: 1,
+      rotate: 0,
+      duration: 0.42,
+      stagger: 0.04,
+      delay: 0.22,
+      ease: "back.out(1.8)",
+      clearProps: "transform,opacity",
+    },
+  );
+}
 const esc = (value) =>
   String(value || "")
     .replace(/&/g, "&amp;")
@@ -199,12 +387,15 @@ function catalogParams() {
 
 function renderCards(refs, append = false) {
   const grid = $("#refGrid");
+
+  const previousCount = append ? grid.find(".ref-card").length : 0;
+
   if (!append) grid.empty();
   if (!refs.length && !append) {
     grid.html(
       '<div class="empty-state"><i class="fa-solid fa-images"></i><p>Nenhuma referência encontrada</p><span>Tente ajustar os filtros.</span></div>',
     );
-    return;
+    return [];
   }
 
   const html = refs
@@ -259,6 +450,10 @@ function renderCards(refs, append = false) {
   } else {
     grid.html(html);
   }
+
+  const cards = grid.find(".ref-card").toArray();
+
+  return append ? cards.slice(previousCount) : cards;
 }
 
 function updateResultState(response) {
@@ -350,14 +545,29 @@ function clearAllFilters() {
 
 function loadReferences(append = false) {
   const params = catalogParams();
+
   return apiJson(`${CATALOG_API}?${params.toString()}`)
     .then((response) => {
-      if (append) {
-        renderCards(response.refs || [], true);
-      } else {
-        renderCards(response.refs || []);
-      }
+      const cards = renderCards(response.refs || [], append);
+
       updateResultState(response);
+
+      if (sireFirstReferenceLoad) {
+        requestAnimationFrame(() => {
+          animateReferenceCards(cards, {
+            initial: true,
+          });
+
+          animateGoldenSamples(cards);
+          animateInitialStats();
+        });
+
+        sireFirstReferenceLoad = false;
+      } else {
+        animateReferenceCards(cards, {
+          initial: false,
+        });
+      }
     })
     .catch((error) => notify(error.message, true));
 }
@@ -1008,7 +1218,9 @@ function openAddReference() {
 function closeAddReference() {
   $("#addReferenceModal").removeClass("is-open");
   $("#addReferenceForm")[0].reset();
-  $("#addReferenceFileHint").text("Selecione uma ou mais imagens para enviar em lote.");
+  $("#addReferenceFileHint").text(
+    "Selecione uma ou mais imagens para enviar em lote.",
+  );
   $("#addReferenceType").trigger("change");
 }
 
@@ -1036,6 +1248,8 @@ function submitAddReference(form) {
 }
 
 $(function () {
+  animateSireShell();
+
   $("#searchInput").attr(
     "placeholder",
     "Buscar referências, ex.: fachada noturna madeira, quarto minimalista...",
@@ -1046,9 +1260,13 @@ $(function () {
   ])
     .then(() => {
       buildClassificationFields();
-      loadReferences();
+
+      animatePillarFilters();
+
+      return loadReferences();
     })
     .catch((error) => notify(error.message, true));
+
   loadEventRefs();
   $("#btnReloadEventRefs").on("click", loadEventRefs);
   $("#refGrid").on("click", ".ref-card", function (event) {

@@ -1,6 +1,17 @@
 const frKpiConfig = window.FR_KPI_CONFIG || {};
 const frKpiPermissions = { ...(frKpiConfig.permissions || {}) };
 const FR_KPI_ENDPOINT_SCOPE = frKpiConfig.endpointScope || "management";
+let flowReviewMotionInitial = true;
+
+function flowReviewEnterItems(container, items) {
+  if (!window.FlowMotion || !container || !items.length) return;
+  window.FlowMotion.enterItems(container, {
+    items: items,
+    initial: flowReviewMotionInitial,
+    preset: "card",
+  });
+  flowReviewMotionInitial = false;
+}
 
 function syncFrKpiPermissions(permissions) {
   if (
@@ -1058,6 +1069,7 @@ async function exibirCardsDeObra(tarefas) {
 
     const card = document.createElement("div");
     card.classList.add("obra-card");
+    card.setAttribute("data-motion-item", "");
     if (obraTone) {
       card.dataset.tone = obraTone;
     }
@@ -1081,6 +1093,7 @@ async function exibirCardsDeObra(tarefas) {
 
     container.appendChild(card);
   });
+  flowReviewEnterItems(container, container.querySelectorAll(".obra-card"));
 }
 
 function filtrarTarefasPorObra(obraSelecionada) {
@@ -1546,6 +1559,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
     tarefasOrdenadas.forEach((tarefa) => {
       const taskItem = document.createElement("div");
       taskItem.classList.add("task-item");
+      taskItem.setAttribute("data-motion-item", "");
       if (tarefa.work_unit?.id) {
         taskItem.classList.add("task-item--work-unit");
         taskItem.dataset.workUnitId = String(tarefa.work_unit.id);
@@ -1648,6 +1662,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
     });
 
     refreshTaskTimeBadges();
+    flowReviewEnterItems(
+      tarefasImagensObra,
+      tarefasImagensObra.querySelectorAll(".task-item"),
+    );
   } else {
     container.innerHTML =
       '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';

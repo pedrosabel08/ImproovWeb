@@ -130,6 +130,7 @@
     const search = $("#search");
     search.value = state.search;
     let options = null;
+    let motionInitial = true;
     const renderOptions = async () => {
       options = await api("options");
       const fill = (selector, data, label) => {
@@ -204,7 +205,7 @@
               : `Aberta por ${esc(i.criador_nome || "—")}`;
 
           return `
-        <tr data-id="${i.id}">
+        <tr data-id="${i.id}" data-motion-item>
           <td>
             <span class="fb-code">
               ${esc(i.codigo)}
@@ -272,6 +273,15 @@
         .join("");
 
       $("#empty").hidden = items.length > 0;
+
+      if (window.FlowMotion) {
+        window.FlowMotion.enterItems(table, {
+          items: table.querySelectorAll("tr[data-motion-item]"),
+          initial: motionInitial,
+          preset: "card",
+        });
+        motionInitial = false;
+      }
 
       table.querySelectorAll("tr[data-id]").forEach((row) => {
         row.addEventListener("click", () => {
@@ -384,6 +394,7 @@
     const close = () => dialog.close();
     open.addEventListener("click", () => {
       dialog.showModal();
+      window.FlowMotion?.openModal(dialog.querySelector(".fb-dialog-card"));
       const taskParam = new URLSearchParams(location.search).get("new_task");
       if (taskParam) {
         $("#task-id").value = taskParam;

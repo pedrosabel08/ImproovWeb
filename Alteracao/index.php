@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../includes/flow-motion-assets.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -56,7 +57,7 @@ $conn->close();
     <div class="container">
 
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header" data-motion="header">
             <div class="page-header-left">
                 <img src="../gif/assinatura_preto.gif" alt="Improov" class="page-header-logo" id="gif">
                 <h1 class="page-title">Alterações</h1>
@@ -70,7 +71,7 @@ $conn->close();
         </div>
 
         <!-- Filter Bar -->
-        <div class="filters" id="filtros-alteracao">
+        <div class="filters" id="filtros-alteracao" data-motion="toolbar">
 
             <div class="filter-group">
                 <label class="filter-label">Status Kanban</label>
@@ -125,7 +126,7 @@ $conn->close();
         </div>
 
         <!-- Board Area: EF Panel + Kanban -->
-        <div class="board-area">
+        <div class="board-area" data-motion="section">
 
             <!-- EF Side Panel -->
             <div class="ef-panel" id="ef-panel">
@@ -143,7 +144,7 @@ $conn->close();
             </div>
 
             <!-- Kanban Board -->
-            <div class="kanban-board" id="kanban-board">
+            <div class="kanban-board" id="kanban-board" data-motion-group="cards">
                 <div class="kanban-column" data-status="Não iniciado">
                     <div class="kanban-title">
                         Não iniciado
@@ -320,6 +321,7 @@ $conn->close();
         </div>
     </div>
 
+    <?php flow_motion_assets('../'); ?>
     <script src="<?php echo asset_url('script.js') . '&altconf=20260807-pendencias-entrega'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
@@ -327,6 +329,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script>
         window.ALTERACAO_LOGGED_COLAB_ID = <?= json_encode($_SESSION['idcolaborador'] ?? null); ?>;
     </script>

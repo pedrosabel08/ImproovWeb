@@ -626,7 +626,7 @@ function briefing_rate_limit(mysqli $conn, string $key, int $limit, int $seconds
         return true;
     }
 }
-function briefing_send_otp(string $email, string $code, string $briefingTitle): bool
+function briefing_send_otp(string $email, string $code, string $briefingTitle, string $experience = 'briefing'): bool
 {
     improov_load_env_once();
     $host = trim((string)improov_env('BRIEFING_SMTP_HOST', ''));
@@ -690,7 +690,8 @@ function briefing_send_otp(string $email, string $code, string $briefingTitle): 
             throw new RuntimeException('envelope');
         }
         $subject = 'Código de acesso — ' . briefing_clean_text($briefingTitle, 160);
-        $body = "Seu código de acesso ao briefing é: {$code}\r\n\r\nEle expira em 10 minutos.";
+        $label = $experience === 'portal' ? 'Portal do Cliente' : 'briefing';
+        $body = "Seu código de acesso ao {$label} é: {$code}\r\n\r\nEle expira em 10 minutos.";
         $message = "From: {$from}\r\nTo: {$email}\r\nSubject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" . str_replace("\n.", "\n..", $body) . "\r\n.";
         if (!$ok($send($socket, $message), [250])) {
             throw new RuntimeException('data');

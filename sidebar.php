@@ -265,6 +265,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
 
             <ul class="division">
                 <label for="">Ferramentas</label>
+                <li><a title="Portal do Cliente" href="<?php echo htmlspecialchars(improov_sidebar_url('PortalCliente/internal.php'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-users"></i><span>Portal do Cliente</span></a></li>
                 <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
                 <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
                     <li><a title="Mapa de Compatibilização"
@@ -374,6 +375,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
             <section class="sidebar-panel-section" id="sidebar-panel-producao" data-sidebar-section="producao" aria-labelledby="sidebar-panel-producao-title" hidden>
                 <h3 id="sidebar-panel-producao-title">Produção</h3>
                 <ul class="sidebar-panel-links">
+                    <li><a title="Portal do Cliente" href="<?php echo htmlspecialchars(improov_sidebar_url('PortalCliente/internal.php'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-users"></i><span>Portal do Cliente</span></a></li>
                     <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span>Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
                     <li><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-ban"></i><span>Flow Block</span></a></li>
                     <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-cube"></i><span>Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>

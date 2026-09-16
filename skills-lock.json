@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-browser": {
+      "source": "vercel-labs/agent-browser",
+      "sourceType": "github",
+      "skillPath": "skills/agent-browser/SKILL.md",
+      "computedHash": "80161e6836b3b40f4e83730a290deb40ac14d877d38c97ad5f6d71be37ce74c3"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
+    },
+    "token-efficiency": {
+      "source": "delphine-l/claude_global",
+      "sourceType": "github",
+      "skillPath": "skills/claude-meta/token-efficiency/SKILL.md",
+      "computedHash": "0c1bcd0d1139fe6ebf4f2836d7baffcef02a494afec04556977b07eb8ab8af4f"
+    }
+  }
+}

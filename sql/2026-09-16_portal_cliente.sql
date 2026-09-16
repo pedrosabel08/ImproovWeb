@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS portal_projeto (
  criado_por INT NOT NULL,
  FOREIGN KEY (obra_id) REFERENCES obra(idobra),
  FOREIGN KEY (administrador_contato_id) REFERENCES contato_cliente(idcontato_cliente),
+ CONSTRAINT fk_portal_admin_vinculo FOREIGN KEY (obra_id,administrador_contato_id) REFERENCES obra_contato(obra_id,contato_cliente_id),
  FOREIGN KEY (curador_usuario_id) REFERENCES usuario(idusuario),
  FOREIGN KEY (criado_por) REFERENCES usuario(idusuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -114,7 +115,7 @@ CREATE TABLE IF NOT EXISTS portal_material_origem (
  requisito_id INT NOT NULL,
  PRIMARY KEY(material_id,requisito_id),
  FOREIGN KEY(material_id) REFERENCES portal_material(id),
- FOREIGN KEY(requisito_id) REFERENCES briefing_requisitos_arquivo(id)
+ CONSTRAINT fk_portal_origem_requisito FOREIGN KEY(requisito_id) REFERENCES briefing_requisitos_arquivo(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS portal_evento (

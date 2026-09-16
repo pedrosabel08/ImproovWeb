@@ -13,6 +13,12 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
     },
+    "gsap-core": {
+      "source": "greensock/gsap-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsap-core/SKILL.md",
+      "computedHash": "b891c9ed42d9319685250231085ebe21538f2c844613b277b9dd2b3ff529a542"
+    },
     "token-efficiency": {
       "source": "delphine-l/claude_global",
       "sourceType": "github",

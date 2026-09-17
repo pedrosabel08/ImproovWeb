@@ -121,18 +121,18 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                             // Local HTTP → WS direto na porta 8082
                             // Local HTTPS → WSS de produção (evita SecurityError do browser)
                             $__wsHost = $_SERVER['HTTP_HOST'] ?? 'improov.com.br';
-                            $__isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-                                || (int)($_SERVER['SERVER_PORT'] ?? 80) === 443;
-                            $__isProd  = strpos($__wsHost, 'improov.com.br') !== false;
-                            if ($__isProd) {
-                                echo json_encode('wss://improov.com.br/ws/');
-                            } elseif ($__isHttps) {
-                                // Ambiente local em HTTPS: aponta para o servidor WS de produção
-                                echo json_encode('wss://improov.com.br/ws/');
-                            } else {
-                                echo json_encode('ws://' . $__wsHost . ':8082');
-                            }
-                            ?>;
+$__isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (int)($_SERVER['SERVER_PORT'] ?? 80) === 443;
+$__isProd  = strpos($__wsHost, 'improov.com.br') !== false;
+if ($__isProd) {
+    echo json_encode('wss://improov.com.br/ws/');
+} elseif ($__isHttps) {
+    // Ambiente local em HTTPS: aponta para o servidor WS de produção
+    echo json_encode('wss://improov.com.br/ws/');
+} else {
+    echo json_encode('ws://' . $__wsHost . ':8082');
+}
+?>;
 </script>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -248,7 +248,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                     <label for="">Financeiro</label>
                     <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
                                 class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
-                    <!-- <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li> -->
+                    <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
                     <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i
                                 class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
                     <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos"><i
@@ -416,6 +416,7 @@ if (!function_exists('improov_sidebar_obras_por_pacote')) {
                         <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></a></li>
                         <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i class="fas fa-money-bill-wave"></i><span>Pagamento</span></a></li>
                         <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos"><i class="fa-solid fa-file-contract"></i><span>Contratos</span></a></li>
+                        <li><a title="Custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-coins"></i><span> Custos</span></a></li>
                     </ul>
                 </section>
             <?php endif; ?>

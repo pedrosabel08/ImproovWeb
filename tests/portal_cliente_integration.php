@@ -29,6 +29,11 @@ try {
     check((int)briefing_scalar($db,'SELECT tentativas FROM external_otp_challenge WHERE portal_obra_id=? ORDER BY id DESC LIMIT 1','i',[$a])===1,'wrong OTP attempt persisted');
     $central=portal_verify_otp($db,$p,['email'=>$body['email'],'code'=>$code]);check($central===(int)$p['administrador_contato_id'],'existing central identity reused');
     rejects(fn()=>portal_verify_otp($db,$p,['email'=>$body['email'],'code'=>$code]),422,'OTP replay rejected');
+    $lookalike=$body;$lookalike['email']='different-'.$suffix.'@example.invalid';$otherCode='';
+    portal_issue_otp($db,$p,$lookalike,function($email,$value)use(&$otherCode){$otherCode=$value;return true;});
+    $otherIdentity=portal_verify_otp($db,$p,['email'=>$lookalike['email'],'code'=>$otherCode]);
+    check($otherIdentity!==$central,'verified new email cannot take over matching name and phone');
+    check(briefing_scalar($db,'SELECT email_normalizado FROM contato_cliente WHERE idcontato_cliente=?','i',[$central])===$body['email'],'original external identity remains unchanged');
     $ids=array_map('intval',array_column(portal_rows($db,"SELECT id FROM flow_disciplina WHERE codigo IN ('ARQUITETURA','INTERIORES','PAISAGISMO')"),'id'));
     check(count($ids)===3,'three requested disciplines available');
     portal_profile($db,$p,$central,['nome'=>'Pessoa Central Teste','telefone'=>'47900000001','disciplinas'=>[]]);
@@ -81,6 +86,7 @@ try {
     check(briefing_external_contact_has_obra($db,$second,$a),'portal removal preserves legacy obra contact');
     $p=portal_project($db,$a,true);portal_internal_mutate($db,$p,$ordinary,'participant.restore',['contato_id'=>$second,'revisao'=>$p['revisao']]);portal_member($db,$a,$second);check(true,'explicit internal restoration');
     $body['obra_id']=$b;$body['email']='central-b-'.$suffix.'@example.invalid';$entryB=portal_configure($db,$admin,$body);$pb=portal_link($db,$entryB['token']);
+    check((int)$pb['administrador_contato_id']!==$central,'configuration never merges different emails by name and phone');
     rejects(fn()=>portal_member($db,(int)$pb['obra_id'],$central),403,'scenario 12 project A identity cannot read B');
     try { portal_exec($db,'UPDATE portal_projeto SET administrador_contato_id=? WHERE obra_id=?','ii',[(int)$pb['administrador_contato_id'],$a]);throw new RuntimeException('Cross-project administrator accepted'); } catch(mysqli_sql_exception $e) { check($e->getCode()===1452,'database rejects administrator from another obra'); }
     try { portal_exec($db,'INSERT INTO portal_participante_disciplina(obra_id,contato_id,disciplina_id) VALUES (?,?,?)','iii',[$b,(int)$pb['administrador_contato_id'],$land]);throw new RuntimeException('Foreign project discipline accepted'); } catch(mysqli_sql_exception $e) { check($e->getCode()===1452,'database rejects discipline outside project'); }

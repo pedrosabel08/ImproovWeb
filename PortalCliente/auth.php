@@ -75,7 +75,7 @@ function portal_verify_otp(mysqli $db, array $p, array $body): ?int
     }
     $pending = json_decode($c['pending_payload'], true, 512, JSON_THROW_ON_ERROR);
     if (!$contact) {
-        $cid = contact_arch_save_client_contact($db, (int)$p['cliente'], ['name' => $pending['nome'],'email' => $email,'phone' => $pending['telefone'],'type' => 'OUTRO']);
+        $cid = contact_arch_save_client_contact($db, (int)$p['cliente'], ['name' => $pending['nome'],'email' => $email,'phone' => $pending['telefone'],'type' => 'OUTRO'], true);
     } else {
         $cid = (int)$contact['idcontato_cliente'];
     }

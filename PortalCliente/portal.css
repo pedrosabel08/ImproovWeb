@@ -391,8 +391,8 @@ footer p {
     width: 100%;
   }
   .internal-shell {
-    padding: 0 18px;
-    margin-top: 88px;
+    padding: 0 18px 0 82px;
+    margin-top: 28px;
   }
   .topbar {
     align-items: stretch;
@@ -402,7 +402,14 @@ footer p {
     align-items: stretch;
   }
   .internal-shell .actions > * {
-    flex: 1;
+    flex: 1 0 100%;
+    width: 100%;
+  }
+  .internal-shell details {
+    padding: 12px;
+  }
+  .internal-shell .card {
+    padding: 16px;
   }
   .next {
     margin-top: 34px;

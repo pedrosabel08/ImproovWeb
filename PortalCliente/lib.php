@@ -161,7 +161,7 @@ function portal_configure(mysqli $db, array $user, array $body): array
     if ($contact && !(int)$contact['ativo']) {
         throw new PortalError('Contato inativo. Revise seu cadastro no Flow.');
     }
-    $cid = $contact ? (int)$contact['idcontato_cliente'] : contact_arch_save_client_contact($db, (int)$o['cliente'], ['name' => $name,'email' => $email,'phone' => $phone,'type' => 'OUTRO']);
+    $cid = $contact ? (int)$contact['idcontato_cliente'] : contact_arch_save_client_contact($db, (int)$o['cliente'], ['name' => $name,'email' => $email,'phone' => $phone,'type' => 'OUTRO'], true);
     $oc = portal_one($db, 'SELECT ativo FROM obra_contato WHERE obra_id=? AND contato_cliente_id=?', 'ii', [$obra,$cid]);
     if ($oc && !(int)$oc['ativo']) {
         throw new PortalError('Vínculo inativo. Revise o contato da obra antes de configurar.');

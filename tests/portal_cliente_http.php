@@ -24,8 +24,9 @@ try {
     expectStatus(request($internal,'PortalCliente/internal_api.php',['action'=>'bootstrap'],$icsrf),200,'internal bootstrap');
     $user=portal_one($db,'SELECT idusuario FROM usuario WHERE login=? AND ativo=1','s',[$credentials['login']]);
     $b=$fixture['obras'][1];$email='api-'.$fixture['client'].'@example.invalid';
-    $config=request($internal,'PortalCliente/internal_api.php',['action'=>'project.configure','obra_id'=>$b,'curador_usuario_id'=>$user['idusuario'],'nome'=>'API Teste','email'=>$email,'telefone'=>'47900000003'],$icsrf);expectStatus($config,200,'configure fixture B');$token=$config['json']['token'];
-    $otherToken=bin2hex(random_bytes(32));
+    $existing=portal_one($db,'SELECT revisao FROM portal_projeto WHERE obra_id=?','i',[$b]);
+    $setup=$existing ? ['action'=>'invite.rotate','obra_id'=>$b,'revisao'=>$existing['revisao']] : ['action'=>'project.configure','obra_id'=>$b,'curador_usuario_id'=>$user['idusuario'],'nome'=>'API Teste','email'=>$email,'telefone'=>'47900000003'];
+    $config=request($internal,'PortalCliente/internal_api.php',$setup,$icsrf);expectStatus($config,200,'prepare fixture B invitation');$token=$config['json']['token'];
     // Issue a different invite for synthetic B only; A's real browser invitation is untouched.
     $ext=client();$entry=request($ext,'PortalCliente/index.php?t='.$token);$entryCsrf=csrfFrom($entry);
     expectStatus(request($ext,'PortalCliente/api.php',['action'=>'project.get','token'=>$token]),401,'link alone is not authenticated');

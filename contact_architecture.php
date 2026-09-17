@@ -463,7 +463,7 @@ function contact_arch_fetch_contact_row(mysqli $conn, int $contactId): ?array
     ];
 }
 
-function contact_arch_save_client_contact(mysqli $conn, int $clienteId, array $contact): int
+function contact_arch_save_client_contact(mysqli $conn, int $clienteId, array $contact, bool $emailIdentityOnly = false): int
 {
     $schema = contact_arch_contact_schema($conn);
     $cleaned = contact_arch_clean_contact($contact);
@@ -475,7 +475,12 @@ function contact_arch_save_client_contact(mysqli $conn, int $clienteId, array $c
         throw new RuntimeException('Informe o nome do contato.');
     }
 
-    $existingId = contact_arch_find_existing_contact_id($conn, $clienteId, $cleaned);
+    // Authenticated external identity must never merge by a claimed name/phone.
+    // Keep the historical matching policy for existing internal callers.
+    if ($emailIdentityOnly && $cleaned['email'] === '') {
+        throw new RuntimeException('E-mail obrigatório para identidade externa.');
+    }
+    $existingId = $emailIdentityOnly ? null : contact_arch_find_existing_contact_id($conn, $clienteId, $cleaned);
     if ($existingId) {
         return contact_arch_update_client_contact_by_id($conn, $existingId, $cleaned);
     }

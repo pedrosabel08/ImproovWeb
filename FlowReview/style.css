@@ -689,21 +689,28 @@ option {
   overflow-y: auto;
 }
 
+/* Chrome, Edge, Safari */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #747474;
-  /* border-radius: 10px; */
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #f1f1f1;
+  background: transparent;
 }
 
-body::-webkit-scrollbar {
+/* body::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
@@ -715,7 +722,7 @@ body::-webkit-scrollbar-thumb {
 
 body::-webkit-scrollbar-track {
   background-color: #f1f1f1;
-}
+} */
 
 .comment-card {
   background-color: rgba(17, 23, 37, 0.96);

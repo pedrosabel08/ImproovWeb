@@ -4970,12 +4970,276 @@ function mostrarPdfCompleto(
   window.setTimeout(() => renderizarPaginaPdf(), 150);
 }
 
+let reviewViewerAnimated = false;
+
+function animateReviewViewerEntrance(imgElement) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    gsap.set([".wrapper-sidebar", ".sidebar-direita", imgElement], {
+      clearProps: "all",
+    });
+    return;
+  }
+
+  const leftSidebar = document.querySelector(".wrapper-sidebar");
+  const rightSidebar = document.querySelector(".sidebar-direita");
+
+  if (!leftSidebar || !rightSidebar || !imgElement) return;
+
+  const tl = gsap.timeline();
+
+  // As duas sidebars entram juntas
+  tl.fromTo(
+    leftSidebar,
+    {
+      x: -24,
+      opacity: 0,
+    },
+    {
+      x: 0,
+      opacity: 1,
+      duration: 0.5,
+      ease: "power3.out",
+      clearProps: "transform",
+    },
+    0,
+  );
+
+  tl.fromTo(
+    rightSidebar,
+    {
+      x: 24,
+      opacity: 0,
+    },
+    {
+      x: 0,
+      opacity: 1,
+      duration: 0.5,
+      ease: "power3.out",
+      clearProps: "transform",
+    },
+    0,
+  );
+
+  // Imagem vem logo depois, com pequena sobreposição
+  tl.fromTo(
+    imgElement,
+    {
+      opacity: 0,
+      scale: 0.975,
+    },
+    {
+      opacity: 1,
+      scale: 1,
+      duration: 0.75,
+      ease: "power4.out",
+      clearProps: "transform",
+    },
+    0.27,
+  );
+}
+
+function animateImageChange(imgElement) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    gsap.set(imgElement, {
+      opacity: 1,
+      clearProps: "transform",
+    });
+
+    return;
+  }
+
+  gsap.fromTo(
+    imgElement,
+    {
+      opacity: 0,
+      scale: 0.99,
+    },
+    {
+      opacity: 1,
+      scale: 1,
+      duration: 0.45,
+      ease: "power3.out",
+      clearProps: "transform",
+    },
+  );
+}
+
+function animateRightSidebarChange() {
+  const rightSidebar = document.querySelector(".sidebar-direita");
+
+  if (!rightSidebar) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  // Evita acumular animações se clicar rapidamente nas imagens
+  gsap.killTweensOf(rightSidebar);
+
+  gsap.fromTo(
+    rightSidebar,
+    {
+      x: 18,
+      opacity: 0.65,
+    },
+    {
+      x: 0,
+      opacity: 1,
+      duration: 0.4,
+      ease: "power3.out",
+      clearProps: "transform",
+    },
+  );
+}
+
+function animateRenderedComments({ comentariosDiv, markerContainer }) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  // =========================================================
+  // CARDS
+  // Ordem visual da sidebar: cima → baixo
+  // =========================================================
+
+  const cards = Array.from(
+    comentariosDiv?.querySelectorAll(".comment-card") || [],
+  );
+
+  // =========================================================
+  // MARKERS
+  // Ordem numérica: 1 → 2 → 3...
+  // =========================================================
+
+  const markers = Array.from(
+    markerContainer?.querySelectorAll(
+      ".comment, .comment-shape, .comment-freehand",
+    ) || [],
+  ).sort((a, b) => {
+    return Number(a.dataset.commentNumber) - Number(b.dataset.commentNumber);
+  });
+
+  if (!cards.length && !markers.length) {
+    return;
+  }
+
+  // Mata animações antigas caso usuário
+  // troque rapidamente de imagem
+  gsap.killTweensOf(cards);
+  gsap.killTweensOf(markers);
+
+  // =========================================================
+  // STAGGER ADAPTATIVO
+  // =========================================================
+
+  const cardStagger =
+    cards.length > 1 ? Math.min(0.06, 0.42 / (cards.length - 1)) : 0;
+
+  const markerStagger =
+    markers.length > 1 ? Math.min(0.075, 0.48 / (markers.length - 1)) : 0;
+
+  const tl = gsap.timeline({
+    defaults: {
+      overwrite: "auto",
+    },
+  });
+
+  // =========================================================
+  // SIDEBAR
+  // =========================================================
+
+  if (cards.length) {
+    // Configura deslocamento enquanto continuam invisíveis
+    gsap.set(cards, {
+      y: 10,
+    });
+
+    tl.to(
+      cards,
+      {
+        opacity: 1,
+        y: 0,
+
+        duration: 0.38,
+
+        stagger: cardStagger,
+
+        ease: "power3.out",
+
+        clearProps: "transform",
+      },
+      0,
+    );
+  }
+
+  // =========================================================
+  // MARKERS NORMAIS
+  // =========================================================
+
+  const normalMarkers = markers.filter(
+    (marker) => !marker.classList.contains("comment-freehand"),
+  );
+
+  const freehandMarkers = markers.filter((marker) =>
+    marker.classList.contains("comment-freehand"),
+  );
+
+  if (normalMarkers.length) {
+    // Como já estão invisíveis, podemos preparar o scale
+    // antes da animação sem causar flash.
+    gsap.set(normalMarkers, {
+      scale: 0.72,
+      transformOrigin: "50% 50%",
+    });
+
+    tl.to(
+      normalMarkers,
+      {
+        opacity: 1,
+        scale: 1,
+
+        duration: 0.34,
+
+        stagger: markerStagger,
+
+        ease: "back.out(1.7)",
+      },
+      0.08,
+    );
+  }
+
+  // =========================================================
+  // FREEHAND
+  // =========================================================
+
+  if (freehandMarkers.length) {
+    tl.to(
+      freehandMarkers,
+      {
+        opacity: 1,
+
+        duration: 0.32,
+
+        stagger: markerStagger,
+
+        ease: "power2.out",
+      },
+      0.08,
+    );
+  }
+}
+
 // Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
+  console.log("mostrarImagemCompleta chamado com src:", src, "e id:", id);
+
   closeCommentPopup();
+
   activeComparisonCommentViewer = null;
   commentPreviewContainer = null;
+
   ap_imagem_id = id;
+
   currentMediaMode = "image";
   currentVideoTimeMs = null;
   currentDownloadUrl = src || null;
@@ -4989,20 +5253,40 @@ function mostrarImagemCompleta(src, id) {
 
   const imageWrapper = document.getElementById("image_wrapper");
 
-  // Garante que ambas as sidebars estejam expandidas ao trocar de imagem
+  // =========================================================
+  // SIDEBARS
+  // =========================================================
+
+  // Garante que sidebar direita esteja expandida
   const sidebar = document.querySelector(".sidebar-direita");
+
   if (sidebar) {
     sidebar.classList.remove("collapsed");
     sidebar.style.display = "flex";
+
     const rightIcon = document.querySelector("#right-collapse-btn i");
-    if (rightIcon) rightIcon.className = "fa-solid fa-chevron-right";
+
+    if (rightIcon) {
+      rightIcon.className = "fa-solid fa-chevron-right";
+    }
   }
+
+  // Garante que sidebar esquerda esteja expandida
   const wrapperSb = document.querySelector(".wrapper-sidebar");
+
   if (wrapperSb) {
     wrapperSb.classList.remove("collapsed");
+
     const leftIcon = document.querySelector("#left-collapse-btn i");
-    if (leftIcon) leftIcon.className = "fa-solid fa-chevron-left";
+
+    if (leftIcon) {
+      leftIcon.className = "fa-solid fa-chevron-left";
+    }
   }
+
+  // =========================================================
+  // PREPARAÇÃO DO VIEWER
+  // =========================================================
 
   imageWrapper.classList.remove("pdf-mode", "video-mode");
 
@@ -5010,112 +5294,240 @@ function mostrarImagemCompleta(src, id) {
     imageWrapper.removeChild(imageWrapper.firstChild);
   }
 
+  // =========================================================
+  // CRIA NOVA IMAGEM
+  // =========================================================
+
   const imgElement = document.createElement("img");
+
   imgElement.id = "imagem_atual";
-  imgElement.src = src;
   imgElement.style.width = "100%";
 
+  // Evita flash da imagem antes da animação
+  gsap.set(imgElement, {
+    opacity: 0,
+  });
+
+  // =========================================================
+  // QUANDO A IMAGEM TERMINAR DE CARREGAR
+  // =========================================================
+
+  imgElement.addEventListener(
+    "load",
+    function () {
+      /*
+       * Primeira abertura do viewer:
+       *
+       * sidebar esquerda  ->
+       * sidebar direita   <-
+       *
+       * depois:
+       *
+       *        imagem
+       */
+      if (!reviewViewerAnimated) {
+        reviewViewerAnimated = true;
+
+        animateReviewViewerEntrance(imgElement);
+      } else {
+        /*
+         * Nas próximas trocas não animamos novamente
+         * as sidebars.
+         *
+         * Somente a imagem.
+         */
+        animateImageChange(imgElement);
+        animateRightSidebarChange();
+      }
+    },
+    {
+      once: true,
+    },
+  );
+
+  // Caso a imagem dê erro, não deixa opacity: 0 permanentemente
+  imgElement.addEventListener(
+    "error",
+    function () {
+      gsap.set(imgElement, {
+        opacity: 1,
+        clearProps: "transform",
+      });
+    },
+    {
+      once: true,
+    },
+  );
+
+  // Define SRC somente depois de registrar os eventos
+  imgElement.src = src;
+
   imageWrapper.appendChild(imgElement);
-  // document
-  //   .querySelector("#imagem_atual")
-  //   .scrollIntoView({ behavior: "smooth" });
+
+  // =========================================================
+  // COMENTÁRIOS
+  // =========================================================
+
   renderComments(id);
+
   ajustarNavSelectAoTamanhoDaImagem();
 
-  // imgElement.addEventListener("contextmenu", (event) => {
-  //   event.preventDefault();
-  //   document.getElementById("menuContexto").style.display = "none";
-  //   abrirMenuContextoImagem(event.pageX, event.pageY);
-  // });
+  // =========================================================
+  // CLIQUE PARA COMENTÁRIO
+  // =========================================================
 
   imgElement.addEventListener("click", function (event) {
     if (dragMoved) return;
-    if (drawingTool !== "ponto") return; // formas são tratadas por mousedown
-    if (_replyingToCommentId !== null) return; // bloqueia novo comentário enquanto resposta está ativa
-    // if (![1, 2, 9, 20, 3].includes(idusuario)) return;
+
+    if (drawingTool !== "ponto") return;
+
+    // Bloqueia novo comentário enquanto resposta está ativa
+    if (_replyingToCommentId !== null) return;
 
     const rect = imgElement.getBoundingClientRect();
+
     relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+
     relativeY = ((event.clientY - rect.top) / rect.height) * 100;
 
     _editingCommentId = null;
-    if (quillComentario) quillComentario.setContents([]);
+
+    if (quillComentario) {
+      quillComentario.setContents([]);
+    }
+
     const _mtImg = document.querySelector("#comentarioModal h3");
-    if (_mtImg) _mtImg.textContent = "Novo Comentário";
+
+    if (_mtImg) {
+      _mtImg.textContent = "Novo Comentário";
+    }
+
     document.getElementById("imagemComentario").value = "";
 
     showCommentPreview();
+
     openCommentModalAtPoint(event.clientX, event.clientY);
 
     // Limpa os mencionados quando abre um novo comentário
     mencionadosIds = [];
   });
 
-  // Inicia desenho de forma geométrica na imagem JPG
+  // =========================================================
+  // DESENHO COM MOUSE
+  // =========================================================
+
   imgElement.addEventListener("mousedown", function (event) {
     if (event.button !== 0 || event.ctrlKey) return;
+
     if (drawingTool === "ponto") return;
+
     event.stopPropagation();
+
     isDrawing = true;
     dragMoved = false;
+
     const rect = imgElement.getBoundingClientRect();
+
     drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+
     drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+
     drawStartClientX = event.clientX;
     drawStartClientY = event.clientY;
+
     shapeX2 = drawStartX;
     shapeY2 = drawStartY;
+
     currentDrawRef = imgElement;
+
     if (drawingTool === "freehand") {
       freehandPoints = [[drawStartX, drawStartY]];
+
       const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+
       imageWrapper.appendChild(svg);
+
       freehandSvgPreview = svg;
+
       freehandPolylineEl = svg.querySelector("polyline");
+
       freehandDrawContainer = imageWrapper;
     } else {
       const preview = document.createElement("div");
+
       preview.id = "drawing-preview";
+
       preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+
       preview.style.left = `${drawStartX}%`;
+
       preview.style.top = `${drawStartY}%`;
+
       preview.style.width = "0";
       preview.style.height = "0";
+
       imageWrapper.appendChild(preview);
     }
   });
 
-  // support pointer events (touch / pen) for image drawing
+  // =========================================================
+  // TOUCH / PEN
+  // =========================================================
+
   imgElement.addEventListener("pointerdown", function (event) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
     if (event.ctrlKey) return;
+
     if (drawingTool === "ponto") return;
+
     event.stopPropagation();
+
     isDrawing = true;
     dragMoved = false;
+
     const rect = imgElement.getBoundingClientRect();
+
     drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+
     drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+
     drawStartClientX = event.clientX;
     drawStartClientY = event.clientY;
+
     shapeX2 = drawStartX;
     shapeY2 = drawStartY;
+
     currentDrawRef = imgElement;
+
     if (drawingTool === "freehand") {
       freehandPoints = [[drawStartX, drawStartY]];
+
       const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+
       imageWrapper.appendChild(svg);
+
       freehandSvgPreview = svg;
+
       freehandPolylineEl = svg.querySelector("polyline");
+
       freehandDrawContainer = imageWrapper;
     } else {
       const preview = document.createElement("div");
+
       preview.id = "drawing-preview";
+
       preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+
       preview.style.left = `${drawStartX}%`;
+
       preview.style.top = `${drawStartY}%`;
+
       preview.style.width = "0";
       preview.style.height = "0";
+
       imageWrapper.appendChild(preview);
     }
   });
@@ -5764,8 +6176,16 @@ function showCommentPopup(markerEl, comentarioId) {
   const clone = card.cloneNode(true);
   // Remove interactive action buttons from clone to keep it read-only
   clone
-    .querySelectorAll(".comment-resp, .comment-edit, .comment-delete")
-    .forEach((btn) => btn.remove());
+    .querySelectorAll(
+      [
+        ".comment-resp",
+        ".comment-edit",
+        ".comment-delete",
+        ".comment-check",
+      ].join(","),
+    )
+    .forEach((el) => el.remove());
+
   popup.appendChild(clone);
 
   document.body.appendChild(popup);
@@ -5891,6 +6311,11 @@ const commentRenderVersions = new WeakMap();
 
 async function renderComments(id, target = {}) {
   // console.log("renderComments", id); // debug
+
+  const shouldAnimateComments =
+    target.animate !== false &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   const comentariosDiv =
     target.comentariosDiv || document.querySelector(".comentarios");
   const renderVersion = (commentRenderVersions.get(comentariosDiv) || 0) + 1;
@@ -5976,8 +6401,22 @@ async function renderComments(id, target = {}) {
 
   comentarios.forEach((comentario) => {
     const commentCard = document.createElement("div");
+
     commentCard.classList.add("comment-card");
+
     commentCard.setAttribute("data-id", comentario.id);
+
+    commentCard.setAttribute(
+      "data-comment-number",
+      comentario.numero_comentario,
+    );
+
+    // IMPORTANTE:
+    // o card já nasce invisível.
+    // Assim ele nunca aparece antes da animação.
+    if (shouldAnimateComments) {
+      commentCard.style.opacity = "0";
+    }
 
     const header = document.createElement("div");
     header.classList.add("comment-header");
@@ -6028,7 +6467,10 @@ async function renderComments(id, target = {}) {
       checkBtn.disabled = false;
       if (result && result.sucesso) {
         // Re-renderiza comentários com dados atualizados
-        await renderComments(id);
+        await renderComments(id, {
+          ...target,
+          animate: false, // evita animação de fade-in
+        });
         // Atualiza badge da imagem na nav lateral
         _atualizarBadgeImagem(
           typeof id === "object" ? id.arquivo_log_id : id,
@@ -6266,6 +6708,17 @@ async function renderComments(id, target = {}) {
 
     if (commentDiv) {
       commentDiv.setAttribute("data-id", comentario.id);
+
+      commentDiv.setAttribute(
+        "data-comment-number",
+        comentario.numero_comentario,
+      );
+
+      // IMPORTANTE:
+      // marker também nasce invisível
+      if (shouldAnimateComments) {
+        commentDiv.style.opacity = "0";
+      }
     }
 
     // Generic marker click (ponto + shapes; freehand uses SVG hit handler above)
@@ -6449,6 +6902,53 @@ async function renderComments(id, target = {}) {
       });
     }
   });
+
+  // =========================================================
+  // ANIMAÇÃO DE ENTRADA DOS COMENTÁRIOS
+  // =========================================================
+
+  if (target.animate !== false) {
+    const runCommentAnimation = () => {
+      // Confirma novamente que ainda estamos renderizando
+      // a mesma imagem.
+      if (!isCurrentRender()) return;
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          animateRenderedComments({
+            comentariosDiv,
+            markerContainer,
+            mediaMode: isPdf ? "pdf" : isVideo ? "video" : "image",
+          });
+        });
+      });
+    };
+
+    // Para imagens JPG/PNG:
+    // deixa a imagem principal aparecer primeiro.
+    if (!isPdf && !isVideo) {
+      const imagemAtual = document.getElementById("imagem_atual");
+
+      if (imagemAtual && !imagemAtual.complete) {
+        imagemAtual.addEventListener(
+          "load",
+          () => {
+            gsap.delayedCall(0.12, runCommentAnimation);
+          },
+          {
+            once: true,
+          },
+        );
+      } else {
+        gsap.delayedCall(0.12, runCommentAnimation);
+      }
+    }
+
+    // PDF / vídeo
+    else {
+      gsap.delayedCall(0.08, runCommentAnimation);
+    }
+  }
 
   // Se veio um foco pendente (após mudar página), destaca no painel
   if (isPdf && id && id.focus_comment_id) {

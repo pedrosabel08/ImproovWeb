@@ -8,6 +8,27 @@ if (!defined('MOTOR_REQUISITOS_VERSAO')) {
     define('MOTOR_REQUISITOS_VERSAO', 'PROJECT_REQUIREMENTS_V1');
 }
 
+/*
+ * Guia de manutenção
+ * -------------------
+ * Este arquivo APENAS LÊ evidências e monta a decisão de início; nenhuma query
+ * daqui atualiza status, render, entrega ou pendência. Todas as consultas usam
+ * `prepare` + `bind_param`: os `?` do SQL recebem os valores indicados logo
+ * abaixo da query, na mesma ordem, sem concatená-los ao SQL.
+ *
+ * Ao alterar uma regra, preserve a distinção entre `$imagemId` (imagem da
+ * tarefa atual) e `$imagemDependenciasId` (imagem cuja evidência será lida).
+ * Para a função 5, ambos devem ser a mesma imagem, mesmo quando ela é
+ * secundária. Essa é a proteção contra herdar pendências da imagem principal.
+ */
+
+/**
+ * Normaliza um requisito na estrutura que a API e o Kanban consomem.
+ *
+ * `bloqueia_inicio` só é verdadeiro para um requisito obrigatório cuja
+ * evidência ainda não foi atendida. Assim, a montagem dos requisitos fica
+ * separada da decisão final de liberar a tarefa.
+ */
 function motor_requisitos_item(
     string $codigo,
     string $label,
@@ -32,6 +53,11 @@ function motor_requisitos_item(
     ], $metadados);
 }
 
+/**
+ * Consolida os requisitos em uma decisão única, sem gravar nada no banco.
+ * A flag legada é preservada como compatibilidade até que todos os fluxos
+ * passem a usar exclusivamente este motor.
+ */
 function motor_requisitos_resultado(
     bool $aplicavel,
     array $requisitos,
@@ -106,6 +132,8 @@ function motor_requisitos_tem_bloqueio_producao(array $resultado): bool
 
 function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
 {
+    // Consulta o checklist de Projeto da obra, incluindo a sua versão e o
+    // responsável. A versão evita aplicar requisitos novos a checklists legados.
     $stmt = $conn->prepare(
         "SELECT co.id, co.requirements_version, co.responsavel_id,
                 c.nome_colaborador AS responsavel_nome
@@ -126,6 +154,8 @@ function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
 
 function motor_requisitos_itens_projeto(mysqli $conn, int $checklistId): array
 {
+    // Indexa os itens pelo código para que as regras abaixo façam consulta em
+    // memória, sem disparar uma query para cada requisito do projeto.
     $items = [];
     foreach (pendencias_operacionais_fetch_checklist_items($conn, $checklistId) as $row) {
         $items[(string) $row['item_key']] = $row;
@@ -141,6 +171,8 @@ function motor_requisitos_projeto(
     bool $checklistVersionado = true,
     ?array $responsavel = null
 ): array {
+    // Checklists sem a versão atual continuam legados: são informativos e não
+    // devem bloquear o início por uma regra que ainda não existia neles.
     if (!$checklistVersionado) {
         return motor_requisitos_item(
             $key,
@@ -174,6 +206,8 @@ function motor_requisitos_projeto(
 
 function motor_requisitos_metadados_origem(?array $tarefa = null, ?array $responsavel = null): array
 {
+    // A origem pode ser uma tarefa produtiva ou um responsável de checklist.
+    // Estes metadados são usados pela tela para explicar quem pode resolver a pendência.
     $responsavelId = (int) ($tarefa['colaborador_id'] ?? ($responsavel['id'] ?? $responsavel['responsavel_id'] ?? 0));
     $responsavelNome = (string) ($tarefa['nome_colaborador'] ?? ($responsavel['nome'] ?? $responsavel['responsavel_nome'] ?? ''));
     $metadados = [
@@ -197,6 +231,8 @@ function motor_requisitos_metadados_origem(?array $tarefa = null, ?array $respon
 
 function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackResponsavelId = 0): array
 {
+    // Mapeia cada requisito conhecido para a classificação sugerida ao abrir
+    // um Flow Block. É somente uma sugestão: não cria nem altera uma issue.
     $mapa = [
         'briefing' => ['DEPENDENCIA_OUTRA_TAREFA', 'ARQUITETURA'],
         'kickoff' => ['DEPENDENCIA_OUTRA_TAREFA', 'ARQUITETURA'],
@@ -231,6 +267,7 @@ function motor_requisitos_sugestao_flow_block(array $requisito, int $fallbackRes
 
 function motor_requisitos_politica_funcao_imagem(array $context): ?string
 {
+    // Centraliza a relação entre o id técnico da função e a política de requisitos.
     $funcaoId = (int) ($context['funcao_id'] ?? 0);
     if ($funcaoId === 1) {
         return 'CADERNO';
@@ -307,6 +344,8 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
         return $requirement;
     }
 
+    // Procura uma issue ativa pelo código atual e pelos nomes antigos do
+    // requisito; isso mantém os Flow Blocks já criados acessíveis após renomes.
     $codes = array_values(array_unique(array_merge([(string) ($requirement['codigo'] ?? '')], $aliases)));
     $issue = null;
     foreach ($codes as $code) {
@@ -340,6 +379,8 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
 
 function motor_requisitos_predecessora(mysqli $conn, int $imagemId, int $funcaoId): ?array
 {
+    // Busca exatamente a função pedida da MESMA imagem. A imagem é um
+    // parâmetro obrigatório justamente para não misturar pendências entre imagens.
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id, fi.requires_file_upload,
                 fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome, ico.status_id AS imagem_status_id
@@ -359,10 +400,11 @@ function motor_requisitos_predecessora(mysqli $conn, int $imagemId, int $funcaoI
 
 function motor_requisitos_ordem_producao(): array
 {
+    // Ordem de referência usada somente para localizar a predecessora existente.
     return [1, 8, 2, 3, 9, 4, 5, 6, 7];
 }
 
-/** Busca a etapa existente imediatamente anterior, ignorando funções ausentes. */
+/** Busca a etapa existente imediatamente anterior da mesma imagem, ignorando funções ausentes. */
 function motor_requisitos_predecessora_anterior_existente(mysqli $conn, int $imagemId, int $funcaoId): ?array
 {
     $ordem = motor_requisitos_ordem_producao();
@@ -383,6 +425,8 @@ function motor_requisitos_predecessora_anterior_existente(mysqli $conn, int $ima
 
 function motor_requisitos_modelagem_base_fachada(mysqli $conn, int $obraId): ?array
 {
+    // Exceção de negócio: Finalização de Fachada e Composição de Imagem Externa
+    // usam a primeira Modelagem de Fachada cadastrada na obra como evidência-base.
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id,
                 fi.requires_file_upload, fi.file_uploaded_at, c.nome_colaborador,
@@ -410,6 +454,7 @@ function motor_requisitos_modelagem_base_fachada(mysqli $conn, int $obraId): ?ar
 
 function motor_requisitos_aliases_predecessora(?array $predecessora, bool $arquivo): array
 {
+    // Códigos antigos são aceitos ao procurar Flow Blocks já existentes.
     $funcaoId = (int) ($predecessora['funcao_id'] ?? 0);
     if ($funcaoId === 2) {
         return $arquivo ? ['ARQUIVO_FINAL_MODELAGEM_AUSENTE'] : ['MODELAGEM_NAO_CONCLUIDA'];
@@ -425,6 +470,8 @@ function motor_requisitos_aliases_predecessora(?array $predecessora, bool $arqui
 
 function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisitos, ?array $predecessora, string $origem, string $urlAcao, bool $ignorarPendenciaArquivo = false): void
 {
+    // Traduz o estado da tarefa predecessora no requisito que será exibido.
+    // Esta função não atualiza a predecessora nem cria pendências.
     if (!$predecessora) {
         $requisitos[] = motor_requisitos_item(
             'FUNCAO_ANTERIOR_CONCLUIDA',
@@ -536,6 +583,8 @@ function motor_requisitos_adicionar_predecessora(mysqli $conn, array &$requisito
 
 function motor_requisitos_fotografico(mysqli $conn, int $obraId): array
 {
+    // O helper especializado consulta a fonte oficial do Fotográfico; aqui
+    // apenas adaptamos seu resultado ao contrato do Motor de Requisitos.
     $fotografico = pendencias_operacionais_fotografico_requirement_estado($conn, $obraId);
     $evidencia = (string) ($fotografico['evidencia'] ?? 'NAO_APLICAVEL');
     $origem = match ($evidencia) {
@@ -565,6 +614,8 @@ function motor_requisitos_fotografico(mysqli $conn, int $obraId): array
 
 function motor_requisitos_finalizacao_da_imagem(mysqli $conn, int $imagemId): ?array
 {
+    // Retorna a Finalização (ou Planta Humanizada) da imagem informada. O filtro
+    // por imagem é essencial porque Alteração depende do arquivo da sua própria imagem.
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
                 fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
@@ -589,7 +640,7 @@ function motor_requisitos_entrega_registrada_na_etapa(mysqli $conn, int $obraId,
         return null;
     }
 
-    // Entregas comuns vinculam a imagem em entregas_itens. P00 possui versões
+    // Primeira query: entregas comuns vinculam a imagem em entregas_itens. P00 possui versões
     // próprias, mas segue a mesma regra: a entrega precisa estar registrada na
     // etapa atual da imagem.
     $stmt = $conn->prepare(
@@ -613,6 +664,7 @@ function motor_requisitos_entrega_registrada_na_etapa(mysqli $conn, int $obraId,
         }
     }
 
+    // Segunda query (fallback): procura a mesma entrega no modelo de versões P00.
     $stmt = $conn->prepare(
         "SELECT e.id AS entrega_id, v.id AS entrega_item_id, e.data_prevista
            FROM entregas e
@@ -641,6 +693,8 @@ function motor_requisitos_primeira_composicao_pendente_subtipo(mysqli $conn, int
     if ($subtipoId <= 0) {
         return null;
     }
+    // Localiza uma composição ainda pendente dentro do subtipo. Ela é exibida
+    // como a origem acionável do requisito agregado de Planta Humanizada.
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.status, fi.colaborador_id, fi.requires_file_upload,
                 fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao, ico.imagem_nome
@@ -689,6 +743,9 @@ function motor_requisitos_estado_arquivo(?array $row): string
 
 function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemId, ?bool $legacyLiberada = null): array
 {
+    // Carrega em uma única query o contexto da tarefa atual e, quando existir,
+    // os dados da imagem principal. Os dados da principal são necessários às
+    // regras já existentes de Finalização de imagens secundárias.
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
                 f.nome_funcao,
@@ -742,11 +799,23 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     ] : null;
     $funcaoId = (int) $context['funcao_id'];
     $imagemId = (int) $context['imagem_id'];
-    // Uma imagem secundária executa sua Finalização, mas o fluxo produtivo é o
-    // da imagem principal. A tarefa atual permanece no contexto (para card,
-    // permissões e Flow Block); somente os requisitos passam a consultar a
-    // imagem de origem.
-    $imagemDependenciasId = (int) ($context['imagem_principal_id'] ?? 0) ?: $imagemId;
+
+    /*
+     * Define de qual imagem cada regra deve ler evidências produtivas.
+     *
+     * Regra especial já existente: na Finalização, uma imagem secundária usa
+     * a cadeia produtiva da imagem principal. Isto continua inalterado.
+     *
+     * Exceção corrigida: a Pós-produção (função 5) sempre usa a própria
+     * imagem. Render, status e Finalização são registros específicos de cada
+     * imagem; apontar para `imagem_principal_id` fazia a imagem secundária
+     * herdar a pendência (ou aprovação) da imagem 1.
+     */
+    $posProducaoDaPropriaImagem = $funcaoId === 5;
+    $imagemPrincipalId = (int) ($context['imagem_principal_id'] ?? 0);
+    $imagemDependenciasId = $posProducaoDaPropriaImagem || $imagemPrincipalId <= 0
+        ? $imagemId
+        : $imagemPrincipalId;
     $usaImagemPrincipal = $imagemDependenciasId !== $imagemId;
     $tipoImagemDependencias = $usaImagemPrincipal
         ? (string) ($context['imagem_principal_tipo_imagem'] ?? '')
@@ -781,6 +850,9 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             if ($subtipoId <= 0) {
                 $estadoArquivos = 'NAO_ATENDIDO';
             } else {
+                // Conta todas as composições do subtipo e quantas já possuem
+                // conclusão/arquivo válido. A comparação das duas contagens
+                // evita liberar a Planta Humanizada com uma composição pendente.
                 $stmtComp = $conn->prepare(
                     "SELECT COUNT(*) total,
                             SUM(CASE WHEN fi.colaborador_id = 15
@@ -809,7 +881,11 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             $requisitos[] = motor_requisitos_fotografico($conn, $obraId);
         }
     } elseif ($funcaoId === 5) {
+        // Para Pós-produção, os parâmetros abaixo são sempre da própria imagem
+        // (veja a regra `posProducaoDaPropriaImagem` acima).
         $imagemStatusId = $statusImagemDependenciasId;
+        // Busca o render mais recente, ativo e na etapa atual da imagem. O
+        // status dele é a evidência do requisito "Render aprovado".
         $stmtRender = $conn->prepare(
             "SELECT r.idrender_alta, r.status, r.responsavel_id, c.nome_colaborador
                FROM render_alta r
@@ -827,6 +903,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
             'responsavel_nome' => $render['nome_colaborador'] ?? '',
         ]));
     } elseif ($funcaoId === 6) {
+        // Alteração exige uma entrega da mesma imagem, na sua etapa atual.
         $entrega = motor_requisitos_entrega_registrada_na_etapa(
             $conn,
             $obraId,
@@ -860,7 +937,9 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
         );
     }
 
-    // A cadeia produtiva usa a predecessora existente mais próxima. Alteração
+    // A cadeia produtiva usa a predecessora existente mais próxima da imagem
+    // escolhida acima. Para Pós-produção, portanto, a predecessora é a
+    // Finalização da própria imagem secundária. Alteração
     // e Pré-Finalização preservam suas regras próprias, sem pré-requisito linear.
     if (!in_array($funcaoId, [1, 6, 9], true)) {
         $tipoImagem = mb_strtolower(trim($tipoImagemDependencias), 'UTF-8');
@@ -942,6 +1021,8 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
 
 function motor_requisitos_avaliar_funcao_animacao(mysqli $conn, int $funcaoAnimacaoId, ?bool $legacyLiberada = null): array
 {
+    // Consulta a imagem vinculada à tarefa de animação para verificar os ids
+    // de etapa e subetapa que representam uma imagem-base pronta.
     $stmt = $conn->prepare(
         "SELECT fa.id, a.imagem_id, ico.obra_id, ico.status_id, ico.substatus_id
            FROM funcao_animacao fa
@@ -963,6 +1044,8 @@ function motor_requisitos_avaliar_funcao_animacao(mysqli $conn, int $funcaoAnima
 
 function motor_requisitos_assert_inicio_funcao_imagem(mysqli $conn, int $funcaoImagemId): array
 {
+    // Adaptador para endpoints de comando: avalia antes de iniciar e interrompe
+    // a transição caso exista qualquer requisito bloqueante.
     $resultado = motor_requisitos_avaliar_funcao_imagem($conn, $funcaoImagemId);
     if (!$resultado['elegivel']) {
         throw new DomainException('A tarefa possui requisitos pendentes para iniciar.');

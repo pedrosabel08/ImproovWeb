@@ -1201,11 +1201,22 @@ body {
     --fb-overlay: rgba(31, 48, 66, 0.34);
   }
   body,
-  .flow-block-page { background: var(--fb-bg); color: var(--fb-ink); }
-  ::-webkit-scrollbar { background: #e9eef4; }
-  ::-webkit-scrollbar-thumb { background: #b7c5d4; }
-  ::-webkit-scrollbar-thumb:hover { background: #8fa2b7; }
-  .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+  .flow-block-page {
+    background: var(--fb-bg);
+    color: var(--fb-ink);
+  }
+  ::-webkit-scrollbar {
+    background: #e9eef4;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #b7c5d4;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #8fa2b7;
+  }
+  .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1237,13 +1248,29 @@ body {
     --fb-neutral-soft: rgba(154, 168, 184, 0.12);
   }
   body,
-  .flow-block-page { background: var(--fb-bg); color: var(--fb-ink); }
-  ::-webkit-scrollbar { background: #232323; }
-  ::-webkit-scrollbar-thumb { background: #9e9e9e; }
-  ::-webkit-scrollbar-thumb:hover { background: #666; }
-  .fb-tabs button.is-active span { color: #dcffe9; }
-  .fb-status-PAUSADA { color: #b99bff; background: rgba(142, 102, 255, 0.14); }
-  .fb-resolution-confirmation { color: #c8f4d7; }
+  .flow-block-page {
+    background: var(--fb-bg);
+    color: var(--fb-ink);
+  }
+  ::-webkit-scrollbar {
+    background: #232323;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #9e9e9e;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #666;
+  }
+  .fb-tabs button.is-active span {
+    color: #dcffe9;
+  }
+  .fb-status-PAUSADA {
+    color: #b99bff;
+    background: rgba(142, 102, 255, 0.14);
+  }
+  .fb-resolution-confirmation {
+    color: #c8f4d7;
+  }
   .fb-filter-panel select,
   .fb-filter-panel input,
   .fb-dialog input,
@@ -1251,6 +1278,10 @@ body {
   .fb-dialog textarea,
   .fb-inline-comment-form input[type="file"],
   .fb-composer textarea,
-  .fb-attachment-control input { color-scheme: dark; }
-  .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
+  .fb-attachment-control input {
+    color-scheme: dark;
+  }
+  .flow-block-page input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.85);
+  }
 }

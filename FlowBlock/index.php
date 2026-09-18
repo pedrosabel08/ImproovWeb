@@ -86,6 +86,9 @@ $conn->close();
                 <select data-filter="funcao_id">
                     <option value="">Todas as funções</option>
                 </select>
+                <select data-filter="obra_id">
+                    <option value="">Todas as obras</option>
+                </select>
                 <label>De <input type="date" data-filter="from"></label>
                 <label>Até <input type="date" data-filter="to"></label>
                 <button class="fb-text-button" id="clear-filters">Limpar filtros</button>

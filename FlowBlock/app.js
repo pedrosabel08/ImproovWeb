@@ -139,7 +139,10 @@
         select.innerHTML =
           `<option value="">${label}</option>` +
           data
-            .map((x) => `<option value="${x.id}">${esc(x.nome)}</option>`)
+            .map(
+              (x) =>
+                `<option value="${x.id}">${esc(x.nome ?? x.nomenclatura ?? "")}</option>`,
+            )
             .join("");
       };
       fill('[data-filter="tipo_id"]', options.types, "Todos os tipos");
@@ -150,6 +153,7 @@
         "Todos os responsáveis",
       );
       fill('[data-filter="funcao_id"]', options.functions, "Todas as funções");
+      fill('[data-filter="obra_id"]', options.obras, "Todas as obras");
       fill("#issue-type", options.types, "Selecione o tipo");
       fill("#issue-queue", options.queues, "Não definida");
       fill("#issue-responsible", options.collaborators, "Não definido");

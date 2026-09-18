@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
@@ -77,13 +78,19 @@ function fb_add_mentions(mysqli $conn, int $issueId, int $activityId, array $men
     $collaborator = $conn->prepare('SELECT idcolaborador FROM colaborador WHERE idcolaborador = ? AND ativo = 1 LIMIT 1');
     foreach (array_unique(array_map('intval', $mentionedIds)) as $id) {
         $recipient = (int) $id;
-        if ($recipient <= 0) continue;
+        if ($recipient <= 0) {
+            continue;
+        }
         $collaborator->bind_param('i', $recipient);
         $collaborator->execute();
-        if (!$collaborator->get_result()->fetch_assoc()) continue;
+        if (!$collaborator->get_result()->fetch_assoc()) {
+            continue;
+        }
         $insert->bind_param('iiii', $issueId, $activityId, $recipient, $actorId);
         $insert->execute();
-        if ($insert->affected_rows !== 1) continue;
+        if ($insert->affected_rows !== 1) {
+            continue;
+        }
         $mentionId = (int) $conn->insert_id;
         if ($recipient !== $actorId) {
             flow_block_notify($conn, $recipient, $taskId, "Você foi mencionado em $issueCode no Flow Block.");
@@ -99,7 +106,9 @@ function fb_add_mentions(mysqli $conn, int $issueId, int $activityId, array $men
 
 function fb_mark_mentions_read(mysqli $conn, int $issueId, int $recipientId, ?int $mentionId = null): void
 {
-    if ($issueId <= 0 || $recipientId <= 0) return;
+    if ($issueId <= 0 || $recipientId <= 0) {
+        return;
+    }
     if ($mentionId) {
         $stmt = $conn->prepare("UPDATE flow_issue_mencao SET status = 'LIDA', visualizado_em = NOW() WHERE id = ? AND issue_id = ? AND colaborador_id = ? AND status = 'PENDENTE'");
         $stmt->bind_param('iii', $mentionId, $issueId, $recipientId);
@@ -122,13 +131,21 @@ function fb_save_attachments(mysqli $conn, array $issue, int $activityId, array 
     $saved = [];
     foreach (($files['name'] ?? []) as $index => $name) {
         $error = (int) ($files['error'][$index] ?? UPLOAD_ERR_NO_FILE);
-        if ($error === UPLOAD_ERR_NO_FILE) continue;
-        if ($error !== UPLOAD_ERR_OK) throw new RuntimeException('Falha ao enviar o anexo.');
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        if ($error !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Falha ao enviar o anexo.');
+        }
         $size = (int) ($files['size'][$index] ?? 0);
-        if ($size <= 0 || $size > 25 * 1024 * 1024) throw new RuntimeException('Cada anexo deve ter no máximo 25 MB.');
+        if ($size <= 0 || $size > 25 * 1024 * 1024) {
+            throw new RuntimeException('Cada anexo deve ter no máximo 25 MB.');
+        }
         $original = basename((string) $name);
         $extension = strtolower(pathinfo($original, PATHINFO_EXTENSION));
-        if (!in_array($extension, $allowed, true)) throw new RuntimeException('Tipo de arquivo não permitido: ' . $extension);
+        if (!in_array($extension, $allowed, true)) {
+            throw new RuntimeException('Tipo de arquivo não permitido: ' . $extension);
+        }
         $stored = bin2hex(random_bytes(12)) . ($extension ? '.' . $extension : '');
         if (!move_uploaded_file($files['tmp_name'][$index], $targetDir . '/' . $stored)) {
             throw new RuntimeException('Não foi possível armazenar o anexo.');
@@ -150,7 +167,13 @@ try {
         $queues = $conn->query('SELECT id, codigo, nome FROM flow_issue_fila WHERE ativo = 1 ORDER BY ordem, nome')->fetch_all(MYSQLI_ASSOC);
         $collaborators = $conn->query('SELECT idcolaborador AS id, nome_colaborador AS nome FROM colaborador WHERE ativo = 1 ORDER BY nome_colaborador')->fetch_all(MYSQLI_ASSOC);
         $functions = $conn->query('SELECT idfuncao AS id, nome_funcao AS nome FROM funcao ORDER BY nome_funcao')->fetch_all(MYSQLI_ASSOC);
-        flow_block_json_response(['ok' => true, 'types' => $types, 'queues' => $queues, 'collaborators' => $collaborators, 'functions' => $functions]);
+        $obras = $conn->query('SELECT o.idobra AS id, o.nomenclatura FROM obra o 
+JOIN imagens_cliente_obra im ON o.idobra = im.obra_id 
+JOIN funcao_imagem f ON im.idimagens_cliente_obra = f.imagem_id 
+JOIN flow_issue fi ON fi.funcao_imagem_id = f.idfuncao_imagem 
+GROUP BY o.idobra
+ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
+        flow_block_json_response(['ok' => true, 'types' => $types, 'queues' => $queues, 'collaborators' => $collaborators, 'functions' => $functions, 'obras' => $obras]);
     }
 
     if ($action === 'list') {
@@ -182,7 +205,9 @@ try {
         if ($search !== '') {
             $where[] = '(i.codigo LIKE ? OR i.descricao LIKE ? OR ico.imagem_nome LIKE ? OR op.source_title LIKE ? OR o.nomenclatura LIKE ? OR op.obra_nome LIKE ? OR o.nome_obra LIKE ?)';
             $types .= 'sssssss';
-            for ($x = 0; $x < 7; $x++) $values[] = '%' . $search . '%';
+            for ($x = 0; $x < 7; $x++) {
+                $values[] = '%' . $search . '%';
+            }
         }
         foreach (['tipo_id' => 'i.tipo_id', 'fila_id' => 'i.fila_id', 'responsavel_id' => 'i.responsavel_colaborador_id', 'funcao_id' => 'fi.funcao_id', 'obra_id' => 'ico.obra_id', 'imagem_id' => 'ico.idimagens_cliente_obra'] as $key => $column) {
             $value = (int) ($_GET[$key] ?? 0);
@@ -220,7 +245,9 @@ try {
 
         $countSql = 'SELECT COUNT(*) AS total FROM flow_issue i LEFT JOIN flow_issue_operacional op ON op.issue_id=i.id LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem=i.funcao_imagem_id LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=fi.imagem_id LEFT JOIN obra o ON o.idobra=ico.obra_id' . $whereSql;
         $countStmt = $conn->prepare($countSql);
-        if ($types !== '') $countStmt->bind_param($types, ...$values);
+        if ($types !== '') {
+            $countStmt->bind_param($types, ...$values);
+        }
         $countStmt->execute();
         $total = (int) $countStmt->get_result()->fetch_assoc()['total'];
         $countStmt->close();
@@ -241,9 +268,13 @@ try {
         $counts = ['TODAS' => 0, 'ABERTA' => 0, 'AGUARDANDO_ACAO' => 0, 'PAUSADA' => 0, 'RESOLVIDA' => 0, 'CANCELADA' => 0, 'MENCIONARAM_VOCE' => 0];
         $countsSql = 'SELECT i.status, COUNT(*) total FROM flow_issue i LEFT JOIN flow_issue_operacional op ON op.issue_id=i.id LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem=i.funcao_imagem_id' . ($visibility ? ' WHERE ' . $visibility : '') . ' GROUP BY i.status';
         $countByStatus = $conn->prepare($countsSql);
-        if ($visibility) $countByStatus->bind_param('iiiii', $actorId, $actorId, $actorId, $actorId, $actorId);
+        if ($visibility) {
+            $countByStatus->bind_param('iiiii', $actorId, $actorId, $actorId, $actorId, $actorId);
+        }
         $countByStatus->execute();
-        foreach ($countByStatus->get_result() as $row) $counts[$row['status']] = (int) $row['total'];
+        foreach ($countByStatus->get_result() as $row) {
+            $counts[$row['status']] = (int) $row['total'];
+        }
         $countByStatus->close();
         $counts['TODAS'] = $counts['ABERTA'] + $counts['AGUARDANDO_ACAO'] + $counts['PAUSADA'] + $counts['RESOLVIDA'] + $counts['CANCELADA'];
         $mentionsCount = $conn->prepare("SELECT COUNT(DISTINCT m.issue_id) AS total FROM flow_issue_mencao m WHERE m.colaborador_id = ? AND m.status = 'PENDENTE'");
@@ -274,7 +305,9 @@ try {
         $stmt->execute();
         $mention = $stmt->get_result()->fetch_assoc() ?: null;
         $stmt->close();
-        if (!$mention) flow_block_json_response(['ok' => false, 'message' => 'Menção não encontrada ou já visualizada.'], 404);
+        if (!$mention) {
+            flow_block_json_response(['ok' => false, 'message' => 'Menção não encontrada ou já visualizada.'], 404);
+        }
         $mention['conteudo'] = trim((string) $mention['conteudo']);
         flow_block_json_response(['ok' => true, 'mention' => $mention]);
     }
@@ -299,7 +332,9 @@ try {
         $stmt->execute();
         $mentions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        foreach ($mentions as &$mention) $mention['conteudo'] = trim((string) $mention['conteudo']);
+        foreach ($mentions as &$mention) {
+            $mention['conteudo'] = trim((string) $mention['conteudo']);
+        }
         unset($mention);
         flow_block_json_response(['ok' => true, 'mentions' => $mentions]);
     }
@@ -307,13 +342,17 @@ try {
     if ($action === 'task_summary') {
         $taskId = (int) ($_GET['funcao_imagem_id'] ?? 0);
         $task = flow_block_task($conn, $taskId);
-        if (!$task || !flow_block_can_access_task($task)) flow_block_json_response(['ok' => false, 'message' => 'Tarefa não encontrada.'], 404);
+        if (!$task || !flow_block_can_access_task($task)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Tarefa não encontrada.'], 404);
+        }
         $stmt = $conn->prepare(fb_issue_select() . " WHERE i.funcao_imagem_id = ? AND (i.status IN ('ABERTA','AGUARDANDO_ACAO','PAUSADA') OR (i.status='RESOLVIDA' AND i.confirmada_em IS NULL)) ORDER BY i.criado_em ASC");
         $stmt->bind_param('i', $taskId);
         $stmt->execute();
         $issues = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        foreach ($issues as &$issue) $issue['tempo_bloqueado'] = flow_block_duration_label($issue['criado_em']);
+        foreach ($issues as &$issue) {
+            $issue['tempo_bloqueado'] = flow_block_duration_label($issue['criado_em']);
+        }
         unset($issue);
         flow_block_json_response(['ok' => true, 'task' => $task, 'issues' => $issues]);
     }
@@ -333,14 +372,18 @@ try {
         if ($search !== '') {
             $where .= ' AND (ico.imagem_nome LIKE ? OR f.nome_funcao LIKE ? OR o.nomenclatura LIKE ? OR o.nome_obra LIKE ?)';
             $types .= 'ssss';
-            for ($x = 0; $x < 4; $x++) $values[] = '%' . $search . '%';
+            for ($x = 0; $x < 4; $x++) {
+                $values[] = '%' . $search . '%';
+            }
         }
         $sql = "SELECT fi.idfuncao_imagem AS id, ico.imagem_nome, f.nome_funcao, o.nomenclatura, o.nome_obra, fi.status
                 FROM funcao_imagem fi JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=fi.imagem_id
                 JOIN funcao f ON f.idfuncao=fi.funcao_id JOIN obra o ON o.idobra=ico.obra_id
                 WHERE $where ORDER BY o.nomenclatura, ico.imagem_nome, f.nome_funcao LIMIT 20";
         $stmt = $conn->prepare($sql);
-        if ($types !== '') $stmt->bind_param($types, ...$values);
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$values);
+        }
         $stmt->execute();
         $tasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
@@ -350,7 +393,9 @@ try {
     if ($action === 'detail') {
         $issueId = (int) ($_GET['id'] ?? 0);
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        if (!$issue) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
         $canComment = fb_visible($conn, $issue);
         $mentionId = (int) ($_GET['mention_id'] ?? 0);
         if ($mentionId > 0) {
@@ -412,14 +457,20 @@ try {
     if ($action === 'upload') {
         $issueId = (int) ($_POST['id'] ?? 0);
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
         $files = $_FILES['files'] ?? null;
-        if (!$files || !is_array($files['name'] ?? null)) flow_block_json_response(['ok' => false, 'message' => 'Selecione ao menos um anexo.'], 422);
+        if (!$files || !is_array($files['name'] ?? null)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Selecione ao menos um anexo.'], 422);
+        }
         $conn->begin_transaction();
         flow_block_add_activity($conn, $issueId, 'ANEXO', 'Anexou arquivo(s).');
         $activityId = (int) $conn->insert_id;
         $saved = fb_save_attachments($conn, $issue, $activityId, $files, $actorId);
-        if (!$saved) throw new RuntimeException('Nenhum anexo válido foi enviado.');
+        if (!$saved) {
+            throw new RuntimeException('Nenhum anexo válido foi enviado.');
+        }
         $conn->commit();
         flow_block_publish($issueId, (int) $issue['funcao_imagem_id'], 'comment.attachment.created');
         flow_block_json_response(['ok' => true, 'attachments' => $saved]);
@@ -466,7 +517,9 @@ try {
         if (!$typeOk || !$queueOk || !$responsibleOk) {
             flow_block_json_response(['ok' => false, 'message' => 'Tipo, fila ou responsável inválido.'], 422);
         }
-        if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) $urgency = 'NORMAL';
+        if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) {
+            $urgency = 'NORMAL';
+        }
 
         $conn->begin_transaction();
         try {
@@ -538,8 +591,12 @@ try {
             $taskId = (int) $unitForHold['composicao']['idfuncao_imagem'];
         }
         $task = flow_block_task($conn, $taskId);
-        if (!$task || !flow_block_can_access_task($task)) flow_block_json_response(['ok' => false, 'message' => 'Você não pode bloquear esta tarefa.'], 403);
-        if (!$typeId || $description === '') flow_block_json_response(['ok' => false, 'message' => 'Tipo e observação são obrigatórios.'], 422);
+        if (!$task || !flow_block_can_access_task($task)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Você não pode bloquear esta tarefa.'], 403);
+        }
+        if (!$typeId || $description === '') {
+            flow_block_json_response(['ok' => false, 'message' => 'Tipo e observação são obrigatórios.'], 422);
+        }
         if ($requirementCode !== '' && (!$queueId || !$responsibleId)) {
             flow_block_json_response(['ok' => false, 'message' => 'Fila responsável e responsável são obrigatórios para impedimento de requisito.'], 422);
         }
@@ -563,7 +620,9 @@ try {
                 flow_block_json_response(['ok' => false, 'message' => 'Tipo, fila ou responsável inválido para o impedimento.'], 422);
             }
         }
-        if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) $urgency = 'NORMAL';
+        if (!in_array($urgency, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) {
+            $urgency = 'NORMAL';
+        }
         $beforeStatusOriginal = (string) ($task['status'] ?? '');
         if ($requirementCode !== '') {
             $existingIssue = flow_block_find_active_issue_by_requirement($conn, $taskId, $requirementCode);
@@ -657,7 +716,7 @@ try {
         $approval = (array) ($requirement['aprovacao'] ?? []);
         $predecessorId = (int) ($approval['predecessora_funcao_imagem_id'] ?? 0);
         $cycleKey = trim((string) ($approval['approval_cycle_key'] ?? ''));
-        $recipients = array_values(array_filter((array) ($approval['aprovadores'] ?? []), static fn($item) => (int) ($item['id'] ?? 0) > 0));
+        $recipients = array_values(array_filter((array) ($approval['aprovadores'] ?? []), static fn ($item) => (int) ($item['id'] ?? 0) > 0));
         if ($predecessorId <= 0 || $cycleKey === '' || !$recipients) {
             flow_block_json_response(['ok' => false, 'message' => 'Não foi possível identificar a fila responsável pela aprovação.'], 422);
         }
@@ -709,7 +768,7 @@ try {
                 'tarefa_responsavel_id' => $task['colaborador_id'] ?? null,
                 'tarefa_responsavel_nome' => $blockedOwner,
             ], $requirement);
-            $meta = array_merge($context, ['contextual_approval' => true, 'aprovador_ids' => array_values(array_map(static fn($item) => (int) $item['id'], $recipients))]);
+            $meta = array_merge($context, ['contextual_approval' => true, 'aprovador_ids' => array_values(array_map(static fn ($item) => (int) $item['id'], $recipients))]);
             flow_block_add_activity($conn, $issueId, 'CRIADA', $description, $meta);
             $approversJson = json_encode($recipients, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $link = $conn->prepare('INSERT INTO flow_issue_dependencia (issue_id,requirement_code,tarefa_bloqueada_id,predecessora_funcao_imagem_id,approval_cycle_key,aprovacao_status,aprovadores_json) VALUES (?,?,?,?,?,?,?)');
@@ -728,7 +787,7 @@ try {
             flow_block_notify($conn, (int) $recipient['id'], $taskId, $message);
         }
         flow_block_publish_approval_dependency_request($conn, $issueId, [
-            'aprovador_ids' => array_values(array_map(static fn($item) => (int) $item['id'], $recipients)),
+            'aprovador_ids' => array_values(array_map(static fn ($item) => (int) $item['id'], $recipients)),
             'etapa_anterior' => $previousName,
             'imagem_nome' => $imageName,
             'etapa_bloqueada' => $blockedName,
@@ -743,20 +802,30 @@ try {
         $issueId = (int) ($payload['id'] ?? 0);
         $content = trim((string) ($payload['conteudo'] ?? ''));
         $mentionedIds = $payload['mencionados'] ?? [];
-        if (is_string($mentionedIds)) $mentionedIds = json_decode($mentionedIds, true) ?: [];
-        if (!is_array($mentionedIds)) $mentionedIds = [];
+        if (is_string($mentionedIds)) {
+            $mentionedIds = json_decode($mentionedIds, true) ?: [];
+        }
+        if (!is_array($mentionedIds)) {
+            $mentionedIds = [];
+        }
         $parentActivityId = (int) ($payload['atividade_pai_id'] ?? 0) ?: null;
         $files = $_FILES['files'] ?? null;
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
-        if ($content === '' && (!$files || !is_array($files['name'] ?? null))) flow_block_json_response(['ok' => false, 'message' => 'Escreva um comentário ou selecione um anexo.'], 422);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
+        if ($content === '' && (!$files || !is_array($files['name'] ?? null))) {
+            flow_block_json_response(['ok' => false, 'message' => 'Escreva um comentário ou selecione um anexo.'], 422);
+        }
         if ($parentActivityId) {
             $parent = $conn->prepare("SELECT id FROM flow_issue_atividade WHERE id=? AND issue_id=? AND tipo='COMENTARIO' AND excluido_em IS NULL LIMIT 1");
             $parent->bind_param('ii', $parentActivityId, $issueId);
             $parent->execute();
             $validParent = (bool) $parent->get_result()->fetch_row();
             $parent->close();
-            if (!$validParent) flow_block_json_response(['ok' => false, 'message' => 'Comentário de origem não encontrado.'], 422);
+            if (!$validParent) {
+                flow_block_json_response(['ok' => false, 'message' => 'Comentário de origem não encontrado.'], 422);
+            }
         }
         $conn->begin_transaction();
         flow_block_add_activity($conn, $issueId, $content !== '' ? 'COMENTARIO' : 'ANEXO', $content ?: 'Anexou arquivo(s).', [], $parentActivityId);
@@ -773,7 +842,9 @@ try {
             ? fb_save_attachments($conn, $issue, $activityId, $files, $actorId)
             : [];
         $conn->commit();
-        foreach ($newMentions as $mention) flow_block_publish_mention($mention);
+        foreach ($newMentions as $mention) {
+            flow_block_publish_mention($mention);
+        }
         flow_block_publish($issueId, (int) $issue['funcao_imagem_id'], $parentActivityId ? 'comment.replied' : 'comment.created');
         flow_block_json_response(['ok' => true, 'activity_id' => $activityId, 'attachments' => $attachments]);
     }
@@ -783,17 +854,27 @@ try {
         $activityId = (int) ($payload['atividade_id'] ?? 0);
         $content = trim((string) ($payload['conteudo'] ?? ''));
         $mentionedIds = $payload['mencionados'] ?? [];
-        if (!is_array($mentionedIds)) $mentionedIds = [];
+        if (!is_array($mentionedIds)) {
+            $mentionedIds = [];
+        }
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
-        if ($content === '') flow_block_json_response(['ok' => false, 'message' => 'O comentário não pode ficar vazio.'], 422);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
+        if ($content === '') {
+            flow_block_json_response(['ok' => false, 'message' => 'O comentário não pode ficar vazio.'], 422);
+        }
         $comment = $conn->prepare("SELECT * FROM flow_issue_atividade WHERE id=? AND issue_id=? AND tipo='COMENTARIO' AND excluido_em IS NULL LIMIT 1");
         $comment->bind_param('ii', $activityId, $issueId);
         $comment->execute();
         $activity = $comment->get_result()->fetch_assoc() ?: null;
         $comment->close();
-        if (!$activity) flow_block_json_response(['ok' => false, 'message' => 'Comentário não encontrado.'], 404);
-        if (!flow_block_is_manager() && (int) $activity['criado_por_colaborador_id'] !== $actorId) flow_block_json_response(['ok' => false, 'message' => 'Você não pode editar este comentário.'], 403);
+        if (!$activity) {
+            flow_block_json_response(['ok' => false, 'message' => 'Comentário não encontrado.'], 404);
+        }
+        if (!flow_block_is_manager() && (int) $activity['criado_por_colaborador_id'] !== $actorId) {
+            flow_block_json_response(['ok' => false, 'message' => 'Você não pode editar este comentário.'], 403);
+        }
         $conn->begin_transaction();
         $stmt = $conn->prepare('UPDATE flow_issue_atividade SET conteudo=?, atualizado_em=NOW() WHERE id=?');
         $stmt->bind_param('si', $content, $activityId);
@@ -801,7 +882,9 @@ try {
         $stmt->close();
         $newMentions = fb_add_mentions($conn, $issueId, $activityId, $mentionedIds, (int) $issue['funcao_imagem_id'], (string) $issue['codigo']);
         $conn->commit();
-        foreach ($newMentions as $mention) flow_block_publish_mention($mention);
+        foreach ($newMentions as $mention) {
+            flow_block_publish_mention($mention);
+        }
         flow_block_publish($issueId, (int) $issue['funcao_imagem_id'], 'comment.updated');
         flow_block_json_response(['ok' => true]);
     }
@@ -810,14 +893,20 @@ try {
         $issueId = (int) ($payload['id'] ?? 0);
         $activityId = (int) ($payload['atividade_id'] ?? 0);
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
         $comment = $conn->prepare("SELECT * FROM flow_issue_atividade WHERE id=? AND issue_id=? AND tipo='COMENTARIO' AND excluido_em IS NULL LIMIT 1");
         $comment->bind_param('ii', $activityId, $issueId);
         $comment->execute();
         $activity = $comment->get_result()->fetch_assoc() ?: null;
         $comment->close();
-        if (!$activity) flow_block_json_response(['ok' => false, 'message' => 'Comentário não encontrado.'], 404);
-        if (!flow_block_is_manager() && (int) $activity['criado_por_colaborador_id'] !== $actorId) flow_block_json_response(['ok' => false, 'message' => 'Você não pode excluir este comentário.'], 403);
+        if (!$activity) {
+            flow_block_json_response(['ok' => false, 'message' => 'Comentário não encontrado.'], 404);
+        }
+        if (!flow_block_is_manager() && (int) $activity['criado_por_colaborador_id'] !== $actorId) {
+            flow_block_json_response(['ok' => false, 'message' => 'Você não pode excluir este comentário.'], 403);
+        }
         $conn->begin_transaction();
         $stmt = $conn->prepare('UPDATE flow_issue_atividade SET conteudo=NULL, excluido_em=NOW(), excluido_por_colaborador_id=? WHERE id=?');
         $stmt->bind_param('ii', $actorId, $activityId);
@@ -835,47 +924,71 @@ try {
     if ($action === 'update') {
         $issueId = (int) ($payload['id'] ?? 0);
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
         $canEditAll = flow_block_is_manager() || (int) $issue['criado_por_colaborador_id'] === $actorId;
         $canReassign = flow_block_can_resolve_issue($issue);
-        if (!$canEditAll && !$canReassign) flow_block_json_response(['ok' => false, 'message' => 'Você não pode editar esta Issue.'], 403);
+        if (!$canEditAll && !$canReassign) {
+            flow_block_json_response(['ok' => false, 'message' => 'Você não pode editar esta Issue.'], 403);
+        }
         $fields = [];
         $types = '';
         $values = [];
         $changes = [];
         foreach (['tipo_id' => 'i', 'fila_id' => 'i', 'responsavel_colaborador_id' => 'i', 'urgencia' => 's', 'descricao' => 's', 'status' => 's'] as $field => $type) {
-            if (!array_key_exists($field, $payload)) continue;
-            if (!$canEditAll && $field !== 'responsavel_colaborador_id') continue;
+            if (!array_key_exists($field, $payload)) {
+                continue;
+            }
+            if (!$canEditAll && $field !== 'responsavel_colaborador_id') {
+                continue;
+            }
             $new = $payload[$field];
-            if ($field === 'responsavel_colaborador_id' || $field === 'fila_id') $new = (int) $new ?: null;
-            if ($field === 'tipo_id') $new = (int) $new;
+            if ($field === 'responsavel_colaborador_id' || $field === 'fila_id') {
+                $new = (int) $new ?: null;
+            }
+            if ($field === 'tipo_id') {
+                $new = (int) $new;
+            }
             if ($field === 'responsavel_colaborador_id' && $new !== null) {
                 $person = $conn->prepare('SELECT 1 FROM colaborador WHERE idcolaborador=? AND ativo=1 LIMIT 1');
                 $person->bind_param('i', $new);
                 $person->execute();
                 $validResponsible = (bool) $person->get_result()->fetch_row();
                 $person->close();
-                if (!$validResponsible) flow_block_json_response(['ok' => false, 'message' => 'Responsável inválido.'], 422);
+                if (!$validResponsible) {
+                    flow_block_json_response(['ok' => false, 'message' => 'Responsável inválido.'], 422);
+                }
             }
             if ($field === 'urgencia') {
                 $new = strtoupper((string) $new);
-                if (!in_array($new, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) continue;
+                if (!in_array($new, ['BAIXA', 'NORMAL', 'ALTA', 'CRITICA'], true)) {
+                    continue;
+                }
             }
             if ($field === 'descricao') {
                 $new = trim((string) $new);
-                if ($new === '') continue;
+                if ($new === '') {
+                    continue;
+                }
             }
             if ($field === 'status') {
                 $new = strtoupper((string) $new);
-                if (!in_array($new, ['ABERTA', 'AGUARDANDO_ACAO'], true)) continue;
+                if (!in_array($new, ['ABERTA', 'AGUARDANDO_ACAO'], true)) {
+                    continue;
+                }
             }
-            if ((string) $issue[$field] === (string) $new) continue;
+            if ((string) $issue[$field] === (string) $new) {
+                continue;
+            }
             $fields[] = "$field = ?";
             $types .= $type;
             $values[] = $new;
             $changes[$field] = ['antes' => $issue[$field], 'depois' => $new];
         }
-        if (!$fields) flow_block_json_response(['ok' => true, 'unchanged' => true]);
+        if (!$fields) {
+            flow_block_json_response(['ok' => true, 'unchanged' => true]);
+        }
         if (isset($changes['responsavel_colaborador_id'])) {
             // Reatribuição é uma tratativa e reinicia a cobrança de 2h para o novo responsável.
             $fields[] = 'primeira_tratativa_em = COALESCE(primeira_tratativa_em, NOW())';
@@ -889,7 +1002,9 @@ try {
         $stmt->execute();
         $stmt->close();
         flow_block_add_activity($conn, $issueId, 'ALTERADA', null, $changes);
-        if (isset($changes['responsavel_colaborador_id'])) flow_block_notify($conn, (int) $changes['responsavel_colaborador_id']['depois'], (int) $issue['funcao_imagem_id'], $issue['codigo'] . ' foi atribuída a você.');
+        if (isset($changes['responsavel_colaborador_id'])) {
+            flow_block_notify($conn, (int) $changes['responsavel_colaborador_id']['depois'], (int) $issue['funcao_imagem_id'], $issue['codigo'] . ' foi atribuída a você.');
+        }
         flow_block_publish($issueId, (int) $issue['funcao_imagem_id'], 'issue_updated');
         flow_block_json_response(['ok' => true]);
     }
@@ -901,24 +1016,36 @@ try {
         $returnAt = trim((string) ($payload['retorno_previsto_em'] ?? ''));
         $responsibleId = (int) ($payload['responsavel_id'] ?? 0) ?: null;
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
-        if (!flow_block_can_resolve_issue($issue)) flow_block_json_response(['ok' => false, 'message' => 'Somente o responsável ou a gestão pode pausar esta Issue.'], 403);
-        if (!in_array($issue['status'], ['ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA'], true)) flow_block_json_response(['ok' => false, 'message' => 'Esta Issue não pode ser pausada neste estado.'], 422);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
+        if (!flow_block_can_resolve_issue($issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Somente o responsável ou a gestão pode pausar esta Issue.'], 403);
+        }
+        if (!in_array($issue['status'], ['ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA'], true)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Esta Issue não pode ser pausada neste estado.'], 422);
+        }
         try {
             $returnDate = new DateTimeImmutable($returnAt);
-            if ($returnDate <= new DateTimeImmutable('now')) throw new RuntimeException();
+            if ($returnDate <= new DateTimeImmutable('now')) {
+                throw new RuntimeException();
+            }
             $returnSql = $returnDate->format('Y-m-d H:i:s');
         } catch (Throwable $e) {
             flow_block_json_response(['ok' => false, 'message' => 'Informe uma data e hora futura para o retorno.'], 422);
         }
-        if ($reason === '') flow_block_json_response(['ok' => false, 'message' => 'Informe o motivo da pausa.'], 422);
+        if ($reason === '') {
+            flow_block_json_response(['ok' => false, 'message' => 'Informe o motivo da pausa.'], 422);
+        }
         if ($responsibleId !== null) {
             $person = $conn->prepare('SELECT 1 FROM colaborador WHERE idcolaborador=? AND ativo=1 LIMIT 1');
             $person->bind_param('i', $responsibleId);
             $person->execute();
             $validResponsible = (bool) $person->get_result()->fetch_row();
             $person->close();
-            if (!$validResponsible) flow_block_json_response(['ok' => false, 'message' => 'Responsável inválido.'], 422);
+            if (!$validResponsible) {
+                flow_block_json_response(['ok' => false, 'message' => 'Responsável inválido.'], 422);
+            }
         }
         $updatingPause = $issue['status'] === 'PAUSADA';
         $conn->begin_transaction();
@@ -948,12 +1075,22 @@ try {
         $target = strtoupper((string) ($payload['status'] ?? ''));
         $comment = trim((string) ($payload['comentario'] ?? ''));
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
-        if (!in_array($target, ['RESOLVIDA', 'CANCELADA', 'ABERTA'], true)) flow_block_json_response(['ok' => false, 'message' => 'Estado inválido.'], 422);
-        if ($comment === '') flow_block_json_response(['ok' => false, 'message' => $target === 'ABERTA' ? 'Informe a justificativa para reabrir a Issue.' : 'Informe o comentário final da Issue.'], 422);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
+        if (!in_array($target, ['RESOLVIDA', 'CANCELADA', 'ABERTA'], true)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Estado inválido.'], 422);
+        }
+        if ($comment === '') {
+            flow_block_json_response(['ok' => false, 'message' => $target === 'ABERTA' ? 'Informe a justificativa para reabrir a Issue.' : 'Informe o comentário final da Issue.'], 422);
+        }
         if ($target === 'ABERTA') {
-            if ($issue['status'] !== 'RESOLVIDA' || !empty($issue['confirmada_em'])) flow_block_json_response(['ok' => false, 'message' => 'Apenas uma resolução aguardando confirmação pode ser reaberta.'], 422);
-            if (!flow_block_can_confirm_resolution($issue)) flow_block_json_response(['ok' => false, 'message' => 'Somente o dono da tarefa ou a gestão pode reabrir esta Issue.'], 403);
+            if ($issue['status'] !== 'RESOLVIDA' || !empty($issue['confirmada_em'])) {
+                flow_block_json_response(['ok' => false, 'message' => 'Apenas uma resolução aguardando confirmação pode ser reaberta.'], 422);
+            }
+            if (!flow_block_can_confirm_resolution($issue)) {
+                flow_block_json_response(['ok' => false, 'message' => 'Somente o dono da tarefa ou a gestão pode reabrir esta Issue.'], 403);
+            }
         } elseif (!in_array($issue['status'], ['ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA'], true)) {
             flow_block_json_response(['ok' => false, 'message' => 'Esta Issue não pode ser encerrada no estado atual.'], 422);
         } elseif (!flow_block_can_resolve_issue($issue)) {
@@ -1007,9 +1144,15 @@ try {
         $issueId = (int) ($payload['id'] ?? 0);
         $comment = trim((string) ($payload['comentario'] ?? ''));
         $issue = fb_get_issue($conn, $issueId);
-        if (!$issue || !fb_visible($conn, $issue)) flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
-        if ($issue['status'] !== 'RESOLVIDA' || !empty($issue['confirmada_em'])) flow_block_json_response(['ok' => false, 'message' => 'Esta resolução não está aguardando confirmação.'], 422);
-        if (!flow_block_can_confirm_resolution($issue)) flow_block_json_response(['ok' => false, 'message' => 'Somente o dono da tarefa ou a gestão pode confirmar esta resolução.'], 403);
+        if (!$issue || !fb_visible($conn, $issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Issue não encontrada.'], 404);
+        }
+        if ($issue['status'] !== 'RESOLVIDA' || !empty($issue['confirmada_em'])) {
+            flow_block_json_response(['ok' => false, 'message' => 'Esta resolução não está aguardando confirmação.'], 422);
+        }
+        if (!flow_block_can_confirm_resolution($issue)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Somente o dono da tarefa ou a gestão pode confirmar esta resolução.'], 403);
+        }
         $conn->begin_transaction();
         $stmt = $conn->prepare('UPDATE flow_issue SET confirmada_por_colaborador_id=?, confirmada_em=NOW(), confirmacao_observacao=? WHERE id=?');
         $stmt->bind_param('isi', $actorId, $comment, $issueId);
@@ -1035,8 +1178,12 @@ try {
         $newDeadline = trim((string) ($payload['prazo'] ?? ''));
         $replanNote = trim((string) ($payload['observacao'] ?? ''));
         $task = flow_block_task($conn, $taskId);
-        if (!$task || !flow_block_can_access_task($task)) flow_block_json_response(['ok' => false, 'message' => 'Tarefa não encontrada.'], 404);
-        if (($task['status'] ?? '') !== 'HOLD') flow_block_json_response(['ok' => false, 'message' => 'A tarefa não está em HOLD.'], 422);
+        if (!$task || !flow_block_can_access_task($task)) {
+            flow_block_json_response(['ok' => false, 'message' => 'Tarefa não encontrada.'], 404);
+        }
+        if (($task['status'] ?? '') !== 'HOLD') {
+            flow_block_json_response(['ok' => false, 'message' => 'A tarefa não está em HOLD.'], 422);
+        }
         $deadline = DateTimeImmutable::createFromFormat('!Y-m-d', $newDeadline);
         if (!$deadline || $deadline->format('Y-m-d') !== $newDeadline) {
             flow_block_json_response(['ok' => false, 'message' => 'Informe um novo prazo válido para continuar a tarefa.'], 422);
@@ -1096,7 +1243,9 @@ try {
         $lastIssue->close();
         if ($issueId > 0) {
             $content = 'Tarefa reprogramada de ' . ($previousDeadline ?: 'sem prazo') . ' para ' . $newDeadline . '.';
-            if ($replanNote !== '') $content .= ' ' . $replanNote;
+            if ($replanNote !== '') {
+                $content .= ' ' . $replanNote;
+            }
             flow_block_add_activity($conn, $issueId, 'TAREFA_REPROGRAMADA', $content, [
                 'status_anterior' => 'HOLD',
                 'status_novo' => 'Em andamento',

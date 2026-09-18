@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';

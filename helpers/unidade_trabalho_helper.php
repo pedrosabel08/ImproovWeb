@@ -178,10 +178,21 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId): array
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.colaborador_id, fi.status,
                 f.nome_funcao, ico.imagem_nome, o.nomenclatura
            FROM funcao_imagem fi
-           JOIN funcao f ON f.idfuncao = fi.funcao_id
-           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
-           JOIN obra o ON o.idobra = ico.obra_id
-          WHERE fi.colaborador_id = ? AND fi.status IN ('Em andamento', 'Ajuste')"
+          JOIN funcao f ON f.idfuncao = fi.funcao_id
+          JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+          JOIN obra o ON o.idobra = ico.obra_id
+          WHERE fi.colaborador_id = ? AND fi.status IN ('Em andamento', 'Ajuste')
+            -- Finalização/Alteração deixam de consumir WIP enquanto o
+            -- render correspondente está sendo processado no Deadline.
+            AND NOT (
+                fi.funcao_id IN (4, 6)
+                AND EXISTS (
+                    SELECT 1
+                    FROM render_alta ra
+                    WHERE ra.imagem_id = fi.imagem_id
+                      AND ra.status = 'Em andamento'
+                )
+            )"
     );
     $stmt->bind_param('i', $colaboradorId);
     $stmt->execute();
@@ -278,7 +289,16 @@ function flow_wip_contagens_colaboradores(mysqli $conn, array $colaboradorIds): 
         "SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, status
            FROM funcao_imagem
           WHERE colaborador_id IN ($marks)
-            AND status IN ('Em andamento', 'Ajuste')"
+            AND status IN ('Em andamento', 'Ajuste')
+            AND NOT (
+                funcao_id IN (4, 6)
+                AND EXISTS (
+                    SELECT 1
+                    FROM render_alta ra
+                    WHERE ra.imagem_id = funcao_imagem.imagem_id
+                      AND ra.status = 'Em andamento'
+                )
+            )"
     );
     $types = str_repeat('i', count($ids));
     $stmt->bind_param($types, ...$ids);

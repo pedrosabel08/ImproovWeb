@@ -84,6 +84,7 @@ function animateSireShell() {
       opacity: 0,
       x: -14,
       duration: 0.48,
+      clearProps: "transform,opacity",
     },
     "-=0.28",
   );

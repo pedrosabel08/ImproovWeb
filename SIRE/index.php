@@ -112,6 +112,7 @@ $sireAssetVersion = max(
 
     <!-- Módulo -->
     <link rel="stylesheet" href="<?php echo asset_url('catalogo.css') . '&sire=' . $sireAssetVersion; ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/master.css'); ?>">
 </head>
 
 <body>

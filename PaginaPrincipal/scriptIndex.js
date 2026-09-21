@@ -3075,89 +3075,12 @@ document.getElementById("modalDaily").style.display = "none";
 
 // checkDailyAccess agora retorna uma Promise
 function checkDailyAccess() {
-  return new Promise((resolve, reject) => {
-    const modalDaily = document.getElementById("modalDaily");
-    const dailyForm = document.getElementById("dailyForm");
-
-    if (modalDaily) modalDaily.style.display = "none";
-
-    fetch("verifica_respostas.php", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `idcolaborador=${idColaborador}`,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.hasResponses) {
-          // Se já respondeu, segue para checkRender
-          if (modalDaily) modalDaily.style.display = "none";
-          resolve();
-        } else {
-          // Se não respondeu, exibe modal e interrompe fluxo (não resolve ainda)
-          if (!dailyForm) {
-            reject();
-            return;
-          }
-
-          if (modalDaily) modalDaily.style.display = "flex";
-          // Resolve apenas após o envio do formulário
-          dailyForm.addEventListener("submit", function onSubmit(e) {
-            e.preventDefault();
-            this.removeEventListener("submit", onSubmit); // evita múltiplas submissões
-
-            const formData = new FormData(this);
-
-            fetch("submit_respostas.php", {
-              method: "POST",
-              body: formData,
-            })
-              .then((response) => response.json())
-              .then((data) => {
-                if (data.success) {
-                  if (modalDaily) modalDaily.style.display = "none";
-                  Swal.fire({
-                    icon: "success",
-                    text: "Respostas enviadas com sucesso!",
-                    showConfirmButton: false,
-                    timer: 1200,
-                  }).then(() => {
-                    if (typeof checkFuncoesEmAndamento === "function") {
-                      checkFuncoesEmAndamento(idColaborador)
-                        .catch((err) =>
-                          console.error(
-                            "Erro ao checar funções em andamento após Daily:",
-                            err,
-                          ),
-                        )
-                        .finally(() => resolve());
-                    } else {
-                      resolve();
-                    }
-                  });
-                } else {
-                  Swal.fire({
-                    icon: "error",
-                    text: "Erro ao enviar as tarefas, tente novamente!",
-                    showConfirmButton: false,
-                    timer: 2000,
-                  });
-                  reject(); // interrompe a sequência
-                }
-              })
-              .catch((error) => {
-                console.error("Erro:", error);
-                reject();
-              });
-          });
-        }
-      })
-      .catch((error) => {
-        console.error("Erro ao verificar respostas:", error);
-        reject();
-      });
-  });
+  // A Home é apresentada no primeiro acesso diário e substitui o bloqueio do
+  // formulário. O modal histórico é preservado, mas não interrompe mais o
+  // fluxo normal do Kanban para exigir respostas.
+  const modalDaily = document.getElementById("modalDaily");
+  if (modalDaily) modalDaily.style.display = "none";
+  return Promise.resolve();
 }
 
 function checkFuncoesSomentePrimeiroAcesso() {

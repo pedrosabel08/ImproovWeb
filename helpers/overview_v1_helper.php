@@ -565,14 +565,16 @@ function flow_overview_v1_excecoes_tarefas_gestor(mysqli $conn): array
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, string $section = 'all'): array
+function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, string $section = 'all', array $opcoes = []): array
 {
     $inicio = flow_overview_v1_inicio_semana();
     // A grade resumida reproduz o horizonte de oito semanas do Planejamento
     // de Capacidade, sem expor a composição de colaboradores.
     $fim = date('Y-m-d', strtotime($inicio . ' +55 days'));
     $alocacao = flow_alocacao_consultar($conn, $inicio, $fim);
-    $capacidade = flow_capacidade_consultar($conn, $inicio, $fim);
+    $incluirCapacidade = !array_key_exists('include_capacity', $opcoes) || (bool) $opcoes['include_capacity'];
+    $incluirMetricas = !array_key_exists('include_metrics', $opcoes) || (bool) $opcoes['include_metrics'];
+    $capacidade = $incluirCapacidade ? flow_capacidade_consultar($conn, $inicio, $fim) : [];
     $projecao = flow_fila_confirmada_projetar($conn);
     $modulosAtencao = flow_overview_v1_modulos_atencao($pendenciasOperacionais);
     $atencao = flow_overview_v1_atencao_pendencias($modulosAtencao, null, 50);
@@ -594,42 +596,36 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
     $resultado = ['mode' => 'manager', 'summary' => ['critical_count' => count(array_filter($lista, static fn (array $item): bool => $item['severity'] === 'critical')), 'attention_count' => count($lista)], 'attention' => array_slice($lista, 0, 6), 'attention_modules' => $modulosAtencao];
     if ($section !== 'critical') {
         $resultado['team'] = flow_overview_v1_equipes($conn, $alocacao);
-        $etapasPorCodigo = [];
-        foreach ((array) ($capacidade['etapas'] ?? []) as $etapa) {
-            $etapasPorCodigo[(string) ($etapa['codigo_etapa'] ?? '')] = $etapa;
-        }
-        $semanas = [];
-        for ($indice = 0; $indice < 3; $indice++) {
-            $semanas[] = date('Y-m-d', strtotime($inicio . ' +' . ($indice * 7) . ' days'));
-        }
-        $resultado['capacity'] = array_map(static function (array $catalogo) use ($etapasPorCodigo, $semanas, $capacidade): array {
-            $codigo = (string) ($catalogo['codigo_etapa'] ?? '');
-            $etapa = (array) ($etapasPorCodigo[$codigo] ?? []);
-            $capacidadePrincipal = (float) (($capacidade['capacidades'][$codigo]['capacidade_principal'] ?? 0));
-            $porSemana = [];
-            foreach ((array) ($etapa['semanas'] ?? []) as $semana) {
-                $porSemana[(string) ($semana['semana'] ?? '')] = $semana;
+        if ($incluirCapacidade) {
+            $etapasPorCodigo = [];
+            foreach ((array) ($capacidade['etapas'] ?? []) as $etapa) {
+                $etapasPorCodigo[(string) ($etapa['codigo_etapa'] ?? '')] = $etapa;
             }
-            $weeks = array_map(static function (string $semana) use ($porSemana, $capacidadePrincipal): array {
-                $item = (array) ($porSemana[$semana] ?? []);
-                return [
-                    'semana' => $semana,
-                    'pico_demanda' => (float) ($item['pico_demanda'] ?? 0),
-                    'capacidade_principal_referencia' => $item['capacidade_principal_referencia'] ?? $capacidadePrincipal,
-                    'classificacao' => (string) ($item['classificacao'] ?? 'SEM_DEMANDA'),
-                ];
-            }, $semanas);
-            return [
-                'code' => $codigo,
-                'name' => (string) ($catalogo['nome_painel'] ?? $catalogo['etapa'] ?? 'Função'),
-                'classification' => (string) ($etapa['classificacao'] ?? 'SEM_DEMANDA'),
-                'weeks' => $weeks,
-            ];
-        }, array_slice((array) ($capacidade['catalogo_etapas'] ?? []), 0, 8));
+            $semanas = [];
+            for ($indice = 0; $indice < 3; $indice++) {
+                $semanas[] = date('Y-m-d', strtotime($inicio . ' +' . ($indice * 7) . ' days'));
+            }
+            $resultado['capacity'] = array_map(static function (array $catalogo) use ($etapasPorCodigo, $semanas, $capacidade): array {
+                $codigo = (string) ($catalogo['codigo_etapa'] ?? '');
+                $etapa = (array) ($etapasPorCodigo[$codigo] ?? []);
+                $capacidadePrincipal = (float) (($capacidade['capacidades'][$codigo]['capacidade_principal'] ?? 0));
+                $porSemana = [];
+                foreach ((array) ($etapa['semanas'] ?? []) as $semana) {
+                    $porSemana[(string) ($semana['semana'] ?? '')] = $semana;
+                }
+                $weeks = array_map(static function (string $semana) use ($porSemana, $capacidadePrincipal): array {
+                    $item = (array) ($porSemana[$semana] ?? []);
+                    return ['semana' => $semana, 'pico_demanda' => (float) ($item['pico_demanda'] ?? 0), 'capacidade_principal_referencia' => $item['capacidade_principal_referencia'] ?? $capacidadePrincipal, 'classificacao' => (string) ($item['classificacao'] ?? 'SEM_DEMANDA')];
+                }, $semanas);
+                return ['code' => $codigo, 'name' => (string) ($catalogo['nome_painel'] ?? $catalogo['etapa'] ?? 'Função'), 'classification' => (string) ($etapa['classificacao'] ?? 'SEM_DEMANDA'), 'weeks' => $weeks];
+            }, array_slice((array) ($capacidade['catalogo_etapas'] ?? []), 0, 8));
+        }
         $resultado['risks'] = array_slice($riscos, 0, 5);
-        $resultado['original_deadlines'] = flow_overview_v1_atrasos_prazo_original($conn);
-        $resultado['summary']['original_overdue_count'] = count($resultado['original_deadlines']);
-        $resultado['production'] = flow_overview_v1_metricas_conclusao($conn);
+        if ($incluirMetricas) {
+            $resultado['original_deadlines'] = flow_overview_v1_atrasos_prazo_original($conn);
+            $resultado['summary']['original_overdue_count'] = count($resultado['original_deadlines']);
+            $resultado['production'] = flow_overview_v1_metricas_conclusao($conn);
+        }
     }
     return $resultado;
 }

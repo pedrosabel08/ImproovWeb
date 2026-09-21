@@ -96,6 +96,9 @@ function dashboard_colaborador_normalizar_tarefa(array $tarefa): array
     $bloqueada = !$finalizada && ($hold || $flowBlockAtivo || $impedidaInicio);
     $prazo = dashboard_colaborador_prazo_efetivo($tarefa);
     $planejamento = (array) ($tarefa['planejamento'] ?? []);
+    $janelaOperacional = isset($tarefa['janela_operacional']) && is_array($tarefa['janela_operacional'])
+        ? $tarefa['janela_operacional']
+        : null;
     $statusTemporal = flow_tarefa_planejamento_status_temporal(
         $prazo['prazo'],
         $status,

@@ -49,6 +49,19 @@ if (!$stmt2->execute()) {
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
+require_once __DIR__ . '/helpers/home_daily_access_helper.php';
+$homeDailyAccess = home_daily_register_first_access(
+    $conn,
+    (int) $idusuario,
+    (int) $idcolaborador,
+    (string) $nome_usuario
+);
+if (!empty($homeDailyAccess['first_access'])) {
+    $conn->close();
+    header('Location: PaginaPrincipal/Home/');
+    exit;
+}
+
 
 $sql_finalizadas = "SELECT COUNT(*) as count_finalizadas FROM funcao_imagem WHERE status = 'Finalizado' AND colaborador_id = ?";
 $stmt_finalizadas = $conn->prepare($sql_finalizadas);

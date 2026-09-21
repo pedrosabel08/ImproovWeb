@@ -964,6 +964,14 @@ $ordemFuncoes = [
 $funcoesFinal = [];
 $ordemIds = array_keys($ordemFuncoes);
 
+// A decisão continua no Motor de Requisitos. Apenas as evidências que ele
+// consulta repetidamente são carregadas uma vez para a fila atual.
+$tarefasParaAvaliarRequisitos = array_map(
+    static fn (array $funcao): int => (int) ($funcao['idfuncao_imagem'] ?? 0),
+    array_filter($funcoes, static fn (array $funcao): bool => (string) ($funcao['status'] ?? '') === 'Não iniciado')
+);
+motor_requisitos_preparar_lote($conn, $tarefasParaAvaliarRequisitos);
+
 // ====================
 // Descobre a primeira função REAL de cada imagem (USANDO todasFuncoes)
 // ====================

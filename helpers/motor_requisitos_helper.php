@@ -132,6 +132,11 @@ function motor_requisitos_tem_bloqueio_producao(array $resultado): bool
 
 function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
 {
+    $cacheKey = spl_object_id($conn);
+    $cache = (array) ($GLOBALS['MOTOR_REQUISITOS_CACHE'][$cacheKey]['checklists'] ?? []);
+    if (array_key_exists($obraId, $cache)) {
+        return $cache[$obraId] ?: null;
+    }
     // Consulta o checklist de Projeto da obra, incluindo a sua versão e o
     // responsável. A versão evita aplicar requisitos novos a checklists legados.
     $stmt = $conn->prepare(
@@ -149,18 +154,154 @@ function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+    $GLOBALS['MOTOR_REQUISITOS_CACHE'][$cacheKey]['checklists'][$obraId] = $row ?: false;
     return $row ?: null;
 }
 
 function motor_requisitos_itens_projeto(mysqli $conn, int $checklistId): array
 {
+    $cacheKey = spl_object_id($conn);
+    $cache = (array) ($GLOBALS['MOTOR_REQUISITOS_CACHE'][$cacheKey]['checklist_items'] ?? []);
+    if (array_key_exists($checklistId, $cache)) {
+        return $cache[$checklistId];
+    }
     // Indexa os itens pelo código para que as regras abaixo façam consulta em
     // memória, sem disparar uma query para cada requisito do projeto.
     $items = [];
     foreach (pendencias_operacionais_fetch_checklist_items($conn, $checklistId) as $row) {
         $items[(string) $row['item_key']] = $row;
     }
+    $GLOBALS['MOTOR_REQUISITOS_CACHE'][$cacheKey]['checklist_items'][$checklistId] = $items;
     return $items;
+}
+
+/**
+ * Prepara evidências repetidamente consultadas pelo Motor de Requisitos para
+ * uma fila de tarefas. A política de elegibilidade permanece em
+ * motor_requisitos_avaliar_funcao_imagem(); este cache apenas substitui reads
+ * por tarefa por mapas indexados na requisição atual.
+ */
+function motor_requisitos_preparar_lote(mysqli $conn, array $funcaoImagemIds): void
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $funcaoImagemIds))));
+    if (!$ids) {
+        return;
+    }
+
+    $cacheKey = spl_object_id($conn);
+    $cache = (array) ($GLOBALS['MOTOR_REQUISITOS_CACHE'][$cacheKey] ?? []);
+    $novosIds = array_values(array_diff($ids, array_keys((array) ($cache['contexts'] ?? []))));
+    if (!$novosIds) {
+        return;
+    }
+
+    $idsSql = implode(',', $novosIds);
+    $sqlContextos = "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
+                            f.nome_funcao, ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id,
+                            ico.imagem_principal_id, o.liberar_modelagem,
+                            c.nome_colaborador AS tarefa_responsavel_nome,
+                            ico.status_id AS imagem_status_id, si.nome_status AS imagem_status_nome,
+                            principal.imagem_nome AS imagem_principal_nome,
+                            principal.tipo_imagem AS imagem_principal_tipo_imagem,
+                            principal.subtipo_id AS imagem_principal_subtipo_id,
+                            principal.status_id AS imagem_principal_status_id,
+                            principalStatus.nome_status AS imagem_principal_status_nome
+                       FROM funcao_imagem fi
+                       JOIN funcao f ON f.idfuncao = fi.funcao_id
+                       JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+                       JOIN obra o ON o.idobra = ico.obra_id
+                       LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
+                       LEFT JOIN imagens_cliente_obra principal ON principal.idimagens_cliente_obra = ico.imagem_principal_id
+                       LEFT JOIN status_imagem principalStatus ON principalStatus.idstatus = principal.status_id
+                       LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+                      WHERE fi.idfuncao_imagem IN ({$idsSql})";
+    $result = $conn->query($sqlContextos);
+    $contexts = (array) ($cache['contexts'] ?? []);
+    $imagemIds = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $taskId = (int) $row['idfuncao_imagem'];
+            $contexts[$taskId] = $row;
+            $imagemIds[] = (int) $row['imagem_id'];
+            $imagemPrincipalId = (int) ($row['imagem_principal_id'] ?? 0);
+            if ($imagemPrincipalId > 0) {
+                $imagemIds[] = $imagemPrincipalId;
+            }
+        }
+        $result->close();
+    }
+    foreach ($novosIds as $taskId) {
+        $contexts[$taskId] = $contexts[$taskId] ?? false;
+    }
+    $cache['contexts'] = $contexts;
+
+    $imagemIds = array_values(array_unique(array_filter($imagemIds)));
+    if ($imagemIds) {
+        $imagensSql = implode(',', $imagemIds);
+        $sqlPredecessoras = "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id,
+                                      fi.requires_file_upload, fi.file_uploaded_at, c.nome_colaborador, f.nome_funcao,
+                                      ico.imagem_nome, ico.status_id AS imagem_status_id
+                                 FROM funcao_imagem fi
+                                 LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+                                 JOIN funcao f ON f.idfuncao = fi.funcao_id
+                                 JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+                                WHERE fi.imagem_id IN ({$imagensSql})";
+        $result = $conn->query($sqlPredecessoras);
+        $predecessoras = (array) ($cache['predecessoras'] ?? []);
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $key = (int) $row['imagem_id'] . ':' . (int) $row['funcao_id'];
+                if (!isset($predecessoras[$key])) {
+                    $predecessoras[$key] = $row;
+                }
+            }
+            $result->close();
+        }
+        $cache['predecessoras'] = $predecessoras;
+        $cache['predecessoras_imagens'] = array_fill_keys($imagemIds, true);
+    }
+
+    if (flow_block_has_tables($conn)) {
+        $sqlIssues = "SELECT i.id, i.codigo, i.status, i.confirmada_em, i.funcao_imagem_id, a.metadados
+                        FROM flow_issue i
+                        LEFT JOIN flow_issue_atividade a
+                          ON a.id = (SELECT ia.id FROM flow_issue_atividade ia WHERE ia.issue_id = i.id AND ia.tipo = 'CRIADA' ORDER BY ia.id ASC LIMIT 1)
+                       WHERE i.funcao_imagem_id IN ({$idsSql})
+                         AND i.bloqueante = 1
+                         AND (i.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL))
+                       ORDER BY i.atualizado_em DESC, i.id DESC";
+        $result = $conn->query($sqlIssues);
+        $issues = (array) ($cache['issues'] ?? []);
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $context = !empty($row['metadados']) ? json_decode((string) $row['metadados'], true) : null;
+                $requirementCode = is_array($context) ? trim((string) ($context['requirement_code'] ?? '')) : '';
+                if ($requirementCode === '') {
+                    continue;
+                }
+                $taskId = (int) $row['funcao_imagem_id'];
+                if (!isset($issues[$taskId][$requirementCode])) {
+                    unset($row['funcao_imagem_id'], $row['metadados']);
+                    $row['context'] = $context;
+                    $issues[$taskId][$requirementCode] = $row;
+                }
+            }
+            $result->close();
+        }
+        $cache['issues'] = $issues;
+        $cache['issues_ready'] = true;
+    }
+
+    $GLOBALS['MOTOR_REQUISITOS_CACHE'][$cacheKey] = $cache;
+}
+
+function motor_requisitos_contexto_lote(mysqli $conn, int $funcaoImagemId): ?array
+{
+    $cache = (array) ($GLOBALS['MOTOR_REQUISITOS_CACHE'][spl_object_id($conn)] ?? []);
+    if (!array_key_exists($funcaoImagemId, (array) ($cache['contexts'] ?? []))) {
+        return null;
+    }
+    return $cache['contexts'][$funcaoImagemId] ?: null;
 }
 
 function motor_requisitos_projeto(
@@ -340,7 +481,13 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
         $requirement['flow_block'] = ['action' => 'disabled'];
         return $requirement;
     }
-    if ($state !== 'NAO_ATENDIDO' || empty($taskContext['idfuncao_imagem']) || !flow_block_has_tables($conn)) {
+    if ($state !== 'NAO_ATENDIDO' || empty($taskContext['idfuncao_imagem'])) {
+        return $requirement;
+    }
+
+    $cache = (array) ($GLOBALS['MOTOR_REQUISITOS_CACHE'][spl_object_id($conn)] ?? []);
+    $issuesPrepared = !empty($cache['issues_ready']);
+    if (!$issuesPrepared && !flow_block_has_tables($conn)) {
         return $requirement;
     }
 
@@ -352,11 +499,15 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
         if ($code === '') {
             continue;
         }
-        $issue = flow_block_find_active_issue_by_requirement(
-            $conn,
-            (int) $taskContext['idfuncao_imagem'],
-            $code
-        );
+        if ($issuesPrepared) {
+            $issue = $cache['issues'][(int) $taskContext['idfuncao_imagem']][$code] ?? null;
+        } else {
+            $issue = flow_block_find_active_issue_by_requirement(
+                $conn,
+                (int) $taskContext['idfuncao_imagem'],
+                $code
+            );
+        }
         if ($issue) {
             break;
         }
@@ -379,6 +530,10 @@ function motor_requisitos_enriquecer_requisito_flow_block(mysqli $conn, array $t
 
 function motor_requisitos_predecessora(mysqli $conn, int $imagemId, int $funcaoId): ?array
 {
+    $cache = (array) ($GLOBALS['MOTOR_REQUISITOS_CACHE'][spl_object_id($conn)] ?? []);
+    if (!empty($cache['predecessoras_imagens'][$imagemId])) {
+        return $cache['predecessoras'][$imagemId . ':' . $funcaoId] ?? null;
+    }
     // Busca exatamente a função pedida da MESMA imagem. A imagem é um
     // parâmetro obrigatório justamente para não misturar pendências entre imagens.
     $stmt = $conn->prepare(
@@ -746,6 +901,8 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     // Carrega em uma única query o contexto da tarefa atual e, quando existir,
     // os dados da imagem principal. Os dados da principal são necessários às
     // regras já existentes de Finalização de imagens secundárias.
+    $context = motor_requisitos_contexto_lote($conn, $funcaoImagemId);
+    if (!$context) {
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
                 f.nome_funcao,
@@ -774,6 +931,7 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     $stmt->execute();
     $context = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+    }
     if (!$context) {
         return motor_requisitos_resultado(true, [], false, 'Tarefa de imagem não localizada para avaliação.');
     }

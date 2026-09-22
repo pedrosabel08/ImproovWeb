@@ -14,9 +14,9 @@ class FlowWipException extends DomainException
 {
     private array $contexto;
 
-    public function __construct(array $contexto = [])
+    public function __construct(array $contexto = [], ?string $message = null)
     {
-        parent::__construct('Você já possui trabalho iniciado aguardando sua ação. Conclua ou avance essas tarefas antes de iniciar uma nova.');
+        parent::__construct($message ?: 'Você já possui trabalho iniciado aguardando sua ação. Conclua ou avance essas tarefas antes de iniciar uma nova.');
         $this->contexto = $contexto;
     }
 
@@ -29,6 +29,20 @@ class FlowWipException extends DomainException
 function flow_wip_status_ativo(?string $status): bool
 {
     return in_array(trim((string) $status), ['Em andamento', 'Ajuste'], true);
+}
+
+/**
+ * Um ajuste aguardando início ainda não representa trabalho em execução.
+ * Portanto, somente uma tarefa efetivamente Em andamento bloqueia outro ajuste.
+ */
+function flow_wip_status_bloqueia_inicio_ajuste(?string $status): bool
+{
+    return trim((string) $status) === 'Em andamento';
+}
+
+function flow_wip_statuses_ativos(bool $incluirAjuste = true): array
+{
+    return $incluirAjuste ? ['Em andamento', 'Ajuste'] : ['Em andamento'];
 }
 
 function flow_unidade_consumo_wip(array $members): int
@@ -172,8 +186,10 @@ function flow_unidade_chave_candidata_funcao(mysqli $conn, array $task): string
 }
 
 /** Retorna unidades, não quantidade bruta de registros ativos. */
-function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId): array
+function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId, bool $incluirAjuste = true): array
 {
+    $statusAtivos = flow_wip_statuses_ativos($incluirAjuste);
+    $statusMarks = implode(',', array_fill(0, count($statusAtivos), '?'));
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.colaborador_id, fi.status,
                 f.nome_funcao, ico.imagem_nome, o.nomenclatura
@@ -181,7 +197,7 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId): array
           JOIN funcao f ON f.idfuncao = fi.funcao_id
           JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
           JOIN obra o ON o.idobra = ico.obra_id
-          WHERE fi.colaborador_id = ? AND fi.status IN ('Em andamento', 'Ajuste')
+          WHERE fi.colaborador_id = ? AND fi.status IN ($statusMarks)
             -- Finalização/Alteração deixam de consumir WIP enquanto o
             -- render correspondente está sendo processado no Deadline.
             AND NOT (
@@ -194,7 +210,9 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId): array
                 )
             )"
     );
-    $stmt->bind_param('i', $colaboradorId);
+    $types = 'i' . str_repeat('s', count($statusAtivos));
+    $params = array_merge([$colaboradorId], $statusAtivos);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -244,9 +262,9 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId): array
         ['table' => 'tarefas', 'id' => 'id', 'prefix' => 'TAREFA'],
     ] as $source) {
         try {
-            $sql = "SELECT {$source['id']} id FROM {$source['table']} WHERE colaborador_id = ? AND status IN ('Em andamento', 'Ajuste')";
+            $sql = "SELECT {$source['id']} id FROM {$source['table']} WHERE colaborador_id = ? AND status IN ($statusMarks)";
             $other = $conn->prepare($sql);
-            $other->bind_param('i', $colaboradorId);
+            $other->bind_param($types, ...$params);
             $other->execute();
             $result = $other->get_result();
             while ($row = $result->fetch_assoc()) {
@@ -261,9 +279,9 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId): array
     return array_values($units);
 }
 
-function flow_wip_resumo(mysqli $conn, int $colaboradorId, ?string $candidateKey = null): array
+function flow_wip_resumo(mysqli $conn, int $colaboradorId, ?string $candidateKey = null, bool $incluirAjuste = true): array
 {
-    $units = flow_wip_unidades_ativas($conn, $colaboradorId);
+    $units = flow_wip_unidades_ativas($conn, $colaboradorId, $incluirAjuste);
     $blocking = flow_wip_unidades_bloqueantes($units, $candidateKey);
     return [
         'limit' => FLOW_WIP_LIMIT,
@@ -360,6 +378,25 @@ function flow_wip_assert_novo_inicio(mysqli $conn, int $colaboradorId, ?array $c
     $summary = flow_wip_resumo($conn, $colaboradorId, $candidateKey);
     if (!$summary['can_start_new']) {
         throw new FlowWipException($summary);
+    }
+    return $summary;
+}
+
+/**
+ * Ajustes aguardando início não consomem WIP. A retomada só é bloqueada
+ * quando já existe alguma tarefa efetivamente Em andamento para a pessoa.
+ */
+function flow_wip_assert_inicio_ajuste(mysqli $conn, int $colaboradorId): array
+{
+    flow_wip_bloquear_colaborador($conn, $colaboradorId);
+    // Se outro membro da mesma unidade estiver Em andamento, ele também deve
+    // bloquear: a regra é não haver nenhuma tarefa em execução.
+    $summary = flow_wip_resumo($conn, $colaboradorId, null, false);
+    if (!$summary['can_start_new']) {
+        throw new FlowWipException(
+            $summary,
+            'Você já possui uma tarefa Em andamento. Envie-a para aprovação antes de iniciar este ajuste.'
+        );
     }
     return $summary;
 }

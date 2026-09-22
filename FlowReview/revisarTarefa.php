@@ -836,6 +836,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             $stmt->close();
 
+            // A devolução para ajuste abre o próximo ciclo antes que o
+            // colaborador escolha quando iniciará a execução. A criação não
+            // depende do atalho visual do Flow Review.
+            if (
+                $status === 'Ajuste'
+                && normalize_name((string) $status_funcao_context) === 'em aprovacao'
+                && flow_janela_schema_disponivel($conn)
+            ) {
+                flow_janela_criar_ciclo_aguardando_inicio(
+                    $conn,
+                    (int) $idfuncao_imagem,
+                    (int) ($_SESSION['idcolaborador'] ?? 0) ?: null,
+                    (int) ($_SESSION['idusuario'] ?? 0) ?: null
+                );
+            }
+
             // Reset prioridade ao aprovar (qualquer tipo de aprovação)
             if (in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'])) {
                 $stmtPrio = $conn->prepare(

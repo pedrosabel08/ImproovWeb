@@ -8281,6 +8281,37 @@ tr.prod-row-recorde td {
   top: 51px;
 }
 
+#kanban-section .angle-science-ribbon {
+  align-items: center;
+  align-self: flex-start;
+  background: #e2f3ef;
+  border: 1px solid #9bcfc2;
+  border-radius: 4px;
+  color: #17695a;
+  display: inline-flex;
+  font-size: 0.63rem;
+  font-weight: 700;
+  gap: 4px;
+  line-height: 1.2;
+  max-width: 100%;
+  min-height: 18px;
+  padding: 3px 5px;
+}
+
+.tp-preview-wrap.tp-angle-science-highlight {
+  animation: tp-angle-science-pulse 1.25s ease-out both;
+}
+
+@keyframes tp-angle-science-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 123, 104, 0); border-color: transparent; }
+  22% { box-shadow: 0 0 0 5px rgba(22, 123, 104, 0.22); border-color: #167b68; }
+  55% { box-shadow: 0 0 0 8px rgba(22, 123, 104, 0.08); border-color: #5eb4a2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-preview-wrap.tp-angle-science-highlight { animation: none; border: 2px solid #167b68; }
+}
+
 #kanban-section .pending-file-ribbon i,
 #kanban-section .pending-render-ribbon i,
 #kanban-section .pending-checklist-ribbon i {

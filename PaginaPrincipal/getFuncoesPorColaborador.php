@@ -269,6 +269,13 @@ $sql = "SELECT
           AND n.lida = 0
           AND n.colaborador_id = ?
     ) AS notificacoes_nao_lidas,
+    EXISTS(
+        SELECT 1
+        FROM funcao_imagem_angulo_ciencia ac
+        WHERE ac.funcao_imagem_id = fi.idfuncao_imagem
+          AND ac.colaborador_id = ?
+          AND ac.visualizado_em IS NULL
+    ) AS angulo_ciencia_pendente,
     (
         SELECT hi2.imagem
         FROM historico_aprovacoes_imagens hi2
@@ -293,8 +300,8 @@ ORDER BY requires_render_send DESC, requires_file_upload DESC, notificacoes_nao_
           'Em aprovação','Aguardando Direção','Aprovado com ajustes','Aprovado','Finalizado')";
 
 $stmt = $conn->prepare($sql);
-// há dois placeholders: um no subquery (colaborador_id) e outro no WHERE fi.colaborador_id
-$stmt->bind_param("ii", $colaboradorId, $colaboradorId);
+// Ciência de ângulo, notificações e filtro usam o mesmo colaborador efetivo.
+$stmt->bind_param("iii", $colaboradorId, $colaboradorId, $colaboradorId);
 $stmt->execute();
 $result = $stmt->get_result();
 $funcoes = $result->fetch_all(MYSQLI_ASSOC);
@@ -1147,6 +1154,7 @@ foreach ($funcoes as $funcao) {
         'observacao'                 => $funcao['observacao'],
         'tempo_calculado'            => $tempoCalculado,
         'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0,
+        'angulo_ciencia_pendente'    => (int) ($funcao['angulo_ciencia_pendente'] ?? 0),
         'file_uploaded_at'           => $funcao['file_uploaded_at'],
         'requires_file_upload'       => $funcao['requires_file_upload'],
         'requires_render_send'       => isset($funcao['requires_render_send']) ? intval($funcao['requires_render_send']) : 0,

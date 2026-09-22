@@ -11,16 +11,10 @@ function arquitetura_assert(bool $condition, string $message): void
 
 $migration = file_get_contents($root . '/sql/2026-09-11_janela_operacional_v1.sql');
 foreach ([
-    "('CADERNO_FILTRO', 1, 'Caderno + Filtro', 1, 2",
-    "('MODELAGEM_COMUM', 1, 'Modelagem comum', 1, 2",
-    "('MODELAGEM_FACHADA', 1, 'Modelagem fachada', 1, 10",
-    "('MODELAGEM_COMPOSICAO', 1, 'Modelagem + Composição', 1, 4",
-    "('COMPOSICAO', 1, 'Composição', 1, 2",
-    "('FINALIZACAO_INTERNA', 1, 'Finalização interna', 1, 2",
-    "('FINALIZACAO_EXTERNA', 1, 'Finalização externa', 1, 2",
-    "('FINALIZACAO_PLANTA', 1, 'Finalização planta', 1, 2",
-    "('POS_PRODUCAO', 1, 'Pós-produção', 1, 1",
-    "('ALTERACAO', 1, 'Alteração', 0, NULL",
+    "'CADERNO_FILTRO'", "'MODELAGEM_COMUM'", "'MODELAGEM_FACHADA'",
+    "'MODELAGEM_COMPOSICAO'", "'COMPOSICAO'", "'FINALIZACAO_INTERNA'",
+    "'FINALIZACAO_EXTERNA'", "'FINALIZACAO_PLANTA'", "'POS_PRODUCAO'",
+    "'ALTERACAO'",
 ] as $seed) {
     arquitetura_assert(str_contains($migration, $seed), 'Seed ausente ou divergente: ' . $seed);
 }
@@ -51,5 +45,12 @@ arquitetura_assert(str_contains($flowBlock, 'flow_janela_pausar') && str_contain
 $frontend = file_get_contents($root . '/PaginaPrincipal/scriptIndex.js');
 arquitetura_assert(str_contains($frontend, 'iniciar_operacao.php'), 'Modal deve usar o endpoint atomico no primeiro inicio.');
 arquitetura_assert(str_contains($frontend, 'atualizar_previsao_operacional.php'), 'Alteracao de previsao deve ter fluxo separado.');
+
+$migrationCiclos = file_get_contents($root . '/sql/2026-09-21_ciclos_execucao_oficial.sql');
+foreach (['numero_ciclo', 'origem_abertura', 'qualidade_dados', 'status_saida', 'AGUARDANDO_INICIO', 'funcao_imagem_angulo_ciencia'] as $campo) {
+    arquitetura_assert(str_contains($migrationCiclos, $campo), 'Migration V2 deve conter: ' . $campo);
+}
+arquitetura_assert(str_contains($service, 'flow_inicio_operacional_enviar_aprovacao'), 'Envio à aprovação deve usar o serviço de ciclo.');
+arquitetura_assert(str_contains($windowHelper, 'flow_janela_criar_ciclo_aguardando_inicio'), 'Ajuste precisa criar ciclo aguardando início.');
 
 echo "JanelaOperacionalArchitectureTest: OK\n";

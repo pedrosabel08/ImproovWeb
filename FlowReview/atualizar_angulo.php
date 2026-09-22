@@ -12,6 +12,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
+require_once __DIR__ . '/../helpers/angulo_ciencia_helper.php';
 require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 
@@ -982,6 +983,16 @@ try {
         }
         $historicoAprovacaoId = (int)$conn->insert_id;
         $insHist->close();
+    }
+
+    if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
+        flow_angulo_ciencia_registrar(
+            $conn,
+            (int) $funcao_imagem_id,
+            (int) $historico_id,
+            (int) $colaborador_id,
+            $respHist > 0 ? (int) $respHist : null
+        );
     }
 
     $flowBlocksResolvidosPeloReview = flow_block_resolve_review_approval_blocks(

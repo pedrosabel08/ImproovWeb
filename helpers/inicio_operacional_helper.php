@@ -131,22 +131,34 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
         }
     }
     $unidade = flow_janela_resolver_unidade($conn, $tarefaId, true, $iniciarConjunto);
+    $origemAcionamento = (string) ($entrada['origem_acionamento'] ?? 'KANBAN');
+    if (
+        $origemAcionamento === 'FLOW_REVIEW_PLAY'
+        && (int) ($unidade['tarefa_principal']['colaborador_id'] ?? 0) !== (int) $atorColaboradorId
+    ) {
+        throw new DomainException('Somente o responsavel pela tarefa pode iniciar os ajustes pelo Flow Review.');
+    }
     flow_inicio_operacional_validar_permissao($unidade['tarefa_principal'], $atorColaboradorId, $nivelAcesso);
 
     $statusMembros = array_values(array_unique(array_map(static fn (array $m): string => (string) $m['status'], $unidade['membros'])));
     $primeiroInicio = count($statusMembros) === 1 && $statusMembros[0] === 'Não iniciado';
     $statusReabriveis = ['Aprovado', 'Aprovado com ajustes', 'Finalizado'];
+    $inicioAjuste = count($statusMembros) === 1 && $statusMembros[0] === 'Ajuste';
     $ultimoCicloExistente = flow_janela_ultimo_ciclo_por_tarefa($conn, $tarefaId, true);
     $reabertura = (!$primeiroInicio && !array_diff($statusMembros, $statusReabriveis))
         || ($primeiroInicio && !empty($ultimoCicloExistente));
-    if (!$primeiroInicio && !$reabertura) {
+    if (!$primeiroInicio && !$reabertura && !$inicioAjuste) {
         throw new DomainException('A unidade mudou desde que o modal foi aberto. Atualize a tela e tente novamente.');
     }
-    if ($iniciarConjunto && (!$primeiroInicio || $reabertura)) {
+    if ($iniciarConjunto && (!$primeiroInicio || $reabertura || $inicioAjuste)) {
         throw new DomainException('O inicio conjunto explicito e permitido somente no primeiro ciclo.');
     }
     if (!$iniciarConjunto) {
-        flow_wip_assert_novo_inicio($conn, (int) $unidade['tarefa_principal']['colaborador_id'], $unidade['tarefa_principal']);
+        if ($inicioAjuste) {
+            flow_wip_assert_inicio_ajuste($conn, (int) $unidade['tarefa_principal']['colaborador_id']);
+        } else {
+            flow_wip_assert_novo_inicio($conn, (int) $unidade['tarefa_principal']['colaborador_id'], $unidade['tarefa_principal']);
+        }
         // Caderno + Filtro e uma unidade legada: o requisito do Caderno e
         // validado uma vez e a dependencia interna nao cria um segundo inicio.
         $validar = $unidade['tipo_unidade'] === 'CADERNO_FILTRO_LEGADO'
@@ -204,16 +216,36 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
             }
         }
     }
-    $ciclo = flow_janela_criar_ciclo(
-        $conn,
-        $unidade,
-        $avaliacao,
-        $motivo,
-        $atorColaboradorId,
-        $atorUsuarioId,
-        $cicloAnteriorId,
-        $reabertura ? 'REABERTURA' : 'PRIMEIRO_INICIO'
-    );
+    if ($inicioAjuste) {
+        $aguardando = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, true);
+        if (!$aguardando) {
+            // Regulariza somente a ausência do registro atual; o início e a
+            // previsão continuam sendo o instante real desta ação.
+            flow_janela_criar_ciclo_aguardando_inicio($conn, $tarefaId, $atorColaboradorId, $atorUsuarioId);
+        }
+        $ciclo = flow_janela_ativar_ciclo_aguardando_inicio(
+            $conn,
+            $tarefaId,
+            $previsao,
+            $motivo,
+            $atorColaboradorId,
+            $atorUsuarioId,
+            $origemAcionamento
+        );
+        $ciclo['criado'] = false;
+    } else {
+        $ciclo = flow_janela_criar_ciclo(
+            $conn,
+            $unidade,
+            $avaliacao,
+            $motivo,
+            $atorColaboradorId,
+            $atorUsuarioId,
+            $cicloAnteriorId,
+            $reabertura ? 'REABERTURA' : 'PRIMEIRO_INICIO',
+            ['origem_acionamento' => $origemAcionamento]
+        );
+    }
     return [
         'success' => true,
         'message' => count($unidade['membros']) > 1 ? 'Unidade de trabalho iniciada.' : 'Tarefa iniciada.',
@@ -225,5 +257,62 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
             'member_ids' => array_map(static fn (array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
         ],
         'reopened' => $reabertura,
+        'adjustment_started' => $inicioAjuste,
     ];
+}
+
+/**
+ * Transição canônica de entrega. O fallback de Ajuste não cria datas
+ * retrospectivas: ativa o ciclo no mesmo instante e o encerra em seguida.
+ */
+function flow_inicio_operacional_enviar_aprovacao(mysqli $conn, array $entrada): array
+{
+    $tarefaId = (int) ($entrada['funcao_imagem_id'] ?? 0);
+    if ($tarefaId <= 0) {
+        throw new DomainException('Tarefa inválida para envio à aprovação.');
+    }
+    $atorColaboradorId = !empty($entrada['ator_colaborador_id']) ? (int) $entrada['ator_colaborador_id'] : null;
+    $atorUsuarioId = !empty($entrada['ator_usuario_id']) ? (int) $entrada['ator_usuario_id'] : null;
+    $tarefa = flow_janela_carregar_tarefa($conn, $tarefaId, true);
+    if (!$tarefa || !in_array((string) $tarefa['status'], ['Em andamento', 'Ajuste'], true)) {
+        throw new DomainException('A tarefa precisa estar Em andamento ou Ajuste para ser enviada à aprovação.');
+    }
+    flow_inicio_operacional_validar_permissao($tarefa, $atorColaboradorId, (int) ($entrada['nivel_acesso'] ?? 0));
+    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, true);
+    $fallback = (string) $tarefa['status'] === 'Ajuste';
+    if ($fallback) {
+        $previsao = flow_janela_data_valida($entrada['previsao'] ?? null);
+        if (!$previsao) {
+            throw new DomainException('Informe a previsão do ajuste antes de enviar para aprovação.');
+        }
+        if (!$ciclo) {
+            flow_janela_criar_ciclo_aguardando_inicio($conn, $tarefaId, $atorColaboradorId, $atorUsuarioId);
+            $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, true);
+        }
+        if (($ciclo['situacao'] ?? null) !== 'AGUARDANDO_INICIO') {
+            throw new DomainException('O ciclo de ajuste não está aguardando início. Atualize a tela e tente novamente.');
+        }
+        $unidade = flow_janela_resolver_unidade($conn, $tarefaId, true);
+        $avaliacao = flow_janela_avaliar($conn, $unidade, $previsao);
+        $motivo = flow_janela_validar_justificativa($conn, $avaliacao['estado'], $entrada['motivo_codigo'] ?? null, $entrada['motivo_texto'] ?? null);
+        flow_janela_ativar_ciclo_aguardando_inicio($conn, $tarefaId, $previsao, $motivo, $atorColaboradorId, $atorUsuarioId, 'FALLBACK_ENVIO_APROVACAO');
+        // A tabela legada usa ENUM fechado; a distinção de fallback fica no
+        // evento canônico EXECUCAO_INICIADA/detalhes, sem quebrar a réplica.
+        flow_inicio_operacional_salvar_previsao_legada($conn, $unidade['membros'], $previsao, $motivo, $atorColaboradorId, $atorUsuarioId, 'PREVISAO_INFORMADA');
+    }
+    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, true);
+    if (!$ciclo || !in_array((string) $ciclo['situacao'], ['ATIVO', 'PAUSADO'], true)) {
+        throw new DomainException('Não há ciclo operacional ativo para registrar o envio à aprovação.');
+    }
+    $statusAnterior = (string) $tarefa['status'];
+    $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação' WHERE idfuncao_imagem = ? AND status = ?");
+    $stmt->bind_param('is', $tarefaId, $statusAnterior);
+    $stmt->execute();
+    if ($stmt->affected_rows !== 1) {
+        $stmt->close();
+        throw new RuntimeException('A tarefa mudou durante o envio à aprovação.');
+    }
+    $stmt->close();
+    $encerrado = flow_janela_encerrar_ciclo($conn, $tarefaId, 'ENVIO_APROVACAO', $atorColaboradorId, $atorUsuarioId, 'Em aprovação', 'EXECUCAO_ENVIADA_APROVACAO');
+    return ['success' => true, 'cycle' => $encerrado, 'fallback' => $fallback, 'message' => 'Tarefa enviada para aprovação.'];
 }

@@ -1514,6 +1514,80 @@ function refreshTaskTimeBadges() {
     });
 }
 
+async function iniciarAjustesFlowReview(tarefa, event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  const today = new Date().toISOString().slice(0, 10);
+  const respostaPrevisao = await Swal.fire({
+    title: "Iniciar ajustes",
+    text: "Informe sua previsão de conclusão para este ciclo de ajuste.",
+    input: "date",
+    inputValue: today,
+    inputAttributes: { min: today },
+    showCancelButton: true,
+    confirmButtonText: "Iniciar ajustes",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#167b68",
+    inputValidator: (value) => (!value ? "Informe a previsão de conclusão." : undefined),
+  });
+  if (!respostaPrevisao.isConfirmed) return;
+  const response = await fetch("../PaginaPrincipal/iniciar_operacao.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      funcao_imagem_id: Number(tarefa.idfuncao_imagem),
+      previsao: respostaPrevisao.value,
+      origem_acionamento: "FLOW_REVIEW_PLAY",
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok || payload?.success === false) {
+    await Swal.fire("Não foi possível iniciar os ajustes", payload?.message || "Tente novamente.", "error");
+    return;
+  }
+  await Swal.fire("Ajustes iniciados", "A previsão foi vinculada a este ciclo de execução.", "success");
+  const tarefaAtualizada = dadosTarefas.find(
+    (item) => String(item.idfuncao_imagem) === String(tarefa.idfuncao_imagem),
+  );
+  if (tarefaAtualizada) {
+    tarefaAtualizada.status = "Em andamento";
+    tarefaAtualizada.status_novo = "Em andamento";
+  }
+  historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa), { preserveView: true });
+}
+
+function atualizarAcaoInicioAjustes(tarefa) {
+  const actionContainer = document.getElementById("approval_adjustment_action");
+  if (!actionContainer) return;
+
+  actionContainer.replaceChildren();
+  actionContainer.hidden = true;
+
+  const status = String(tarefa?.status || tarefa?.status_novo || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  const responsavelId = Number(tarefa?.colaborador_id || 0);
+  const responsavelLogado =
+    Number.isFinite(idcolaboradorLogado) &&
+    responsavelId > 0 &&
+    responsavelId === idcolaboradorLogado;
+
+  if (status !== "ajuste" || !responsavelLogado || getTaskTipo(tarefa) !== "imagem") {
+    return;
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "approval-start-adjustment";
+  button.innerHTML = '<i class="fa-solid fa-play" aria-hidden="true"></i> Iniciar ajustes';
+  button.title = "Informar a previsão e iniciar este ciclo de ajuste";
+  button.addEventListener("click", (event) => iniciarAjustesFlowReview(tarefa, event));
+  actionContainer.appendChild(button);
+  actionContainer.hidden = false;
+}
+
 // Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas, tarefasCompletas) {
   const container = document.querySelector(".containerObra");
@@ -1597,7 +1671,6 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       const taskTitle =
         tarefa.nome_obra || tarefa.imagem_nome || tarefa.nome_funcao;
       const taskSubtitle = tarefa.imagem_nome || tarefa.nomenclatura || "";
-
       taskItem.innerHTML = `
         <div class="task-card-media">
           <div class="task-card-topbar">
@@ -3399,6 +3472,8 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       } catch (e) {
         console.error("Erro ao preencher approval_info", e);
       }
+
+      atualizarAcaoInicioAjustes(tarefaAtual);
 
       const holdApprovalBlock = tarefaAtual?.flow_review_flow_block;
       if (tarefaAtual?.flow_review_hold_approval && holdApprovalBlock) {

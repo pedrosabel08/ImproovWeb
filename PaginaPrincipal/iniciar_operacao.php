@@ -27,7 +27,10 @@ $entrada['nivel_acesso'] = (int) ($_SESSION['nivel_acesso'] ?? 0);
 
 try {
     $conn->begin_transaction();
-    $resultado = flow_inicio_operacional_iniciar($conn, $entrada);
+    $acao = (string) ($entrada['acao'] ?? 'iniciar');
+    $resultado = $acao === 'enviar_aprovacao'
+        ? flow_inicio_operacional_enviar_aprovacao($conn, $entrada)
+        : flow_inicio_operacional_iniciar($conn, $entrada);
     $conn->commit();
     error_log(sprintf('[FLOW][JANELA][INICIO] tarefa=%d ciclo=%d estado=%s resultado=COMMIT', (int) ($entrada['funcao_imagem_id'] ?? 0), (int) ($resultado['cycle']['ciclo_id'] ?? 0), (string) ($resultado['evaluation']['estado'] ?? 'SEM_REGRA')));
     flow_inicio_operacional_responder(200, $resultado);

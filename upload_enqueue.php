@@ -9,6 +9,7 @@ ini_set('display_errors', '0');
 require_once __DIR__ . '/FlowReview/ws_notify.php';
 require_once __DIR__ . '/FlowReview/pdf_approval_helpers.php';
 require_once __DIR__ . '/config/secure_env.php';
+require_once __DIR__ . '/helpers/janela_operacional_helper.php';
 $_enqueue_errors = [];
 $results = []; // inicializa cedo para o shutdown handler
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
@@ -486,6 +487,12 @@ for ($i = 0; $i < $total; $i++) {
                 if ($stmt) {
                     $stmt->bind_param('i', $fidInt);
                     if (@$stmt->execute()) {
+                        flow_janela_sincronizar_envio_aprovacao(
+                            $conn,
+                            $fidInt,
+                            isset($colaborador_id) ? (int) $colaborador_id : null,
+                            isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null
+                        );
                         $arquivoLogId = isset($logIds[$fidIndex]) ? (int)$logIds[$fidIndex] : null;
                         $historicoPdfId = null;
                         if ($extLower === 'pdf' && $arquivoLogId > 0) {

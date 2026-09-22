@@ -13,6 +13,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
 require_once __DIR__ . '/../helpers/angulo_ciencia_helper.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 
@@ -945,6 +946,21 @@ try {
             throw new Exception('Erro ao atualizar status da função: ' . $stFi->error);
         }
         $stFi->close();
+    }
+
+    // A decisão de ângulo também pode devolver a tarefa para Ajuste. Mantém
+    // o ciclo operacional coerente mesmo sendo uma rota própria do Review.
+    if (
+        $statusNovo === 'Ajuste'
+        && normalize_name((string) $statusAnterior) === 'em aprovacao'
+        && flow_janela_schema_disponivel($conn)
+    ) {
+        flow_janela_garantir_ciclo_ajuste_aguardando_inicio(
+            $conn,
+            (int) $funcao_imagem_id,
+            $responsavelColab > 0 ? $responsavelColab : null,
+            (int) ($_SESSION['idusuario'] ?? 0) ?: null
+        );
     }
 
     if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {

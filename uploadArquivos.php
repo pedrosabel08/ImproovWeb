@@ -126,6 +126,7 @@ require_once __DIR__ . '/config/secure_env.php';
 require_once __DIR__ . '/FlowReview/approval_media_schema.php';
 require_once __DIR__ . '/FlowReview/ws_notify.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/helpers/janela_operacional_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
@@ -1069,6 +1070,18 @@ if ($statusUpdateAffectedRows === 0) {
             );
         }
     }
+}
+
+if (!$isAnimacaoUpload) {
+    // Algumas rotas de upload legadas alteram o status antes de chegar ao
+    // serviço canônico. Sincroniza o ciclo na mesma transação para que uma
+    // entrega nunca deixe a execução aberta.
+    flow_janela_sincronizar_envio_aprovacao(
+        $conn,
+        (int) $idFuncaoImagem,
+        isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+        isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null
+    );
 }
 
 if ($isAnimacaoUpload) {

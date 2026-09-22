@@ -217,12 +217,10 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
         }
     }
     if ($inicioAjuste) {
-        $aguardando = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, true);
-        if (!$aguardando) {
-            // Regulariza somente a ausência do registro atual; o início e a
-            // previsão continuam sendo o instante real desta ação.
-            flow_janela_criar_ciclo_aguardando_inicio($conn, $tarefaId, $atorColaboradorId, $atorUsuarioId);
-        }
+        // Uma devolução válida para Ajuste já deixa um ciclo pendente. Caso
+        // uma rota legada tenha retornado o status sem encerrar a execução
+        // anterior, regulariza a inconsistência antes de iniciar este ajuste.
+        flow_janela_garantir_ciclo_ajuste_aguardando_inicio($conn, $tarefaId, $atorColaboradorId, $atorUsuarioId);
         $ciclo = flow_janela_ativar_ciclo_aguardando_inicio(
             $conn,
             $tarefaId,

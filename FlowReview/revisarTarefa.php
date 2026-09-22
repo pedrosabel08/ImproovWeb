@@ -837,14 +837,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
 
             // A devolução para ajuste abre o próximo ciclo antes que o
-            // colaborador escolha quando iniciará a execução. A criação não
-            // depende do atalho visual do Flow Review.
+            // colaborador escolha quando iniciará a execução. Também
+            // regulariza uma execução antiga que uma rota legada tenha
+            // deixado aberta ao enviar a tarefa para aprovação.
             if (
                 $status === 'Ajuste'
                 && normalize_name((string) $status_funcao_context) === 'em aprovacao'
                 && flow_janela_schema_disponivel($conn)
             ) {
-                flow_janela_criar_ciclo_aguardando_inicio(
+                flow_janela_garantir_ciclo_ajuste_aguardando_inicio(
                     $conn,
                     (int) $idfuncao_imagem,
                     (int) ($_SESSION['idcolaborador'] ?? 0) ?: null,

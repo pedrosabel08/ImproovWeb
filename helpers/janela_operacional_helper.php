@@ -649,6 +649,38 @@ function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImag
     return ['ciclo_id' => $cicloId, 'criado' => true];
 }
 
+/**
+ * Garante que um retorno para Ajuste deixe a tarefa em um ciclo pendente.
+ *
+ * Em fluxos canônicos, a execução anterior já foi encerrada ao entrar em
+ * aprovação. A regularização abaixo protege rotas legadas que tenham gravado
+ * o status sem encerrar o ciclo: esse ciclo não pode continuar aberto depois
+ * de a tarefa retornar para Ajuste, pois bloquearia o próximo início.
+ */
+function flow_janela_garantir_ciclo_ajuste_aguardando_inicio(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): array
+{
+    $existente = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
+    if ($existente && $existente['situacao'] === 'AGUARDANDO_INICIO') {
+        return ['ciclo_id' => (int) $existente['id'], 'criado' => false, 'regularizado' => false];
+    }
+
+    if ($existente) {
+        flow_janela_encerrar_ciclo(
+            $conn,
+            $funcaoImagemId,
+            'REGULARIZACAO_RETORNO_AJUSTE',
+            $atorColaboradorId,
+            $atorUsuarioId,
+            'Em aprovação',
+            'EXECUCAO_ENVIADA_APROVACAO'
+        );
+    }
+
+    $criado = flow_janela_criar_ciclo_aguardando_inicio($conn, $funcaoImagemId, $atorColaboradorId, $atorUsuarioId);
+    $criado['regularizado'] = $existente !== null;
+    return $criado;
+}
+
 /** Ativa um ajuste sem reutilizar previsão nem horário do ciclo anterior. */
 function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, string $previsao, ?array $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId, string $origemAcionamento = 'KANBAN'): array
 {
@@ -806,6 +838,35 @@ function flow_janela_encerrar_ciclo(mysqli $conn, int $funcaoImagemId, string $m
     }
     flow_janela_registrar_evento($conn, $cicloId, 'CICLO_ENCERRADO', ['status_tarefa_anterior' => $statusSaida ? 'Em andamento' : null, 'status_tarefa_novo' => $statusSaida, 'estado_anterior' => $ciclo['estado_atual'], 'previsao_anterior' => $ciclo['previsao_atual'], 'limite_data' => $ciclo['limite_data_atual'], 'dias_uteis_consumidos' => $consumidos, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId, 'detalhes' => ['motivo' => $motivo]]);
     return ['ciclo_id' => $cicloId, 'motivo' => $motivo, 'status_saida' => $statusSaida, 'dias_uteis_consumidos' => $consumidos];
+}
+
+/**
+ * Protege rotas legadas de entrega que já gravaram Em aprovação diretamente.
+ * A sincronização é idempotente: o fluxo canônico já terá encerrado o ciclo
+ * e, nesse caso, não haverá ação adicional.
+ */
+function flow_janela_sincronizar_envio_aprovacao(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): ?array
+{
+    if (!flow_janela_schema_disponivel($conn)) {
+        return null;
+    }
+    $tarefa = flow_janela_carregar_tarefa($conn, $funcaoImagemId, true);
+    if (!$tarefa || (string) ($tarefa['status'] ?? '') !== 'Em aprovação') {
+        return null;
+    }
+    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
+    if (!$ciclo || !in_array((string) $ciclo['situacao'], ['ATIVO', 'PAUSADO'], true)) {
+        return null;
+    }
+    return flow_janela_encerrar_ciclo(
+        $conn,
+        $funcaoImagemId,
+        'SINCRONIZACAO_ENVIO_APROVACAO',
+        $atorColaboradorId,
+        $atorUsuarioId,
+        'Em aprovação',
+        'EXECUCAO_ENVIADA_APROVACAO'
+    );
 }
 
 function flow_janela_encerrar_se_unidade_finalizada(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): ?array

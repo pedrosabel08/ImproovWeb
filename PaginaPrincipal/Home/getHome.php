@@ -57,9 +57,9 @@ try {
     $conn = conectarBanco();
 
     if ($isManager) {
-        $home = home_payload_manager($conn, $response, $collaboratorId);
+        $home = home_payload_manager($conn, $response, $collaboratorId, $userId);
     } else {
-        $home = home_payload_collaborator($conn, $response, $collaboratorId);
+        $home = home_payload_collaborator($conn, $response, $collaboratorId, $userId);
     }
     $conn->close();
 

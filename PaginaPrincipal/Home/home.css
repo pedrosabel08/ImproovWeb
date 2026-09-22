@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+
 * {
   box-sizing: border-box;
 }
@@ -27,16 +29,17 @@ body.flow-home {
 .home-scrim {
   z-index: -1;
   background: linear-gradient(
-    105deg,
-    color-mix(in srgb, var(--bg-body) 94%, transparent),
-    color-mix(in srgb, var(--bg-body) 82%, transparent)
+    to bottom,
+    color-mix(in srgb, var(--bg-body) 15%, transparent) 0%,
+    color-mix(in srgb, var(--bg-body) 35%, transparent) 45%,
+    color-mix(in srgb, var(--bg-body) 75%, transparent) 100%
   );
 }
 :root[data-theme="light"] .home-scrim {
   background: linear-gradient(
     105deg,
-    color-mix(in srgb, var(--bg-body) 91%, transparent),
-    color-mix(in srgb, var(--bg-body) 76%, transparent)
+    color-mix(in srgb, var(--bg-body) 60%, transparent),
+    color-mix(in srgb, var(--bg-body) 55%, transparent)
   );
 }
 
@@ -75,7 +78,7 @@ body.flow-home {
 .home-header h1 {
   margin: 0;
 
-  font-size: clamp(30px, 2.2vw, 38px);
+  font-size: var(--font-3xl);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.035em;
@@ -83,7 +86,7 @@ body.flow-home {
 .home-header p {
   margin: 8px 0 0;
   color: var(--text-secondary);
-  font-size: var(--font-xl);
+  font-size: var(--font-md);
 }
 .home-header__right {
   flex: 0 0 auto;
@@ -142,23 +145,42 @@ body.flow-home {
 
   display: grid;
 
-  grid-template-columns:
-    minmax(0, 1.05fr)
-    minmax(0, 1.4fr)
-    minmax(300px, 0.95fr);
-
-  grid-template-rows:
-    minmax(0, 1fr)
-    minmax(0, 0.72fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.22fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.92fr) auto;
 
   gap: 16px;
 
-  overflow: hidden;
+  overflow: visible;
+}
+.home-card[hidden] {
+  display: none;
+}
+@media (min-width: 1051px) {
+  .home-grid[data-has-current="false"] {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 0.72fr);
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+  .home-grid[data-has-current="false"] .home-attention {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .home-grid[data-has-current="false"] .home-shortcuts {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .home-grid[data-has-current="false"] .home-next {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .home-grid[data-has-current="false"] .home-progress {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }
 .home-card {
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--bg-card) 92%, transparent);
@@ -183,7 +205,7 @@ body.flow-home {
 .card-heading h2 {
   min-width: 0;
   margin: 0;
-  font-size: var(--font-xl);
+  font-size: var(--font-lg);
   font-weight: 650;
   letter-spacing: -0.025em;
 }
@@ -205,8 +227,8 @@ body.flow-home {
 }
 .card-heading h2 span {
   display: inline-grid;
-  width: 25px;
-  height: 25px;
+  width: 20px;
+  height: 20px;
   margin-left: 8px;
   border-radius: 50%;
   place-items: center;
@@ -217,7 +239,6 @@ body.flow-home {
 }
 .attention-list {
   flex: 1;
-  padding: 5px 20px 0;
 }
 .attention-card {
   display: grid;
@@ -228,9 +249,24 @@ body.flow-home {
   color: inherit;
   border-bottom: 1px solid var(--border-subtle);
   text-decoration: none;
+  padding: 0 20px;
+}
+.attention-card__copy,
+.next-item__copy {
+  min-width: 0;
+}
+.home-truncate {
+  display: block;
+  min-width: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .attention-card:last-child {
   border-bottom: 0;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 .attention-card:hover {
   color: var(--text-primary);
@@ -278,8 +314,8 @@ body.flow-home {
 }
 
 .home-resume {
-  grid-column: 2;
-  grid-row: 1;
+  grid-column: 2 / span 2;
+  grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
 }
@@ -323,6 +359,10 @@ body.flow-home {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+.current-work__preview:hover img {
+  transform: scale(1.02);
 }
 .current-work__preview::after {
   position: absolute;
@@ -353,6 +393,11 @@ body.flow-home {
   gap: 16px;
 
   padding: 10px 14px 12px;
+}
+.current-work__body > div {
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
 }
 .current-work__body h3 {
   margin: 0;
@@ -387,25 +432,40 @@ body.flow-home {
   font-size: var(--font-md);
   font-weight: 650;
   text-decoration: none;
+  transition:
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
 }
 .primary-cta:hover {
   opacity: 0.88;
+  transform: scale(1.015);
+}
+.primary-cta i,
+.shortcut-grid > a > i,
+.shortcut-grid b i {
+  transition: transform var(--transition-fast);
+}
+.primary-cta:hover i,
+.shortcut-grid > a:hover b i {
+  transform: translateX(3px);
 }
 
 .home-shortcuts {
-  grid-column: 3;
-  grid-row: 1;
+  grid-column: 1 / span 2;
+  grid-row: 3;
 }
 .shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 15px 20px 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  flex: 1 1 0;
+  gap: 8px;
+  padding: 11px 16px 14px;
 }
 .shortcut-grid a {
   position: relative;
   display: grid;
-  min-height: 90px;
+  min-height: 0;
   align-content: center;
   gap: 4px;
   padding: 13px;
@@ -414,10 +474,18 @@ body.flow-home {
   background: var(--bg-surface-alt);
   color: var(--text-primary);
   text-decoration: none;
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 .shortcut-grid a:hover {
   border-color: var(--border-hover);
   background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+.shortcut-grid > a:hover > i {
+  transform: translateY(-2px);
 }
 .shortcut-grid > a > i {
   margin-bottom: 2px;
@@ -441,14 +509,23 @@ body.flow-home {
 }
 
 .home-next {
-  grid-column: 1 / span 2;
+  grid-column: 1;
   grid-row: 2;
 }
 .home-next .card-heading a {
   color: var(--text-secondary);
 }
 .next-list {
-  padding: 4px 26px 10px;
+  position: relative;
+}
+.next-timeline-line {
+  position: absolute;
+  top: 30px;
+  bottom: 30px;
+  left: 80px;
+  width: 1px;
+  background: var(--border-default);
+  transform-origin: top;
 }
 .next-item {
   position: relative;
@@ -460,9 +537,12 @@ body.flow-home {
   color: inherit;
   border-bottom: 1px solid var(--border-subtle);
   text-decoration: none;
+  padding: 0 20px;
 }
 .next-item:last-child {
   border-bottom: 0;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 .next-item:hover {
   background: var(--bg-card-hover);
@@ -480,6 +560,13 @@ body.flow-home {
 }
 .next-item:first-child .task-glyph {
   background: var(--text-primary);
+}
+.next-item.is-blocked .task-glyph {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, var(--bg-card));
+}
+.next-item.is-blocked .mini-cta {
+  color: var(--warning);
 }
 .next-item h3 {
   margin: 0;
@@ -500,14 +587,14 @@ body.flow-home {
 }
 .home-progress {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 3;
 }
 .performance-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-height: calc(100% - 60px);
   align-content: start;
-  padding: 19px 20px;
+  padding: 13px 16px;
 }
 .performance-metric {
   padding: 0 15px 10px 0;
@@ -518,7 +605,7 @@ body.flow-home {
 }
 .performance-metric strong {
   display: block;
-  font-size: clamp(30px, 3vw, 44px);
+  font-size: clamp(30px, 3vw, 36px);
   font-weight: 620;
   letter-spacing: -0.055em;
 }
@@ -530,14 +617,14 @@ body.flow-home {
 }
 .performance-trend {
   grid-column: 1 / -1;
-  margin-top: 13px;
+  margin-top: 8px;
   color: var(--color-success);
   font-size: var(--font-sm);
 }
 .performance-note {
   grid-column: 1 / -1;
-  margin-top: 17px;
-  padding: 10px;
+  margin-top: 9px;
+  padding: 8px 10px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
@@ -582,17 +669,21 @@ body.flow-home {
   border-left: 1px solid var(--border-default);
   vertical-align: -3px;
 }
-.home-mascot-slot {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 92px;
-  height: 92px;
+.home-name-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border-hover) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-body) 96%, #000);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  line-height: 1.35;
   pointer-events: none;
 }
-
 @media (max-height: 800px) and (min-width: 1001px) {
-
   .home-shell {
     padding: 12px 10px 8px;
 
@@ -629,7 +720,8 @@ body.flow-home {
     gap: 10px;
 
     grid-template-rows:
-      minmax(0, 1.65fr)
+      minmax(0, 0.92fr)
+      minmax(0, 0.92fr)
       minmax(0, 0.78fr);
   }
 
@@ -695,7 +787,7 @@ body.flow-home {
 
     padding: 12px 16px;
 
-    grid-template-rows: repeat(2, minmax(0, 74px));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 
   .shortcut-grid > a {
@@ -731,7 +823,6 @@ body.flow-home {
   }
 }
 
-
 /* =====================================================================
    TABLET / TELAS MAIS ESTREITAS
 
@@ -740,7 +831,6 @@ body.flow-home {
    ===================================================================== */
 
 @media (max-width: 1050px) {
-
   html,
   body {
     height: auto;
@@ -788,12 +878,11 @@ body.flow-home {
   }
 
   .home-resume {
+    grid-column: 1 / -1;
     min-height: 440px;
   }
 
   .home-next {
-    grid-column: 1 / -1;
-    grid-row: 2;
     min-height: 260px;
   }
 
@@ -802,13 +891,11 @@ body.flow-home {
   }
 }
 
-
 /* =====================================================================
    MOBILE
    ===================================================================== */
 
 @media (max-width: 700px) {
-
   .home-shell {
     padding: 12px;
 

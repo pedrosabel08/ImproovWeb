@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/dashboard_colaborador_helper.php';
 require_once __DIR__ . '/overview_v1_helper.php';
+require_once __DIR__ . '/home_navegacao_recente_helper.php';
 
 function home_payload_severity(string $severity): string
 {
@@ -81,6 +82,8 @@ function home_payload_task(array $task, string $ctaLabel = 'Continuar tarefa'): 
         'risk_level' => home_payload_task_risk_level($task),
         'priority' => (int) ($task['prioridade_manual'] ?? 3),
         'queue_position' => isset($task['fila_posicao']) ? (int) $task['fila_posicao'] : null,
+        'is_released' => !empty($task['elegivel_agora']),
+        'is_blocked' => !empty($task['bloqueada']),
         'cta' => home_payload_task_cta($taskId, $ctaLabel),
     ];
 
@@ -90,6 +93,10 @@ function home_payload_task(array $task, string $ctaLabel = 'Continuar tarefa'): 
     }
     if (($task['status_temporal'] ?? '') === 'ATRASADO' && isset($task['dias_prazo'])) {
         $result['days_overdue'] = max(0, (int) $task['dias_prazo']);
+    }
+    if (!empty($task['bloqueio']) && is_array($task['bloqueio'])) {
+        $result['block_reason'] = (string) ($task['bloqueio']['mensagem'] ?? 'Aguardando liberação.');
+        $result['block_type'] = (string) ($task['bloqueio']['tipo'] ?? 'dependency');
     }
     $previewUrl = home_payload_task_preview_url($task);
     if ($previewUrl !== null) {
@@ -273,8 +280,8 @@ function home_payload_collaborator_attention(array $payloadKanban, int $collabor
 
 function home_payload_work(array $dashboard): array
 {
-    $current = isset($dashboard['day']['current']) && is_array($dashboard['day']['current'])
-        ? home_payload_task($dashboard['day']['current'])
+    $current = isset($dashboard['day']['in_progress_current']) && is_array($dashboard['day']['in_progress_current'])
+        ? home_payload_task($dashboard['day']['in_progress_current'])
         : null;
     $next = array_map(
         static fn (array $task): array => home_payload_task($task, 'Abrir tarefa'),
@@ -283,14 +290,15 @@ function home_payload_work(array $dashboard): array
     return ['current' => $current, 'next' => $next];
 }
 
-function home_payload_collaborator(mysqli $conn, array $payloadKanban, int $collaboratorId): array
+function home_payload_collaborator(mysqli $conn, array $payloadKanban, int $collaboratorId, int $userId): array
 {
     $normalized = home_payload_normalized_tasks($payloadKanban);
     $dashboard = dashboard_colaborador_montar($payloadKanban, $collaboratorId);
     return [
         'attention' => home_payload_collaborator_attention($payloadKanban, $collaboratorId, $normalized),
         'work' => home_payload_work($dashboard),
-        'performance' => flow_overview_v1_metricas_conclusao($conn, $collaboratorId),
+        'performance' => flow_overview_v1_metricas_conclusao($conn, $collaboratorId, true),
+        'quick_access' => home_navegacao_atalhos($conn, $userId),
     ];
 }
 
@@ -457,7 +465,7 @@ function home_payload_manager_risks(array $overview): array
     return array_slice($risks, 0, 8);
 }
 
-function home_payload_manager(mysqli $conn, array $payloadKanban, int $collaboratorId): array
+function home_payload_manager(mysqli $conn, array $payloadKanban, int $collaboratorId, int $userId): array
 {
     // A Home usa equipe, atenção e riscos. Capacidade detalhada e métricas de
     // produção pertencem à Overview e não devem atrasar este payload enxuto.
@@ -510,6 +518,7 @@ function home_payload_manager(mysqli $conn, array $payloadKanban, int $collabora
         'team' => home_payload_manager_team((array) ($overview['team'] ?? [])),
         'risks' => home_payload_manager_risks($overview),
         'personal_work' => $personalWork,
-        'performance' => flow_overview_v1_metricas_conclusao($conn, $collaboratorId),
+        'performance' => flow_overview_v1_metricas_conclusao($conn, $collaboratorId, true),
+        'quick_access' => home_navegacao_atalhos($conn, $userId),
     ];
 }

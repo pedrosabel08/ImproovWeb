@@ -280,15 +280,46 @@ function flow_overview_v1_carga_colaborador(mysqli $conn, int $colaboradorId, st
     }
 }
 
-function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId = null): array
+function flow_overview_v1_funcoes_principais_colaborador(mysqli $conn, int $colaboradorId): array
+{
+    if ($colaboradorId <= 0) {
+        return [];
+    }
+    $stmt = $conn->prepare(
+        "SELECT DISTINCT funcao_id
+           FROM funcao_colaborador
+          WHERE colaborador_id = ?
+            AND UPPER(TRIM(COALESCE(tipo_atuacao, ''))) = 'PRINCIPAL'"
+    );
+    if (!$stmt) {
+        throw new RuntimeException($conn->error);
+    }
+    $stmt->bind_param('i', $colaboradorId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return array_values(array_unique(array_filter(array_map(static fn (array $row): int => (int) ($row['funcao_id'] ?? 0), $rows))));
+}
+
+function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId = null, bool $priorizarFuncoesPrincipais = false): array
 {
     $inicio = date('Y-m-01 00:00:00');
     $fim = date('Y-m-01 00:00:00', strtotime('+1 month'));
     $inicioAnterior = date('Y-m-01 00:00:00', strtotime('-1 month'));
     if (!pendencias_operacionais_table_exists($conn, 'funcao_imagem_prazo_historico')) {
-        return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => []];
+        return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => [], 'scope' => 'all_assigned'];
     }
-    $where = $colaboradorId ? ' AND fi.colaborador_id = ?' : '';
+    try {
+        $principalFunctionIds = $priorizarFuncoesPrincipais && $colaboradorId
+            ? flow_overview_v1_funcoes_principais_colaborador($conn, $colaboradorId)
+            : [];
+    } catch (Throwable $erro) {
+        return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => [], 'scope' => 'all_assigned'];
+    }
+    $functionFilter = $principalFunctionIds
+        ? ' AND fi.funcao_id IN (' . implode(',', array_map('intval', $principalFunctionIds)) . ')'
+        : '';
+    $where = $colaboradorId ? ' AND fi.colaborador_id = ?' . $functionFilter : '';
     // O primeiro prazo_novo é o compromisso original. A entrega é o primeiro
     // prazo registrado no histórico por upload/aprovação/finalização. Assim,
     // reenvios e alterações posteriores não mudam a data em que a pessoa
@@ -377,9 +408,10 @@ function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId =
             'trend_percent' => $anterior > 0 ? round(((count($atuais) - $anterior) / $anterior) * 100, 1) : null,
             'punctuality_percent' => $elegiveis ? round(($pontuais / count($elegiveis)) * 100, 1) : null,
             'recent' => array_map(static fn (array $item): array => ['task_id' => (int) $item['funcao_imagem_id'], 'project' => (string) $item['nomenclatura'], 'image_name' => (string) $item['imagem_nome'], 'function_name' => (string) $item['nome_funcao']], $atuais),
+            'scope' => $principalFunctionIds ? 'principal_functions' : 'all_assigned',
         ];
     } catch (Throwable $erro) {
-        return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => []];
+        return ['available' => false, 'month_label' => '', 'count' => null, 'trend_percent' => null, 'punctuality_percent' => null, 'recent' => [], 'scope' => 'all_assigned'];
     }
 }
 

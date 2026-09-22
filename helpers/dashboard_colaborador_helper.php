@@ -220,6 +220,11 @@ function dashboard_colaborador_montar(array $payloadKanban, int $colaboradorId, 
     $emAndamento = array_values(array_filter($ativas, static fn (array $tarefa): bool => !empty($tarefa['em_execucao'])));
     $emAndamentoEstrito = array_values(array_filter($emAndamento, static fn (array $tarefa): bool => dashboard_colaborador_status((string) $tarefa['status']) === 'em andamento'));
     $emAjuste = array_values(array_filter($emAndamento, static fn (array $tarefa): bool => dashboard_colaborador_status((string) $tarefa['status']) === 'ajuste'));
+    dashboard_colaborador_ordenar_tarefas($emAndamentoEstrito);
+    dashboard_colaborador_ordenar_tarefas($emAjuste);
+    // A recomendação de continuidade só aceita trabalho operacional em curso:
+    // Em andamento tem precedência; Ajuste é o fallback do mesmo fluxo.
+    $emAndamentoAtual = $emAndamentoEstrito[0] ?? $emAjuste[0] ?? null;
     $proximas = array_values(array_filter($ativas, static function (array $tarefa) use ($hoje, $limiteSemana): bool {
         return !empty($tarefa['pode_iniciar'])
             && !empty($tarefa['prazo'])
@@ -230,8 +235,13 @@ function dashboard_colaborador_montar(array $payloadKanban, int $colaboradorId, 
     $candidatasAgora = array_values(array_filter($ativas, static fn (array $tarefa): bool => !empty($tarefa['elegivel_agora'])));
     dashboard_colaborador_ordenar_tarefas($candidatasAgora);
     $agora = $candidatasAgora[0] ?? null;
-    if ($agora) {
-        $candidatasAgora = array_values(array_filter($candidatasAgora, static fn (array $tarefa): bool => (int) $tarefa['id'] !== (int) $agora['id']));
+    $currentId = (int) ($emAndamentoAtual['id'] ?? 0);
+    $proximasElegiveis = array_values(array_filter($candidatasAgora, static fn (array $tarefa): bool => (int) ($tarefa['id'] ?? 0) !== $currentId));
+    $proximasNaoLiberadas = array_values(array_filter($ativas, static fn (array $tarefa): bool => (int) ($tarefa['id'] ?? 0) !== $currentId && empty($tarefa['elegivel_agora'])));
+    dashboard_colaborador_ordenar_tarefas($proximasNaoLiberadas);
+    $proximasPorId = [];
+    foreach (array_merge($proximasElegiveis, $proximasNaoLiberadas) as $tarefa) {
+        $proximasPorId[(int) $tarefa['id']] = $tarefa;
     }
 
     $pendencias = dashboard_colaborador_pendencias_acionaveis((array) ($payloadKanban['pendencias_operacionais'] ?? []), $colaboradorId);
@@ -302,7 +312,13 @@ function dashboard_colaborador_montar(array $payloadKanban, int $colaboradorId, 
             'pending' => ['total' => count($pendencias), 'critical' => count(array_filter($pendencias, static fn (array $item): bool => dashboard_colaborador_severidade_pendencia($item) === 'critical'))],
             'upcoming' => ['total' => count($proximas)],
         ],
-        'day' => ['current' => $agora, 'next' => array_slice($candidatasAgora, 0, 5)],
+        'day' => [
+            // A recomendação operacional segue disponível como current para
+            // consumidores legados. A Home usa explicitamente in_progress_current.
+            'current' => $agora,
+            'in_progress_current' => $emAndamentoAtual,
+            'next' => array_slice(array_values($proximasPorId), 0, 5),
+        ],
         'attention' => $atencao,
         'week' => array_values($semanaPorData),
         'meta' => ['today' => $hoje, 'week_until' => $limiteSemana, 'eligible_tasks' => count($tarefas)],

@@ -1057,6 +1057,25 @@ function flow_janela_ultimos_ciclos_lote(mysqli $conn, array $funcaoImagemIds): 
                    c.inicio_em,
                    c.criado_em,
                    c.encerrado_em,
+                   COALESCE(
+                       (
+                           SELECT MIN(e_inicio.criado_em)
+                             FROM janela_operacional_evento e_inicio
+                            WHERE e_inicio.ciclo_id = c.id
+                              AND e_inicio.evento = 'EXECUCAO_INICIADA'
+                       ),
+                       c.inicio_em,
+                       c.criado_em
+                   ) AS inicio_referencia_em,
+                   COALESCE(
+                       (
+                           SELECT MAX(e_fim.criado_em)
+                             FROM janela_operacional_evento e_fim
+                            WHERE e_fim.ciclo_id = c.id
+                              AND e_fim.evento = 'CICLO_ENCERRADO'
+                       ),
+                       c.encerrado_em
+                   ) AS encerramento_referencia_em,
                    c.situacao,
                    c.status_saida,
                    c.qualidade_dados

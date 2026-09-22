@@ -922,7 +922,8 @@ function calcularTempoDoCiclo(array $logs, string $statusAtual, ?array $ciclo): 
         return null;
     }
 
-    $inicioBruto = $ciclo['inicio_em'] ?: ($ciclo['criado_em'] ?? null);
+    $inicioBruto = $ciclo['inicio_referencia_em']
+        ?: ($ciclo['inicio_em'] ?: ($ciclo['criado_em'] ?? null));
     if (!$inicioBruto) {
         return null;
     }
@@ -980,8 +981,8 @@ function calcularTempoDoCiclo(array $logs, string $statusAtual, ?array $ciclo): 
     }
 
     try {
-        $fimCiclo = !empty($ciclo['encerrado_em'])
-            ? new DateTimeImmutable($ciclo['encerrado_em'])
+        $fimCiclo = !empty($ciclo['encerramento_referencia_em'])
+            ? new DateTimeImmutable($ciclo['encerramento_referencia_em'])
             : $agora;
     } catch (Throwable $e) {
         $fimCiclo = $agora;

@@ -130,6 +130,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="<?php echo asset_url('css/master.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleIndex.css'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/styleIndex.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.css'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/styleSidebar.css'); ?>">

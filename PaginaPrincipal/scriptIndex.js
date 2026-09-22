@@ -2784,6 +2784,7 @@ function processarDados(data) {
     if (tipo === "imagem" && imgSrc)
       card.classList.add("kanban-card--with-thumb");
     const responsavel = String(item.nome_colaborador || "").trim();
+    const anguloCienciaPendente = Number(item.angulo_ciencia_pendente || 0) === 1;
     const initials = responsavel
       .split(/\s+/)
       .filter(Boolean)
@@ -2795,6 +2796,7 @@ function processarDados(data) {
                     ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ""}
                     ${hasPendingRender ? `<div class="pending-render-ribbon${hasPendingFile ? " below-file-ribbon" : ""}"><i class="ri-send-plane-line"></i> Enviar render</div>` : ""}
                     ${hasImageChecklist ? `<div class="pending-checklist-ribbon${hasPendingFile || hasPendingRender ? " below-file-ribbon" : ""}"><i class="ri-checkbox-line"></i> Checklist</div>` : ""}
+                    ${anguloCienciaPendente ? '<div class="angle-science-ribbon"><i class="ri-checkbox-circle-line"></i> Ângulo escolhido</div>' : ""}
                     <div class="header-kanban">
                         ${funcaoBadgeHTML}
                         ${
@@ -2949,7 +2951,7 @@ function processarDados(data) {
         }
         const idFuncao = card.dataset.id;
         const idImagem = card.dataset.idImagem;
-        abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "");
+        abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "", false, { angleSciencePending: anguloCienciaPendente, angleScienceCard: card });
       }
     });
 
@@ -5112,6 +5114,21 @@ function abrirSidebar(
 
       tpMain.appendChild(summaryCard);
 
+      if (options.angleSciencePending) {
+        fetch("PaginaPrincipal/marcarAnguloCienciaVisualizada.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ funcao_imagem_id: Number(idFuncao) }),
+        })
+          .then((response) => response.json())
+          .then((payload) => {
+            if (!payload?.success || !payload.visualizado) return;
+            options.angleScienceCard?.querySelector(".angle-science-ribbon")?.remove();
+            summaryCard.querySelector("#tp-preview-wrap")?.classList.add("tp-angle-science-highlight");
+          })
+          .catch(() => {});
+      }
+
       // Expand preview on click
       if (previewUrl) {
         const previewWrap = summaryCard.querySelector("#tp-preview-wrap");
@@ -7047,6 +7064,7 @@ async function iniciarOperacaoAtomica(card, dados, iniciarConjunto = false) {
       motivo_texto: modalJustificativa?.value.trim() || null,
       confirmar_pendencias: dados.confirmar_pendencias === 1,
       iniciar_modelagem_composicao: iniciarConjunto,
+      origem_acionamento: "KANBAN",
     }),
   });
   const payload = await response.json();
@@ -7090,9 +7108,14 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
     !cardSelecionado.classList.contains("tarefa-criada") &&
     !isAnimacao &&
     statusDestino === "Em andamento" &&
-    ["Não iniciado", "Aprovado", "Aprovado com ajustes", "Finalizado"].includes(
+    ["Não iniciado", "Ajuste", "Aprovado", "Aprovado com ajustes", "Finalizado"].includes(
       statusOrigem,
     );
+  const envioAjusteFallback =
+    !cardSelecionado.classList.contains("tarefa-criada") &&
+    !isAnimacao &&
+    statusOrigem === "Ajuste" &&
+    statusDestino === "Em aprovação";
 
   // Verifica se o prazo está vazio
   if (modalPrazo.offsetParent !== null && !modalPrazo.value) {
@@ -7110,7 +7133,8 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
 
   if (
     !cardSelecionado.classList.contains("tarefa-criada") &&
-    !inicioOuReaberturaAtomica
+    !inicioOuReaberturaAtomica &&
+    !envioAjusteFallback
   ) {
     try {
       await salvarPrevisaoPlanejamento(cardSelecionado);
@@ -7179,12 +7203,16 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       ""
     ).toString();
 
-    const prazoFuncaoImagem =
+  const prazoFuncaoImagem =
       cardSelecionado.dataset.isAnimacao !== "1" &&
       modalPlanejamento &&
       !modalPlanejamento.hidden
         ? modalPrevisaoConclusao?.value?.trim() || ""
         : modalPrazo.value;
+    if (envioAjusteFallback && !prazoFuncaoImagem) {
+      Toastify({ text: "Informe a previsão do ajuste antes de enviar para aprovação.", duration: 4000, close: true, gravity: "top", position: "left", backgroundColor: "red" }).showToast();
+      return;
+    }
     const dados = {
       imagem_id: cardSelecionado.dataset.idImagem,
       funcao_id: cardSelecionado.dataset.idFuncao,
@@ -7933,9 +7961,15 @@ if (typeof Sortable !== "undefined") {
 
           if (
             !card.classList.contains("tarefa-criada") &&
-            novaColuna.id === "in-progress"
+            (novaColuna.id === "in-progress" ||
+              (novaColuna.id === "in-review" && card.dataset.status === "Ajuste"))
           ) {
             configurarModalPlanejamento(card);
+            if (novaColuna.id === "in-review" && card.dataset.status === "Ajuste") {
+              modalPrevisaoConclusao.value = "";
+              modalPrevisaoFeedback.textContent = "Informe a previsão deste ajuste para enviá-lo à aprovação.";
+              document.getElementById("salvarModal").textContent = "Salvar previsão e enviar";
+            }
           } else {
             ocultarPlanejamentoModal();
           }

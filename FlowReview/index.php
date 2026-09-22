@@ -377,6 +377,7 @@ $conn->close();
                 <div id="approval_info"
                     style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222">
                 </div>
+                <div id="approval_adjustment_action" class="approval-adjustment-action" hidden></div>
 
                 <div class="angulo-actions-group">
                     <span class="angulo-actions-group-label">Decisão do ângulo</span>

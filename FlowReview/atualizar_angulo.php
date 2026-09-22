@@ -12,6 +12,8 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
+require_once __DIR__ . '/../helpers/angulo_ciencia_helper.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 require_once __DIR__ . '/ws_notify.php';
 require_once __DIR__ . '/../FlowConnect/bootstrap.php';
 
@@ -946,6 +948,21 @@ try {
         $stFi->close();
     }
 
+    // A decisão de ângulo também pode devolver a tarefa para Ajuste. Mantém
+    // o ciclo operacional coerente mesmo sendo uma rota própria do Review.
+    if (
+        $statusNovo === 'Ajuste'
+        && normalize_name((string) $statusAnterior) === 'em aprovacao'
+        && flow_janela_schema_disponivel($conn)
+    ) {
+        flow_janela_garantir_ciclo_ajuste_aguardando_inicio(
+            $conn,
+            (int) $funcao_imagem_id,
+            $responsavelColab > 0 ? $responsavelColab : null,
+            (int) ($_SESSION['idusuario'] ?? 0) ?: null
+        );
+    }
+
     if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
         if ($stImg = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?')) {
             $stImg->bind_param('ii', $statusIdR00, $imagem_id);
@@ -982,6 +999,16 @@ try {
         }
         $historicoAprovacaoId = (int)$conn->insert_id;
         $insHist->close();
+    }
+
+    if (in_array($acao, ['escolhido', 'escolhido_com_ajustes'], true)) {
+        flow_angulo_ciencia_registrar(
+            $conn,
+            (int) $funcao_imagem_id,
+            (int) $historico_id,
+            (int) $colaborador_id,
+            $respHist > 0 ? (int) $respHist : null
+        );
     }
 
     $flowBlocksResolvidosPeloReview = flow_block_resolve_review_approval_blocks(

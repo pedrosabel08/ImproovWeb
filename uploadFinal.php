@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 include 'conexao.php';
 require_once __DIR__ . '/FlowReview/ws_notify.php';
+require_once __DIR__ . '/helpers/janela_operacional_helper.php';
 // Verifica se o autoload do composer está presente para evitar fatal error (500)
 $vendorAutoload = __DIR__ . '/vendor/autoload.php';
 if (!file_exists($vendorAutoload)) {
@@ -554,6 +555,12 @@ for ($i = 0; $i < $total; $i++) {
                     break;
                 }
                 $stmt->close();
+                flow_janela_sincronizar_envio_aprovacao(
+                    $conn,
+                    (int) $id_funcao,
+                    isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                    isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null
+                );
             }
         }
     }

@@ -138,7 +138,7 @@ try {
     if (
         flow_janela_schema_disponivel($conn)
         && $existingFuncaoImagemId
-        && strcasecmp((string) $existingStatus, 'Não iniciado') === 0
+        && in_array((string) $existingStatus, ['Não iniciado', 'Ajuste'], true)
         && strcasecmp((string) $status, 'Em andamento') === 0
     ) {
         if ($colaborador_id !== null && $colaborador_id !== (int) ($currentRow['colaborador_id'] ?? 0)) {
@@ -155,6 +155,7 @@ try {
             'ator_colaborador_id' => $actorColaboradorId,
             'ator_usuario_id' => $actorUsuarioId,
             'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+            'origem_acionamento' => 'KANBAN',
         ]);
         $conn->commit();
         echo json_encode($resultadoInicio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -231,6 +232,30 @@ try {
             $existingStatus = $currentRow['status'] ?? null;
             $statusJaAplicadoNaUnidade = true;
         }
+    }
+
+    // Entrega é uma transição crítica do ciclo. Mesmo o caminho legado do
+    // Kanban passa pelo serviço canônico, inclusive no fallback Ajuste →
+    // Em aprovação, que exige uma previsão antes de concluir o ciclo.
+    if (
+        flow_janela_schema_disponivel($conn)
+        && $existingFuncaoImagemId
+        && (string) $status === 'Em aprovação'
+        && in_array((string) $existingStatus, ['Em andamento', 'Ajuste'], true)
+    ) {
+        $resultadoEnvio = flow_inicio_operacional_enviar_aprovacao($conn, [
+            'funcao_imagem_id' => $existingFuncaoImagemId,
+            'previsao' => $prazo,
+            'motivo_codigo' => $data['motivo_codigo'] ?? null,
+            'motivo_texto' => $data['motivo_texto'] ?? ($data['justificativa'] ?? null),
+            'ator_colaborador_id' => $actorColaboradorId,
+            'ator_usuario_id' => $actorUsuarioId,
+            'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+        ]);
+        $conn->commit();
+        echo json_encode($resultadoEnvio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $conn->close();
+        exit;
     }
 
     // Atualiza o status da imagem se enviado

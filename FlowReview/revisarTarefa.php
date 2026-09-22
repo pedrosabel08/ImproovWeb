@@ -836,6 +836,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             $stmt->close();
 
+            // A devolução para ajuste abre o próximo ciclo antes que o
+            // colaborador escolha quando iniciará a execução. Também
+            // regulariza uma execução antiga que uma rota legada tenha
+            // deixado aberta ao enviar a tarefa para aprovação.
+            if (
+                $status === 'Ajuste'
+                && normalize_name((string) $status_funcao_context) === 'em aprovacao'
+                && flow_janela_schema_disponivel($conn)
+            ) {
+                flow_janela_garantir_ciclo_ajuste_aguardando_inicio(
+                    $conn,
+                    (int) $idfuncao_imagem,
+                    (int) ($_SESSION['idcolaborador'] ?? 0) ?: null,
+                    (int) ($_SESSION['idusuario'] ?? 0) ?: null
+                );
+            }
+
             // Reset prioridade ao aprovar (qualquer tipo de aprovação)
             if (in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'])) {
                 $stmtPrio = $conn->prepare(

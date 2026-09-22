@@ -400,14 +400,17 @@ function flow_janela_registrar_evento(mysqli $conn, int $cicloId, string $evento
     $motivo = $dados['motivo'] ?? null;
     $detalhes = isset($dados['detalhes']) ? json_encode($dados['detalhes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
     $sql = 'INSERT INTO janela_operacional_evento
-        (ciclo_id, evento, estado_anterior, estado_novo, previsao_anterior, previsao_nova,
+        (ciclo_id, evento, status_tarefa_anterior, status_tarefa_novo,
+         estado_anterior, estado_novo, previsao_anterior, previsao_nova,
          prazo_necessario_snapshot, limite_data_snapshot, motivo_id, motivo_codigo_snapshot,
          motivo_label_snapshot, motivo_texto, responsavel_anterior_id, responsavel_novo_id,
          dias_uteis_consumidos, ator_colaborador_id, ator_usuario_id, detalhes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $stmt = $conn->prepare($sql);
     $estadoAnterior = $dados['estado_anterior'] ?? null;
     $estadoNovo = $dados['estado_novo'] ?? null;
+    $statusAnterior = $dados['status_tarefa_anterior'] ?? null;
+    $statusNovo = $dados['status_tarefa_novo'] ?? null;
     $previsaoAnterior = $dados['previsao_anterior'] ?? null;
     $previsaoNova = $dados['previsao_nova'] ?? null;
     $prazo = $dados['prazo_necessario'] ?? null;
@@ -422,9 +425,11 @@ function flow_janela_registrar_evento(mysqli $conn, int $cicloId, string $evento
     $atorColaborador = $dados['ator_colaborador_id'] ?? null;
     $atorUsuario = $dados['ator_usuario_id'] ?? null;
     $stmt->bind_param(
-        'isssssssisssiiiiis',
+        'isssssssssisssiiiiis',
         $cicloId,
         $evento,
+        $statusAnterior,
+        $statusNovo,
         $estadoAnterior,
         $estadoNovo,
         $previsaoAnterior,
@@ -448,6 +453,25 @@ function flow_janela_registrar_evento(mysqli $conn, int $cicloId, string $evento
     return $id;
 }
 
+function flow_janela_proximo_numero_ciclo(mysqli $conn, string $chaveReferencia): int
+{
+    $stmt = $conn->prepare('SELECT COALESCE(MAX(numero_ciclo), 0) + 1 AS proximo FROM janela_operacional_ciclo WHERE chave_referencia = ? FOR UPDATE');
+    $stmt->bind_param('s', $chaveReferencia);
+    $stmt->execute();
+    $numero = (int) ($stmt->get_result()->fetch_assoc()['proximo'] ?? 1);
+    $stmt->close();
+    return max(1, $numero);
+}
+
+function flow_janela_origem_por_evento(string $evento): string
+{
+    return match ($evento) {
+        'TRANSFERENCIA_ENTRADA' => 'TRANSFERENCIA',
+        'REABERTURA' => 'REABERTURA',
+        default => 'PRIMEIRA_EXECUCAO',
+    };
+}
+
 function flow_janela_criar_ciclo(
     mysqli $conn,
     array $unidade,
@@ -466,14 +490,17 @@ function flow_janela_criar_ciclo(
     $perfil = $avaliacao['perfil'];
     $inicioEm = date('Y-m-d H:i:s');
     $responsavel = (int) $unidade['tarefa_principal']['colaborador_id'];
+    $numeroCiclo = flow_janela_proximo_numero_ciclo($conn, $unidade['chave_referencia']);
+    $origemAbertura = $detalhesEvento['origem_abertura'] ?? flow_janela_origem_por_evento($eventoAbertura);
+    $qualidadeDados = $detalhesEvento['qualidade_dados'] ?? 'CANONICO';
     $sql = "INSERT INTO janela_operacional_ciclo
-        (chave_referencia, ciclo_anterior_id, unidade_trabalho_id, perfil_id, perfil_codigo_snapshot,
+        (chave_referencia, numero_ciclo, origem_abertura, qualidade_dados, ciclo_anterior_id, unidade_trabalho_id, perfil_id, perfil_codigo_snapshot,
          perfil_versao_snapshot, perfil_nome_snapshot, aplica_regra_snapshot, limite_dias_uteis_snapshot,
          inicio_em, limite_data_original, limite_data_atual, prazo_necessario_snapshot,
          planejamento_versao_id_snapshot, previsao_original, previsao_atual, estado_original, estado_atual,
          motivo_original_id, motivo_original_codigo, motivo_original_label, motivo_original_texto,
          responsavel_original_id, responsavel_atual_id, criado_por_colaborador_id, criado_por_usuario_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     $chave = $unidade['chave_referencia'];
     $unidadeId = $unidade['unidade_trabalho_id'];
@@ -493,8 +520,11 @@ function flow_janela_criar_ciclo(
     $motivoLabel = $motivo['label'] ?? null;
     $motivoTexto = $motivo['texto'] ?? null;
     $stmt->bind_param(
-        'siiisisiissssissssisssiiii',
+        'sissiiisisiissssissssisssiiii',
         $chave,
+        $numeroCiclo,
+        $origemAbertura,
+        $qualidadeDados,
         $cicloAnteriorId,
         $unidadeId,
         $perfilId,
@@ -533,7 +563,8 @@ function flow_janela_criar_ciclo(
         $stmtItem->execute();
     }
     $stmtItem->close();
-    flow_janela_registrar_evento($conn, $cicloId, $eventoAbertura, [
+    flow_janela_registrar_evento($conn, $cicloId, 'CICLO_CRIADO', [
+        'status_tarefa_novo' => 'Em andamento',
         'estado_novo' => $estado,
         'previsao_nova' => $previsao,
         'prazo_necessario' => $prazo,
@@ -543,11 +574,139 @@ function flow_janela_criar_ciclo(
         'ator_colaborador_id' => $atorColaboradorId,
         'ator_usuario_id' => $atorUsuarioId,
         'detalhes' => array_merge(
-            ['perfil_codigo' => $perfilCodigo, 'perfil_versao' => $perfilVersao, 'limite_dias_uteis' => $dias],
+            ['evento_origem' => $eventoAbertura, 'numero_ciclo' => $numeroCiclo, 'origem_abertura' => $origemAbertura, 'perfil_codigo' => $perfilCodigo, 'perfil_versao' => $perfilVersao, 'limite_dias_uteis' => $dias],
             $detalhesEvento
         ),
     ]);
+    flow_janela_registrar_evento($conn, $cicloId, 'EXECUCAO_INICIADA', [
+        'status_tarefa_novo' => 'Em andamento',
+        'estado_novo' => $estado,
+        'previsao_nova' => $previsao,
+        'prazo_necessario' => $prazo,
+        'limite_data' => $limite,
+        'ator_colaborador_id' => $atorColaboradorId,
+        'ator_usuario_id' => $atorUsuarioId,
+        'detalhes' => ['origem_acionamento' => $detalhesEvento['origem_acionamento'] ?? null],
+    ]);
     return ['ciclo_id' => $cicloId, 'criado' => true];
+}
+
+/** Cria o ciclo de ajuste assim que a revisão devolve a tarefa, ainda sem previsão. */
+function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): array
+{
+    $existente = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
+    if ($existente) {
+        if ($existente['situacao'] === 'AGUARDANDO_INICIO') {
+            return ['ciclo_id' => (int) $existente['id'], 'criado' => false];
+        }
+        throw new RuntimeException('Existe um ciclo operacional ativo para esta tarefa.');
+    }
+    $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, true);
+    $anterior = flow_janela_ultimo_ciclo_por_tarefa($conn, $funcaoImagemId, true);
+    $perfil = flow_janela_perfil_vigente($conn, $unidade['perfil_codigo']);
+    $numero = flow_janela_proximo_numero_ciclo($conn, $unidade['chave_referencia']);
+    $responsavel = (int) $unidade['tarefa_principal']['colaborador_id'];
+    $perfilId = $perfil['id'] ?? null;
+    $perfilCodigo = $perfil['codigo'] ?? null;
+    $perfilVersao = $perfil['versao'] ?? null;
+    $perfilNome = $perfil['nome'] ?? null;
+    $aplicaRegra = $perfil ? (!empty($perfil['aplica_regra']) ? 1 : 0) : null;
+    $dias = $perfil['limite_dias_uteis'] ?? null;
+    $anteriorId = $anterior ? (int) $anterior['id'] : null;
+    $unidadeId = $unidade['unidade_trabalho_id'] ?: null;
+    $stmt = $conn->prepare("INSERT INTO janela_operacional_ciclo
+        (chave_referencia, numero_ciclo, origem_abertura, qualidade_dados, ciclo_anterior_id, unidade_trabalho_id,
+         perfil_id, perfil_codigo_snapshot, perfil_versao_snapshot, perfil_nome_snapshot, aplica_regra_snapshot,
+         limite_dias_uteis_snapshot, responsavel_original_id, responsavel_atual_id, situacao, ativo_token,
+         criado_por_colaborador_id, criado_por_usuario_id)
+         VALUES (?, ?, 'AJUSTE', 'CANONICO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'AGUARDANDO_INICIO', 'ATIVO', ?, ?)");
+    $stmt->bind_param('siiiisisiiiiii', $unidade['chave_referencia'], $numero, $anteriorId, $unidadeId, $perfilId, $perfilCodigo, $perfilVersao, $perfilNome, $aplicaRegra, $dias, $responsavel, $responsavel, $atorColaboradorId, $atorUsuarioId);
+    $stmt->execute();
+    $cicloId = (int) $conn->insert_id;
+    $stmt->close();
+    $item = $conn->prepare('INSERT INTO janela_operacional_ciclo_item (ciclo_id, funcao_imagem_id, ordem) VALUES (?, ?, ?)');
+    foreach (array_values($unidade['membros']) as $ordem => $membro) {
+        $tarefaId = (int) $membro['idfuncao_imagem'];
+        $posicao = $ordem + 1;
+        $item->bind_param('iii', $cicloId, $tarefaId, $posicao);
+        $item->execute();
+    }
+    $item->close();
+    flow_janela_registrar_evento($conn, $cicloId, 'CICLO_CRIADO', [
+        'status_tarefa_anterior' => 'Em aprovação',
+        'status_tarefa_novo' => 'Ajuste',
+        'responsavel_novo_id' => $responsavel,
+        'ator_colaborador_id' => $atorColaboradorId,
+        'ator_usuario_id' => $atorUsuarioId,
+        'detalhes' => ['numero_ciclo' => $numero, 'origem_abertura' => 'AJUSTE', 'situacao' => 'AGUARDANDO_INICIO'],
+    ]);
+    flow_janela_registrar_evento($conn, $cicloId, 'AJUSTE_RECEBIDO', [
+        'status_tarefa_anterior' => 'Em aprovação',
+        'status_tarefa_novo' => 'Ajuste',
+        'ator_colaborador_id' => $atorColaboradorId,
+        'ator_usuario_id' => $atorUsuarioId,
+    ]);
+    return ['ciclo_id' => $cicloId, 'criado' => true];
+}
+
+/**
+ * Garante que um retorno para Ajuste deixe a tarefa em um ciclo pendente.
+ *
+ * Em fluxos canônicos, a execução anterior já foi encerrada ao entrar em
+ * aprovação. A regularização abaixo protege rotas legadas que tenham gravado
+ * o status sem encerrar o ciclo: esse ciclo não pode continuar aberto depois
+ * de a tarefa retornar para Ajuste, pois bloquearia o próximo início.
+ */
+function flow_janela_garantir_ciclo_ajuste_aguardando_inicio(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): array
+{
+    $existente = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
+    if ($existente && $existente['situacao'] === 'AGUARDANDO_INICIO') {
+        return ['ciclo_id' => (int) $existente['id'], 'criado' => false, 'regularizado' => false];
+    }
+
+    if ($existente) {
+        flow_janela_encerrar_ciclo(
+            $conn,
+            $funcaoImagemId,
+            'REGULARIZACAO_RETORNO_AJUSTE',
+            $atorColaboradorId,
+            $atorUsuarioId,
+            'Em aprovação',
+            'EXECUCAO_ENVIADA_APROVACAO'
+        );
+    }
+
+    $criado = flow_janela_criar_ciclo_aguardando_inicio($conn, $funcaoImagemId, $atorColaboradorId, $atorUsuarioId);
+    $criado['regularizado'] = $existente !== null;
+    return $criado;
+}
+
+/** Ativa um ajuste sem reutilizar previsão nem horário do ciclo anterior. */
+function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, string $previsao, ?array $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId, string $origemAcionamento = 'KANBAN'): array
+{
+    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
+    if (!$ciclo || $ciclo['situacao'] !== 'AGUARDANDO_INICIO') {
+        throw new DomainException('Não existe ciclo de ajuste aguardando início para esta tarefa.');
+    }
+    $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, true);
+    $avaliacao = flow_janela_avaliar($conn, $unidade, $previsao);
+    $perfil = $avaliacao['perfil'];
+    $inicio = date('Y-m-d H:i:s');
+    $cicloId = (int) $ciclo['id'];
+    $stmt = $conn->prepare('UPDATE janela_operacional_ciclo SET perfil_id=?, perfil_codigo_snapshot=?, perfil_versao_snapshot=?, perfil_nome_snapshot=?, aplica_regra_snapshot=?, limite_dias_uteis_snapshot=?, inicio_em=?, limite_data_original=?, limite_data_atual=?, prazo_necessario_snapshot=?, planejamento_versao_id_snapshot=?, previsao_original=?, previsao_atual=?, estado_original=?, estado_atual=?, motivo_original_id=?, motivo_original_codigo=?, motivo_original_label=?, motivo_original_texto=?, situacao=\'ATIVO\', qualidade_dados=? WHERE id=?');
+    $perfilId = $perfil['id'] ?? null; $codigo = $perfil['codigo'] ?? null; $versao = $perfil['versao'] ?? null; $nome = $perfil['nome'] ?? null;
+    $aplica = !empty($perfil['aplica_regra']) ? 1 : 0; $dias = $perfil['limite_dias_uteis'] ?? null;
+    $limite = $avaliacao['limite_data']; $prazoNecessario = $avaliacao['prazo_necessario']; $versaoPlanejamento = $avaliacao['planejamento_versao_id']; $estado = $avaliacao['estado'];
+    $motivoId = $motivo['id'] ?? null; $motivoCodigo = $motivo['codigo'] ?? null; $motivoLabel = $motivo['label'] ?? null; $motivoTexto = $motivo['texto'] ?? null; $qualidade = $origemAcionamento === 'FALLBACK_ENVIO_APROVACAO' ? 'REGULARIZADO_FALLBACK' : 'CANONICO';
+    $stmt->bind_param('isisiissssissssissssi', $perfilId, $codigo, $versao, $nome, $aplica, $dias, $inicio, $limite, $limite, $prazoNecessario, $versaoPlanejamento, $previsao, $previsao, $estado, $estado, $motivoId, $motivoCodigo, $motivoLabel, $motivoTexto, $qualidade, $cicloId);
+    $stmt->execute(); $stmt->close();
+    flow_janela_registrar_evento($conn, $cicloId, 'EXECUCAO_INICIADA', [
+        'status_tarefa_anterior' => 'Ajuste', 'status_tarefa_novo' => 'Em andamento', 'estado_novo' => $estado,
+        'previsao_nova' => $previsao, 'prazo_necessario' => $prazoNecessario, 'limite_data' => $limite,
+        'motivo' => $motivo, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId,
+        'detalhes' => ['origem_acionamento' => $origemAcionamento],
+    ]);
+    return ['ciclo_id' => $cicloId, 'avaliacao' => $avaliacao];
 }
 
 function flow_janela_atualizar_previsao(mysqli $conn, int $funcaoImagemId, string $previsao, ?string $motivoCodigo, ?string $motivoTexto, ?int $atorColaboradorId, ?int $atorUsuarioId): array
@@ -646,7 +805,7 @@ function flow_janela_retomar(mysqli $conn, int $funcaoImagemId, ?int $atorColabo
     return ['ciclo_id' => $cicloId, 'dias_uteis_suspensos' => $dias, 'limite_data_original' => $ciclo['limite_data_original'], 'limite_data_atual' => $limiteNovo, 'estado' => $estadoNovo];
 }
 
-function flow_janela_encerrar_ciclo(mysqli $conn, int $funcaoImagemId, string $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId): ?array
+function flow_janela_encerrar_ciclo(mysqli $conn, int $funcaoImagemId, string $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId, ?string $statusSaida = null, ?string $eventoSaida = null): ?array
 {
     $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
     if (!$ciclo) {
@@ -669,13 +828,45 @@ function flow_janela_encerrar_ciclo(mysqli $conn, int $funcaoImagemId, string $m
             $stmtPausa->close();
         }
     }
-    $stmt = $conn->prepare("UPDATE janela_operacional_ciclo SET situacao = 'ENCERRADO', ativo_token = NULL, encerrado_em = ?, motivo_encerramento = ? WHERE id = ?");
-    $stmt->bind_param('ssi', $agora, $motivo, $cicloId);
+    $stmt = $conn->prepare("UPDATE janela_operacional_ciclo SET situacao = 'ENCERRADO', ativo_token = NULL, encerrado_em = ?, motivo_encerramento = ?, status_saida = ? WHERE id = ?");
+    $stmt->bind_param('sssi', $agora, $motivo, $statusSaida, $cicloId);
     $stmt->execute();
     $stmt->close();
     $consumidos = flow_janela_dias_consumidos($conn, $ciclo);
-    flow_janela_registrar_evento($conn, $cicloId, 'CICLO_ENCERRADO', ['estado_anterior' => $ciclo['estado_atual'], 'previsao_anterior' => $ciclo['previsao_atual'], 'limite_data' => $ciclo['limite_data_atual'], 'dias_uteis_consumidos' => $consumidos, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId, 'detalhes' => ['motivo' => $motivo]]);
-    return ['ciclo_id' => $cicloId, 'motivo' => $motivo, 'dias_uteis_consumidos' => $consumidos];
+    if ($eventoSaida) {
+        flow_janela_registrar_evento($conn, $cicloId, $eventoSaida, ['status_tarefa_anterior' => 'Em andamento', 'status_tarefa_novo' => $statusSaida, 'estado_anterior' => $ciclo['estado_atual'], 'previsao_anterior' => $ciclo['previsao_atual'], 'limite_data' => $ciclo['limite_data_atual'], 'dias_uteis_consumidos' => $consumidos, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId, 'detalhes' => ['motivo' => $motivo]]);
+    }
+    flow_janela_registrar_evento($conn, $cicloId, 'CICLO_ENCERRADO', ['status_tarefa_anterior' => $statusSaida ? 'Em andamento' : null, 'status_tarefa_novo' => $statusSaida, 'estado_anterior' => $ciclo['estado_atual'], 'previsao_anterior' => $ciclo['previsao_atual'], 'limite_data' => $ciclo['limite_data_atual'], 'dias_uteis_consumidos' => $consumidos, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId, 'detalhes' => ['motivo' => $motivo]]);
+    return ['ciclo_id' => $cicloId, 'motivo' => $motivo, 'status_saida' => $statusSaida, 'dias_uteis_consumidos' => $consumidos];
+}
+
+/**
+ * Protege rotas legadas de entrega que já gravaram Em aprovação diretamente.
+ * A sincronização é idempotente: o fluxo canônico já terá encerrado o ciclo
+ * e, nesse caso, não haverá ação adicional.
+ */
+function flow_janela_sincronizar_envio_aprovacao(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): ?array
+{
+    if (!flow_janela_schema_disponivel($conn)) {
+        return null;
+    }
+    $tarefa = flow_janela_carregar_tarefa($conn, $funcaoImagemId, true);
+    if (!$tarefa || (string) ($tarefa['status'] ?? '') !== 'Em aprovação') {
+        return null;
+    }
+    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
+    if (!$ciclo || !in_array((string) $ciclo['situacao'], ['ATIVO', 'PAUSADO'], true)) {
+        return null;
+    }
+    return flow_janela_encerrar_ciclo(
+        $conn,
+        $funcaoImagemId,
+        'SINCRONIZACAO_ENVIO_APROVACAO',
+        $atorColaboradorId,
+        $atorUsuarioId,
+        'Em aprovação',
+        'EXECUCAO_ENVIADA_APROVACAO'
+    );
 }
 
 function flow_janela_encerrar_se_unidade_finalizada(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): ?array

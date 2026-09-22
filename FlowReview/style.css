@@ -1292,6 +1292,34 @@ h2#dataEnvio {
   color: #222;
 }
 
+.approval-adjustment-action {
+  margin: 0 0 10px;
+}
+
+.approval-start-adjustment {
+  align-items: center;
+  background: #143f3a;
+  border: 1px solid #2b766b;
+  border-radius: 7px;
+  color: #e7fffa;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 7px;
+  justify-content: center;
+  padding: 9px 10px;
+  transition: background-color 160ms ease, border-color 160ms ease;
+  width: 100%;
+}
+
+.approval-start-adjustment:hover,
+.approval-start-adjustment:focus-visible {
+  background: #1b5b52;
+  border-color: #52a897;
+  outline: none;
+}
+
 /* Status badge styles */
 .status-badge {
   display: inline-block;

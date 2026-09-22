@@ -46,6 +46,18 @@ function home_payload_task_cta(int $taskId, string $label = 'Continuar tarefa'):
     ];
 }
 
+function home_payload_task_preview_url(array $task): ?string
+{
+    $source = trim((string) ($task['ultima_imagem'] ?? ''));
+    if ($source === '') {
+        return null;
+    }
+    if (preg_match('#^https?://#i', $source)) {
+        return $source;
+    }
+    return '../../thumb.php?path=' . rawurlencode($source) . '&w=360&q=70';
+}
+
 function home_payload_task(array $task, string $ctaLabel = 'Continuar tarefa'): array
 {
     $taskId = (int) ($task['id'] ?? 0);
@@ -79,8 +91,8 @@ function home_payload_task(array $task, string $ctaLabel = 'Continuar tarefa'): 
     if (($task['status_temporal'] ?? '') === 'ATRASADO' && isset($task['dias_prazo'])) {
         $result['days_overdue'] = max(0, (int) $task['dias_prazo']);
     }
-    $previewUrl = trim((string) ($task['ultima_imagem'] ?? ''));
-    if ($previewUrl !== '') {
+    $previewUrl = home_payload_task_preview_url($task);
+    if ($previewUrl !== null) {
         $result['preview_url'] = $previewUrl;
     }
 

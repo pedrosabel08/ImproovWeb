@@ -112,6 +112,10 @@ function dashboard_colaborador_normalizar_tarefa(array $tarefa): array
         'obra_id' => (int) ($tarefa['obra_id'] ?? 0),
         'obra' => (string) ($tarefa['nomenclatura'] ?? $tarefa['nome_obra'] ?? ''),
         'imagem' => (string) ($tarefa['imagem_nome'] ?? ''),
+        // Mantém a última imagem disponível para os consumidores que exibem
+        // uma prévia da tarefa (a Home transforma o caminho no endpoint de
+        // thumbnail antes de enviá-lo ao navegador).
+        'ultima_imagem' => trim((string) ($tarefa['ultima_imagem'] ?? '')),
         'funcao_id' => (int) ($tarefa['funcao_id'] ?? 0),
         'funcao' => (string) ($tarefa['nome_funcao'] ?? ''),
         'status' => $status,

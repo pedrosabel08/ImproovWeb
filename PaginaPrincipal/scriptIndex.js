@@ -2687,6 +2687,9 @@ function processarDados(data) {
     }
 
     const tempoDisplay = item.tempo_calculado;
+    const tempoTooltip =
+      item.tempo_tooltip || formatarDuracao(mediaFuncao);
+    const tempoAoVivo = Number(item.tempo_ao_vivo) === 1;
 
     const requisitos = item.requisitos || {};
     const pendenciasInicio = Array.isArray(requisitos.bloqueios)
@@ -2827,8 +2830,9 @@ function processarDados(data) {
                     <div class="card-log">
                             <span 
                                 class="date tooltip ${tempoClass}"
-                                data-tooltip="${formatarDuracao(mediaFuncao)}"
-                                data-inicio="${tempoDisplay || ""}">
+                                data-tooltip="${escapeKanbanText(tempoTooltip)}"
+                                data-inicio="${tempoDisplay || ""}"
+                                data-tempo-ao-vivo="${tempoAoVivo ? "1" : "0"}">
                                 <i class="ri-time-line"></i> 
                                 ${tempoDisplay ? formatarDuracao(tempoDisplay) : "-"}
                                 </span>
@@ -4281,12 +4285,7 @@ function atualizarTemposEmAndamento() {
   spans.forEach((span) => {
     // pega o card correto
     const card = span.closest(".kanban-card");
-    const isEmAndamento = card && card.dataset.status === "Em andamento";
-    const isNaoIniciado =
-      card &&
-      card.dataset.status === "Não iniciado" &&
-      card.dataset.liberado === "1";
-    if (!card || (!isEmAndamento && !isNaoIniciado)) return;
+    if (!card || span.dataset.tempoAoVivo !== "1") return;
 
     // pega o valor de data-inicio (em minutos)
     let minutosIniciais = parseInt(span.dataset.inicio, 10);

@@ -891,6 +891,131 @@ function calcularTempo($logs, $statusAtual)
     return $tempoCalculado;
 }
 
+function tempo_ciclo_normalizar_status(?string $status): string
+{
+    $status = trim((string) $status);
+    return function_exists('mb_strtolower')
+        ? mb_strtolower($status, 'UTF-8')
+        : strtolower($status);
+}
+
+function tempo_ciclo_minutos_entre(DateTimeImmutable $inicio, DateTimeImmutable $fim): int
+{
+    return max(0, (int) floor(($fim->getTimestamp() - $inicio->getTimestamp()) / 60));
+}
+
+function tempo_ciclo_formatar_data(DateTimeImmutable $data): string
+{
+    return $data->format('d/m/Y \\à\\s H:i');
+}
+
+/**
+ * Calcula o tempo mostrado no card dentro do último ciclo oficial.
+ *
+ * Para estados abertos, mede a permanência no status atual desde a última
+ * transição daquele ciclo. Para Finalizado/Aprovado, soma somente os períodos
+ * em que o responsável esteve trabalhando (Em andamento ou Ajuste).
+ */
+function calcularTempoDoCiclo(array $logs, string $statusAtual, ?array $ciclo): ?array
+{
+    if (!$ciclo) {
+        return null;
+    }
+
+    $inicioBruto = $ciclo['inicio_em'] ?: ($ciclo['criado_em'] ?? null);
+    if (!$inicioBruto) {
+        return null;
+    }
+
+    try {
+        $inicioCiclo = new DateTimeImmutable($inicioBruto);
+        $agora = new DateTimeImmutable();
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    $logsDoCiclo = [];
+    foreach ($logs as $log) {
+        if (empty($log['data'])) {
+            continue;
+        }
+        try {
+            $momento = new DateTimeImmutable($log['data']);
+        } catch (Throwable $e) {
+            continue;
+        }
+        if ($momento >= $inicioCiclo) {
+            $log['_momento'] = $momento;
+            $logsDoCiclo[] = $log;
+        }
+    }
+    usort($logsDoCiclo, static function (array $a, array $b): int {
+        return $a['_momento'] <=> $b['_momento'];
+    });
+
+    $statusNormalizado = tempo_ciclo_normalizar_status($statusAtual);
+    $numeroCiclo = max(1, (int) ($ciclo['numero_ciclo'] ?? 1));
+    $statusFinal = in_array($statusNormalizado, ['finalizado', 'aprovado'], true);
+
+    if (!$statusFinal) {
+        $inicioStatus = null;
+        foreach ($logsDoCiclo as $log) {
+            if (tempo_ciclo_normalizar_status($log['status_novo'] ?? null) === $statusNormalizado) {
+                $inicioStatus = $log['_momento'];
+            }
+        }
+        $inicioStatus = $inicioStatus ?: $inicioCiclo;
+        return [
+            'minutos' => tempo_ciclo_minutos_entre($inicioStatus, $agora),
+            'ao_vivo' => true,
+            'tooltip' => sprintf(
+                'Ciclo %d · %s desde %s',
+                $numeroCiclo,
+                $statusAtual,
+                tempo_ciclo_formatar_data($inicioStatus)
+            ),
+            'ciclo_id' => (int) ($ciclo['ciclo_id'] ?? 0),
+            'numero_ciclo' => $numeroCiclo,
+        ];
+    }
+
+    try {
+        $fimCiclo = !empty($ciclo['encerrado_em'])
+            ? new DateTimeImmutable($ciclo['encerrado_em'])
+            : $agora;
+    } catch (Throwable $e) {
+        $fimCiclo = $agora;
+    }
+
+    $cursor = $inicioCiclo;
+    // Todo ciclo efetivamente iniciado nasce em execução. O primeiro log do
+    // ciclo confirma ou substitui este estado inicial sem perder o intervalo.
+    $statusEmVigor = 'em andamento';
+    $minutosAtivos = 0;
+    foreach ($logsDoCiclo as $log) {
+        $momento = $log['_momento'];
+        if ($momento > $fimCiclo) {
+            break;
+        }
+        if (in_array($statusEmVigor, ['em andamento', 'ajuste'], true)) {
+            $minutosAtivos += tempo_ciclo_minutos_entre($cursor, $momento);
+        }
+        $statusEmVigor = tempo_ciclo_normalizar_status($log['status_novo'] ?? null);
+        $cursor = $momento;
+    }
+    if ($cursor < $fimCiclo && in_array($statusEmVigor, ['em andamento', 'ajuste'], true)) {
+        $minutosAtivos += tempo_ciclo_minutos_entre($cursor, $fimCiclo);
+    }
+
+    return [
+        'minutos' => $minutosAtivos,
+        'ao_vivo' => false,
+        'tooltip' => sprintf('Ciclo %d · Encerrado · Tempo ativo total', $numeroCiclo),
+        'ciclo_id' => (int) ($ciclo['ciclo_id'] ?? 0),
+        'numero_ciclo' => $numeroCiclo,
+    ];
+}
+
 // ====================
 // Consulta única para logs de todas funções
 // ====================
@@ -913,6 +1038,10 @@ if (count($funcaoImagemIds) > 0) {
     }
     $stmtLogsAll->close();
 }
+
+// O card precisa do último ciclo também depois de ele ser encerrado: é ele
+// que delimita o tempo histórico de uma tarefa Finalizada ou Aprovada.
+$ultimosCiclosPorFuncao = flow_janela_ultimos_ciclos_lote($conn, $funcaoImagemIds);
 
 // ====================
 // Ajusta Funções (liberação, ordem, etc.)
@@ -1105,10 +1234,27 @@ foreach ($funcoes as $funcao) {
         $liberada = (bool) $avaliacaoRequisitos['elegivel'];
     }
 
-    // Calcular tempo por status usando logs já consultados
+    // O contador de tarefas iniciadas é sempre limitado ao último ciclo. Sem
+    // ciclo oficial, mantém-se o cálculo legado para não alterar os cards que
+    // ainda não passaram pelo novo fluxo.
     $funcaoId       = $funcao['idfuncao_imagem'];
     $logs           = isset($logsPorFuncao[$funcaoId]) ? $logsPorFuncao[$funcaoId] : [];
-    $tempoCalculado = calcularTempo($logs, $funcao['status']);
+    $tempoDoCiclo = (string) ($funcao['status'] ?? '') === 'Não iniciado'
+        ? null
+        : calcularTempoDoCiclo(
+            $logs,
+            (string) ($funcao['status'] ?? ''),
+            $ultimosCiclosPorFuncao[(int) $funcaoId] ?? null
+        );
+    $tempoCalculado = $tempoDoCiclo['minutos'] ?? calcularTempo($logs, $funcao['status']);
+    $tempoTooltip = $tempoDoCiclo['tooltip'] ?? null;
+    $tempoAoVivo = array_key_exists('ao_vivo', $tempoDoCiclo ?? [])
+        ? (bool) $tempoDoCiclo['ao_vivo']
+        : (
+            (string) ($funcao['status'] ?? '') === 'Não iniciado'
+                ? $liberada
+                : !in_array((string) ($funcao['status'] ?? ''), ['Finalizado', 'Aprovado'], true)
+        );
 
     $contextoPlanejamento = $contextosPlanejamento[(int) $funcao['idfuncao_imagem']] ?? flow_tarefa_planejamento_contexto_vazio($funcao);
     if (!in_array((string) ($contextoPlanejamento['status_temporal']['codigo'] ?? ''), ['CONCLUIDO_NO_PRAZO', 'CONCLUIDO_COM_ATRASO'], true)) {
@@ -1161,6 +1307,9 @@ foreach ($funcoes as $funcao) {
         'ultima_imagem'              => $funcao['ultima_imagem'],
         'observacao'                 => $funcao['observacao'],
         'tempo_calculado'            => $tempoCalculado,
+        'tempo_tooltip'              => $tempoTooltip,
+        'tempo_ao_vivo'              => $tempoAoVivo ? 1 : 0,
+        'tempo_ciclo'                => $tempoDoCiclo,
         'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0,
         'angulo_ciencia_pendente'    => (int) ($funcao['angulo_ciencia_pendente'] ?? 0),
         'file_uploaded_at'           => $funcao['file_uploaded_at'],

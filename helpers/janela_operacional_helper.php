@@ -1037,3 +1037,47 @@ function flow_janela_contextos_lote(mysqli $conn, array $funcaoImagemIds): array
     $stmt->close();
     return $out;
 }
+
+/**
+ * Retorna o último ciclo conhecido de cada tarefa. Diferente do contexto de
+ * janela ativa, este também inclui ciclos já encerrados: o Kanban precisa
+ * apresentar o tempo do último ciclo para tarefas concluídas.
+ */
+function flow_janela_ultimos_ciclos_lote(mysqli $conn, array $funcaoImagemIds): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $funcaoImagemIds))));
+    if (!$ids || !flow_janela_schema_disponivel($conn)) {
+        return [];
+    }
+
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $sql = "SELECT i.funcao_imagem_id,
+                   c.id AS ciclo_id,
+                   c.numero_ciclo,
+                   c.inicio_em,
+                   c.criado_em,
+                   c.encerrado_em,
+                   c.situacao,
+                   c.status_saida,
+                   c.qualidade_dados
+              FROM janela_operacional_ciclo_item i
+              JOIN janela_operacional_ciclo c ON c.id = i.ciclo_id
+             WHERE i.funcao_imagem_id IN ($marks)
+               AND c.id = (
+                   SELECT MAX(c2.id)
+                     FROM janela_operacional_ciclo_item i2
+                     JOIN janela_operacional_ciclo c2 ON c2.id = i2.ciclo_id
+                    WHERE i2.funcao_imagem_id = i.funcao_imagem_id
+               )";
+    $stmt = $conn->prepare($sql);
+    $types = str_repeat('i', count($ids));
+    $stmt->bind_param($types, ...$ids);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $out = [];
+    while ($row = $result->fetch_assoc()) {
+        $out[(int) $row['funcao_imagem_id']] = $row;
+    }
+    $stmt->close();
+    return $out;
+}

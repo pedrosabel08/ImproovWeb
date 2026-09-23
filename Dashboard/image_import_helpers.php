@@ -185,10 +185,12 @@ function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura
     foreach (array_values($rawEntries) as $index => $rawEntry) {
         $lineNumber = $index + 1;
         $commercialValue = '';
+        $commercialTax = '';
         $contractNumber = '';
         if (is_array($rawEntry)) {
             $rawName = trim((string) ($rawEntry['imagem_nome'] ?? $rawEntry['name'] ?? ''));
             $commercialValue = trim((string) ($rawEntry['valor'] ?? ''));
+            $commercialTax = trim((string) ($rawEntry['valor_imposto'] ?? ''));
             $contractNumber = trim((string) ($rawEntry['numero_contrato'] ?? ''));
         } else {
             $rawName = trim((string) $rawEntry);
@@ -216,6 +218,7 @@ function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura
             'imagem_nome' => $formattedName,
             'tipo_imagem' => $type !== '' ? $type : 'Desconhecido',
             'valor' => $commercialValue,
+            'valor_imposto' => $commercialTax,
             'numero_contrato' => $contractNumber,
         ];
     }

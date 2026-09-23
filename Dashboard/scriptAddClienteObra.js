@@ -47,6 +47,8 @@
     selectAllImages: document.getElementById("onbSelectAllImages"),
     contractBatchValue: document.getElementById("onbContractBatchValue"),
     applyContract: document.getElementById("onbApplyContract"),
+    replicateGross: document.getElementById("onbReplicateGross"),
+    replicateTax: document.getElementById("onbReplicateTax"),
     selectedImageCount: document.getElementById("onbSelectedImageCount"),
     extraProjectField: document.getElementById("onbExtraProjectField"),
     extraProject: document.getElementById("onbExtraProject"),
@@ -849,14 +851,19 @@
     animateCount(elements.duplicateImages, state.images.duplicates.length);
     animateCount(elements.errorImages, state.images.errors.length);
     elements.previewCaption.textContent = state.images.entries.length
-      ? `${state.images.entries.length} imagem(ns) · valor vendido por imagem`
-      : "Informe o valor vendido por imagem.";
+      ? `${state.images.entries.length} imagem(ns) · valor bruto e imposto por imagem`
+      : "Informe o valor bruto e o imposto de cada imagem.";
 
-    const total = state.images.entries.reduce((sum, name) => {
-      const raw = state.images.values[name]?.valor ?? "";
-      return sum + (raw === "" ? 0 : Number(raw) || 0);
-    }, 0);
-    elements.previewTotal.textContent = `${formatMoney(total)} em imagens`;
+    const totals = state.images.entries.reduce(
+      (sum, name) => {
+        const values = state.images.values[name] || {};
+        sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
+        sum.tax += values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        return sum;
+      },
+      { gross: 0, tax: 0 },
+    );
+    elements.previewTotal.textContent = `${formatMoney(totals.gross)} bruto · ${formatMoney(totals.tax)} imposto`;
     elements.selectedImageCount.textContent = String(
       state.images.selected.length,
     );
@@ -876,14 +883,19 @@
                 <input class="onb-image-select" type="checkbox" data-image-select="${index}" aria-label="Selecionar ${escapeHtml(name)}" ${selected ? "checked" : ""}>
                 <span class="onb-image-name">${escapeHtml(name)}</span>
                 <label class="onb-image-price-label">
-                  <span>Valor vendido (R$)</span>
-                  <input type="number" min="0" step="0.01" inputmode="decimal" data-image-price="${index}" aria-label="Valor vendido para ${escapeHtml(name)}" value="${escapeHtml(values.valor || "")}" placeholder="0,00">
+                  <span>Valor bruto (R$)</span>
+                  <input type="number" min="0" step="0.01" inputmode="decimal" data-image-price="${index}" aria-label="Valor bruto para ${escapeHtml(name)}" value="${escapeHtml(values.valor || "")}" placeholder="0,00">
+                </label>
+                <label class="onb-image-price-label onb-image-tax-label">
+                  <span>Imposto (R$)</span>
+                  <input type="number" min="0" step="0.01" inputmode="decimal" data-image-tax="${index}" aria-label="Imposto para ${escapeHtml(name)}" value="${escapeHtml(values.valor_imposto || "")}" placeholder="0,00">
                 </label>
                 <span class="onb-image-contract" title="${escapeHtml(contract || "Contrato não atribuído")}">${escapeHtml(contract || "Contrato não atribuído")}</span>
               </li>`;
           })
           .join("")
       : '<li class="onb-image-empty">Nenhuma imagem carregada ainda.</li>';
+    updateReplicationButtons();
   }
 
   function renderSummary() {
@@ -897,17 +909,22 @@
                 state.images.entries.length > 0 &&
                 state.images.entries.every(
                   (name) =>
-                    String(state.images.values[name]?.valor ?? "").trim() !==
-                    "",
+                    String(state.images.values[name]?.valor ?? "").trim() !== "" &&
+                    String(state.images.values[name]?.valor_imposto ?? "").trim() !== "",
                 ),
             },
           ]
         : computedChecklist();
     const contactsCount = selectedContactsCount();
-    const commercialTotal = state.images.entries.reduce((sum, name) => {
-      const raw = state.images.values[name]?.valor ?? "";
-      return sum + (raw === "" ? 0 : Number(raw) || 0);
-    }, 0);
+    const commercialTotals = state.images.entries.reduce(
+      (sum, name) => {
+        const values = state.images.values[name] || {};
+        sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
+        sum.tax += values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        return sum;
+      },
+      { gross: 0, tax: 0 },
+    );
     const photoServiceValue = elements.photoServiceValue.value;
 
     if (state.mode === "extras") {
@@ -916,7 +933,8 @@
       elements.summaryList.innerHTML = `
         <div class="onb-summary-item"><span>Projeto</span><strong>${escapeHtml(option && option.value ? option.textContent.trim() : "Selecione um projeto")}</strong></div>
         <div class="onb-summary-item"><span>Imagens extras</span><strong>${state.images.entries.length} imagem(ns)</strong></div>
-        <div class="onb-summary-item"><span>Valor vendido</span><strong>${formatMoney(commercialTotal)}</strong></div>
+        <div class="onb-summary-item"><span>Valor bruto</span><strong>${formatMoney(commercialTotals.gross)}</strong></div>
+        <div class="onb-summary-item"><span>Impostos</span><strong>${formatMoney(commercialTotals.tax)}</strong></div>
         <div class="onb-summary-item"><span>Serviço fotográfico</span><strong>${photoServiceValue ? formatMoney(photoServiceValue) : "Não informado"}</strong></div>`;
       elements.checklistList.innerHTML = checklist
         .map(
@@ -934,7 +952,8 @@
             <div class="onb-summary-item"><span>Nomenclatura</span><strong>${escapeHtml(state.code || "A definir")}</strong></div>
               <div class="onb-summary-item"><span>Pacotes</span><strong>${packages.length ? escapeHtml(packages.join(" • ")) : "Nenhum pacote selecionado"}</strong></div>
               <div class="onb-summary-item"><span>Importação</span><strong>${state.images.entries.length} img / ${state.images.duplicates.length} dup / ${state.images.errors.length} err</strong></div>
-            <div class="onb-summary-item"><span>Valor vendido</span><strong>${formatMoney(commercialTotal)}</strong></div>
+            <div class="onb-summary-item"><span>Valor bruto</span><strong>${formatMoney(commercialTotals.gross)}</strong></div>
+            <div class="onb-summary-item"><span>Impostos</span><strong>${formatMoney(commercialTotals.tax)}</strong></div>
             <div class="onb-summary-item"><span>Serviço fotográfico</span><strong>${photoServiceValue ? formatMoney(photoServiceValue) : "Não informado"}</strong></div>
             <div class="onb-summary-item"><span>Contatos</span><strong>${contactsCount} contato(s) selecionado(s)</strong></div>
             <div class="onb-summary-item"><span>Status inicial</span><strong>ONBOARDING</strong></div>`;
@@ -1064,6 +1083,7 @@
       nextEntries.push(normalized);
       state.images.values[normalized] = state.images.values[normalized] || {
         valor: "",
+        valor_imposto: "",
         numero_contrato: "",
       };
     });
@@ -1167,7 +1187,19 @@
       });
       if (missingPrice) {
         notify(
-          `Informe um valor vendido válido para “${missingPrice}”.`,
+          `Informe um valor bruto válido para “${missingPrice}”.`,
+          "error",
+        );
+        return false;
+      }
+      const invalidTax = state.images.entries.find((name) => {
+        const raw = String(state.images.values[name]?.valor_imposto ?? "").trim();
+        const gross = Number(state.images.values[name]?.valor);
+        return raw === "" || !Number.isFinite(Number(raw)) || Number(raw) < 0 || Number(raw) > gross;
+      });
+      if (invalidTax) {
+        notify(
+          `Informe um imposto válido para “${invalidTax}”, sem ultrapassar o valor bruto.`,
           "error",
         );
         return false;
@@ -1322,6 +1354,7 @@
       images: state.images.entries.map((name) => ({
         imagem_nome: name,
         valor: state.images.values[name]?.valor ?? "",
+        valor_imposto: state.images.values[name]?.valor_imposto ?? "",
         numero_contrato: state.images.values[name]?.numero_contrato ?? "",
       })),
       servico_fotografico_valor: elements.photoServiceValue.value.trim(),
@@ -1420,19 +1453,60 @@
   elements.submit.addEventListener("click", submitOnboarding);
 
   elements.previewList.addEventListener("input", (event) => {
-    const input = event.target.closest("[data-image-price]");
+    const input = event.target.closest("[data-image-price], [data-image-tax]");
     if (!input) return;
-    const imageName = state.images.entries[Number(input.dataset.imagePrice)];
+    const key = input.hasAttribute("data-image-price") ? "valor" : "valor_imposto";
+    const index = Number(input.dataset.imagePrice ?? input.dataset.imageTax);
+    const imageName = state.images.entries[index];
     if (!imageName) return;
     state.images.values[imageName] = state.images.values[imageName] || {};
-    state.images.values[imageName].valor = input.value;
-    const total = state.images.entries.reduce((sum, name) => {
-      const raw = state.images.values[name]?.valor ?? "";
-      return sum + (raw === "" ? 0 : Number(raw) || 0);
-    }, 0);
-    elements.previewTotal.textContent = `${formatMoney(total)} em imagens`;
+    state.images.values[imageName][key] = input.value;
+    const totals = state.images.entries.reduce(
+      (sum, name) => {
+        const values = state.images.values[name] || {};
+        sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
+        sum.tax += values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        return sum;
+      },
+      { gross: 0, tax: 0 },
+    );
+    elements.previewTotal.textContent = `${formatMoney(totals.gross)} bruto · ${formatMoney(totals.tax)} imposto`;
+    updateReplicationButtons();
     renderSummary();
   });
+
+  function updateReplicationButtons() {
+    const firstName = state.images.entries[0];
+    const firstValues = firstName ? state.images.values[firstName] || {} : {};
+    const hasOthers = state.images.entries.length > 1;
+    elements.replicateGross.disabled = !hasOthers || String(firstValues.valor ?? "").trim() === "";
+    elements.replicateTax.disabled = !hasOthers || String(firstValues.valor_imposto ?? "").trim() === "";
+  }
+
+  function replicateCommercialField(field) {
+    const firstName = state.images.entries[0];
+    const sourceValue = firstName
+      ? String(state.images.values[firstName]?.[field] ?? "").trim()
+      : "";
+    if (!firstName || !sourceValue || state.images.entries.length < 2) return;
+    state.images.entries.slice(1).forEach((name) => {
+      state.images.values[name] = state.images.values[name] || {};
+      state.images.values[name][field] = sourceValue;
+    });
+    renderAll();
+    notify(
+      field === "valor"
+        ? "Valor bruto replicado para as demais imagens."
+        : "Imposto replicado para as demais imagens.",
+    );
+  }
+
+  elements.replicateGross.addEventListener("click", () =>
+    replicateCommercialField("valor"),
+  );
+  elements.replicateTax.addEventListener("click", () =>
+    replicateCommercialField("valor_imposto"),
+  );
 
   elements.previewList.addEventListener("change", (event) => {
     const checkbox = event.target.closest("[data-image-select]");

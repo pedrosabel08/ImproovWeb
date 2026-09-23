@@ -18,6 +18,10 @@ if (!$userId) {
     echo json_encode(['ok' => false, 'error' => 'unauthorized']);
     exit;
 }
+$notificationUserId = (int) ($_SESSION['idusuario'] ?? 0);
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
 // Aggregate ready_count per obra using same rule as Entregas/listar_entregas.php
 $sql = "SELECT o.idobra AS obra_id,
@@ -182,7 +186,6 @@ if ($preAltTablesReady) {
 // Notificações internas pendentes, agrupadas pelo módulo de origem.
 // O bloco é opcional para manter a sidebar compatível com bases sem a migração de notificações.
 $notification_modules = [];
-$notificationUserId = (int) ($_SESSION['idusuario'] ?? 0);
 $notificationTables = [];
 $notificationTablesResult = $conn->query(
     "SELECT table_name AS table_name

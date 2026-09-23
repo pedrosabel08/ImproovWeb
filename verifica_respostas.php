@@ -19,6 +19,9 @@ if (isset($_SESSION['idusuario']) && in_array($_SESSION['idusuario'], [1, 2, 3])
     echo json_encode(['hasResponses' => true]);
     exit;
 }
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
 $idcolaborador = (int)$_POST['idcolaborador'];
 $dt = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));

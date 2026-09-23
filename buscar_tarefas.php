@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/config/session_bootstrap.php';
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 header("Access-Control-Allow-Origin: *"); // ou especificar o domínio
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");

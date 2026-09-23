@@ -288,13 +288,42 @@
   function commercial() {
     if (!data) return;
     const items = commercialItems();
+    const contractTotals = new Map();
+    for (const image of data.imagens) {
+      for (const item of image.comercial) {
+        const contract =
+          String(item.numero_contrato || "").trim() || "Sem contrato";
+        contractTotals.set(
+          contract,
+          (contractTotals.get(contract) || 0) +
+            Math.round(Number(item.valor || 0) * 100),
+        );
+      }
+    }
+    const photoTotal = data.custos_gerais.comercial.reduce(
+      (sum, item) => sum + Math.round(Number(item.valor || 0) * 100),
+      0,
+    );
+    const contractRows = Array.from(contractTotals.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0], "pt-BR"),
+    );
+    $("contract-summary-list").innerHTML = contractRows.length
+      ? `<div class="contract-summary-list">${contractRows
+          .map(
+            ([contract, value]) =>
+              `<div class="contract-summary-row"><span>${esc(contract)}</span><b>${money(value)}</b></div>`,
+          )
+          .join(
+            "",
+          )}</div>${photoTotal ? `<div class="contract-summary-row is-photo"><span>Serviço fotográfico · projeto</span><b>${money(photoTotal)}</b></div>` : ""}`
+      : `<p class="muted">Nenhuma venda por imagem cadastrada.${photoTotal ? ` Serviço fotográfico vinculado ao projeto: <strong>${money(photoTotal)}</strong>.` : ""}</p>`;
     $("commercial-summary").textContent =
       `${data.obra.nomenclatura} · ${items.length} itens · ${money(data.resumo.vendido)}`;
     $("commercial-list").innerHTML =
       items
         .map(
           (c, n) =>
-            `<div class="commercial-row"><span>${esc(c.nome)}</span><b>${money(Math.round(Number(c.valor) * 100))}</b><button data-commercial="${n}">Editar</button></div>`,
+            `<div class="commercial-row"><span>${esc(c.nome)}${c.categoria === "foto" ? "<small>Projeto</small>" : `<small>${esc(String(c.numero_contrato || "").trim() || "Sem contrato")}</small>`}</span><b>${money(Math.round(Number(c.valor) * 100))}</b><button data-commercial="${n}">Editar</button></div>`,
         )
         .join("") ||
       '<p class="muted">Nenhum item cadastrado. Adicione os valores cobrados deste projeto.</p>';

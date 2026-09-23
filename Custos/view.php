@@ -138,6 +138,10 @@
         </div><button class="close-dialog icon-button" aria-label="Fechar composição comercial">×</button>
     </div>
     <p class="muted" id="commercial-summary"></p>
+    <section class="contract-summary" aria-labelledby="contract-summary-title">
+        <h3 id="contract-summary-title">Valor vendido por contrato</h3>
+        <div id="contract-summary-list"></div>
+    </section>
     <div class="commercial-actions"><button id="add-commercial">+ Adicionar item</button><button id="show-import">Importar CSV</button></div>
     <div id="commercial-list"></div>
     <form id="commercial-form" hidden>

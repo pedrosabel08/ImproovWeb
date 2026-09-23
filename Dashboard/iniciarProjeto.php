@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../config/secure_env.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -21,6 +22,7 @@ if (!isset($_SESSION['nivel_acesso']) || !in_array((int) $_SESSION['nivel_acesso
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/onboarding_helpers.php';
 require_once __DIR__ . '/image_import_helpers.php';
+require_once __DIR__ . '/onboarding_commercial_helpers.php';
 require_once __DIR__ . '/../contact_architecture.php';
 
 $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
@@ -413,6 +415,17 @@ if (count($validNewContacts) === 0 && count($legacyDraftContacts) > 0) {
 
 $preparedImages = dashboard_prepare_image_entries($rawImages, $nomenclatura);
 $preparedImageEntries = $preparedImages['entries'];
+try {
+    dashboard_onboarding_validate_commercial_images($preparedImageEntries);
+    $photoServiceValue = trim((string) ($payload['servico_fotografico_valor'] ?? ''));
+    if ($photoServiceValue !== '') {
+        custos_decimal($photoServiceValue);
+    }
+} catch (InvalidArgumentException $validationError) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => $validationError->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 $packageRows = onboarding_build_package_rows($packages, $observacoes);
 $stillDeadlineDays = !empty($packages['still']['enabled'])
     ? max(0, (int) ($packages['still']['deadline_days'] ?? 0))
@@ -542,6 +555,11 @@ try {
     $linkedContacts = contact_arch_fetch_linked_contacts($conn, $obraId);
     $savedContacts = (int) ($contactSync['linked_count'] ?? count($linkedContacts));
     $imageInsert = dashboard_insert_image_entries($conn, $clienteId, $obraId, $preparedImageEntries);
+    if (count($imageInsert['images'] ?? []) !== count($preparedImageEntries)) {
+        throw new RuntimeException('Não foi possível incluir todas as imagens e seus valores. Nenhuma alteração foi confirmada.');
+    }
+    $commercialImagesSaved = dashboard_onboarding_save_image_commercial($conn, $obraId, $imageInsert['images'] ?? []);
+    $photoServiceSaved = dashboard_onboarding_save_photo_service($conn, $obraId, $photoServiceValue);
 
     onboarding_ensure_remote_project_folder($nomenclatura);
 
@@ -600,6 +618,8 @@ try {
         'contacts_linked' => count($linkedContacts),
         'contacts_saved' => $savedContacts,
         'images_inserted' => $imageInsert['inserted'],
+        'commercial_images_saved' => $commercialImagesSaved,
+        'photo_service_saved' => $photoServiceSaved,
         'duplicates' => count($preparedImages['duplicates']),
         'errors' => array_merge($preparedImages['errors'], $imageInsert['errors']),
         'message' => 'Projeto iniciado com sucesso no onboarding operacional.',

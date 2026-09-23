@@ -1108,3 +1108,48 @@ table.dataTable tbody tr {
   }
 }
 >>>>>>> main
+.contract-summary {
+  margin: 12px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.18));
+  border-radius: 12px;
+  background: var(--surface-soft, rgba(148, 163, 184, 0.06));
+}
+
+.contract-summary h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.contract-summary-list {
+  display: grid;
+  gap: 7px;
+}
+
+.contract-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, rgba(148, 163, 184, 0.12));
+}
+
+.contract-summary-row:last-child {
+  border-bottom: 0;
+}
+
+.contract-summary-row.is-photo {
+  margin-top: 4px;
+  color: var(--muted, #8fa4bf);
+}
+
+.commercial-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.commercial-row small {
+  color: var(--muted, #8fa4bf);
+  font-size: 0.75em;
+}

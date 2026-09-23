@@ -184,7 +184,15 @@ function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura
 
     foreach (array_values($rawEntries) as $index => $rawEntry) {
         $lineNumber = $index + 1;
-        $rawName = trim((string) $rawEntry);
+        $commercialValue = '';
+        $contractNumber = '';
+        if (is_array($rawEntry)) {
+            $rawName = trim((string) ($rawEntry['imagem_nome'] ?? $rawEntry['name'] ?? ''));
+            $commercialValue = trim((string) ($rawEntry['valor'] ?? ''));
+            $contractNumber = trim((string) ($rawEntry['numero_contrato'] ?? ''));
+        } else {
+            $rawName = trim((string) $rawEntry);
+        }
         if ($rawName === '') {
             $errors[] = ['linha' => $lineNumber, 'erro' => 'Nome de imagem vazio'];
             continue;
@@ -207,6 +215,8 @@ function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura
         $entries[] = [
             'imagem_nome' => $formattedName,
             'tipo_imagem' => $type !== '' ? $type : 'Desconhecido',
+            'valor' => $commercialValue,
+            'numero_contrato' => $contractNumber,
         ];
     }
 
@@ -228,6 +238,7 @@ function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraI
 
     $inserted = 0;
     $plannedInserted = 0;
+    $insertedImages = [];
     $errors = [];
     foreach ($entries as $index => $entry) {
         $imageName = (string) ($entry['imagem_nome'] ?? '');
@@ -239,6 +250,7 @@ function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraI
         }
 
         $imageId = (int) $conn->insert_id;
+        $insertedImages[] = ['imagem_id' => $imageId, 'entry' => $entry];
         $planning = dashboard_insert_planned_functions_for_image($conn, $imageId, $imageType);
         if (!$planning['success']) {
             $errors[] = [
@@ -255,5 +267,5 @@ function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraI
 
     $stmt->close();
 
-    return ['inserted' => $inserted, 'planned_inserted' => $plannedInserted, 'errors' => $errors];
+    return ['inserted' => $inserted, 'planned_inserted' => $plannedInserted, 'errors' => $errors, 'images' => $insertedImages];
 }

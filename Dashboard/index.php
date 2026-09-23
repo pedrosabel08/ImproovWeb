@@ -115,7 +115,7 @@ $conn->close();
 
     include '../sidebar.php';
 
-    ?>
+?>
 
     <div class="main-content">
         <!-- Cabeçalho do Dashboard -->
@@ -130,7 +130,7 @@ $conn->close();
             <?php if (in_array((int) $nivel_acesso, [1, 5], true)): ?>
                 <button id="btnAddClienteObra" type="button">
                     <i class="fa-solid fa-diagram-project"></i>
-                    <span>Iniciar Projeto</span>
+                    <span>Gerenciar Projeto</span>
                 </button>
             <?php endif; ?>
         </div>
@@ -322,11 +322,24 @@ $conn->close();
                 <div class="onb-modal-header">
                     <div>
                         <span class="onb-kicker">Flow Start</span>
-                        <h2>Iniciar Projeto</h2>
-                        <p>Transforme o start da obra em um onboarding operacional rastreável e padronizado.</p>
+                        <h2 id="onbModalTitle">Gerenciar Projeto</h2>
+                        <p id="onbModalDescription">Inicie um projeto ou adicione imagens extras a uma obra existente.</p>
                     </div>
                     <button type="button" class="onb-close" id="closeAddClienteObra" aria-label="Fechar onboarding">&times;</button>
                 </div>
+
+                <section class="onb-mode-picker" id="onbModePicker" aria-label="Escolha uma ação">
+                    <button type="button" class="onb-mode-card" data-onboarding-mode="new">
+                        <span class="onb-mode-icon"><i class="fa-solid fa-folder-plus"></i></span>
+                        <strong>Novo projeto</strong>
+                        <span>Cadastre cliente, projeto, imagens, valores vendidos e contrato.</span>
+                    </button>
+                    <button type="button" class="onb-mode-card" data-onboarding-mode="extras">
+                        <span class="onb-mode-icon"><i class="fa-solid fa-images"></i></span>
+                        <strong>Adicionar extras</strong>
+                        <span>Inclua novas imagens e seus valores em um projeto existente.</span>
+                    </button>
+                </section>
 
                 <div class="onb-stepper" id="onbStepper">
                     <button type="button" class="onb-step-chip is-active" data-step="1">
@@ -367,7 +380,7 @@ $conn->close();
                                             <?php if (!empty($clientes) && is_array($clientes)): ?>
                                                 <?php foreach ($clientes as $c): ?>
                                                     <?php
-                                                    $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id']) ? $c['id'] : '');
+                                                $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id']) ? $c['id'] : '');
                                                     $cname = isset($c['nome_cliente']) ? $c['nome_cliente'] : (isset($c['nome']) ? $c['nome'] : '');
                                                     $csigla = isset($c['sigla_cliente']) ? $c['sigla_cliente'] : '';
                                                     $cfull = isset($c['nome_completo']) ? $c['nome_completo'] : '';
@@ -547,6 +560,27 @@ $conn->close();
                                     </div>
                                 </div>
 
+                                <div class="onb-extra-project-field" id="onbExtraProjectField" hidden>
+                                    <div class="onb-field">
+                                        <label for="onbExtraProject">Projeto existente</label>
+                                        <select id="onbExtraProject">
+                                            <option value="">Selecione um projeto</option>
+                                            <?php foreach (($obras ?? []) as $obraOption): ?>
+                                                <?php
+                                                $obraOptionId = (int) ($obraOption['idobra'] ?? 0);
+                                                $obraOptionName = (string) ($obraOption['nomenclatura'] ?? $obraOption['nome_obra'] ?? '');
+                                                if ($obraOptionId <= 0) {
+                                                    continue;
+                                                }
+                                                ?>
+                                                <option value="<?php echo $obraOptionId; ?>" data-nomenclatura="<?php echo htmlspecialchars($obraOptionName, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <?php echo htmlspecialchars($obraOptionName, ENT_QUOTES, 'UTF-8'); ?><?php echo (isset($obraOption['status_obra']) && (int) $obraOption['status_obra'] === 2) ? ' · Onboarding' : ''; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div class="onb-manual-block">
                                     <div class="onb-field onb-field-span-3">
                                         <label for="onbManualImages">Adicionar imagens manualmente</label>
@@ -560,10 +594,30 @@ $conn->close();
 
                                 <div class="onb-preview-card">
                                     <div class="onb-preview-header">
-                                        <strong>Prévia da lista consolidada</strong>
-                                        <span id="onbPreviewCaption">0 itens prontos para criação</span>
+                                        <div>
+                                            <strong>Valores comerciais</strong>
+                                            <span id="onbPreviewCaption">Informe o valor vendido por imagem.</span>
+                                        </div>
+                                        <span id="onbPreviewTotal">R$ 0,00 em imagens</span>
+                                    </div>
+                                    <div class="onb-contract-batch">
+                                        <label class="onb-select-all"><input type="checkbox" id="onbSelectAllImages"> <span>Selecionar todas</span></label>
+                                        <label class="onb-contract-batch-field" for="onbContractBatchValue">
+                                            <span>Contrato para aplicar à seleção</span>
+                                            <input id="onbContractBatchValue" type="text" maxlength="255" placeholder="Ex.: Contrato 2">
+                                        </label>
+                                        <button type="button" class="onb-secondary-btn" id="onbApplyContract">Aplicar à seleção <span id="onbSelectedImageCount">0</span></button>
                                     </div>
                                     <ul id="onbImagePreviewList" class="onb-preview-list"></ul>
+                                </div>
+
+                                <div class="onb-photo-service-card">
+                                    <div>
+                                        <strong>Serviço fotográfico</strong>
+                                        <span>Opcional · valor vinculado ao projeto</span>
+                                    </div>
+                                    <label for="onbPhotoServiceValue">Valor (R$)</label>
+                                    <input id="onbPhotoServiceValue" type="number" min="0" step="0.01" placeholder="0,00">
                                 </div>
                             </div>
                         </div>
@@ -694,10 +748,11 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>" defer></script>
     <script src="<?php echo asset_url('script.js') . '&m=' . filemtime(__DIR__ . '/script.js'); ?>" defer></script>
     <?php if (in_array((int) $nivel_acesso, [1, 5], true)): ?>
-        <script src="<?php echo asset_url('scriptAddClienteObra.js'); ?>" defer></script>
+        <script src="<?php echo asset_url('scriptAddClienteObra.js') . '&m=' . filemtime(__DIR__ . '/scriptAddClienteObra.js'); ?>" defer></script>
     <?php endif; ?>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>

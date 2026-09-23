@@ -4,6 +4,10 @@
   if (!btnOpen || !modal) return;
 
   const elements = {
+    modePicker: document.getElementById("onbModePicker"),
+    modeButtons: Array.from(modal.querySelectorAll("[data-onboarding-mode]")),
+    modalTitle: document.getElementById("onbModalTitle"),
+    modalDescription: document.getElementById("onbModalDescription"),
     close: document.getElementById("closeAddClienteObra"),
     clienteSelect: document.getElementById("onbClienteSelect"),
     clienteNomeCompleto: document.getElementById("onbClienteNomeCompleto"),
@@ -39,6 +43,14 @@
     clearImages: document.getElementById("onbClearImages"),
     previewList: document.getElementById("onbImagePreviewList"),
     previewCaption: document.getElementById("onbPreviewCaption"),
+    previewTotal: document.getElementById("onbPreviewTotal"),
+    selectAllImages: document.getElementById("onbSelectAllImages"),
+    contractBatchValue: document.getElementById("onbContractBatchValue"),
+    applyContract: document.getElementById("onbApplyContract"),
+    selectedImageCount: document.getElementById("onbSelectedImageCount"),
+    extraProjectField: document.getElementById("onbExtraProjectField"),
+    extraProject: document.getElementById("onbExtraProject"),
+    photoServiceValue: document.getElementById("onbPhotoServiceValue"),
     contactsList: document.getElementById("onbContactsList"),
     contactsState: document.getElementById("onbContactsState"),
     contactsCounter: document.getElementById("onbContactsCounter"),
@@ -102,6 +114,7 @@
 
   function createInitialState() {
     return {
+      mode: null,
       step: 1,
       clientId: "",
       clientName: "",
@@ -114,17 +127,35 @@
       code: "",
       notes: "",
       packages: {
-        still: { enabled: false, quantity: "", deadline_days: "", deadline_calendar_days: false },
-        animation: { enabled: false, seconds: "", deadline_days: "", deadline_calendar_days: false },
-        film: { enabled: false, duration: "", deadline_days: "", deadline_calendar_days: false },
+        still: {
+          enabled: false,
+          quantity: "",
+          deadline_days: "",
+          deadline_calendar_days: false,
+        },
+        animation: {
+          enabled: false,
+          seconds: "",
+          deadline_days: "",
+          deadline_calendar_days: false,
+        },
+        film: {
+          enabled: false,
+          duration: "",
+          deadline_days: "",
+          deadline_calendar_days: false,
+        },
       },
       images: {
         file_name: "",
         source: "manual",
         entries: [],
+        values: {},
+        selected: [],
         duplicates: [],
         errors: [],
       },
+      extraProjectId: "",
       contacts: createContactsState(),
       unique: {
         loading: false,
@@ -140,6 +171,71 @@
   let state = createInitialState();
   let uniqueCheckTimer = null;
   let uniqueCheckSeq = 0;
+  let allowMotion = !window.matchMedia("(prefers-reduced-motion: reduce)")
+    .matches;
+  const countTweens = new WeakMap();
+
+  if (window.gsap) {
+    const motionQueries = window.gsap.matchMedia();
+    motionQueries.add("(prefers-reduced-motion: reduce)", () => {
+      allowMotion = false;
+    });
+    motionQueries.add("(prefers-reduced-motion: no-preference)", () => {
+      allowMotion = true;
+    });
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(Number(value) || 0);
+  }
+
+  function animateCount(element, target) {
+    const next = Math.max(0, Number(target) || 0);
+    if (!element) return;
+    const previous = Number(element.dataset.countValue || 0);
+    if (!window.gsap || !allowMotion || previous === next) {
+      element.textContent = String(next);
+      element.dataset.countValue = String(next);
+      return;
+    }
+    countTweens.get(element)?.kill();
+    const counter = { value: previous };
+    const tween = window.gsap.to(counter, {
+      value: next,
+      duration: 0.42,
+      ease: "power1.out",
+      onUpdate: () => {
+        element.textContent = String(Math.round(counter.value));
+      },
+      onComplete: () => {
+        element.textContent = String(next);
+        element.dataset.countValue = String(next);
+      },
+    });
+    countTweens.set(element, tween);
+  }
+
+  function animateStepCards() {
+    if (!window.gsap || !allowMotion) return;
+    const visibleCards = Array.from(
+      modal.querySelectorAll(
+        ".onb-panel.is-active .onb-card, .onb-sidebar-card",
+      ),
+    ).filter((card) => card.getClientRects().length);
+    if (!visibleCards.length) return;
+    window.gsap.from(visibleCards, {
+      autoAlpha: 0,
+      y: 10,
+      duration: 0.32,
+      stagger: 0.055,
+      ease: "power2.out",
+      clearProps: "opacity,visibility,transform",
+      overwrite: "auto",
+    });
+  }
 
   function notify(message, type) {
     if (window.Toastify) {
@@ -206,7 +302,9 @@
     const sourceWords = usefulWords.length ? usefulWords : words;
     const initials = sourceWords.map((word) => word.charAt(0)).join("");
 
-    return projectCodePart(initials.length >= 3 ? initials : sourceWords.join(""));
+    return projectCodePart(
+      initials.length >= 3 ? initials : sourceWords.join(""),
+    );
   }
 
   function fallbackClientCode(label) {
@@ -229,7 +327,8 @@
     const projectInternal = projectCodePart(state.projectInternal);
     state.clientCode = clientCode;
     state.projectInternal = projectInternal;
-    state.code = clientCode && projectInternal ? `${clientCode}_${projectInternal}` : "";
+    state.code =
+      clientCode && projectInternal ? `${clientCode}_${projectInternal}` : "";
 
     elements.clienteSigla.value = clientCode;
     elements.projetoInterno.value = projectInternal;
@@ -239,8 +338,8 @@
   function hasUniqueConflicts() {
     return Boolean(
       state.unique.clienteSiglaExists ||
-        state.unique.obraSiglaExists ||
-        state.unique.nomenclaturaExists,
+      state.unique.obraSiglaExists ||
+      state.unique.nomenclaturaExists,
     );
   }
 
@@ -297,14 +396,19 @@
     state.unique.loading = true;
 
     try {
-      const response = await fetch("checkOnboardingSiglas.php?" + params.toString(), {
-        credentials: "same-origin",
-      });
+      const response = await fetch(
+        "checkOnboardingSiglas.php?" + params.toString(),
+        {
+          credentials: "same-origin",
+        },
+      );
       const data = await response.json().catch(() => null);
 
       if (seq !== uniqueCheckSeq) return;
       if (!response.ok || !data || !data.success) {
-        throw new Error(data && data.message ? data.message : "Erro ao validar siglas.");
+        throw new Error(
+          data && data.message ? data.message : "Erro ao validar siglas.",
+        );
       }
 
       state.unique = {
@@ -517,7 +621,9 @@
         option && option.dataset.nomeCompleto
           ? option.dataset.nomeCompleto.trim()
           : "";
-      return fullName || (option ? option.textContent.trim() : "Cliente existente");
+      return (
+        fullName || (option ? option.textContent.trim() : "Cliente existente")
+      );
     }
     if (state.clientId === "0") {
       return state.clientFullName || state.clientCode || "Novo cliente";
@@ -605,6 +711,8 @@
 
   function updateStepUI() {
     elements.stepButtons.forEach((button) => {
+      button.hidden =
+        state.mode === "extras" && Number(button.dataset.step) !== 3;
       button.classList.toggle(
         "is-active",
         Number(button.dataset.step) === state.step,
@@ -617,13 +725,18 @@
       );
     });
 
+    elements.extraProjectField.hidden = state.mode !== "extras";
+
     elements.prevStep.style.visibility =
-      state.step === 1 ? "hidden" : "visible";
+      state.step === 1 || state.mode === "extras" ? "hidden" : "visible";
     elements.nextStep.style.display =
-      state.step === 4 ? "block" : "block";
+      state.mode === "extras" ? "none" : "block";
     elements.nextStep.style.visibility =
       state.step === 4 ? "hidden" : "visible";
-    elements.submit.style.display = state.step === 4 ? "block" : "none";
+    elements.submit.style.display =
+      state.step === 4 || state.mode === "extras" ? "block" : "none";
+    elements.submit.textContent =
+      state.mode === "extras" ? "Adicionar extras" : "Criar projeto";
   }
 
   function renderContacts() {
@@ -731,24 +844,88 @@
   function renderImageState() {
     elements.importedFileName.textContent =
       state.images.file_name || "Nenhum arquivo importado";
-    elements.totalImages.textContent = String(state.images.entries.length);
-    elements.namedImages.textContent = String(state.images.entries.length);
-    elements.duplicateImages.textContent = String(
-      state.images.duplicates.length,
-    );
-    elements.errorImages.textContent = String(state.images.errors.length);
-    elements.previewCaption.textContent = `${state.images.entries.length} itens prontos para criação`;
+    animateCount(elements.totalImages, state.images.entries.length);
+    animateCount(elements.namedImages, state.images.entries.length);
+    animateCount(elements.duplicateImages, state.images.duplicates.length);
+    animateCount(elements.errorImages, state.images.errors.length);
+    elements.previewCaption.textContent = state.images.entries.length
+      ? `${state.images.entries.length} imagem(ns) · valor vendido por imagem`
+      : "Informe o valor vendido por imagem.";
 
-    const previewItems = state.images.entries.slice(0, 24);
-    elements.previewList.innerHTML = previewItems.length
-      ? previewItems.map((name) => `<li>${escapeHtml(name)}</li>`).join("")
-      : "<li>Nenhuma imagem carregada ainda.</li>";
+    const total = state.images.entries.reduce((sum, name) => {
+      const raw = state.images.values[name]?.valor ?? "";
+      return sum + (raw === "" ? 0 : Number(raw) || 0);
+    }, 0);
+    elements.previewTotal.textContent = `${formatMoney(total)} em imagens`;
+    elements.selectedImageCount.textContent = String(
+      state.images.selected.length,
+    );
+    elements.applyContract.disabled = state.images.selected.length === 0;
+    elements.selectAllImages.checked =
+      state.images.entries.length > 0 &&
+      state.images.selected.length === state.images.entries.length;
+
+    elements.previewList.innerHTML = state.images.entries.length
+      ? state.images.entries
+          .map((name, index) => {
+            const values = state.images.values[name] || {};
+            const selected = state.images.selected.includes(name);
+            const contract = String(values.numero_contrato || "").trim();
+            return `
+              <li class="onb-image-row ${selected ? "is-selected" : ""}" data-image-row="${index}">
+                <input class="onb-image-select" type="checkbox" data-image-select="${index}" aria-label="Selecionar ${escapeHtml(name)}" ${selected ? "checked" : ""}>
+                <span class="onb-image-name">${escapeHtml(name)}</span>
+                <label class="onb-image-price-label">
+                  <span>Valor vendido (R$)</span>
+                  <input type="number" min="0" step="0.01" inputmode="decimal" data-image-price="${index}" aria-label="Valor vendido para ${escapeHtml(name)}" value="${escapeHtml(values.valor || "")}" placeholder="0,00">
+                </label>
+                <span class="onb-image-contract" title="${escapeHtml(contract || "Contrato não atribuído")}">${escapeHtml(contract || "Contrato não atribuído")}</span>
+              </li>`;
+          })
+          .join("")
+      : '<li class="onb-image-empty">Nenhuma imagem carregada ainda.</li>';
   }
 
   function renderSummary() {
     const packages = selectedPackages();
-    const checklist = computedChecklist();
+    const checklist =
+      state.mode === "extras"
+        ? [
+            {
+              label: "Valores comerciais por imagem",
+              done:
+                state.images.entries.length > 0 &&
+                state.images.entries.every(
+                  (name) =>
+                    String(state.images.values[name]?.valor ?? "").trim() !==
+                    "",
+                ),
+            },
+          ]
+        : computedChecklist();
     const contactsCount = selectedContactsCount();
+    const commercialTotal = state.images.entries.reduce((sum, name) => {
+      const raw = state.images.values[name]?.valor ?? "";
+      return sum + (raw === "" ? 0 : Number(raw) || 0);
+    }, 0);
+    const photoServiceValue = elements.photoServiceValue.value;
+
+    if (state.mode === "extras") {
+      const option =
+        elements.extraProject.options[elements.extraProject.selectedIndex];
+      elements.summaryList.innerHTML = `
+        <div class="onb-summary-item"><span>Projeto</span><strong>${escapeHtml(option && option.value ? option.textContent.trim() : "Selecione um projeto")}</strong></div>
+        <div class="onb-summary-item"><span>Imagens extras</span><strong>${state.images.entries.length} imagem(ns)</strong></div>
+        <div class="onb-summary-item"><span>Valor vendido</span><strong>${formatMoney(commercialTotal)}</strong></div>
+        <div class="onb-summary-item"><span>Serviço fotográfico</span><strong>${photoServiceValue ? formatMoney(photoServiceValue) : "Não informado"}</strong></div>`;
+      elements.checklistList.innerHTML = checklist
+        .map(
+          (item) =>
+            `<div class="onb-checklist-item"><strong>${escapeHtml(item.label)}</strong><span class="onb-checklist-status ${item.done ? "is-done" : "is-pending"}">${item.done ? "Pronto" : "Pendente"}</span></div>`,
+        )
+        .join("");
+      return;
+    }
 
     elements.summaryList.innerHTML = `
             <div class="onb-summary-item"><span>Cliente</span><strong>${escapeHtml(selectedClientLabel())}</strong></div>
@@ -757,6 +934,8 @@
             <div class="onb-summary-item"><span>Nomenclatura</span><strong>${escapeHtml(state.code || "A definir")}</strong></div>
               <div class="onb-summary-item"><span>Pacotes</span><strong>${packages.length ? escapeHtml(packages.join(" • ")) : "Nenhum pacote selecionado"}</strong></div>
               <div class="onb-summary-item"><span>Importação</span><strong>${state.images.entries.length} img / ${state.images.duplicates.length} dup / ${state.images.errors.length} err</strong></div>
+            <div class="onb-summary-item"><span>Valor vendido</span><strong>${formatMoney(commercialTotal)}</strong></div>
+            <div class="onb-summary-item"><span>Serviço fotográfico</span><strong>${photoServiceValue ? formatMoney(photoServiceValue) : "Não informado"}</strong></div>
             <div class="onb-summary-item"><span>Contatos</span><strong>${contactsCount} contato(s) selecionado(s)</strong></div>
             <div class="onb-summary-item"><span>Status inicial</span><strong>ONBOARDING</strong></div>`;
 
@@ -809,14 +988,48 @@
     elements.filmDiasCorridos.checked = false;
     elements.imageFile.value = "";
     elements.manualImages.value = "";
+    elements.extraProject.value = "";
+    elements.photoServiceValue.value = "";
+    elements.contractBatchValue.value = "";
+    elements.selectAllImages.checked = false;
+    modal.classList.remove("is-extras-mode");
+    elements.modalTitle.textContent = "Gerenciar Projeto";
+    elements.modalDescription.textContent =
+      "Inicie um projeto ou adicione imagens extras a uma obra existente.";
     clearUniqueState();
     renderAll();
   }
 
   function open() {
     resetForm();
+    modal.classList.add("is-mode-picker");
     modal.style.display = "flex";
     document.body.classList.add("onb-modal-open");
+    if (window.gsap && allowMotion) {
+      window.gsap.from(modal.querySelectorAll(".onb-mode-card"), {
+        autoAlpha: 0,
+        y: 12,
+        duration: 0.34,
+        stagger: 0.08,
+        ease: "power2.out",
+        clearProps: "opacity,visibility,transform",
+      });
+    }
+  }
+
+  function chooseMode(mode) {
+    state.mode = mode;
+    state.step = mode === "extras" ? 3 : 1;
+    modal.classList.remove("is-mode-picker");
+    modal.classList.toggle("is-extras-mode", mode === "extras");
+    elements.modalTitle.textContent =
+      mode === "extras" ? "Adicionar extras ao projeto" : "Novo projeto";
+    elements.modalDescription.textContent =
+      mode === "extras"
+        ? "Selecione a obra, importe as imagens extras e registre o valor vendido de cada uma."
+        : "Cadastre o projeto e registre os valores comerciais junto da lista de imagens.";
+    renderAll();
+    animateStepCards();
   }
 
   function close() {
@@ -849,6 +1062,10 @@
       }
       seen.add(key);
       nextEntries.push(normalized);
+      state.images.values[normalized] = state.images.values[normalized] || {
+        valor: "",
+        numero_contrato: "",
+      };
     });
 
     state.images.entries = nextEntries;
@@ -935,8 +1152,40 @@
   }
 
   function validateStep(step) {
+    if (step === 3) {
+      if (state.mode === "extras" && !state.extraProjectId) {
+        notify("Selecione o projeto que receberá as imagens extras.", "error");
+        return false;
+      }
+      if (state.mode === "extras" && state.images.entries.length === 0) {
+        notify("Adicione ao menos uma imagem extra.", "error");
+        return false;
+      }
+      const missingPrice = state.images.entries.find((name) => {
+        const raw = String(state.images.values[name]?.valor ?? "").trim();
+        return raw === "" || !Number.isFinite(Number(raw)) || Number(raw) < 0;
+      });
+      if (missingPrice) {
+        notify(
+          `Informe um valor vendido válido para “${missingPrice}”.`,
+          "error",
+        );
+        return false;
+      }
+      const photoValue = String(elements.photoServiceValue.value || "").trim();
+      if (
+        photoValue &&
+        (!Number.isFinite(Number(photoValue)) || Number(photoValue) < 0)
+      ) {
+        notify("Informe um valor válido para o serviço fotográfico.", "error");
+        return false;
+      }
+      return true;
+    }
+
     if (step === 1) {
-      const usingExistingClient = state.clientId !== "" && state.clientId !== "0";
+      const usingExistingClient =
+        state.clientId !== "" && state.clientId !== "0";
       const usingNewClient = state.clientId === "0";
       if (!usingExistingClient && !usingNewClient) {
         notify("Selecione um cliente ou escolha Novo Cliente.", "error");
@@ -1050,10 +1299,13 @@
     }
     state.step = targetStep;
     renderAll();
+    animateStepCards();
   }
 
   function buildPayload() {
     return {
+      mode: state.mode,
+      obra_id: state.mode === "extras" ? Number(state.extraProjectId) : null,
       cliente_id:
         state.clientId !== "" && state.clientId !== "0"
           ? Number(state.clientId)
@@ -1067,7 +1319,12 @@
       cliente_nome: selectedClientLabel(),
       observacoes: state.notes,
       packages: state.packages,
-      images: state.images.entries,
+      images: state.images.entries.map((name) => ({
+        imagem_nome: name,
+        valor: state.images.values[name]?.valor ?? "",
+        numero_contrato: state.images.values[name]?.numero_contrato ?? "",
+      })),
+      servico_fotografico_valor: elements.photoServiceValue.value.trim(),
       image_import: {
         file_name: state.images.file_name,
         source: state.images.source,
@@ -1088,23 +1345,33 @@
   }
 
   async function submitOnboarding() {
-    if (!validateStep(1) || !validateStep(2)) {
-      return;
-    }
+    if (state.mode === "extras") {
+      if (!validateStep(3)) return;
+    } else {
+      if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+        return;
+      }
 
-    if (!(await confirmNoContacts())) {
-      return;
+      if (!(await confirmNoContacts())) {
+        return;
+      }
     }
 
     state.isSubmitting = true;
     elements.submit.disabled = true;
 
     try {
-      const response = await fetch("iniciarProjeto.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
+      const response = await fetch(
+        state.mode === "extras"
+          ? "adicionarExtrasProjeto.php"
+          : "iniciarProjeto.php",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPayload()),
+        },
+      );
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || !data.success) {
         throw new Error(
@@ -1113,7 +1380,9 @@
       }
 
       notify(
-        "Projeto criado em onboarding com sucesso. Atualizando dashboard...",
+        state.mode === "extras"
+          ? "Imagens extras e valores adicionados. Atualizando dashboard..."
+          : "Projeto criado com valores comerciais. Atualizando dashboard...",
       );
       close();
       window.setTimeout(() => window.location.reload(), 900);
@@ -1127,6 +1396,11 @@
   }
 
   btnOpen.addEventListener("click", open);
+  elements.modeButtons.forEach((button) => {
+    button.addEventListener("click", () =>
+      chooseMode(button.dataset.onboardingMode),
+    );
+  });
   elements.close.addEventListener("click", close);
   elements.cancel.addEventListener("click", close);
   modal.addEventListener("click", (event) => {
@@ -1144,6 +1418,87 @@
   elements.prevStep.addEventListener("click", () => goToStep(state.step - 1));
   elements.nextStep.addEventListener("click", () => goToStep(state.step + 1));
   elements.submit.addEventListener("click", submitOnboarding);
+
+  elements.previewList.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-image-price]");
+    if (!input) return;
+    const imageName = state.images.entries[Number(input.dataset.imagePrice)];
+    if (!imageName) return;
+    state.images.values[imageName] = state.images.values[imageName] || {};
+    state.images.values[imageName].valor = input.value;
+    const total = state.images.entries.reduce((sum, name) => {
+      const raw = state.images.values[name]?.valor ?? "";
+      return sum + (raw === "" ? 0 : Number(raw) || 0);
+    }, 0);
+    elements.previewTotal.textContent = `${formatMoney(total)} em imagens`;
+    renderSummary();
+  });
+
+  elements.previewList.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-image-select]");
+    if (!checkbox) return;
+    const imageName =
+      state.images.entries[Number(checkbox.dataset.imageSelect)];
+    if (!imageName) return;
+    if (checkbox.checked) {
+      state.images.selected = Array.from(
+        new Set(state.images.selected.concat(imageName)),
+      );
+    } else {
+      state.images.selected = state.images.selected.filter(
+        (name) => name !== imageName,
+      );
+    }
+    renderImageState();
+  });
+
+  elements.selectAllImages.addEventListener("change", () => {
+    state.images.selected = elements.selectAllImages.checked
+      ? state.images.entries.slice()
+      : [];
+    renderImageState();
+  });
+
+  elements.applyContract.addEventListener("click", () => {
+    const contract = elements.contractBatchValue.value.trim();
+    if (!contract) {
+      notify(
+        "Digite o texto do contrato que será aplicado à seleção.",
+        "error",
+      );
+      return;
+    }
+    if (!state.images.selected.length) {
+      notify("Selecione as imagens que pertencem a esse contrato.", "error");
+      return;
+    }
+    state.images.selected.forEach((imageName) => {
+      state.images.values[imageName] = state.images.values[imageName] || {};
+      state.images.values[imageName].numero_contrato = contract;
+    });
+    renderImageState();
+    renderSummary();
+    if (window.gsap && allowMotion) {
+      window.gsap.from(
+        modal.querySelectorAll(
+          ".onb-image-row.is-selected .onb-image-contract",
+        ),
+        {
+          autoAlpha: 0,
+          x: -6,
+          duration: 0.22,
+          stagger: 0.025,
+          clearProps: "opacity,visibility,transform",
+        },
+      );
+    }
+  });
+
+  elements.extraProject.addEventListener("change", () => {
+    state.extraProjectId = elements.extraProject.value || "";
+    renderSummary();
+  });
+  elements.photoServiceValue.addEventListener("input", renderSummary);
 
   elements.clienteSelect.addEventListener("change", () => {
     state.clientId = elements.clienteSelect.value || "";
@@ -1188,7 +1543,8 @@
   elements.clienteSigla.addEventListener("input", () => {
     state.clientCode = onlyLetters(elements.clienteSigla.value);
     state.clientCodeTouched = true;
-    state.clientName = state.clientId === "0" ? state.clientCode : state.clientName;
+    state.clientName =
+      state.clientId === "0" ? state.clientCode : state.clientName;
     renderAll();
     scheduleUniqueCheck();
   });
@@ -1305,6 +1661,8 @@
       file_name: "",
       source: "manual",
       entries: [],
+      values: {},
+      selected: [],
       duplicates: [],
       errors: [],
     };

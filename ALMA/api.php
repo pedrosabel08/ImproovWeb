@@ -1128,6 +1128,55 @@ function alma_admin_save_item(mysqli $conn, array $payload): array
     return alma_library_payload($conn, (int) $item['versao_id']);
 }
 
+function alma_admin_add_item(mysqli $conn, array $payload): array
+{
+    alma_require_capability($conn, ALMA_CAP_LIBRARY_ADMIN);
+    $versionId = alma_positive_id($payload['versao_id'] ?? 0, 'versao_id');
+    $dimensionCode = trim((string) ($payload['dimensao_codigo'] ?? ''));
+    $title = trim((string) ($payload['titulo'] ?? ''));
+    $summary = trim((string) ($payload['resumo'] ?? ''));
+    if ($dimensionCode === '' || $title === '') {
+        throw new InvalidArgumentException('Dimensão e título são obrigatórios.');
+    }
+    if (mb_strlen($title) > 180 || mb_strlen($summary) > 12000) {
+        throw new InvalidArgumentException('O título ou resumo excede o tamanho permitido.');
+    }
+    $version = alma_library_version($conn, $versionId, true);
+    if (!$version || $version['estado'] !== 'RASCUNHO') {
+        throw new RuntimeException('Novos itens só podem ser adicionados a uma versão em rascunho.');
+    }
+    $stmt = $conn->prepare('SELECT id FROM alma_biblioteca_dimensao WHERE versao_id = ? AND codigo = ? AND ativa = 1 LIMIT 1');
+    $stmt->bind_param('is', $versionId, $dimensionCode);
+    $stmt->execute();
+    $dimension = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$dimension) {
+        throw new InvalidArgumentException('Dimensão ativa não encontrada nesta versão.');
+    }
+    $slug = mb_strtolower($title, 'UTF-8');
+    $slug = (string) preg_replace('/[^\p{L}\p{N}]+/u', '_', $slug);
+    $slug = trim($slug, '_');
+    $code = substr($slug, 0, 100);
+    $stmt = $conn->prepare('SELECT 1 FROM alma_biblioteca_item WHERE dimensao_id = ? AND codigo = ? LIMIT 1');
+    $stmt->bind_param('is', $dimension['id'], $code);
+    $stmt->execute();
+    $exists = (bool) $stmt->get_result()->fetch_row();
+    $stmt->close();
+    if ($exists) {
+        throw new RuntimeException('Já existe um item com esse título nesta dimensão.');
+    }
+    $stmt = $conn->prepare('SELECT COALESCE(MAX(ordem), 0) + 1 AS ordem FROM alma_biblioteca_item WHERE dimensao_id = ?');
+    $stmt->bind_param('i', $dimension['id']);
+    $stmt->execute();
+    $order = (int) $stmt->get_result()->fetch_assoc()['ordem'];
+    $stmt->close();
+    $stmt = $conn->prepare('INSERT INTO alma_biblioteca_item (dimensao_id, codigo, titulo, resumo, ordem, ativo) VALUES (?, ?, ?, ?, ?, 1)');
+    $stmt->bind_param('isssi', $dimension['id'], $code, $title, $summary, $order);
+    $stmt->execute();
+    $stmt->close();
+    return alma_library_payload($conn, $versionId);
+}
+
 function alma_admin_publish_version(mysqli $conn, array $payload): array
 {
     alma_require_capability($conn, ALMA_CAP_LIBRARY_ADMIN);
@@ -1259,6 +1308,9 @@ try {
             // no break
         case 'admin_salvar_item':
             alma_json(['success' => true, 'biblioteca' => alma_admin_save_item($conn, $payload)]);
+            // no break
+        case 'admin_adicionar_item':
+            alma_json(['success' => true, 'biblioteca' => alma_admin_add_item($conn, $payload)]);
             // no break
         case 'admin_publicar_versao':
             alma_json(['success' => true, 'biblioteca' => alma_admin_publish_version($conn, $payload)]);

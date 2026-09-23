@@ -57,6 +57,36 @@
       button.innerHTML = button.dataset.original || button.innerHTML;
     }
   };
+  const askFields = (title, fields, submitLabel) =>
+    new Promise((resolve) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "alma-admin-prompt";
+      dialog.innerHTML = `<form method="dialog"><h2>${esc(title)}</h2>${fields
+        .map(
+          (field) =>
+            `<label class="alma-field"><span>${esc(field.label)}</span>${field.multiline ? `<textarea name="${esc(field.name)}" ${field.required ? "required" : ""}></textarea>` : `<input name="${esc(field.name)}" ${field.required ? "required" : ""}>`}</label>`,
+        )
+        .join(
+          "",
+        )}<div class="alma-actions"><button class="alma-btn" value="cancel">Cancelar</button><button class="alma-btn primary" value="save">${esc(submitLabel)}</button></div></form>`;
+      document.body.append(dialog);
+      dialog.addEventListener(
+        "close",
+        () => {
+          const result =
+            dialog.returnValue === "save"
+              ? Object.fromEntries(
+                  new FormData(dialog.querySelector("form")).entries(),
+                )
+              : null;
+          dialog.remove();
+          resolve(result);
+        },
+        { once: true },
+      );
+      dialog.showModal();
+      dialog.querySelector("input, textarea")?.focus();
+    });
   const dimensions = () => state.library?.dimensoes || [];
   const currentDimension = () =>
     dimensions().find(
@@ -130,7 +160,8 @@
   function itemsList() {
     const dim = currentDimension();
     if (!dim) return "";
-    return `<section class="alma-card alma-library-items"><div class="alma-library-pane-head"><div><div class="alma-kicker">${esc(dim.etapa_nome)} / ${esc(dim.pilar_nome)}</div><h2>${esc(dim.nome)}</h2></div><span>${dim.exige_item_biblioteca ? "Seleções oficiais" : "Dimensão contextual"}</span></div>${dim.itens?.length ? `<div class="alma-library-item-buttons">${dim.itens.map((item) => `<button type="button" class="${Number(state.itemId) === item.id ? "active" : ""}" data-library-item="${item.id}"><strong>${esc(item.titulo)}</strong><span>${esc(item.resumo || "Sem resumo")}</span></button>`).join("")}</div>` : `<div class="alma-empty alma-library-empty"><p>Esta dimensão não possui itens oficiais na Biblioteca v${esc(state.library.versao.codigo)}. A direção registra somente contexto da imagem, sem inventar categorias.</p></div>`}</section>`;
+    const canAdd = state.library.versao.estado === "RASCUNHO";
+    return `<section class="alma-card alma-library-items"><div class="alma-library-pane-head"><div><div class="alma-kicker">${esc(dim.etapa_nome)} / ${esc(dim.pilar_nome)}</div><h2>${esc(dim.nome)}</h2></div><div class="alma-actions"><span>${dim.exige_item_biblioteca ? "Seleções oficiais" : "Dimensão contextual"}</span>${canAdd ? '<button type="button" class="alma-btn compact" id="almaAddLibraryItem"><i class="ri-add-line"></i> Novo item</button>' : ""}</div></div>${dim.itens?.length ? `<div class="alma-library-item-buttons">${dim.itens.map((item) => `<button type="button" class="${Number(state.itemId) === item.id ? "active" : ""}" data-library-item="${item.id}"><strong>${esc(item.titulo)}</strong><span>${esc(item.resumo || "Sem resumo")}</span></button>`).join("")}</div>` : `<div class="alma-empty alma-library-empty"><p>Esta dimensão não possui itens oficiais na Biblioteca v${esc(state.library.versao.codigo)}. A direção registra somente contexto da imagem, sem inventar categorias.</p></div>`}</section>`;
   }
 
   const contentBlockTypes = {
@@ -288,23 +319,63 @@
       }),
     );
     document
+      .getElementById("almaAddLibraryItem")
+      ?.addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        const values = await askFields(
+          "Novo item oficial",
+          [
+            { name: "titulo", label: "Título", required: true },
+            { name: "resumo", label: "Resumo", multiline: true },
+          ],
+          "Criar item",
+        );
+        if (!values?.titulo?.trim()) return;
+        try {
+          busy(button, true, "Adicionando...");
+          const data = await api("admin_adicionar_item", {
+            method: "POST",
+            body: {
+              versao_id: state.library.versao.id,
+              dimensao_codigo: state.dimensionCode,
+              titulo: values.titulo.trim(),
+              resumo: values.resumo.trim(),
+            },
+          });
+          state.library = data.biblioteca;
+          const dim = currentDimension();
+          state.itemId = dim?.itens?.at(-1)?.id || null;
+          render();
+          toast("Item adicionado. Complete as diretrizes e salve.");
+        } catch (error) {
+          toast(error.message, true);
+        }
+      });
+    document
       .getElementById("almaCloneVersion")
       ?.addEventListener("click", async (event) => {
         const button = event.currentTarget;
-        const code = window.prompt(
-          "Código semântico da nova versão (ex.: 1.1):",
+        const values = await askFields(
+          "Nova versão da Biblioteca",
+          [
+            {
+              name: "codigo",
+              label: "Código semântico (ex.: 1.3)",
+              required: true,
+            },
+            { name: "nome", label: "Nome da versão", required: true },
+          ],
+          "Criar rascunho",
         );
-        if (!code) return;
-        const name = window.prompt("Nome da versão:", `ALMA Library v${code}`);
-        if (!name) return;
+        if (!values) return;
         try {
           busy(button, true, "Clonando...");
           const data = await api("admin_clonar_versao", {
             method: "POST",
             body: {
               versao_origem_id: state.library.versao.id,
-              codigo: code.trim(),
-              nome: name.trim(),
+              codigo: values.codigo.trim(),
+              nome: values.nome.trim(),
             },
           });
           state.library = data.biblioteca;

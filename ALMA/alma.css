@@ -1929,3 +1929,31 @@ body.alma-page {
     transform: translateY(0);
   }
 }
+.alma-admin-prompt {
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(85vh, 720px);
+  padding: 22px;
+  border: 1px solid var(--alma-line);
+  border-radius: 14px;
+  color: var(--alma-text);
+  background: var(--alma-surface);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+.alma-admin-prompt::backdrop {
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(4px);
+}
+.alma-admin-prompt form {
+  display: grid;
+  gap: 16px;
+}
+.alma-admin-prompt h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.alma-admin-prompt textarea {
+  min-height: 100px;
+}
+.alma-admin-prompt .alma-actions {
+  justify-content: flex-end;
+}

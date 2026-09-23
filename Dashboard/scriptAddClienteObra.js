@@ -858,7 +858,8 @@
       (sum, name) => {
         const values = state.images.values[name] || {};
         sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
-        sum.tax += values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        sum.tax +=
+          values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
         return sum;
       },
       { gross: 0, tax: 0 },
@@ -909,8 +910,11 @@
                 state.images.entries.length > 0 &&
                 state.images.entries.every(
                   (name) =>
-                    String(state.images.values[name]?.valor ?? "").trim() !== "" &&
-                    String(state.images.values[name]?.valor_imposto ?? "").trim() !== "",
+                    String(state.images.values[name]?.valor ?? "").trim() !==
+                      "" &&
+                    String(
+                      state.images.values[name]?.valor_imposto ?? "",
+                    ).trim() !== "",
                 ),
             },
           ]
@@ -920,7 +924,8 @@
       (sum, name) => {
         const values = state.images.values[name] || {};
         sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
-        sum.tax += values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        sum.tax +=
+          values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
         return sum;
       },
       { gross: 0, tax: 0 },
@@ -1193,9 +1198,16 @@
         return false;
       }
       const invalidTax = state.images.entries.find((name) => {
-        const raw = String(state.images.values[name]?.valor_imposto ?? "").trim();
+        const raw = String(
+          state.images.values[name]?.valor_imposto ?? "",
+        ).trim();
         const gross = Number(state.images.values[name]?.valor);
-        return raw === "" || !Number.isFinite(Number(raw)) || Number(raw) < 0 || Number(raw) > gross;
+        return (
+          raw === "" ||
+          !Number.isFinite(Number(raw)) ||
+          Number(raw) < 0 ||
+          Number(raw) > gross
+        );
       });
       if (invalidTax) {
         notify(
@@ -1455,7 +1467,9 @@
   elements.previewList.addEventListener("input", (event) => {
     const input = event.target.closest("[data-image-price], [data-image-tax]");
     if (!input) return;
-    const key = input.hasAttribute("data-image-price") ? "valor" : "valor_imposto";
+    const key = input.hasAttribute("data-image-price")
+      ? "valor"
+      : "valor_imposto";
     const index = Number(input.dataset.imagePrice ?? input.dataset.imageTax);
     const imageName = state.images.entries[index];
     if (!imageName) return;
@@ -1465,7 +1479,8 @@
       (sum, name) => {
         const values = state.images.values[name] || {};
         sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
-        sum.tax += values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        sum.tax +=
+          values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
         return sum;
       },
       { gross: 0, tax: 0 },
@@ -1479,8 +1494,10 @@
     const firstName = state.images.entries[0];
     const firstValues = firstName ? state.images.values[firstName] || {} : {};
     const hasOthers = state.images.entries.length > 1;
-    elements.replicateGross.disabled = !hasOthers || String(firstValues.valor ?? "").trim() === "";
-    elements.replicateTax.disabled = !hasOthers || String(firstValues.valor_imposto ?? "").trim() === "";
+    elements.replicateGross.disabled =
+      !hasOthers || String(firstValues.valor ?? "").trim() === "";
+    elements.replicateTax.disabled =
+      !hasOthers || String(firstValues.valor_imposto ?? "").trim() === "";
   }
 
   function replicateCommercialField(field) {

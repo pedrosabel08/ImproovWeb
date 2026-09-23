@@ -20,6 +20,8 @@ if (empty($_SESSION['logado']) || empty($_SESSION['idcolaborador'])) {
 
 $section = in_array((string) ($_GET['section'] ?? 'all'), ['critical', 'secondary', 'all'], true)
     ? (string) ($_GET['section'] ?? 'all') : 'all';
+$group = in_array((string) ($_GET['group'] ?? 'all'), ['summary', 'management', 'all'], true)
+    ? (string) ($_GET['group'] ?? 'all') : 'all';
 $colaboradorAlvo = (int) $_SESSION['idcolaborador'];
 // A Overview faz várias consultas e também carrega o payload operacional.
 // Libera a sessão após copiar a identidade para não enfileirar outros XHRs.
@@ -31,19 +33,45 @@ try {
     $conn = conectarBanco();
     $gestor = improov_usuario_eh_gestor_sidebar($conn);
     $conn->close();
-    // A mesma carga usada pelo Kanban produz as pendências através de
-    // pendencias_operacionais_helper.php. A Overview apenas prioriza o payload.
-    define('FLOW_FUNCOES_COLABORADOR_INTERNAL', true);
-    ob_start();
-    require dirname(__DIR__) . '/getFuncoesPorColaborador.php';
-    ob_end_clean();
-    if (!isset($response) || !is_array($response)) {
-        throw new RuntimeException('Não foi possível carregar os dados operacionais.');
+    $response = [];
+    // Só o grupo de summary/atenção precisa do payload canônico do Kanban.
+    // Gestão consulta sua própria projeção e capacidade sem repetir essa carga.
+    if (!$gestor || $group !== 'management') {
+        define('FLOW_FUNCOES_COLABORADOR_INTERNAL', true);
+        ob_start();
+        require dirname(__DIR__) . '/getFuncoesPorColaborador.php';
+        ob_end_clean();
+        if (!isset($response) || !is_array($response)) {
+            throw new RuntimeException('Não foi possível carregar os dados operacionais.');
+        }
     }
 
     $conn = conectarBanco();
     if ($gestor) {
-        $overview = flow_overview_v1_gestor($conn, (array) ($response['pendencias_operacionais'] ?? []), $section);
+        $opcoes = [];
+        if ($group === 'summary') {
+            $opcoes = [
+                'include_team' => true,
+                'include_capacity' => false,
+                'include_metrics' => true,
+                'include_projection' => false,
+                'include_attention' => true,
+            ];
+        } elseif ($group === 'management') {
+            $opcoes = [
+                'include_team' => false,
+                'include_capacity' => true,
+                'include_metrics' => false,
+                'include_projection' => true,
+                'include_attention' => false,
+            ];
+        }
+        $overview = flow_overview_v1_gestor(
+            $conn,
+            (array) ($response['pendencias_operacionais'] ?? []),
+            $group === 'all' ? $section : 'all',
+            $opcoes
+        );
     } else {
         $overview = flow_overview_v1_colaborador($conn, $response, $colaboradorAlvo, $section);
     }

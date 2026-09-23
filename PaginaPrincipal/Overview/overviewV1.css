@@ -2314,28 +2314,6 @@ body.overview-page a:focus-visible {
   }
 }
 
-.flow-overview.is-loading {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(320px, 1fr);
-  align-items: center;
-  justify-items: center;
-  min-height: clamp(320px, 58dvh, 520px);
-}
-
-@media (max-width: 680px) {
-  .flow-overview.is-loading {
-    min-height: clamp(290px, 48dvh, 420px);
-  }
-  .flow-loading-state {
-    gap: 25px;
-    padding: 22px 20px;
-  }
-  .flow-loading-state h2 {
-    max-width: 18ch;
-    line-height: 1.12;
-  }
-}
-
 /* Grade final: cada linha é explícita; não há comportamento masonry. */
 .flow-overview {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2734,6 +2712,105 @@ body.overview-page a:focus-visible {
   .flow-overview > .flow-panel,
   .flow-kpi__spark polyline {
     animation: none !important;
+  }
+}
+
+/* Loading progressivo da Overview: os headers e os cartões ficam presentes. */
+.flow-overview > .flow-panel {
+  animation-delay: 0s;
+  animation-duration: 220ms;
+}
+.flow-overview .flow-kpi {
+  animation-delay: 0s;
+  animation-duration: 220ms;
+}
+.overview-skeleton-line {
+  display: block;
+  width: var(--skeleton-width, 65%);
+  max-width: 100%;
+  height: 8px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: linear-gradient(
+    100deg,
+    #202629 0%,
+    #202629 34%,
+    #3a454b 50%,
+    #202629 66%,
+    #202629 100%
+  );
+  background-size: 250% 100%;
+  animation: overview-skeleton-shimmer 1.35s linear infinite;
+}
+.flow-kpi .overview-skeleton-line {
+  height: 7px;
+  margin-top: 6px;
+}
+.overview-skeleton-rows {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.overview-skeleton-rows > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 23px;
+  border-bottom: 1px solid rgba(150, 165, 174, 0.08);
+}
+.overview-skeleton-rows > div .overview-skeleton-line {
+  margin: 0;
+}
+.overview-calendar-loading {
+  padding: 12px;
+}
+.overview-calendar-loading__toolbar,
+.overview-calendar-loading__weekdays,
+.overview-calendar-loading__days {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+}
+.overview-calendar-loading__toolbar {
+  grid-template-columns: minmax(0, 1fr) 90px;
+  margin-bottom: 16px;
+}
+.overview-calendar-loading__toolbar .overview-skeleton-line {
+  margin: 0;
+}
+.overview-calendar-loading__weekdays,
+.overview-calendar-loading__days {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.overview-calendar-loading__weekdays {
+  margin-bottom: 10px;
+}
+.overview-calendar-loading__weekdays .overview-skeleton-line {
+  height: 5px;
+  margin: auto;
+}
+.overview-calendar-loading__days {
+  grid-auto-rows: minmax(31px, 1fr);
+}
+.overview-calendar-loading__days i {
+  min-height: 31px;
+  border: 1px solid rgba(150, 165, 174, 0.08);
+  border-radius: 5px;
+  background: rgba(150, 165, 174, 0.025);
+}
+@keyframes overview-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overview-skeleton-line {
+    animation: none;
   }
 }
 

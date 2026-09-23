@@ -8,8 +8,12 @@
   if (!root) return;
 
   let overviewData = null;
+  let managerSummaryData = null;
+  let hasLoadedOnce = false;
+  let loadInProgress = false;
   let deliveries = [];
   let deliveriesError = false;
+  let deliveriesLoaded = config.mode !== "manager";
   let calendarMonth = new Date();
   // Nenhum dia vem pré-selecionado: o detalhe do calendário exige clique.
   let selectedDate = null;
@@ -58,26 +62,47 @@
     return `<div class="flow-empty is-error"><i class="ri-cloud-off-line"></i><strong>${esc(title)}</strong><span>${esc(detail)}</span><button type="button" data-action="refresh">Tentar novamente</button></div>`;
   }
 
-  function renderSkeleton(mode) {
+  function skeletonLine(width = "72%") {
+    return `<span class="overview-skeleton-line" style="--skeleton-width:${width}" aria-hidden="true"></span>`;
+  }
+
+  function skeletonRows(count = 3) {
+    return `<div class="overview-skeleton-rows" role="status" aria-label="Carregando conteúdo">${Array.from(
+      { length: count },
+      (_, index) => `<div>${skeletonLine(["76%", "58%", "68%", "48%"][index % 4])}${skeletonLine(["26%", "32%", "22%"][index % 3])}</div>`,
+    ).join("")}</div>`;
+  }
+
+  function renderLoadingScaffold(mode) {
     root.className = `flow-overview flow-overview--${mode} is-loading`;
     root.setAttribute("aria-busy", "true");
-    root.innerHTML = `<section class="flow-loading-state" role="status" aria-live="polite" aria-label="Carregando visão geral">
-      <div class="flow-loading-state__copy">
-        <span class="flow-loading-state__eyebrow">Improov Flow</span>
-        <h2>Montando sua visão de hoje</h2>
-        <p>Conectando tarefas, prioridades e foco.</p>
-      </div>
-      <div class="flow-loading-route" aria-hidden="true">
-        <svg viewBox="0 0 300 30" preserveAspectRatio="none" focusable="false">
-          <path class="flow-loading-route__track" d="M12 15 H288" />
-          <path class="flow-loading-route__signal" d="M12 15 H288" />
-          <circle class="flow-loading-route__node" cx="12" cy="15" r="5" />
-          <circle class="flow-loading-route__node" cx="150" cy="15" r="5" />
-          <circle class="flow-loading-route__node" cx="288" cy="15" r="5" />
-        </svg>
-        <div class="flow-loading-route__labels"><span>Tarefas</span><span>Prioridades</span><span>Foco</span></div>
-      </div>
-    </section>`;
+    if (mode === "manager") {
+      const kpis = [
+        ["ri-alarm-warning-line", "Situações críticas", "danger"],
+        ["ri-user-unfollow-line", "Sobrecargas", "warning"],
+        ["ri-time-line", "Prazos originais vencidos", "attention"],
+        ["ri-focus-3-line", "Pontualidade", "healthy"],
+      ];
+      root.innerHTML = `<div class="flow-kpis" data-overview-block="summary">${kpis
+        .map(
+          ([icon, label, tone]) =>
+            `<article class="flow-kpi is-${tone}"><span><i class="${icon}"></i></span><div><label>${esc(label)}</label>${skeletonLine("38%")}${skeletonLine("64%")}</div></article>`,
+        )
+        .join("")}</div>${panel("Calendário", "ri-calendar-event-line", '<div data-overview-calendar class="overview-calendar-loading"><div class="overview-calendar-loading__toolbar">' + skeletonLine("35%") + skeletonLine("24%") + '</div><div class="overview-calendar-loading__weekdays">' + Array.from({ length: 7 }, () => skeletonLine("55%")).join("") + '</div><div class="overview-calendar-loading__days">' + Array.from({ length: 35 }, () => '<i></i>').join("") + '</div></div>', { className: "area-calendar area-calendar--wide" })}${panel("Atenção necessária", "ri-alarm-warning-line", `<div data-overview-block="attention">${skeletonRows(4)}</div>`, { className: "area-attention" })}${panel("Equipe", "ri-team-line", `<div data-overview-block="management">${skeletonRows(5)}</div>`, { className: "area-team", action: '<button type="button" class="flow-link" data-action="open_capacity">Ver toda a equipe <i class="ri-arrow-right-line"></i></button>' })}${panel("Tarefas atrasadas pelo prazo original", "ri-calendar-close-line", `<div data-overview-management-extra>${skeletonRows(4)}</div>`, { className: "area-original-deadlines" })}${panel("Projetos em risco", "ri-radar-line", `<div data-overview-management-extra>${skeletonRows(4)}</div>`, { className: "area-risks", action: '<button type="button" class="flow-link" data-action="open_planning">Ver todos <i class="ri-arrow-right-line"></i></button>' })}${panel("Capacidade global", "ri-layout-grid-line", `<div data-overview-management-extra>${skeletonRows(3)}</div>`, { className: "area-capacity" })}`;
+      return;
+    }
+
+    root.innerHTML = `<div class="flow-kpis flow-kpis--collaborator" data-overview-block="summary">${[
+      ["ri-loader-4-line", "Em andamento", "active"],
+      ["ri-alarm-warning-line", "Atenção necessária", "danger"],
+      ["ri-checkbox-circle-line", "Concluídas no mês", "healthy"],
+      ["ri-focus-3-line", "Pontualidade", "active"],
+    ]
+      .map(
+        ([icon, label, tone]) =>
+          `<article class="flow-kpi is-${tone}"><span><i class="${icon}"></i></span><div><label>${esc(label)}</label>${skeletonLine("38%")}${skeletonLine("64%")}</div></article>`,
+      )
+      .join("")}</div>${panel("Em andamento", "ri-loader-4-line", `<div data-overview-block="management">${skeletonRows(2)}</div>`, { className: "area-progress", subtitle: "O trabalho que concentra seu foco agora." })}${panel("Atenção necessária", "ri-alarm-warning-line", `<div data-overview-block="attention">${skeletonRows(4)}</div>`, { className: "area-attention" })}${panel("A seguir", "ri-arrow-right-line", `<div data-overview-management-extra>${skeletonRows(4)}</div>`, { className: "area-next" })}${panel("Concluído recentemente", "ri-check-double-line", `<div data-overview-management-extra>${skeletonRows(3)}</div>`, { className: "area-completed" })}`;
   }
 
   function sparkline(value, tone = "active") {
@@ -436,6 +461,8 @@
   }
 
   function calendarBlock() {
+    if (!deliveriesLoaded)
+      return '<div data-overview-calendar class="overview-calendar-loading"><div class="overview-calendar-loading__toolbar">' + skeletonLine("35%") + skeletonLine("24%") + '</div><div class="overview-calendar-loading__weekdays">' + Array.from({ length: 7 }, () => skeletonLine("55%")).join("") + '</div><div class="overview-calendar-loading__days">' + Array.from({ length: 35 }, () => '<i></i>').join("") + '</div></div>';
     if (deliveriesError)
       return sectionError(
         "Entregas indisponíveis",
@@ -509,7 +536,7 @@
 
   function renderManager(data) {
     root.className = "flow-overview flow-overview--manager";
-    root.innerHTML = `${managerKpis(data)}${panel("Calendário", "ri-calendar-event-line", calendarBlock(), { className: "area-calendar area-calendar--wide" })}${panel("Atenção necessária", "ri-alarm-warning-line", attentionAccordion(data.attention_modules, "manager"), { count: data.summary?.attention_count, className: "area-attention" })}${panel("Equipe", "ri-team-line", teamList(data.team), { className: "area-team", action: '<button type="button" class="flow-link" data-action="open_capacity">Ver toda a equipe <i class="ri-arrow-right-line"></i></button>' })}${panel("Tarefas atrasadas pelo prazo original", "ri-calendar-close-line", originalDeadlineList(data.original_deadlines), { count: data.summary?.original_overdue_count, className: "area-original-deadlines" })}${panel("Projetos em risco", "ri-radar-line", riskList(data.risks), { className: "area-risks", action: '<button type="button" class="flow-link" data-action="open_planning">Ver todos <i class="ri-arrow-right-line"></i></button>' })}${panel("Capacidade global", "ri-layout-grid-line", capacityMatrix(data.capacity), { className: "area-capacity" })}`;
+    root.innerHTML = `${managerKpis(data)}${panel("Calendário", "ri-calendar-event-line", `<div data-overview-calendar>${calendarBlock()}</div>`, { className: "area-calendar area-calendar--wide" })}${panel("Atenção necessária", "ri-alarm-warning-line", attentionAccordion(data.attention_modules, "manager"), { count: data.summary?.attention_count, className: "area-attention" })}${panel("Equipe", "ri-team-line", teamList(data.team), { className: "area-team", action: '<button type="button" class="flow-link" data-action="open_capacity">Ver toda a equipe <i class="ri-arrow-right-line"></i></button>' })}${panel("Tarefas atrasadas pelo prazo original", "ri-calendar-close-line", originalDeadlineList(data.original_deadlines), { count: data.summary?.original_overdue_count, className: "area-original-deadlines" })}${panel("Projetos em risco", "ri-radar-line", riskList(data.risks), { className: "area-risks", action: '<button type="button" class="flow-link" data-action="open_planning">Ver todos <i class="ri-arrow-right-line"></i></button>' })}${panel("Capacidade global", "ri-layout-grid-line", capacityMatrix(data.capacity), { className: "area-capacity" })}`;
   }
 
   function collaboratorKpis(data) {
@@ -539,7 +566,7 @@
     if (overviewData.mode === "manager") renderManager(overviewData);
     else renderCollaborator(overviewData);
     hydrateKanbanPendingGroups(overviewData.attention_modules);
-    root.setAttribute("aria-busy", "false");
+    root.setAttribute("aria-busy", deliveriesLoaded ? "false" : "true");
     requestAnimationFrame(animateOverview);
   }
 
@@ -547,10 +574,83 @@
   // devemos reconstruir a Overview inteira (nem reiniciar as animações dos
   // KPIs) quando o usuário abre ou fecha esse popover.
   function renderCalendarOnly() {
-    const calendarPanel = root.querySelector(":scope > .area-calendar");
-    const currentCalendar = calendarPanel?.querySelector(".delivery-calendar");
-    if (!currentCalendar) return renderCurrent();
-    currentCalendar.outerHTML = calendarBlock();
+    const calendarContent = root.querySelector("[data-overview-calendar]");
+    if (!calendarContent) return;
+    calendarContent.classList.remove("overview-calendar-loading");
+    calendarContent.innerHTML = calendarBlock();
+    root.setAttribute("aria-busy", deliveriesLoaded ? "false" : "true");
+  }
+
+  function renderOverviewError() {
+    root.classList.remove("is-loading");
+    const summary = root.querySelector('[data-overview-block="summary"]');
+    if (summary) summary.innerHTML = sectionError("Indicadores indisponíveis", "Os outros grupos da Overview continuam independentes.");
+    [
+      root.querySelector('[data-overview-block="attention"]'),
+      root.querySelector('[data-overview-block="management"]'),
+      ...root.querySelectorAll("[data-overview-management-extra]"),
+    ].forEach((block) => {
+      if (block) block.innerHTML = sectionError("Dados indisponíveis", "Este grupo não respondeu. Os demais grupos continuam disponíveis.");
+    });
+  }
+
+  function updatePanelContent(selector, content) {
+    const panelElement = root.querySelector(selector);
+    const header = panelElement?.querySelector(":scope > .flow-panel__header");
+    const body = header?.nextElementSibling;
+    if (body) body.innerHTML = content;
+  }
+
+  function updatePanelCount(selector, value) {
+    const heading = root.querySelector(`${selector} > .flow-panel__header h2`);
+    if (!heading) return;
+    let badge = heading.querySelector(":scope > b");
+    if (value == null) {
+      badge?.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("b");
+      heading.appendChild(badge);
+    }
+    badge.textContent = String(num(value));
+  }
+
+  function applyManagerSummary(data) {
+    managerSummaryData = data;
+    root.classList.remove("is-loading");
+    const kpis = root.querySelector(":scope > .flow-kpis");
+    if (kpis) kpis.outerHTML = managerKpis(data);
+    updatePanelCount(":scope > .area-attention", data.summary?.attention_count);
+    updatePanelContent(":scope > .area-attention", attentionAccordion(data.attention_modules, "manager"));
+    updatePanelContent(":scope > .area-team", teamList(data.team));
+    updatePanelCount(":scope > .area-original-deadlines", data.summary?.original_overdue_count);
+    updatePanelContent(":scope > .area-original-deadlines", originalDeadlineList(data.original_deadlines));
+    hydrateKanbanPendingGroups(data.attention_modules);
+    requestAnimationFrame(animateOverview);
+  }
+
+  function applyManagerManagement(data) {
+    root.classList.remove("is-loading");
+    updatePanelContent(":scope > .area-risks", riskList(data.risks));
+    updatePanelContent(":scope > .area-capacity", capacityMatrix(data.capacity));
+  }
+
+  function renderManagerSummaryError() {
+    root.classList.remove("is-loading");
+    const detail = "Summary e atenção não responderam. Gestão e calendário continuam independentes.";
+    const summary = root.querySelector('[data-overview-block="summary"]');
+    if (summary) summary.innerHTML = sectionError("Indicadores indisponíveis", detail);
+    updatePanelContent(":scope > .area-attention", sectionError("Atenção indisponível", detail));
+    updatePanelContent(":scope > .area-team", sectionError("Equipe indisponível", detail));
+    updatePanelContent(":scope > .area-original-deadlines", sectionError("Prazos indisponíveis", detail));
+  }
+
+  function renderManagerManagementError() {
+    root.classList.remove("is-loading");
+    const detail = "Gestão não respondeu. Summary, atenção e calendário continuam independentes.";
+    updatePanelContent(":scope > .area-risks", sectionError("Projetos indisponíveis", detail));
+    updatePanelContent(":scope > .area-capacity", sectionError("Capacidade indisponível", detail));
   }
 
   function animateOverview() {
@@ -671,14 +771,19 @@
     if (control) navigateAction(control);
   });
   window.addEventListener("flow:operational-pending-renderer-ready", () => {
-    if (overviewData)
-      hydrateKanbanPendingGroups(overviewData.attention_modules);
+    const modules = overviewData?.attention_modules || managerSummaryData?.attention_modules;
+    if (modules) hydrateKanbanPendingGroups(modules);
   });
   refreshButton?.addEventListener("click", () => load(true));
 
   async function load(force = false) {
+    if (loadInProgress && !force) return;
+    loadInProgress = true;
     const sequence = ++requestSequence;
-    renderSkeleton(config.mode || "collaborator");
+    const mode = config.mode || "collaborator";
+    hasLoadedOnce = false;
+    managerSummaryData = null;
+    renderLoadingScaffold(mode);
     refreshButton?.classList.add("is-refreshing");
     refreshButton?.setAttribute("disabled", "disabled");
     if (freshness)
@@ -686,60 +791,113 @@
         '<i class="ri-pulse-line"></i><span>Atualizando dados</span>';
     deliveries = [];
     deliveriesError = false;
-    try {
-      const overviewRequest = fetch(
-        `${config.overviewUrl}${force ? `?refresh=${Date.now()}` : ""}`,
-        { headers: { Accept: "application/json" } },
-      ).then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok || !payload.success || !payload.overview)
-          throw new Error(payload.error || `HTTP ${response.status}`);
-        return payload;
+    deliveriesLoaded = mode !== "manager";
+    selectedDate = null;
+
+    const requests = [];
+    let failedGroups = 0;
+    let latestGeneratedAt = null;
+    const requestOverview = async (group = "all") => {
+      const params = new URLSearchParams();
+      if (group !== "all") params.set("group", group);
+      if (force) params.set("refresh", String(Date.now()));
+      const query = params.toString();
+      const response = await fetch(`${config.overviewUrl}${query ? `?${query}` : ""}`, {
+        headers: { Accept: "application/json" },
       });
-      const requests = [overviewRequest];
-      if (config.mode === "manager")
-        requests.push(
-          fetch(config.deliveriesUrl, {
-            headers: { Accept: "application/json" },
-          }).then((response) => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-          }),
-        );
-      const results = await Promise.allSettled(requests);
-      if (sequence !== requestSequence) return;
-      if (results[0].status === "rejected") throw results[0].reason;
-      overviewData = results[0].value.overview;
-      if (config.mode === "manager") {
-        deliveriesError = results[1].status === "rejected";
-        deliveries =
-          deliveriesError || !Array.isArray(results[1].value)
-            ? []
-            : results[1].value;
-        selectedDate = null;
-      }
-      renderCurrent();
-      const generated = new Date(results[0].value.generated_at || Date.now());
-      if (freshness)
-        freshness.innerHTML = `<i class="ri-checkbox-circle-line"></i><span>Atualizado às ${generated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>`;
-    } catch (error) {
-      console.error("Visão Geral", error);
-      root.className = "flow-overview flow-overview--fatal";
-      root.innerHTML = `<div class="flow-fatal"><span class="overview-orb"></span><strong>Não foi possível montar sua Visão Geral.</strong><p>O Kanban continua disponível enquanto tentamos recuperar os sinais operacionais.</p><div><button type="button" class="flow-button is-primary" data-action="refresh">Tentar novamente</button><button type="button" class="flow-button" data-action="open_kanban">Abrir Kanban</button></div></div>`;
+      const payload = await response.json();
+      if (!response.ok || !payload.success || !payload.overview)
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      return payload;
+    };
+    const setLatestTimestamp = (payload) => {
+      latestGeneratedAt = payload.generated_at || latestGeneratedAt;
+    };
+
+    if (mode === "manager") {
+      const summaryRequest = requestOverview("summary")
+        .then((payload) => {
+          if (sequence !== requestSequence) return;
+          setLatestTimestamp(payload);
+          applyManagerSummary(payload.overview);
+        })
+        .catch((error) => {
+          if (sequence !== requestSequence) return;
+          failedGroups += 1;
+          console.error("Visão Geral / summary", error);
+          renderManagerSummaryError();
+        });
+      const managementRequest = requestOverview("management")
+        .then((payload) => {
+          if (sequence !== requestSequence) return;
+          setLatestTimestamp(payload);
+          applyManagerManagement(payload.overview);
+        })
+        .catch((error) => {
+          if (sequence !== requestSequence) return;
+          failedGroups += 1;
+          console.error("Visão Geral / gestão", error);
+          renderManagerManagementError();
+        });
+      requests.push(summaryRequest, managementRequest);
+
+      const deliveriesRequest = fetch(config.deliveriesUrl, {
+        headers: { Accept: "application/json" },
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then((data) => {
+          if (sequence !== requestSequence) return;
+          deliveries = Array.isArray(data) ? data : [];
+          deliveriesLoaded = true;
+          renderCalendarOnly();
+        })
+        .catch((error) => {
+          if (sequence !== requestSequence) return;
+          failedGroups += 1;
+          console.error("Visão Geral / calendário", error);
+          deliveriesError = true;
+          deliveriesLoaded = true;
+          renderCalendarOnly();
+        });
+      requests.push(deliveriesRequest);
+    } else {
+      const overviewRequest = requestOverview().then((payload) => {
+        if (sequence !== requestSequence) return;
+        setLatestTimestamp(payload);
+        overviewData = payload.overview;
+        renderCurrent();
+      }).catch((error) => {
+        if (sequence !== requestSequence) return;
+        failedGroups += 1;
+        console.error("Visão Geral", error);
+        renderOverviewError();
+      });
+      requests.push(overviewRequest);
+    }
+
+    await Promise.allSettled(requests);
+    if (sequence === requestSequence) {
+      hasLoadedOnce = true;
+      loadInProgress = false;
       root.setAttribute("aria-busy", "false");
-      if (freshness)
-        freshness.innerHTML =
-          '<i class="ri-error-warning-line"></i><span>Falha na atualização</span>';
-    } finally {
-      if (sequence === requestSequence) {
-        refreshButton?.classList.remove("is-refreshing");
-        refreshButton?.removeAttribute("disabled");
+      if (freshness) {
+        if (failedGroups) {
+          freshness.innerHTML = '<i class="ri-error-warning-line"></i><span>Atualização parcial</span>';
+        } else {
+          const generated = new Date(latestGeneratedAt || Date.now());
+          freshness.innerHTML = `<i class="ri-checkbox-circle-line"></i><span>Atualizado às ${generated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>`;
+        }
       }
+      refreshButton?.classList.remove("is-refreshing");
+      refreshButton?.removeAttribute("disabled");
     }
   }
 
   window.FlowOverviewV1 = {
-    open: () => (overviewData ? renderCurrent() : load()),
+    open: () => (overviewData || hasLoadedOnce || loadInProgress ? undefined : load()),
     refresh: () => load(true),
   };
 })();

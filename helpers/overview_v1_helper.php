@@ -603,13 +603,22 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
     // A grade resumida reproduz o horizonte de oito semanas do Planejamento
     // de Capacidade, sem expor a composição de colaboradores.
     $fim = date('Y-m-d', strtotime($inicio . ' +55 days'));
-    $alocacao = flow_alocacao_consultar($conn, $inicio, $fim);
-    $incluirCapacidade = !array_key_exists('include_capacity', $opcoes) || (bool) $opcoes['include_capacity'];
+    $incluirEquipe = array_key_exists('include_team', $opcoes)
+        ? (bool) $opcoes['include_team']
+        : $section !== 'critical';
+    $incluirCapacidade = array_key_exists('include_capacity', $opcoes)
+        ? (bool) $opcoes['include_capacity']
+        : $section !== 'critical';
     $incluirMetricas = !array_key_exists('include_metrics', $opcoes) || (bool) $opcoes['include_metrics'];
+    $incluirProjecao = array_key_exists('include_projection', $opcoes)
+        ? (bool) $opcoes['include_projection']
+        : $section !== 'critical';
+    $incluirAtencao = !array_key_exists('include_attention', $opcoes) || (bool) $opcoes['include_attention'];
+    $alocacao = $incluirEquipe ? flow_alocacao_consultar($conn, $inicio, $fim) : [];
     $capacidade = $incluirCapacidade ? flow_capacidade_consultar($conn, $inicio, $fim) : [];
-    $projecao = flow_fila_confirmada_projetar($conn);
-    $modulosAtencao = flow_overview_v1_modulos_atencao($pendenciasOperacionais);
-    $atencao = flow_overview_v1_atencao_pendencias($modulosAtencao, null, 50);
+    $projecao = $incluirProjecao ? flow_fila_confirmada_projetar($conn) : [];
+    $modulosAtencao = $incluirAtencao ? flow_overview_v1_modulos_atencao($pendenciasOperacionais) : [];
+    $atencao = $incluirAtencao ? flow_overview_v1_atencao_pendencias($modulosAtencao, null, 50) : [];
     $riscos = [];
     foreach (($projecao['projecoes'] ?? []) as $item) {
         $margem = (int) ($item['margem_operacional_dias_uteis'] ?? 0);
@@ -625,9 +634,19 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
     $lista = array_values($atencao);
     $peso = ['critical' => 0, 'high' => 1, 'warning' => 2];
     usort($lista, static fn (array $a, array $b): int => ($peso[$a['severity']] ?? 9) <=> ($peso[$b['severity']] ?? 9) ?: strcmp($a['title'], $b['title']));
-    $resultado = ['mode' => 'manager', 'summary' => ['critical_count' => count(array_filter($lista, static fn (array $item): bool => $item['severity'] === 'critical')), 'attention_count' => count($lista)], 'attention' => array_slice($lista, 0, 6), 'attention_modules' => $modulosAtencao];
+    $resultado = ['mode' => 'manager'];
+    if ($incluirAtencao) {
+        $resultado['summary'] = [
+            'critical_count' => count(array_filter($lista, static fn (array $item): bool => $item['severity'] === 'critical')),
+            'attention_count' => count($lista),
+        ];
+        $resultado['attention'] = array_slice($lista, 0, 6);
+        $resultado['attention_modules'] = $modulosAtencao;
+    }
     if ($section !== 'critical') {
-        $resultado['team'] = flow_overview_v1_equipes($conn, $alocacao);
+        if ($incluirEquipe) {
+            $resultado['team'] = flow_overview_v1_equipes($conn, $alocacao);
+        }
         if ($incluirCapacidade) {
             $etapasPorCodigo = [];
             foreach ((array) ($capacidade['etapas'] ?? []) as $etapa) {
@@ -652,7 +671,9 @@ function flow_overview_v1_gestor(mysqli $conn, array $pendenciasOperacionais, st
                 return ['code' => $codigo, 'name' => (string) ($catalogo['nome_painel'] ?? $catalogo['etapa'] ?? 'Função'), 'classification' => (string) ($etapa['classificacao'] ?? 'SEM_DEMANDA'), 'weeks' => $weeks];
             }, array_slice((array) ($capacidade['catalogo_etapas'] ?? []), 0, 8));
         }
-        $resultado['risks'] = array_slice($riscos, 0, 5);
+        if ($incluirProjecao) {
+            $resultado['risks'] = array_slice($riscos, 0, 5);
+        }
         if ($incluirMetricas) {
             $resultado['original_deadlines'] = flow_overview_v1_atrasos_prazo_original($conn);
             $resultado['summary']['original_overdue_count'] = count($resultado['original_deadlines']);

@@ -18,31 +18,37 @@ function ativarSino() {
   }, 2000);
 }
 
-function atualizarContadorTarefas() {
-  fetch(getUrlBuscarTarefas(), {
-    method: "GET",
-  })
+function atualizarContadorTarefas(data = null) {
+  const atualizar = (payload) => {
+    const tarefas = payload.tarefas || [];
+    const notificacoesModulo =
+      payload.notificacoes_modulo || payload.notificacoesModulo || [];
+
+    const contadorTarefas = document.getElementById("contador-tarefas");
+
+    const qtdNotificacoes =
+      (payload.notificacoes || []).length + notificacoesModulo.length;
+
+    if (tarefas.length > 0 || qtdNotificacoes > 0) {
+      contadorTarefas.textContent = tarefas.length + qtdNotificacoes;
+      document.title += ` (${tarefas.length + qtdNotificacoes})`;
+    } else {
+      contadorTarefas.textContent = "";
+      contadorTarefas.style.display = "none";
+
+      const sino = document.getElementById("icone-sino");
+      if (sino) sino.style.display = "none";
+    }
+  };
+
+  if (data) {
+    atualizar(data);
+    return Promise.resolve(data);
+  }
+
+  return fetch(getUrlBuscarTarefas(), { method: "GET" })
     .then((response) => response.json())
-    .then((data) => {
-      const tarefas = data.tarefas || [];
-      const notificacoesModulo = data.notificacoes_modulo || [];
-
-      const contadorTarefas = document.getElementById("contador-tarefas");
-
-      const qtdNotificacoes =
-        (data.notificacoes || []).length + notificacoesModulo.length;
-
-      if (tarefas.length > 0 || qtdNotificacoes > 0) {
-        contadorTarefas.textContent = tarefas.length + qtdNotificacoes;
-        document.title += ` (${tarefas.length + qtdNotificacoes})`;
-      } else {
-        contadorTarefas.textContent = "";
-        contadorTarefas.style.display = "none";
-
-        const sino = document.getElementById("icone-sino");
-        if (sino) sino.style.display = "none";
-      }
-    })
+    .then(atualizar)
     .catch((error) => console.error("Erro ao buscar tarefas:", error));
 }
 
@@ -249,10 +255,12 @@ async function agendarProximaExecucao() {
 document.addEventListener("DOMContentLoaded", () => {
   const isInicio = window.location.pathname.includes("inicio2.php");
 
-  // Atualiza o contador ao carregar a página
-  atualizarContadorTarefas();
-  // Também buscar notificações do módulo ao carregar para enfileirar (não mostrar modal na recarga)
-  buscarTarefas(false).catch(() => {});
+  // Uma única resposta atualiza o contador e prepara as notificações do módulo.
+  buscarTarefas(false)
+    .then((data) => {
+      if (data) atualizarContadorTarefas(data);
+    })
+    .catch(() => {});
   // avisoUltimoDiaUtil()
   if (!isInicio) {
     agendarProximaExecucao();

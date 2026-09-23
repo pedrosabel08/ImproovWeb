@@ -48,6 +48,11 @@ if ($colaboradorSolicitado > 0 && $colaboradorSolicitado !== $colaboradorSessao)
     }
     $colaboradorId = $colaboradorSolicitado;
 }
+// Libera o lock da sessão antes das consultas operacionais demoradas. Os dados
+// necessários já foram copiados para variáveis locais acima.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 date_default_timezone_set('America/Sao_Paulo');
 
 // ====================

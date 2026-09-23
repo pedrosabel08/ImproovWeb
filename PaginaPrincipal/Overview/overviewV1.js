@@ -58,18 +58,26 @@
     return `<div class="flow-empty is-error"><i class="ri-cloud-off-line"></i><strong>${esc(title)}</strong><span>${esc(detail)}</span><button type="button" data-action="refresh">Tentar novamente</button></div>`;
   }
 
-  function skeletonPanel(rows = 3, className = "") {
-    return `<section class="flow-panel flow-skeleton-panel ${className}"><header class="flow-panel__header"><span class="flow-skeleton w-38"></span><span class="flow-skeleton w-16"></span></header><div class="flow-skeleton-rows">${Array.from({ length: rows }, (_, index) => `<div class="flow-skeleton-row"><i class="flow-skeleton"></i><span><b class="flow-skeleton w-${index % 2 ? "54" : "72"}"></b><b class="flow-skeleton w-${index % 2 ? "72" : "46"}"></b></span><em class="flow-skeleton"></em></div>`).join("")}</div></section>`;
-  }
-
   function renderSkeleton(mode) {
     root.className = `flow-overview flow-overview--${mode} is-loading`;
     root.setAttribute("aria-busy", "true");
-    const kpis = `<div class="flow-kpis">${Array.from({ length: 4 }, () => `<article class="flow-kpi flow-kpi--skeleton"><i class="flow-skeleton"></i><div><span class="flow-skeleton w-54"></span><strong class="flow-skeleton w-38"></strong><small class="flow-skeleton w-72"></small></div></article>`).join("")}</div>`;
-    root.innerHTML =
-      mode === "manager"
-        ? `${kpis}${skeletonPanel(5, "area-calendar")}${skeletonPanel(5, "area-attention")}${skeletonPanel(4, "area-team")}${skeletonPanel(4, "area-original-deadlines")}${skeletonPanel(4, "area-risks")}${skeletonPanel(4, "area-capacity")}<div class="flow-loading-signature"><span class="overview-orb"></span><div><strong>Organizando prioridades</strong><small>Cruzando entregas, bloqueios e capacidade.</small></div></div>`
-        : `${kpis}${skeletonPanel(3, "area-progress")}${skeletonPanel(4, "area-attention")}${skeletonPanel(3, "area-next")}${skeletonPanel(3, "area-completed")}<div class="flow-loading-signature"><span class="overview-orb"></span><div><strong>Preparando seu foco</strong><small>Organizando tarefas e sinais acionáveis.</small></div></div>`;
+    root.innerHTML = `<section class="flow-loading-state" role="status" aria-live="polite" aria-label="Carregando visão geral">
+      <div class="flow-loading-state__copy">
+        <span class="flow-loading-state__eyebrow">Improov Flow</span>
+        <h2>Montando sua visão de hoje</h2>
+        <p>Conectando tarefas, prioridades e foco.</p>
+      </div>
+      <div class="flow-loading-route" aria-hidden="true">
+        <svg viewBox="0 0 300 30" preserveAspectRatio="none" focusable="false">
+          <path class="flow-loading-route__track" d="M12 15 H288" />
+          <path class="flow-loading-route__signal" d="M12 15 H288" />
+          <circle class="flow-loading-route__node" cx="12" cy="15" r="5" />
+          <circle class="flow-loading-route__node" cx="150" cy="15" r="5" />
+          <circle class="flow-loading-route__node" cx="288" cy="15" r="5" />
+        </svg>
+        <div class="flow-loading-route__labels"><span>Tarefas</span><span>Prioridades</span><span>Foco</span></div>
+      </div>
+    </section>`;
   }
 
   function sparkline(value, tone = "active") {
@@ -734,5 +742,4 @@
     open: () => (overviewData ? renderCurrent() : load()),
     refresh: () => load(true),
   };
-  load();
 })();

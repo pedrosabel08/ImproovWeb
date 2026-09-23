@@ -905,17 +905,17 @@ if ($foto_colab !== ''):
         }
     </script>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
-    <script src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
-    <?php flow_motion_assets(); ?>
-    <script src="<?php echo asset_url('notificacoes/render.js'); ?>"></script>
-    <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
+    <script defer src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
+    <script defer src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
+    <?php flow_motion_assets('', true); ?>
+    <script defer src="<?php echo asset_url('notificacoes/render.js'); ?>"></script>
+    <script defer src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
     <script>
         window.FLOW_OVERVIEW_CONFIG = <?php echo json_encode([
             'mode' => $overviewModo,
@@ -927,11 +927,11 @@ if ($foto_colab !== ''):
             'deliveriesPageUrl' => 'Entregas/',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     </script>
-    <script src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
-    <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
-    <script>window.FlowMotion && window.FlowMotion.init();</script>
-    <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
-    <script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
+    <script defer src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
+    <script defer src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => window.FlowMotion && window.FlowMotion.init());</script>
+    <script defer src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
+    <script defer src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
 
 
 </body>

@@ -20,13 +20,17 @@ if (empty($_SESSION['logado']) || empty($_SESSION['idcolaborador'])) {
 
 $section = in_array((string) ($_GET['section'] ?? 'all'), ['critical', 'secondary', 'all'], true)
     ? (string) ($_GET['section'] ?? 'all') : 'all';
+$colaboradorAlvo = (int) $_SESSION['idcolaborador'];
+// A Overview faz várias consultas e também carrega o payload operacional.
+// Libera a sessão após copiar a identidade para não enfileirar outros XHRs.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
 try {
     $conn = conectarBanco();
     $gestor = improov_usuario_eh_gestor_sidebar($conn);
     $conn->close();
-    $colaboradorAlvo = (int) $_SESSION['idcolaborador'];
-
     // A mesma carga usada pelo Kanban produz as pendências através de
     // pendencias_operacionais_helper.php. A Overview apenas prioriza o payload.
     define('FLOW_FUNCOES_COLABORADOR_INTERNAL', true);

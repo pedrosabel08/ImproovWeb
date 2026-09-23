@@ -62,6 +62,10 @@ try {
         'replanejar' => !empty($_GET['replanejar']),
     ];
     $plano = flow_planejamento_carregar_para_interface($conn, $entregaId, $opcoes);
+    // O snapshot confirmado preserva sua data de cálculo histórica; o marcador
+    // visual de "Hoje" deve usar a mesma referência corrente da projeção
+    // operacional, sem alterar o snapshot nem o baseline persistido.
+    $plano['data_hoje'] = $opcoes['data_hoje'];
     // O snapshot confirmado continua sendo a referência; execução é uma
     // leitura derivada e nunca altera as datas, capacidade ou baseline.
     $plano['execucao'] = flow_planejamento_monitorar_execucao($conn, $entregaId, $plano, [

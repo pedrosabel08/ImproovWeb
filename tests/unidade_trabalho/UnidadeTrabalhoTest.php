@@ -25,6 +25,13 @@ wip_assert(flow_unidade_consumo_wip([['status' => 'Finalizado'], ['status' => 'E
 wip_assert(flow_unidade_consumo_wip([['status' => 'Finalizado'], ['status' => 'Em aprovação']]) === 0, 'Unidade sem ação produtiva não deve consumir WIP.');
 wip_assert(flow_unidade_consumo_wip([['status' => 'Finalizado'], ['status' => 'Ajuste']]) === 1, 'Retorno de membro para Ajuste deve reativar o WIP.');
 
+$imagemPrincipalFamily = ['imagem_raiz_id' => 101, 'possui_secundarias' => true];
+$imagemSecundariaFamily = ['imagem_raiz_id' => 101, 'possui_secundarias' => true];
+$imagemFamilyKey = flow_unidade_chave_familia_imagem($imagemPrincipalFamily);
+wip_assert($imagemFamilyKey === flow_unidade_chave_familia_imagem($imagemSecundariaFamily), 'Imagem principal e secundária devem compartilhar a unidade de WIP.');
+wip_assert(count(flow_wip_unidades_bloqueantes([['key' => $imagemFamilyKey]], $imagemFamilyKey)) === 0, 'Iniciar uma secundária deve ignorar o WIP ativo da mesma família.');
+wip_assert(flow_unidade_chave_familia_imagem(['imagem_raiz_id' => 202, 'possui_secundarias' => false]) === null, 'Imagem sem secundárias deve manter sua unidade própria.');
+
 $active = [
     ['key' => 'FUNCAO_IMAGEM:10'],
     ['key' => 'FUNCAO_IMAGEM:20'],

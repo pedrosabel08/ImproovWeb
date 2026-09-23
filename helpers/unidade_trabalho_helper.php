@@ -60,7 +60,7 @@ function flow_wip_unidades_bloqueantes(array $units, ?string $candidateKey = nul
 {
     return array_values(array_filter(
         $units,
-        static fn(array $unit): bool => $candidateKey === null || ($unit['key'] ?? null) !== $candidateKey
+        static fn (array $unit): bool => $candidateKey === null || ($unit['key'] ?? null) !== $candidateKey
     ));
 }
 
@@ -153,8 +153,16 @@ function flow_unidade_chave_candidata_funcao(mysqli $conn, array $task): string
         return '';
     }
     $units = flow_unidade_mapa_explicito($conn, [$id]);
-    if ($units) {
-        return 'UT:' . (int) array_key_first($units);
+    $explicitUnit = $units ? reset($units) : null;
+    $family = array_key_exists('imagem_raiz_id', $task)
+        ? [
+            'imagem_raiz_id' => (int) $task['imagem_raiz_id'],
+            'possui_secundarias' => (bool) ($task['imagem_possui_secundarias'] ?? false),
+        ]
+        : flow_unidade_familia_imagem($conn, (int) ($task['imagem_id'] ?? 0));
+    if ($explicitUnit) {
+        $familyKey = flow_unidade_chave_familia_imagem($family);
+        return $familyKey ?? 'UT:' . (int) $explicitUnit['id'];
     }
 
     // Compatibilidade estritamente limitada ao par operacional legado já
@@ -179,10 +187,51 @@ function flow_unidade_chave_candidata_funcao(mysqli $conn, array $task): string
         $total = (int) ($stmt->get_result()->fetch_assoc()['total'] ?? 0);
         $stmt->close();
         if ($total === 2) {
-            return 'LEGACY_CADERNO_FILTRO:' . $imagemId . ':' . $colaboradorId;
+            $familyKey = flow_unidade_chave_familia_imagem($family);
+            return $familyKey ?? 'LEGACY_CADERNO_FILTRO:' . $imagemId . ':' . $colaboradorId;
         }
     }
+
+    $familyKey = flow_unidade_chave_familia_imagem($family);
+    if ($familyKey !== null) {
+        return $familyKey;
+    }
     return 'FUNCAO_IMAGEM:' . $id;
+}
+
+/** Resolve a imagem principal do conjunto e informa se ela possui ângulos secundários. */
+function flow_unidade_familia_imagem(mysqli $conn, int $imagemId): ?array
+{
+    if ($imagemId <= 0) {
+        return null;
+    }
+    $stmt = $conn->prepare(
+        "SELECT COALESCE(ico.imagem_principal_id, ico.idimagens_cliente_obra) AS imagem_raiz_id,
+                (ico.imagem_principal_id IS NOT NULL OR EXISTS (
+                    SELECT 1 FROM imagens_cliente_obra secundarias
+                    WHERE secundarias.imagem_principal_id = ico.idimagens_cliente_obra
+                )) AS possui_secundarias
+           FROM imagens_cliente_obra ico
+          WHERE ico.idimagens_cliente_obra = ?
+          LIMIT 1"
+    );
+    $stmt->bind_param('i', $imagemId);
+    $stmt->execute();
+    $family = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $family ? [
+        'imagem_raiz_id' => (int) $family['imagem_raiz_id'],
+        'possui_secundarias' => (bool) $family['possui_secundarias'],
+    ] : null;
+}
+
+/** A imagem principal e seus ângulos secundários compartilham uma unidade de WIP. */
+function flow_unidade_chave_familia_imagem(?array $family): ?string
+{
+    if (!$family || empty($family['possui_secundarias']) || (int) ($family['imagem_raiz_id'] ?? 0) <= 0) {
+        return null;
+    }
+    return 'IMAGEM_FAMILIA:' . (int) $family['imagem_raiz_id'];
 }
 
 /** Retorna unidades, não quantidade bruta de registros ativos. */
@@ -192,6 +241,11 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId, bool $inclui
     $statusMarks = implode(',', array_fill(0, count($statusAtivos), '?'));
     $stmt = $conn->prepare(
         "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.colaborador_id, fi.status,
+                COALESCE(ico.imagem_principal_id, ico.idimagens_cliente_obra) AS imagem_raiz_id,
+                (ico.imagem_principal_id IS NOT NULL OR EXISTS (
+                    SELECT 1 FROM imagens_cliente_obra secundarias
+                    WHERE secundarias.imagem_principal_id = ico.idimagens_cliente_obra
+                )) AS imagem_possui_secundarias,
                 f.nome_funcao, ico.imagem_nome, o.nomenclatura
            FROM funcao_imagem fi
           JOIN funcao f ON f.idfuncao = fi.funcao_id
@@ -229,7 +283,11 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId, bool $inclui
         $taskId = (int) $row['idfuncao_imagem'];
         if (isset($byTask[$taskId])) {
             $unit = $byTask[$taskId];
-            $key = 'UT:' . (int) $unit['id'];
+            $familyKey = flow_unidade_chave_familia_imagem([
+                'imagem_raiz_id' => (int) ($row['imagem_raiz_id'] ?? 0),
+                'possui_secundarias' => (bool) ($row['imagem_possui_secundarias'] ?? false),
+            ]);
+            $key = $familyKey ?? 'UT:' . (int) $unit['id'];
             if (!isset($units[$key])) {
                 $units[$key] = [
                     'key' => $key,
@@ -237,8 +295,13 @@ function flow_wip_unidades_ativas(mysqli $conn, int $colaboradorId, bool $inclui
                     'unit_id' => (int) $unit['id'],
                     'image_id' => (int) $unit['imagem_id'],
                     'label' => 'Modelagem + Composição',
-                    'task_ids' => array_values(array_map(static fn(array $m): int => (int) $m['idfuncao_imagem'], $unit['membros'])),
+                    'task_ids' => array_values(array_map(static fn (array $m): int => (int) $m['idfuncao_imagem'], $unit['membros'])),
                 ];
+            } else {
+                $units[$key]['task_ids'] = array_values(array_unique(array_merge(
+                    $units[$key]['task_ids'],
+                    array_map(static fn (array $m): int => (int) $m['idfuncao_imagem'], $unit['membros'])
+                )));
             }
             continue;
         }
@@ -433,7 +496,7 @@ function flow_unidade_membro_acionavel(array $unit, array $members, string $oper
 {
     $sameStatus = array_values(array_filter(
         $members,
-        static fn(array $member): bool => (string) ($member['status'] ?? '') === $operationalStatus
+        static fn (array $member): bool => (string) ($member['status'] ?? '') === $operationalStatus
     ));
     if (($unit['tipo'] ?? '') === FLOW_UNIDADE_TIPO_MODELAGEM_COMPOSICAO) {
         foreach ($sameStatus as $member) {
@@ -494,8 +557,8 @@ function flow_unidade_modelagem_composicao_da_tarefa(mysqli $conn, int $funcaoIm
             'ordem' => (int) $row['ordem'],
         ];
     }
-    $modelagem = array_values(array_filter($unit['membros'], static fn(array $m): bool => (int) $m['funcao_id'] === FLOW_FUNCAO_MODELAGEM));
-    $composicao = array_values(array_filter($unit['membros'], static fn(array $m): bool => (int) $m['funcao_id'] === FLOW_FUNCAO_COMPOSICAO));
+    $modelagem = array_values(array_filter($unit['membros'], static fn (array $m): bool => (int) $m['funcao_id'] === FLOW_FUNCAO_MODELAGEM));
+    $composicao = array_values(array_filter($unit['membros'], static fn (array $m): bool => (int) $m['funcao_id'] === FLOW_FUNCAO_COMPOSICAO));
     if (count($modelagem) !== 1 || count($composicao) !== 1) {
         return null;
     }
@@ -587,7 +650,7 @@ function flow_unidade_promover_composicao_principal(
 /** Aplica uma projeção explícita de unidade aos payloads de tarefa do Kanban. */
 function flow_unidade_agrupar_funcoes_payload(mysqli $conn, array $items): array
 {
-    $ids = array_values(array_filter(array_map(static fn(array $item): int => (int) ($item['idfuncao_imagem'] ?? 0), $items)));
+    $ids = array_values(array_filter(array_map(static fn (array $item): int => (int) ($item['idfuncao_imagem'] ?? 0), $items)));
     $units = flow_unidade_mapa_explicito($conn, $ids);
     if (!$units) {
         return $items;
@@ -598,7 +661,7 @@ function flow_unidade_agrupar_funcoes_payload(mysqli $conn, array $items): array
     }
     $suppressed = [];
     foreach ($units as $unit) {
-        $availableMembers = array_values(array_filter($unit['membros'], static fn(array $member): bool => isset($indexById[(int) $member['idfuncao_imagem']])));
+        $availableMembers = array_values(array_filter($unit['membros'], static fn (array $member): bool => isset($indexById[(int) $member['idfuncao_imagem']])));
         if (count($availableMembers) < 2) {
             continue;
         }

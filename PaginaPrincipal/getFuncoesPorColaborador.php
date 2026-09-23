@@ -1550,9 +1550,14 @@ usort($funcoesFinal, static function (array $a, array $b): int {
 $pendenciasOperacionais = pendencias_operacionais_fetch($conn, $colaboradorId, $nivelAcesso, $pendenciasFlowReview);
 $wipResumo = flow_wip_resumo($conn, $colaboradorId);
 foreach ($funcoesFinal as &$funcaoFinal) {
+    $wipCandidateKey = null;
+    if ((int) ($funcaoFinal['idfuncao_imagem'] ?? 0) > 0) {
+        $wipCandidateKey = flow_unidade_chave_candidata_funcao($conn, $funcaoFinal);
+    }
+    $blockingUnits = flow_wip_unidades_bloqueantes($wipResumo['active_units'], $wipCandidateKey);
     $funcaoFinal['wip_blocked_for_new_start'] =
         (string) ($funcaoFinal['status'] ?? '') === 'Não iniciado'
-        && !$wipResumo['can_start_new'];
+        && count($blockingUnits) >= FLOW_WIP_LIMIT;
 }
 
 // foreach ($funcoesFinal as &$funcaoFinal) {

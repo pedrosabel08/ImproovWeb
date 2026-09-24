@@ -143,17 +143,25 @@ async function toggleFileStatus(idarquivo, status) {
   let action;
   if (s === "atualizado") {
     if (
-      !confirm(
-        "Mover arquivo para ANTIGO? Ser\u00e1 movido para a pasta OLD no servidor.",
-      )
+      !(
+        await FlowAlert.confirm({
+          title: "Mover arquivo para antigo?",
+          message: "O arquivo será movido para a pasta OLD no servidor.",
+          confirmText: "Mover",
+        })
+      ).isConfirmed
     )
       return;
     action = "antigo";
   } else if (s === "antigo") {
     if (
-      !confirm(
-        "Marcar arquivo como ATUALIZADO? Ser\u00e1 restaurado para a pasta principal.",
-      )
+      !(
+        await FlowAlert.confirm({
+          title: "Marcar arquivo como atualizado?",
+          message: "O arquivo será restaurado para a pasta principal.",
+          confirmText: "Atualizar",
+        })
+      ).isConfirmed
     )
       return;
     action = "atualizado";
@@ -646,7 +654,7 @@ const arquivoFile = document.getElementById("arquivoFile");
 const tipoCategoria = document.getElementById("tipo_categoria");
 
 // ── Sufixo helpers (Select2 + DB) ────────────────────────────────
-let _sufixosCache = {};      // cache: { [tipoArquivo]: string[] }
+let _sufixosCache = {}; // cache: { [tipoArquivo]: string[] }
 let _currentTipoArquivo = "";
 
 // Fallback list when DB is unreachable
@@ -733,7 +741,11 @@ const SUFIXOS = {
 
 /** Normalize: uppercase, spaces → _, strip non-alphanumeric */
 function normalizeSufixo(val) {
-  return val.trim().toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, "");
+  return val
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^A-Z0-9_]/g, "");
 }
 
 /** Validate: max 2 words separated by a single underscore */
@@ -753,7 +765,9 @@ function initSufixoSelect2(selector, options) {
   if (typeof $ === "undefined" || !$.fn || !$.fn.select2) return;
   const $el = $(selector);
   if (!$el.length) return;
-  try { $el.select2("destroy"); } catch (_) {}
+  try {
+    $el.select2("destroy");
+  } catch (_) {}
 
   const data = options.map((v) => ({ id: v, text: v }));
 
@@ -791,9 +805,12 @@ async function carregarSufixos(tipoArquivo) {
   if (!tipoArquivo) return [];
   if (_sufixosCache[tipoArquivo]) return _sufixosCache[tipoArquivo];
   try {
-    const resp = await fetch(`getSufixos.php?tipo_arquivo=${encodeURIComponent(tipoArquivo)}`);
+    const resp = await fetch(
+      `getSufixos.php?tipo_arquivo=${encodeURIComponent(tipoArquivo)}`,
+    );
     const data = await resp.json();
-    const result = Array.isArray(data) && data.length ? data : (SUFIXOS[tipoArquivo] || []);
+    const result =
+      Array.isArray(data) && data.length ? data : SUFIXOS[tipoArquivo] || [];
     _sufixosCache[tipoArquivo] = result;
     return result;
   } catch (_) {
@@ -827,7 +844,9 @@ function renderPerFileSufixos(files, sufixosOptions) {
 
   // Destroy existing Select2 instances inside container before clearing HTML
   container.querySelectorAll(".sufixo-select2").forEach((el) => {
-    try { $(el).select2("destroy"); } catch (_) {}
+    try {
+      $(el).select2("destroy");
+    } catch (_) {}
   });
 
   if (!files || files.length <= 1) {
@@ -852,18 +871,20 @@ function renderPerFileSufixos(files, sufixosOptions) {
   container.appendChild(applyAllRow);
   initSufixoSelect2("#sufixo_apply_all", sufixosOptions);
 
-  document.getElementById("btnApplyAllSufixo")?.addEventListener("click", () => {
-    const applyVal = $("#sufixo_apply_all").val();
-    if (!applyVal) return;
-    container.querySelectorAll(".sufixo-select2").forEach((el) => {
-      const $el = $(el);
-      // If option doesn't exist yet, add it (tags mode)
-      if (!$el.find(`option[value="${applyVal}"]`).length) {
-        $el.append(new Option(applyVal, applyVal, true, true));
-      }
-      $el.val(applyVal).trigger("change");
+  document
+    .getElementById("btnApplyAllSufixo")
+    ?.addEventListener("click", () => {
+      const applyVal = $("#sufixo_apply_all").val();
+      if (!applyVal) return;
+      container.querySelectorAll(".sufixo-select2").forEach((el) => {
+        const $el = $(el);
+        // If option doesn't exist yet, add it (tags mode)
+        if (!$el.find(`option[value="${applyVal}"]`).length) {
+          $el.append(new Option(applyVal, applyVal, true, true));
+        }
+        $el.val(applyVal).trigger("change");
+      });
     });
-  });
 
   Array.from(files).forEach((file, i) => {
     const uid = `sufixo_pf_${i}`;
@@ -892,12 +913,17 @@ async function atualizarSufixos() {
 
   if (!tipoArquivo) {
     if (fieldSufixo) fieldSufixo.style.display = "none";
-    if (container) { container.style.display = "none"; container.innerHTML = ""; }
+    if (container) {
+      container.style.display = "none";
+      container.innerHTML = "";
+    }
     return;
   }
 
   const options = await carregarSufixos(tipoArquivo);
-  const modo = document.querySelector('input[name="refsSkpModo"]:checked')?.value || "geral";
+  const modo =
+    document.querySelector('input[name="refsSkpModo"]:checked')?.value ||
+    "geral";
   const files = document.getElementById("arquivoFile")?.files;
   const isMultiGeral = modo === "geral" && files && files.length > 1;
 
@@ -909,7 +935,9 @@ async function atualizarSufixos() {
     // Single sufixo: destroy per-file rows, show global field
     if (container) {
       container.querySelectorAll(".sufixo-select2").forEach((el) => {
-        try { $(el).select2("destroy"); } catch (_) {}
+        try {
+          $(el).select2("destroy");
+        } catch (_) {}
       });
       container.style.display = "none";
       container.innerHTML = "";
@@ -1117,10 +1145,13 @@ document
     // Save any new typed sufixos to DB before building the payload
     if (_currentTipoArquivo) {
       const cached = _sufixosCache[_currentTipoArquivo] || [];
-      const allSufixoSelects = form.querySelectorAll("#sufixoSelect, .sufixo-select2");
+      const allSufixoSelects = form.querySelectorAll(
+        "#sufixoSelect, .sufixo-select2",
+      );
       for (const sel of allSufixoSelects) {
         const val = sel.value ? normalizeSufixo(sel.value) : "";
-        if (val && !cached.includes(val)) await salvarSufixoNovo(_currentTipoArquivo, val);
+        if (val && !cached.includes(val))
+          await salvarSufixoNovo(_currentTipoArquivo, val);
       }
     }
 
@@ -1162,91 +1193,48 @@ document
         }
       }
 
-      // Mostrar Swal com barra de progresso e detalhes
-      const swalHtml = `
-            <div style="text-align:left;margin-bottom:8px">
-                <strong>Parâmetros:</strong>
-                <strong>Arquivos (${fileNames.length}):</strong>
-                <ul style="padding-left:18px;margin:6px 0">${fileNames.map((n) => `<li>${n}</li>`).join("")}</ul>
-            </div>
-            <div style="margin-top:8px">
-                <div id="swal-upload-progress" style="width:100%;background:#eee;border-radius:6px;overflow:hidden;height:14px">
-                    <div id="swal-upload-bar" style="width:0%;height:100%;background:#3085d6"></div>
-                </div>
-                <div id="swal-upload-info" style="margin-top:6px;font-size:13px;color:#666">0% - 0 KB de ${Math.round(totalBytes / 1024)} KB</div>
-            </div>`;
-
       let xhr = new XMLHttpRequest();
       xhr.open("POST", "upload.php", true);
-
-      // Mostrar modal Swal e iniciar upload sem aguardar sua resolução
       let startTime = null;
-
-      const swalPromise = Swal.fire({
+      let cancelRequested = false;
+      const uploadProgress = FlowAlert.progress({
         title: "Enviando arquivos",
-        html: swalHtml,
-        showConfirmButton: false,
-        showCancelButton: true,
-        cancelButtonText: "Cancelar",
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        allowEnterKey: false,
-        didOpen: () => {
-          // Avoid backdrop clicks bubbling to global handlers (which might close other modals)
-          try {
-            const container = Swal.getContainer();
-            if (container) {
-              ["click", "mousedown", "touchstart", "pointerdown"].forEach(
-                (evt) => {
-                  container.addEventListener(
-                    evt,
-                    (e) => e.stopPropagation(),
-                    true,
-                  );
-                },
-              );
-            }
-          } catch (e) {}
-        },
-        willOpen: () => {
-          // attach progress handler
-          const container = Swal.getHtmlContainer();
-          const bar = container
-            ? container.querySelector("#swal-upload-bar")
-            : null;
-          const info = container
-            ? container.querySelector("#swal-upload-info")
-            : null;
-
-          startTime = Date.now();
-
-          xhr.upload.onprogress = function (e) {
-            if (e.lengthComputable) {
-              const now = Date.now();
-              const elapsed = (now - startTime) / 1000; // seconds
-              const uploadedMB = e.loaded / (1024 * 1024);
-              const totalMB = e.total / (1024 * 1024);
-              const percent = (e.loaded / e.total) * 100;
-              const speed = uploadedMB / (elapsed || 0.0001); // MB/s
-              const remainingMB = Math.max(0, totalMB - uploadedMB);
-              const estimatedTime = remainingMB / (speed || 0.0001);
-
-              if (bar) bar.style.width = percent + "%";
-              if (info) {
-                info.textContent = `${percent.toFixed(2)}% - ${Math.round(e.loaded / 1024)} KB de ${Math.round(e.total / 1024)} KB — Tempo: ${elapsed.toFixed(1)}s — Velocidade: ${speed.toFixed(2)} MB/s — Estimativa: ${estimatedTime.toFixed(1)}s`;
-              }
-            }
-          };
-
-          xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-              // Response handling below after Swal.close()
-            }
-          };
+        message: `Arquivos (${fileNames.length}):\n${fileNames.join("\n")}\n0% · 0 KB de ${Math.round(totalBytes / 1024)} KB`,
+        progress: 0,
+        dismissible: false,
+        cancelAction: {
+          label: "Cancelar",
+          onClick: () => {
+            cancelRequested = true;
+            xhr.abort();
+          },
         },
       });
+      startTime = Date.now();
 
-      // Start sending immediately so progress events update the open Swal
+      xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          const now = Date.now();
+          const elapsed = (now - startTime) / 1000;
+          const uploadedMB = e.loaded / (1024 * 1024);
+          const totalMB = e.total / (1024 * 1024);
+          const percent = (e.loaded / e.total) * 100;
+          const speed = uploadedMB / (elapsed || 0.0001);
+          const remainingMB = Math.max(0, totalMB - uploadedMB);
+          const estimatedTime = remainingMB / (speed || 0.0001);
+          uploadProgress.update({
+            progress: percent,
+            message: `Arquivos (${fileNames.length}):\n${fileNames.join("\n")}\n${percent.toFixed(2)}% · ${Math.round(e.loaded / 1024)} KB de ${Math.round(e.total / 1024)} KB\nTempo: ${elapsed.toFixed(1)}s · Velocidade: ${speed.toFixed(2)} MB/s · Estimativa: ${estimatedTime.toFixed(1)}s`,
+          });
+        }
+      };
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          // A resposta é processada pela promessa abaixo.
+        }
+      };
+
       xhr.send(formData);
 
       // Prepare a promise that resolves when upload completes (or errors/aborts)
@@ -1289,34 +1277,33 @@ document
         };
       });
 
-      // Race between upload completion and user cancelling the Swal.
-      // If user cancels first, abort XHR. If upload completes first, process the response.
       const race = await Promise.race([
         uploadPromise
           .then((res) => ({ type: "upload", res }))
           .catch((err) => ({ type: "upload_error", err })),
-        swalPromise.then((res) => ({ type: "swal", res })),
+        uploadProgress.result.then((res) => ({ type: "alert", res })),
       ]);
 
-      if (
-        race.type === "swal" &&
-        race.res &&
-        race.res.dismiss === Swal.DismissReason.cancel
-      ) {
+      if (race.type === "alert" && cancelRequested) {
         try {
           xhr.abort();
         } catch (e) {}
-        Swal.close();
         throw new Error("Envio cancelado pelo usuário");
       }
 
       if (race.type === "upload_error") {
-        Swal.close();
+        uploadProgress.close();
         throw race.err;
       }
 
       // At this point upload finished successfully
-      Swal.close();
+      uploadProgress.update({
+        title: "Upload concluído",
+        message: "Os arquivos foram enviados.",
+        progress: 100,
+        type: "success",
+      });
+      window.setTimeout(uploadProgress.close, 700);
       const uploadResult = race.res;
 
       const result = uploadResult;

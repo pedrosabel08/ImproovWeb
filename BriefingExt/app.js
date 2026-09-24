@@ -865,7 +865,7 @@
   }
   $("submit").onclick = async () => {
     try {
-      if (!confirm("Concluir e enviar este briefing para conferência?")) return;
+      if (!(await FlowAlert.confirm({ title: "Enviar briefing?", message: "O briefing será enviado para conferência.", confirmText: "Enviar" })).isConfirmed) return;
       for (const question of questions()) {
         if (!(await flush(question.id))) return;
       }

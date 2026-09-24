@@ -626,11 +626,15 @@
         .querySelector("[data-confirm-resolution]")
         ?.addEventListener("click", async () => {
           if (
-            !confirm(
-              issue.operational_source_type
-                ? "Confirmar que a resolução é suficiente e liberar o HOLD operacional?"
-                : "Confirmar que a resolução é suficiente? A tarefa continuará em HOLD até ser replanejada.",
-            )
+            !(
+              await FlowAlert.confirm({
+                title: "Confirmar resolução?",
+                message: issue.operational_source_type
+                  ? "Confirmar que a resolução é suficiente e liberar o HOLD operacional?"
+                  : "Confirmar que a resolução é suficiente? A tarefa continuará em HOLD até ser replanejada.",
+                confirmText: "Confirmar resolução",
+              })
+            ).isConfirmed
           )
             return;
           try {
@@ -764,9 +768,13 @@
     }
     if (
       action === "delete" &&
-      confirm(
-        "Excluir este comentário? Os anexos permanecerão no histórico da Issue.",
-      )
+      (
+        await FlowAlert.confirm({
+          title: "Excluir comentário?",
+          message: "Os anexos permanecerão no histórico da Issue.",
+          confirmText: "Excluir",
+        })
+      ).isConfirmed
     ) {
       try {
         await api("comment_delete", {

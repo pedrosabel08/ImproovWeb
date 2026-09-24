@@ -395,9 +395,11 @@
       .getElementById("almaPublishVersion")
       ?.addEventListener("click", async (event) => {
         if (
-          !window.confirm(
-            "Publicar esta versão? Depois de publicada, ela ficará imutável.",
-          )
+            !(await window.FlowAlert.confirm({
+              title: "Publicar versão?",
+              message: "Depois de publicada, ela ficará imutável.",
+              confirmText: "Publicar",
+            })).isConfirmed
         )
           return;
         const button = event.currentTarget;

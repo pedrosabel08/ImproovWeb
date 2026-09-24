@@ -77,7 +77,7 @@ let imagensCache = []; // cache das imagens da obra
 
 // --- PDF viewer ---
 let pdfVirtualPages = []; // [{doc, pageNum}] — documento servido por servir_planta_pdf.php
-let pdfTotalPaginas = 0;  // total de páginas
+let pdfTotalPaginas = 0; // total de páginas
 let pdfPaginaAtual = 1; // página virtual ativa (1-indexed)
 let _pendingPlantaId = null; // ID da planta a selecionar após carregarMapa()
 
@@ -374,12 +374,12 @@ async function carregarPdfPlanta() {
 
   pdfVirtualPages = [];
   pdfTotalPaginas = 0;
-  pdfPaginaAtual  = 1;
+  pdfPaginaAtual = 1;
 
   try {
     // servir_planta_pdf.php faz o merge server-side quando necessário
     const url = `${BASE_URL}/servir_planta_pdf.php?planta_id=${plantaAtiva.id}`;
-    const doc  = await pdfjsLib.getDocument({ url }).promise;
+    const doc = await pdfjsLib.getDocument({ url }).promise;
 
     // Preencher virtual pages a partir do documento único
     for (let pg = 1; pg <= doc.numPages; pg++) {
@@ -1162,7 +1162,15 @@ btnSalvarEditar?.addEventListener("click", async () => {
 
 btnDeletarMarcacao?.addEventListener("click", async () => {
   const id = parseInt(editarMarcacaoId.value, 10);
-  if (!confirm(`Excluir esta marcação? Esta ação não pode ser desfeita.`))
+  if (
+    !(
+      await FlowAlert.confirm({
+        title: "Excluir marcação?",
+        message: "Esta ação não pode ser desfeita.",
+        confirmText: "Excluir",
+      })
+    ).isConfirmed
+  )
     return;
 
   try {
@@ -1340,11 +1348,17 @@ async function criarPlantaWizard() {
       await carregarMapa();
     } else {
       toast(data.erro || "Erro ao criar planta.", false);
-      if (btnCriar) { btnCriar.disabled = false; btnCriar.textContent = "Criar Planta"; }
+      if (btnCriar) {
+        btnCriar.disabled = false;
+        btnCriar.textContent = "Criar Planta";
+      }
     }
   } catch {
     toast("Falha de comunicação.", false);
-    if (btnCriar) { btnCriar.disabled = false; btnCriar.textContent = "Criar Planta"; }
+    if (btnCriar) {
+      btnCriar.disabled = false;
+      btnCriar.textContent = "Criar Planta";
+    }
   }
 }
 

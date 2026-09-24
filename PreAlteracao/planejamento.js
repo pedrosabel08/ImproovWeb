@@ -772,11 +772,16 @@
     }
   }
 
-  function regenerateBase() {
+  async function regenerateBase() {
     if (
-      !window.confirm(
-        "Gerar a base novamente vai remover grupos, gates e dependências ainda não salvos. Continuar?",
-      )
+      !(
+        await window.FlowAlert.confirm({
+          title: "Gerar base novamente?",
+          message:
+            "Grupos, gates e dependências ainda não salvos serão removidos.",
+          confirmText: "Gerar novamente",
+        })
+      ).isConfirmed
     ) {
       return;
     }
@@ -879,9 +884,13 @@
   async function publishGraph() {
     if (
       state.dirty &&
-      !window.confirm(
-        "Existem alterações não salvas. Publicar a última versão salva mesmo assim?",
-      )
+      !(
+        await window.FlowAlert.confirm({
+          title: "Publicar última versão salva?",
+          message: "Existem alterações não salvas.",
+          confirmText: "Publicar",
+        })
+      ).isConfirmed
     ) {
       return;
     }

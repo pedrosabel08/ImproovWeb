@@ -892,75 +892,48 @@ async function abrirChecklistImagemOperacionalLegacySwal(
     return { resolved: false };
   }
 
-  const itemsHtml = (checklist.items || [])
-    .map((item) => {
-      const itemKey = String(item.item_key || "");
-      const isAutomatico = itemKey === "subtipo_definido";
-      const isObrigatorio = Number(item.required || 0) === 1;
-      const checked = Number(item.done || 0) === 1 ? "checked" : "";
-      const disabled = isAutomatico ? "disabled" : "";
-      const meta = isAutomatico
-        ? "Automático"
-        : isObrigatorio
-          ? "Obrigatório"
-          : "Opcional";
-
-      return `
-        <label class="imagem-checklist-row ${disabled ? "imagem-checklist-row--locked" : ""}">
-          <input
-            type="checkbox"
-            data-item-key="${checklistImagemEscapeHtml(itemKey)}"
-            data-manual="${isAutomatico ? "0" : "1"}"
-            ${checked}
-            ${disabled}
-          >
-          <span class="imagem-checklist-row__text">
-            <strong>${checklistImagemEscapeHtml(item.label || itemKey)}</strong>
-            <small>${checklistImagemEscapeHtml(meta)}</small>
-          </span>
-        </label>`;
-    })
-    .join("");
-
   if (typeof Swal === "undefined" || !Swal.fire) {
     alert("Conclua o checklist operacional da imagem antes de continuar.");
     return { resolved: false };
   }
 
-  const result = await Swal.fire({
+  const result = await FlowAlert.form({
     title: "Checklist da imagem",
-    html: `
-      <div class="imagem-checklist-modal">
-        <p>${checklistImagemEscapeHtml(checklist.imagem_nome)}</p>
-        <div class="imagem-checklist-list">${itemsHtml}</div>
-      </div>
-    `,
-    showCancelButton: true,
-    confirmButtonText: "Salvar",
-    cancelButtonText: "Cancelar",
-    focusConfirm: false,
-    width: 520,
-    customClass: {
-      popup: "imagem-checklist-swal",
-    },
-    preConfirm: async () => {
-      const values = {};
-      document
-        .querySelectorAll('.imagem-checklist-modal input[data-manual="1"]')
-        .forEach((input) => {
-          values[input.dataset.itemKey] = input.checked ? 1 : 0;
-        });
-
+    message: checklist.imagem_nome || "",
+    fields: (checklist.items || []).map((item, index) => {
+      const itemKey = String(item.item_key || `item${index}`);
+      return {
+        name: itemKey,
+        type: "checkbox",
+        label:
+          itemKey === "subtipo_definido"
+            ? "Automático"
+            : Number(item.required || 0) === 1
+              ? "Obrigatório"
+              : "Opcional",
+        optionLabel: item.label || itemKey,
+        checked: Number(item.done || 0) === 1,
+        disabled: itemKey === "subtipo_definido",
+      };
+    }),
+    confirmText: "Salvar",
+    cancelText: "Cancelar",
+    onSubmit: async (checkedValues) => {
+      const values = Object.fromEntries(
+        (checklist.items || [])
+          .filter((item) => String(item.item_key || "") !== "subtipo_definido")
+          .map((item, index) => [
+            String(item.item_key || `item${index}`),
+            checkedValues[String(item.item_key || `item${index}`)] ? 1 : 0,
+          ]),
+      );
       try {
         return await salvarChecklistImagemOperacional(
           checklist.checklist_id,
           values,
         );
       } catch (error) {
-        Swal.showValidationMessage(
-          error.message || "Erro ao salvar checklist.",
-        );
-        return false;
+        return error.message || "Erro ao salvar checklist.";
       }
     },
   });
@@ -1645,7 +1618,16 @@ async function alterarStatus(imagemId) {
   const resumo = alteracoes
     .map((alteracao) => `${alteracao.label}: ${alteracao.text}`)
     .join("\n");
-  if (!window.confirm(`Confirmar atualização da imagem?\n\n${resumo}`)) return;
+  if (
+    !(
+      await window.FlowAlert.confirm({
+        title: "Confirmar atualização?",
+        message: resumo,
+        confirmText: "Atualizar",
+      })
+    ).isConfirmed
+  )
+    return;
 
   const formData = new FormData();
   formData.append("imagem_id", id);
@@ -1697,16 +1679,20 @@ function solicitarJustificativaHoldIfNeeded(statusId) {
   }
 
   if (typeof Swal !== "undefined" && Swal.fire) {
-    return Swal.fire({
+    return FlowAlert.input({
       title: "Motivo do HOLD",
-      input: "text",
-      inputLabel: "Informe o motivo do HOLD",
-      inputPlaceholder: "Digite a justificativa",
-      showCancelButton: true,
-      confirmButtonText: "Salvar",
-      cancelButtonText: "Cancelar",
-      allowOutsideClick: false,
-      inputValidator: (value) => {
+      field: {
+        type: "text",
+        label: "Informe o motivo do HOLD",
+        placeholder: "Digite a justificativa",
+        maxlength: 100,
+        required: true,
+      },
+      mode: "modal",
+      confirmText: "Salvar",
+      cancelText: "Cancelar",
+      dismissible: false,
+      validate: (value) => {
         if (!value || !value.trim()) {
           return "A justificativa é obrigatória.";
         }
@@ -4677,6 +4663,7 @@ const BRIEFING_ARQUIVOS = (function () {
               obs.disabled = true;
               sendBtn.disabled = true;
 
+              let uploadAlert = null;
               try {
                 // Hide the pending overlay modal so only the progress dialog stays visible.
                 if (pendingModal && typeof pendingModal.hide === "function") {
@@ -4684,26 +4671,13 @@ const BRIEFING_ARQUIVOS = (function () {
                   hidPendingModal = true;
                 }
 
-                // mostra modal com barra de progresso e estatísticas
-                Swal.fire({
+                uploadAlert = FlowAlert.progress({
                   title: "Enviando arquivos",
-                  html: `
-                                        <div style="margin-top:8px">
-                                          <div style="height:12px;background:#eee;border-radius:8px;overflow:hidden">
-                                            <div id="uploadProgressFill" style="width:0%;height:100%;background:#3b82f6"></div>
-                                          </div>
-                                          <div id="uploadProgressText" style="margin-top:8px;font-size:13px;text-align:left">0% — 0.00 / 0.00 MB — 0.00 MB/s — 00:00 elapsed — 00:00 remaining</div>
-                                        </div>
-                                    `,
-                  allowOutsideClick: false,
-                  showConfirmButton: false,
-                  didOpen: () => {},
+                  message:
+                    "0% · 0.00 / 0.00 MB · 0.00 MB/s · 00:00 elapsed · 00:00 remaining",
+                  progress: 0,
+                  dismissible: false,
                 });
-
-                const progressFill =
-                  document.getElementById("uploadProgressFill");
-                const progressText =
-                  document.getElementById("uploadProgressText");
 
                 function formatSeconds(sec) {
                   const s = Math.max(0, Math.round(sec));
@@ -4738,11 +4712,12 @@ const BRIEFING_ARQUIVOS = (function () {
                       const mbTotal = (total / 1024 / 1024).toFixed(2);
                       const mbps = (speedBps / 1024 / 1024).toFixed(2);
 
-                      if (progressFill) progressFill.style.width = pct + "%";
-                      if (progressText)
-                        progressText.innerHTML = `${pct}% — ${mbLoaded} / ${mbTotal} MB — ${mbps} MB/s — ${formatSeconds(elapsedSec)} elapsed — ${formatSeconds(remainingSec)} remaining`;
+                      uploadAlert.update({
+                        progress: pct,
+                        message: `${pct}% · ${mbLoaded} / ${mbTotal} MB · ${mbps} MB/s · ${formatSeconds(elapsedSec)} elapsed · ${formatSeconds(remainingSec)} remaining`,
+                      });
                     } else {
-                      if (progressText) progressText.innerHTML = "Enviando...";
+                      uploadAlert.update({ message: "Enviando..." });
                     }
                   };
 
@@ -4768,7 +4743,8 @@ const BRIEFING_ARQUIVOS = (function () {
                   xhr.send(formData);
                 });
 
-                Swal.close();
+                uploadAlert.update({ progress: 100 });
+                uploadAlert?.close();
 
                 if (
                   uploadResult &&
@@ -4813,7 +4789,7 @@ const BRIEFING_ARQUIVOS = (function () {
                 fileInfo.textContent = "";
               } catch (err) {
                 console.error(err);
-                Swal.close();
+                uploadAlert.close();
                 Swal.fire({
                   icon: "error",
                   title: "Erro ao enviar",
@@ -5621,10 +5597,16 @@ function infosObra(obraId) {
             !unidadesRenderizadas.has(Number(unidadeOperacional.id))
           ) {
             const memberIds = new Set(
-              (unidadeOperacional.membros || []).map((m) => Number(m.funcao_id)),
+              (unidadeOperacional.membros || []).map((m) =>
+                Number(m.funcao_id),
+              ),
             );
-            const memberColumns = colunas.filter((c) => memberIds.has(c.funcaoId));
-            const firstMemberIndex = colunas.findIndex((c) => memberIds.has(c.funcaoId));
+            const memberColumns = colunas.filter((c) =>
+              memberIds.has(c.funcaoId),
+            );
+            const firstMemberIndex = colunas.findIndex((c) =>
+              memberIds.has(c.funcaoId),
+            );
             if (ci === firstMemberIndex && memberColumns.length > 1) {
               const cellUnit = document.createElement("td");
               cellUnit.colSpan = memberColumns.length;
@@ -5656,7 +5638,9 @@ function infosObra(obraId) {
               });
               row.appendChild(cellUnit);
               if (
-                !(item.imagem_status === "EF" && item.imagem_sub_status === "EF")
+                !(
+                  item.imagem_status === "EF" && item.imagem_sub_status === "EF"
+                )
               ) {
                 applyStatusStyle(cellUnit, repSt, owner);
               }
@@ -8341,8 +8325,7 @@ const statusSelects = document.querySelectorAll(
 statusSelects.forEach((select) => {
   select.addEventListener("change", function () {
     // Os controles são movidos para o modal moderno após a inicialização.
-    const funcao =
-      this.closest(".funcao") || this.closest(".alloc-task-row");
+    const funcao = this.closest(".funcao") || this.closest(".alloc-task-row");
     if (!funcao) return;
 
     const revisaoImagem = funcao.querySelector(".revisao_imagem");
@@ -8671,7 +8654,7 @@ document
             stopOnFocus: true,
           }).showToast();
         },
-        error: function (jqXHR, textStatus, errorThrown) {
+        error: async function (jqXHR, textStatus, errorThrown) {
           const avaliacao = jqXHR.responseJSON?.avaliacao;
           const pendencias = Array.isArray(avaliacao?.bloqueios)
             ? avaliacao.bloqueios.map((item) => item?.label).filter(Boolean)
@@ -8679,9 +8662,13 @@ document
           if (
             avaliacao &&
             dados.confirmar_pendencias !== 1 &&
-            window.confirm(
-              `Esta tarefa possui pendências ativas.${pendencias.length ? `\n\nPendências: ${pendencias.join(", ")}.` : ""}\n\nDeseja continuar e colocá-la em andamento?`,
-            )
+            (
+              await window.FlowAlert.confirm({
+                title: "Pendências ativas",
+                message: `Esta tarefa possui pendências ativas.${pendencias.length ? `\n\nPendências: ${pendencias.join(", ")}.` : ""}\n\nDeseja continuar e colocá-la em andamento?`,
+                confirmText: "Continuar",
+              })
+            ).isConfirmed
           ) {
             dados.confirmar_pendencias = 1;
             enviarFormulario();
@@ -9881,11 +9868,14 @@ function renderAcompanhamentosList(acompList, category = "todos") {
     div.appendChild(pData);
 
     // context menu (right-click) to delete acompanhamento
-    div.addEventListener("contextmenu", (ev) => {
+    div.addEventListener("contextmenu", async (ev) => {
       ev.preventDefault();
       if (!acomp || !acomp.id) return;
-      const ok = confirm("Deseja excluir este acompanhamento?");
-      if (!ok) return;
+      const ok = await FlowAlert.confirm({
+        title: "Excluir acompanhamento?",
+        confirmText: "Excluir",
+      });
+      if (!ok.isConfirmed) return;
 
       fetch("../deleteAcompanhamento.php", {
         method: "POST",
@@ -10245,11 +10235,16 @@ document.getElementById("configAcomp").addEventListener("click", function () {
         const unifyBtn = document.createElement("button");
         unifyBtn.textContent = "Unificar";
         unifyBtn.style.marginRight = "8px";
-        unifyBtn.addEventListener("click", function () {
+        unifyBtn.addEventListener("click", async function () {
           if (
-            !confirm(
-              "Deseja unificar esses acompanhamentos? Essa ação irá apagar os duplicados e manter apenas um registro.",
-            )
+            !(
+              await FlowAlert.confirm({
+                title: "Unificar acompanhamentos?",
+                message:
+                  "Os registros duplicados serão apagados e apenas um será mantido.",
+                confirmText: "Unificar",
+              })
+            ).isConfirmed
           )
             return;
           fetch("../unifyAcompanhamentos.php?action=unify", {
@@ -10393,7 +10388,7 @@ closeModalImages.addEventListener("touchstart", function () {
 
 document
   .getElementById("adicionar_acomp")
-  .addEventListener("submit", function (e) {
+  .addEventListener("submit", async function (e) {
     e.preventDefault(); // Previne o envio padrão do formulário
 
     // Obtendo os dados do formulário
@@ -10409,10 +10404,12 @@ document
       acompanhamentoSelecionado &&
       acompanhamentoSelecionado.value === "prazo_alteracao"
     ) {
-      const confirmacao = confirm(
-        "Você selecionou 'Prazo de alteração'. Lembre-se de preencher a data corretamente!",
-      );
-      if (!confirmacao) {
+      const confirmacao = await FlowAlert.confirm({
+        title: "Prazo de alteração",
+        message: "Lembre-se de preencher a data corretamente!",
+        confirmText: "Continuar",
+      });
+      if (!confirmacao.isConfirmed) {
         return; // Cancela o envio do formulário
       }
     }
@@ -12648,12 +12645,13 @@ btnMostrarAcomps.addEventListener("click", () => {
 });
 
 document.querySelectorAll('input[name="acompanhamento"]').forEach((radio) => {
-  radio.addEventListener("change", function () {
+  radio.addEventListener("change", async function () {
     if (this.value === "Prazo de alteração") {
-      const confirmacao = confirm(
-        "Tem certeza que deseja selecionar 'Prazo de alteração'?",
-      );
-      if (!confirmacao) {
+      const confirmacao = await FlowAlert.confirm({
+        title: "Selecionar prazo de alteração?",
+        confirmText: "Selecionar",
+      });
+      if (!confirmacao.isConfirmed) {
         this.checked = false; // Desmarca a opção se o usuário cancelar
         return;
       }
@@ -13850,16 +13848,10 @@ function enviarImagens() {
       document.getElementById("etapaTitulo").textContent =
         "2. Envio do Arquivo Final";
 
-      Swal.fire({
-        position: "center",
-        icon: "success",
+      FlowAlert.success({
+        mode: "modal",
         title: "Agora adicione o arquivo final",
-        showConfirmButton: false,
-        timer: 1500,
-        didOpen: () => {
-          const title = Swal.getTitle();
-          if (title) title.style.fontSize = "18px";
-        },
+        duration: 1500,
       });
     })
     .catch((err) => {
@@ -13913,98 +13905,84 @@ function enviarArquivo() {
 
   formData.append("status_nome", statusNome);
 
-  // Criar container de progresso
-  const progressContainer = document.createElement("div");
-  progressContainer.style.fontSize = "16px";
-  progressContainer.innerHTML = `
-        <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
-        <div id="uploadStatus">Enviando... 0%</div>
-        <div id="uploadTempo">Tempo: 0s</div>
-        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
-        <div id="uploadEstimativa">Tempo restante: ...</div>
-        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
-    `;
-
-  Swal.fire({
+  let uploadCancelado = false;
+  const xhr = new XMLHttpRequest();
+  const startTime = Date.now();
+  const uploadProgress = FlowAlert.progress({
     title: "Enviando arquivo...",
-    html: progressContainer,
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      const xhr = new XMLHttpRequest();
-      const startTime = Date.now();
-      let uploadCancelado = false;
-
-      xhr.open("POST", "https://improov/ImproovWeb/uploadFinal.php");
-
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          const now = Date.now();
-          const elapsed = (now - startTime) / 1000; // em segundos
-          const uploadedMB = e.loaded / (1024 * 1024);
-          const totalMB = e.total / (1024 * 1024);
-          const percent = (e.loaded / e.total) * 100;
-          const speed = uploadedMB / elapsed; // MB/s
-          const remainingMB = totalMB - uploadedMB;
-          const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
-
-          document.getElementById("uploadProgress").value = percent;
-          document.getElementById("uploadStatus").innerText =
-            `Enviando... ${percent.toFixed(2)}%`;
-          document.getElementById("uploadTempo").innerText =
-            `Tempo: ${elapsed.toFixed(1)}s`;
-          document.getElementById("uploadVelocidade").innerText =
-            `Velocidade: ${speed.toFixed(2)} MB/s`;
-          document.getElementById("uploadEstimativa").innerText =
-            `Tempo restante: ${estimatedTime.toFixed(1)}s`;
-        }
-      });
-
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
-          const res = JSON.parse(xhr.responseText);
-          const destino = res[0]?.destino || "Caminho não encontrado";
-          Swal.fire({
-            position: "center",
-            icon: "success",
-            title: "Arquivo final enviado com sucesso!",
-            text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || "Nome não encontrado"}`,
-            showConfirmButton: false,
-            timer: 2000,
-          });
-          fecharModal();
-        }
-      };
-
-      xhr.onerror = () => {
-        if (!uploadCancelado) {
-          Swal.close();
-          Toastify({
-            text: "Erro ao enviar arquivo final",
-            duration: 3000,
-            gravity: "top",
-            backgroundColor: "#f44336",
-          }).showToast();
-        }
-      };
-
-      // Cancelar envio
-      document
-        .getElementById("cancelarUpload")
-        .addEventListener("click", () => {
-          uploadCancelado = true;
-          xhr.abort();
-          Swal.fire({
-            icon: "warning",
-            title: "Upload cancelado",
-            showConfirmButton: false,
-            timer: 1500,
-          });
-        });
-
-      xhr.send(formData);
+    message:
+      "Enviando... 0%\nTempo: 0s\nVelocidade: 0 MB/s\nTempo restante: ...",
+    progress: 0,
+    dismissible: false,
+    cancelText: "Cancelar envio",
+    cancelAction: {
+      label: "Cancelar envio",
+      onClick: () => {
+        uploadCancelado = true;
+        xhr.abort();
+        return false;
+      },
     },
   });
+
+  xhr.open("POST", "https://improov/ImproovWeb/uploadFinal.php");
+
+  xhr.upload.addEventListener("progress", (e) => {
+    if (e.lengthComputable) {
+      const now = Date.now();
+      const elapsed = (now - startTime) / 1000; // em segundos
+      const uploadedMB = e.loaded / (1024 * 1024);
+      const totalMB = e.total / (1024 * 1024);
+      const percent = (e.loaded / e.total) * 100;
+      const speed = uploadedMB / elapsed; // MB/s
+      const remainingMB = totalMB - uploadedMB;
+      const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
+
+      uploadProgress.update({
+        progress: percent,
+        message: `Enviando... ${percent.toFixed(2)}%\nTempo: ${elapsed.toFixed(1)}s\nVelocidade: ${speed.toFixed(2)} MB/s\nTempo restante: ${estimatedTime.toFixed(1)}s`,
+      });
+    }
+  });
+
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
+      const res = JSON.parse(xhr.responseText);
+      const destino = res[0]?.destino || "Caminho não encontrado";
+      uploadProgress.update({
+        title: "Arquivo enviado!",
+        message: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || "Nome não encontrado"}`,
+        progress: 100,
+        type: "success",
+      });
+      window.setTimeout(uploadProgress.close, 1500);
+      fecharModal();
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!uploadCancelado) {
+      uploadProgress.close();
+      Toastify({
+        text: "Erro ao enviar arquivo final",
+        duration: 3000,
+        gravity: "top",
+        backgroundColor: "#f44336",
+      }).showToast();
+    }
+  };
+
+  xhr.onabort = () => {
+    uploadProgress.update({
+      title: "Upload cancelado",
+      message: "O envio foi cancelado.",
+      progress: 0,
+      type: "warning",
+    });
+    window.setTimeout(uploadProgress.close, 1200);
+  };
+
+  xhr.send(formData);
 }
 
 // const btnVerPdf = document.getElementById('ver-pdf');
@@ -14177,55 +14155,39 @@ function obterIdsSelecionadosBatch() {
 
 async function solicitarDadosRevisaoModal(colaboradorDefault = "") {
   const opcoesOriginais = document.getElementById("opcao_alteracao");
-  const selectOptions = [`<option value="">Ninguém</option>`];
+  const colaboradores = { "": "Ninguém" };
 
   if (opcoesOriginais) {
     Array.from(opcoesOriginais.options).forEach((option) => {
       const valor = option.value ?? "";
       const texto = option.textContent ?? "";
-      const selected =
-        colaboradorDefault !== "" &&
-        String(colaboradorDefault) === String(valor)
-          ? "selected"
-          : "";
-      selectOptions.push(
-        `<option value="${valor}" ${selected}>${texto}</option>`,
-      );
+      colaboradores[valor] = texto;
     });
   }
 
   const hoje = new Date().toISOString().slice(0, 10);
-  const result = await Swal.fire({
+  const result = await FlowAlert.form({
     title: "Adicionar revisão",
-    html: `
-            <div style="display:flex;flex-direction:column;gap:10px;text-align:left;">
-                <label for="swal_data_recebimento">Data de recebimento</label>
-                <input id="swal_data_recebimento" type="date" class="swal2-input" style="margin:0;" value="${hoje}">
-                <label for="swal_colaborador">Colaborador (opcional)</label>
-                <select id="swal_colaborador" class="swal2-select" style="width:100%;margin:0;">
-                    ${selectOptions.join("")}
-                </select>
-            </div>
-        `,
-    showCancelButton: true,
-    confirmButtonText: "Confirmar",
-    cancelButtonText: "Cancelar",
-    preConfirm: () => {
-      const dataRecebimento = document.getElementById(
-        "swal_data_recebimento",
-      ).value;
-      const colaboradorId = document.getElementById("swal_colaborador").value;
-
-      if (!dataRecebimento) {
-        Swal.showValidationMessage("Informe a data de recebimento.");
-        return false;
-      }
-
-      return {
-        data_recebimento: dataRecebimento,
-        colaborador_id: colaboradorId || "",
-      };
-    },
+    fields: [
+      {
+        name: "data_recebimento",
+        type: "date",
+        label: "Data de recebimento",
+        value: hoje,
+        required: true,
+      },
+      {
+        name: "colaborador_id",
+        type: "select",
+        label: "Colaborador (opcional)",
+        value: String(colaboradorDefault || ""),
+        options: colaboradores,
+      },
+    ],
+    confirmText: "Confirmar",
+    cancelText: "Cancelar",
+    validate: (values) =>
+      !values.data_recebimento ? "Informe a data de recebimento." : "",
   });
 
   return result.isConfirmed ? result.value : null;
@@ -14415,7 +14377,7 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
   }
 
   solicitarJustificativaHoldIfNeeded(Number(dadosAtualizar.substatus_id || 0))
-    .then((holdJustificativa) => {
+    .then(async (holdJustificativa) => {
       if (holdJustificativa === null) return;
 
       let preview = `IDs selecionados:\n${idsSelecionados.join(", ")}\n\nCampos a atualizar:\n`;
@@ -14426,7 +14388,15 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
         preview += `hold_justificativa: ${holdJustificativa}\n`;
       }
 
-      if (!confirm(preview + "\nDeseja continuar com a atualização?")) {
+      if (
+        !(
+          await FlowAlert.confirm({
+            title: "Confirmar atualização?",
+            message: preview,
+            confirmText: "Atualizar",
+          })
+        ).isConfirmed
+      ) {
         return;
       }
 
@@ -15392,24 +15362,21 @@ async function abrirComplexidadeModelagem() {
       complexidade.nome,
     ]),
   );
-  const escolha = await Swal.fire({
+  const escolha = await FlowAlert.input({
     title: "Complexidade da Modelagem",
-    text: "Escolha a classificação deste projeto.",
-    input: "radio",
-    inputOptions: opcoes,
-    inputValidator: (valor) =>
-      !valor ? "Escolha uma complexidade." : undefined,
-    confirmButtonText: "Escolher",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
+    message: "Escolha a classificação deste projeto.",
+    field: { type: "radio", options: opcoes },
+    confirmText: "Escolher",
+    cancelText: "Cancelar",
+    validate: (valor) => (!valor ? "Escolha uma complexidade." : undefined),
   });
   if (!escolha.isConfirmed) return;
 
-  Swal.fire({
+  const complexidadeProgress = FlowAlert.progress({
     title: "Atualizando complexidade...",
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    didOpen: () => Swal.showLoading(),
+    message: "Salvando a nova classificação.",
+    progress: null,
+    dismissible: false,
   });
   try {
     const response = await fetch("atualizarComplexidadeModelagem.php", {
@@ -15427,18 +15394,20 @@ async function abrirComplexidadeModelagem() {
       );
     }
 
-    await Swal.fire({
-      icon: "success",
+    complexidadeProgress.close();
+    FlowAlert.success({
+      mode: "modal",
       title: "Complexidade atualizada",
-      text: "A classificação de Modelagem foi atualizada para toda a obra.",
+      message: "A classificação de Modelagem foi atualizada para toda a obra.",
     });
     infosObra(obraId);
   } catch (error) {
     console.error("Erro ao atualizar complexidade da modelagem:", error);
-    await Swal.fire({
-      icon: "error",
+    complexidadeProgress.close();
+    FlowAlert.error({
+      mode: "modal",
       title: "Atualização não concluída",
-      text: error.message || "Tente novamente em alguns instantes.",
+      message: error.message || "Tente novamente em alguns instantes.",
     });
   }
 }
@@ -15621,10 +15590,11 @@ if (concludePackageBtn) {
       "",
     );
     if (options.showCancelButton) {
-      return Promise.resolve({
-        isConfirmed: confirm(
-          [options.title, fallbackText].filter(Boolean).join("\n\n"),
-        ),
+      return FlowAlert.confirm({
+        title: options.title || "Confirmar ação",
+        message: fallbackText,
+        confirmText: options.confirmButtonText || "Confirmar",
+        cancelText: options.cancelButtonText || "Cancelar",
       });
     }
 
@@ -15818,7 +15788,7 @@ if (markInactiveBtn) {
       .then(function (r) {
         return r.json();
       })
-      .then(function (list) {
+      .then(async function (list) {
         var found = null;
         if (Array.isArray(list)) {
           found = list.find(function (o) {
@@ -15839,15 +15809,29 @@ if (markInactiveBtn) {
         } else {
           // fallback: perguntar ao usuário qual ação deseja
           if (
-            !confirm(
-              "Não foi possível determinar o status atual. Deseja marcar como inativa?",
-            )
+            !(
+              await FlowAlert.confirm({
+                title: "Status desconhecido",
+                message:
+                  "Não foi possível determinar o status atual. Deseja marcar como inativa?",
+                confirmText: "Marcar inativa",
+              })
+            ).isConfirmed
           )
             return;
           newStatus = 1;
         }
 
-        if (!confirm(confirmMsg)) return;
+        if (
+          !(
+            await FlowAlert.confirm({
+              title: "Alterar status da obra?",
+              message: confirmMsg,
+              confirmText: "Confirmar",
+            })
+          ).isConfirmed
+        )
+          return;
 
         fetch(updateUrl, {
           method: "POST",
@@ -15868,8 +15852,11 @@ if (markInactiveBtn) {
                   : "Obra marcada como ativa.";
               // Atualiza texto do botão antes de recarregar para feedback imediato
               setMarkBtnLabelByStatus(newStatus === 1 ? 1 : 0);
-              alert(msg + " A página será recarregada.");
-              window.location.reload();
+              FlowAlert.success({
+                message: msg + " A página será recarregada.",
+                mode: "modal",
+                onClose: () => window.location.reload(),
+              });
             } else {
               alert(
                 "Erro: " +
@@ -15881,13 +15868,18 @@ if (markInactiveBtn) {
             alert("Erro na requisição: " + err);
           });
       })
-      .catch(function (err) {
+      .catch(async function (err) {
         // Se não for possível obter o status, mantém comportamento antigo (marcar inativa)
         console.warn("Não foi possível obter status da obra:", err);
         if (
-          !confirm(
-            "Não foi possível verificar o status atual. Deseja marcar como inativa?",
-          )
+          !(
+            await FlowAlert.confirm({
+              title: "Status indisponível",
+              message:
+                "Não foi possível verificar o status atual. Deseja marcar como inativa?",
+              confirmText: "Marcar inativa",
+            })
+          ).isConfirmed
         )
           return;
         fetch(updateUrl, {
@@ -15900,8 +15892,12 @@ if (markInactiveBtn) {
           })
           .then(function (json) {
             if (json && json.success) {
-              alert("Obra marcada como inativa. A página será recarregada.");
-              window.location.reload();
+              FlowAlert.success({
+                message:
+                  "Obra marcada como inativa. A página será recarregada.",
+                mode: "modal",
+                onClose: () => window.location.reload(),
+              });
             } else {
               alert(
                 "Erro: " +
@@ -16134,7 +16130,15 @@ document
     const btn = e.target.closest(".delete-altura");
     if (!btn) return;
     const id = btn.dataset.id;
-    if (!confirm("Excluir esta altura?")) return;
+    if (
+      !(
+        await FlowAlert.confirm({
+          title: "Excluir altura?",
+          confirmText: "Excluir",
+        })
+      ).isConfirmed
+    )
+      return;
     try {
       const fd = new FormData();
       fd.append("id", id);
@@ -16931,7 +16935,10 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
             confirmButtonText: "Arquivar",
             cancelButtonText: "Cancelar",
           })
-        : { isConfirmed: confirm("Arquivar este evento?") };
+        : await FlowAlert.confirm({
+            title: "Arquivar evento?",
+            confirmText: "Arquivar",
+          });
     if (!confirmed.isConfirmed) return;
 
     try {

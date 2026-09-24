@@ -1240,59 +1240,100 @@ async function abrirFormularioHoldPendencia(item, module) {
     }).showToast();
     return;
   }
-  const optionHtml = (items, label) =>
-    `<option value="">${label}</option>${(items || []).map((entry) => `<option value="${Number(entry.id)}">${escapeKanbanText(entry.nome || entry.codigo || "")}</option>`).join("")}`;
-  const photoExtra =
-    sourceType === "fotografico"
-      ? `<label>Classificação do HOLD<select id="op-hold-code"><option value="CLIMA">Condição climática</option><option value="INFORMACAO_INCOMPLETA" selected>Informação incompleta</option><option value="ALTERACAO_PLANO">Alteração no plano</option><option value="REAGENDAMENTO">Reagendamento</option></select></label>`
-      : "";
-  await Swal.fire({
-    title: "Colocar pendência em HOLD",
-    html: `<div class="operational-hold-form">
-      <p><strong>${escapeKanbanText(item.title || "Pendência")}</strong><br><small>${escapeKanbanText(item.obra_nome || "")}</small></p>
-      ${photoExtra}
-      <label>Tipo<select id="op-hold-type">${optionHtml(options.types, "Selecione o tipo")}</select></label>
-      <label>Fila responsável<select id="op-hold-queue">${optionHtml(options.queues, "Selecione a fila")}</select></label>
-      <label>Responsável<select id="op-hold-responsible">${optionHtml(options.collaborators, "Selecione o responsável")}</select></label>
-      <label>Urgência<select id="op-hold-urgency"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
-      <label>Observação<textarea id="op-hold-description" rows="5" placeholder="O que impede a continuidade?" required></textarea></label>
-    </div>`,
-    showCancelButton: true,
-    confirmButtonText: "Criar impedimento",
-    cancelButtonText: "Cancelar",
-    focusConfirm: false,
-    didOpen: () => {
-      const suggested = Number(item.responsavel_id || 0);
-      const select = document.getElementById("op-hold-responsible");
-      if (select && suggested) select.value = String(suggested);
+  const toOptions = (items) =>
+    Object.fromEntries(
+      (items || []).map((entry) => [
+        String(Number(entry.id)),
+        entry.nome || entry.codigo || "",
+      ]),
+    );
+  const fields = [
+    ...(sourceType === "fotografico"
+      ? [
+          {
+            name: "hold_code",
+            type: "select",
+            label: "Classificação do HOLD",
+            value: "INFORMACAO_INCOMPLETA",
+            options: {
+              CLIMA: "Condição climática",
+              INFORMACAO_INCOMPLETA: "Informação incompleta",
+              ALTERACAO_PLANO: "Alteração no plano",
+              REAGENDAMENTO: "Reagendamento",
+            },
+          },
+        ]
+      : []),
+    {
+      name: "tipo_id",
+      type: "select",
+      label: "Tipo",
+      placeholder: "Selecione o tipo",
+      options: toOptions(options.types),
+      required: true,
     },
-    preConfirm: async () => {
+    {
+      name: "fila_id",
+      type: "select",
+      label: "Fila responsável",
+      placeholder: "Selecione a fila",
+      options: toOptions(options.queues),
+      required: true,
+    },
+    {
+      name: "responsavel_id",
+      type: "select",
+      label: "Responsável",
+      placeholder: "Selecione o responsável",
+      value: item.responsavel_id ? String(item.responsavel_id) : "",
+      options: toOptions(options.collaborators),
+      required: true,
+    },
+    {
+      name: "urgencia",
+      type: "select",
+      label: "Urgência",
+      value: "NORMAL",
+      options: {
+        NORMAL: "Normal",
+        BAIXA: "Baixa",
+        ALTA: "Alta",
+        CRITICA: "Crítica",
+      },
+    },
+    {
+      name: "descricao",
+      type: "textarea",
+      label: "Observação",
+      placeholder: "O que impede a continuidade?",
+      rows: 4,
+      required: true,
+    },
+  ];
+  const result = await FlowAlert.form({
+    title: "Colocar pendência em HOLD",
+    message: `${item.title || "Pendência"}${item.obra_nome ? `\n${item.obra_nome}` : ""}`,
+    fields,
+    confirmText: "Criar impedimento",
+    cancelText: "Cancelar",
+    validate: (values) =>
+      !values.tipo_id ||
+      !values.fila_id ||
+      !values.responsavel_id ||
+      !values.descricao.trim()
+        ? "Preencha tipo, fila, responsável e observação."
+        : "",
+    onSubmit: async (values) => {
       const payload = {
         source_type: sourceType,
         source_id: sourceId,
-        tipo_id: Number(document.getElementById("op-hold-type")?.value || 0),
-        fila_id: Number(document.getElementById("op-hold-queue")?.value || 0),
-        responsavel_id: Number(
-          document.getElementById("op-hold-responsible")?.value || 0,
-        ),
-        urgencia: document.getElementById("op-hold-urgency")?.value || "NORMAL",
-        descricao:
-          document.getElementById("op-hold-description")?.value.trim() || "",
-        hold_code:
-          document.getElementById("op-hold-code")?.value ||
-          "INFORMACAO_INCOMPLETA",
+        tipo_id: Number(values.tipo_id),
+        fila_id: Number(values.fila_id),
+        responsavel_id: Number(values.responsavel_id),
+        urgencia: values.urgencia || "NORMAL",
+        descricao: values.descricao.trim(),
+        hold_code: values.hold_code || "INFORMACAO_INCOMPLETA",
       };
-      if (
-        !payload.tipo_id ||
-        !payload.fila_id ||
-        !payload.responsavel_id ||
-        !payload.descricao
-      ) {
-        Swal.showValidationMessage(
-          "Preencha tipo, fila, responsável e observação.",
-        );
-        return false;
-      }
       try {
         const response = await fetch(
           "FlowBlock/api.php?action=create_operational",
@@ -1309,18 +1350,17 @@ async function abrirFormularioHoldPendencia(item, module) {
           );
         return json;
       } catch (error) {
-        Swal.showValidationMessage(error.message);
-        return false;
+        return error.message;
       }
     },
-  }).then((result) => {
-    if (!result.isConfirmed || !result.value) return;
+  });
+  if (result.isConfirmed && result.value) {
     carregarDados(colaborador_id);
     window.open(
       `FlowBlock/issue.php?id=${encodeURIComponent(result.value.id)}`,
       "_blank",
     );
-  });
+  }
 }
 
 async function salvarChecklistOperacional(checklistId, values) {
@@ -1546,38 +1586,44 @@ function abrirChecklistOperacionalModalLegacySwal(item) {
     item.checklist_items || item.imagem_checklist_items || [];
   if (!checklistId || !Array.isArray(checklistItems)) return;
 
-  const rows = checklistItems
-    .map((check) => {
-      const isAutomatico = pendenciaOperacionalEhAutomatica(check, {
+  FlowAlert.form({
+    title: item.title || "Checklist operacional",
+    fields: checklistItems.map((check, index) => {
+      const key = String(check.item_key || `item${index}`);
+      const automatic = pendenciaOperacionalEhAutomatica(check, {
         key: item.source_type || "",
       });
-      return `
-        <label class="pendencia-check-row">
-          <input type="checkbox" data-check-key="${escapeKanbanText(check.item_key || "")}" data-manual="${isAutomatico ? "0" : "1"}" ${Number(check.done || 0) === 1 ? "checked" : ""} ${isAutomatico ? "disabled" : ""}>
-          <span>${escapeKanbanText(pendenciaOperacionalLabel(check, { key: item.source_type || "" }))}${isAutomatico ? " <small>Automático</small>" : ""}</span>
-        </label>
-      `;
-    })
-    .join("");
-
-  Swal.fire({
-    title: item.title || "Checklist operacional",
-    html: `<div class="pendencia-check-list">${rows}</div>`,
-    confirmButtonText: "Salvar",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    preConfirm: async () => {
-      const values = {};
-      document
-        .querySelectorAll(".pendencia-check-row input[data-manual='1']")
-        .forEach((input) => {
-          values[input.dataset.checkKey] = input.checked ? 1 : 0;
-        });
+      return {
+        name: key,
+        type: "checkbox",
+        label: automatic ? "Automático" : "",
+        optionLabel: pendenciaOperacionalLabel(check, {
+          key: item.source_type || "",
+        }),
+        checked: Number(check.done || 0) === 1,
+        disabled: automatic,
+      };
+    }),
+    confirmText: "Salvar",
+    cancelText: "Cancelar",
+    onSubmit: async (checkedValues) => {
+      const values = Object.fromEntries(
+        checklistItems
+          .filter(
+            (check) =>
+              !pendenciaOperacionalEhAutomatica(check, {
+                key: item.source_type || "",
+              }),
+          )
+          .map((check, index) => {
+            const key = String(check.item_key || `item${index}`);
+            return [key, checkedValues[key] ? 1 : 0];
+          }),
+      );
       try {
         return await salvarChecklistOperacional(checklistId, values);
       } catch (error) {
-        Swal.showValidationMessage(error.message);
-        return false;
+        return error.message;
       }
     },
   }).then((result) => {
@@ -2183,13 +2229,41 @@ function alertarPendenciasSeNecessario(data) {
   if (ultimoResumoPendencia === chave) return;
   ultimoResumoPendencia = chave;
 
-  Swal.fire({
-    icon: "warning",
-    title: "Arquivo pendente",
-    html: `Você tem <b>${quantidade}</b> card(s) com arquivo pendente.`,
-    showCancelButton: true,
-    showConfirmButton: false,
-    cancelButtonText: "OK",
+  window.FlowAlert.warning({
+    mode: "notification",
+    title: `${quantidade} arquivo${quantidade === 1 ? "" : "s"} pendente${quantidade === 1 ? "" : "s"}`,
+    message: "Existem cards aguardando o envio de arquivo.",
+    action: {
+      label: "Ver pendências",
+      onClick: () => {
+        const cards = Array.from(
+          document.querySelectorAll(
+            '#kanban-section .kanban-card[data-requires-file-upload="1"]',
+          ),
+        );
+        const card =
+          cards.find((item) => item.getClientRects().length > 0) || cards[0];
+        if (!card) return;
+
+        document
+          .querySelectorAll(".kanban-card.selected")
+          .forEach((selected) => selected.classList.remove("selected"));
+        card.classList.add("selected");
+        const reduceMotion = window.matchMedia?.(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        card.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "center",
+        });
+        abrirSidebar(
+          card.dataset.id,
+          card.dataset.idImagem,
+          card.dataset.nomeObraReal || "",
+        );
+      },
+    },
+    secondaryAction: { label: "Agora não" },
   });
 }
 
@@ -2687,8 +2761,7 @@ function processarDados(data) {
     }
 
     const tempoDisplay = item.tempo_calculado;
-    const tempoTooltip =
-      item.tempo_tooltip || formatarDuracao(mediaFuncao);
+    const tempoTooltip = item.tempo_tooltip || formatarDuracao(mediaFuncao);
     const tempoAoVivo = Number(item.tempo_ao_vivo) === 1;
 
     const requisitos = item.requisitos || {};
@@ -2787,7 +2860,8 @@ function processarDados(data) {
     if (tipo === "imagem" && imgSrc)
       card.classList.add("kanban-card--with-thumb");
     const responsavel = String(item.nome_colaborador || "").trim();
-    const anguloCienciaPendente = Number(item.angulo_ciencia_pendente || 0) === 1;
+    const anguloCienciaPendente =
+      Number(item.angulo_ciencia_pendente || 0) === 1;
     const initials = responsavel
       .split(/\s+/)
       .filter(Boolean)
@@ -2955,7 +3029,16 @@ function processarDados(data) {
         }
         const idFuncao = card.dataset.id;
         const idImagem = card.dataset.idImagem;
-        abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "", false, { angleSciencePending: anguloCienciaPendente, angleScienceCard: card });
+        abrirSidebar(
+          idFuncao,
+          idImagem,
+          card.dataset.nomeObraReal || "",
+          false,
+          {
+            angleSciencePending: anguloCienciaPendente,
+            angleScienceCard: card,
+          },
+        );
       }
     });
 
@@ -3440,78 +3523,50 @@ function checkFuncoesEmAndamento(idColaborador) {
           return;
         }
 
-        const hojeIso = getHojeIsoDate();
-        const itensHtml = funcoes
-          .map(
-            (f) => `
-          <div class="fi-item" data-id="${f.idfuncao_imagem}" style="
-            border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px;
-            margin-bottom:10px; text-align:left; background:#fff;">
-            <div style="font-weight:600; font-size:14px; color:#1a202c; margin-bottom:2px;">
-              ${f.imagem_nome}
-            </div>
-            <div style="font-size:12px; color:#718096; margin-bottom:10px;">
-              ${f.nome_funcao} &bull; ${f.nomenclatura}
-            </div>
-            <div style="font-size:12px; color:#4a5568; margin-bottom:10px;">
-              Prazo atual: ${formatarPrazoPrimeiroAcesso(f.prazo)}
-            </div>
-            ${
-              isPrazoAtrasadoOuAusente(f.prazo)
-                ? `<div style="font-size:12px; color:#b45309; margin-bottom:10px;">
-                    Ao continuar, será necessário informar um novo prazo estimado.
-                  </div>`
-                : ""
-            }
-            <div style="display:flex; gap:8px; margin-bottom:0;">
-              <label style="flex:1; cursor:pointer;">
-                <input type="radio" name="fi_status_${f.idfuncao_imagem}" value="continuar" checked
-                  style="margin-right:5px;" onchange="document.getElementById('fi_obs_${f.idfuncao_imagem}').style.display='none'">
-                <span style="font-size:13px;">Continuar</span>
-              </label>
-              <label style="flex:1; cursor:pointer;">
-                <input type="radio" name="fi_status_${f.idfuncao_imagem}" value="hold"
-                  style="margin-right:5px;" onchange="document.getElementById('fi_obs_${f.idfuncao_imagem}').style.display='block'">
-                <span style="font-size:13px; color:#e53e3e;">HOLD</span>
-              </label>
-            </div>
-            <div id="fi_obs_${f.idfuncao_imagem}" style="display:none; margin-top:8px;">
-              <input type="text" placeholder="Por que não está fazendo?"
-                style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #cbd5e0;
-                border-radius:6px; font-size:13px; outline:none;">
-            </div>
-          </div>`,
-          )
-          .join("");
+        const fields = funcoes.flatMap((f) => [
+          {
+            name: `status_${f.idfuncao_imagem}`,
+            type: "radio",
+            label: `${f.imagem_nome} · ${f.nome_funcao} · ${f.nomenclatura} · prazo ${formatarPrazoPrimeiroAcesso(f.prazo)}${isPrazoAtrasadoOuAusente(f.prazo) ? " · informe um novo prazo ao continuar" : ""}`,
+            value: "continuar",
+            options: { continuar: "Continuar", hold: "HOLD" },
+          },
+          {
+            name: `obs_${f.idfuncao_imagem}`,
+            type: "text",
+            placeholder: `Motivo do HOLD para ${f.imagem_nome}`,
+            visibleWhen: (values) =>
+              values[`status_${f.idfuncao_imagem}`] === "hold",
+          },
+        ]);
 
-        Swal.fire({
+        FlowAlert.form({
           title: "Tarefas em andamento",
-          html: `
-            <p style="font-size:13px; color:#718096; margin-bottom:14px;">
-              Revise o status de cada tarefa:
-            </p>
-            <div style="max-height:360px; overflow-y:auto; padding-right:4px;">
-              ${itensHtml}
-            </div>`,
-          confirmButtonText: "Confirmar",
-          showCancelButton: false,
-          allowOutsideClick: false,
-          allowEscapeKey: false,
-          focusConfirm: false,
-          preConfirm: () => {
-            const resultado = funcoes.map((f) => {
-              const radio = document.querySelector(
-                `input[name="fi_status_${f.idfuncao_imagem}"]:checked`,
-              );
-              const status = radio ? radio.value : "continuar";
-              const obsInput = document.querySelector(
-                `#fi_obs_${f.idfuncao_imagem} input`,
-              );
-              const obs = obsInput ? obsInput.value.trim() : "";
+          message: "Revise o status de cada tarefa.",
+          fields,
+          confirmText: "Confirmar",
+          showCancel: false,
+          dismissible: false,
+          validate: (values) =>
+            funcoes.some(
+              (f) =>
+                values[`status_${f.idfuncao_imagem}`] === "hold" &&
+                !values[`obs_${f.idfuncao_imagem}`]?.trim(),
+            )
+              ? "Preencha a observação para todas as tarefas em HOLD."
+              : "",
+        }).then((formResult) => {
+          const result = {
+            ...formResult,
+            value: funcoes.map((f) => {
+              const status =
+                formResult.value[`status_${f.idfuncao_imagem}`] || "continuar";
               return {
                 idfuncao_imagem: f.idfuncao_imagem,
                 status,
-                obs,
+                obs: (
+                  formResult.value[`obs_${f.idfuncao_imagem}`] || ""
+                ).trim(),
                 prazo: f.prazo || "",
                 imagem_nome: f.imagem_nome,
                 nome_funcao: f.nome_funcao,
@@ -3519,19 +3574,8 @@ function checkFuncoesEmAndamento(idColaborador) {
                 precisaNovoPrazo:
                   status === "continuar" && isPrazoAtrasadoOuAusente(f.prazo),
               };
-            });
-
-            const semObs = resultado.find((i) => i.status === "hold" && !i.obs);
-            if (semObs) {
-              Swal.showValidationMessage(
-                "Preencha a observação para todas as tarefas em HOLD.",
-              );
-              return false;
-            }
-
-            return resultado;
-          },
-        }).then((result) => {
+            }),
+          };
           if (!result.isConfirmed) {
             resolve();
             return;
@@ -3589,92 +3633,54 @@ function checkFuncoesEmAndamento(idColaborador) {
             return;
           }
 
-          const htmlReplanejamento = paraReplanejar
-            .map(
-              (item) => `
-                <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-bottom:10px; text-align:left; background:#fff;">
-                  <div style="font-weight:600; font-size:14px; color:#1a202c; margin-bottom:2px;">
-                    ${item.imagem_nome}
-                  </div>
-                  <div style="font-size:12px; color:#718096; margin-bottom:6px;">
-                    ${item.nome_funcao} &bull; ${item.nomenclatura}
-                  </div>
-                  <div style="font-size:12px; color:#4a5568; margin-bottom:8px;">
-                    Prazo atual: ${formatarPrazoPrimeiroAcesso(item.prazo)}
-                  </div>
-                  <input
-                    id="fi_prazo_${item.idfuncao_imagem}"
-                    type="date"
-                    min="${hojeIso}"
-                    value="${hojeIso}"
-                    style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; outline:none; margin-bottom:8px;"
-                  >
-                  <input
-                    id="fi_motivo_${item.idfuncao_imagem}"
-                    type="text"
-                    placeholder="Motivo da reestimativa (opcional)"
-                    style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; outline:none;"
-                  >
-                </div>`,
-            )
-            .join("");
-
-          Swal.fire({
-            title: "Atualize o novo prazo estimado",
-            html: `
-              <p style="font-size:13px; color:#718096; margin-bottom:14px;">
-                Informe o novo prazo das tarefas que seguirão em andamento.
-              </p>
-              <div style="max-height:360px; overflow-y:auto; padding-right:4px;">
-                ${htmlReplanejamento}
-              </div>`,
-            confirmButtonText: "Salvar e continuar",
-            showCancelButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            focusConfirm: false,
-            preConfirm: () => {
-              const atualizados = [];
-
-              for (const item of result.value) {
-                if (!item.precisaNovoPrazo) {
-                  atualizados.push(item);
-                  continue;
-                }
-
-                const prazoInput = document.getElementById(
-                  `fi_prazo_${item.idfuncao_imagem}`,
-                );
-                const motivoInput = document.getElementById(
-                  `fi_motivo_${item.idfuncao_imagem}`,
-                );
-
-                const prazoNovo = prazoInput ? prazoInput.value : "";
-                const motivo = motivoInput ? motivoInput.value.trim() : "";
-
-                if (!prazoNovo) {
-                  Swal.showValidationMessage(
-                    `Informe o novo prazo para ${item.imagem_nome}.`,
-                  );
-                  return false;
-                }
-
-                atualizados.push({
-                  ...item,
-                  prazo_novo: prazoNovo,
-                  motivo,
-                });
-              }
-
-              return atualizados;
+          const prazoFields = paraReplanejar.flatMap((item) => [
+            {
+              name: `prazo_${item.idfuncao_imagem}`,
+              type: "date",
+              label: `${item.imagem_nome} · ${item.nome_funcao} · ${item.nomenclatura} · prazo atual ${formatarPrazoPrimeiroAcesso(item.prazo)}`,
+              min: hojeIso,
+              value: hojeIso,
+              required: true,
             },
+            {
+              name: `motivo_${item.idfuncao_imagem}`,
+              type: "text",
+              placeholder: `Motivo da reestimativa para ${item.imagem_nome} (opcional)`,
+            },
+          ]);
+
+          FlowAlert.form({
+            title: "Atualize o novo prazo estimado",
+            message: "Informe o novo prazo estimado para cada tarefa.",
+            fields: prazoFields,
+            confirmText: "Salvar e continuar",
+            showCancel: false,
+            dismissible: false,
+            validate: (values) =>
+              paraReplanejar.find(
+                (item) => !values[`prazo_${item.idfuncao_imagem}`],
+              )
+                ? `Informe o novo prazo para ${paraReplanejar.find((item) => !values[`prazo_${item.idfuncao_imagem}`]).imagem_nome}.`
+                : "",
           }).then((prazoResult) => {
             if (!prazoResult.isConfirmed) {
               resolve();
               return;
             }
 
-            persistirAtualizacoes(prazoResult.value);
+            const atualizados = result.value.map((item) =>
+              item.precisaNovoPrazo
+                ? {
+                    ...item,
+                    prazo_novo:
+                      prazoResult.value[`prazo_${item.idfuncao_imagem}`],
+                    motivo: (
+                      prazoResult.value[`motivo_${item.idfuncao_imagem}`] || ""
+                    ).trim(),
+                  }
+                : item,
+            );
+            persistirAtualizacoes(atualizados);
           });
         });
       })
@@ -5116,14 +5122,21 @@ function abrirSidebar(
       if (options.angleSciencePending) {
         fetch("PaginaPrincipal/marcarAnguloCienciaVisualizada.php", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify({ funcao_imagem_id: Number(idFuncao) }),
         })
           .then((response) => response.json())
           .then((payload) => {
             if (!payload?.success || !payload.visualizado) return;
-            options.angleScienceCard?.querySelector(".angle-science-ribbon")?.remove();
-            summaryCard.querySelector("#tp-preview-wrap")?.classList.add("tp-angle-science-highlight");
+            options.angleScienceCard
+              ?.querySelector(".angle-science-ribbon")
+              ?.remove();
+            summaryCard
+              .querySelector("#tp-preview-wrap")
+              ?.classList.add("tp-angle-science-highlight");
           })
           .catch(() => {});
       }
@@ -7107,9 +7120,13 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
     !cardSelecionado.classList.contains("tarefa-criada") &&
     !isAnimacao &&
     statusDestino === "Em andamento" &&
-    ["Não iniciado", "Ajuste", "Aprovado", "Aprovado com ajustes", "Finalizado"].includes(
-      statusOrigem,
-    );
+    [
+      "Não iniciado",
+      "Ajuste",
+      "Aprovado",
+      "Aprovado com ajustes",
+      "Finalizado",
+    ].includes(statusOrigem);
   const envioAjusteFallback =
     !cardSelecionado.classList.contains("tarefa-criada") &&
     !isAnimacao &&
@@ -7202,14 +7219,21 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       ""
     ).toString();
 
-  const prazoFuncaoImagem =
+    const prazoFuncaoImagem =
       cardSelecionado.dataset.isAnimacao !== "1" &&
       modalPlanejamento &&
       !modalPlanejamento.hidden
         ? modalPrevisaoConclusao?.value?.trim() || ""
         : modalPrazo.value;
     if (envioAjusteFallback && !prazoFuncaoImagem) {
-      Toastify({ text: "Informe a previsão do ajuste antes de enviar para aprovação.", duration: 4000, close: true, gravity: "top", position: "left", backgroundColor: "red" }).showToast();
+      Toastify({
+        text: "Informe a previsão do ajuste antes de enviar para aprovação.",
+        duration: 4000,
+        close: true,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "red",
+      }).showToast();
       return;
     }
     const dados = {
@@ -7961,13 +7985,19 @@ if (typeof Sortable !== "undefined") {
           if (
             !card.classList.contains("tarefa-criada") &&
             (novaColuna.id === "in-progress" ||
-              (novaColuna.id === "in-review" && card.dataset.status === "Ajuste"))
+              (novaColuna.id === "in-review" &&
+                card.dataset.status === "Ajuste"))
           ) {
             configurarModalPlanejamento(card);
-            if (novaColuna.id === "in-review" && card.dataset.status === "Ajuste") {
+            if (
+              novaColuna.id === "in-review" &&
+              card.dataset.status === "Ajuste"
+            ) {
               modalPrevisaoConclusao.value = "";
-              modalPrevisaoFeedback.textContent = "Informe a previsão deste ajuste para enviá-lo à aprovação.";
-              document.getElementById("salvarModal").textContent = "Salvar previsão e enviar";
+              modalPrevisaoFeedback.textContent =
+                "Informe a previsão deste ajuste para enviá-lo à aprovação.";
+              document.getElementById("salvarModal").textContent =
+                "Salvar previsão e enviar";
             }
           } else {
             ocultarPlanejamentoModal();

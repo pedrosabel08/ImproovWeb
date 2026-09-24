@@ -728,13 +728,19 @@ function atualizarStatusLote(ids, statusDestino, confirmarPendencias = false) {
     }),
   })
     .then((r) => r.json())
-    .then((data) => {
+    .then(async (data) => {
       if (!data.success) {
         if (
           atribuirLogado &&
           data.avaliacao &&
           !confirmarPendencias &&
-          window.confirm(mensagemPendenciasParaConfirmacao(data.avaliacao))
+          (
+            await window.FlowAlert.confirm({
+              title: "Pendências ativas",
+              message: mensagemPendenciasParaConfirmacao(data.avaliacao),
+              confirmText: "Continuar",
+            })
+          ).isConfirmed
         ) {
           atualizarStatusLote(ids, statusDestino, true);
           return;
@@ -2068,12 +2074,18 @@ document
         fecharModal();
         recarregarAlteracao();
       },
-      error: function (jqXHR, textStatus, errorThrown) {
+      error: async function (jqXHR, textStatus, errorThrown) {
         const payload = jqXHR.responseJSON || {};
         if (
           payload.avaliacao &&
           dados.confirmar_pendencias !== 1 &&
-          window.confirm(mensagemPendenciasParaConfirmacao(payload.avaliacao))
+          (
+            await window.FlowAlert.confirm({
+              title: "Pendências ativas",
+              message: mensagemPendenciasParaConfirmacao(payload.avaliacao),
+              confirmText: "Continuar",
+            })
+          ).isConfirmed
         ) {
           saveButton.dataset.confirmarPendencias = "1";
           saveButton.click();

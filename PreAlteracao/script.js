@@ -809,57 +809,81 @@
         throw new Error(
           options.message || "Não foi possível carregar o formulário.",
         );
-      const choices = (items, label) =>
-        `<option value="">${label}</option>${(items || []).map((x) => `<option value="${Number(x.id)}">${escHtml(x.nome || x.codigo || "")}</option>`).join("")}`;
-      const result = await Swal.fire({
+      const toOptions = (items) =>
+        Object.fromEntries(
+          (items || []).map((item) => [
+            String(Number(item.id)),
+            item.nome || item.codigo || "",
+          ]),
+        );
+      const result = await FlowAlert.form({
         title: "Colocar lote em HOLD",
-        html: `<div class="operational-hold-form">
-          <p><strong>${escHtml(lote.nomenclatura || "Lote")}</strong></p>
-          <label>Tipo<select id="prealt-hold-type">${choices(options.types, "Selecione o tipo")}</select></label>
-          <label>Fila responsável<select id="prealt-hold-queue">${choices(options.queues, "Selecione a fila")}</select></label>
-          <label>Responsável<select id="prealt-hold-responsible">${choices(options.collaborators, "Selecione o responsável")}</select></label>
-          <label>Urgência<select id="prealt-hold-urgency"><option value="NORMAL">Normal</option><option value="BAIXA">Baixa</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></label>
-          <label>Observação<textarea id="prealt-hold-description" rows="5" required></textarea></label>
-        </div>`,
-        showCancelButton: true,
-        confirmButtonText: "Criar impedimento",
-        cancelButtonText: "Cancelar",
-        didOpen: () => {
-          const select = document.getElementById("prealt-hold-responsible");
-          if (select && lote.responsavel_id)
-            select.value = String(lote.responsavel_id);
-        },
-        preConfirm: async () => {
+        message: lote.nomenclatura || "Lote",
+        fields: [
+          {
+            name: "tipo_id",
+            type: "select",
+            label: "Tipo",
+            placeholder: "Selecione o tipo",
+            options: toOptions(options.types),
+            required: true,
+          },
+          {
+            name: "fila_id",
+            type: "select",
+            label: "Fila responsável",
+            placeholder: "Selecione a fila",
+            options: toOptions(options.queues),
+            required: true,
+          },
+          {
+            name: "responsavel_id",
+            type: "select",
+            label: "Responsável",
+            placeholder: "Selecione o responsável",
+            value: lote.responsavel_id ? String(lote.responsavel_id) : "",
+            options: toOptions(options.collaborators),
+            required: true,
+          },
+          {
+            name: "urgencia",
+            type: "select",
+            label: "Urgência",
+            value: "NORMAL",
+            options: {
+              NORMAL: "Normal",
+              BAIXA: "Baixa",
+              ALTA: "Alta",
+              CRITICA: "Crítica",
+            },
+          },
+          {
+            name: "descricao",
+            type: "textarea",
+            label: "Observação",
+            rows: 4,
+            required: true,
+          },
+        ],
+        confirmText: "Criar impedimento",
+        cancelText: "Cancelar",
+        validate: (values) =>
+          !values.tipo_id ||
+          !values.fila_id ||
+          !values.responsavel_id ||
+          !values.descricao.trim()
+            ? "Preencha tipo, fila, responsável e observação."
+            : "",
+        onSubmit: async (values) => {
           const payload = {
             source_type: "pre_alteracao",
             source_id: Number(lote.lote_id),
-            tipo_id: Number(
-              document.getElementById("prealt-hold-type")?.value || 0,
-            ),
-            fila_id: Number(
-              document.getElementById("prealt-hold-queue")?.value || 0,
-            ),
-            responsavel_id: Number(
-              document.getElementById("prealt-hold-responsible")?.value || 0,
-            ),
-            urgencia:
-              document.getElementById("prealt-hold-urgency")?.value || "NORMAL",
-            descricao:
-              document
-                .getElementById("prealt-hold-description")
-                ?.value.trim() || "",
+            tipo_id: Number(values.tipo_id),
+            fila_id: Number(values.fila_id),
+            responsavel_id: Number(values.responsavel_id),
+            urgencia: values.urgencia || "NORMAL",
+            descricao: values.descricao.trim(),
           };
-          if (
-            !payload.tipo_id ||
-            !payload.fila_id ||
-            !payload.responsavel_id ||
-            !payload.descricao
-          ) {
-            Swal.showValidationMessage(
-              "Preencha tipo, fila, responsável e observação.",
-            );
-            return false;
-          }
           const response = await fetch(
             "../FlowBlock/api.php?action=create_operational",
             {
@@ -870,10 +894,7 @@
           );
           const json = await response.json();
           if (!response.ok || !json.ok) {
-            Swal.showValidationMessage(
-              json.message || "Não foi possível criar o impedimento.",
-            );
-            return false;
+            return json.message || "Não foi possível criar o impedimento.";
           }
           return json;
         },
@@ -1123,53 +1144,49 @@
 
   async function promptClientInteraction(tipo, total) {
     const isReturn = tipo === "RETORNO";
-    const result = await Swal.fire({
-      title: isReturn ? "Registrar retorno do cliente" : "Solicitar ao cliente",
-      html: `
-        ${
-          isReturn
-            ? `
-          <select id="swal-client-return-result" class="swal2-input">
-            <option value="">Selecione o resultado</option>
-            <option value="APROVADA">Aprovada / sem alteração</option>
-            <option value="ALTERACAO">Solicitou alteração</option>
-          </select>
-        `
-            : ""
-        }
-        <label class="swal-client-label" for="swal-client-occurred-at">Data e hora</label>
-        <input id="swal-client-occurred-at" class="swal2-input" type="datetime-local" value="${getDateTimeLocalNow()}">
-        <textarea id="swal-client-note" class="swal2-textarea" placeholder="Observação opcional para ${total} imagem(ns)"></textarea>
-      `,
-      showCancelButton: true,
-      confirmButtonText: isReturn
-        ? "Registrar retorno"
-        : "Registrar solicitação",
-      cancelButtonText: "Cancelar",
-      focusConfirm: false,
-      preConfirm: () => {
-        const ocorridoEm =
-          document.getElementById("swal-client-occurred-at")?.value || "";
-        const resultadoRetorno =
-          document.getElementById("swal-client-return-result")?.value || "";
-        const observacao =
-          document.getElementById("swal-client-note")?.value || "";
-        if (!ocorridoEm) {
-          Swal.showValidationMessage("Informe a data e hora da interação.");
-          return false;
-        }
-        if (isReturn && !resultadoRetorno) {
-          Swal.showValidationMessage("Selecione o resultado do retorno.");
-          return false;
-        }
-        return {
-          ocorrido_em: ocorridoEm,
-          resultado_retorno: resultadoRetorno,
-          observacao: observacao.trim(),
-        };
+    const fields = [];
+    if (isReturn) {
+      fields.push({
+        name: "resultado_retorno",
+        type: "select",
+        label: "Resultado do retorno",
+        placeholder: "Selecione o resultado",
+        options: {
+          APROVADA: "Aprovada / sem alteração",
+          ALTERACAO: "Solicitou alteração",
+        },
+        required: true,
+      });
+    }
+    fields.push(
+      {
+        name: "ocorrido_em",
+        type: "datetime-local",
+        label: "Data e hora",
+        value: getDateTimeLocalNow(),
+        required: true,
       },
+      {
+        name: "observacao",
+        type: "textarea",
+        placeholder: `Observação opcional para ${total} imagem(ns)`,
+      },
+    );
+    const result = await FlowAlert.form({
+      title: isReturn ? "Registrar retorno do cliente" : "Solicitar ao cliente",
+      fields,
+      confirmText: isReturn ? "Registrar retorno" : "Registrar solicitação",
+      cancelText: "Cancelar",
+      validate: (values) =>
+        !values.ocorrido_em
+          ? "Informe a data e hora da interação."
+          : isReturn && !values.resultado_retorno
+            ? "Selecione o resultado do retorno."
+            : "",
     });
-    return result.isConfirmed ? result.value : null;
+    return result.isConfirmed
+      ? { ...result.value, observacao: result.value.observacao.trim() }
+      : null;
   }
 
   async function registrarClientInteraction(tipo) {
@@ -2051,7 +2068,8 @@
     const grupoEf = resumo.grupos?.ef || {};
     const grupoAlt = resumo.grupos?.alteracao || {};
     const grupoRetornoEf = resumo.grupos?.retorno_ef || {};
-    const grupoSemAlteracaoOrigemEf = resumo.grupos?.sem_alteracao_origem_ef || {};
+    const grupoSemAlteracaoOrigemEf =
+      resumo.grupos?.sem_alteracao_origem_ef || {};
     const niveis = totais.niveis || {};
     const canSubmit = Boolean(resumo.eligible);
 
@@ -2169,7 +2187,7 @@
   function entregaResumo(titulo, grupo, inputName, aviso = "") {
     const niveis = grupo.niveis || {};
     const nivelHtml =
-      (inputName === "prazo_alteracao" || inputName === "prazo_retorno_ef")
+      inputName === "prazo_alteracao" || inputName === "prazo_retorno_ef"
         ? `<div class="conclusao-niveis">${[1, 2, 3, 4, 5].map((n) => `<span>N${n} <strong>${niveis[n] || 0}</strong></span>`).join("")}</div>`
         : "";
     return `

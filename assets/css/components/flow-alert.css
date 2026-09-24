@@ -1,0 +1,512 @@
+:root {
+  --flow-alert-bg: var(--bg-surface, #fff);
+  --flow-alert-border: var(--border-default, #e2e6eb);
+  --flow-alert-title: var(--text-primary, #1a1d23);
+  --flow-alert-text: var(--text-secondary, #4b5563);
+  --flow-alert-shadow: 0 14px 42px rgba(15, 23, 42, 0.16);
+  --flow-alert-success: var(--color-success, #16803a);
+  --flow-alert-warning: var(--color-warning, #c87800);
+  --flow-alert-error: var(--color-danger, #c93737);
+  --flow-alert-info: var(--color-info, #2f6fda);
+  --flow-alert-success-soft: var(--success-subtle, #e7f6ec);
+  --flow-alert-warning-soft: var(--warning-subtle, #fff4db);
+  --flow-alert-error-soft: var(--danger-subtle, #fbe9e9);
+  --flow-alert-info-soft: var(--info-subtle, #e9f1ff);
+  --flow-alert-notification-scrim: rgba(245, 247, 250, 0.18);
+}
+
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --flow-alert-bg: var(--bg-surface, #17191d);
+  --flow-alert-border: var(--border-default, #2c3036);
+  --flow-alert-title: var(--text-primary, #f0f1f3);
+  --flow-alert-text: var(--text-secondary, #b2b5bb);
+  --flow-alert-shadow: 0 18px 54px rgba(0, 0, 0, 0.48);
+  --flow-alert-success: var(--color-success, #4ab773);
+  --flow-alert-warning: var(--color-warning, #f3b642);
+  --flow-alert-error: var(--color-danger, #fa7777);
+  --flow-alert-info: var(--color-info, #7ba7ff);
+  --flow-alert-success-soft: var(--success-subtle, #172d20);
+  --flow-alert-warning-soft: var(--warning-subtle, #352a16);
+  --flow-alert-error-soft: var(--danger-subtle, #351b20);
+  --flow-alert-info-soft: var(--info-subtle, #192845);
+  --flow-alert-notification-scrim: rgba(0, 0, 0, 0.28);
+}
+
+.flow-alert-region {
+  position: fixed;
+  z-index: 30000;
+  display: flex;
+  width: min(440px, calc(100vw - 32px));
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.flow-alert-region--notification,
+.flow-alert-region--toast {
+  top: 18px;
+  right: 18px;
+}
+
+.flow-alert-region--notification {
+  inset: 0;
+  z-index: 30000;
+  display: flex;
+  width: auto;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.flow-alert-region--notification::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  /* background: var(--flow-alert-notification-scrim); */
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.flow-alert-region--notification.is-emptying::before {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.flow-alert-region--notification > .flow-alert {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+}
+
+.flow-alert-region--toast {
+  top: auto;
+  bottom: 18px;
+}
+
+.flow-alert {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  color: var(--flow-alert-title);
+  background: var(--flow-alert-bg);
+  border: 1px solid var(--flow-alert-border);
+  border-left: 3px solid var(--flow-alert-accent, var(--flow-alert-info));
+  border-radius: 14px;
+  box-shadow: var(--flow-alert-shadow);
+  font-family: var(
+    --font-family-sans,
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif
+  );
+  opacity: 0;
+  pointer-events: auto;
+  transform: translateY(-8px) scale(0.98);
+  transition:
+    opacity 210ms ease,
+    transform 210ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.flow-alert.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.flow-alert.is-leaving {
+  opacity: 0;
+  transform: translateY(-5px) scale(0.985);
+  transition-duration: 160ms;
+}
+
+.flow-alert--success {
+  --flow-alert-accent: var(--flow-alert-success);
+  --flow-alert-soft: var(--flow-alert-success-soft);
+}
+.flow-alert--warning {
+  --flow-alert-accent: var(--flow-alert-warning);
+  --flow-alert-soft: var(--flow-alert-warning-soft);
+}
+.flow-alert--error {
+  --flow-alert-accent: var(--flow-alert-error);
+  --flow-alert-soft: var(--flow-alert-error-soft);
+}
+.flow-alert--info {
+  --flow-alert-accent: var(--flow-alert-info);
+  --flow-alert-soft: var(--flow-alert-info-soft);
+}
+
+.flow-alert__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--flow-alert-accent);
+  background: var(--flow-alert-soft);
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.flow-alert__body {
+  min-width: 0;
+}
+
+.flow-alert__title {
+  margin: 1px 0 0;
+  color: var(--flow-alert-title);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.flow-alert__message {
+  margin: 5px 0 0;
+  color: var(--flow-alert-text);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.flow-alert__field-wrap {
+  grid-column: 2 / -1;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--flow-alert-text);
+  font-size: 12px;
+}
+
+.flow-alert__field-group {
+  display: grid;
+  gap: 6px;
+}
+
+.flow-alert__field {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  color: var(--flow-alert-title);
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--flow-alert-border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.flow-alert__field:where(textarea) {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.flow-alert__field:focus-visible {
+  outline: 2px solid var(--flow-alert-accent);
+  outline-offset: 2px;
+}
+
+.flow-alert__field-label {
+  color: var(--flow-alert-title);
+  font-weight: 600;
+}
+
+.flow-alert__validation {
+  margin: 0;
+  color: var(--flow-alert-error);
+  font-size: 12px;
+}
+
+.flow-alert__radio-list {
+  display: grid;
+  gap: 8px;
+}
+
+.flow-alert__radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--flow-alert-text);
+}
+
+.flow-alert__check-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--flow-alert-text);
+  line-height: 1.4;
+}
+
+.flow-alert__check-option input,
+.flow-alert__radio-option input {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--flow-alert-accent);
+}
+
+.flow-alert__progress-track {
+  grid-column: 2 / -1;
+  height: 7px;
+  overflow: hidden;
+  background: var(--flow-alert-border);
+  border-radius: 999px;
+}
+
+.flow-alert__progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--flow-alert-accent);
+  border-radius: inherit;
+  transition: width 350ms ease;
+}
+
+.flow-alert__progress-track.is-indeterminate .flow-alert__progress-fill {
+  animation: flow-alert-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes flow-alert-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(90%);
+  }
+  100% {
+    transform: translateX(290%);
+  }
+}
+
+.flow-alert__close {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin: -5px -5px 0 0;
+  padding: 0;
+  place-items: center;
+  color: var(--flow-alert-text);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.flow-alert__close:hover {
+  color: var(--flow-alert-title);
+  background: var(--bg-surface-alt, rgba(127, 127, 127, 0.1));
+}
+.flow-alert button:focus-visible {
+  outline: 2px solid var(--flow-alert-accent);
+  outline-offset: 2px;
+}
+
+.flow-alert__actions {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.flow-alert__action {
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.flow-alert__action--primary {
+  color: #fff;
+  background: var(--flow-alert-accent);
+}
+.flow-alert__action--primary:hover {
+  filter: brightness(1.07);
+}
+.flow-alert__action--secondary {
+  color: var(--flow-alert-text);
+  background: transparent;
+  border-color: var(--flow-alert-border);
+}
+.flow-alert__action--secondary:hover {
+  color: var(--flow-alert-title);
+  background: var(--bg-surface-alt, rgba(127, 127, 127, 0.1));
+}
+
+.flow-alert--toast {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  width: auto;
+  min-width: min(280px, calc(100vw - 32px));
+  max-width: 440px;
+  padding: 12px 14px;
+  border-left-width: 2px;
+}
+
+.flow-alert--toast .flow-alert__icon {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+.flow-alert--toast .flow-alert__title {
+  font-size: 13px;
+}
+.flow-alert--toast .flow-alert__message {
+  font-size: 12px;
+}
+
+.flow-alert-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--bg-overlay, rgba(0, 0, 0, 0.58));
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.flow-alert--modal {
+  position: fixed;
+  z-index: 30001;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  width: auto;
+  max-width: none;
+  place-items: center;
+  padding: 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  transform: none;
+}
+
+.flow-alert--modal.is-visible,
+.flow-alert--modal.is-leaving {
+  transform: none;
+}
+.flow-alert--modal.is-visible .flow-alert-backdrop {
+  opacity: 1;
+}
+.flow-alert--modal.is-leaving .flow-alert-backdrop {
+  opacity: 0;
+}
+
+.flow-alert__dialog {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  width: min(440px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 22px;
+  color: var(--flow-alert-title);
+  background: var(--flow-alert-bg);
+  border: 1px solid var(--flow-alert-border);
+  border-top: 2px solid var(--flow-alert-accent);
+  border-radius: 15px;
+  box-shadow: var(--flow-alert-shadow);
+  opacity: 0;
+  pointer-events: auto;
+  transform: translateY(-8px) scale(0.98);
+  transition:
+    opacity 210ms ease,
+    transform 210ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.flow-alert--modal.is-visible .flow-alert__dialog {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.flow-alert--modal.is-leaving .flow-alert__dialog {
+  opacity: 0;
+  transform: translateY(-5px) scale(0.985);
+  transition-duration: 160ms;
+}
+.flow-alert__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--flow-alert-border);
+  border-top-color: var(--flow-alert-accent);
+  border-radius: 50%;
+  animation: flow-alert-spin 700ms linear infinite;
+}
+
+@keyframes flow-alert-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .flow-alert-region--notification,
+  .flow-alert-region--toast {
+    top: 12px;
+    right: 12px;
+    width: calc(100vw - 24px);
+  }
+  .flow-alert-region--notification {
+    inset: 0;
+    width: auto;
+    padding: 16px;
+  }
+  .flow-alert-region--toast {
+    top: auto;
+    bottom: 12px;
+  }
+  .flow-alert {
+    padding: 14px;
+  }
+  .flow-alert--modal {
+    padding: 14px;
+  }
+  .flow-alert__dialog {
+    padding: 18px;
+    max-height: calc(100dvh - 28px);
+  }
+  .flow-alert__actions {
+    gap: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-alert,
+  .flow-alert__dialog,
+  .flow-alert-backdrop,
+  .flow-alert__action {
+    transition-duration: 0.01ms !important;
+  }
+  .flow-alert__spinner {
+    animation-duration: 1.5s;
+  }
+  .flow-alert__progress-fill {
+    transition-duration: 0.01ms !important;
+  }
+  .flow-alert__progress-track.is-indeterminate .flow-alert__progress-fill {
+    animation-duration: 2.8s;
+  }
+}

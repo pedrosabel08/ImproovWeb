@@ -1120,13 +1120,17 @@
             .map(Number)
             .includes(Number(image.id));
           check.innerHTML = `<input type="checkbox" value="${image.id}" ${checked ? "checked" : ""} ${editable && capture ? "" : "disabled"}><span>${esc(image.imagem_nome)}</span>`;
-          check.querySelector("input").addEventListener("change", (e) => {
+          check.querySelector("input").addEventListener("change", async (e) => {
             if (
               e.target.checked &&
               linkedInAnotherPoint(image.id, pos.id, code) &&
-              !confirm(
-                `A imagem “${image.imagem_nome}” já está vinculada a outro ponto/período. Deseja reutilizá-la?`,
-              )
+              !(
+                await FlowAlert.confirm({
+                  title: "Imagem já vinculada",
+                  message: `A imagem “${image.imagem_nome}” já está vinculada a outro ponto/período. Deseja reutilizá-la?`,
+                  confirmText: "Reutilizar",
+                })
+              ).isConfirmed
             ) {
               e.target.checked = false;
               return;
@@ -1190,7 +1194,13 @@
       key = String(pos.id);
     if (
       linked &&
-      !confirm("Este ponto possui imagens vinculadas. Deseja excluí-lo?")
+      !(
+        await FlowAlert.confirm({
+          title: "Excluir ponto?",
+          message: "Este ponto possui imagens vinculadas.",
+          confirmText: "Excluir ponto",
+        })
+      ).isConfirmed
     )
       return;
     const index = state.plan.posicoes.findIndex((p) => String(p.id) === key);
@@ -1693,7 +1703,16 @@
       $("fotoHoldDetails").value = "";
       notice(`HOLD aberto e ${data.codigo || "Issue"} registrada.`);
       await loadPlan(state.plan.id);
-      if (data.id && confirm("HOLD aberto. Deseja abrir a Issue agora?"))
+      if (
+        data.id &&
+        (
+          await FlowAlert.confirm({
+            title: "HOLD aberto",
+            message: "Deseja abrir a Issue agora?",
+            confirmText: "Abrir Issue",
+          })
+        ).isConfirmed
+      )
         window.open(
           `${root}/FlowBlock/issue.php?id=${encodeURIComponent(data.id)}`,
           "_blank",

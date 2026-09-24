@@ -2159,16 +2159,10 @@ function enviarImagens() {
       document.getElementById("etapaTitulo").textContent =
         "2. Envio do Arquivo Final";
 
-      Swal.fire({
-        position: "center",
-        icon: "success",
+      FlowAlert.success({
+        mode: "modal",
         title: "Agora adicione o arquivo final",
-        showConfirmButton: false,
-        timer: 1500,
-        didOpen: () => {
-          const title = Swal.getTitle();
-          if (title) title.style.fontSize = "18px";
-        },
+        duration: 1500,
       });
     })
     .catch((err) => {
@@ -2224,96 +2218,79 @@ function enviarArquivo() {
 
   formData.append("status_nome", statusNome);
 
-  // Criar container de progresso
-  const progressContainer = document.createElement("div");
-  progressContainer.style.fontSize = "16px";
-  progressContainer.innerHTML = `
-        <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
-        <div id="uploadStatus">Enviando... 0%</div>
-        <div id="uploadTempo">Tempo: 0s</div>
-        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
-        <div id="uploadEstimativa">Tempo restante: ...</div>
-        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
-    `;
-
-  Swal.fire({
+  const xhr = new XMLHttpRequest();
+  const startTime = Date.now();
+  let uploadCancelado = false;
+  const uploadProgress = FlowAlert.progress({
     title: "Enviando arquivo...",
-    html: progressContainer,
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      const xhr = new XMLHttpRequest();
-      const startTime = Date.now();
-      let uploadCancelado = false;
-
-      xhr.open("POST", "https://improov/ImproovWeb/uploadFinal.php");
-
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          const now = Date.now();
-          const elapsed = (now - startTime) / 1000; // em segundos
-          const uploadedMB = e.loaded / (1024 * 1024);
-          const totalMB = e.total / (1024 * 1024);
-          const percent = (e.loaded / e.total) * 100;
-          const speed = uploadedMB / elapsed; // MB/s
-          const remainingMB = totalMB - uploadedMB;
-          const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
-
-          document.getElementById("uploadProgress").value = percent;
-          document.getElementById("uploadStatus").innerText =
-            `Enviando... ${percent.toFixed(2)}%`;
-          document.getElementById("uploadTempo").innerText =
-            `Tempo: ${elapsed.toFixed(1)}s`;
-          document.getElementById("uploadVelocidade").innerText =
-            `Velocidade: ${speed.toFixed(2)} MB/s`;
-          document.getElementById("uploadEstimativa").innerText =
-            `Tempo restante: ${estimatedTime.toFixed(1)}s`;
-        }
-      });
-
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
-          const res = JSON.parse(xhr.responseText);
-          const destino = res[0]?.destino || "Caminho não encontrado";
-          Swal.fire({
-            position: "center",
-            icon: "success",
-            title: "Arquivo final enviado com sucesso!",
-            text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || "Nome não encontrado"}`,
-            showConfirmButton: false,
-            timer: 2000,
-          });
-          fecharModal();
-        }
-      };
-
-      xhr.onerror = () => {
-        if (!uploadCancelado) {
-          Swal.close();
-          Toastify({
-            text: "Erro ao enviar arquivo final",
-            duration: 3000,
-            gravity: "top",
-            backgroundColor: "#f44336",
-          }).showToast();
-        }
-      };
-
-      // Cancelar envio
-      document
-        .getElementById("cancelarUpload")
-        .addEventListener("click", () => {
-          uploadCancelado = true;
-          xhr.abort();
-          Swal.fire({
-            icon: "warning",
-            title: "Upload cancelado",
-            showConfirmButton: false,
-            timer: 1500,
-          });
-        });
-
-      xhr.send(formData);
+    message:
+      "Enviando... 0%\nTempo: 0s\nVelocidade: 0 MB/s\nTempo restante: ...",
+    progress: 0,
+    dismissible: false,
+    cancelAction: {
+      label: "Cancelar envio",
+      onClick: () => {
+        uploadCancelado = true;
+        xhr.abort();
+        return false;
+      },
     },
   });
+  xhr.open("POST", "https://improov/ImproovWeb/uploadFinal.php");
+  xhr.upload.addEventListener("progress", (e) => {
+    if (e.lengthComputable) {
+      const now = Date.now();
+      const elapsed = (now - startTime) / 1000; // em segundos
+      const uploadedMB = e.loaded / (1024 * 1024);
+      const totalMB = e.total / (1024 * 1024);
+      const percent = (e.loaded / e.total) * 100;
+      const speed = uploadedMB / elapsed; // MB/s
+      const remainingMB = totalMB - uploadedMB;
+      const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
+
+      uploadProgress.update({
+        progress: percent,
+        message: `Enviando... ${percent.toFixed(2)}%\nTempo: ${elapsed.toFixed(1)}s\nVelocidade: ${speed.toFixed(2)} MB/s\nTempo restante: ${estimatedTime.toFixed(1)}s`,
+      });
+    }
+  });
+
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
+      const res = JSON.parse(xhr.responseText);
+      const destino = res[0]?.destino || "Caminho não encontrado";
+      uploadProgress.update({
+        title: "Arquivo final enviado com sucesso!",
+        message: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || "Nome não encontrado"}`,
+        progress: 100,
+        type: "success",
+      });
+      window.setTimeout(uploadProgress.close, 1500);
+      fecharModal();
+    }
+  };
+
+  xhr.onerror = () => {
+    if (!uploadCancelado) {
+      uploadProgress.close();
+      Toastify({
+        text: "Erro ao enviar arquivo final",
+        duration: 3000,
+        gravity: "top",
+        backgroundColor: "#f44336",
+      }).showToast();
+    }
+  };
+
+  xhr.onabort = () => {
+    uploadProgress.update({
+      title: "Upload cancelado",
+      message: "O envio foi cancelado.",
+      progress: 0,
+      type: "warning",
+    });
+    window.setTimeout(uploadProgress.close, 1200);
+  };
+
+  xhr.send(formData);
 }

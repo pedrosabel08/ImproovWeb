@@ -1348,25 +1348,25 @@ $("#completeRenderManually")
   .off("click")
   .on("click", function () {
     if (typeof Swal === "undefined") return;
-    Swal.fire({
-      icon: "warning",
+    FlowAlert.input({
+      type: "warning",
       title: "Marcar render como feito manualmente?",
-      text: "O job no Deadline será encerrado e o render seguirá para aprovação.",
-      input: "textarea",
-      inputLabel: "Justificativa",
-      inputPlaceholder:
-        "Explique por que o render foi concluído fora do Deadline.",
-      inputAttributes: {
+      message:
+        "O job no Deadline será encerrado e o render seguirá para aprovação.",
+      field: {
+        type: "textarea",
+        label: "Justificativa",
+        placeholder:
+          "Explique por que o render foi concluído fora do Deadline.",
         maxlength: 2000,
-        "aria-label": "Justificativa da conclusão manual",
+        rows: 4,
+        required: true,
       },
-      showCancelButton: true,
-      confirmButtonText: "Confirmar conclusão manual",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#0e7490",
-      inputValidator: function (value) {
+      confirmText: "Confirmar conclusão manual",
+      cancelText: "Cancelar",
+      validate: function (value) {
         return String(value || "").trim()
-          ? undefined
+          ? ""
           : "Informe a justificativa para continuar.";
       },
     }).then(function (result) {

@@ -281,11 +281,15 @@
     const refs = refsFor(scope, code);
     if (!refs.length)
       return '<p class="alma-no-references">Nenhuma referência selecionada.</p>';
-    return `<div class="alma-selected-references">${refs.map((reference) => {
-      const title = reference.titulo_exibicao || `Referência #${reference.sire_referencia_id}`;
-      const imageUrl = reference.imagem_url || reference.thumbnail_url || "";
-      return `<article class="alma-selected-reference"><button type="button" class="alma-reference-preview" data-preview-reference="${attr(imageUrl)}" data-preview-title="${attr(title)}" aria-label="Ampliar ${attr(title)}"><img src="${attr(reference.thumbnail_url)}" alt="${attr(title)}" loading="lazy"></button><span>${esc(title)}</span>${canEdit() ? `<button type="button" class="alma-btn-remove" data-remove-reference="${reference.sire_referencia_id}" data-scope="${scope}" data-code="${code}" aria-label="Remover referência">×</button>` : ""}</article>`;
-    }).join("")}</div>`;
+    return `<div class="alma-selected-references">${refs
+      .map((reference) => {
+        const title =
+          reference.titulo_exibicao ||
+          `Referência #${reference.sire_referencia_id}`;
+        const imageUrl = reference.imagem_url || reference.thumbnail_url || "";
+        return `<article class="alma-selected-reference"><button type="button" class="alma-reference-preview" data-preview-reference="${attr(imageUrl)}" data-preview-title="${attr(title)}" aria-label="Ampliar ${attr(title)}"><img src="${attr(reference.thumbnail_url)}" alt="${attr(title)}" loading="lazy"></button><span>${esc(title)}</span>${canEdit() ? `<button type="button" class="alma-btn-remove" data-remove-reference="${reference.sire_referencia_id}" data-scope="${scope}" data-code="${code}" aria-label="Remover referência">×</button>` : ""}</article>`;
+      })
+      .join("")}</div>`;
   }
 
   function openReferencePreview(imageUrl, title) {
@@ -1072,9 +1076,14 @@
         button.addEventListener("click", async () => {
           if (
             state.dirtyImage &&
-            !window.confirm(
-              "Há alterações não salvas nesta imagem. Deseja trocar mesmo assim?",
-            )
+            !(
+              await window.FlowAlert.confirm({
+                title: "Descartar alterações?",
+                message:
+                  "Há alterações não salvas nesta imagem. Deseja trocar mesmo assim?",
+                confirmText: "Trocar imagem",
+              })
+            ).isConfirmed
           )
             return;
           try {

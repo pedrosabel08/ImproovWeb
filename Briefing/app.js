@@ -800,9 +800,13 @@
   }
   async function deleteBriefing(briefing) {
     if (
-      !confirm(
-        `Excluir o briefing “${briefing.titulo}”? Esta ação não pode ser desfeita.`,
-      )
+      !(
+        await FlowAlert.confirm({
+          title: "Excluir briefing?",
+          message: `Excluir o briefing “${briefing.titulo}”? Esta ação não pode ser desfeita.`,
+          confirmText: "Excluir",
+        })
+      ).isConfirmed
     )
       return;
     await api({ action: "briefing.delete", briefing_id: briefing.id });
@@ -867,9 +871,14 @@
   }
   async function revokeLink(briefing) {
     if (
-      !confirm(
-        "Revogar o acesso externo agora? Sessões abertas perderão o acesso nas próximas requisições.",
-      )
+      !(
+        await FlowAlert.confirm({
+          title: "Revogar acesso externo?",
+          message:
+            "Sessões abertas perderão o acesso nas próximas requisições.",
+          confirmText: "Revogar acesso",
+        })
+      ).isConfirmed
     )
       return;
     await api({ action: "briefing.revoke_link", briefing_id: briefing.id });
@@ -877,7 +886,16 @@
     await refreshCurrent();
   }
   async function approveBriefing(briefing) {
-    if (!confirm("Aprovar e congelar um snapshot deste briefing?")) return;
+    if (
+      !(
+        await FlowAlert.confirm({
+          title: "Aprovar briefing?",
+          message: "A aprovação criará um snapshot deste briefing.",
+          confirmText: "Aprovar",
+        })
+      ).isConfirmed
+    )
+      return;
     await api({ action: "briefing.approve", briefing_id: briefing.id });
     notice("Briefing aprovado.");
     await refreshCurrent();
@@ -1281,10 +1299,15 @@
       {
         label: "Excluir pergunta",
         danger: true,
-        onClick: () => {
+        onClick: async () => {
           if (
             (questionData.text || questionData.options.length) &&
-            !confirm("Excluir esta pergunta?")
+            !(
+              await FlowAlert.confirm({
+                title: "Excluir pergunta?",
+                confirmText: "Excluir",
+              })
+            ).isConfirmed
           )
             return;
           sectionData.questions.splice(questionIndex, 1);
@@ -1428,10 +1451,16 @@
         {
           label: "Excluir seção",
           danger: true,
-          onClick: () => {
+          onClick: async () => {
             if (
               (sectionData.title || sectionData.questions.length) &&
-              !confirm("Excluir esta seção e suas perguntas?")
+              !(
+                await FlowAlert.confirm({
+                  title: "Excluir seção?",
+                  message: "Esta ação também excluirá as perguntas da seção.",
+                  confirmText: "Excluir seção",
+                })
+              ).isConfirmed
             )
               return;
             state.template.sections.splice(sectionIndex, 1);

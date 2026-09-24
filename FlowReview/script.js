@@ -261,34 +261,20 @@ async function revisarTarefa(
   ];
   let etapaIdx = 0;
 
-  Swal.fire({
+  const reviewProgress = FlowAlert.progress({
     title: etapas[0].titulo,
-    html: `<p style="margin:0;color:#555">${etapas[0].detalhe}</p>
-           <div id="fr-progress-bar" style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-             <div id="fr-progress-fill" style="height:100%;width:0%;background:#2ecc71;transition:width 2.8s ease"></div>
-           </div>`,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    showConfirmButton: false,
-    didOpen: () => {
-      Swal.showLoading();
-      // Arranca a barra no próximo tick para a transição CSS funcionar
-      requestAnimationFrame(() => {
-        const fill = document.getElementById("fr-progress-fill");
-        if (fill) fill.style.width = "20%";
-      });
-    },
+    message: etapas[0].detalhe,
+    progress: 20,
+    dismissible: false,
   });
 
   const avancarEtapa = setInterval(() => {
     etapaIdx = Math.min(etapaIdx + 1, etapas.length - 1);
     const pct = Math.round(((etapaIdx + 1) / etapas.length) * 85); // vai até 85% enquanto aguarda
-    Swal.update({
+    reviewProgress.update({
       title: etapas[etapaIdx].titulo,
-      html: `<p style="margin:0;color:#555">${etapas[etapaIdx].detalhe}</p>
-             <div id="fr-progress-bar" style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-               <div id="fr-progress-fill" style="height:100%;width:${pct}%;background:#2ecc71;transition:width 2.8s ease"></div>
-             </div>`,
+      message: etapas[etapaIdx].detalhe,
+      progress: pct,
     });
   }, 3000);
 
@@ -325,7 +311,7 @@ async function revisarTarefa(
       data?.requires_direcao_alteracao_decision &&
       !direcaoAlteracaoDestino
     ) {
-      Swal.close();
+      reviewProgress.close();
       return revisarTarefa(
         idfuncao_imagem,
         nome_colaborador,
@@ -341,15 +327,16 @@ async function revisarTarefa(
     }
 
     // Barra a 100% antes de fechar
-    Swal.update({
+    reviewProgress.update({
       title: data.success ? "Concluído!" : "Ocorreu um erro",
-      html: `<p style="margin:0;color:#555">${data.success ? "Revisão registrada com sucesso." : data.message || "Falha ao atualizar a tarefa."}</p>
-             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-               <div style="height:100%;width:100%;background:${data.success ? "#2ecc71" : "#e74c3c"};transition:width 0.4s ease"></div>
-             </div>`,
+      message: data.success
+        ? "Revisão registrada com sucesso."
+        : data.message || "Falha ao atualizar a tarefa.",
+      progress: 100,
+      type: data.success ? "success" : "error",
     });
     await new Promise((r) => setTimeout(r, 700));
-    Swal.close();
+    reviewProgress.close();
 
     let message = "";
     let bgColor = "";
@@ -425,7 +412,7 @@ async function revisarTarefa(
     }
   } catch (error) {
     clearInterval(avancarEtapa);
-    Swal.close();
+    reviewProgress.close();
     console.error("Erro:", error);
     Toastify({
       text: "Ocorreu um erro ao processar a solicitação. " + error.message,
@@ -454,18 +441,15 @@ async function resolverConflitoSftp(
   sftp_caminho_local = null,
 ) {
   const { isConfirmed: confirmedReplace, isDenied: confirmedAdd } =
-    await Swal.fire({
+    await FlowAlert.choose({
       title: "Arquivo já existe no servidor",
-      html: `O arquivo <strong>${nomeArquivo}</strong> já existe no destino.<br>Deseja substituí-lo ou enviá-lo com outro nome?`,
-      icon: "warning",
-      showCancelButton: true,
-      cancelButtonText: "Cancelar",
-      confirmButtonText: "Substituir",
-      showDenyButton: true,
-      denyButtonText: "Adicionar",
-      confirmButtonColor: "#c0392b",
-      denyButtonColor: "#2980b9",
-      reverseButtons: true,
+      type: "warning",
+      message: `O arquivo ${nomeArquivo} já existe no destino. Deseja substituí-lo ou enviá-lo com outro nome?`,
+      choices: [
+        { label: "Substituir", value: "replace", kind: "primary" },
+        { label: "Adicionar", value: "add", kind: "secondary" },
+      ],
+      cancelText: "Cancelar",
     });
 
   if (!confirmedReplace && !confirmedAdd) return; // cancelado
@@ -478,17 +462,19 @@ async function resolverConflitoSftp(
   } else if (confirmedAdd) {
     const baseSemExt = nomeArquivo.replace(/(\.[^.]+)$/, "");
     const ext = nomeArquivo.match(/(\.[^.]+)$/)?.[1] ?? "";
-    const { value: sufixo, isConfirmed } = await Swal.fire({
+    const { value: sufixo, isConfirmed } = await FlowAlert.input({
       title: "Novo sufixo para o arquivo",
-      html: `O arquivo será salvo como <code>${baseSemExt}_<em>SUFIXO</em>${ext}</code>`,
-      input: "text",
-      inputLabel: "Ex: Normal, Completa, Cropada",
-      inputPlaceholder: "Digite o sufixo desejado",
-      showCancelButton: true,
-      cancelButtonText: "Cancelar",
-      confirmButtonText: "Confirmar",
-      inputValidator: (v) =>
-        !v.trim() ? "Por favor, informe um sufixo." : null,
+      message: `O arquivo será salvo como ${baseSemExt}_SUFIXO${ext}.`,
+      field: {
+        type: "text",
+        label: "Ex: Normal, Completa, Cropada",
+        placeholder: "Digite o sufixo desejado",
+        required: true,
+      },
+      cancelText: "Cancelar",
+      confirmText: "Confirmar",
+      validate: (value) =>
+        !value.trim() ? "Por favor, informe um sufixo." : "",
     });
 
     if (!isConfirmed || !sufixo) return;
@@ -514,33 +500,20 @@ async function resolverConflitoSftp(
   ];
   let sftpIdx = 0;
 
-  Swal.fire({
+  const sftpProgress = FlowAlert.progress({
     title: etapasSftp[0].titulo,
-    html: `<p style="margin:0;color:#555">${etapasSftp[0].detalhe}</p>
-           <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-             <div id="sftp-progress-fill" style="height:100%;width:0%;background:#2980b9;transition:width 2.8s ease"></div>
-           </div>`,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    showConfirmButton: false,
-    didOpen: () => {
-      Swal.showLoading();
-      requestAnimationFrame(() => {
-        const fill = document.getElementById("sftp-progress-fill");
-        if (fill) fill.style.width = "20%";
-      });
-    },
+    message: etapasSftp[0].detalhe,
+    progress: 20,
+    dismissible: false,
   });
 
   const avancarSftp = setInterval(() => {
     sftpIdx = Math.min(sftpIdx + 1, etapasSftp.length - 1);
     const pct = Math.round(((sftpIdx + 1) / etapasSftp.length) * 85);
-    Swal.update({
+    sftpProgress.update({
       title: etapasSftp[sftpIdx].titulo,
-      html: `<p style="margin:0;color:#555">${etapasSftp[sftpIdx].detalhe}</p>
-             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-               <div id="sftp-progress-fill" style="height:100%;width:${pct}%;background:#2980b9;transition:width 2.8s ease"></div>
-             </div>`,
+      message: etapasSftp[sftpIdx].detalhe,
+      progress: pct,
     });
   }, 3500);
 
@@ -562,15 +535,16 @@ async function resolverConflitoSftp(
 
     clearInterval(avancarSftp);
 
-    Swal.update({
+    sftpProgress.update({
       title: result.success ? "Arquivo enviado!" : "Falha no envio",
-      html: `<p style="margin:0;color:#555">${result.success ? "Arquivo transferido com sucesso." : result.message || "Falha desconhecida."}</p>
-             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-               <div style="height:100%;width:100%;background:${result.success ? "#2ecc71" : "#e74c3c"};transition:width 0.4s ease"></div>
-             </div>`,
+      message: result.success
+        ? "Arquivo transferido com sucesso."
+        : result.message || "Falha desconhecida.",
+      progress: 100,
+      type: result.success ? "success" : "error",
     });
     await new Promise((r) => setTimeout(r, 700));
-    Swal.close();
+    sftpProgress.close();
 
     Toastify({
       text: result.success
@@ -584,7 +558,7 @@ async function resolverConflitoSftp(
     }).showToast();
   } catch (e) {
     clearInterval(avancarSftp);
-    Swal.close();
+    sftpProgress.close();
     console.error("Erro ao resolver conflito SFTP:", e);
     Toastify({
       text: "Erro ao enviar arquivo ao servidor.",
@@ -984,13 +958,13 @@ async function exibirCardsDeObra(tarefas) {
   if (mencoes.total_mencoes > 0) {
     const linhas = Object.entries(mencoes.mencoes_por_obra || {})
       .filter(([, q]) => q > 0)
-      .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} menção(ões)`)
-      .join("<br>");
-    Swal.fire({
-      title: "📣 Você foi mencionado!",
-      html: linhas + "<br><br>Confira as obras destacadas!",
-      icon: "info",
-      confirmButtonText: "Ver",
+      .map(([obra, qtd]) => `• ${obra}: ${qtd} menção(ões)`)
+      .join("\n");
+    window.FlowAlert.info({
+      title: "Você foi mencionado!",
+      message: `${linhas}\n\nConfira as obras destacadas!`,
+      mode: "modal",
+      action: { label: "Ver" },
     });
   }
 
@@ -1003,15 +977,13 @@ async function exibirCardsDeObra(tarefas) {
       obrasDirMap[t.nomenclatura] = (obrasDirMap[t.nomenclatura] || 0) + 1;
     });
     const linhasDir = Object.entries(obrasDirMap)
-      .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} tarefa(s)`)
-      .join("<br>");
-    Swal.fire({
-      title: "⏳ Aguardando sua validação!",
-      html:
-        linhasDir +
-        "<br><br>Finalizadores ou arquitetura aprovaram — aguardando confirmação da direção.",
-      icon: "warning",
-      confirmButtonText: "Ver",
+      .map(([obra, qtd]) => `• ${obra}: ${qtd} tarefa(s)`)
+      .join("\n");
+    window.FlowAlert.warning({
+      title: "Aguardando sua validação!",
+      message: `${linhasDir}\n\nFinalizadores ou arquitetura aprovaram — aguardando confirmação da direção.`,
+      mode: "modal",
+      action: { label: "Ver" },
     });
   }
 
@@ -1026,15 +998,13 @@ async function exibirCardsDeObra(tarefas) {
       obrasPrioMap[t.nomenclatura] = (obrasPrioMap[t.nomenclatura] || 0) + 1;
     });
     const linhasPrio = Object.entries(obrasPrioMap)
-      .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} tarefa(s)`)
-      .join("<br>");
-    Swal.fire({
-      title: "🔥 Aprovações com prioridade!",
-      html:
-        linhasPrio + "<br><br>Estas tarefas estão marcadas como prioridade.",
-      icon: "warning",
-      confirmButtonText: "Ver",
-      confirmButtonColor: "#e85e00",
+      .map(([obra, qtd]) => `• ${obra}: ${qtd} tarefa(s)`)
+      .join("\n");
+    window.FlowAlert.warning({
+      title: "Aprovações com prioridade!",
+      message: `${linhasPrio}\n\nEstas tarefas estão marcadas como prioridade.`,
+      mode: "modal",
+      action: { label: "Ver" },
     });
   }
 
@@ -1518,17 +1488,19 @@ async function iniciarAjustesFlowReview(tarefa, event) {
   event?.preventDefault();
   event?.stopPropagation();
   const today = new Date().toISOString().slice(0, 10);
-  const respostaPrevisao = await Swal.fire({
+  const respostaPrevisao = await FlowAlert.input({
     title: "Iniciar ajustes",
-    text: "Informe sua previsão de conclusão para este ciclo de ajuste.",
-    input: "date",
-    inputValue: today,
-    inputAttributes: { min: today },
-    showCancelButton: true,
-    confirmButtonText: "Iniciar ajustes",
-    cancelButtonText: "Cancelar",
-    confirmButtonColor: "#167b68",
-    inputValidator: (value) => (!value ? "Informe a previsão de conclusão." : undefined),
+    message: "Informe sua previsão de conclusão para este ciclo de ajuste.",
+    field: {
+      type: "date",
+      label: "Previsão de conclusão",
+      value: today,
+      min: today,
+      required: true,
+    },
+    confirmText: "Iniciar ajustes",
+    cancelText: "Cancelar",
+    validate: (value) => (!value ? "Informe a previsão de conclusão." : ""),
   });
   if (!respostaPrevisao.isConfirmed) return;
   const response = await fetch("../PaginaPrincipal/iniciar_operacao.php", {
@@ -1542,10 +1514,18 @@ async function iniciarAjustesFlowReview(tarefa, event) {
   });
   const payload = await response.json();
   if (!response.ok || payload?.success === false) {
-    await Swal.fire("Não foi possível iniciar os ajustes", payload?.message || "Tente novamente.", "error");
+    await Swal.fire(
+      "Não foi possível iniciar os ajustes",
+      payload?.message || "Tente novamente.",
+      "error",
+    );
     return;
   }
-  await Swal.fire("Ajustes iniciados", "A previsão foi vinculada a este ciclo de execução.", "success");
+  await Swal.fire(
+    "Ajustes iniciados",
+    "A previsão foi vinculada a este ciclo de execução.",
+    "success",
+  );
   const tarefaAtualizada = dadosTarefas.find(
     (item) => String(item.idfuncao_imagem) === String(tarefa.idfuncao_imagem),
   );
@@ -1553,7 +1533,9 @@ async function iniciarAjustesFlowReview(tarefa, event) {
     tarefaAtualizada.status = "Em andamento";
     tarefaAtualizada.status_novo = "Em andamento";
   }
-  historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa), { preserveView: true });
+  historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa), {
+    preserveView: true,
+  });
 }
 
 function atualizarAcaoInicioAjustes(tarefa) {
@@ -1574,16 +1556,23 @@ function atualizarAcaoInicioAjustes(tarefa) {
     responsavelId > 0 &&
     responsavelId === idcolaboradorLogado;
 
-  if (status !== "ajuste" || !responsavelLogado || getTaskTipo(tarefa) !== "imagem") {
+  if (
+    status !== "ajuste" ||
+    !responsavelLogado ||
+    getTaskTipo(tarefa) !== "imagem"
+  ) {
     return;
   }
 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "approval-start-adjustment";
-  button.innerHTML = '<i class="fa-solid fa-play" aria-hidden="true"></i> Iniciar ajustes';
+  button.innerHTML =
+    '<i class="fa-solid fa-play" aria-hidden="true"></i> Iniciar ajustes';
   button.title = "Informar a previsão e iniciar este ciclo de ajuste";
-  button.addEventListener("click", (event) => iniciarAjustesFlowReview(tarefa, event));
+  button.addEventListener("click", (event) =>
+    iniciarAjustesFlowReview(tarefa, event),
+  );
   actionContainer.appendChild(button);
   actionContainer.hidden = false;
 }
@@ -3367,6 +3356,14 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       currentFuncaoContext = item || null;
       setProcessHistoryContext(item || null);
 
+      const imagemStatusId = Number(item?.imagem_status_id);
+      const imagemStatusNome = String(item?.nome_status || "")
+        .trim()
+        .toUpperCase();
+      const podeAdicionarAngulo =
+        imagemStatusId === 1 || imagemStatusNome === "P00";
+      addAnguloBtn.style.display = podeAdicionarAngulo ? "" : "none";
+
       // Sincroniza sidebarTabulator com a função da tarefa aberta
       const tarefaAtual = dadosTarefas.find(
         (t) => String(t.idfuncao_imagem) === String(idfuncao_imagem),
@@ -4834,10 +4831,12 @@ function _vplFecharLoadingPdf() {
     clearInterval(window._vplPdfTicker);
     window._vplPdfTicker = null;
   }
-  const bar = document.getElementById("vpl-pdf-bar");
-  if (bar) bar.style.width = "100%";
+  window._vplFlowProgress?.update({ progress: 100 });
   setTimeout(() => {
-    if (window.Swal) Swal.close();
+    if (window._vplFlowProgress) {
+      window._vplFlowProgress.close();
+      window._vplFlowProgress = null;
+    }
   }, 300);
 }
 
@@ -5015,27 +5014,20 @@ function mostrarPdfCompleto(
     });
   }
 
-  // Overlay de carregamento (SweetAlert2) — fecha quando carregarPdf concluir
-  if (window.Swal) {
+  // Overlay de carregamento centralizado — fecha quando carregarPdf concluir
+  if (window.FlowAlert) {
     let _vplProgress = 0;
-    Swal.fire({
+    window._vplFlowProgress = FlowAlert.progress({
       title: "PDF sendo carregado…",
-      html: `<p style="margin:0;color:#888">Buscando arquivo no servidor. Pode levar alguns instantes.</p>
-             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
-               <div id="vpl-pdf-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#06b6d4);transition:width .4s ease"></div>
-             </div>`,
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      showConfirmButton: false,
-      didOpen: () => {
-        window._vplPdfTicker = setInterval(() => {
-          _vplProgress += Math.ceil(Math.random() * 6);
-          if (_vplProgress > 88) _vplProgress = 88;
-          const bar = document.getElementById("vpl-pdf-bar");
-          if (bar) bar.style.width = _vplProgress + "%";
-        }, 350);
-      },
+      message: "Buscando arquivo no servidor. Pode levar alguns instantes.",
+      progress: 0,
+      dismissible: false,
     });
+    window._vplPdfTicker = setInterval(() => {
+      _vplProgress += Math.ceil(Math.random() * 6);
+      if (_vplProgress > 88) _vplProgress = 88;
+      window._vplFlowProgress?.update({ progress: _vplProgress });
+    }, 350);
   }
 
   // Carrega e renderiza o PDF

@@ -3,183 +3,185 @@ var modalCaderno = document.getElementById("modalCaderno");
 var openFiltro = document.getElementById("openFiltro");
 var closeModal = document.getElementsByClassName("close")[0];
 var closeFiltro = document.getElementsByClassName("close-filtro")[0];
-const formCaderno = document.getElementById('formCaderno');
-const formFiltro = document.getElementById('formFiltro');
+const formCaderno = document.getElementById("formCaderno");
+const formFiltro = document.getElementById("formFiltro");
 
 function limparCampos() {
-    document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
-    document.getElementById('opcao_cliente').selectedIndex = 0; // Resetar select
-    document.getElementById('opcao_obra').selectedIndex = 0; // Resetar select
-    document.getElementById('imagem_id').value = ''; // Limpar campo de texto
-    document.getElementById('idfuncao_imagem').value = ''; // Limpar campo de texto
-    document.getElementById('status').selectedIndex = 0; // Limpar campo de texto
-    document.getElementById('prazo').value = ''; // Limpar campo de texto
+  document.getElementById("opcao_finalizador").selectedIndex = 0; // Resetar select
+  document.getElementById("opcao_cliente").selectedIndex = 0; // Resetar select
+  document.getElementById("opcao_obra").selectedIndex = 0; // Resetar select
+  document.getElementById("imagem_id").value = ""; // Limpar campo de texto
+  document.getElementById("idfuncao_imagem").value = ""; // Limpar campo de texto
+  document.getElementById("status").selectedIndex = 0; // Limpar campo de texto
+  document.getElementById("prazo").value = ""; // Limpar campo de texto
 }
 
 openFiltro.onclick = function () {
-    modalFiltro.style.display = "flex";
-    limparCampos();
+  modalFiltro.style.display = "flex";
+  limparCampos();
 };
 
 closeFiltro.onclick = function () {
-    modalFiltro.style.display = "none";
-    limparCampos();
+  modalFiltro.style.display = "none";
+  limparCampos();
 };
 
 closeModal.onclick = function () {
-    modalCaderno.style.display = "none";
-    limparCampos();
+  modalCaderno.style.display = "none";
+  limparCampos();
 };
 
 window.onclick = function (event) {
-    // Verificar se o clique foi fora do modal principal
-    if (event.target == modalFiltro) {
-        modalFiltro.style.display = "none";
-    }
-    if (event.target == modalCaderno) {
-        modalCaderno.style.display = "none";
-    }
+  // Verificar se o clique foi fora do modal principal
+  if (event.target == modalFiltro) {
+    modalFiltro.style.display = "none";
+  }
+  if (event.target == modalCaderno) {
+    modalCaderno.style.display = "none";
+  }
 };
 
 document.addEventListener("DOMContentLoaded", function () {
+  document.getElementById("opcao_obra").addEventListener("change", function () {
+    var obraId = this.value;
+    buscarImagens(obraId);
+  });
 
-    document.getElementById('opcao_obra').addEventListener('change', function () {
-        var obraId = this.value;
-        buscarImagens(obraId);
+  document
+    .getElementById("opcao_obra2")
+    .addEventListener("change", function () {
+      var obraId = this.value;
+      buscarImagens(obraId);
     });
 
-    document.getElementById('opcao_obra2').addEventListener('change', function () {
-        var obraId = this.value;
-        buscarImagens(obraId);
-    });
-
-    function buscarImagens(obraId) {
-
-        var imagemSelect = document.getElementById('imagem_id');
-        var url = 'buscar_imagens.php';
-        if (obraId != "0") {
-            url += '?obra_id=' + obraId;
-        }
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-
-                // Limpa as opções atuais
-                imagemSelect.innerHTML = '';
-
-                // Adiciona as novas opções com base na resposta
-                response.forEach(function (imagem) {
-                    var option = document.createElement('option');
-                    option.value = imagem.idimagens_cliente_obra;
-                    option.text = imagem.imagem_nome;
-                    imagemSelect.add(option);
-                });
-            }
-        };
-        xhr.send();
+  function buscarImagens(obraId) {
+    var imagemSelect = document.getElementById("imagem_id");
+    var url = "buscar_imagens.php";
+    if (obraId != "0") {
+      url += "?obra_id=" + obraId;
     }
 
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+        var response = JSON.parse(xhr.responseText);
 
-    formCaderno.addEventListener('submit', function (e) {
-        e.preventDefault();
+        // Limpa as opções atuais
+        imagemSelect.innerHTML = "";
 
-        var formData = new FormData(this);
+        // Adiciona as novas opções com base na resposta
+        response.forEach(function (imagem) {
+          var option = document.createElement("option");
+          option.value = imagem.idimagens_cliente_obra;
+          option.text = imagem.imagem_nome;
+          imagemSelect.add(option);
+        });
+      }
+    };
+    xhr.send();
+  }
 
-        const enviarCaderno = (dados, confirmarPendencias = false) => {
-            if (confirmarPendencias) {
-                dados.set('confirmar_pendencias', '1');
-            }
+  formCaderno.addEventListener("submit", function (e) {
+    e.preventDefault();
 
-            return fetch('update_funcao_caderno.php', {
-                method: 'POST',
-                body: dados
+    var formData = new FormData(this);
+
+    const enviarCaderno = (dados, confirmarPendencias = false) => {
+      if (confirmarPendencias) {
+        dados.set("confirmar_pendencias", "1");
+      }
+
+      return fetch("update_funcao_caderno.php", {
+        method: "POST",
+        body: dados,
+      }).then(async (response) => {
+        if (response.ok) return response.text();
+
+        const payload = await response.json().catch(() => ({}));
+        const pendencias = Array.isArray(payload?.avaliacao?.bloqueios)
+          ? payload.avaliacao.bloqueios
+              .map((item) => item?.label)
+              .filter(Boolean)
+          : [];
+        if (
+          payload.avaliacao &&
+          !confirmarPendencias &&
+          (
+            await window.FlowAlert.confirm({
+              title: "Pendências ativas",
+              message: `Esta tarefa possui pendências ativas.${pendencias.length ? `\n\nPendências: ${pendencias.join(", ")}.` : ""}\n\nDeseja continuar e colocá-la em andamento?`,
+              confirmText: "Continuar",
             })
-                .then(async response => {
-                    if (response.ok) return response.text();
+          ).isConfirmed
+        ) {
+          return enviarCaderno(dados, true);
+        }
+        throw new Error(payload.message || "Não foi possível salvar a tarefa.");
+      });
+    };
 
-                    const payload = await response.json().catch(() => ({}));
-                    const pendencias = Array.isArray(payload?.avaliacao?.bloqueios)
-                        ? payload.avaliacao.bloqueios.map(item => item?.label).filter(Boolean)
-                        : [];
-                    if (
-                        payload.avaliacao &&
-                        !confirmarPendencias &&
-                        window.confirm(
-                            `Esta tarefa possui pendências ativas.${pendencias.length ? `\n\nPendências: ${pendencias.join(', ')}.` : ''}\n\nDeseja continuar e colocá-la em andamento?`
-                        )
-                    ) {
-                        return enviarCaderno(dados, true);
-                    }
-                    throw new Error(payload.message || 'Não foi possível salvar a tarefa.');
-                });
-        };
+    enviarCaderno(formData)
+      .then((data) => {
+        document.getElementById("modalFiltro").style.display = "none";
+        limparCampos();
+        atualizarTabela();
+        buscarImagens();
+        Toastify({
+          text: "Dados inseridos com sucesso!",
+          duration: 3000,
+          close: true,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "green",
+          stopOnFocus: true,
+        }).showToast();
+      })
+      .catch((error) => console.error("Erro:", error));
+  });
 
-        enviarCaderno(formData)
-            .then(data => {
+  formFiltro.addEventListener("submit", function (e) {
+    e.preventDefault();
 
-                document.getElementById('modalFiltro').style.display = 'none';
-                limparCampos();
-                atualizarTabela();
-                buscarImagens();
-                Toastify({
-                    text: "Dados inseridos com sucesso!",
-                    duration: 3000,
-                    close: true,
-                    gravity: "top",
-                    position: "left",
-                    backgroundColor: "green",
-                    stopOnFocus: true,
-                }).showToast();
-            })
-            .catch(error => console.error('Erro:', error));
-    });
+    var formData = new FormData(this);
 
-    formFiltro.addEventListener('submit', function (e) {
-        e.preventDefault();
+    fetch("inserir_assets.php", {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => response.text())
+      .then((data) => {
+        document.getElementById("modalFiltro").style.display = "none";
+        limparCampos();
+        atualizarTabela();
+        buscarImagens();
+        Toastify({
+          text: "Dados inseridos com sucesso!",
+          duration: 3000,
+          close: true,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "green",
+          stopOnFocus: true,
+        }).showToast();
+      })
+      .catch((error) => console.error("Erro:", error));
+  });
 
-        var formData = new FormData(this);
+  function atualizarTabela() {
+    fetch("atualizar_tabela.php")
+      .then((response) => response.json())
+      .then((data) => {
+        const tabela = document.getElementById("lista-imagens");
+        tabela.innerHTML = "";
 
-        fetch('inserir_assets.php', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.text())
-            .then(data => {
+        data.forEach((imagem) => {
+          const tr = document.createElement("tr");
+          tr.classList.add("linha-tabela");
+          tr.setAttribute("data-id", imagem.idfuncao_imagem);
+          tr.setAttribute("data-obra-id", imagem.idobra);
 
-                document.getElementById('modalFiltro').style.display = 'none';
-                limparCampos();
-                atualizarTabela();
-                buscarImagens();
-                Toastify({
-                    text: "Dados inseridos com sucesso!",
-                    duration: 3000,
-                    close: true,
-                    gravity: "top",
-                    position: "left",
-                    backgroundColor: "green",
-                    stopOnFocus: true,
-                }).showToast();
-            })
-            .catch(error => console.error('Erro:', error));
-    });
-
-    function atualizarTabela() {
-        fetch('atualizar_tabela.php')
-            .then(response => response.json())
-            .then(data => {
-                const tabela = document.getElementById('lista-imagens');
-                tabela.innerHTML = '';
-
-                data.forEach(imagem => {
-                    const tr = document.createElement('tr');
-                    tr.classList.add('linha-tabela');
-                    tr.setAttribute('data-id', imagem.idfuncao_imagem);
-                    tr.setAttribute('data-obra-id', imagem.idobra);
-
-                    tr.innerHTML = `
+          tr.innerHTML = `
                         <td>${imagem.nome_colaborador}</td>
                         <td>${imagem.nome_cliente}</td>
                         <td>${imagem.nome_obra}</td>
@@ -188,115 +190,132 @@ document.addEventListener("DOMContentLoaded", function () {
                         <td>${imagem.prazo}</td>
                     `;
 
-                    tabela.appendChild(tr);
-                });
+          tabela.appendChild(tr);
+        });
 
-                const linhasTabela = document.querySelectorAll('.linha-tabela');
-                linhasTabela.forEach(linha => {
-                    linha.addEventListener('click', function () {
-                        modalCaderno.style.display = "flex";
-                        limparCampos();
-                        linhasTabela.forEach(outro => {
-                            outro.classList.remove('selecionada');
-                        });
+        const linhasTabela = document.querySelectorAll(".linha-tabela");
+        linhasTabela.forEach((linha) => {
+          linha.addEventListener("click", function () {
+            modalCaderno.style.display = "flex";
+            limparCampos();
+            linhasTabela.forEach((outro) => {
+              outro.classList.remove("selecionada");
+            });
 
-                        this.classList.add('selecionada');
+            this.classList.add("selecionada");
 
-                        var idLinhaSelecionada = this.getAttribute('data-id');
+            var idLinhaSelecionada = this.getAttribute("data-id");
 
-                        $.ajax({
-                            type: "GET",
-                            dataType: "json",
-                            url: "https://www.improov.com.br/sistema/Arquitetura/buscaAJAX.php",
-                            data: { ajid: idLinhaSelecionada },
-                            success: function (response) {
-                                if (response.length > 0) {
-                                    setSelectValue('opcao_finalizador', response[0].nome_colaborador);
-                                    setSelectValue('opcao_cliente', response[0].nome_cliente);
-                                    setSelectValue('opcao_obra', response[0].nome_obra);
-                                    setSelectValue('imagem_id', response[0].imagem_nome);
-                                    setSelectValue('status', response[0].status);
-                                    document.getElementById('prazo').value = response[0].prazo;
-                                    document.getElementById('idfuncao_imagem').value = response[0].idfuncao_imagem;
+            $.ajax({
+              type: "GET",
+              dataType: "json",
+              url: "https://www.improov.com.br/sistema/Arquitetura/buscaAJAX.php",
+              data: { ajid: idLinhaSelecionada },
+              success: function (response) {
+                if (response.length > 0) {
+                  setSelectValue(
+                    "opcao_finalizador",
+                    response[0].nome_colaborador,
+                  );
+                  setSelectValue("opcao_cliente", response[0].nome_cliente);
+                  setSelectValue("opcao_obra", response[0].nome_obra);
+                  setSelectValue("imagem_id", response[0].imagem_nome);
+                  setSelectValue("status", response[0].status);
+                  document.getElementById("prazo").value = response[0].prazo;
+                  document.getElementById("idfuncao_imagem").value =
+                    response[0].idfuncao_imagem;
+                } else {
+                  console.log("Nenhum produto encontrado.");
+                }
+              },
+              error: function (jqXHR, textStatus, errorThrown) {
+                console.error(
+                  "Erro na requisição AJAX: " + textStatus,
+                  errorThrown,
+                );
+              },
+            });
+          });
+        });
+      })
+      .catch((error) => console.error("Erro ao atualizar a tabela:", error));
+  }
 
+  atualizarTabela();
 
-                                } else {
-                                    console.log("Nenhum produto encontrado.");
-                                }
-                            },
-                            error: function (jqXHR, textStatus, errorThrown) {
-                                console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
-                            }
-                        });
-                    });
-                });
-            })
-            .catch(error => console.error('Erro ao atualizar a tabela:', error));
+  function setSelectValue(selectId, valueToSelect) {
+    var selectElement = document.getElementById(selectId);
+    var options = selectElement.options;
+
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].text === valueToSelect) {
+        selectElement.selectedIndex = i;
+        break;
+      }
     }
-
-    atualizarTabela();
-
-    function setSelectValue(selectId, valueToSelect) {
-        var selectElement = document.getElementById(selectId);
-        var options = selectElement.options;
-
-        for (var i = 0; i < options.length; i++) {
-            if (options[i].text === valueToSelect) {
-                selectElement.selectedIndex = i;
-                break;
-            }
-        }
-    }
-
+  }
 });
 
 function filtrarTabela() {
-    var indiceColuna = document.getElementById("colunaFiltro").value;
-    var filtro = document.getElementById("filtro-input").value.toLowerCase();
-    var tabela = document.querySelector('#lista-imagens');
-    var linhas = tabela.getElementsByTagName('tr');
+  var indiceColuna = document.getElementById("colunaFiltro").value;
+  var filtro = document.getElementById("filtro-input").value.toLowerCase();
+  var tabela = document.querySelector("#lista-imagens");
+  var linhas = tabela.getElementsByTagName("tr");
 
-    for (var i = 0; i < linhas.length; i++) {
-        var cols = linhas[i].getElementsByTagName('td');
-        var mostraLinha = false;
+  for (var i = 0; i < linhas.length; i++) {
+    var cols = linhas[i].getElementsByTagName("td");
+    var mostraLinha = false;
 
-        if (cols[indiceColuna]) {
-            var valorColuna = cols[indiceColuna].textContent || cols[indiceColuna].innerText;
-            if (valorColuna.toLowerCase().indexOf(filtro) > -1) {
-                mostraLinha = true;
-            }
-        }
-
-        if (mostraLinha) {
-            linhas[i].style.display = '';
-        } else {
-            linhas[i].style.display = 'none';
-        }
+    if (cols[indiceColuna]) {
+      var valorColuna =
+        cols[indiceColuna].textContent || cols[indiceColuna].innerText;
+      if (valorColuna.toLowerCase().indexOf(filtro) > -1) {
+        mostraLinha = true;
+      }
     }
+
+    if (mostraLinha) {
+      linhas[i].style.display = "";
+    } else {
+      linhas[i].style.display = "none";
+    }
+  }
 }
 
 function getStatusClass(status) {
-    switch (status) {
-        case 'Finalizado':
-            return 'status-finalizado';
-        case 'Em andamento':
-            return 'status-em-andamento';
-        case 'Não iniciado':
-            return 'status-nao-iniciado';
-        default:
-            return '';
-    }
+  switch (status) {
+    case "Finalizado":
+      return "status-finalizado";
+    case "Em andamento":
+      return "status-em-andamento";
+    case "Não iniciado":
+      return "status-nao-iniciado";
+    default:
+      return "";
+  }
 }
 
 function calcularStatusAnima(statusCena, statusRender, statusPos) {
-    if (statusCena === 'Finalizado' && statusRender === 'Finalizado' && statusPos === 'Finalizado') {
-        return 'Finalizado';
-    }
-    if (statusCena === 'Em andamento' || statusRender === 'Em andamento' || statusPos === 'Em andamento') {
-        return 'Em andamento';
-    }
-    if (statusCena === 'Não iniciado' && statusRender === 'Não iniciado' && statusPos === 'Não iniciado') {
-        return 'Não iniciado';
-    }
-    return 'Em andamento';
+  if (
+    statusCena === "Finalizado" &&
+    statusRender === "Finalizado" &&
+    statusPos === "Finalizado"
+  ) {
+    return "Finalizado";
+  }
+  if (
+    statusCena === "Em andamento" ||
+    statusRender === "Em andamento" ||
+    statusPos === "Em andamento"
+  ) {
+    return "Em andamento";
+  }
+  if (
+    statusCena === "Não iniciado" &&
+    statusRender === "Não iniciado" &&
+    statusPos === "Não iniciado"
+  ) {
+    return "Não iniciado";
+  }
+  return "Em andamento";
 }

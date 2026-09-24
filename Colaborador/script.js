@@ -458,7 +458,7 @@ $("#form").on("submit", function (e) {
   });
 });
 
-$("#btnExcluir").on("click", function () {
+$("#btnExcluir").on("click", async function () {
   const idusuario = $("#idusuario").val();
   const idcolaborador = $("#idcolaborador").val();
 
@@ -467,7 +467,14 @@ $("#btnExcluir").on("click", function () {
     return;
   }
 
-  if (!confirm("Tem certeza que deseja excluir este colaborador?")) {
+  if (
+    !(
+      await FlowAlert.confirm({
+        title: "Excluir colaborador?",
+        confirmText: "Excluir",
+      })
+    ).isConfirmed
+  ) {
     return;
   }
 

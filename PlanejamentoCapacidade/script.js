@@ -459,9 +459,14 @@
   }
   async function applySimulation(scenario) {
     if (
-      !window.confirm(
-        "Aplicar este cenário criará novas versões dos planejamentos afetados. A baseline será preservada. Deseja continuar?",
-      )
+      !(
+        await window.FlowAlert.confirm({
+          title: "Aplicar cenário?",
+          message:
+            "Serão criadas novas versões dos planejamentos afetados. A baseline será preservada.",
+          confirmText: "Aplicar cenário",
+        })
+      ).isConfirmed
     )
       return;
     const response = await fetch(document.body.dataset.applySimulationUrl, {

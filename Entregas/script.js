@@ -967,14 +967,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function promptReviewBatchActionPayload(action, batch = null) {
     if (action === "notify") {
-      const result = await Swal.fire({
+      const result = await FlowAlert.input({
         title: "Registrar cobrança?",
-        input: "text",
-        inputLabel: "Observação opcional",
-        inputPlaceholder: "Ex.: cliente acionado por WhatsApp",
-        showCancelButton: true,
-        confirmButtonText: "Cobrar",
-        cancelButtonText: "Cancelar",
+        field: {
+          type: "text",
+          label: "Observação opcional",
+          placeholder: "Ex.: cliente acionado por WhatsApp",
+        },
+        confirmText: "Cobrar",
+        cancelText: "Cancelar",
       });
 
       if (!result.isConfirmed) return null;
@@ -985,240 +986,194 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (action === "snooze") {
-      const result = await Swal.fire({
+      const result = await FlowAlert.form({
         title: "Pausar cobrança",
-        html: `
-          <input id="swal-review-snooze-until" class="swal2-input" type="datetime-local" value="${getDefaultSnoozeDateTimeLocal()}">
-          <textarea id="swal-review-snooze-note" class="swal2-textarea" placeholder="Observação opcional"></textarea>
-        `,
-        showCancelButton: true,
-        confirmButtonText: "Salvar snooze",
-        cancelButtonText: "Cancelar",
-        focusConfirm: false,
-        preConfirm: () => {
-          const snoozeUntil = document.getElementById(
-            "swal-review-snooze-until",
-          )?.value;
-          const note =
-            document.getElementById("swal-review-snooze-note")?.value || "";
-
-          if (!snoozeUntil) {
-            Swal.showValidationMessage(
-              "Defina até quando a cobrança ficará pausada.",
-            );
-            return false;
-          }
-
-          return {
-            action,
-            snooze_until: snoozeUntil,
-            note: note.trim(),
-          };
-        },
+        fields: [
+          {
+            name: "snooze_until",
+            type: "datetime-local",
+            label: "Pausar até",
+            value: getDefaultSnoozeDateTimeLocal(),
+            required: true,
+          },
+          {
+            name: "note",
+            type: "textarea",
+            placeholder: "Observação opcional",
+          },
+        ],
+        confirmText: "Salvar snooze",
+        cancelText: "Cancelar",
+        validate: (values) =>
+          !values.snooze_until
+            ? "Defina até quando a cobrança ficará pausada."
+            : "",
       });
 
-      return result.isConfirmed ? result.value : null;
+      return result.isConfirmed
+        ? {
+            action,
+            snooze_until: result.value.snooze_until,
+            note: result.value.note.trim(),
+          }
+        : null;
     }
 
     if (action === "resolve") {
       if (isP00ReviewBatch(batch)) {
-        const result = await Swal.fire({
+        const result = await FlowAlert.form({
           title: "Resolver retorno P00",
-          customClass: {
-            popup: "review-return-modal",
-            htmlContainer: "review-return-html",
-          },
-          html: `
-            <select id="swal-review-p00-response" class="swal2-input">
-              <option value="">Selecione a resposta do cliente</option>
-              <option value="approved">Aprovada</option>
-              <option value="change_requested">Alteração</option>
-            </select>
-            <label class="review-return-label" for="swal-review-p00-resolved-date">Data do retorno</label>
-            <input id="swal-review-p00-resolved-date" class="swal2-input review-return-date" type="date" value="${getTodayLocalDate()}">
-            <select id="swal-review-p00-origin" class="swal2-input" style="display:none;">
-              <option value="">Selecione a origem da alteração</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Drive">Drive</option>
-              <option value="Arquivo">Arquivo</option>
-              <option value="Reunião">Reunião</option>
-              <option value="Outro">Outro</option>
-            </select>
-            <input id="swal-review-p00-origin-detail" class="swal2-input" type="text" placeholder="Detalhe da origem" style="display:none;">
-            <textarea id="swal-review-p00-note" class="swal2-textarea" placeholder="Observação opcional"></textarea>
-          `,
-          showCancelButton: true,
-          confirmButtonText: "Resolver",
-          cancelButtonText: "Cancelar",
-          focusConfirm: false,
-          didOpen: () => {
-            const responseEl = document.getElementById(
-              "swal-review-p00-response",
-            );
-            const originEl = document.getElementById("swal-review-p00-origin");
-            const originDetailEl = document.getElementById(
-              "swal-review-p00-origin-detail",
-            );
-
-            const syncP00ResolveFields = () => {
-              const needsOrigin = responseEl?.value === "change_requested";
-              const needsOriginDetail =
-                needsOrigin && originEl?.value === "Outro";
-
-              if (originEl) {
-                originEl.style.display = needsOrigin ? "block" : "none";
-                if (!needsOrigin) {
-                  originEl.value = "";
-                }
-              }
-
-              if (originDetailEl) {
-                originDetailEl.style.display = needsOriginDetail
-                  ? "block"
-                  : "none";
-                if (!needsOriginDetail) {
-                  originDetailEl.value = "";
-                }
-              }
-            };
-
-            responseEl?.addEventListener("change", syncP00ResolveFields);
-            originEl?.addEventListener("change", syncP00ResolveFields);
-            syncP00ResolveFields();
-          },
-          preConfirm: () => {
-            const customerResponse =
-              document.getElementById("swal-review-p00-response")?.value || "";
-            const changeOrigin =
-              document.getElementById("swal-review-p00-origin")?.value || "";
-            const changeOriginDetail =
-              document.getElementById("swal-review-p00-origin-detail")?.value ||
-              "";
-            const resolvedDate =
-              document.getElementById("swal-review-p00-resolved-date")?.value ||
-              "";
-            const note =
-              document.getElementById("swal-review-p00-note")?.value || "";
-
-            if (!customerResponse) {
-              Swal.showValidationMessage("Selecione a resposta do cliente.");
-              return false;
-            }
-
-            if (!resolvedDate) {
-              Swal.showValidationMessage("Informe a data do retorno.");
-              return false;
-            }
-
-            if (customerResponse === "change_requested" && !changeOrigin) {
-              Swal.showValidationMessage("Selecione a origem da alteração.");
-              return false;
-            }
-
+          message:
+            "Informe a resposta do cliente, a data de retorno e, se houver alteração, a origem.",
+          fields: [
+            {
+              name: "customer_response",
+              type: "select",
+              label: "Resposta do cliente",
+              placeholder: "Selecione a resposta do cliente",
+              options: { approved: "Aprovada", change_requested: "Alteração" },
+              required: true,
+            },
+            {
+              name: "resolved_date",
+              type: "date",
+              label: "Data do retorno",
+              value: getTodayLocalDate(),
+              required: true,
+            },
+            {
+              name: "change_origin",
+              type: "select",
+              label: "Origem da alteração",
+              placeholder: "Selecione a origem da alteração",
+              options: {
+                WhatsApp: "WhatsApp",
+                Drive: "Drive",
+                Arquivo: "Arquivo",
+                Reunião: "Reunião",
+                Outro: "Outro",
+              },
+              dependsOn: {
+                name: "customer_response",
+                value: "change_requested",
+              },
+            },
+            {
+              name: "change_origin_detail",
+              type: "text",
+              placeholder: "Detalhe da origem",
+              visibleWhen: (values) =>
+                values.customer_response === "change_requested" &&
+                values.change_origin === "Outro",
+            },
+            {
+              name: "note",
+              type: "textarea",
+              placeholder: "Observação opcional",
+            },
+          ],
+          confirmText: "Resolver",
+          cancelText: "Cancelar",
+          validate: (values) => {
+            if (!values.customer_response)
+              return "Selecione a resposta do cliente.";
+            if (!values.resolved_date) return "Informe a data do retorno.";
             if (
-              customerResponse === "change_requested" &&
-              changeOrigin === "Outro" &&
-              !changeOriginDetail.trim()
-            ) {
-              Swal.showValidationMessage(
-                "Detalhe a origem quando selecionar Outro.",
-              );
-              return false;
-            }
-
-            return {
-              action,
-              customer_response: customerResponse,
-              change_origin:
-                customerResponse === "change_requested" ? changeOrigin : "",
-              change_origin_detail:
-                customerResponse === "change_requested"
-                  ? changeOriginDetail.trim()
-                  : "",
-              resolved_date: resolvedDate,
-              note: note.trim(),
-            };
+              values.customer_response === "change_requested" &&
+              !values.change_origin
+            )
+              return "Selecione a origem da alteração.";
+            if (
+              values.customer_response === "change_requested" &&
+              values.change_origin === "Outro" &&
+              !values.change_origin_detail.trim()
+            )
+              return "Detalhe a origem quando selecionar Outro.";
+            return "";
           },
         });
 
-        return result.isConfirmed ? result.value : null;
+        return result.isConfirmed
+          ? {
+              action,
+              customer_response: result.value.customer_response,
+              change_origin:
+                result.value.customer_response === "change_requested"
+                  ? result.value.change_origin
+                  : "",
+              change_origin_detail:
+                result.value.customer_response === "change_requested"
+                  ? result.value.change_origin_detail.trim()
+                  : "",
+              resolved_date: result.value.resolved_date,
+              note: result.value.note.trim(),
+            }
+          : null;
       }
 
-      const result = await Swal.fire({
+      const result = await FlowAlert.form({
         title: "Resolver retorno do cliente",
-        customClass: {
-          popup: "review-return-modal",
-          htmlContainer: "review-return-html",
-        },
-        html: `
-          <select id="swal-review-response" class="swal2-input">
-            <option value="">Selecione a resposta do cliente</option>
-            <option value="approved">Cliente aprovou / sem alteracao</option>
-            <option value="change_requested">Cliente pediu alteracao - enviar para Pre-Alteracao</option>
-          </select>
-          <label class="review-return-label" for="swal-review-resolved-date">Data do retorno</label>
-          <input id="swal-review-resolved-date" class="swal2-input review-return-date" type="date" value="${getTodayLocalDate()}">
-          <textarea id="swal-review-resolve-note" class="swal2-textarea" placeholder="Observacao opcional para o lote"></textarea>
-        `,
-        showCancelButton: true,
-        confirmButtonText: "Resolver",
-        cancelButtonText: "Cancelar",
-        focusConfirm: false,
-        preConfirm: () => {
-          const customerResponse =
-            document.getElementById("swal-review-response")?.value || "";
-          const resolvedDate =
-            document.getElementById("swal-review-resolved-date")?.value || "";
-          const note =
-            document.getElementById("swal-review-resolve-note")?.value || "";
-
-          if (!customerResponse) {
-            Swal.showValidationMessage("Selecione a resposta do cliente.");
-            return false;
-          }
-
-          if (!resolvedDate) {
-            Swal.showValidationMessage("Informe a data do retorno.");
-            return false;
-          }
-
-          return {
-            action,
-            customer_response: customerResponse,
-            resolved_date: resolvedDate,
-            note: note.trim(),
-          };
-        },
+        fields: [
+          {
+            name: "customer_response",
+            type: "select",
+            label: "Resposta do cliente",
+            placeholder: "Selecione a resposta do cliente",
+            options: {
+              approved: "Cliente aprovou / sem alteração",
+              change_requested:
+                "Cliente pediu alteração - enviar para Pré-Alteração",
+            },
+            required: true,
+          },
+          {
+            name: "resolved_date",
+            type: "date",
+            label: "Data do retorno",
+            value: getTodayLocalDate(),
+            required: true,
+          },
+          {
+            name: "note",
+            type: "textarea",
+            placeholder: "Observação opcional para o lote",
+          },
+        ],
+        confirmText: "Resolver",
+        cancelText: "Cancelar",
+        validate: (values) =>
+          !values.customer_response
+            ? "Selecione a resposta do cliente."
+            : !values.resolved_date
+              ? "Informe a data do retorno."
+              : "",
       });
 
-      return result.isConfirmed ? result.value : null;
+      return result.isConfirmed
+        ? { action, ...result.value, note: result.value.note.trim() }
+        : null;
     }
 
     if (action === "ignore") {
-      const result = await Swal.fire({
+      const result = await FlowAlert.input({
         title: "Ignorar batch",
-        input: "text",
-        inputLabel: "Motivo",
-        inputPlaceholder: "Ex.: fora de escopo / aguardando outra frente",
-        showCancelButton: true,
-        confirmButtonText: "Ignorar",
-        cancelButtonText: "Cancelar",
-        preConfirm: (value) => {
-          if (!String(value || "").trim()) {
-            Swal.showValidationMessage(
-              "Informe o motivo para ignorar o batch.",
-            );
-            return false;
-          }
-
-          return {
-            action,
-            reason: String(value).trim(),
-          };
+        field: {
+          type: "text",
+          label: "Motivo",
+          placeholder: "Ex.: fora de escopo / aguardando outra frente",
+          required: true,
         },
+        confirmText: "Ignorar",
+        cancelText: "Cancelar",
+        validate: (value) =>
+          !String(value || "").trim()
+            ? "Informe o motivo para ignorar o batch."
+            : "",
       });
 
-      return result.isConfirmed ? result.value : null;
+      return result.isConfirmed
+        ? { action, reason: String(result.value).trim() }
+        : null;
     }
 
     return null;
@@ -2029,10 +1984,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const nomeImagem = nomeLabel
       ? nomeLabel.textContent.trim()
       : "Item " + itemId;
-    const confirmar = confirm(
-      `Remover a imagem "${nomeImagem}" desta entrega?`,
-    );
-    if (!confirmar) return;
+    const confirmar = await FlowAlert.confirm({
+      title: "Remover imagem da entrega?",
+      message: `Remover a imagem "${nomeImagem}" desta entrega?`,
+      confirmText: "Remover",
+    });
+    if (!confirmar.isConfirmed) return;
     try {
       const payload = { entrega_id: entregaAtualId, item_id: itemId };
       const res = await fetch(BASE + "remove_imagem_entrega.php", {
@@ -3933,17 +3890,12 @@ document
       if (!card) return;
       const entregaId = card.dataset.id;
       const currentDate = card.dataset.dataPrevista || "";
-      const { value, isConfirmed } = await Swal.fire({
+      const { value, isConfirmed } = await FlowAlert.input({
         title: "Mudar data prevista",
-        input: "date",
-        inputValue: currentDate,
-        showCancelButton: true,
-        confirmButtonText: "Salvar",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#4f80e1",
-        inputValidator: (v) => {
-          if (!v) return "Selecione uma data.";
-        },
+        field: { type: "date", value: currentDate, required: true },
+        confirmText: "Salvar",
+        cancelText: "Cancelar",
+        validate: (v) => (!v ? "Selecione uma data." : ""),
       });
       if (!isConfirmed || !value) return;
       await _callUpdate(
@@ -3977,18 +3929,18 @@ document
         statuses.forEach((s) => {
           inputOptions[s.id] = s.nome;
         });
-        const { value, isConfirmed } = await Swal.fire({
+        const { value, isConfirmed } = await FlowAlert.input({
           title: "Mudar status",
-          input: "select",
-          inputOptions,
-          inputValue: currentStId,
-          showCancelButton: true,
-          confirmButtonText: "Salvar",
-          cancelButtonText: "Cancelar",
-          confirmButtonColor: "#4f80e1",
-          inputValidator: (v) => {
-            if (!v) return "Selecione um status.";
+          field: {
+            type: "select",
+            options: inputOptions,
+            value: currentStId,
+            placeholder: "Selecione um status",
+            required: true,
           },
+          confirmText: "Salvar",
+          cancelText: "Cancelar",
+          validate: (v) => (!v ? "Selecione um status." : ""),
         });
         if (!isConfirmed || !value) return;
         await _callUpdate(
@@ -4006,21 +3958,20 @@ document
 
       const entregaId = card.dataset.id;
       const currentValue = card.dataset.observacoes || "";
-      const { value, isConfirmed } = await Swal.fire({
+      const { value, isConfirmed } = await FlowAlert.input({
         title: currentValue ? "Editar observação" : "Adicionar observação",
-        input: "textarea",
-        inputValue: currentValue,
-        inputPlaceholder: "Digite uma observação para esta entrega...",
-        inputAttributes: {
-          maxlength: "2000",
-        },
-        showCancelButton: true,
-        confirmButtonText: "Salvar",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#4f80e1",
-        footer: currentValue
+        message: currentValue
           ? "Deixe o campo vazio para remover a observação."
           : "",
+        field: {
+          type: "textarea",
+          value: currentValue,
+          placeholder: "Digite uma observação para esta entrega...",
+          maxlength: 2000,
+          rows: 4,
+        },
+        confirmText: "Salvar",
+        cancelText: "Cancelar",
       });
       if (!isConfirmed) return;
 
@@ -4101,24 +4052,18 @@ document
       const titleCard =
         card.querySelector(".card-header h4")?.textContent ||
         `Entrega ${entregaId}`;
-      const { isConfirmed, value: motivo } = await Swal.fire({
+      const { isConfirmed, value: motivo } = await FlowAlert.input({
         title: "Colocar em HOLD",
-        html: `<p style="margin-bottom:8px;font-size:13px;color:var(--text-muted)">"${titleCard}"</p>
-               <textarea id="swal-motivo-hold" class="swal2-textarea" placeholder="Motivo obrigatório..." style="min-height:80px"></textarea>`,
-        showCancelButton: true,
-        confirmButtonText: "Confirmar HOLD",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#9e9e9e",
-        preConfirm: () => {
-          const val = document
-            .getElementById("swal-motivo-hold")
-            ?.value?.trim();
-          if (!val) {
-            Swal.showValidationMessage("O motivo é obrigatório.");
-            return false;
-          }
-          return val;
+        message: titleCard,
+        field: {
+          type: "textarea",
+          placeholder: "Motivo obrigatório...",
+          required: true,
+          rows: 4,
         },
+        confirmText: "Confirmar HOLD",
+        cancelText: "Cancelar",
+        validate: (value) => (!value.trim() ? "O motivo é obrigatório." : ""),
       });
       if (!isConfirmed || !motivo) return;
       try {

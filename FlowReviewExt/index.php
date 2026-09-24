@@ -57,6 +57,7 @@ if (isset($_COOKIE['flow_auth']) && !empty($_COOKIE['flow_auth'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="<?php echo asset_url('../assets/css/components/flow-alert.css'); ?>&flowalert=<?php echo filemtime(__DIR__ . '/../assets/css/components/flow-alert.css'); ?>">
     <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 
 
@@ -251,6 +252,7 @@ if (isset($_COOKIE['flow_auth']) && !empty($_COOKIE['flow_auth'])) {
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="<?php echo asset_url('../assets/js/components/flow-alert.js'); ?>&flowalert=<?php echo filemtime(__DIR__ . '/../assets/js/components/flow-alert.js'); ?>"></script>
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
 

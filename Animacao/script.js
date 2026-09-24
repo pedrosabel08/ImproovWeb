@@ -25,7 +25,7 @@ function limparCampos() {
 function limparCamposImagem() {
     document.getElementById('opcao_obra2').selectedIndex = 0; // Resetar select
     document.getElementById('imagem_nome').value = '';
-}
+}F
 
 
 add_imagem.onclick = function () {
@@ -120,7 +120,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(error => console.error('Erro:', error));
     });
 
-    document.getElementById('deleteButton').addEventListener('click', function () {
+    document.getElementById('deleteButton').addEventListener('click', async function () {
         const idAnima = document.getElementById('idanimacao').value;
 
         if (!idAnima) {
@@ -135,7 +135,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        if (confirm('Tem certeza que deseja deletar os itens?')) {
+        if ((await FlowAlert.confirm({ title: "Excluir itens?", message: 'Tem certeza que deseja deletar os itens?', confirmText: "Excluir" })).isConfirmed) {
             fetch('delete.php', {
                 method: 'POST',
                 headers: {

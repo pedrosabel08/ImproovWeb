@@ -145,6 +145,7 @@ if ($__isProd) {
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/upload-badge.css'); ?>" />
+    <link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/components/flow-alert.css'); ?>&flowalert=<?php echo filemtime(__DIR__ . '/assets/css/components/flow-alert.css'); ?>" />
 
     <title>Sidebar</title>
     <!-- Sidebar badge styles moved to css/styleSidebar.css -->
@@ -504,6 +505,7 @@ if ($__isProd) {
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>&fbws=<?php echo filemtime(__DIR__ . '/assets/js/upload-ws.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/flow-block-mentions.js'); ?>&fbm=<?php echo filemtime(__DIR__ . '/assets/js/flow-block-mentions.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-badge.js'); ?>"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/components/flow-alert.js'); ?>&flowalert=<?php echo filemtime(__DIR__ . '/assets/js/components/flow-alert.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/sidebar-counts.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/flow-shell.js'); ?>&sidebar=<?php echo filemtime(__DIR__ . '/assets/js/flow-shell.js'); ?>"></script>
 

@@ -172,7 +172,7 @@ document.addEventListener(
       '<div class="financial-metrics"><div class="summary-metric"><span class="summary-label">Total da competência</span><strong id="totalValor">R$ 0,00</strong><small><span id="total-itens-resumo">0</span> itens</small></div><div class="summary-metric pending"><span class="summary-label">Pendente</span><strong id="totalValorNaoPago">R$ 0,00</strong><small><span id="total-imagens-nao-pagas">0</span> itens</small></div><div class="summary-metric paid"><span class="summary-label">Pago</span><strong id="totalValorPago">R$ 0,00</strong><small><span id="total-imagens-pagas">0</span> itens</small></div></div>';
     const documentArea = document.createElement("div");
     documentArea.className = "adendo-summary";
-    documentArea.innerHTML = 
+    documentArea.innerHTML =
       '<i class="fa-regular fa-file-lines adendo-summary-icon"></i><div class="adendo-copy"></div><div class="adendo-actions"></div>';
     const copy = documentArea.querySelector(".adendo-copy");
     if (statusWidget) {
@@ -954,7 +954,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (checkbox.checked) {
               row.classList.add("checked");
             }
-
           });
 
           contarLinhasTabela();
@@ -1693,20 +1692,24 @@ document
       return;
     }
 
-    const { value: valorFixo, isConfirmed: vfConfirmed } = await Swal.fire({
-      title: "Valor fixo",
-      input: "text",
-      inputLabel: "Digite o valor fixo (somente número)",
-      inputPlaceholder: "Ex: 1500",
-      showCancelButton: true,
-      confirmButtonText: "Continuar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#4f80e1",
-      inputValidator: (value) => {
-        if (!value || isNaN(value))
-          return "Por favor, insira um valor numérico válido.";
-      },
-    });
+    const { value: valorFixo, isConfirmed: vfConfirmed } =
+      await FlowAlert.input({
+        title: "Valor fixo",
+        field: {
+          type: "number",
+          label: "Digite o valor fixo (somente número)",
+          placeholder: "Ex: 1500",
+          min: "0",
+          required: true,
+        },
+        confirmText: "Continuar",
+        cancelText: "Cancelar",
+        validate: (value) => {
+          if (!value || isNaN(value))
+            return "Por favor, insira um valor numérico válido.";
+          return "";
+        },
+      });
     if (!vfConfirmed || !valorFixo) return;
 
     // Bônus/extras opcionais
@@ -1722,33 +1725,39 @@ document
     });
     let addBonus = querBonus;
     while (addBonus) {
-      const { value: categoria, isConfirmed: catConfirmed } = await Swal.fire({
-        title: "Categoria",
-        input: "text",
-        inputLabel: "Categoria do bônus/extra",
-        inputPlaceholder: "Ex: Premiação",
-        showCancelButton: true,
-        confirmButtonText: "Continuar",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#4f80e1",
-        inputValidator: (value) => {
-          if (!value || !value.trim()) return "Categoria inválida.";
-        },
-      });
+      const { value: categoria, isConfirmed: catConfirmed } =
+        await FlowAlert.input({
+          title: "Categoria",
+          field: {
+            type: "text",
+            label: "Categoria do bônus/extra",
+            placeholder: "Ex: Premiação",
+            required: true,
+          },
+          confirmText: "Continuar",
+          cancelText: "Cancelar",
+          validate: (value) => {
+            if (!value || !value.trim()) return "Categoria inválida.";
+            return "";
+          },
+        });
       if (catConfirmed && categoria && categoria.trim()) {
         const { value: valorExtraRaw, isConfirmed: veConfirmed } =
-          await Swal.fire({
+          await FlowAlert.input({
             title: "Valor do bônus/extra",
-            input: "text",
-            inputLabel: "Valor (somente número)",
-            inputPlaceholder: "Ex: 200",
-            showCancelButton: true,
-            confirmButtonText: "Adicionar",
-            cancelButtonText: "Cancelar",
-            confirmButtonColor: "#4f80e1",
-            inputValidator: (value) => {
+            field: {
+              type: "number",
+              label: "Valor (somente número)",
+              placeholder: "Ex: 200",
+              min: "0",
+              required: true,
+            },
+            confirmText: "Adicionar",
+            cancelText: "Cancelar",
+            validate: (value) => {
               if (!value || isNaN(parseFloat(value.replace(",", "."))))
                 return "Valor inválido.";
+              return "";
             },
           });
         if (veConfirmed && valorExtraRaw) {
@@ -2706,10 +2715,11 @@ async function abrirDetalhesAdendoGeral(adendoId) {
   // We re-fetch by adendo id directly would require a different endpoint.
   // Instead, show what we have from the already-loaded list if possible.
   // For simplicity, query the single endpoint by searching the item in the list.
-  Swal.fire({
+  const historyProgress = FlowAlert.progress({
     title: "Carregando histórico...",
-    didOpen: () => Swal.showLoading(),
-    showConfirmButton: false,
+    message: "Consultando histórico do adendo.",
+    progress: null,
+    dismissible: false,
   });
   try {
     const res = await fetch(
@@ -2718,7 +2728,7 @@ async function abrirDetalhesAdendoGeral(adendoId) {
     const json = await res.json();
     const adendo = json.adendo;
     const log = json.log || [];
-    Swal.close();
+    historyProgress.close();
     await Swal.fire({
       title: adendo ? `Adendo — ${escHtml(adendo.competencia)}` : "Histórico",
       html: `<div style="text-align:left;">${buildPopoverBody(adendo, log)}</div>`,
@@ -2727,12 +2737,12 @@ async function abrirDetalhesAdendoGeral(adendoId) {
       width: 480,
     });
   } catch (e) {
-    Swal.fire({
-      icon: "error",
+    historyProgress.close();
+    FlowAlert.error({
+      mode: "modal",
       title: "Erro",
-      text: "Não foi possível carregar o histórico.",
+      message: "Não foi possível carregar o histórico.",
       timer: 3000,
-      timerProgressBar: true,
     });
   }
 }

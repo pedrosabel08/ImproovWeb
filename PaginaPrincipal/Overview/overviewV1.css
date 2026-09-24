@@ -3025,6 +3025,17 @@ body.overview-page a:focus-visible {
 .area-progress .task-card--compact .task-card__meta time.is-prazo_proximo {
   color: var(--ov-amber);
 }
+.area-progress .task-card--compact .task-card__meta--adjustment .task-card__adjustment-age {
+  color: var(--ov-blue);
+  font-weight: 750;
+}
+.area-progress .task-card--compact .task-card__meta--adjustment .task-card__commitment {
+  grid-column: 1 / -1;
+  color: var(--ov-faint);
+  font-size: var(--ov-font-micro);
+  font-weight: 550;
+  line-height: 1.3;
+}
 .task-card__open {
   display: grid;
   width: 40px;

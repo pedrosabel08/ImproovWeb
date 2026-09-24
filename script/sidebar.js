@@ -347,7 +347,12 @@ function initImproovSidebar() {
     });
     sidebar.classList.add("is-open");
     panel.setAttribute("aria-hidden", "false");
-    panelTitle.textContent = button.textContent.trim();
+    var label = Array.prototype.find.call(button.children, function (child) {
+      return child.tagName === "SPAN" && !child.classList.contains("sidebar-rail-badge");
+    });
+    panelTitle.textContent = label
+      ? label.textContent.trim()
+      : button.getAttribute("aria-label") || button.textContent.trim();
     clearProjectSearch();
     if (name === "obras") renderQuickProjects();
     if (name === "busca" && globalSearch) globalSearch.focus();

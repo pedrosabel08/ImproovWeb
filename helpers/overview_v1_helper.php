@@ -97,18 +97,32 @@ function flow_overview_v1_timeline(array $original): array
 
 function flow_overview_v1_item_tarefa(array $tarefa, array $original = []): array
 {
-    // O card Em andamento usa o compromisso registrado em funcao_imagem,
-    // sem substituir a fonte usada pelas regras operacionais do Kanban.
+    // Mantém o compromisso de funcao_imagem separado do tempo de status
+    // oficial que o Kanban calcula para ciclos de Ajuste.
     $prazoFuncao = flow_tarefa_planejamento_data_valida($original['prazo'] ?? $tarefa['prazo'] ?? null);
+    $status = (string) ($tarefa['status'] ?? '');
+    $statusNormalizado = function_exists('mb_strtolower')
+        ? mb_strtolower(trim($status), 'UTF-8')
+        : strtolower(trim($status));
+    $emAjuste = $statusNormalizado === 'ajuste';
     $statusTemporal = flow_tarefa_planejamento_status_temporal(
         $prazoFuncao,
-        (string) ($tarefa['status'] ?? ''),
+        $status,
         null,
         !empty($tarefa['bloqueada'])
     );
+    // Ajuste exibe a idade do status atual, como no Kanban. O prazo legado
+    // continua no payload para que a data do compromisso original não se perca.
+    if ($emAjuste) {
+        $statusTemporal = ['codigo' => 'SEM_PRAZO', 'rotulo' => '', 'dias' => null];
+    }
     $tarefaParaCard = $tarefa;
     $tarefaParaCard['status_temporal'] = (string) ($statusTemporal['codigo'] ?? 'SEM_PRAZO');
     $excecao = flow_overview_v1_excecao_tarefa($tarefaParaCard, $original);
+    $ciclo = is_array($original['tempo_ciclo'] ?? null) ? $original['tempo_ciclo'] : [];
+    $minutosAjuste = isset($ciclo['minutos'])
+        ? max(0, (int) $ciclo['minutos'])
+        : (isset($original['tempo_calculado']) ? max(0, (int) $original['tempo_calculado']) : null);
     return [
         'task_id' => (int) ($tarefa['id'] ?? 0),
         'image_id' => (int) ($tarefa['imagem_id'] ?? 0),
@@ -125,6 +139,10 @@ function flow_overview_v1_item_tarefa(array $tarefa, array $original = []): arra
             'state' => strtolower((string) ($statusTemporal['codigo'] ?? 'SEM_PRAZO')),
             'source' => $prazoFuncao ? 'funcao_imagem' : 'indisponivel',
         ],
+        'adjustment_time' => $emAjuste ? [
+            'minutes' => $minutosAjuste,
+            'tooltip' => (string) ($original['tempo_tooltip'] ?? ''),
+        ] : null,
         'exception' => $excecao,
         'timeline' => flow_overview_v1_timeline($original),
         'action' => ['type' => 'open_task'],

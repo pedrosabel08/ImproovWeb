@@ -225,6 +225,22 @@
     return `<div class="task-timeline task-timeline--compact" aria-label="Contexto da etapa atual">${stages.map((stage) => `<span class="is-${stage.role}" aria-label="${labels[stage.role]}: ${esc(stage.label)}"><i aria-hidden="true"></i><strong>${esc(stage.label)}</strong><small>${labels[stage.role]}</small></span>`).join("")}</div>`;
   }
 
+  function formatAdjustmentDuration(minutes) {
+    const total = Math.max(0, Math.floor(num(minutes)));
+    if (total === 0) return "menos de 1 min";
+    const days = Math.floor(total / 1440);
+    const hours = Math.floor((total % 1440) / 60);
+    const mins = total % 60;
+    return [days ? `${days}d` : "", hours ? `${hours}h` : "", mins ? `${mins}min` : ""]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  function formatDeadlineDate(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) return "Prazo não definido";
+    return `Prazo: ${new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR")}`;
+  }
+
   function taskOperationalState(task) {
     const status = String(task.status || "").trim();
     const statusClass = unifiedStatusClass(status, "etapa");
@@ -255,7 +271,12 @@
       : `<span class="task-thumb__empty"><i class="ri-image-line"></i></span>`;
     const operational = taskOperationalState(task);
     const substatusClass = unifiedStatusClass(task.substatus, "substatus");
-    return `<article class="task-card task-card--compact"><div class="task-thumb">${thumb}</div><div class="task-card__body"><span class="task-card__project">${esc(task.project || "Projeto")}</span><h3 title="${esc(task.image_name || "Tarefa")}">${esc(taskDisplayName(task))}</h3><div class="task-card__function"><span><i class="ri-shape-line"></i>${esc(task.function_name || "Etapa")}</span>${task.substatus ? `<em class="${esc(substatusClass)}">${esc(task.substatus)}</em>` : ""}</div>${timeline(task)}</div><div class="task-card__meta"><span class="task-operational ${esc(operational.statusClass)}"><i class="${esc(operational.icon)}"></i>${esc(operational.label)}</span><time class="is-${esc(task.deadline?.state || "sem_prazo")}"><i class="ri-calendar-line"></i>${esc(task.deadline?.label || "Sem prazo")}</time></div><button type="button" class="task-card__open" data-action="open_task" data-task-id="${num(task.task_id)}" aria-label="Abrir tarefa: ${esc(taskDisplayName(task))}"><span>Abrir</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></article>`;
+    const isAdjustment = /ajuste/i.test(String(task.status || ""));
+    const adjustmentTime = task.adjustment_time;
+    const meta = isAdjustment
+      ? `<div class="task-card__meta task-card__meta--adjustment"><span class="task-operational ${esc(operational.statusClass)}"><i class="${esc(operational.icon)}"></i>${esc(operational.label)}</span><time class="task-card__adjustment-age"${adjustmentTime?.tooltip ? ` title="${esc(adjustmentTime.tooltip)}"` : ""}><i class="ri-time-line"></i>${adjustmentTime?.minutes == null ? "Tempo em ajuste indisponível" : `Em ajuste há ${esc(formatAdjustmentDuration(adjustmentTime.minutes))}`}</time><small class="task-card__commitment">${esc(formatDeadlineDate(task.deadline?.date))}</small></div>`
+      : `<div class="task-card__meta"><span class="task-operational ${esc(operational.statusClass)}"><i class="${esc(operational.icon)}"></i>${esc(operational.label)}</span><time class="is-${esc(task.deadline?.state || "sem_prazo")}"><i class="ri-calendar-line"></i>${esc(task.deadline?.label || "Sem prazo")}</time></div>`;
+    return `<article class="task-card task-card--compact"><div class="task-thumb">${thumb}</div><div class="task-card__body"><span class="task-card__project">${esc(task.project || "Projeto")}</span><h3 title="${esc(task.image_name || "Tarefa")}">${esc(taskDisplayName(task))}</h3><div class="task-card__function"><span><i class="ri-shape-line"></i>${esc(task.function_name || "Etapa")}</span>${task.substatus ? `<em class="${esc(substatusClass)}">${esc(task.substatus)}</em>` : ""}</div>${timeline(task)}</div>${meta}<button type="button" class="task-card__open" data-action="open_task" data-task-id="${num(task.task_id)}" aria-label="Abrir tarefa: ${esc(taskDisplayName(task))}"><span>Abrir</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></article>`;
   }
 
   function nextList(tasks) {

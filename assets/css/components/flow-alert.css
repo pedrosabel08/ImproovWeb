@@ -164,7 +164,7 @@
 .flow-alert__title {
   margin: 1px 0 0;
   color: var(--flow-alert-title);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -172,7 +172,7 @@
 .flow-alert__message {
   margin: 5px 0 0;
   color: var(--flow-alert-text);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -222,7 +222,7 @@
 .flow-alert__validation {
   margin: 0;
   color: var(--flow-alert-error);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .flow-alert__radio-list {
@@ -323,7 +323,7 @@
   border-radius: 8px;
   color: inherit;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
   cursor: pointer;

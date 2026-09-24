@@ -1,0 +1,842 @@
+[
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Caderno",
+    "Quantidade": 48
+  },
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 55
+  },
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Modelagem",
+    "Quantidade": 53
+  },
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Composição",
+    "Quantidade": 31
+  },
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 34
+  },
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 1
+  },
+  {
+    "Ano": 2025,
+    "Mes": 1,
+    "Funcao": "Pós-produção",
+    "Quantidade": 31
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Caderno",
+    "Quantidade": 18
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 40
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Modelagem",
+    "Quantidade": 35
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Composição",
+    "Quantidade": 71
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 70
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 0
+  },
+  {
+    "Ano": 2025,
+    "Mes": 2,
+    "Funcao": "Pós-produção",
+    "Quantidade": 68
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Caderno",
+    "Quantidade": 19
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 32
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Modelagem",
+    "Quantidade": 31
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Composição",
+    "Quantidade": 51
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 55
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 0
+  },
+  {
+    "Ano": 2025,
+    "Mes": 3,
+    "Funcao": "Pós-produção",
+    "Quantidade": 40
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Caderno",
+    "Quantidade": 27
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 28
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Modelagem",
+    "Quantidade": 38
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Composição",
+    "Quantidade": 38
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 42
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 0
+  },
+  {
+    "Ano": 2025,
+    "Mes": 4,
+    "Funcao": "Pós-produção",
+    "Quantidade": 46
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Caderno",
+    "Quantidade": 18
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 39
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Modelagem",
+    "Quantidade": 51
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Composição",
+    "Quantidade": 60
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 84
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 2
+  },
+  {
+    "Ano": 2025,
+    "Mes": 5,
+    "Funcao": "Pós-produção",
+    "Quantidade": 100
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Caderno",
+    "Quantidade": 24
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 51
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Modelagem",
+    "Quantidade": 47
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Composição",
+    "Quantidade": 52
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 75
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 0
+  },
+  {
+    "Ano": 2025,
+    "Mes": 6,
+    "Funcao": "Pós-produção",
+    "Quantidade": 64
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Caderno",
+    "Quantidade": 31
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 36
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Modelagem",
+    "Quantidade": 60
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Composição",
+    "Quantidade": 46
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 71
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 1
+  },
+  {
+    "Ano": 2025,
+    "Mes": 7,
+    "Funcao": "Pós-produção",
+    "Quantidade": 75
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Caderno",
+    "Quantidade": 7
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 19
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Modelagem",
+    "Quantidade": 41
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Composição",
+    "Quantidade": 52
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 75
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 0
+  },
+  {
+    "Ano": 2025,
+    "Mes": 8,
+    "Funcao": "Pós-produção",
+    "Quantidade": 46
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Caderno",
+    "Quantidade": 28
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 28
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Modelagem",
+    "Quantidade": 43
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Composição",
+    "Quantidade": 43
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 72
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 26
+  },
+  {
+    "Ano": 2025,
+    "Mes": 9,
+    "Funcao": "Pós-produção",
+    "Quantidade": 80
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Caderno",
+    "Quantidade": 26
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 44
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Modelagem",
+    "Quantidade": 36
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Composição",
+    "Quantidade": 62
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 50
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 39
+  },
+  {
+    "Ano": 2025,
+    "Mes": 10,
+    "Funcao": "Pós-produção",
+    "Quantidade": 104
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Caderno",
+    "Quantidade": 32
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 32
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Modelagem",
+    "Quantidade": 38
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Composição",
+    "Quantidade": 35
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 70
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 23
+  },
+  {
+    "Ano": 2025,
+    "Mes": 11,
+    "Funcao": "Pós-produção",
+    "Quantidade": 68
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Caderno",
+    "Quantidade": 10
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 22
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Modelagem",
+    "Quantidade": 25
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Composição",
+    "Quantidade": 37
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 33
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 13
+  },
+  {
+    "Ano": 2025,
+    "Mes": 12,
+    "Funcao": "Pós-produção",
+    "Quantidade": 35
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Caderno",
+    "Quantidade": 19
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 30
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Modelagem",
+    "Quantidade": 59
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Composição",
+    "Quantidade": 53
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 54
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 24
+  },
+  {
+    "Ano": 2026,
+    "Mes": 1,
+    "Funcao": "Pós-produção",
+    "Quantidade": 36
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Caderno",
+    "Quantidade": 14
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 15
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Modelagem",
+    "Quantidade": 29
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Composição",
+    "Quantidade": 37
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 48
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 22
+  },
+  {
+    "Ano": 2026,
+    "Mes": 2,
+    "Funcao": "Pós-produção",
+    "Quantidade": 63
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Caderno",
+    "Quantidade": 37
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 35
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Modelagem",
+    "Quantidade": 38
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Composição",
+    "Quantidade": 31
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 73
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 19
+  },
+  {
+    "Ano": 2026,
+    "Mes": 3,
+    "Funcao": "Pós-produção",
+    "Quantidade": 65
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Caderno",
+    "Quantidade": 14
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 18
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Modelagem",
+    "Quantidade": 17
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Composição",
+    "Quantidade": 33
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 70
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 29
+  },
+  {
+    "Ano": 2026,
+    "Mes": 4,
+    "Funcao": "Pós-produção",
+    "Quantidade": 50
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Caderno",
+    "Quantidade": 2
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 18
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Modelagem",
+    "Quantidade": 21
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Composição",
+    "Quantidade": 19
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 69
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 16
+  },
+  {
+    "Ano": 2026,
+    "Mes": 5,
+    "Funcao": "Pós-produção",
+    "Quantidade": 88
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Caderno",
+    "Quantidade": 1
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 5
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Modelagem",
+    "Quantidade": 3
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Composição",
+    "Quantidade": 9
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 52
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 2
+  },
+  {
+    "Ano": 2026,
+    "Mes": 6,
+    "Funcao": "Pós-produção",
+    "Quantidade": 45
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Caderno",
+    "Quantidade": 5
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 11
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Modelagem",
+    "Quantidade": 13
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Composição",
+    "Quantidade": 13
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 47
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 13
+  },
+  {
+    "Ano": 2026,
+    "Mes": 7,
+    "Funcao": "Pós-produção",
+    "Quantidade": 48
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Caderno",
+    "Quantidade": 16
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Filtro de assets",
+    "Quantidade": 16
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Modelagem",
+    "Quantidade": 42
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Composição",
+    "Quantidade": 25
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Finalização Completa",
+    "Quantidade": 44
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Finalização de Planta Humanizada",
+    "Quantidade": 10
+  },
+  {
+    "Ano": 2026,
+    "Mes": 8,
+    "Funcao": "Pós-produção",
+    "Quantidade": 56
+  }
+]

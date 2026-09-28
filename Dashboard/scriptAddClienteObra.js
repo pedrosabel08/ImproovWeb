@@ -851,15 +851,16 @@
     animateCount(elements.duplicateImages, state.images.duplicates.length);
     animateCount(elements.errorImages, state.images.errors.length);
     elements.previewCaption.textContent = state.images.entries.length
-      ? `${state.images.entries.length} imagem(ns) · valor bruto e imposto por imagem`
-      : "Informe o valor bruto e o imposto de cada imagem.";
+      ? `${state.images.entries.length} imagem(ns) · valor bruto e imposto (%) por imagem`
+      : "Informe o valor bruto e o imposto (%) de cada imagem.";
 
     const totals = state.images.entries.reduce(
       (sum, name) => {
         const values = state.images.values[name] || {};
         sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
-        sum.tax +=
-          values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        sum.tax += values.valor === "" || values.imposto === ""
+          ? 0
+          : ((Number(values.valor) || 0) * (Number(values.imposto) || 0)) / 100;
         return sum;
       },
       { gross: 0, tax: 0 },
@@ -888,8 +889,8 @@
                   <input type="number" min="0" step="0.01" inputmode="decimal" data-image-price="${index}" aria-label="Valor bruto para ${escapeHtml(name)}" value="${escapeHtml(values.valor || "")}" placeholder="0,00">
                 </label>
                 <label class="onb-image-price-label onb-image-tax-label">
-                  <span>Imposto (R$)</span>
-                  <input type="number" min="0" step="0.01" inputmode="decimal" data-image-tax="${index}" aria-label="Imposto para ${escapeHtml(name)}" value="${escapeHtml(values.valor_imposto || "")}" placeholder="0,00">
+                  <span>Imposto (%)</span>
+                  <input type="number" min="0" max="100" step="0.01" inputmode="decimal" data-image-tax="${index}" aria-label="Imposto percentual para ${escapeHtml(name)}" value="${escapeHtml(values.imposto || "")}" placeholder="0,00">
                 </label>
                 <span class="onb-image-contract" title="${escapeHtml(contract || "Contrato não atribuído")}">${escapeHtml(contract || "Contrato não atribuído")}</span>
               </li>`;
@@ -913,7 +914,7 @@
                     String(state.images.values[name]?.valor ?? "").trim() !==
                       "" &&
                     String(
-                      state.images.values[name]?.valor_imposto ?? "",
+                      state.images.values[name]?.imposto ?? "",
                     ).trim() !== "",
                 ),
             },
@@ -924,8 +925,9 @@
       (sum, name) => {
         const values = state.images.values[name] || {};
         sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
-        sum.tax +=
-          values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        sum.tax += values.valor === "" || values.imposto === ""
+          ? 0
+          : ((Number(values.valor) || 0) * (Number(values.imposto) || 0)) / 100;
         return sum;
       },
       { gross: 0, tax: 0 },
@@ -1088,7 +1090,7 @@
       nextEntries.push(normalized);
       state.images.values[normalized] = state.images.values[normalized] || {
         valor: "",
-        valor_imposto: "",
+        imposto: "",
         numero_contrato: "",
       };
     });
@@ -1199,19 +1201,21 @@
       }
       const invalidTax = state.images.entries.find((name) => {
         const raw = String(
-          state.images.values[name]?.valor_imposto ?? "",
+          state.images.values[name]?.imposto ?? "",
         ).trim();
         const gross = Number(state.images.values[name]?.valor);
         return (
           raw === "" ||
           !Number.isFinite(Number(raw)) ||
           Number(raw) < 0 ||
-          Number(raw) > gross
+          Number(raw) > 100 ||
+          !Number.isFinite(gross) ||
+          gross < 0
         );
       });
       if (invalidTax) {
         notify(
-          `Informe um imposto válido para “${invalidTax}”, sem ultrapassar o valor bruto.`,
+          `Informe um percentual de imposto entre 0 e 100 para “${invalidTax}”.`,
           "error",
         );
         return false;
@@ -1366,7 +1370,7 @@
       images: state.images.entries.map((name) => ({
         imagem_nome: name,
         valor: state.images.values[name]?.valor ?? "",
-        valor_imposto: state.images.values[name]?.valor_imposto ?? "",
+        imposto: state.images.values[name]?.imposto ?? "",
         numero_contrato: state.images.values[name]?.numero_contrato ?? "",
       })),
       servico_fotografico_valor: elements.photoServiceValue.value.trim(),
@@ -1467,9 +1471,7 @@
   elements.previewList.addEventListener("input", (event) => {
     const input = event.target.closest("[data-image-price], [data-image-tax]");
     if (!input) return;
-    const key = input.hasAttribute("data-image-price")
-      ? "valor"
-      : "valor_imposto";
+    const key = input.hasAttribute("data-image-price") ? "valor" : "imposto";
     const index = Number(input.dataset.imagePrice ?? input.dataset.imageTax);
     const imageName = state.images.entries[index];
     if (!imageName) return;
@@ -1479,8 +1481,9 @@
       (sum, name) => {
         const values = state.images.values[name] || {};
         sum.gross += values.valor === "" ? 0 : Number(values.valor) || 0;
-        sum.tax +=
-          values.valor_imposto === "" ? 0 : Number(values.valor_imposto) || 0;
+        sum.tax += values.valor === "" || values.imposto === ""
+          ? 0
+          : ((Number(values.valor) || 0) * (Number(values.imposto) || 0)) / 100;
         return sum;
       },
       { gross: 0, tax: 0 },
@@ -1497,7 +1500,7 @@
     elements.replicateGross.disabled =
       !hasOthers || String(firstValues.valor ?? "").trim() === "";
     elements.replicateTax.disabled =
-      !hasOthers || String(firstValues.valor_imposto ?? "").trim() === "";
+      !hasOthers || String(firstValues.imposto ?? "").trim() === "";
   }
 
   function replicateCommercialField(field) {
@@ -1514,7 +1517,7 @@
     notify(
       field === "valor"
         ? "Valor bruto replicado para as demais imagens."
-        : "Imposto replicado para as demais imagens.",
+        : "Percentual de imposto replicado para as demais imagens.",
     );
   }
 
@@ -1522,7 +1525,7 @@
     replicateCommercialField("valor"),
   );
   elements.replicateTax.addEventListener("click", () =>
-    replicateCommercialField("valor_imposto"),
+    replicateCommercialField("imposto"),
   );
 
   elements.previewList.addEventListener("change", (event) => {

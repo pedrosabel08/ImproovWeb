@@ -15,13 +15,13 @@ function dashboard_onboarding_validate_commercial_images(array $entries): void
         }
         custos_decimal($value);
 
-        $tax = trim((string) ($entry['valor_imposto'] ?? ''));
+        $tax = trim((string) ($entry['imposto'] ?? ''));
         if ($tax === '') {
-            throw new InvalidArgumentException('Informe o imposto de cada imagem; use 0,00 quando não houver imposto.');
+            throw new InvalidArgumentException('Informe o percentual de imposto de cada imagem; use 0,00 quando não houver imposto.');
         }
         custos_decimal($tax);
-        if (custos_centavos($tax) > custos_centavos($value)) {
-            throw new InvalidArgumentException('O imposto não pode ultrapassar o valor bruto da imagem.');
+        if ((float) $tax > 100) {
+            throw new InvalidArgumentException('O percentual de imposto deve estar entre 0 e 100.');
         }
 
         $contract = trim((string) ($entry['numero_contrato'] ?? ''));
@@ -37,18 +37,14 @@ function dashboard_onboarding_save_image_commercial(mysqli $conn, int $obraId, a
     foreach ($insertedImages as $inserted) {
         $entry = is_array($inserted['entry'] ?? null) ? $inserted['entry'] : [];
         $gross = custos_decimal($entry['valor'] ?? '');
-        $tax = custos_decimal($entry['valor_imposto'] ?? '0');
-        $grossCents = custos_centavos($gross);
-        $taxCents = custos_centavos($tax);
-        $taxPercent = $grossCents > 0
-            ? number_format(($taxCents / $grossCents) * 100, 2, '.', '')
-            : '0.00';
+        $taxPercent = custos_decimal($entry['imposto'] ?? '0');
+        $taxAmount = number_format(((float) $gross * (float) $taxPercent) / 100, 2, '.', '');
         $values = custos_comercial_validar($conn, $obraId, [
             'categoria' => 'imagem',
             'imagem_id' => (int) ($inserted['imagem_id'] ?? 0),
             'valor' => $gross,
             'imposto' => $taxPercent,
-            'valor_imposto' => $tax,
+            'valor_imposto' => $taxAmount,
             'numero_contrato' => $entry['numero_contrato'] ?? '',
         ]);
         custos_comercial_salvar($conn, $obraId, $values);

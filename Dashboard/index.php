@@ -596,7 +596,7 @@ $conn->close();
                                     <div class="onb-preview-header">
                                         <div>
                                             <strong>Valores comerciais</strong>
-                                        <span id="onbPreviewCaption">Informe o valor bruto e o imposto de cada imagem.</span>
+                                        <span id="onbPreviewCaption">Informe o valor bruto e o imposto (%) de cada imagem.</span>
                                         </div>
                                         <span id="onbPreviewTotal">R$ 0,00 em imagens</span>
                                     </div>
@@ -611,7 +611,7 @@ $conn->close();
                                     <div class="onb-commercial-replicate" aria-label="Replicar valores da primeira imagem">
                                         <span>Replicar os valores da primeira imagem para as demais:</span>
                                         <button type="button" class="onb-secondary-btn" id="onbReplicateGross" disabled>Valor bruto</button>
-                                        <button type="button" class="onb-secondary-btn" id="onbReplicateTax" disabled>Imposto</button>
+                                        <button type="button" class="onb-secondary-btn" id="onbReplicateTax" disabled>Imposto (%)</button>
                                     </div>
                                     <ul id="onbImagePreviewList" class="onb-preview-list"></ul>
                                 </div>

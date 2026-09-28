@@ -51,6 +51,8 @@ $frontend = file_get_contents($root . '/PaginaPrincipal/scriptIndex.js');
 arquitetura_assert(str_contains($frontend, 'iniciar_operacao.php'), 'Modal deve usar o endpoint atomico no primeiro inicio.');
 arquitetura_assert(str_contains($frontend, 'atualizar_previsao_operacional.php'), 'Alteracao de previsao deve ter fluxo separado.');
 
+$migrationAjuste = file_get_contents($root . '/sql/2026-09-28_janela_ciclo_ajuste_nao_iniciado_encerrado.sql');
+arquitetura_assert(str_contains($migrationAjuste, "situacao IN ('AGUARDANDO_INICIO', 'ENCERRADO')") && str_contains($migrationAjuste, 'inicio_em IS NULL'), 'Ciclo de ajuste encerrado sem inicio deve respeitar a constraint de limite.');
 $migrationCiclos = file_get_contents($root . '/sql/2026-09-21_ciclos_execucao_oficial.sql');
 foreach (['numero_ciclo', 'origem_abertura', 'qualidade_dados', 'status_saida', 'AGUARDANDO_INICIO', 'funcao_imagem_angulo_ciencia'] as $campo) {
     arquitetura_assert(str_contains($migrationCiclos, $campo), 'Migration V2 deve conter: ' . $campo);

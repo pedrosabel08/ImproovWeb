@@ -15,6 +15,7 @@ error_reporting(E_ALL);
 
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../Entregas/p00_delivery_helpers.php';
+require_once __DIR__ . '/../Entregas/prazo_entrega_helper.php';
 require_once __DIR__ . '/../Entregas/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/../helpers/flow_block_helper.php';
@@ -964,11 +965,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 && !$isAlteracaoHumanizadaRender
             ) {
                 $alteracaoAprovacao = aprovacao_interna_resolver_alteracao_por_funcao($conn, (int)$idfuncao_imagem);
-                if (
-                    $alteracaoAprovacao
-                    && !aprovacao_interna_render_existe_na_etapa($conn, $alteracaoAprovacao['imagem_id'], $alteracaoAprovacao['status_id'])
-                ) {
-                    $aprovacaoRegistrada = aprovacao_interna_registrar(
+                if ($alteracaoAprovacao) {
+                    if (!aprovacao_interna_registrar(
                         $conn,
                         $alteracaoAprovacao['funcao_imagem_id'],
                         $alteracaoAprovacao['imagem_id'],
@@ -978,20 +976,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         null,
                         $historicoAprovacaoId,
                         null
-                    );
-                    $resultadoFinal['logs'][] = $aprovacaoRegistrada
-                        ? 'aprovacao_interna.flowreview_registrada'
-                        : 'aprovacao_interna.flowreview_nao_registrada';
-                } else {
-                    $resultadoFinal['logs'][] = 'aprovacao_interna.flowreview_ignorada_render_existente';
+                    )) {
+                        throw new RuntimeException('Não foi possível registrar a aprovação interna do Flow Review.');
+                    }
+                    $resultadoFinal['logs'][] = 'aprovacao_interna.flowreview_registrada';
                 }
             }
 
-            $isP00ModelagemReview = (
+            $isModelagemFachadaReview = (
                 in_array($status, ['Aprovado'], true)
                 && $nomeFuncaoLower === 'modelagem'
                 && $tipo_imagem_nome === 'Fachada'
-                && $status_nome_imagem === 'P00'
             );
 
             // Mensagem Slack específica para modelagem de fachada P00
@@ -1009,19 +1004,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $p00EntregaAtual = null;
             $p00VersaoAtual = null;
 
-            if ($isP00ModelagemReview) {
+            if ($isModelagemFachadaReview) {
                 $p00EntregaAtual = improov_p00_fetch_latest_delivery($conn, (int) $img_obra_id_context, (int) $img_status_id_context);
                 if (!$p00EntregaAtual) {
-                    $conn->rollback();
-                    echo json_encode(['success' => false, 'message' => 'Entrega P00 não encontrada para a obra. Crie a entrega antes de aprovar a modelagem.']);
-                    exit;
+                    $dataRecebimento = date('Y-m-d');
+                    $prazoCalculado = entregas_calcular_prazo_previsto(
+                        $conn,
+                        (int) $img_obra_id_context,
+                        (int) $img_status_id_context,
+                        $dataRecebimento
+                    );
+                    $dataPrevista = $prazoCalculado['data_prevista'] ?? null;
+                    $tipoEntregaP00 = 'P00';
+                    $observacaoEntrega = 'Entrega P00 criada automaticamente após aprovação da modelagem de fachada.';
+                    $stmtNovaEntrega = $conn->prepare(
+                        'INSERT INTO entregas (status_id, tipo_entrega, obra_id, data_prevista, data_recebimento, observacoes)
+                         VALUES (?, ?, ?, ?, ?, ?)'
+                    );
+                    if (!$stmtNovaEntrega) {
+                        throw new RuntimeException('Não foi possível preparar a criação da entrega P00: ' . $conn->error);
+                    }
+                    $stmtNovaEntrega->bind_param(
+                        'isisss',
+                        $img_status_id_context,
+                        $tipoEntregaP00,
+                        $img_obra_id_context,
+                        $dataPrevista,
+                        $dataRecebimento,
+                        $observacaoEntrega
+                    );
+                    if (!$stmtNovaEntrega->execute()) {
+                        $erroNovaEntrega = $stmtNovaEntrega->error;
+                        $stmtNovaEntrega->close();
+                        throw new RuntimeException('Não foi possível criar a entrega P00: ' . $erroNovaEntrega);
+                    }
+                    $entregaIdNova = (int) $stmtNovaEntrega->insert_id;
+                    $stmtNovaEntrega->close();
+
+                    $p00EntregaAtual = [
+                        'id' => $entregaIdNova,
+                        'data_prevista' => $dataPrevista,
+                    ];
+                    $versionIdInicial = improov_p00_create_initial_version(
+                        $conn,
+                        $entregaIdNova,
+                        (int) $imagem_id,
+                        $dataPrevista
+                    );
+                    $p00VersaoAtual = improov_p00_fetch_version_by_id($conn, $versionIdInicial);
+                    $resultadoFinal['logs'][] = "Entrega P00 id={$entregaIdNova} criada automaticamente para status_id={$img_status_id_context}.";
                 }
 
-                $p00VersaoAtual = improov_p00_fetch_latest_version($conn, (int) $p00EntregaAtual['id']);
+                $p00VersaoAtual = $p00VersaoAtual ?: improov_p00_fetch_latest_version($conn, (int) $p00EntregaAtual['id']);
                 if (!$p00VersaoAtual) {
-                    $conn->rollback();
-                    echo json_encode(['success' => false, 'message' => 'Versão P00 não encontrada para a entrega.']);
-                    exit;
+                    $versionIdInicial = improov_p00_create_initial_version(
+                        $conn,
+                        (int) $p00EntregaAtual['id'],
+                        (int) $imagem_id,
+                        isset($p00EntregaAtual['data_prevista']) ? (string) $p00EntregaAtual['data_prevista'] : null
+                    );
+                    $p00VersaoAtual = improov_p00_fetch_version_by_id($conn, $versionIdInicial);
+                    $resultadoFinal['logs'][] = "Versão inicial P00 id={$versionIdInicial} criada para a entrega {$p00EntregaAtual['id']}.";
+                } elseif ($status_nome_imagem !== 'P00') {
+                    $versionIdPosterior = improov_p00_create_followup_version(
+                        $conn,
+                        (int) $p00VersaoAtual['id'],
+                        [
+                            'origem_alteracao' => 'aprovacao_modelagem',
+                            'origem_alteracao_detalhe' => 'Aprovação de Modelagem de Fachada na etapa ' . (string) $status_nome_imagem,
+                        ]
+                    );
+                    $p00VersaoAtual = improov_p00_fetch_version_by_id($conn, $versionIdPosterior);
+                    $resultadoFinal['logs'][] = "Versão posterior P00 id={$versionIdPosterior} criada para status_id={$img_status_id_context}.";
+                }
+
+                if (!$p00VersaoAtual) {
+                    throw new RuntimeException('Não foi possível carregar a versão P00 que receberá os arquivos aprovados.');
                 }
             }
 
@@ -1219,7 +1277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // SFTP envio final
         if (
-            $isP00ModelagemReview
+            $isModelagemFachadaReview
             ||
             (
                 (in_array($nomeFuncaoLower, ['pós-produção'])) &&
@@ -1239,7 +1297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 in_array($status, ['Aprovado', 'Aprovado com ajustes'], true)
             )
         ) {
-            if ($isP00ModelagemReview) {
+            if ($isModelagemFachadaReview) {
                 $uploadDir = dirname(__DIR__) . "/uploads/";
                 $reviewDir = $uploadDir . 'review/';
                 if (!is_dir($reviewDir)) {

@@ -418,9 +418,9 @@
           )?.focus();
           return false;
         }
-        const submitted =
-          typeof options.onSubmit === "function"
-            ? await options.onSubmit(
+        const hasSubmitHandler = typeof options.onSubmit === "function";
+        const submitted = hasSubmitHandler
+          ? await options.onSubmit(
                 fieldRecords.length === 1 ? fieldRecords[0].read() : values,
                 values,
               )
@@ -428,7 +428,7 @@
               ? fieldRecords[0].read()
               : values;
         if (submitted === false) return false;
-        if (typeof submitted === "string") {
+        if (hasSubmitHandler && typeof submitted === "string") {
           entry.setValidationMessage(submitted);
           return false;
         }

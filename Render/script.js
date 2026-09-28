@@ -1184,7 +1184,7 @@ function abrirPosAposAprovarRender(idrender_alta) {
 }
 
 function mostrarModalAprovacaoInterna() {
-  if (typeof Swal === "undefined") {
+  if (!window.FlowAlert) {
     Toastify({
       text: "A aprova\u00e7\u00e3o interna precisa ser registrada antes de seguir.",
       duration: 4000,
@@ -1195,24 +1195,18 @@ function mostrarModalAprovacaoInterna() {
     return;
   }
 
-  Swal.fire({
-    icon: "warning",
+  FlowAlert.choose({
+    type: "warning",
     title: "A altera\u00e7\u00e3o foi aprovada?",
-    text: "A altera\u00e7\u00e3o desta imagem n\u00e3o possui aprova\u00e7\u00e3o interna registrada.",
-    showDenyButton: true,
-    showCancelButton: true,
-    confirmButtonText: "Sim, presencialmente",
-    denyButtonText: "Sim, via WhatsApp",
-    cancelButtonText: "N\u00e3o",
-    reverseButtons: true,
+    message: "A altera\u00e7\u00e3o desta imagem n\u00e3o possui aprova\u00e7\u00e3o interna registrada.",
+    choices: [
+      { label: "Sim, presencialmente", value: "presencial" },
+      { label: "Sim, via WhatsApp", value: "whatsapp" },
+    ],
+    cancelText: "N\u00e3o",
   }).then(function (result) {
-    if (result.isConfirmed) {
-      aprovarRender("presencial");
-      return;
-    }
-
-    if (result.isDenied) {
-      aprovarRender("whatsapp");
+    if (result.isConfirmed && ["presencial", "whatsapp"].includes(result.value)) {
+      aprovarRender(result.value);
       return;
     }
 
@@ -1347,7 +1341,7 @@ function concluirRenderManualmente(justificativa) {
 $("#completeRenderManually")
   .off("click")
   .on("click", function () {
-    if (typeof Swal === "undefined") return;
+    if (!window.FlowAlert) return;
     FlowAlert.input({
       type: "warning",
       title: "Marcar render como feito manualmente?",
@@ -1366,7 +1360,7 @@ $("#completeRenderManually")
       cancelText: "Cancelar",
       validate: function (value) {
         return String(value || "").trim()
-          ? ""
+          ? undefined
           : "Informe a justificativa para continuar.";
       },
     }).then(function (result) {

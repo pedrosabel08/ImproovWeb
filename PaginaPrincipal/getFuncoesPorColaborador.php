@@ -41,6 +41,10 @@ if ($colaboradorSessao <= 0) {
 }
 
 $colaboradorId = $colaboradorSessao;
+$kanbanMode = isset($_GET['kanban']) && (string) $_GET['kanban'] === '1';
+$kanbanBusca = $kanbanMode && isset($_GET['busca'])
+    ? trim(mb_substr((string) $_GET['busca'], 0, 100, 'UTF-8'))
+    : '';
 $colaboradorSolicitado = isset($_GET['colaborador_id']) ? (int) $_GET['colaborador_id'] : 0;
 if ($colaboradorSolicitado > 0 && $colaboradorSolicitado !== $colaboradorSessao) {
     if (!flow_funcoes_colaborador_pode_consultar_outro($nivelAcesso, $colaboradorSessao)) {
@@ -54,6 +58,67 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 date_default_timezone_set('America/Sao_Paulo');
+
+$kanbanFinalizadosTotal = null;
+$filtroKanbanSql = '';
+if ($kanbanMode) {
+    $stmtFinalizadosTotal = $conn->prepare(
+        "SELECT COUNT(*) AS total
+         FROM funcao_imagem fi_count
+         JOIN imagens_cliente_obra ico_count ON ico_count.idimagens_cliente_obra = fi_count.imagem_id
+         JOIN obra o_count ON o_count.idobra = ico_count.obra_id
+         WHERE fi_count.colaborador_id = ?
+           AND o_count.status_obra = 0
+           AND fi_count.status = 'Finalizado'"
+    );
+    if ($stmtFinalizadosTotal) {
+        $stmtFinalizadosTotal->bind_param('i', $colaboradorId);
+        $stmtFinalizadosTotal->execute();
+        $kanbanFinalizadosTotal = (int) ($stmtFinalizadosTotal->get_result()->fetch_assoc()['total'] ?? 0);
+        $stmtFinalizadosTotal->close();
+    }
+
+    if (mb_strlen($kanbanBusca, 'UTF-8') >= 2) {
+        $buscaEscapada = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $kanbanBusca);
+        $filtroKanbanSql = "\n  AND ico.imagem_nome LIKE '%" . $conn->real_escape_string($buscaEscapada) . "%'";
+    } elseif ($kanbanBusca === '') {
+        $colaboradorSql = (int) $colaboradorId;
+        $filtroKanbanSql = "\n  AND (
+      fi.status <> 'Finalizado'
+      OR fi.idfuncao_imagem IN (
+          SELECT selecionadas.idfuncao_imagem
+          FROM (
+              SELECT fi_done.idfuncao_imagem
+              FROM funcao_imagem fi_done
+              JOIN imagens_cliente_obra ico_done ON ico_done.idimagens_cliente_obra = fi_done.imagem_id
+              JOIN obra o_done ON o_done.idobra = ico_done.obra_id
+              WHERE fi_done.colaborador_id = {$colaboradorSql}
+                AND fi_done.status = 'Finalizado'
+                AND o_done.status_obra = 0
+              ORDER BY fi_done.idfuncao_imagem DESC
+              LIMIT 30
+          ) AS selecionadas
+      )
+      OR (
+          fi.funcao_id IN (1, 8)
+          AND fi.imagem_id IN (
+              SELECT selecionadas_par.imagem_id
+              FROM (
+                  SELECT fi_done_par.imagem_id
+                  FROM funcao_imagem fi_done_par
+                  JOIN imagens_cliente_obra ico_done_par ON ico_done_par.idimagens_cliente_obra = fi_done_par.imagem_id
+                  JOIN obra o_done_par ON o_done_par.idobra = ico_done_par.obra_id
+                  WHERE fi_done_par.colaborador_id = {$colaboradorSql}
+                    AND fi_done_par.status = 'Finalizado'
+                    AND o_done_par.status_obra = 0
+                  ORDER BY fi_done_par.idfuncao_imagem DESC
+                  LIMIT 30
+              ) AS selecionadas_par
+          )
+      )
+  )";
+    }
+}
 
 // ====================
 // FUNÇÕES (SEM FILTROS)
@@ -299,6 +364,7 @@ JOIN funcao f ON fi.funcao_id = f.idfuncao
 LEFT JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
 WHERE fi.colaborador_id = ?
   AND o.status_obra = 0
+{$filtroKanbanSql}
 ORDER BY requires_render_send DESC, requires_file_upload DESC, notificacoes_nao_lidas DESC, prioridade ASC, prazo DESC, imagem_id, obra_id,
     FIELD(fi.status,
           'Não iniciado','HOLD','Em andamento','Ajuste',
@@ -1592,6 +1658,13 @@ $response = [
     "media_tempo_em_andamento" => $mediaTemposPorFuncao,
     "wip"                     => $wipResumo,
 ];
+if ($kanbanMode) {
+    $response['kanban_meta'] = [
+        'finalizados_total' => $kanbanFinalizadosTotal ?? 0,
+        'busca' => $kanbanBusca,
+        'limite_finalizados' => 30,
+    ];
+}
 
 if (!defined('FLOW_FUNCOES_COLABORADOR_INTERNAL')) {
     echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -263,6 +263,22 @@ if ($foto_colab !== ''):
                     <span></span>
                 </button>
 
+                <div class="kanban-searchbar" role="search" aria-label="Buscar tarefas no Kanban">
+                    <label class="kanban-searchbox" for="kanban-task-search">
+                        <i class="ri-search-line" aria-hidden="true"></i>
+                        <input
+                            id="kanban-task-search"
+                            type="search"
+                            placeholder="Buscar imagem"
+                            autocomplete="off"
+                        >
+                        <kbd aria-hidden="true">Ctrl K</kbd>
+                        <span id="kanban-search-loading" class="kanban-search-loading" role="status" aria-label="Buscando tarefas" hidden>
+                            <span class="kanban-loading-orb" aria-hidden="true"></span>
+                        </span>
+                    </label>
+                </div>
+
                 <button id="filter">
                     <i class="ri-equalizer-fill"></i>
                     <span>Filtros</span>

@@ -15,8 +15,43 @@ if (
 }
 // const idusuario = 1;
 
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+
+    const modalSelecaoImagens = document.getElementById("modalSelecionarImagens");
+    if (modalSelecaoImagens?.classList.contains("is-open")) return;
+    if (document.querySelector(".modal.is-open")) return;
+
+    const input = document.getElementById("kanban-task-search");
+    const barra = input?.closest(".kanban-searchbar");
+    const quadro = document.getElementById("kanban-section");
+    if (
+      !input ||
+      !barra ||
+      !quadro ||
+      window.getComputedStyle(barra).display === "none" ||
+      window.getComputedStyle(quadro).display === "none"
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    input.focus();
+  },
+  true,
+);
+
 document.getElementById("idcolab").addEventListener("change", function () {
   const idcolab = parseInt(this.value, 10);
+  const buscaKanban = document.getElementById("kanban-task-search");
+  if (buscaKanban) buscaKanban.value = "";
+  definirLoadingBuscaKanban(false);
+  window.clearTimeout(kanbanBuscaDebounce);
+  kanbanBuscaSequencia += 1;
+  if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
   // Atualiza a variável global para que todos os carregarDados subsequentes
   // (após salvar tarefa, upload, etc.) usem o colaborador filtrado
   colaborador_id = idcolab || idColaborador;
@@ -67,6 +102,7 @@ function sftpToPublicUrl(rawPath) {
 
 const KANBAN_LOADING_DELAY = 250;
 const KANBAN_MIN_LOADING_VISIBILITY = 180;
+const KANBAN_FINALIZADOS_INICIAIS = 30;
 const kanbanLoading = {
   hasRendered: false,
   sequence: 0,
@@ -74,6 +110,108 @@ const kanbanLoading = {
   timer: null,
   state: "IDLE",
 };
+let kanbanBuscaDebounce = null;
+let kanbanBuscaXhr = null;
+let kanbanBuscaSequencia = 0;
+let kanbanFinalizadosRenderizados = 0;
+let kanbanFinalizadosEncontrados = 0;
+
+function normalizarTextoBuscaKanban(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
+function obterBuscaKanban() {
+  return normalizarTextoBuscaKanban(
+    document.getElementById("kanban-task-search")?.value || "",
+  );
+}
+
+function buscarNoKanban(item, tipo, termo) {
+  if (!termo || termo.length < 2) return true;
+  const nome = tipo === "imagem" ? item.imagem_nome : item.titulo;
+  return normalizarTextoBuscaKanban(nome).includes(termo);
+}
+
+function definirLoadingBuscaKanban(loading) {
+  const indicador = document.getElementById("kanban-search-loading");
+  const input = document.getElementById("kanban-task-search");
+  if (indicador) indicador.hidden = !loading;
+  if (input) input.setAttribute("aria-busy", String(loading));
+}
+
+function configurarBuscaKanban() {
+  const input = document.getElementById("kanban-task-search");
+  if (!input || input.dataset.searchBound === "1") return;
+  input.dataset.searchBound = "1";
+
+  input.addEventListener("input", () => {
+    window.clearTimeout(kanbanBuscaDebounce);
+    kanbanBuscaDebounce = window.setTimeout(() => {
+      const termo = obterBuscaKanban();
+      if (termo.length >= 2) {
+        buscarTarefasKanban(termo);
+      } else {
+        kanbanBuscaSequencia += 1;
+        if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
+        definirLoadingBuscaKanban(false);
+        processarDados(kanbanPayloadAtual);
+      }
+    }, 250);
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && input.value) {
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+
+}
+
+let kanbanPayloadAtual = null;
+
+function buscarTarefasKanban(termo) {
+  const sequencia = ++kanbanBuscaSequencia;
+  if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
+
+  definirLoadingBuscaKanban(true);
+
+  const params = new URLSearchParams({
+    colaborador_id: String(colaborador_id || idColaborador || ""),
+    kanban: "1",
+    busca: termo,
+  });
+  const xhr = new XMLHttpRequest();
+  kanbanBuscaXhr = xhr;
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== XMLHttpRequest.DONE) return;
+    if (sequencia !== kanbanBuscaSequencia) return;
+    kanbanBuscaXhr = null;
+    if (xhr.status !== 200) {
+      definirLoadingBuscaKanban(false);
+      return;
+    }
+    try {
+      if (obterBuscaKanban() !== normalizarTextoBuscaKanban(termo)) return;
+      definirLoadingBuscaKanban(false);
+      processarDados(JSON.parse(xhr.responseText));
+    } catch (error) {
+      console.error("Erro ao buscar tarefas no Kanban:", error);
+      definirLoadingBuscaKanban(false);
+    }
+  };
+  xhr.onerror = function () {
+    if (sequencia !== kanbanBuscaSequencia) return;
+    kanbanBuscaXhr = null;
+    definirLoadingBuscaKanban(false);
+  };
+  xhr.open("GET", `PaginaPrincipal/getFuncoesPorColaborador.php?${params.toString()}`, true);
+  xhr.send();
+}
 
 function getKanbanBoard() {
   return document.getElementById("kanban-section");
@@ -226,6 +364,8 @@ function renderKanbanResponse(loadId, data) {
         console.error("mini-calendar update error", error);
       }
     }
+    kanbanPayloadAtual = data;
+    configurarBuscaKanban();
     processarDados(data);
     if (window.updateListaTabela) {
       try {
@@ -244,7 +384,7 @@ function renderKanbanResponse(loadId, data) {
 }
 
 function carregarDados(colaborador_id) {
-  const url = `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
+  const url = `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}&kanban=1`;
   const loadId = ++kanbanLoading.sequence;
   const initial = !kanbanLoading.hasRendered;
   kanbanLoading.shownAt = 0;
@@ -2430,6 +2570,10 @@ function alertarPendenciasSeNecessario(data) {
 // extrai a lógica do fetch para uma função reutilizável
 function processarDados(data) {
   const motionInitial = !processarDados.motionEntered;
+  const termoBusca = obterBuscaKanban();
+  const buscaAtiva = termoBusca.length >= 2;
+  kanbanFinalizadosRenderizados = 0;
+  kanbanFinalizadosEncontrados = 0;
   const statusMap = {
     "Não iniciado": "to-do",
     "Em andamento": "in-progress",
@@ -2513,6 +2657,8 @@ function processarDados(data) {
   }
 
   function criarCard(item, tipo, media) {
+    if (!buscarNoKanban(item, tipo, termoBusca)) return;
+
     // Define status real (mantemos 'Aprovado com ajustes' separado)
     // Normalize incoming status: trim and compare case-insensitively
     const rawStatus = (item.status || "Não iniciado").toString().trim();
@@ -2569,6 +2715,16 @@ function processarDados(data) {
       } catch (e) {
         colunaId = "aprovado";
       }
+    }
+    if (colunaId === "done") {
+      kanbanFinalizadosEncontrados += 1;
+      if (
+        !buscaAtiva &&
+        kanbanFinalizadosRenderizados >= KANBAN_FINALIZADOS_INICIAIS
+      ) {
+        return;
+      }
+      kanbanFinalizadosRenderizados += 1;
     }
     // DEBUG: log status mapping for troubleshooting (use console.log to ensure visibility)
     try {
@@ -3284,6 +3440,21 @@ function processarDados(data) {
   });
 
   atualizarTaskCount();
+  const contadorFinalizados = document.querySelector("#done .task-count");
+  if (contadorFinalizados && !buscaAtiva) {
+    const totalFinalizados = Number(
+      data?.kanban_meta?.finalizados_total ?? kanbanFinalizadosEncontrados,
+    );
+    contadorFinalizados.textContent =
+      totalFinalizados > KANBAN_FINALIZADOS_INICIAIS
+        ? `${kanbanFinalizadosRenderizados} - ${totalFinalizados}`
+        : String(kanbanFinalizadosRenderizados);
+    contadorFinalizados.setAttribute(
+      "aria-label",
+      `${kanbanFinalizadosEncontrados} tarefas finalizadas; ${kanbanFinalizadosRenderizados} exibidas`,
+    );
+  }
+  definirLoadingBuscaKanban(false);
 
   // Mantém a carga leve mesmo em filas extensas: só os primeiros cards visíveis
   // de cada coluna recebem stagger; o restante entra sem trabalho extra.
@@ -3300,8 +3471,8 @@ function processarDados(data) {
       });
   });
 
-  preencherFiltros();
-  alertarPendenciasSeNecessario(data);
+  if (!buscaAtiva) preencherFiltros();
+  alertarPendenciasSeNecessario(kanbanPayloadAtual || data);
 
   const kanban = document.getElementById("kanban-section");
   const cards = kanban
@@ -4591,8 +4762,26 @@ function atualizarTaskCount() {
     if (badge) {
       badge.classList.remove("task-count--loading");
       badge.classList.remove("task-count--refreshing");
-      badge.removeAttribute("aria-label");
-      badge.textContent = count;
+      const buscaKanbanAtiva = obterBuscaKanban().length >= 2;
+      const totalFinalizadosKanban = Number(
+        kanbanPayloadAtual?.kanban_meta?.finalizados_total || 0,
+      );
+      const finalizadosResumidos =
+        box.id === "done" &&
+        !buscaKanbanAtiva &&
+        totalFinalizadosKanban > KANBAN_FINALIZADOS_INICIAIS &&
+        count >= KANBAN_FINALIZADOS_INICIAIS;
+      badge.textContent = finalizadosResumidos
+        ? `${count} - ${totalFinalizadosKanban}`
+        : count;
+      if (finalizadosResumidos) {
+        badge.setAttribute(
+          "aria-label",
+          `${totalFinalizadosKanban} tarefas finalizadas; ${count} exibidas`,
+        );
+      } else {
+        badge.removeAttribute("aria-label");
+      }
     }
 
     // Esconder colunas vazias (ajuste, aprovado, aprovado-ajustes)
@@ -8639,6 +8828,8 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
 (function () {
   let tabelaLista = null;
   let ultimoPayloadLista = null;
+  const listaPayloadPorColaborador = new Map();
+  const listaRequisicaoPorColaborador = new Map();
 
   function normalizarStatus(status) {
     if (!status) return "Não iniciado";
@@ -8712,7 +8903,8 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   // Exposta para o scriptIndex.js reaproveitar o mesmo payload do Kanban
   window.updateListaTabela = function (payload) {
     try {
-      ultimoPayloadLista = payload;
+      // O payload enxuto do Kanban nunca deve substituir a lista completa.
+      if (payload && !payload.kanban_meta) ultimoPayloadLista = payload;
       garantirTabela();
       if (!tabelaLista) return;
 
@@ -8734,6 +8926,40 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   window.renderizarListaTarefas = function () {
     if (ultimoPayloadLista) window.updateListaTabela(ultimoPayloadLista);
   };
+
+  window.carregarListaCompleta = function () {
+    const id = String(colaborador_id || idColaborador || "");
+    if (!id) return Promise.resolve();
+    if (listaPayloadPorColaborador.has(id)) {
+      ultimoPayloadLista = listaPayloadPorColaborador.get(id);
+      window.renderizarListaTarefas();
+      return Promise.resolve();
+    }
+    if (listaRequisicaoPorColaborador.has(id)) {
+      return listaRequisicaoPorColaborador.get(id);
+    }
+
+    const requisicao = fetch(
+      `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${encodeURIComponent(id)}`,
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error(`Resposta HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((payload) => {
+        listaPayloadPorColaborador.set(id, payload);
+        if (id === String(colaborador_id || idColaborador || "")) {
+          ultimoPayloadLista = payload;
+          window.updateListaTabela(payload);
+        }
+      })
+      .catch((error) => {
+        console.error("Erro ao carregar a lista completa:", error);
+      })
+      .finally(() => listaRequisicaoPorColaborador.delete(id));
+    listaRequisicaoPorColaborador.set(id, requisicao);
+    return requisicao;
+  };
 })();
 
 // ─────────────────────────────────────────────────────────────────
@@ -8746,6 +8972,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   const overviewSec = document.getElementById("overview-section");
   const kanbanSec = document.getElementById("kanban-section");
   const listSec = document.getElementById("list-section");
+  const searchBar = document.querySelector(".kanban-searchbar");
   const navRight = document.querySelector("main header .nav-right");
   if (
     !btnOverview ||
@@ -8766,6 +8993,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
     overviewSec.style.display = "none";
     kanbanSec.style.display = "none";
     listSec.style.display = "none";
+    if (searchBar) searchBar.style.display = "none";
     btnOverview.classList.remove("active");
     btnKanban.classList.remove("active");
     btnLista.classList.remove("active");
@@ -8783,6 +9011,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   function showKanban() {
     clearViews();
     kanbanSec.style.display = "grid";
+    if (searchBar) searchBar.style.display = "flex";
     btnKanban.classList.add("active");
     atualizarTaskCount();
     agendarRecalculoDensidadeKanban();
@@ -8792,6 +9021,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
     clearViews();
     listSec.style.display = "block";
     btnLista.classList.add("active");
+    window.carregarListaCompleta?.();
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         if (

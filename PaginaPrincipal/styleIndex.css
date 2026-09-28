@@ -104,6 +104,98 @@ main header nav .flow-view-tabs > button.active {
   }
 }
 
+.kanban-searchbar {
+  display: none;
+  align-items: center;
+  --kanban-loading-base: color-mix(in srgb, var(--card-bg) 74%, var(--text-log));
+  --kanban-loading-highlight: color-mix(in srgb, var(--card-bg) 86%, var(--text-em));
+  --kanban-loading-orb: var(--primary);
+}
+
+.kanban-searchbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: clamp(150px, 19vw, 250px);
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--text-log) 24%, transparent);
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--text-log);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.kanban-searchbox:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.kanban-searchbox > i {
+  flex: 0 0 auto;
+  font-size: 17px;
+}
+
+.kanban-searchbox input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-title);
+  font: inherit;
+  font-size: 13px;
+}
+
+.kanban-searchbox input::placeholder {
+  color: var(--text-log);
+  opacity: 0.78;
+}
+
+.kanban-searchbox kbd {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--text-log) 24%, transparent);
+  border-radius: 5px;
+  color: var(--text-log);
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.kanban-search-loading[hidden] {
+  display: none;
+}
+
+.kanban-search-loading .kanban-loading-orb {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  background: radial-gradient(
+    circle at 30% 28%,
+    var(--kanban-loading-highlight),
+    var(--kanban-loading-orb) 48%,
+    var(--kanban-loading-base)
+  );
+  border: 1px solid color-mix(in srgb, var(--kanban-loading-orb) 70%, var(--kanban-loading-highlight));
+  border-radius: 46% 54% 50% 50%;
+  box-shadow: 0 0 7px color-mix(in srgb, var(--kanban-loading-orb) 32%, transparent);
+  animation: kanban-loading-orb 1.8s ease-in-out infinite;
+}
+
+@media (max-width: 760px) {
+  .kanban-searchbox {
+    width: clamp(118px, 23vw, 180px);
+  }
+
+  .kanban-searchbox kbd {
+    display: none;
+  }
+}
+
 /* Carregamento contextual do Kanban: os tokens acompanham os temas do Flow. */
 #kanban-section {
   --kanban-loading-base: color-mix(

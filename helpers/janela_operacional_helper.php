@@ -62,6 +62,23 @@ function flow_janela_dias_hold_integrais(string $inicioData, string $retomadaDat
         : 0;
 }
 
+function flow_janela_limite_retomada(?string $limiteOriginal, string $inicioHold, string $dataRetomada): ?string
+{
+    $limiteOriginal = flow_janela_data_valida($limiteOriginal);
+    if (!$limiteOriginal) {
+        return null;
+    }
+    $diasHold = flow_janela_dias_hold_integrais($inicioHold, $dataRetomada);
+    return $diasHold > 0
+        ? flow_planejamento_adicionar_dias_uteis($limiteOriginal, $diasHold)
+        : $limiteOriginal;
+}
+
+function flow_janela_calcular_estado_retomada(string $previsao, ?string $limite, ?string $prazoNecessario): string
+{
+    return flow_janela_classificar($previsao, $limite, $prazoNecessario);
+}
+
 /** Pura e testavel: conflito de planejamento sempre possui precedencia. */
 function flow_janela_classificar(?string $previsao, ?string $limite, ?string $prazoNecessario): string
 {
@@ -682,7 +699,7 @@ function flow_janela_garantir_ciclo_ajuste_aguardando_inicio(mysqli $conn, int $
 }
 
 /** Ativa um ajuste sem reutilizar previsão nem horário do ciclo anterior. */
-function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, string $previsao, ?array $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId, string $origemAcionamento = 'KANBAN'): array
+function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, string $previsao, ?array $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId, string $origemAcionamento = 'KANBAN', string $statusAnterior = 'Ajuste'): array
 {
     $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
     if (!$ciclo || $ciclo['situacao'] !== 'AGUARDANDO_INICIO') {
@@ -701,7 +718,7 @@ function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoIma
     $stmt->bind_param('isisiissssissssissssi', $perfilId, $codigo, $versao, $nome, $aplica, $dias, $inicio, $limite, $limite, $prazoNecessario, $versaoPlanejamento, $previsao, $previsao, $estado, $estado, $motivoId, $motivoCodigo, $motivoLabel, $motivoTexto, $qualidade, $cicloId);
     $stmt->execute(); $stmt->close();
     flow_janela_registrar_evento($conn, $cicloId, 'EXECUCAO_INICIADA', [
-        'status_tarefa_anterior' => 'Ajuste', 'status_tarefa_novo' => 'Em andamento', 'estado_novo' => $estado,
+        'status_tarefa_anterior' => $statusAnterior, 'status_tarefa_novo' => 'Em andamento', 'estado_novo' => $estado,
         'previsao_nova' => $previsao, 'prazo_necessario' => $prazoNecessario, 'limite_data' => $limite,
         'motivo' => $motivo, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId,
         'detalhes' => ['origem_acionamento' => $origemAcionamento],
@@ -749,6 +766,12 @@ function flow_janela_pausar(mysqli $conn, int $funcaoImagemId, ?int $atorColabor
     if (!$ciclo || $ciclo['situacao'] === 'ENCERRADO') {
         return null;
     }
+    // Ajustes devolvidos pela revisão aguardam a próxima previsão para iniciar
+    // o ciclo. Um HOLD antes desse início não deve convertê-lo em PAUSADO: a
+    // constraint de limite só permite snapshots incompletos em AGUARDANDO_INICIO.
+    if ($ciclo['situacao'] === 'AGUARDANDO_INICIO') {
+        return ['ciclo_id' => (int) $ciclo['id'], 'aguardando_inicio' => true];
+    }
     if ($ciclo['situacao'] === 'PAUSADO') {
         return ['ciclo_id' => (int) $ciclo['id'], 'ja_pausado' => true];
     }
@@ -764,45 +787,132 @@ function flow_janela_pausar(mysqli $conn, int $funcaoImagemId, ?int $atorColabor
     return ['ciclo_id' => $cicloId, 'pausa_id' => $pausaId, 'limite_data' => $ciclo['limite_data_atual']];
 }
 
-function flow_janela_retomar(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): ?array
+function flow_janela_avaliar_retomada(mysqli $conn, int $funcaoImagemId, string $previsao, bool $forUpdate = false): array
 {
-    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
-    if (!$ciclo || $ciclo['situacao'] !== 'PAUSADO') {
+    $previsao = flow_janela_data_valida($previsao);
+    if (!$previsao) {
+        throw new DomainException('Informe uma nova previsao de conclusao valida.');
+    }
+    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, $forUpdate);
+    if (!$ciclo) {
+        return ['tem_ciclo' => false, 'previsao' => $previsao, 'exige_justificativa' => false];
+    }
+
+    if ($ciclo['situacao'] === 'AGUARDANDO_INICIO') {
+        $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, $forUpdate);
+        $avaliacao = flow_janela_avaliar($conn, $unidade, $previsao);
+        $avaliacao['ciclo_id'] = (int) $ciclo['id'];
+        $avaliacao['situacao'] = 'AGUARDANDO_INICIO';
+        $avaliacao['tem_ciclo'] = true;
+        return $avaliacao;
+    }
+
+    $pausa = null;
+    $diasHold = 0;
+    $limite = flow_janela_data_valida($ciclo['limite_data_atual'] ?? null);
+    if ($ciclo['situacao'] === 'PAUSADO') {
+        $stmt = $conn->prepare("SELECT * FROM janela_operacional_pausa WHERE ciclo_id = ? AND ativa_token = 'ATIVA' LIMIT 1" . ($forUpdate ? ' FOR UPDATE' : ''));
+        $cicloId = (int) $ciclo['id'];
+        $stmt->bind_param('i', $cicloId);
+        $stmt->execute();
+        $pausa = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$pausa) {
+            throw new RuntimeException('Ciclo pausado sem evento de pausa ativo.');
+        }
+        $diasHold = flow_janela_dias_hold_integrais(substr($pausa['inicio_em'], 0, 10), date('Y-m-d'));
+        $limite = flow_janela_limite_retomada($limite, substr($pausa['inicio_em'], 0, 10), date('Y-m-d'));
+    }
+
+    $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, $forUpdate);
+    $prazo = flow_janela_prazo_necessario($conn, $unidade);
+    $aplicaRegra = !empty($ciclo['aplica_regra_snapshot']);
+    $estado = flow_janela_calcular_estado_retomada($previsao, $aplicaRegra ? $limite : null, $prazo['data']);
+    return [
+        'tem_ciclo' => true,
+        'ciclo_id' => (int) $ciclo['id'],
+        'situacao' => $ciclo['situacao'],
+        'aplica_regra' => $aplicaRegra,
+        'perfil_codigo' => $ciclo['perfil_codigo_snapshot'],
+        'perfil_nome' => $ciclo['perfil_nome_snapshot'],
+        'limite_dias_uteis' => $ciclo['limite_dias_uteis_snapshot'] === null ? null : (int) $ciclo['limite_dias_uteis_snapshot'],
+        'inicio_data' => $ciclo['inicio_em'] ? substr($ciclo['inicio_em'], 0, 10) : null,
+        'limite_data' => $limite,
+        'limite_data_original' => $ciclo['limite_data_original'],
+        'prazo_necessario' => $prazo['data'],
+        'planejamento_versao_id' => $prazo['versao_id'],
+        'previsao' => $previsao,
+        'previsao_anterior' => $ciclo['previsao_atual'],
+        'estado' => $estado,
+        'estado_anterior' => $ciclo['estado_atual'],
+        'exige_justificativa' => $estado !== FLOW_JANELA_ESTADO_NORMAL,
+        'dias_uteis_hold' => $diasHold,
+        'pausa_id' => $pausa ? (int) $pausa['id'] : null,
+        'limite_anterior' => $ciclo['limite_data_atual'],
+    ];
+}
+
+function flow_janela_retomar(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId, string $previsao, ?string $motivoCodigo = null, ?string $motivoTexto = null): ?array
+{
+    $avaliacao = flow_janela_avaliar_retomada($conn, $funcaoImagemId, $previsao, true);
+    if (empty($avaliacao['tem_ciclo'])) {
         return null;
     }
-    $cicloId = (int) $ciclo['id'];
-    $stmt = $conn->prepare("SELECT * FROM janela_operacional_pausa WHERE ciclo_id = ? AND ativa_token = 'ATIVA' LIMIT 1 FOR UPDATE");
-    $stmt->bind_param('i', $cicloId);
-    $stmt->execute();
-    $pausa = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    if (!$pausa) {
-        throw new RuntimeException('Ciclo pausado sem evento de pausa ativo.');
+    $motivo = flow_janela_validar_justificativa($conn, $avaliacao['estado'], $motivoCodigo, $motivoTexto);
+    $cicloId = (int) $avaliacao['ciclo_id'];
+
+    if ($avaliacao['situacao'] === 'AGUARDANDO_INICIO') {
+        $ativacao = flow_janela_ativar_ciclo_aguardando_inicio(
+            $conn,
+            $funcaoImagemId,
+            $avaliacao['previsao'],
+            $motivo,
+            $atorColaboradorId,
+            $atorUsuarioId,
+            'FLOW_BLOCK_RETOMADA',
+            'HOLD'
+        );
+        return ['ciclo_id' => $cicloId, 'situacao' => 'ATIVO', 'avaliacao' => $ativacao['avaliacao']];
     }
-    $hoje = date('Y-m-d');
-    $inicio = substr($pausa['inicio_em'], 0, 10);
-    // Com granularidade de data, somente dias integralmente indisponiveis
-    // ampliam a janela: nao contamos o dia em que o trabalho e retomado.
-    $dias = flow_janela_dias_hold_integrais($inicio, $hoje);
-    $aplicaRegra = !empty($ciclo['aplica_regra_snapshot']);
-    $limiteNovo = $aplicaRegra
-        ? flow_planejamento_adicionar_dias_uteis($ciclo['limite_data_atual'], $dias)
-        : null;
+
     $agora = date('Y-m-d H:i:s');
-    $pausaId = (int) $pausa['id'];
-    $stmt = $conn->prepare("UPDATE janela_operacional_pausa SET fim_em = ?, dias_uteis_suspensos = ?, ativa_token = NULL, encerrado_por_colaborador_id = ?, encerrado_por_usuario_id = ? WHERE id = ?");
-    $stmt->bind_param('siiii', $agora, $dias, $atorColaboradorId, $atorUsuarioId, $pausaId);
+    $pausaId = (int) ($avaliacao['pausa_id'] ?? 0);
+    if ($pausaId > 0) {
+        $diasHold = (int) $avaliacao['dias_uteis_hold'];
+        $stmt = $conn->prepare('UPDATE janela_operacional_pausa SET fim_em = ?, dias_uteis_suspensos = ?, ativa_token = NULL, encerrado_por_colaborador_id = ?, encerrado_por_usuario_id = ? WHERE id = ?');
+        $stmt->bind_param('siiii', $agora, $diasHold, $atorColaboradorId, $atorUsuarioId, $pausaId);
+        $stmt->execute();
+        $stmt->close();
+    }
+    $stmt = $conn->prepare("UPDATE janela_operacional_ciclo
+                               SET situacao = 'ATIVO', limite_data_atual = ?, estado_atual = ?, previsao_atual = ?,
+                                   prazo_necessario_snapshot = COALESCE(?, prazo_necessario_snapshot),
+                                   planejamento_versao_id_snapshot = COALESCE(?, planejamento_versao_id_snapshot)
+                             WHERE id = ?");
+    $prazoNecessario = $avaliacao['prazo_necessario'];
+    $versaoPlanejamento = $avaliacao['planejamento_versao_id'];
+    $estadoNovo = $avaliacao['estado'];
+    $limiteNovo = $avaliacao['limite_data'];
+    $previsaoNova = $avaliacao['previsao'];
+    $stmt->bind_param('ssssii', $limiteNovo, $estadoNovo, $previsaoNova, $prazoNecessario, $versaoPlanejamento, $cicloId);
     $stmt->execute();
     $stmt->close();
-    $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, true);
-    $prazoAtual = flow_janela_prazo_necessario($conn, $unidade);
-    $estadoNovo = flow_janela_classificar($ciclo['previsao_atual'], $aplicaRegra ? $limiteNovo : null, $prazoAtual['data']);
-    $stmt = $conn->prepare("UPDATE janela_operacional_ciclo SET situacao = 'ATIVO', limite_data_atual = ?, estado_atual = ? WHERE id = ?");
-    $stmt->bind_param('ssi', $limiteNovo, $estadoNovo, $cicloId);
-    $stmt->execute();
-    $stmt->close();
-    flow_janela_registrar_evento($conn, $cicloId, 'HOLD_ENCERRADO', ['estado_anterior' => $ciclo['estado_atual'], 'estado_novo' => $estadoNovo, 'prazo_necessario' => $prazoAtual['data'], 'limite_data' => $limiteNovo, 'dias_uteis_consumidos' => $dias, 'ator_colaborador_id' => $atorColaboradorId, 'ator_usuario_id' => $atorUsuarioId, 'detalhes' => ['pausa_id' => $pausaId, 'limite_anterior' => $ciclo['limite_data_atual']]]);
-    return ['ciclo_id' => $cicloId, 'dias_uteis_suspensos' => $dias, 'limite_data_original' => $ciclo['limite_data_original'], 'limite_data_atual' => $limiteNovo, 'estado' => $estadoNovo];
+    flow_janela_registrar_evento($conn, $cicloId, 'HOLD_ENCERRADO', [
+        'status_tarefa_anterior' => 'HOLD',
+        'status_tarefa_novo' => 'Em andamento',
+        'estado_anterior' => $avaliacao['estado_anterior'] ?? null,
+        'estado_novo' => $estadoNovo,
+        'previsao_anterior' => $avaliacao['previsao_anterior'] ?? null,
+        'previsao_nova' => $previsaoNova,
+        'prazo_necessario' => $prazoNecessario,
+        'limite_data' => $limiteNovo,
+        'motivo' => $motivo,
+        'dias_uteis_consumidos' => $avaliacao['dias_uteis_hold'] ?? null,
+        'ator_colaborador_id' => $atorColaboradorId,
+        'ator_usuario_id' => $atorUsuarioId,
+        'detalhes' => ['pausa_id' => $pausaId ?: null, 'limite_anterior' => $avaliacao['limite_anterior'] ?? null],
+    ]);
+    return ['ciclo_id' => $cicloId, 'situacao' => 'ATIVO', 'dias_uteis_suspensos' => $avaliacao['dias_uteis_hold'] ?? 0, 'limite_data_original' => $avaliacao['limite_data_original'] ?? null, 'limite_data_atual' => $limiteNovo, 'previsao_anterior' => $avaliacao['previsao_anterior'] ?? null, 'previsao' => $previsaoNova, 'estado' => $estadoNovo];
 }
 
 function flow_janela_encerrar_ciclo(mysqli $conn, int $funcaoImagemId, string $motivo, ?int $atorColaboradorId, ?int $atorUsuarioId, ?string $statusSaida = null, ?string $eventoSaida = null): ?array

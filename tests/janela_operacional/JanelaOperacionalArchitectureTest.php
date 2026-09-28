@@ -41,6 +41,11 @@ arquitetura_assert(str_contains($legacy, 'flow_inicio_operacional_iniciar'), 'Wr
 
 $flowBlock = file_get_contents($root . '/FlowBlock/api.php');
 arquitetura_assert(str_contains($flowBlock, 'flow_janela_pausar') && str_contains($flowBlock, 'flow_janela_retomar'), 'Flow Block deve pausar e retomar a janela.');
+arquitetura_assert(str_contains($flowBlock, "'motivo_codigo'") && str_contains($flowBlock, "'motivo_texto'"), 'Retomada do HOLD deve receber a justificativa operacional.');
+$resumeEvaluation = file_get_contents($root . '/PaginaPrincipal/avaliar_janela_operacional.php');
+arquitetura_assert(str_contains($resumeEvaluation, 'flow_janela_avaliar_retomada'), 'Prévia de retomada deve projetar a janela com o HOLD encerrado.');
+$kanban = file_get_contents($root . '/PaginaPrincipal/scriptIndex.js');
+arquitetura_assert(str_contains($kanban, 'retomada_hold: "1"') && str_contains($kanban, 'motivo_codigo: reasonSelect.value'), 'Modal de retomada deve avaliar a nova data e enviar a justificativa.');
 
 $frontend = file_get_contents($root . '/PaginaPrincipal/scriptIndex.js');
 arquitetura_assert(str_contains($frontend, 'iniciar_operacao.php'), 'Modal deve usar o endpoint atomico no primeiro inicio.');

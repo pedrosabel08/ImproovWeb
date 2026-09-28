@@ -26,35 +26,39 @@ if ($tarefaId <= 0 || !$previsao) {
 }
 
 try {
-    $unidade = flow_janela_resolver_unidade($conn, $tarefaId, false, $agrupar);
-    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, false);
-    if ($ciclo) {
-        $prazo = flow_janela_prazo_necessario($conn, $unidade);
-        $aplica = !empty($ciclo['aplica_regra_snapshot']);
-        $estado = flow_janela_classificar($previsao, $aplica ? $ciclo['limite_data_atual'] : null, $prazo['data']);
-        $avaliacao = [
-            'aplica_regra' => $aplica,
-            'perfil_codigo' => $ciclo['perfil_codigo_snapshot'],
-            'perfil_nome' => $ciclo['perfil_nome_snapshot'],
-            'limite_dias_uteis' => $ciclo['limite_dias_uteis_snapshot'] === null ? null : (int) $ciclo['limite_dias_uteis_snapshot'],
-            'inicio_data' => substr($ciclo['inicio_em'], 0, 10),
-            'limite_data' => $ciclo['limite_data_atual'],
-            'limite_data_original' => $ciclo['limite_data_original'],
-            'prazo_necessario' => $prazo['data'],
-            'previsao' => $previsao,
-            'estado' => $estado,
-            'exige_justificativa' => $estado !== FLOW_JANELA_ESTADO_NORMAL,
-            'ciclo_id' => (int) $ciclo['id'],
-            'situacao' => $ciclo['situacao'],
-            'unidade' => [
-                'chave' => $unidade['chave_referencia'],
-                'tipo' => $unidade['tipo_unidade'],
-                'membros' => array_map(static fn(array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
-            ],
-        ];
+    if (!empty($_GET['retomada_hold'])) {
+        $avaliacao = flow_janela_avaliar_retomada($conn, $tarefaId, $previsao);
     } else {
-        $avaliacao = flow_janela_avaliar($conn, $unidade, $previsao);
-        unset($avaliacao['perfil']);
+        $unidade = flow_janela_resolver_unidade($conn, $tarefaId, false, $agrupar);
+        $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, false);
+        if ($ciclo) {
+            $prazo = flow_janela_prazo_necessario($conn, $unidade);
+            $aplica = !empty($ciclo['aplica_regra_snapshot']);
+            $estado = flow_janela_classificar($previsao, $aplica ? $ciclo['limite_data_atual'] : null, $prazo['data']);
+            $avaliacao = [
+                'aplica_regra' => $aplica,
+                'perfil_codigo' => $ciclo['perfil_codigo_snapshot'],
+                'perfil_nome' => $ciclo['perfil_nome_snapshot'],
+                'limite_dias_uteis' => $ciclo['limite_dias_uteis_snapshot'] === null ? null : (int) $ciclo['limite_dias_uteis_snapshot'],
+                'inicio_data' => substr($ciclo['inicio_em'], 0, 10),
+                'limite_data' => $ciclo['limite_data_atual'],
+                'limite_data_original' => $ciclo['limite_data_original'],
+                'prazo_necessario' => $prazo['data'],
+                'previsao' => $previsao,
+                'estado' => $estado,
+                'exige_justificativa' => $estado !== FLOW_JANELA_ESTADO_NORMAL,
+                'ciclo_id' => (int) $ciclo['id'],
+                'situacao' => $ciclo['situacao'],
+                'unidade' => [
+                    'chave' => $unidade['chave_referencia'],
+                    'tipo' => $unidade['tipo_unidade'],
+                    'membros' => array_map(static fn(array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
+                ],
+            ];
+        } else {
+            $avaliacao = flow_janela_avaliar($conn, $unidade, $previsao);
+            unset($avaliacao['perfil']);
+        }
     }
     echo json_encode(['success' => true, 'evaluation' => $avaliacao, 'reasons' => flow_janela_motivos_ativos($conn)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $error) {

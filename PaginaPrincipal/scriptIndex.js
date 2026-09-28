@@ -1916,6 +1916,7 @@ function abrirFormularioFlowBlockHold(
   document.querySelector(".modalUploads").style.display = "none";
   document.querySelector(".statusAnterior").style.display = "none";
   document.querySelector(".buttons").style.display = "none";
+  ocultarPlanejamentoModal();
 
   const form = document.createElement("section");
   form.id = "flow-block-hold-form";
@@ -2131,20 +2132,169 @@ function abrirReplanejamentoFlowBlock(card) {
   form.id = "flow-block-replan-form";
   form.className = "flow-block-replan-form";
   form.innerHTML = `
-    <div class="flow-block-replan-intro"><i class="ri-calendar-schedule-line"></i><div><strong>Tudo resolvido</strong><p>Defina um novo prazo antes de retornar a tarefa para Em andamento.</p></div></div>
     <dl class="flow-block-replan-summary">
       <div><dt>Prazo anterior</dt><dd>${prazoAnterior ? formatarData(prazoAnterior) : "Não definido"}</dd></div>
       <div><dt>Situação do prazo</dt><dd>${contextoPrazo}</dd></div>
       ${contextoHold ? `<div><dt>Tempo em HOLD</dt><dd>${contextoHold}</dd></div>` : ""}
     </dl>
-    <label>Novo prazo da tarefa <input data-field="prazo" type="date" required></label>
+    <div class="flow-block-resume-window" data-field="window" aria-live="polite">
+      <span>NOVA JANELA OPERACIONAL</span>
+      <strong data-field="window-limit">Calculando...</strong>
+      <small data-field="window-detail"></small>
+    </div>
+    <label>Novo prazo e previs&atilde;o de conclus&atilde;o <input data-field="prazo" type="date" required></label>
+    <div class="flow-block-resume-evaluation" data-field="evaluation" aria-live="polite">Informe a nova data para avaliar a janela operacional.</div>
+    <label data-field="reason-wrap" hidden>Motivo da exce&ccedil;&atilde;o <select data-field="reason"><option value="">Selecione um motivo</option></select></label>
+    <label data-field="reason-text-wrap" hidden>Justificativa<textarea data-field="reason-text" rows="3" maxlength="500" placeholder="Explique o motivo da previs&atilde;o fora da janela, se necess&aacute;rio."></textarea><small data-field="reason-help">Detalhe a justificativa para prosseguir.</small></label>
     <label>Observação da reprogramação <textarea data-field="observacao" rows="3" maxlength="5000" placeholder="Opcional: contexto da nova previsão."></textarea></label>
     <div class="flow-block-hold-actions"><button type="button" class="flow-block-cancel">Cancelar</button><button type="button" class="flow-block-continue"><i class="ri-play-circle-line"></i> Confirmar e continuar</button></div>
   `;
   conteudo.insertBefore(form, conteudo.querySelector(".buttons"));
 
+  const prazoInput = form.querySelector('[data-field="prazo"]');
+  prazoInput.value = "";
+  const windowLimit = form.querySelector('[data-field="window-limit"]');
+  const windowDetail = form.querySelector('[data-field="window-detail"]');
+  const evaluationBox = form.querySelector('[data-field="evaluation"]');
+  const reasonWrap = form.querySelector('[data-field="reason-wrap"]');
+  const reasonSelect = form.querySelector('[data-field="reason"]');
+  const reasonTextWrap = form.querySelector('[data-field="reason-text-wrap"]');
+  const reasonText = form.querySelector('[data-field="reason-text"]');
+  const reasonHelp = form.querySelector('[data-field="reason-help"]');
+  const continueButton = form.querySelector(".flow-block-continue");
+  let currentEvaluation = null;
+  let previewRequest = 0;
+
+  const updateReasonTextRequirement = () => {
+    const requiresText =
+      reasonSelect.selectedOptions[0]?.dataset.requiresText === "1";
+    reasonText.required = requiresText;
+    reasonHelp.textContent = requiresText
+      ? "Descreva o motivo para prosseguir."
+      : "Acrescente contexto, se necess\u00e1rio.";
+  };
+
+  const hojeIsoLocal = () => {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+  };
+
+  const atualizarAvaliacaoRetomada = async ({ projetarSemPrevisao = false } = {}) => {
+    const requestId = ++previewRequest;
+    currentEvaluation = null;
+    reasonWrap.hidden = true;
+    reasonTextWrap.hidden = true;
+    const temPrevisao = Boolean(prazoInput.value);
+    if (!temPrevisao && !projetarSemPrevisao) {
+      evaluationBox.textContent = "Informe a nova data para avaliar a janela operacional.";
+      evaluationBox.className = "flow-block-resume-evaluation is-neutral";
+      return false;
+    }
+    if (temPrevisao) {
+      evaluationBox.textContent = "Calculando o prazo e a janela da retomada...";
+      evaluationBox.className = "flow-block-resume-evaluation is-neutral";
+    }
+    try {
+      const params = new URLSearchParams({
+        funcao_imagem_id: String(card.dataset.id || ""),
+        previsao: prazoInput.value || hojeIsoLocal(),
+        retomada_hold: "1",
+      });
+      const response = await fetch(
+        `PaginaPrincipal/avaliar_janela_operacional.php?${params.toString()}`,
+        { headers: { Accept: "application/json" } },
+      );
+      const payload = await response.json();
+      if (payload?.code === "JANELA_SCHEMA_INDISPONIVEL") {
+        if (requestId !== previewRequest) return false;
+        currentEvaluation = { tem_ciclo: false };
+        windowLimit.textContent = "Sem ciclo operacional";
+        windowDetail.textContent = "A nova data será aplicada ao prazo da tarefa.";
+        if (temPrevisao) {
+          evaluationBox.textContent = "Janela operacional indispon\u00edvel; a nova data ser\u00e1 aplicada ao prazo da tarefa.";
+          evaluationBox.className = "flow-block-resume-evaluation is-neutral";
+        }
+        return true;
+      }
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.message || "N\u00e3o foi poss\u00edvel avaliar a retomada.");
+      }
+      if (requestId !== previewRequest) return false;
+      currentEvaluation = payload.evaluation || null;
+      if (!currentEvaluation?.tem_ciclo) {
+        windowLimit.textContent = "Sem ciclo operacional";
+        windowDetail.textContent = "A nova data será aplicada ao prazo da tarefa.";
+        if (temPrevisao) {
+          evaluationBox.textContent = "A tarefa n\u00e3o possui ciclo operacional ativo; a nova data ser\u00e1 aplicada ao prazo da tarefa.";
+          evaluationBox.className = "flow-block-resume-evaluation is-neutral";
+        }
+        return true;
+      }
+
+      const avaliacao = currentEvaluation;
+      windowLimit.textContent = avaliacao.limite_data
+        ? `Até ${formatarData(avaliacao.limite_data)}`
+        : "Sem limite operacional";
+      windowDetail.textContent = avaliacao.situacao === "AGUARDANDO_INICIO"
+        ? `${avaliacao.limite_dias_uteis || 0} dias úteis após o início da retomada.`
+        : `${avaliacao.dias_uteis_hold || 0} dia(s) útil(eis) integral(is) em HOLD adicionados ao saldo restante.`;
+      if (!temPrevisao) {
+        evaluationBox.textContent = "Informe a nova data para avaliar a janela operacional.";
+        evaluationBox.className = "flow-block-resume-evaluation is-neutral";
+        return true;
+      }
+      if (avaliacao.estado === "NORMAL") {
+        evaluationBox.textContent = avaliacao.limite_data
+          ? `Dentro da janela operacional at\u00e9 ${formatarData(avaliacao.limite_data)}${avaliacao.prazo_necessario ? ` e do prazo necess\u00e1rio (${formatarData(avaliacao.prazo_necessario)})` : ""}.`
+          : "Dentro do prazo necess\u00e1rio do planejamento.";
+        evaluationBox.className = "flow-block-resume-evaluation is-ok";
+      } else if (avaliacao.estado === "CONFLITO_PLANEJAMENTO") {
+        const prazoNecessario = avaliacao.prazo_necessario
+          ? formatarData(avaliacao.prazo_necessario)
+          : "n\u00e3o definido";
+        evaluationBox.textContent = `A previs\u00e3o ultrapassa o prazo necess\u00e1rio do planejamento (${prazoNecessario}).`;
+        evaluationBox.className = "flow-block-resume-evaluation is-conflict";
+      } else {
+        const limiteRetomado = avaliacao.limite_data
+          ? formatarData(avaliacao.limite_data)
+          : "n\u00e3o definida";
+        evaluationBox.textContent = `A previs\u00e3o ultrapassa a janela operacional retomada (${limiteRetomado}).`;
+        evaluationBox.className = "flow-block-resume-evaluation is-risk";
+      }
+
+      if (avaliacao.exige_justificativa) {
+        const selectedReason = reasonSelect.value;
+        reasonSelect.replaceChildren(new Option("Selecione um motivo", ""));
+        (payload.reasons || []).forEach((reason) => {
+          const option = new Option(reason.label, reason.codigo);
+          option.dataset.requiresText = reason.exige_texto ? "1" : "0";
+          reasonSelect.appendChild(option);
+        });
+        reasonSelect.value = selectedReason;
+        reasonWrap.hidden = false;
+        reasonTextWrap.hidden = false;
+        updateReasonTextRequirement();
+      } else {
+        reasonSelect.value = "";
+        reasonText.value = "";
+        reasonText.required = false;
+      }
+      return true;
+    } catch (error) {
+      if (requestId !== previewRequest) return false;
+      evaluationBox.textContent = error.message || "Falha ao avaliar a nova data.";
+      evaluationBox.className = "flow-block-resume-evaluation is-conflict";
+      return false;
+    }
+  };
+
+  prazoInput.addEventListener("change", atualizarAvaliacaoRetomada);
+  reasonSelect.addEventListener("change", updateReasonTextRequirement);
+  atualizarAvaliacaoRetomada({ projetarSemPrevisao: true });
+
   const close = () => {
     form.remove();
+    ocultarPlanejamentoModal();
     cardModal.classList.remove("active", "flow-block-replan-active");
     card.classList.remove("selected");
   };
@@ -2152,7 +2302,7 @@ function abrirReplanejamentoFlowBlock(card) {
   form
     .querySelector(".flow-block-continue")
     .addEventListener("click", async () => {
-      const deadline = form.querySelector('[data-field="prazo"]').value;
+      const deadline = prazoInput.value;
       const note = form.querySelector('[data-field="observacao"]').value.trim();
       if (!deadline) {
         Toastify({
@@ -2164,10 +2314,18 @@ function abrirReplanejamentoFlowBlock(card) {
         }).showToast();
         return;
       }
-      const button = form.querySelector(".flow-block-continue");
-      button.disabled = true;
-      button.textContent = "Reprogramando…";
+      continueButton.disabled = true;
+      continueButton.textContent = "Reprogramando...";
       try {
+        if (!(await atualizarAvaliacaoRetomada())) {
+          throw new Error(evaluationBox.textContent || "N\u00e3o foi poss\u00edvel avaliar a nova data.");
+        }
+        if (currentEvaluation?.exige_justificativa && !reasonSelect.value) {
+          throw new Error("Selecione um motivo para a previs\u00e3o informada.");
+        }
+        if (reasonText.required && !reasonText.value.trim()) {
+          throw new Error("Detalhe a justificativa para o motivo selecionado.");
+        }
         const response = await fetch("FlowBlock/api.php?action=continue_task", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2175,6 +2333,8 @@ function abrirReplanejamentoFlowBlock(card) {
             funcao_imagem_id: Number(card.dataset.id),
             prazo: deadline,
             observacao: note,
+            motivo_codigo: reasonSelect.value || null,
+            motivo_texto: reasonText.value.trim() || null,
           }),
         });
         const data = await response.json();
@@ -2192,8 +2352,8 @@ function abrirReplanejamentoFlowBlock(card) {
           backgroundColor: "#129117",
         }).showToast();
       } catch (error) {
-        button.disabled = false;
-        button.innerHTML =
+        continueButton.disabled = false;
+        continueButton.innerHTML =
           '<i class="ri-play-circle-line"></i> Confirmar e continuar';
         Toastify({
           text: error.message,
@@ -7777,6 +7937,17 @@ if (typeof Sortable !== "undefined") {
             confirmButtonColor: "#3085d6",
           });
 
+          return;
+        }
+
+        if (
+          deColuna?.id !== novaColuna?.id &&
+          novaColuna?.id === "in-progress" &&
+          card.querySelector(".flow-block-continue-task")
+        ) {
+          const proximoCard = evt.from.children[evt.oldIndex] || null;
+          evt.from.insertBefore(card, proximoCard);
+          abrirReplanejamentoFlowBlock(card);
           return;
         }
 

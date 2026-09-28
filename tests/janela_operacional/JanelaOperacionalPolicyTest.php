@@ -20,6 +20,10 @@ janela_assert(flow_planejamento_adicionar_dias_uteis('2026-09-13', 2) === '2026-
 janela_assert(flow_planejamento_adicionar_dias_uteis('2026-09-04', 2) === '2026-09-09', 'Feriado fixo deve ser ignorado pelo calendario central.');
 janela_assert(flow_janela_dias_hold_integrais('2026-09-11', '2026-09-17') === 3, 'HOLD deve contar somente os tres dias uteis integralmente indisponiveis.');
 janela_assert(flow_janela_dias_hold_integrais('2026-09-11', '2026-09-11') === 0, 'HOLD e retomada no mesmo dia nao devem ampliar a janela.');
+janela_assert(flow_janela_limite_retomada('2026-09-15', '2026-09-11', '2026-09-17') === '2026-09-18', 'Retomada deve estender o limite apenas pelos dias uteis em HOLD.');
+janela_assert(flow_janela_limite_retomada('2026-09-15', '2026-09-11', '2026-09-11') === '2026-09-15', 'Retomada no mesmo dia deve preservar o saldo original da janela.');
+janela_assert(flow_janela_calcular_estado_retomada('2026-09-18', '2026-09-18', '2026-09-22') === FLOW_JANELA_ESTADO_NORMAL, 'Nova previsao no limite estendido deve retomar sem excecao.');
+janela_assert(flow_janela_calcular_estado_retomada('2026-09-21', '2026-09-18', '2026-09-22') === FLOW_JANELA_ESTADO_EXCECAO, 'Nova previsao alem do saldo da janela ainda deve exigir justificativa.');
 
 $base = ['funcao_id' => 2, 'tipo_imagem' => 'Imagem Interna'];
 janela_assert(flow_janela_codigo_perfil($base) === 'MODELAGEM_COMUM', 'Modelagem interna deve ser comum.');

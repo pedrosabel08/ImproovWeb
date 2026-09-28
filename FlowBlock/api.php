@@ -1177,6 +1177,8 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
         $taskId = (int) ($payload['funcao_imagem_id'] ?? 0);
         $newDeadline = trim((string) ($payload['prazo'] ?? ''));
         $replanNote = trim((string) ($payload['observacao'] ?? ''));
+        $motivoCodigo = isset($payload['motivo_codigo']) ? (string) $payload['motivo_codigo'] : null;
+        $motivoTexto = isset($payload['motivo_texto']) ? (string) $payload['motivo_texto'] : null;
         $task = flow_block_task($conn, $taskId);
         if (!$task || !flow_block_can_access_task($task)) {
             flow_block_json_response(['ok' => false, 'message' => 'Tarefa não encontrada.'], 404);
@@ -1233,7 +1235,15 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
         $log->close();
 
         if (flow_janela_schema_disponivel($conn)) {
-            flow_janela_retomar($conn, $taskId, $actorId ?: null, $actorUserId ?: null);
+            flow_janela_retomar(
+                $conn,
+                $taskId,
+                $actorId ?: null,
+                $actorUserId ?: null,
+                $newDeadline,
+                $motivoCodigo,
+                $motivoTexto
+            );
         }
 
         $lastIssue = $conn->prepare("SELECT id FROM flow_issue WHERE funcao_imagem_id = ? AND bloqueante = 1 AND (status = 'CANCELADA' OR (status = 'RESOLVIDA' AND confirmada_em IS NOT NULL)) ORDER BY COALESCE(confirmada_em, resolvido_em, atualizado_em) DESC, id DESC LIMIT 1");
@@ -1262,11 +1272,9 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
 
     flow_block_json_response(['ok' => false, 'message' => 'Ação não encontrada.'], 404);
 } catch (Throwable $e) {
-    if ($conn->errno) {
-        try {
-            $conn->rollback();
-        } catch (Throwable $ignored) {
-        }
+    try {
+        $conn->rollback();
+    } catch (Throwable $ignored) {
     }
     flow_block_json_response(['ok' => false, 'message' => $e->getMessage()], 422);
 }

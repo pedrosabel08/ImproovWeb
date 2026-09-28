@@ -7694,6 +7694,69 @@ tr.prod-row-recorde td {
   display: grid;
   gap: 13px;
 }
+#cardModal .flow-block-replan-form select,
+#cardModal .flow-block-replan-form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 11px;
+  color: var(--kanban-modal-text);
+  background: var(--kanban-modal-input);
+  border: 1px solid var(--kanban-modal-line);
+  border-radius: 8px;
+  color-scheme: dark;
+}
+#cardModal .flow-block-replan-form textarea {
+  resize: vertical;
+}
+#cardModal .flow-block-resume-evaluation {
+  padding: 10px 11px;
+  color: var(--kanban-modal-muted);
+  background: var(--kanban-modal-surface);
+  border: 1px solid var(--kanban-modal-line);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+#cardModal .flow-block-resume-window {
+  display: grid;
+  gap: 3px;
+  padding: 10px 11px;
+  color: #dce9f6;
+  background: #f7fafc;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+}
+#cardModal .flow-block-resume-window > span {
+  color: #536579;
+  font-size: 10px;
+  font-weight: 750;
+}
+#cardModal .flow-block-resume-window > strong {
+  color: #101827;
+  font-size: 15px;
+}
+#cardModal .flow-block-resume-window > small {
+  color: #536579;
+  font-size: 11px;
+  line-height: 1.35;
+}
+#cardModal .flow-block-resume-evaluation.is-ok {
+  color: #75e0a5;
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+#cardModal .flow-block-resume-evaluation.is-risk,
+#cardModal .flow-block-resume-evaluation.is-conflict {
+  color: #ffc274;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+#cardModal .flow-block-replan-form [data-field="reason-text-wrap"] small {
+  display: block;
+  margin-top: 5px;
+  color: var(--kanban-modal-muted);
+  font-size: 11px;
+}
 #cardModal .flow-block-replan-intro {
   display: flex;
   gap: 10px;
@@ -9071,6 +9134,17 @@ tr.prod-row-recorde td {
 #kanban-section .kanban-card .flow-block-card-type,
 #kanban-section .kanban-card .flow-block-card-ready {
   order: 4;
+}
+
+/* A retomada exige um novo prazo; mantenha o atalho visível no quadro. */
+#kanban-section .kanban-card .flow-block-continue-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin-top: 6px;
+  white-space: normal;
+  text-align: left;
 }
 
 #kanban-section .kanban-card .kanban-card-meta {

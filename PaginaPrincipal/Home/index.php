@@ -48,7 +48,7 @@ $backgroundPayload = json_encode(['dark' => $backgrounds('dark'), 'light' => $ba
                 <p id="homeDate" data-home-animate="date">Carregando data</p>
             </div>
             <div class="home-header__right">
-                <p class="home-quote" data-home-animate="quote">Disciplina hoje,<br>resultados amanhã.</p><button class="home-theme-toggle" id="themeToggle" data-home-animate="control" type="button" aria-label="Alternar tema"><i class="ri-sun-line"></i></button><a class="home-avatar" data-home-animate="control" href="../../infos.php" aria-label="Abrir perfil"><?php if ($userPhoto !== ''): ?><img src="<?php echo htmlspecialchars($userPhoto, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><span><?php echo htmlspecialchars($initial); ?></span><?php endif; ?></a>
+                <p class="home-quote" data-home-animate="quote">Disciplina hoje,<br>resultados amanhã.</p><button class="home-theme-toggle" id="themeToggle" data-home-animate="control" type="button" aria-label="Alternar tema"><i class="ri-sun-line"></i></button><a class="home-avatar" data-home-animate="control" href="../../infos.php" aria-label="Abrir perfil"><?php if ($userPhoto !== ''): ?><img src="../../<?php echo htmlspecialchars($userPhoto, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><span><?php echo htmlspecialchars($initial); ?></span><?php endif; ?></a>
             </div>
         </header>
 

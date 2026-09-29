@@ -440,8 +440,7 @@ async function resolverConflitoSftp(
   sftp_remote_path = null,
   sftp_caminho_local = null,
 ) {
-  const { isConfirmed: confirmedReplace, isDenied: confirmedAdd } =
-    await FlowAlert.choose({
+  const { value: sftpChoice } = await FlowAlert.choose({
       title: "Arquivo já existe no servidor",
       type: "warning",
       message: `O arquivo ${nomeArquivo} já existe no destino. Deseja substituí-lo ou enviá-lo com outro nome?`,
@@ -452,14 +451,14 @@ async function resolverConflitoSftp(
       cancelText: "Cancelar",
     });
 
-  if (!confirmedReplace && !confirmedAdd) return; // cancelado
+  if (sftpChoice !== "replace" && sftpChoice !== "add") return; // cancelado
 
   let sftp_action = null;
   let sftp_suffix = null;
 
-  if (confirmedReplace) {
+  if (sftpChoice === "replace") {
     sftp_action = "replace";
-  } else if (confirmedAdd) {
+  } else {
     const baseSemExt = nomeArquivo.replace(/(\.[^.]+)$/, "");
     const ext = nomeArquivo.match(/(\.[^.]+)$/)?.[1] ?? "";
     const { value: sufixo, isConfirmed } = await FlowAlert.input({
@@ -3508,17 +3507,34 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
         };
       }
 
+      const statusTarefa = String(
+        item?.status_atual ||
+          item?.status_novo ||
+          tarefaAtual?.status_novo ||
+          item?.status ||
+          tarefaAtual?.status ||
+          "",
+      ).trim().toLowerCase();
+      const funcaoAtualId = Number(tarefaAtual?.funcao_id ?? item?.funcao_id);
+      const isDirecao = [21, 9, 31].includes(idcolaboradorLogado);
+      const direcaoPodeReaprovar =
+        isDirecao &&
+        [4, 5, 6].includes(funcaoAtualId) &&
+        ["aprovado", "aprovado com ajustes"].includes(statusTarefa);
+
       const podeAprovar =
-        Boolean(tarefaAtual) &&
+        Boolean(tarefaAtual || direcaoPodeReaprovar) &&
         ([1, 2, 9, 20, 3].includes(idusuario) ||
           (idusuario === 8 &&
             [23, 40].includes(Number(item?.colaborador_id))) ||
           tarefaAtual?.diretor_pode_aprovar === true ||
+          direcaoPodeReaprovar ||
           tarefaAtual?.finalizador_pode_aprovar === true) &&
         // Bloqueia o finalizador após a 1ª aprovação (pendente direção)
         !(
           tarefaAtual?.pendente_direcao &&
           !tarefaAtual?.diretor_pode_aprovar &&
+          !direcaoPodeReaprovar &&
           ![1, 2].includes(idusuario)
         );
 
@@ -3627,8 +3643,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
               tipoRevisaoTarefa,
               tipoRevisaoTarefa === "animacao" ? tarefaRefId : null,
               tipoRevisaoTarefa === "imagem" &&
-                Number(tarefaAtual?.funcao_id) === 6 &&
-                Boolean(tarefaAtual?.diretor_pode_aprovar) &&
+                funcaoAtualId === 6 &&
+                (isDirecao ||
+                  Boolean(tarefaAtual?.diretor_pode_aprovar)) &&
                 ["aprovado", "aprovado_com_ajustes"].includes(selected),
             );
 

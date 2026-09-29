@@ -338,18 +338,41 @@ function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId =
         ? ' AND fi.funcao_id IN (' . implode(',', array_map('intval', $principalFunctionIds)) . ')'
         : '';
     $where = $colaboradorId ? ' AND fi.colaborador_id = ?' . $functionFilter : '';
-    // O primeiro prazo_novo é o compromisso original. A entrega é o primeiro
-    // prazo registrado no histórico por upload/aprovação/finalização. Assim,
-    // reenvios e alterações posteriores não mudam a data em que a pessoa
-    // efetivamente entregou a primeira versão. Tarefas antigas criadas já
-    // dentro do planejamento podem não ter nenhuma linha nesse histórico;
-    // nesses casos, usamos o prazo necessário confirmado no planejamento como
-    // fallback explícito, sem substituir a fonte principal.
+    $pdfEntregaJoin = "LEFT JOIN (
+                  SELECT al.funcao_imagem_id, MIN(al.criado_em) AS data_entrega
+                    FROM arquivo_log al
+                    JOIN historico_aprovacoes ha ON ha.arquivo_log_id = al.id
+                   WHERE UPPER(TRIM(al.tipo)) = 'PDF'
+                     AND al.funcao_imagem_id IS NOT NULL
+                     AND LOWER(TRIM(ha.status_novo)) IN ('em aprovação', 'em aprovaÃ§Ã£o')
+                   GROUP BY al.funcao_imagem_id
+              ) pdf_entrega ON pdf_entrega.funcao_imagem_id = fi.idfuncao_imagem";
+    $temVinculoPdfFlowReview = pendencias_operacionais_table_exists($conn, 'arquivo_log')
+        && pendencias_operacionais_table_exists($conn, 'historico_aprovacoes')
+        && pendencias_operacionais_column_exists($conn, 'arquivo_log', 'funcao_imagem_id')
+        && pendencias_operacionais_column_exists($conn, 'arquivo_log', 'tipo')
+        && pendencias_operacionais_column_exists($conn, 'arquivo_log', 'criado_em')
+        && pendencias_operacionais_column_exists($conn, 'historico_aprovacoes', 'arquivo_log_id')
+        && pendencias_operacionais_column_exists($conn, 'historico_aprovacoes', 'status_novo');
+    if (!$temVinculoPdfFlowReview) {
+        $pdfEntregaJoin = 'LEFT JOIN (SELECT NULL AS funcao_imagem_id, NULL AS data_entrega WHERE 1 = 0) pdf_entrega ON pdf_entrega.funcao_imagem_id = fi.idfuncao_imagem';
+    }
+    // O primeiro prazo_novo é o compromisso original. A entrega vem da
+    // primeira prévia registrada no histórico de prazo ou, para os PDFs de
+    // Caderno/Filtro enviados pelo upload enfileirado, da criação do arquivo
+    // ligado à submissão do Flow Review. Reenvios não devem substituir a
+    // primeira entrega. Tarefas antigas sem auditoria de prazo usam o prazo
+    // confirmado no planejamento e a conclusão como fallback.
     $sql = "SELECT c.funcao_imagem_id, c.concluida_em, fi.prazo AS prazo_atual,
                    COALESCE(original.prazo_original, planejamento.prazo_necessario) AS prazo_original,
-                   CASE WHEN original.prazo_original IS NOT NULL THEN entrega.prazo_entrega
-                        WHEN planejamento.prazo_necessario IS NOT NULL THEN DATE(c.concluida_em)
-                        ELSE NULL END AS prazo_entrega,
+                   CASE
+                       WHEN entrega.prazo_entrega IS NOT NULL AND pdf_entrega.data_entrega IS NOT NULL
+                           THEN LEAST(entrega.prazo_entrega, DATE(pdf_entrega.data_entrega))
+                       WHEN entrega.prazo_entrega IS NOT NULL THEN entrega.prazo_entrega
+                       WHEN pdf_entrega.data_entrega IS NOT NULL THEN DATE(pdf_entrega.data_entrega)
+                       WHEN planejamento.prazo_necessario IS NOT NULL THEN DATE(c.concluida_em)
+                       ELSE NULL
+                   END AS prazo_entrega,
                    ico.imagem_nome, o.nomenclatura, f.nome_funcao
               FROM (
                     SELECT la.funcao_imagem_id, MIN(la.data) AS concluida_em
@@ -384,6 +407,7 @@ function flow_overview_v1_metricas_conclusao(mysqli $conn, ?int $colaboradorId =
                          GROUP BY funcao_imagem_id
                     ) primeira_entrega ON primeira_entrega.id = h.id
               ) entrega ON entrega.funcao_imagem_id = fi.idfuncao_imagem
+              {$pdfEntregaJoin}
               LEFT JOIN (
                   SELECT h.funcao_imagem_id, h.prazo_necessario
                     FROM funcao_imagem_previsao_historico h

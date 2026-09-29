@@ -2,6 +2,315 @@ const frKpiConfig = window.FR_KPI_CONFIG || {};
 const frKpiPermissions = { ...(frKpiConfig.permissions || {}) };
 const FR_KPI_ENDPOINT_SCOPE = frKpiConfig.endpointScope || "management";
 let flowReviewMotionInitial = true;
+let flowReviewOrbCleanup = null;
+
+function flowReviewInitializeLoadingOrbs() {
+  if (flowReviewOrbCleanup || !window.thinkingOrbs) return;
+  flowReviewOrbCleanup = window.thinkingOrbs(document);
+}
+
+function flowReviewSetButtonLoading(button, loading) {
+  if (!button) return;
+  button.classList.toggle("is-loading", loading);
+  button.disabled = loading;
+  const orb = button.querySelector("[data-thinking-orb]");
+  if (orb) orb.hidden = !loading;
+}
+
+function flowReviewSetHomeLoadingError() {
+  const state = document.getElementById("fr-home-loading");
+  if (!state) return;
+  state.closest(".containerObra")?.setAttribute("aria-busy", "false");
+  state.querySelector(".fr-home-loading-title").textContent =
+    "Não foi possível carregar a fila.";
+  state.querySelector(".fr-home-loading-detail").textContent =
+    "Verifique sua conexão e tente novamente.";
+  const orb = state.querySelector("[data-thinking-orb]");
+  if (orb) orb.hidden = true;
+  const retry = state.querySelector(".fr-loading-retry");
+  if (retry) {
+    retry.hidden = false;
+    retry.onclick = () => fetchObrasETarefas();
+  }
+  state.setAttribute("aria-busy", "false");
+}
+
+function flowReviewShowReviewLoading(taskId, taskType, options = {}) {
+  const panel = document.querySelector(".container-aprovacao");
+  const main = document.querySelector(".main");
+  const state = document.getElementById("fr-review-loading");
+  if (!panel || !main || !state) return;
+
+  main.classList.add("hidden");
+  panel.classList.remove("hidden");
+  panel.classList.add("is-review-loading");
+  panel.setAttribute("aria-busy", "true");
+  state.hidden = false;
+  state.querySelector(".fr-review-loading-title").textContent =
+    "Carregando revisão…";
+  state.querySelector(".fr-review-loading-detail").textContent =
+    "Buscando imagens e histórico da tarefa.";
+  state.querySelector(".fr-review-loading-error").hidden = true;
+  const orb = state.querySelector("[data-thinking-orb]");
+  if (orb) orb.hidden = false;
+
+  state.querySelector(".fr-review-loading-retry").onclick = () =>
+    historyAJAX(taskId, taskType, options);
+  state.querySelector(".fr-review-loading-back").onclick = () => {
+    historyRequestSequence++;
+    state.hidden = true;
+    panel.classList.remove("is-review-loading");
+    panel.classList.add("hidden");
+    panel.setAttribute("aria-busy", "false");
+    main.classList.remove("hidden");
+  };
+}
+
+function flowReviewHideReviewLoading() {
+  const state = document.getElementById("fr-review-loading");
+  const panel = document.querySelector(".container-aprovacao");
+  if (state) state.hidden = true;
+  panel?.classList.remove("is-review-loading");
+  panel?.setAttribute("aria-busy", "false");
+}
+
+function flowReviewShowReviewLoadError(error, taskId, taskType, options = {}) {
+  const state = document.getElementById("fr-review-loading");
+  if (!state) return;
+  console.error("Erro ao buscar dados da revisão:", error);
+  state.querySelector(".fr-review-loading-title").textContent =
+    "Não foi possível carregar esta revisão.";
+  state.querySelector(".fr-review-loading-detail").textContent =
+    "Verifique sua conexão e tente novamente.";
+  const panel = state.closest(".container-aprovacao");
+  panel?.classList.remove("is-review-loading");
+  panel?.setAttribute("aria-busy", "false");
+  state.querySelector(".fr-review-loading-error").hidden = false;
+  const orb = state.querySelector("[data-thinking-orb]");
+  if (orb) orb.hidden = true;
+  state.querySelector(".fr-review-loading-retry").onclick = () =>
+    historyAJAX(taskId, taskType, options);
+}
+
+const FlowReviewAlertModal = (() => {
+  let root = null;
+  let activeConfig = null;
+  let previouslyFocused = null;
+  const queue = [];
+
+  function close({ showNext = true } = {}) {
+    if (!root || root.hidden) return;
+    root.classList.remove("is-open");
+    root.hidden = true;
+    document.body.classList.remove("fr-alert-open");
+    document.removeEventListener("keydown", onKeydown);
+    const config = activeConfig;
+    activeConfig = null;
+    if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    previouslyFocused = null;
+    config?.onClose?.();
+    if (!showNext) queue.length = 0;
+    if (showNext && queue.length) {
+      const next = queue.shift();
+      window.setTimeout(() => render(next), 0);
+    }
+  }
+
+  function onKeydown(event) {
+    if (!root || root.hidden) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [
+      ...root.querySelectorAll(
+        "button:not(:disabled), [href], [tabindex]:not([tabindex='-1'])",
+      ),
+    ].filter(
+      (element) =>
+        !element.hidden && element.getAttribute("aria-hidden") !== "true",
+    );
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (
+      event.shiftKey &&
+      (document.activeElement === first ||
+        document.activeElement === root.querySelector(".fr-alert-dialog"))
+    ) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function makeButton(label, className, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.textContent = label;
+    button.addEventListener("click", async () => {
+      const result = await action?.();
+      if (result !== false) close();
+    });
+    return button;
+  }
+
+  function render(config) {
+    if (!root) {
+      root = document.createElement("div");
+      root.className = "fr-alert-backdrop";
+      root.hidden = true;
+      root.innerHTML = `
+        <section class="fr-alert-dialog" role="dialog" aria-modal="true" aria-labelledby="fr-alert-title" aria-describedby="fr-alert-description" tabindex="-1">
+          <button class="fr-alert-close" type="button" aria-label="Fechar alerta"><span aria-hidden="true">&times;</span></button>
+          <header class="fr-alert-header">
+            <span class="fr-alert-icon" aria-hidden="true"></span>
+            <div class="fr-alert-heading"><span class="fr-alert-eyebrow"></span><h2 id="fr-alert-title"></h2></div>
+          </header>
+          <p class="fr-alert-description" id="fr-alert-description"></p>
+          <div class="fr-alert-items"></div>
+          <p class="fr-alert-note" hidden></p>
+          <footer class="fr-alert-actions"></footer>
+        </section>`;
+      document.body.appendChild(root);
+      root.addEventListener("click", (event) => {
+        if (event.target === root || event.target.closest(".fr-alert-close"))
+          close();
+      });
+    }
+
+    activeConfig = config;
+    previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    root.dataset.variant = config.variant;
+    const dialog = root.querySelector(".fr-alert-dialog");
+    const iconContainer = root.querySelector(".fr-alert-icon");
+    const icon = document.createElement("i");
+    icon.className = config.icon;
+    icon.setAttribute("aria-hidden", "true");
+    iconContainer.replaceChildren(icon);
+    root.querySelector(".fr-alert-eyebrow").textContent = config.eyebrow;
+    root.querySelector("#fr-alert-title").textContent = config.title;
+    root.querySelector("#fr-alert-description").textContent =
+      config.description;
+    const note = root.querySelector(".fr-alert-note");
+    note.textContent = config.note || "";
+    note.hidden = !config.note;
+
+    const list = root.querySelector(".fr-alert-items");
+    list.replaceChildren();
+    config.items.forEach((item) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "fr-alert-item";
+      row.addEventListener("click", async () => {
+        const result = await item.onActivate?.();
+        if (result !== false) close();
+      });
+      const copy = document.createElement("span");
+      copy.className = "fr-alert-item-copy";
+      const title = document.createElement("strong");
+      title.className = "fr-alert-item-title";
+      title.textContent = item.title;
+      copy.appendChild(title);
+      if (item.detail) {
+        const detail = document.createElement("span");
+        detail.className = "fr-alert-item-detail";
+        detail.textContent = item.detail;
+        copy.appendChild(detail);
+      }
+      if (item.quote) {
+        const quote = document.createElement("span");
+        quote.className = "fr-alert-item-quote";
+        quote.textContent = item.quote;
+        copy.appendChild(quote);
+      }
+      row.appendChild(copy);
+      if (item.count !== undefined) {
+        const count = document.createElement("span");
+        count.className = "fr-alert-item-count";
+        count.textContent = String(item.count);
+        row.appendChild(count);
+      }
+      row.setAttribute(
+        "aria-label",
+        item.ariaLabel || `${item.title}. ${item.detail || ""}`.trim(),
+      );
+      list.appendChild(row);
+    });
+
+    const actions = root.querySelector(".fr-alert-actions");
+    actions.replaceChildren();
+    actions.appendChild(
+      makeButton(
+        config.secondaryLabel || "Agora não",
+        "fr-alert-action fr-alert-action--secondary",
+        () => true,
+      ),
+    );
+    actions.appendChild(
+      makeButton(
+        config.primaryLabel,
+        "fr-alert-action fr-alert-action--primary",
+        config.onPrimary,
+      ),
+    );
+
+    root.hidden = false;
+    document.body.classList.add("fr-alert-open");
+    document.addEventListener("keydown", onKeydown);
+    requestAnimationFrame(() => {
+      root.classList.add("is-open");
+      dialog.focus();
+    });
+  }
+
+  function show(config) {
+    if (root && !root.hidden) queue.push(config);
+    else render(config);
+  }
+
+  return { show, close };
+})();
+
+function flowReviewOpenDirectionWork(workName) {
+  const destination = new URL(window.location.href);
+  destination.search = "";
+  destination.searchParams.set("obra_nome", workName);
+  FlowReviewAlertModal.close({ showNext: false });
+  window.location.assign(destination.toString());
+}
+
+function flowReviewOpenMentionTask(mention) {
+  if (!mention?.task_id) return false;
+  FlowReviewAlertModal.close({ showNext: false });
+  historyAJAX(mention.task_id, mention.tipo_tarefa || "imagem");
+  return false;
+}
+
+function flowReviewMentionPlainText(value) {
+  const toText = (input) => {
+    const parsed = new DOMParser().parseFromString(
+      String(input || ""),
+      "text/html",
+    );
+    parsed.body
+      .querySelectorAll("script, style")
+      .forEach((node) => node.remove());
+    return parsed.body.textContent || "";
+  };
+  return toText(toText(value))
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function flowReviewEnterItems(container, items) {
   if (!window.FlowMotion || !container || !items.length) return;
@@ -73,6 +382,14 @@ function formatVideoTime(ms) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  flowReviewInitializeLoadingOrbs();
+  document
+    .getElementById("fr-review-next-global")
+    ?.addEventListener("click", () => flowReviewOpenNext("home"));
+  document
+    .getElementById("fr-review-next-task")
+    ?.addEventListener("click", () => flowReviewOpenNext("task"));
+
   const params = new URLSearchParams(window.location.search);
   const obraNome = params.get("obra_nome");
 
@@ -372,32 +689,22 @@ async function revisarTarefa(
     }).showToast();
 
     if (data.success) {
-      const obraSelecionada = document.getElementById("filtro_obra").value;
-
-      const statusMap = {
-        aprovado: "Aprovado",
-        ajuste: "Ajuste",
-        aprovado_com_ajustes: "Aprovado com ajustes",
-      };
-      const novoStatus = data.aguardando_direcao
-        ? data.status_aprovacao || statusMap[tipoRevisao]
-        : statusMap[tipoRevisao];
-      if (novoStatus) {
-        const task = dadosTarefas.find(
-          (t) => t.idfuncao_imagem == idfuncao_imagem,
+      try {
+        await flowReviewRefreshPriorityData();
+      } catch (refreshError) {
+        console.error(
+          "A revisão foi registrada, mas a fila não atualizou:",
+          refreshError,
         );
-        if (task) {
-          task.status_novo = novoStatus;
-          if (data.aguardando_direcao) {
-            task.status = "Aguardando Direção";
-            task.pendente_direcao = true;
-            task.diretor_pode_aprovar = false;
-            delete task.finalizador_pode_aprovar;
-          }
-        }
+        Toastify({
+          text: "Revisão registrada. Não foi possível atualizar a fila; recarregue os dados antes de continuar.",
+          duration: 5000,
+          backgroundColor: "#8a5b13",
+          close: true,
+          gravity: "top",
+          position: "right",
+        }).showToast();
       }
-
-      filtrarTarefasPorObra(obraSelecionada);
 
       // ── Conflito SFTP: arquivo já existe no servidor ──────────────────
       if (data.sftp_conflict) {
@@ -441,15 +748,15 @@ async function resolverConflitoSftp(
   sftp_caminho_local = null,
 ) {
   const { value: sftpChoice } = await FlowAlert.choose({
-      title: "Arquivo já existe no servidor",
-      type: "warning",
-      message: `O arquivo ${nomeArquivo} já existe no destino. Deseja substituí-lo ou enviá-lo com outro nome?`,
-      choices: [
-        { label: "Substituir", value: "replace", kind: "primary" },
-        { label: "Adicionar", value: "add", kind: "secondary" },
-      ],
-      cancelText: "Cancelar",
-    });
+    title: "Arquivo já existe no servidor",
+    type: "warning",
+    message: `O arquivo ${nomeArquivo} já existe no destino. Deseja substituí-lo ou enviá-lo com outro nome?`,
+    choices: [
+      { label: "Substituir", value: "replace", kind: "primary" },
+      { label: "Adicionar", value: "add", kind: "secondary" },
+    ],
+    cancelText: "Cancelar",
+  });
 
   if (sftpChoice !== "replace" && sftpChoice !== "add") return; // cancelado
 
@@ -582,8 +889,328 @@ let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
 let colaboradorGlobalSelecionado = null;
 let statusGlobalSelecionado = null;
+let flowReviewQueueContext = "home";
+
+// The backend assigns one canonical rank to every V1 approval. Frontend
+// surfaces only consume that rank; priority levels and tie-break rules live
+// exclusively in flow_review_prioridade_helper.php.
+function flowReviewOrderTasks(tasks) {
+  return (Array.isArray(tasks) ? tasks : [])
+    .map((task, index) => ({
+      task,
+      index,
+      rank: Number(task?.prioridade_posicao),
+    }))
+    .sort((a, b) => {
+      const aRanked = Number.isFinite(a.rank) && a.rank > 0;
+      const bRanked = Number.isFinite(b.rank) && b.rank > 0;
+      if (aRanked && bRanked && a.rank !== b.rank) return a.rank - b.rank;
+      if (aRanked !== bRanked) return aRanked ? -1 : 1;
+      return a.index - b.index;
+    })
+    .map(({ task }) => task);
+}
+
+function flowReviewIsStatusAwaitingApproval(task) {
+  return String(task?.status || "").trim() === "Em aprovação";
+}
+
+function flowReviewIsPendingApproval(task) {
+  const status = String(task?.status || "").trim();
+  const latestStatus = String(task?.status_novo || "").trim();
+  return (
+    flowReviewIsStatusAwaitingApproval(task) &&
+    (!latestStatus || latestStatus === "Em aprovação") &&
+    !task?.flow_review_hold_approval
+  );
+}
+
+function flowReviewCanApproveTask(task, { directionReapproval = false } = {}) {
+  const directionIds = [21, 9, 31];
+  const isDirection = directionIds.includes(idcolaboradorLogado);
+  const status = String(
+    task?.status_atual || task?.status_novo || task?.status || "",
+  )
+    .trim()
+    .toLowerCase();
+  const directionMayReapprove =
+    directionReapproval &&
+    isDirection &&
+    [4, 5, 6].includes(Number(task?.funcao_id)) &&
+    ["aprovado", "aprovado com ajustes"].includes(status);
+  const hasTaskContext = Boolean(task);
+  const permitted =
+    [1, 2, 9, 20, 3].includes(idusuario) ||
+    (idusuario === 8 && [23, 40].includes(Number(task?.colaborador_id))) ||
+    task?.diretor_pode_aprovar === true ||
+    directionMayReapprove ||
+    task?.finalizador_pode_aprovar === true;
+  const blockedPendingDirection =
+    Boolean(task?.pendente_direcao) &&
+    !task?.diretor_pode_aprovar &&
+    !directionMayReapprove &&
+    ![1, 2].includes(idusuario);
+  return (
+    Boolean(hasTaskContext || directionMayReapprove) &&
+    permitted &&
+    !blockedPendingDirection
+  );
+}
+
+function flowReviewPriorityLabel(task) {
+  if (!task || task.flow_review_hold_approval) return "";
+  const level = Number(task.prioridade_nivel);
+  if (level === 0) {
+    const waitHours = Number(task.tempo_espera_horas);
+    return Number.isFinite(waitHours)
+      ? `Espera severa · ${Math.floor(waitHours)}h`
+      : task.motivo_prioridade || "Espera severa";
+  }
+  if (level === 1) {
+    return task.prioridade_inconsistente ? "" : task.motivo_prioridade || "";
+  }
+  if (level === 2) return task.motivo_prioridade || "";
+  return "";
+}
+
+function flowReviewGetHomeFilterValues() {
+  return {
+    obra: document.getElementById("fr-obra-home")?.value || "",
+    search: (document.getElementById("fr-search-imagem-home")?.value || "")
+      .trim()
+      .toLowerCase(),
+    funcao: document.getElementById("fr-funcao-home")?.value || "",
+    colaborador: document.getElementById("fr-colaborador-home")?.value || "",
+    status: document.getElementById("fr-status-home")?.value || "",
+  };
+}
+
+function flowReviewMatchesHomeFilters(task, filters = flowReviewGetHomeFilterValues()) {
+  const imageSearchMatches =
+    !filters.search ||
+    [task.imagem_nome, task.nome_obra, task.nomenclatura, task.imagem_id]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(filters.search);
+
+  return (
+    (!filters.obra || task.nomenclatura === filters.obra) &&
+    (!filters.funcao || task.nome_funcao === filters.funcao) &&
+    (!filters.colaborador || task.nome_colaborador === filters.colaborador) &&
+    (!filters.status || task.status === filters.status) &&
+    imageSearchMatches
+  );
+}
+
+function flowReviewGetSurfaceFilters(surface) {
+  const taskSurface = surface === "task";
+  if (taskSurface) surface = flowReviewQueueContext;
+  const activeTask = taskSurface
+    ? dadosTarefas.find(
+        (task) => String(task.idfuncao_imagem) === String(funcaoImagemId),
+      )
+    : null;
+  const obraName =
+    document.getElementById("filtro_obra")?.value ||
+    activeTask?.nomenclatura ||
+    "";
+  const filtered = flowReviewOrderTasks(dadosTarefas);
+
+  if (surface === "obra" && taskSurface) {
+    const search = (document.getElementById("stab-search")?.value || "")
+      .trim()
+      .toLowerCase();
+    const funcao = document.getElementById("stab-funcao")?.value || "Todos";
+    const colaborador = document.getElementById("stab-colab")?.value || "";
+    return filtered.filter(
+      (task) =>
+        (!obraName || task.nomenclatura === obraName) &&
+        (funcao === "Todos" || task.nome_funcao === funcao) &&
+        (!colaborador || task.nome_colaborador === colaborador) &&
+        (!search ||
+          [task.imagem_nome, task.nome_colaborador, task.nome_funcao]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(search)),
+    );
+  }
+
+  if (surface === "obra") {
+    const funcao = document.getElementById("nome_funcao")?.value || "Todos";
+    const colaborador =
+      document.getElementById("filtro_colaborador")?.value || "";
+    const status = document.getElementById("filtro_status")?.value || "";
+    const search = (document.getElementById("fr-search-funcao")?.value || "")
+      .trim()
+      .toLowerCase();
+    return filtered.filter(
+      (task) =>
+        (!obraName || task.nomenclatura === obraName) &&
+        (funcao === "Todos" || task.nome_funcao === funcao) &&
+        (!colaborador || task.nome_colaborador === colaborador) &&
+        (!status || task.status === status) &&
+        (!search ||
+          [task.imagem_nome, task.nome_obra, task.nomenclatura, task.imagem_id]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(search)),
+    );
+  }
+
+  return filtered.filter((task) => flowReviewMatchesHomeFilters(task));
+}
+
+function flowReviewGetEligibleQueue(surface, { excludeCurrent = false } = {}) {
+  const currentId = String(funcaoImagemId || "");
+  return flowReviewGetSurfaceFilters(surface).filter(
+    (task) =>
+      flowReviewIsPendingApproval(task) &&
+      flowReviewCanApproveTask(task) &&
+      (!excludeCurrent || String(task.idfuncao_imagem) !== currentId),
+  );
+}
+
+function flowReviewUpdateQueueControls(surface = "home") {
+  const eligible = flowReviewGetEligibleQueue(surface, {
+    excludeCurrent: surface === "task",
+  });
+  const count = document.getElementById("fr-queue-count");
+  if (count) {
+    const pending = flowReviewGetSurfaceFilters(surface).filter(
+      flowReviewIsPendingApproval,
+    ).length;
+    count.textContent = pending
+      ? `${pending} aguardando · ${eligible.length} disponíveis para você`
+      : "Nenhuma aprovação aguardando";
+  }
+
+  const homeButton = document.getElementById("fr-review-next-global");
+  if (homeButton) homeButton.disabled = eligible.length === 0;
+
+  const nextButton = document.getElementById("fr-review-next-task");
+  const nextName = document.getElementById("fr-next-task-name");
+  if (nextButton && nextName) {
+    const next = eligible[0];
+    nextButton.hidden = !next;
+    nextButton.disabled = !next;
+    nextName.textContent = next
+      ? `${next.imagem_nome || next.nomenclatura || "Imagem"} · ${next.nome_funcao || "Função"}`
+      : "";
+    nextButton.setAttribute(
+      "aria-label",
+      next
+        ? `Revisar próxima aprovação: ${next.imagem_nome || next.nomenclatura || "imagem"}, ${next.nome_funcao || "função"}`
+        : "Não há outra aprovação disponível nos filtros atuais",
+    );
+  }
+}
+
+function flowReviewRenderTaskPriority(task) {
+  const element = document.getElementById("fr-task-priority");
+  if (!element) return;
+  const label = flowReviewPriorityLabel(task);
+  element.textContent = label;
+  element.hidden = !label;
+  element.dataset.priorityLevel = label ? String(task.prioridade_nivel) : "";
+  element.dataset.inconsistent = task?.prioridade_inconsistente
+    ? "true"
+    : "false";
+}
+
+async function flowReviewRefreshPriorityData() {
+  await refreshFlowReviewTaskSnapshot();
+  const queueContext = flowReviewQueueContext;
+  const activeTask = dadosTarefas.find(
+    (task) => String(task.idfuncao_imagem) === String(funcaoImagemId),
+  );
+  const obraName =
+    document.getElementById("filtro_obra")?.value ||
+    activeTask?.nomenclatura ||
+    "";
+  if (obraName) {
+    await buscarMencoesDoUsuario();
+    filtrarTarefasPorObra(obraName);
+    flowReviewQueueContext = queueContext;
+    const activeTask = dadosTarefas.find(
+      (task) => String(task.idfuncao_imagem) === String(funcaoImagemId),
+    );
+    flowReviewRenderTaskPriority(activeTask);
+    flowReviewUpdateQueueControls("task");
+    if (window._stabSetActive) window._stabSetActive(funcaoImagemId);
+  } else {
+    await exibirCardsDeObra(dadosTarefas, { silent: true });
+    flowReviewUpdateQueueControls("home");
+  }
+}
+
+async function flowReviewOpenTask(task, queueContext = flowReviewQueueContext) {
+  if (!task) return false;
+  if (!flowReviewIsPendingApproval(task) || !flowReviewCanApproveTask(task))
+    return false;
+  if (task.nomenclatura) filtrarTarefasPorObra(task.nomenclatura);
+  flowReviewQueueContext = queueContext;
+  await historyAJAX(task.idfuncao_imagem, getTaskTipo(task));
+  return true;
+}
+
+async function flowReviewOpenNext(surface) {
+  const button =
+    surface === "task"
+      ? document.getElementById("fr-review-next-task")
+      : document.getElementById("fr-review-next-global");
+  flowReviewSetButtonLoading(button, true);
+  try {
+    await refreshFlowReviewTaskSnapshot();
+    const next = flowReviewGetEligibleQueue(surface, {
+      excludeCurrent: surface === "task",
+    })[0];
+    if (!next) {
+      flowReviewUpdateQueueControls(surface);
+      Toastify({
+        text: "Não há outra aprovação disponível com os filtros atuais.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+      }).showToast();
+      return;
+    }
+    await flowReviewOpenTask(
+      next,
+      surface === "task" ? flowReviewQueueContext : surface,
+    );
+  } catch (error) {
+    console.error("Erro ao validar a próxima aprovação:", error);
+    Toastify({
+      text: "Não foi possível atualizar a fila. Tente novamente.",
+      duration: 3500,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  } finally {
+    flowReviewSetButtonLoading(button, false);
+    flowReviewUpdateQueueControls(surface);
+  }
+}
+
+function flowReviewStartHomeLoading() {
+  const state = document.getElementById("fr-home-loading");
+  const container = document.querySelector(".containerObra");
+  if (!state || !container) return;
+  container.setAttribute("aria-busy", "true");
+  state.querySelector(".fr-home-loading-title").textContent =
+    "Preparando a fila de aprovação…";
+  state.querySelector(".fr-home-loading-detail").textContent =
+    "Buscando tarefas e organizando prioridades.";
+  state.querySelector("[data-thinking-orb]").hidden = false;
+  state.querySelector(".fr-loading-retry").hidden = true;
+  state.hidden = false;
+}
 
 async function fetchObrasETarefas() {
+  flowReviewStartHomeLoading();
   try {
     const response = await fetch(`atualizar.php`);
     if (!response.ok) throw new Error("Erro ao buscar tarefas");
@@ -603,7 +1230,7 @@ async function fetchObrasETarefas() {
     todosOsColaboradores = new Set(dadosTarefas.map((t) => t.nome_colaborador));
     todasAsFuncoes = new Set(dadosTarefas.map((t) => t.nome_funcao)); // ou o nome do campo correspondente
 
-    exibirCardsDeObra(dadosTarefas); // Mostra os cards
+    await exibirCardsDeObra(dadosTarefas); // Mostra os cards
     loadKpis(null); // Atualiza KPI bar (visão geral)
 
     // ── Sidebar: mostrar seção de obras, ocultar tarefas ──
@@ -613,16 +1240,21 @@ async function fetchObrasETarefas() {
     if (secTarefasEl) secTarefasEl.classList.add("hidden");
 
     refreshHomeFilterOptions();
+    flowReviewUpdateQueueControls("home");
 
     const frFuncaoHome = document.getElementById("fr-funcao-home");
     const frColabHome = document.getElementById("fr-colaborador-home");
     const frStatusHome = document.getElementById("fr-status-home");
 
     // Attach sidebar filter listeners only once
-    const searchInput = document.getElementById("fr-search-obra");
+    const searchInput = document.getElementById("fr-search-imagem-home");
+    const obraSelect = document.getElementById("fr-obra-home");
     if (searchInput && !searchInput._frListenerAdded) {
       searchInput._frListenerAdded = true;
       searchInput.addEventListener("input", applyHomeFilters);
+      if (obraSelect) {
+        obraSelect.addEventListener("change", applyHomeFilters);
+      }
       if (frFuncaoHome) {
         frFuncaoHome.addEventListener("change", () => {
           funcaoGlobalSelecionada = frFuncaoHome.value || null;
@@ -644,6 +1276,7 @@ async function fetchObrasETarefas() {
     }
   } catch (error) {
     console.error(error);
+    flowReviewSetHomeLoadingError();
   }
 }
 
@@ -665,6 +1298,7 @@ function refreshHomeFilterOptions() {
     select.value = [...values].includes(selected) ? selected : "";
   };
 
+  populate("fr-obra-home", "Todas as obras", todasAsObras);
   populate("fr-funcao-home", "Todas", todasAsFuncoes);
   populate("fr-colaborador-home", "Todos", todosOsColaboradores);
   populate(
@@ -676,23 +1310,10 @@ function refreshHomeFilterOptions() {
 
 // Filtra os cards de obra com base nos filtros da sidebar home
 function applyHomeFilters() {
-  const searchVal = (document.getElementById("fr-search-obra")?.value || "")
-    .toLowerCase()
-    .trim();
-  const funcaoVal = document.getElementById("fr-funcao-home")?.value || "";
-  const colabVal = document.getElementById("fr-colaborador-home")?.value || "";
-  const statusVal = document.getElementById("fr-status-home")?.value || "";
-
-  let filtradas = dadosTarefas;
-  if (funcaoVal)
-    filtradas = filtradas.filter((t) => t.nome_funcao === funcaoVal);
-  if (colabVal)
-    filtradas = filtradas.filter((t) => t.nome_colaborador === colabVal);
-  if (statusVal) filtradas = filtradas.filter((t) => t.status === statusVal);
-  if (searchVal)
-    filtradas = filtradas.filter((t) =>
-      (t.nomenclatura || "").toLowerCase().includes(searchVal),
-    );
+  const filtros = flowReviewGetHomeFilterValues();
+  const filtradas = dadosTarefas.filter((task) =>
+    flowReviewMatchesHomeFilters(task, filtros),
+  );
 
   exibirCardsDeObra(filtradas);
 }
@@ -909,7 +1530,7 @@ async function buscarMencoesDoUsuario() {
   return data;
 }
 
-async function exibirCardsDeObra(tarefas) {
+async function exibirCardsDeObra(tarefas, { silent = false } = {}) {
   const mencoes = await buscarMencoesDoUsuario();
 
   // if (mencoes.total_mencoes > 0) {
@@ -923,10 +1544,14 @@ async function exibirCardsDeObra(tarefas) {
 
   const container = document.querySelector(".containerObra");
   container.innerHTML = "";
+  container.setAttribute("aria-busy", "false");
 
   if (!Array.isArray(tarefas) || tarefas.length === 0) {
     container.innerHTML =
       '<p style="text-align: center; color: #888; margin-top: 24px;">Não há tarefas de revisão no momento.</p>';
+    flowReviewUpdateQueueControls(
+      document.getElementById("filtro_obra")?.value ? "obra" : "home",
+    );
     return;
   }
 
@@ -938,51 +1563,149 @@ async function exibirCardsDeObra(tarefas) {
     obrasMap.get(tarefa.nomenclatura).push(tarefa);
   });
 
-  // Obras com prioridade primeiro, depois menções
-  const obrasOrdenadas = [...obrasMap.entries()].sort(
-    ([a, tarefasA], [b, tarefasB]) => {
-      const prioA = tarefasA.filter(
-        (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
-      ).length;
-      const prioB = tarefasB.filter(
-        (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
-      ).length;
-      if (prioB !== prioA) return prioB - prioA;
-      return (
-        (mencoes.mencoes_por_obra[b] || 0) - (mencoes.mencoes_por_obra[a] || 0)
+  // Cada obra herda a posição da aprovação mais bem posicionada na fila.
+  const obrasOrdenadas = [...obrasMap.entries()]
+    .map(([nomenclatura, tarefas]) => {
+      const aguardando = tarefas.filter(flowReviewIsStatusAwaitingApproval);
+      const melhorPosicao = Math.min(
+        ...aguardando.map(
+          (task) => Number(task.prioridade_posicao) || Infinity,
+        ),
       );
-    },
-  );
+      return {
+        nomenclatura,
+        tarefas,
+        quantidadeParaAprovar: aguardando.length,
+        melhorPosicao,
+      };
+    })
+    .sort((a, b) => {
+      const temAprovacao =
+        Number(b.quantidadeParaAprovar > 0) -
+        Number(a.quantidadeParaAprovar > 0);
+      if (temAprovacao !== 0) return temAprovacao;
+      if (a.melhorPosicao !== b.melhorPosicao)
+        return a.melhorPosicao - b.melhorPosicao;
+      return (
+        (mencoes.mencoes_por_obra[b.nomenclatura] || 0) -
+          (mencoes.mencoes_por_obra[a.nomenclatura] || 0) ||
+        String(a.nomenclatura).localeCompare(String(b.nomenclatura))
+      );
+    });
 
-  if (mencoes.total_mencoes > 0) {
-    const linhas = Object.entries(mencoes.mencoes_por_obra || {})
-      .filter(([, q]) => q > 0)
-      .map(([obra, qtd]) => `• ${obra}: ${qtd} menção(ões)`)
-      .join("\n");
-    window.FlowAlert.info({
-      title: "Você foi mencionado!",
-      message: `${linhas}\n\nConfira as obras destacadas!`,
-      mode: "modal",
-      action: { label: "Ver" },
+  const mencoesDetalhadas = Array.isArray(mencoes.mencoes_detalhadas)
+    ? mencoes.mencoes_detalhadas
+    : [];
+  const mencoesPorTarefa = mencoesDetalhadas.length
+    ? mencoesDetalhadas
+    : Object.entries(mencoes.mencoes_por_funcao_imagem || {}).flatMap(
+        ([taskId, count]) => {
+          const task = dadosTarefas.find(
+            (candidate) => String(candidate.idfuncao_imagem) === String(taskId),
+          );
+          return task
+            ? Array.from({ length: Math.max(1, Number(count) || 1) }, () => ({
+                task_id: taskId,
+                tipo_tarefa: getTaskTipo(task),
+                nomenclatura: task.nomenclatura,
+                imagem_nome: task.imagem_nome,
+                autor: "",
+                texto: "",
+              }))
+            : [];
+        },
+      );
+  if (mencoes.total_mencoes > 0 && mencoesPorTarefa.length > 0) {
+    const mentionItems = mencoesPorTarefa.map((mention) => {
+      const task = dadosTarefas.find(
+        (candidate) =>
+          String(candidate.idfuncao_imagem) === String(mention.task_id),
+      );
+      const taskType = mention.tipo_tarefa || getTaskTipo(task);
+      const taskName =
+        mention.imagem_nome || task?.imagem_nome || "Tarefa do Flow Review";
+      const workName = mention.nomenclatura || task?.nomenclatura || "Obra";
+      const author = String(mention.autor || "Um colaborador").trim();
+      const excerpt = flowReviewMentionPlainText(mention.texto);
+      const detail = `${author}: ${excerpt ? `“${excerpt}”` : "mencionou você nesta tarefa."}`;
+      return {
+        title: workName,
+        detail: taskName,
+        quote: detail,
+        ariaLabel: `${workName}, ${taskName}. ${detail}`,
+        onActivate: () =>
+          flowReviewOpenMentionTask({
+            task_id: mention.task_id,
+            tipo_tarefa: taskType,
+          }),
+      };
+    });
+    const firstMention = mencoesPorTarefa[0];
+    const firstMentionTask = dadosTarefas.find(
+      (task) => String(task.idfuncao_imagem) === String(firstMention.task_id),
+    );
+    FlowReviewAlertModal.show({
+      variant: "mention",
+      eyebrow: "Menção",
+      icon: "fa-solid fa-at",
+      title: "Você foi mencionado",
+      description: `${mencoes.total_mencoes} ${Number(mencoes.total_mencoes) === 1 ? "menção não lida está" : "menções não lidas estão"} ligada${Number(mencoes.total_mencoes) === 1 ? "" : "s"} a tarefas do Flow Review.`,
+      items: mentionItems,
+      primaryLabel: "Abrir tarefa",
+      secondaryLabel: "Agora não",
+      onPrimary: () =>
+        flowReviewOpenMentionTask({
+          task_id: firstMention.task_id,
+          tipo_tarefa:
+            firstMention.tipo_tarefa || getTaskTipo(firstMentionTask),
+        }),
     });
   }
 
-  const tarefasDirecao = tarefas.filter(
-    (t) => t.pendente_direcao && t.diretor_pode_aprovar,
+  const tarefasDirecao = flowReviewOrderTasks(
+    tarefas.filter(
+      (task) => task.pendente_direcao && task.diretor_pode_aprovar,
+    ),
   );
-  if (tarefasDirecao.length > 0) {
-    const obrasDirMap = {};
-    tarefasDirecao.forEach((t) => {
-      obrasDirMap[t.nomenclatura] = (obrasDirMap[t.nomenclatura] || 0) + 1;
+  const openingInsideWork = new URLSearchParams(window.location.search).has(
+    "obra_nome",
+  );
+  if (!silent && !openingInsideWork && tarefasDirecao.length > 0) {
+    const obrasDirMap = new Map();
+    tarefasDirecao.forEach((task) => {
+      const workName = task.nomenclatura || "Obra";
+      if (!obrasDirMap.has(workName)) {
+        obrasDirMap.set(workName, { name: workName, count: 0 });
+      }
+      obrasDirMap.get(workName).count += 1;
     });
-    const linhasDir = Object.entries(obrasDirMap)
-      .map(([obra, qtd]) => `• ${obra}: ${qtd} tarefa(s)`)
-      .join("\n");
-    window.FlowAlert.warning({
+    const directionItems = [...obrasDirMap.values()].map((work) => ({
+      title: work.name,
+      detail: `${work.count} ${work.count === 1 ? "tarefa aguardando validação" : "tarefas aguardando validação"}`,
+      count: work.count,
+      ariaLabel: `${work.name}, ${work.count} ${work.count === 1 ? "tarefa" : "tarefas"} aguardando validação. Abrir a obra.`,
+      onActivate: () => {
+        flowReviewOpenDirectionWork(work.name);
+        return false;
+      },
+    }));
+    const totalDirection = tarefasDirecao.length;
+    const firstWork = directionItems[0];
+    FlowReviewAlertModal.show({
+      variant: "direction-validation",
+      eyebrow: "Atenção",
+      icon: "fa-solid fa-triangle-exclamation",
       title: "Aguardando sua validação!",
-      message: `${linhasDir}\n\nFinalizadores ou arquitetura aprovaram — aguardando confirmação da direção.`,
-      mode: "modal",
-      action: { label: "Ver" },
+      description: `${totalDirection} ${totalDirection === 1 ? "tarefa já foi validada internamente e aguarda" : "tarefas já foram validadas internamente e aguardam"} a confirmação da Direção.`,
+      items: directionItems,
+      note: "Finalização ou Arquitetura já aprovaram essas tarefas. Falta apenas a confirmação da Direção.",
+      primaryLabel: "Revisar tarefas",
+      secondaryLabel: "Agora não",
+      onPrimary: () => {
+        if (!firstWork) return false;
+        flowReviewOpenDirectionWork(firstWork.title);
+        return false;
+      },
     });
   }
 
@@ -990,7 +1713,7 @@ async function exibirCardsDeObra(tarefas) {
   const tarefasPrio = tarefas.filter(
     (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
   );
-  if (tarefasPrio.length > 0 && !_prioAlertShown) {
+  if (!silent && tarefasPrio.length > 0 && !_prioAlertShown) {
     _prioAlertShown = true;
     const obrasPrioMap = {};
     tarefasPrio.forEach((t) => {
@@ -1007,10 +1730,8 @@ async function exibirCardsDeObra(tarefas) {
     });
   }
 
-  obrasOrdenadas.forEach(([nomenclatura, tarefasDaObra]) => {
-    tarefasDaObra.sort(
-      (a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao),
-    );
+  obrasOrdenadas.forEach(({ nomenclatura, tarefas: tarefasDaObra }) => {
+    tarefasDaObra = flowReviewOrderTasks(tarefasDaObra);
     const tarefaComImagem = tarefasDaObra.find((t) => getTaskPreviewPath(t));
     // Use thumbnail for obra preview to reduce load
     const tarefaPreviewPath = tarefaComImagem
@@ -1025,8 +1746,29 @@ async function exibirCardsDeObra(tarefas) {
       (t) => t.pendente_direcao && t.diretor_pode_aprovar,
     ).length;
     const prioridadeNaObra = tarefasDaObra.filter(
-      (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
+      (t) =>
+        flowReviewIsStatusAwaitingApproval(t) && t.prioridade_aprovacao == 1,
     ).length;
+    const aprovacoesNaFila = tarefasDaObra.filter(
+      flowReviewIsStatusAwaitingApproval,
+    );
+    const esperasSeveras = aprovacoesNaFila.filter(
+      (task) => Number(task.prioridade_nivel) === 0,
+    ).length;
+    const prioritarias = aprovacoesNaFila.filter(
+      (task) => Number(task.prioridade_nivel) <= 1,
+    ).length;
+    const proximaAprovacao = aprovacoesNaFila.find(
+      (task) =>
+        flowReviewCanApproveTask(task) && !task.flow_review_hold_approval,
+    );
+    const resumoPrioridade =
+      esperasSeveras > 0
+        ? `${esperasSeveras} espera${esperasSeveras === 1 ? "" : "s"} severa${esperasSeveras === 1 ? "" : "s"}`
+        : prioritarias > 0
+          ? `${prioritarias} prioritária${prioritarias === 1 ? "" : "s"}`
+          : "";
+    const proximaRazao = flowReviewPriorityLabel(proximaAprovacao);
     const obraTone =
       prioridadeNaObra > 0
         ? "priority"
@@ -1052,7 +1794,9 @@ async function exibirCardsDeObra(tarefas) {
         </div>
         <div class="obra-info">
             <h3>${tarefasDaObra[0].nomenclatura}</h3>
-            <p>${tarefasDaObra.length} aprovações</p>
+            <p class="obra-task-count"><strong>${aprovacoesNaFila.length} para aprovar</strong><span>· ${tarefasDaObra.length} no fluxo</span></p>
+            ${resumoPrioridade ? `<p class="obra-priority-summary">${escapeHtml(resumoPrioridade)}</p>` : ""}
+            ${proximaAprovacao ? `<div class="obra-next-approval"><span>Próxima: ${escapeHtml(proximaAprovacao.imagem_nome || "Imagem")} · ${escapeHtml(proximaAprovacao.nome_funcao || "Função")}</span>${proximaRazao ? `<small>${escapeHtml(proximaRazao)}</small>` : ""}</div>` : ""}
         </div>
     `;
 
@@ -1063,9 +1807,13 @@ async function exibirCardsDeObra(tarefas) {
     container.appendChild(card);
   });
   flowReviewEnterItems(container, container.querySelectorAll(".obra-card"));
+  flowReviewUpdateQueueControls(
+    document.getElementById("filtro_obra")?.value ? "obra" : "home",
+  );
 }
 
 function filtrarTarefasPorObra(obraSelecionada) {
+  flowReviewQueueContext = "obra";
   document.getElementById("filtro_obra").value = obraSelecionada;
 
   // ── Sidebar: mostrar seção de tarefas, ocultar obras ──
@@ -1075,8 +1823,8 @@ function filtrarTarefasPorObra(obraSelecionada) {
   if (secTarefas) secTarefas.classList.remove("hidden");
 
   // Filtra todas as tarefas da obra
-  const tarefasDaObra = dadosTarefas.filter(
-    (t) => t.nomenclatura === obraSelecionada,
+  const tarefasDaObra = flowReviewOrderTasks(
+    dadosTarefas.filter((t) => t.nomenclatura === obraSelecionada),
   );
 
   // Atualiza os filtros dinamicamente com base nessa obra
@@ -1166,7 +1914,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
   });
 
   // Exibe as tarefas filtradas
-  exibirTarefas(tarefasFiltradas, tarefasDaObra);
+  exibirTarefas(flowReviewOrderTasks(tarefasFiltradas), tarefasDaObra);
 }
 
 function atualizarSelectColaborador(tarefas) {
@@ -1532,6 +2280,7 @@ async function iniciarAjustesFlowReview(tarefa, event) {
     tarefaAtualizada.status = "Em andamento";
     tarefaAtualizada.status_novo = "Em andamento";
   }
+  await flowReviewRefreshPriorityData();
   historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa), {
     preserveView: true,
   });
@@ -1587,36 +2336,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
   const tarefasImagensObra = document.querySelector(".tarefasImagensObra");
   tarefasImagensObra.innerHTML = "";
 
-  exibirSidebarTabulator(tarefasCompletas);
+  exibirSidebarTabulator(flowReviewOrderTasks(tarefasCompletas));
 
   if (tarefas.length > 0) {
-    let tarefasOrdenadas = [...tarefas].sort((a, b) => {
-      const pA =
-        a.prioridade_aprovacao == 1 && a.status_novo === "Em aprovação" ? 1 : 0;
-      const pB =
-        b.prioridade_aprovacao == 1 && b.status_novo === "Em aprovação" ? 1 : 0;
-      if (pB !== pA) return pB - pA;
-
-      const mA =
-        (_mencoesDados.mencoes_por_funcao_imagem || {})[
-          String(a.idfuncao_imagem)
-        ] || 0;
-      const mB =
-        (_mencoesDados.mencoes_por_funcao_imagem || {})[
-          String(b.idfuncao_imagem)
-        ] || 0;
-      return mB - mA;
-    });
-    const emittedReviewUnits = new Set();
-    tarefasOrdenadas = tarefasOrdenadas.flatMap((task) => {
-      const unitId = Number(task.work_unit?.id || 0);
-      if (!unitId) return [task];
-      if (emittedReviewUnits.has(unitId)) return [];
-      emittedReviewUnits.add(unitId);
-      return tarefasOrdenadas
-        .filter((candidate) => Number(candidate.work_unit?.id || 0) === unitId)
-        .sort((a, b) => Number(a.funcao_id || 0) - Number(b.funcao_id || 0));
-    });
+    const tarefasOrdenadas = flowReviewOrderTasks(tarefas);
 
     tarefasOrdenadas.forEach((tarefa) => {
       const taskItem = document.createElement("div");
@@ -1629,6 +2352,9 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       taskItem.addEventListener("click", () => {
         historyAJAX(tarefa.idfuncao_imagem, getTaskTipo(tarefa));
       });
+      if (tarefa.prioridade_posicao) {
+        taskItem.dataset.priorityPosition = String(tarefa.prioridade_posicao);
+      }
 
       const tarefaPreviewPath = getTaskPreviewPath(tarefa);
       const imagemPreview = tarefaPreviewPath
@@ -1641,10 +2367,16 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       const taskTone = getTaskTone(tarefa, qtdMencoesTask);
       const statusMeta = getTaskStatusMeta(tarefa);
       const timeMeta = getTaskTimeMeta(tarefa, statusMeta);
+      const priorityLabel = flowReviewPriorityLabel(tarefa);
 
       if (taskTone) {
         taskItem.dataset.tone = taskTone;
       }
+      if (tarefa.prioridade_nivel !== undefined) {
+        taskItem.dataset.priorityLevel = String(tarefa.prioridade_nivel);
+      }
+      if (tarefa.prioridade_inconsistente)
+        taskItem.dataset.priorityInconsistent = "true";
 
       const timeAttributes = Object.entries(timeMeta?.dataset || {})
         .map(
@@ -1678,6 +2410,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
             <span class="task-card-kicker"><i class="fa-regular fa-folder-open"></i>${escapeHtml(tarefa.work_unit?.label || tarefa.nome_funcao || "Função")}</span>
             ${pairBadge}
           </div>
+          ${priorityLabel ? `<p class="task-priority-reason" data-level="${escapeHtml(String(tarefa.prioridade_nivel))}">${escapeHtml(priorityLabel)}</p>` : ""}
           ${workUnitMembers}
           <p class="task-card-subtitle" data-obra="${escapeHtml(tarefa.nomenclatura || "")}">${escapeHtml(taskSubtitle)}</p>
           <div class="task-card-footer">
@@ -2261,6 +2994,7 @@ async function atualizarAnguloEscolhido(acao, observacao = "") {
       alert(data.message || "Erro ao atualizar ângulo.");
       return;
     }
+    await flowReviewRefreshPriorityData();
     historyAJAX(funcaoImagemId);
   } catch (e) {
     console.error(e);
@@ -2391,6 +3125,7 @@ async function trocarAnguloDefinitivo(novoHistoricoId, observacao = "") {
       gravity: "top",
       position: "right",
     }).showToast();
+    await flowReviewRefreshPriorityData();
     historyAJAX(funcaoImagemId);
     return true;
   } catch (e) {
@@ -2647,15 +3382,7 @@ async function enviarFuncaoParaAjustes() {
     }).showToast();
 
     if (data.success) {
-      // Atualiza o status_novo em memória para o badge na sidebar
-      const task = dadosTarefas.find(
-        (t) => t.idfuncao_imagem == currentFuncaoContext.funcao_imagem_id,
-      );
-      if (task) task.status_novo = "Ajuste";
-
-      const obraSelecionada = document.getElementById("filtro_obra").value;
-      if (obraSelecionada) filtrarTarefasPorObra(obraSelecionada);
-
+      await flowReviewRefreshPriorityData();
       historyAJAX(funcaoImagemId);
     }
   } catch (e) {
@@ -3267,6 +3994,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
     (t) => String(t.idfuncao_imagem) === String(idfuncao_imagem),
   );
   const tipoTarefaAtual = tipo_tarefa || getTaskTipo(tarefaAtualPre);
+  flowReviewShowReviewLoading(idfuncao_imagem, tipoTarefaAtual, options);
 
   // Marca menções desta tarefa como vistas e atualiza badges
   fetch("marcar_mencoes_visto.php", {
@@ -3292,7 +4020,10 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
   return fetch(
     `historico.php?ajid=${encodeURIComponent(String(idfuncao_imagem))}&tipo_tarefa=${encodeURIComponent(tipoTarefaAtual)}`,
   )
-    .then((response) => response.json())
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
     .then((response) => {
       if (requestSequence !== historyRequestSequence) return;
       // console.log("Funcao Imagem:", idfuncao_imagem);
@@ -3514,7 +4245,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
           item?.status ||
           tarefaAtual?.status ||
           "",
-      ).trim().toLowerCase();
+      )
+        .trim()
+        .toLowerCase();
       const funcaoAtualId = Number(tarefaAtual?.funcao_id ?? item?.funcao_id);
       const isDirecao = [21, 9, 31].includes(idcolaboradorLogado);
       const direcaoPodeReaprovar =
@@ -3644,8 +4377,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
               tipoRevisaoTarefa === "animacao" ? tarefaRefId : null,
               tipoRevisaoTarefa === "imagem" &&
                 funcaoAtualId === 6 &&
-                (isDirecao ||
-                  Boolean(tarefaAtual?.diretor_pode_aprovar)) &&
+                (isDirecao || Boolean(tarefaAtual?.diretor_pode_aprovar)) &&
                 ["aprovado", "aprovado_com_ajustes"].includes(selected),
             );
 
@@ -3688,6 +4420,8 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       };
 
       atualizarDataHeader(item?.data_aprovacao || null);
+      flowReviewRenderTaskPriority(tarefaAtual);
+      flowReviewUpdateQueueControls("task");
 
       const imageContainer = document.getElementById("imagens");
       imageContainer.innerHTML = "";
@@ -3932,7 +4666,21 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
         return restoreFlowReviewViewState(preservedViewState);
       }
     })
-    .catch((error) => console.error("Erro ao buscar dados:", error));
+    .then(() => {
+      if (requestSequence === historyRequestSequence) {
+        flowReviewHideReviewLoading();
+      }
+    })
+    .catch((error) => {
+      if (requestSequence === historyRequestSequence) {
+        flowReviewShowReviewLoadError(
+          error,
+          idfuncao_imagem,
+          tipoTarefaAtual,
+          options,
+        );
+      }
+    });
 }
 
 // Função utilitária para substituir elementos por ID
@@ -4023,7 +4771,7 @@ function exibirSidebarTabulator(tarefas) {
     const funcao = document.getElementById("stab-funcao")?.value || "Todos";
     const colab = document.getElementById("stab-colab")?.value || "";
 
-    const filtered = tarefas.filter((t) => {
+    const filtered = flowReviewOrderTasks(tarefas).filter((t) => {
       const matchFuncao = funcao === "Todos" || t.nome_funcao === funcao;
       const matchColab = !colab || t.nome_colaborador === colab;
       const matchSearch =
@@ -4038,6 +4786,7 @@ function exibirSidebarTabulator(tarefas) {
     if (filtered.length === 0) {
       itemsDiv.innerHTML =
         '<p class="stab-empty">Nenhuma imagem encontrada.</p>';
+      flowReviewUpdateQueueControls("task");
       return;
     }
 
@@ -4059,6 +4808,19 @@ function exibirSidebarTabulator(tarefas) {
       const item = document.createElement("div");
       item.className = "tarefa-item";
       item.dataset.id = t.idfuncao_imagem;
+      const isCurrent = String(t.idfuncao_imagem) === String(funcaoImagemId);
+      if (isCurrent) {
+        item.classList.add("active");
+        item.setAttribute("aria-current", "page");
+      }
+      if (t.prioridade_nivel !== undefined)
+        item.dataset.priorityLevel = String(t.prioridade_nivel);
+      if (t.prioridade_posicao)
+        item.dataset.priorityPosition = String(t.prioridade_posicao);
+      if (t.prioridade_inconsistente)
+        item.dataset.priorityInconsistent = "true";
+      item.setAttribute("role", "button");
+      item.tabIndex = 0;
       const imgSrc = t.imagem
         ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(t.imagem)}&w=400&q=85`
         : "../assets/logo.jpg";
@@ -4067,17 +4829,30 @@ function exibirSidebarTabulator(tarefas) {
         <div class="tarefa-item-body">
           <span class="tarefa-status ${statusClass}">${escapeHtml(t.flow_review_hold_approval ? "HOLD · Aprovação pendente" : t.status_novo || t.status || "")}</span>
           <span class="tarefa-label">${escapeHtml(t.nome_colaborador || "")} — ${escapeHtml(t.imagem_nome || "")}</span>
+          ${flowReviewPriorityLabel(t) ? `<span class="stab-priority" data-level="${escapeHtml(String(t.prioridade_nivel))}">${escapeHtml(flowReviewPriorityLabel(t))}</span>` : ""}
         </div>
       `;
-      item.addEventListener("click", () => {
+      const openTask = () => {
         itemsDiv
           .querySelectorAll(".tarefa-item")
           .forEach((el) => el.classList.remove("active"));
         item.classList.add("active");
+        itemsDiv
+          .querySelectorAll(".tarefa-item")
+          .forEach((el) => el.removeAttribute("aria-current"));
+        item.setAttribute("aria-current", "page");
         historyAJAX(t.idfuncao_imagem, getTaskTipo(t));
+      };
+      item.addEventListener("click", openTask);
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openTask();
+        }
       });
       itemsDiv.appendChild(item);
     });
+    flowReviewUpdateQueueControls("task");
   }
 
   // Wire up filtros
@@ -4093,9 +4868,12 @@ function exibirSidebarTabulator(tarefas) {
   // Expõe funções para historyAJAX sincronizar o item ativo
   window._stabSetActive = function (idfuncao_imagem) {
     const items = document.querySelectorAll("#stab-items .tarefa-item");
-    items.forEach((el) =>
-      el.classList.toggle("active", el.dataset.id == idfuncao_imagem),
-    );
+    items.forEach((el) => {
+      const active = el.dataset.id == idfuncao_imagem;
+      el.classList.toggle("active", active);
+      if (active) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    });
     const active = document.querySelector("#stab-items .tarefa-item.active");
     if (active) active.scrollIntoView({ block: "nearest" });
   };
@@ -4495,6 +5273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Limpa filtro de obra
       const filtroObraEl = document.getElementById("filtro_obra");
       if (filtroObraEl) filtroObraEl.value = "";
+      flowReviewQueueContext = "home";
 
       // Reseta filtros globais de entrada
       funcaoGlobalSelecionada = null;

@@ -68,7 +68,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>&fr_rt=<?php echo filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
         integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -115,12 +115,21 @@ $conn->close();
                     <p class="fr-section-label">Filtros</p>
 
                     <div class="fr-filter-group">
-                        <label for="fr-search-obra">
+                        <label for="fr-obra-home">
                             <i class="fa-solid fa-building"></i> Obra
+                        </label>
+                        <select id="fr-obra-home">
+                            <option value="">Todas as obras</option>
+                        </select>
+                    </div>
+
+                    <div class="fr-filter-group">
+                        <label for="fr-search-imagem-home">
+                            <i class="fa-solid fa-image"></i> Imagem
                         </label>
                         <div class="fr-input-wrap">
                             <i class="fa-solid fa-magnifying-glass fr-input-icon"></i>
-                            <input type="search" id="fr-search-obra" placeholder="Buscar obra…">
+                            <input type="search" id="fr-search-imagem-home" placeholder="Buscar imagem...">
                         </div>
                     </div>
 
@@ -205,7 +214,38 @@ $conn->close();
                     </select>
                     <div id="metrics-panel" style="margin-bottom:8px; display:none;"></div>
                     <div id="fr-kpi-bar" class="fr-kpi-bar hidden"></div>
-                    <div class="containerObra">
+                    <section class="fr-queue-toolbar" aria-label="Fila de aprovação">
+                        <div class="fr-queue-toolbar-copy">
+                            <strong>Fila de aprovação</strong>
+                            <span id="fr-queue-count">Preparando aprovações…</span>
+                        </div>
+                        <button type="button" id="fr-review-next-global" class="fr-queue-cta" disabled>
+                            <canvas data-thinking-orb data-orb-state="working" data-orb-size="18" data-orb-speed="1" data-orb-theme="auto" aria-label="Atualizando fila" hidden></canvas>
+                            <i class="fa-solid fa-play" aria-hidden="true"></i>
+                            <span>Revisar próxima</span>
+                        </button>
+                    </section>
+                    <div class="containerObra" aria-busy="true">
+                        <div id="fr-home-loading" class="fr-home-loading" role="status" aria-live="polite" aria-atomic="true">
+                            <div class="fr-loading-signature">
+                                <canvas data-thinking-orb data-orb-state="composing" data-orb-size="42" data-orb-speed="1" data-orb-theme="auto" aria-label="Carregando fila de aprovação"></canvas>
+                                <span class="fr-loading-copy">
+                                    <strong class="fr-home-loading-title">Preparando a fila de aprovação…</strong>
+                                    <small class="fr-home-loading-detail">Buscando tarefas e organizando prioridades.</small>
+                                </span>
+                            </div>
+                            <div class="fr-home-skeleton-grid" aria-hidden="true">
+                                <?php for ($i = 0; $i < 6; $i++): ?>
+                                    <div class="fr-work-card-skeleton">
+                                        <span class="fr-skeleton-block fr-skeleton-preview"></span>
+                                        <span class="fr-skeleton-block fr-skeleton-title"></span>
+                                        <span class="fr-skeleton-block fr-skeleton-count"></span>
+                                        <span class="fr-skeleton-block fr-skeleton-summary"></span>
+                                    </div>
+                                <?php endfor; ?>
+                            </div>
+                            <button type="button" class="fr-loading-retry" hidden>Tentar novamente</button>
+                        </div>
                     </div>
                     <div class="tarefasObra hidden">
                         <div class="header">
@@ -224,6 +264,15 @@ $conn->close();
     </div>
 
     <div class="container-aprovacao hidden">
+        <div id="fr-review-loading" class="fr-review-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+            <canvas data-thinking-orb data-orb-state="working" data-orb-size="18" data-orb-speed="1" data-orb-theme="auto" aria-hidden="true"></canvas>
+            <span class="fr-review-loading-title">Carregando revisão…</span>
+            <span class="fr-review-loading-detail">Buscando imagens e histórico da tarefa.</span>
+            <span class="fr-review-loading-error" hidden>
+                <button type="button" class="fr-review-loading-retry">Tentar novamente</button>
+                <button type="button" class="fr-review-loading-back">Voltar à fila</button>
+            </span>
+        </div>
         <header class="fr-header" data-motion="header">
             <!-- Breadcrumb: home → obra -->
             <div class="fr-header-start">
@@ -247,6 +296,7 @@ $conn->close();
 
                 <!-- Nome da imagem -->
                 <span id="imagem_nome" class="fr-header-imagem"></span>
+                <span id="fr-task-priority" class="fr-task-priority" hidden></span>
             </div>
 
             <!-- Empurra data + histórico para a direita -->
@@ -257,6 +307,12 @@ $conn->close();
                 <i class="fa-regular fa-calendar" aria-hidden="true"></i>
                 <span id="header_data_envio" class="fr-header-data"></span>
             </div>
+
+            <button type="button" id="fr-review-next-task" class="fr-next-task-cta" hidden>
+                <span class="fr-next-task-label">Revisar próxima</span>
+                <span id="fr-next-task-name" class="fr-next-task-name"></span>
+                <canvas data-thinking-orb data-orb-state="working" data-orb-size="18" data-orb-speed="1" data-orb-theme="auto" aria-label="Atualizando fila" hidden></canvas>
+            </button>
 
             <!-- Histórico de processos -->
             <div class="process-history" id="process-history">
@@ -298,11 +354,19 @@ $conn->close();
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
                 <div class="stab-sheet-handle"></div>
+                <div class="fr-review-inline-skeleton fr-review-sidebar-skeleton" aria-hidden="true">
+                    <i class="fr-skeleton-line"></i><i class="fr-skeleton-line"></i>
+                    <i class="fr-skeleton-line"></i><i class="fr-skeleton-line"></i>
+                    <i class="fr-skeleton-line"></i><i class="fr-skeleton-line"></i>
+                </div>
                 <div id="sidebarTabulator"></div>
             </div>
             <nav>
                 <div id="comentario-geral-envio" class="comentario-geral-envio hidden"></div>
                 <div id="imagens"></div>
+                <div class="fr-review-inline-skeleton fr-review-thumbs-skeleton" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i>
+                </div>
                 <button id="add-angulo-btn" class="tooltip" data-tooltip="Adicionar ângulos">+</button>
             </nav>
             <div id="imagem_completa">
@@ -326,8 +390,7 @@ $conn->close();
                         <button id="btn-download-imagem"><i class="fa-solid fa-download"></i></button>
                     </div>
                 </div>
-                <div id="image_wrapper" class="image_wrapper">
-                </div>
+                <div id="image_wrapper" class="image_wrapper"></div>
                 <section id="envios-comparison" class="envios-comparison" hidden aria-label="Comparação de envios">
                     <div class="envios-comparison-toolbar">
                         <strong>Comparar envios</strong>
@@ -370,6 +433,13 @@ $conn->close();
                 </section>
             </div>
             <div class="sidebar-direita">
+                <div class="fr-review-inline-skeleton fr-review-actions-skeleton" aria-hidden="true">
+                    <div class="fr-review-actions-skeleton-heading"><canvas data-thinking-orb data-orb-state="working" data-orb-size="18" data-orb-speed="1" data-orb-theme="auto" aria-hidden="true"></canvas><i></i></div>
+                    <i class="fr-skeleton-line"></i><i class="fr-skeleton-line"></i>
+                    <i class="fr-skeleton-line"></i><i class="fr-skeleton-line"></i>
+                    <i class="fr-skeleton-line"></i><i class="fr-skeleton-line"></i>
+                    <i class="fr-skeleton-line"></i>
+                </div>
                 <button class="sidebar-collapse-btn sidebar-collapse-right" id="right-collapse-btn" title="Recolher painel">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
@@ -471,6 +541,7 @@ $conn->close();
 
     <script src="<?php echo asset_url('../assets/pdfjs/pdf.min.js'); ?>"></script>
     <?php flow_motion_assets('../'); ?>
+    <script src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>&build=<?php echo filemtime(__DIR__ . '/../assets/js/thinking-orbs.js'); ?>"></script>
 
     <script>
         window.FR_KPI_CONFIG = <?php echo json_encode([

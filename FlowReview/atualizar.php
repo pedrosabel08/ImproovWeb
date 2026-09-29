@@ -7,6 +7,7 @@ require_once __DIR__ . '/approval_media_schema.php';
 require_once __DIR__ . '/pdf_approval_helpers.php';
 require_once __DIR__ . '/../helpers/flow_review_eligibility_helper.php';
 require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/../helpers/flow_review_prioridade_helper.php';
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -797,6 +798,11 @@ try {
         unset($t);
     }
     // ==== END SLA DATA ====
+
+    // Sinais automáticos apenas para tarefas realmente aguardando aprovação.
+    // A ordem visual atual permanece a mesma; a fila recomendada é calculável
+    // pelo helper, mas não é aplicada neste endpoint.
+    flow_review_prioridade_enriquecer($conn, $tarefas);
 
     // Retornar os resultados no formato JSON
     $serverNow = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');

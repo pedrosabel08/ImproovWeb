@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 
@@ -10,6 +11,7 @@ $response = [
     'mencoes_por_funcao_imagem'  => [],
     'comentarios_mencionados'    => [],
     'respostas_mencionadas'      => [],
+    'mencoes_detalhadas'         => [],
 ];
 
 // ── Contagem por obra (não vistas) ──────────────────────────────────────────
@@ -146,6 +148,67 @@ $result6 = $stmt6->get_result();
 
 while ($row = $result6->fetch_assoc()) {
     $response['respostas_mencionadas'][] = (int)$row['resposta_id'];
+}
+
+// Dados agrupados em uma consulta para que o modal consiga abrir a tarefa
+// mencionada sem buscar cada comentário ou tarefa individualmente.
+$sqlDetalhes = "SELECT
+    m.comentario_id,
+    NULL AS resposta_id,
+    hai.funcao_imagem_id AS task_id,
+    'imagem' AS tipo_tarefa,
+    o.nomenclatura,
+    ico.imagem_nome,
+    c.texto,
+    autor.nome_colaborador AS autor,
+    c.data AS data_mencao
+FROM mencoes m
+INNER JOIN comentarios_imagem c ON c.id = m.comentario_id
+INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
+INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+INNER JOIN obra o ON o.idobra = ico.obra_id
+LEFT JOIN colaborador autor ON autor.idcolaborador = c.responsavel_id
+WHERE m.mencionado_id = ?
+  AND m.visto = 0
+  AND fi.status NOT IN ('Finalizado', 'Aprovado')
+
+UNION ALL
+
+SELECT
+    c.id AS comentario_id,
+    rc.id AS resposta_id,
+    hai.funcao_imagem_id AS task_id,
+    'imagem' AS tipo_tarefa,
+    o.nomenclatura,
+    ico.imagem_nome,
+    rc.texto,
+    autor.nome_colaborador AS autor,
+    rc.data AS data_mencao
+FROM mencoes m
+INNER JOIN respostas_comentario rc ON rc.id = m.resposta_id
+INNER JOIN comentarios_imagem c ON c.id = rc.comentario_id
+INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
+INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+INNER JOIN obra o ON o.idobra = ico.obra_id
+LEFT JOIN colaborador autor ON autor.idcolaborador = rc.responsavel
+WHERE m.mencionado_id = ?
+  AND m.visto = 0
+  AND m.resposta_id IS NOT NULL
+ORDER BY data_mencao DESC";
+$stmtDetails = $conn->prepare($sqlDetalhes);
+if ($stmtDetails) {
+    $stmtDetails->bind_param('ii', $idColaborador, $idColaborador);
+    $stmtDetails->execute();
+    $detailsResult = $stmtDetails->get_result();
+    while ($row = $detailsResult->fetch_assoc()) {
+        $row['comentario_id'] = (int)$row['comentario_id'];
+        $row['resposta_id'] = $row['resposta_id'] !== null ? (int)$row['resposta_id'] : null;
+        $row['task_id'] = (int)$row['task_id'];
+        $response['mencoes_detalhadas'][] = $row;
+    }
+    $stmtDetails->close();
 }
 
 header('Content-Type: application/json');

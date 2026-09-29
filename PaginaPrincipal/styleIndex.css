@@ -107,9 +107,6 @@ main header nav .flow-view-tabs > button.active {
 .kanban-searchbar {
   display: none;
   align-items: center;
-  --kanban-loading-base: color-mix(in srgb, var(--card-bg) 74%, var(--text-log));
-  --kanban-loading-highlight: color-mix(in srgb, var(--card-bg) 86%, var(--text-em));
-  --kanban-loading-orb: var(--primary);
 }
 
 .kanban-searchbox {
@@ -169,21 +166,9 @@ main header nav .flow-view-tabs > button.active {
   display: none;
 }
 
-.kanban-search-loading .kanban-loading-orb {
+.kanban-search-loading [data-thinking-orb] {
   display: block;
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-  background: radial-gradient(
-    circle at 30% 28%,
-    var(--kanban-loading-highlight),
-    var(--kanban-loading-orb) 48%,
-    var(--kanban-loading-base)
-  );
-  border: 1px solid color-mix(in srgb, var(--kanban-loading-orb) 70%, var(--kanban-loading-highlight));
-  border-radius: 46% 54% 50% 50%;
-  box-shadow: 0 0 7px color-mix(in srgb, var(--kanban-loading-orb) 32%, transparent);
-  animation: kanban-loading-orb 1.8s ease-in-out infinite;
+  flex: 0 0 16px;
 }
 
 @media (max-width: 760px) {
@@ -349,26 +334,9 @@ main header nav .flow-view-tabs > button.active {
   pointer-events: auto;
 }
 
-#kanban-section .kanban-loading-orb {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-  background: radial-gradient(
-    circle at 30% 28%,
-    var(--kanban-loading-highlight),
-    var(--kanban-loading-orb) 48%,
-    var(--kanban-loading-base)
-  );
-  border: 1px solid
-    color-mix(
-      in srgb,
-      var(--kanban-loading-orb) 70%,
-      var(--kanban-loading-highlight)
-    );
-  border-radius: 46% 54% 50% 50%;
-  box-shadow: 0 0 13px
-    color-mix(in srgb, var(--kanban-loading-orb) 32%, transparent);
-  animation: kanban-loading-orb 1.8s ease-in-out infinite;
+#kanban-section [data-thinking-orb] {
+  display: block;
+  flex: 0 0 40px;
 }
 
 #kanban-section .kanban-loading-copy {
@@ -425,18 +393,6 @@ main header nav .flow-view-tabs > button.active {
   }
 }
 
-@keyframes kanban-loading-orb {
-  0%,
-  100% {
-    transform: scale(0.92) rotate(-3deg);
-    border-radius: 46% 54% 50% 50%;
-  }
-  50% {
-    transform: scale(1.06) rotate(3deg);
-    border-radius: 54% 46% 56% 44%;
-  }
-}
-
 @media (prefers-color-scheme: dark) {
   #kanban-section {
     --kanban-loading-base: color-mix(
@@ -464,7 +420,6 @@ main header nav .flow-view-tabs > button.active {
 @media (prefers-reduced-motion: reduce) {
   #kanban-section .kanban-skeleton-line,
   #kanban-section .kanban-skeleton-meta i,
-  #kanban-section .kanban-loading-orb,
   #kanban-section .task-count--loading::after {
     animation: none;
   }

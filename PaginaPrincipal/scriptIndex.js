@@ -48,6 +48,7 @@ document.getElementById("idcolab").addEventListener("change", function () {
   const idcolab = parseInt(this.value, 10);
   const buscaKanban = document.getElementById("kanban-task-search");
   if (buscaKanban) buscaKanban.value = "";
+  kanbanFiltroResultadoKey = "";
   definirLoadingBuscaKanban(false);
   window.clearTimeout(kanbanBuscaDebounce);
   kanbanBuscaSequencia += 1;
@@ -115,6 +116,9 @@ let kanbanBuscaXhr = null;
 let kanbanBuscaSequencia = 0;
 let kanbanFinalizadosRenderizados = 0;
 let kanbanFinalizadosEncontrados = 0;
+let kanbanFiltroResultadoKey = "";
+let kanbanLoadingOrbCanvas = null;
+let kanbanLoadingOrbCleanup = null;
 
 function normalizarTextoBuscaKanban(value) {
   return String(value ?? "")
@@ -130,6 +134,35 @@ function obterBuscaKanban() {
   );
 }
 
+function obterFiltrosSelecionadosKanban() {
+  const selecionados = (seletor) =>
+    Array.from(document.querySelectorAll(`${seletor} input:checked`))
+      .map((input) => input.value)
+      .filter(Boolean);
+  const prazo = document.getElementById("prazoRange")?.value || "";
+  const [prazoInicio = "", prazoFim = ""] = prazo.split(" to ");
+  return {
+    obras: selecionados("#filtroObra"),
+    funcoes: selecionados("#filtroFuncao"),
+    status: selecionados("#filtroStatus"),
+    prazoInicio,
+    prazoFim: prazoFim || prazoInicio,
+  };
+}
+
+function filtrosKanbanEstaoAtivos(filtros = obterFiltrosSelecionadosKanban()) {
+  return Boolean(
+    filtros.obras.length ||
+      filtros.funcoes.length ||
+      filtros.status.length ||
+      filtros.prazoInicio,
+  );
+}
+
+function chaveFiltrosKanban(filtros = obterFiltrosSelecionadosKanban()) {
+  return JSON.stringify(filtros);
+}
+
 function buscarNoKanban(item, tipo, termo) {
   if (!termo || termo.length < 2) return true;
   const nome = tipo === "imagem" ? item.imagem_nome : item.titulo;
@@ -140,6 +173,12 @@ function definirLoadingBuscaKanban(loading) {
   const indicador = document.getElementById("kanban-search-loading");
   const input = document.getElementById("kanban-task-search");
   if (indicador) indicador.hidden = !loading;
+  const orb = indicador?.querySelector("[data-thinking-orb]");
+  if (loading && orb && !orb.__thinkingOrbDestroy && window.thinkingOrbs) {
+    window.thinkingOrbs(indicador);
+  } else if (!loading) {
+    orb?.__thinkingOrbDestroy?.();
+  }
   if (input) input.setAttribute("aria-busy", String(loading));
 }
 
@@ -152,11 +191,15 @@ function configurarBuscaKanban() {
     window.clearTimeout(kanbanBuscaDebounce);
     kanbanBuscaDebounce = window.setTimeout(() => {
       const termo = obterBuscaKanban();
+      const filtros = obterFiltrosSelecionadosKanban();
       if (termo.length >= 2) {
-        buscarTarefasKanban(termo);
+        buscarTarefasKanban(termo, filtros);
+      } else if (filtrosKanbanEstaoAtivos(filtros)) {
+        buscarTarefasKanban("", filtros);
       } else {
         kanbanBuscaSequencia += 1;
         if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
+        kanbanFiltroResultadoKey = "";
         definirLoadingBuscaKanban(false);
         processarDados(kanbanPayloadAtual);
       }
@@ -174,7 +217,8 @@ function configurarBuscaKanban() {
 
 let kanbanPayloadAtual = null;
 
-function buscarTarefasKanban(termo) {
+function buscarTarefasKanban(termo, filtros = obterFiltrosSelecionadosKanban()) {
+  window.clearTimeout(kanbanBuscaDebounce);
   const sequencia = ++kanbanBuscaSequencia;
   if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
 
@@ -185,6 +229,13 @@ function buscarTarefasKanban(termo) {
     kanban: "1",
     busca: termo,
   });
+  filtros.obras.forEach((obra) => params.append("filtro_obra[]", obra));
+  filtros.funcoes.forEach((funcao) => params.append("filtro_funcao[]", funcao));
+  filtros.status.forEach((status) => params.append("filtro_status[]", status));
+  if (filtros.prazoInicio) {
+    params.set("filtro_prazo_inicio", filtros.prazoInicio);
+    params.set("filtro_prazo_fim", filtros.prazoFim || filtros.prazoInicio);
+  }
   const xhr = new XMLHttpRequest();
   kanbanBuscaXhr = xhr;
   xhr.onreadystatechange = function () {
@@ -197,7 +248,12 @@ function buscarTarefasKanban(termo) {
     }
     try {
       if (obterBuscaKanban() !== normalizarTextoBuscaKanban(termo)) return;
+      const filtrosAtuais = obterFiltrosSelecionadosKanban();
+      if (chaveFiltrosKanban(filtrosAtuais) !== chaveFiltrosKanban(filtros)) return;
       definirLoadingBuscaKanban(false);
+      kanbanFiltroResultadoKey = filtrosKanbanEstaoAtivos(filtros)
+        ? chaveFiltrosKanban(filtros)
+        : "";
       processarDados(JSON.parse(xhr.responseText));
     } catch (error) {
       console.error("Erro ao buscar tarefas no Kanban:", error);
@@ -217,19 +273,33 @@ function getKanbanBoard() {
   return document.getElementById("kanban-section");
 }
 
+function initializeKanbanLoadingOrb(signature) {
+  const canvas = signature.querySelector("[data-thinking-orb]");
+  if (!canvas || !window.thinkingOrbs) return;
+  if (canvas === kanbanLoadingOrbCanvas && canvas.__thinkingOrbDestroy) return;
+
+  kanbanLoadingOrbCleanup?.();
+  kanbanLoadingOrbCanvas = canvas;
+  kanbanLoadingOrbCleanup = window.thinkingOrbs(signature);
+}
+
 function ensureKanbanLoadingSignature() {
   const board = getKanbanBoard();
   if (!board) return null;
   let signature = board.querySelector(".kanban-loading-signature");
-  if (signature) return signature;
+  if (signature) {
+    initializeKanbanLoadingOrb(signature);
+    return signature;
+  }
   signature = document.createElement("div");
   signature.className = "kanban-loading-signature";
   signature.hidden = true;
   signature.setAttribute("role", "status");
   signature.setAttribute("aria-live", "polite");
   signature.setAttribute("aria-atomic", "true");
-  signature.innerHTML = `<span class="kanban-loading-orb" aria-hidden="true"></span><span class="kanban-loading-copy"><strong>Preparando seu quadro...</strong><small>Buscando suas tarefas e organizando prioridades.</small></span>`;
+  signature.innerHTML = `<canvas data-thinking-orb data-orb-state="composing" data-orb-size="40" data-orb-speed="1" data-orb-theme="auto" aria-label="Carregando"></canvas><span class="kanban-loading-copy"><strong>Preparando seu quadro...</strong><small>Buscando suas tarefas e organizando prioridades.</small></span>`;
   board.appendChild(signature);
+  initializeKanbanLoadingOrb(signature);
   return signature;
 }
 
@@ -2572,6 +2642,8 @@ function processarDados(data) {
   const motionInitial = !processarDados.motionEntered;
   const termoBusca = obterBuscaKanban();
   const buscaAtiva = termoBusca.length >= 2;
+  const filtrosAtivos = filtrosKanbanEstaoAtivos();
+  const consultaAmpliada = buscaAtiva || filtrosAtivos;
   kanbanFinalizadosRenderizados = 0;
   kanbanFinalizadosEncontrados = 0;
   const statusMap = {
@@ -2719,7 +2791,7 @@ function processarDados(data) {
     if (colunaId === "done") {
       kanbanFinalizadosEncontrados += 1;
       if (
-        !buscaAtiva &&
+        !consultaAmpliada &&
         kanbanFinalizadosRenderizados >= KANBAN_FINALIZADOS_INICIAIS
       ) {
         return;
@@ -3441,7 +3513,7 @@ function processarDados(data) {
 
   atualizarTaskCount();
   const contadorFinalizados = document.querySelector("#done .task-count");
-  if (contadorFinalizados && !buscaAtiva) {
+  if (contadorFinalizados && !consultaAmpliada) {
     const totalFinalizados = Number(
       data?.kanban_meta?.finalizados_total ?? kanbanFinalizadosEncontrados,
     );
@@ -4763,12 +4835,14 @@ function atualizarTaskCount() {
       badge.classList.remove("task-count--loading");
       badge.classList.remove("task-count--refreshing");
       const buscaKanbanAtiva = obterBuscaKanban().length >= 2;
+      const filtrosKanbanAtivos = filtrosKanbanEstaoAtivos();
       const totalFinalizadosKanban = Number(
         kanbanPayloadAtual?.kanban_meta?.finalizados_total || 0,
       );
       const finalizadosResumidos =
         box.id === "done" &&
         !buscaKanbanAtiva &&
+        !filtrosKanbanAtivos &&
         totalFinalizadosKanban > KANBAN_FINALIZADOS_INICIAIS &&
         count >= KANBAN_FINALIZADOS_INICIAIS;
       badge.textContent = finalizadosResumidos
@@ -6598,6 +6672,11 @@ function preencherFiltros() {
     }
   });
 
+  const opcoesFinalizados = kanbanPayloadAtual?.kanban_meta?.filter_options || {};
+  (opcoesFinalizados.obras || []).forEach((obra) => obras.add(obra));
+  (opcoesFinalizados.funcoes || []).forEach((funcao) => funcoes.add(funcao));
+  (opcoesFinalizados.status || []).forEach((status) => statuses.add(status));
+
   const filtroObra = document.getElementById("filtroObra");
   const filtroFuncao = document.getElementById("filtroFuncao");
   const filtroStatus = document.getElementById("filtroStatus");
@@ -6646,8 +6725,8 @@ function preencherFiltros() {
     .forEach((obra) => {
       filtroObra.innerHTML += `
         <label>
-          <input type="checkbox" value="${obra}">
-          ${obra}
+          <input type="checkbox" value="${escapeKanbanText(obra)}">
+          ${escapeKanbanText(obra)}
         </label>
       `;
     });
@@ -6663,8 +6742,8 @@ function preencherFiltros() {
     .forEach((funcao) => {
       filtroFuncao.innerHTML += `
         <label>
-          <input type="checkbox" value="${funcao}">
-          ${funcao}
+          <input type="checkbox" value="${escapeKanbanText(funcao)}">
+          ${escapeKanbanText(funcao)}
         </label>
       `;
     });
@@ -6702,8 +6781,8 @@ function preencherFiltros() {
     .forEach((status) => {
       filtroStatus.innerHTML += `
         <label>
-          <input type="checkbox" value="${status}">
-          ${status}
+          <input type="checkbox" value="${escapeKanbanText(status)}">
+          ${escapeKanbanText(status)}
         </label>
       `;
     });
@@ -6778,25 +6857,30 @@ resetBtn.addEventListener("click", () => {
 
 // Aplica os filtros selecionados
 function aplicarFiltros() {
-  const obrasSelecionadas = Array.from(
-    document.querySelectorAll("#filtroObra input:checked"),
-  )
-    .map((el) => el.value)
-    .filter((v) => v);
-  const funcoesSelecionadas = Array.from(
-    document.querySelectorAll("#filtroFuncao input:checked"),
-  )
-    .map((el) => el.value)
-    .filter((v) => v);
-  const statusSelecionados = Array.from(
-    document.querySelectorAll("#filtroStatus input:checked"),
-  )
-    .map((el) => el.value)
-    .filter((v) => v);
+  const filtrosSelecionados = obterFiltrosSelecionadosKanban();
+  const obrasSelecionadas = filtrosSelecionados.obras;
+  const funcoesSelecionadas = filtrosSelecionados.funcoes;
+  const statusSelecionados = filtrosSelecionados.status;
 
   const prazoRange = document.getElementById("prazoRange").value.split(" to "); // Flatpickr usa "to" para range
   const prazoInicio = prazoRange[0] ? new Date(prazoRange[0]) : null;
   const prazoFim = prazoRange[1] ? new Date(prazoRange[1]) : prazoInicio;
+
+  const termoBusca = obterBuscaKanban();
+  const filtrosAtivos = filtrosKanbanEstaoAtivos(filtrosSelecionados);
+  if (filtrosAtivos && chaveFiltrosKanban(filtrosSelecionados) !== kanbanFiltroResultadoKey) {
+    buscarTarefasKanban(termoBusca, filtrosSelecionados);
+  } else if (!filtrosAtivos && kanbanFiltroResultadoKey) {
+    if (termoBusca.length >= 2) {
+      buscarTarefasKanban(termoBusca, filtrosSelecionados);
+    } else {
+      kanbanBuscaSequencia += 1;
+      if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
+      kanbanFiltroResultadoKey = "";
+      definirLoadingBuscaKanban(false);
+      processarDados(kanbanPayloadAtual);
+    }
+  }
 
   document.querySelectorAll(".kanban-card").forEach((card) => {
     let mostrar = true;
@@ -6818,8 +6902,16 @@ function aplicarFiltros() {
       mostrar = false;
 
     if (prazoInicio) {
-      const cardPrazo = new Date(card.dataset.prazo);
-      if (cardPrazo < prazoInicio || cardPrazo > prazoFim) mostrar = false;
+      const prazoCard = card.dataset.prazo || "";
+      const cardPrazo = prazoCard ? new Date(prazoCard) : null;
+      if (
+        !cardPrazo ||
+        Number.isNaN(cardPrazo.getTime()) ||
+        cardPrazo < prazoInicio ||
+        cardPrazo > prazoFim
+      ) {
+        mostrar = false;
+      }
     }
 
     // O card Ã© um contÃªiner flex; preservar esse display evita quebrar a

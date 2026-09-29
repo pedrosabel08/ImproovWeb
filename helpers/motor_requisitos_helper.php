@@ -1009,14 +1009,23 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
                 $estadoArquivos = 'NAO_ATENDIDO';
             } else {
                 // Conta todas as composições do subtipo e quantas já possuem
-                // conclusão/arquivo válido. A comparação das duas contagens
-                // evita liberar a Planta Humanizada com uma composição pendente.
+                // conclusão/arquivo válido. Plantas Humanizadas também podem
+                // receber o arquivo final na tarefa de Finalização, então essa
+                // evidência conta para a mesma imagem. A comparação das duas
+                // contagens evita liberar a planta com uma composição pendente.
                 $stmtComp = $conn->prepare(
                     "SELECT COUNT(*) total,
                             SUM(CASE WHEN fi.colaborador_id = 15
                                       OR (fi.status IN ('Finalizado','Aprovado','Aprovado com ajustes')
                                       AND fi.requires_file_upload = 0
-                                      AND fi.file_uploaded_at IS NOT NULL) THEN 1 ELSE 0 END) atendidas
+                                      AND fi.file_uploaded_at IS NOT NULL)
+                                      OR EXISTS (
+                                          SELECT 1
+                                            FROM funcao_imagem fi_final
+                                           WHERE fi_final.imagem_id = ico.idimagens_cliente_obra
+                                             AND fi_final.funcao_id IN (4, 7)
+                                             AND fi_final.file_uploaded_at IS NOT NULL
+                                      ) THEN 1 ELSE 0 END) atendidas
                        FROM imagens_cliente_obra ico
                        JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra AND fi.funcao_id = 3
                       WHERE ico.obra_id = ? AND ico.subtipo_id = ?"

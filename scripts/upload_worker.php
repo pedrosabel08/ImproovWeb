@@ -1177,6 +1177,20 @@ function mark_funcao_upload_quitado(array $meta): void
                                 ico.tipo_imagem IS NULL
                                 OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
                             )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM historico_aprovacoes had
+                                WHERE had.funcao_imagem_id = fi.idfuncao_imagem
+                                  AND had.status_novo IN ('Aprovado', 'Aprovado com ajustes')
+                                  AND had.responsavel IN (21, 2, 9, 31)
+                                  AND had.observacoes REGEXP '\"direcao_alteracao_destino\"[[:space:]]*:'
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM historico_aprovacoes had2
+                                      WHERE had2.funcao_imagem_id = had.funcao_imagem_id
+                                        AND had2.id > had.id
+                                  )
+                            )
                         )
                     )
              AND fi.status IN ('Aprovado', 'Aprovado com ajustes')

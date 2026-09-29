@@ -45,6 +45,49 @@ $kanbanMode = isset($_GET['kanban']) && (string) $_GET['kanban'] === '1';
 $kanbanBusca = $kanbanMode && isset($_GET['busca'])
     ? trim(mb_substr((string) $_GET['busca'], 0, 100, 'UTF-8'))
     : '';
+$kanbanFiltros = ['obras' => [], 'funcoes' => [], 'status' => []];
+foreach ([
+    'obras' => 'filtro_obra',
+    'funcoes' => 'filtro_funcao',
+    'status' => 'filtro_status',
+] as $chaveFiltro => $parametroFiltro) {
+    $valoresFiltro = $_GET[$parametroFiltro] ?? [];
+    if (!is_array($valoresFiltro)) {
+        continue;
+    }
+    foreach (array_slice($valoresFiltro, 0, 30) as $valorFiltro) {
+        if (!is_scalar($valorFiltro)) {
+            continue;
+        }
+        $valorFiltro = trim(mb_substr((string) $valorFiltro, 0, 120, 'UTF-8'));
+        if ($valorFiltro !== '') {
+            $kanbanFiltros[$chaveFiltro][$valorFiltro] = $valorFiltro;
+        }
+    }
+    $kanbanFiltros[$chaveFiltro] = array_values($kanbanFiltros[$chaveFiltro]);
+}
+$kanbanPrazoInicio = isset($_GET['filtro_prazo_inicio'])
+    ? (string) $_GET['filtro_prazo_inicio']
+    : '';
+$kanbanPrazoFim = isset($_GET['filtro_prazo_fim'])
+    ? (string) $_GET['filtro_prazo_fim']
+    : $kanbanPrazoInicio;
+foreach (['kanbanPrazoInicio', 'kanbanPrazoFim'] as $variavelData) {
+    $valorData = $$variavelData;
+    if ($valorData !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $valorData)
+        || !checkdate((int) substr($valorData, 5, 2), (int) substr($valorData, 8, 2), (int) substr($valorData, 0, 4)))) {
+        $$variavelData = '';
+    }
+}
+if ($kanbanPrazoInicio !== '' && $kanbanPrazoFim === '') {
+    $kanbanPrazoFim = $kanbanPrazoInicio;
+}
+$kanbanFiltrosAtivos = $kanbanMode && (
+    count($kanbanFiltros['obras']) > 0
+    || count($kanbanFiltros['funcoes']) > 0
+    || count($kanbanFiltros['status']) > 0
+    || $kanbanPrazoInicio !== ''
+);
 $colaboradorSolicitado = isset($_GET['colaborador_id']) ? (int) $_GET['colaborador_id'] : 0;
 if ($colaboradorSolicitado > 0 && $colaboradorSolicitado !== $colaboradorSessao) {
     if (!flow_funcoes_colaborador_pode_consultar_outro($nivelAcesso, $colaboradorSessao)) {
@@ -60,6 +103,7 @@ if (session_status() === PHP_SESSION_ACTIVE) {
 date_default_timezone_set('America/Sao_Paulo');
 
 $kanbanFinalizadosTotal = null;
+$kanbanOpcoesFiltros = ['obras' => [], 'funcoes' => [], 'status' => []];
 $filtroKanbanSql = '';
 if ($kanbanMode) {
     $stmtFinalizadosTotal = $conn->prepare(
@@ -78,10 +122,80 @@ if ($kanbanMode) {
         $stmtFinalizadosTotal->close();
     }
 
+    if ($kanbanBusca === '' && !$kanbanFiltrosAtivos) {
+        $stmtOpcoesFiltros = $conn->prepare(
+        "SELECT DISTINCT
+            o.nomenclatura AS obra,
+            CASE
+                WHEN fi.funcao_id = 4 AND si.nome_status = 'P00' THEN 'Escolha de Ângulos'
+                ELSE f.nome_funcao
+            END AS funcao,
+            fi.status
+         FROM funcao_imagem fi
+         JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+         JOIN obra o ON o.idobra = ico.obra_id
+         JOIN funcao f ON f.idfuncao = fi.funcao_id
+         LEFT JOIN status_imagem si ON si.idstatus = ico.status_id
+         WHERE fi.colaborador_id = ?
+           AND o.status_obra = 0
+           AND fi.status = 'Finalizado'"
+    );
+        if ($stmtOpcoesFiltros) {
+            $stmtOpcoesFiltros->bind_param('i', $colaboradorId);
+            $stmtOpcoesFiltros->execute();
+            $resultOpcoesFiltros = $stmtOpcoesFiltros->get_result();
+            while ($opcaoFiltro = $resultOpcoesFiltros->fetch_assoc()) {
+                if (!empty($opcaoFiltro['obra'])) {
+                    $kanbanOpcoesFiltros['obras'][$opcaoFiltro['obra']] = $opcaoFiltro['obra'];
+                }
+                if (!empty($opcaoFiltro['funcao'])) {
+                    $kanbanOpcoesFiltros['funcoes'][$opcaoFiltro['funcao']] = $opcaoFiltro['funcao'];
+                }
+                if (!empty($opcaoFiltro['status'])) {
+                    $kanbanOpcoesFiltros['status'][$opcaoFiltro['status']] = $opcaoFiltro['status'];
+                }
+            }
+            $stmtOpcoesFiltros->close();
+            foreach ($kanbanOpcoesFiltros as $grupoOpcoes => $opcoes) {
+                $kanbanOpcoesFiltros[$grupoOpcoes] = array_values($opcoes);
+            }
+        }
+    }
+
     if (mb_strlen($kanbanBusca, 'UTF-8') >= 2) {
         $buscaEscapada = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $kanbanBusca);
         $filtroKanbanSql = "\n  AND ico.imagem_nome LIKE '%" . $conn->real_escape_string($buscaEscapada) . "%'";
-    } elseif ($kanbanBusca === '') {
+    }
+
+    if ($kanbanFiltrosAtivos) {
+        $condicoesFiltros = [];
+        $camposFiltros = [
+            'obras' => 'o.nomenclatura',
+            'funcoes' => "(CASE WHEN fi.funcao_id = 4 AND si.nome_status = 'P00' THEN 'Escolha de Ângulos' ELSE f.nome_funcao END)",
+            'status' => 'fi.status',
+        ];
+        foreach ($camposFiltros as $grupoFiltro => $campoFiltro) {
+            $valores = $kanbanFiltros[$grupoFiltro];
+            if (!$valores) {
+                continue;
+            }
+            $valoresSql = array_map(
+                static fn (string $valor): string => "'" . $conn->real_escape_string($valor) . "'",
+                $valores
+            );
+            $condicoesFiltros[] = $campoFiltro . ' IN (' . implode(',', $valoresSql) . ')';
+        }
+        if ($kanbanPrazoInicio !== '') {
+            $inicioSql = $conn->real_escape_string($kanbanPrazoInicio);
+            $fimSql = $conn->real_escape_string($kanbanPrazoFim);
+            $condicoesFiltros[] = "DATE(fi.prazo) BETWEEN '{$inicioSql}' AND '{$fimSql}'";
+        }
+        if ($condicoesFiltros) {
+            $filtroKanbanSql .= "\n  AND " . implode("\n  AND ", $condicoesFiltros);
+        }
+    }
+
+    if (!$kanbanFiltrosAtivos && $kanbanBusca === '') {
         $colaboradorSql = (int) $colaboradorId;
         $filtroKanbanSql = "\n  AND (
       fi.status <> 'Finalizado'
@@ -271,6 +385,20 @@ $sql = "SELECT
                             AND (
                                 ico.tipo_imagem IS NULL
                                 OR LOWER(ico.tipo_imagem) NOT LIKE '%humanizada%'
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM historico_aprovacoes had
+                                WHERE had.funcao_imagem_id = fi.idfuncao_imagem
+                                  AND had.status_novo IN ('Aprovado', 'Aprovado com ajustes')
+                                  AND had.responsavel IN (21, 2, 9, 31)
+                                  AND had.observacoes REGEXP '\"direcao_alteracao_destino\"[[:space:]]*:'
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM historico_aprovacoes had2
+                                      WHERE had2.funcao_imagem_id = had.funcao_imagem_id
+                                        AND had2.id > had.id
+                                  )
                             )
                         )
                     )
@@ -1663,6 +1791,7 @@ if ($kanbanMode) {
         'finalizados_total' => $kanbanFinalizadosTotal ?? 0,
         'busca' => $kanbanBusca,
         'limite_finalizados' => 30,
+        'filter_options' => $kanbanOpcoesFiltros,
     ];
 }
 

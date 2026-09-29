@@ -274,7 +274,7 @@ if ($foto_colab !== ''):
                         >
                         <kbd aria-hidden="true">Ctrl K</kbd>
                         <span id="kanban-search-loading" class="kanban-search-loading" role="status" aria-label="Buscando tarefas" hidden>
-                            <span class="kanban-loading-orb" aria-hidden="true"></span>
+                            <canvas data-thinking-orb data-orb-state="searching" data-orb-size="16" data-orb-speed="1" data-orb-theme="auto" aria-label="Buscando tarefas"></canvas>
                         </span>
                     </label>
                 </div>
@@ -944,6 +944,7 @@ if ($foto_colab !== ''):
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     </script>
     <script defer src="<?php echo asset_url('PaginaPrincipal/Overview/overviewV1.js'); ?>&build=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/Overview/overviewV1.js'); ?>"></script>
+    <script defer src="<?php echo asset_url('assets/js/thinking-orbs.js'); ?>&build=<?php echo filemtime(__DIR__ . '/assets/js/thinking-orbs.js'); ?>"></script>
     <script defer src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
     <script>document.addEventListener('DOMContentLoaded', () => window.FlowMotion && window.FlowMotion.init());</script>
     <script defer src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>

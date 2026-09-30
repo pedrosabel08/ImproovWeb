@@ -29,7 +29,7 @@ $backgroundPayload = json_encode(['dark' => $backgrounds('dark'), 'light' => $ba
     <meta name="theme-color" content="#101114">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
     <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../css/master.css'), ENT_QUOTES, 'UTF-8'); ?>">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../css/styleSidebar.css'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../css/styleSidebar.css') . '&build=' . filemtime(dirname(__DIR__, 2) . '/css/styleSidebar.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../PaginaPrincipal/Home/home.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">

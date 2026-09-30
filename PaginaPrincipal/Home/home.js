@@ -123,7 +123,7 @@
       .join(" · ");
     const preview = task.preview_url
       ? `<div class="current-work__preview" data-home-current-preview><img src="${escape(task.preview_url)}" alt=""><span class="current-work__project">${escape(task.obra?.nome || "Projeto")}</span></div>`
-      : `<div class="current-work__preview" data-home-current-preview><span class="current-work__project">${escape(task.obra?.nome || "Projeto")}</span></div>`;
+      : `<div class="current-work__preview current-work__preview--empty" data-home-current-preview><span class="current-work__project">${escape(task.obra?.nome || "Projeto")}</span></div>`;
     const stateLabel =
       String(task.status || "").toLowerCase() === "ajuste"
         ? "Tarefa em ajuste"
@@ -183,7 +183,7 @@
           .slice(0, 6)
           .map(
             (item) =>
-              `<a data-home-shortcut href="${escape(target(item))}"><i class="${escape(item.icon || "ri-window-line")}"></i><strong ${truncate(item.label || "Tela")}>${escape(item.label || "Tela")}</strong><span>${item.fixed ? "Acesso fixo" : "Visitado recentemente"}</span><b><i class="ri-arrow-right-s-line"></i></b></a>`,
+              `<a data-home-shortcut href="${escape(target(item))}"><i class="${escape(item.icon || "ri-window-line")}"></i><strong ${truncate(item.label || "Tela")}>${escape(item.label || "Tela")}</strong><b><i class="ri-arrow-right-s-line"></i></b></a>`,
           )
           .join("")
       : empty("Nenhuma tela recente disponível.");

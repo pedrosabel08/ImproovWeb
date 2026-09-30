@@ -268,7 +268,7 @@
   function taskCard(task) {
     const thumb = task.thumbnail_url
       ? `<img src="${esc(task.thumbnail_url)}" alt="" loading="lazy">`
-      : `<span class="task-thumb__empty"><i class="ri-image-line"></i></span>`;
+      : `<span class="task-thumb__empty" aria-hidden="true"></span>`;
     const operational = taskOperationalState(task);
     const substatusClass = unifiedStatusClass(task.substatus, "substatus");
     const isAdjustment = /ajuste/i.test(String(task.status || ""));

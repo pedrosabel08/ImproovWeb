@@ -100,6 +100,20 @@
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:root {
+  --task-placeholder-image: url("../../assets/placeholder/placeholder_dark.png");
+}
+
+:root[data-theme="light"] {
+  --task-placeholder-image: url("../../assets/placeholder/placeholder_light.png");
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --task-placeholder-image: url("../../assets/placeholder/placeholder_light.png");
+  }
+}
+
 /* Respeita o tema do sistema até que a aplicação defina data-theme. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {

@@ -1075,18 +1075,18 @@ body.overview-page a:focus-visible {
   border-radius: 6px;
   background: var(--ov-surface-2);
 }
+.task-thumb__empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-image: var(--task-placeholder-image);
+  background-position: center;
+  background-size: cover;
+}
 .task-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.task-thumb__empty {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  place-items: center;
-  color: var(--ov-faint);
-  font-size: var(--ov-font-section);
 }
 .task-card__body {
   min-width: 0;
@@ -2821,7 +2821,6 @@ body.overview-page a:focus-visible {
     42px;
   align-items: center;
   gap: clamp(16px, 1.7vw, 28px);
-  min-height: 0;
   padding: 20px clamp(14px, 1.5vw, 24px);
   transition:
     background 0.18s ease,

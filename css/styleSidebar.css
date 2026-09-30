@@ -535,8 +535,22 @@
   text-align: center;
 }
 
+:root[data-theme="light"] {
+  --sb-bg: #fff;
+  --sb-panel: #fbfbff;
+  --sb-hover: rgba(92, 107, 192, 0.09);
+  --sb-accent: #5267d8;
+  --sb-icon: #58628e;
+  --sb-text: #5f6481;
+  --sb-muted: #777f9e;
+  --sb-divider: rgba(35, 44, 81, 0.12);
+  --sb-shadow: 12px 0 30px rgba(28, 33, 58, 0.16);
+}
+:root[data-theme="light"] .sidebar-brand img {
+  content: url("../gif/assinatura_preto.gif");
+}
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]):not([data-theme="light"]) {
     --sb-bg: #fff;
     --sb-panel: #fbfbff;
     --sb-hover: rgba(92, 107, 192, 0.09);
@@ -547,7 +561,7 @@
     --sb-divider: rgba(35, 44, 81, 0.12);
     --sb-shadow: 12px 0 30px rgba(28, 33, 58, 0.16);
   }
-  .sidebar-brand img {
+  :root:not([data-theme="dark"]):not([data-theme="light"]) .sidebar-brand img {
     content: url("../gif/assinatura_preto.gif");
   }
 }

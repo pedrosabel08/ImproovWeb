@@ -985,7 +985,10 @@ function flowReviewGetHomeFilterValues() {
   };
 }
 
-function flowReviewMatchesHomeFilters(task, filters = flowReviewGetHomeFilterValues()) {
+function flowReviewMatchesHomeFilters(
+  task,
+  filters = flowReviewGetHomeFilterValues(),
+) {
   const imageSearchMatches =
     !filters.search ||
     [task.imagem_nome, task.nome_obra, task.nomenclatura, task.imagem_id]
@@ -3982,6 +3985,111 @@ async function restoreFlowReviewViewState(state) {
   });
 }
 
+function flowReviewNormalizeStatus(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function flowReviewRenderEnvioApprovalInfo(
+  container,
+  indiceEnvio,
+  imagensAgrupadas,
+  historico,
+  statusTarefa,
+  indiceEnvioMaisRecente,
+) {
+  if (!container) return;
+  const holdContext =
+    container.querySelector(".flow-review-hold-context")?.outerHTML || "";
+
+  const items = imagensAgrupadas[String(indiceEnvio)] || [];
+  const inicioEnvio = items.reduce((inicio, item) => {
+    const timestamp = new Date(item.data_envio || 0).getTime();
+    return Number.isFinite(timestamp) && timestamp > 0
+      ? Math.min(inicio, timestamp)
+      : inicio;
+  }, Number.POSITIVE_INFINITY);
+
+  const enviosComData = Object.entries(imagensAgrupadas)
+    .map(([indice, batch]) => ({
+      indice: String(indice),
+      inicio: batch.reduce((minimo, item) => {
+        const timestamp = new Date(item.data_envio || 0).getTime();
+        return Number.isFinite(timestamp) && timestamp > 0
+          ? Math.min(minimo, timestamp)
+          : minimo;
+      }, Number.POSITIVE_INFINITY),
+    }))
+    .filter((batch) => Number.isFinite(batch.inicio))
+    .sort((a, b) => a.inicio - b.inicio || Number(a.indice) - Number(b.indice));
+
+  const decisoesPorEnvio = new Map();
+  for (const decisao of Array.isArray(historico) ? historico : []) {
+    const responsavel = Number(decisao.responsavel || 0);
+    const status = decisao.status_novo || decisao.status || "";
+    const statusNormalizado = flowReviewNormalizeStatus(status);
+    const timestamp = new Date(
+      decisao.data_aprovacao || decisao.data || 0,
+    ).getTime();
+    if (
+      responsavel <= 0 ||
+      !statusNormalizado ||
+      statusNormalizado.startsWith("emaprov") ||
+      !Number.isFinite(timestamp) ||
+      timestamp < inicioEnvio
+    ) {
+      continue;
+    }
+
+    // Associa a decisão ao envio mais recente que já existia naquele momento.
+    const batch = [...enviosComData]
+      .reverse()
+      .find((candidate) => candidate.inicio <= timestamp);
+    if (!batch) continue;
+    const entries = decisoesPorEnvio.get(batch.indice) || [];
+    entries.push(decisao);
+    decisoesPorEnvio.set(batch.indice, entries);
+  }
+
+  const decisoes = (decisoesPorEnvio.get(String(indiceEnvio)) || []).sort(
+    (a, b) =>
+      new Date(b.data_aprovacao || b.data || 0) -
+      new Date(a.data_aprovacao || a.data || 0),
+  );
+  const decisao = decisoes[0] || null;
+  if (!decisao) {
+    const aguardando =
+      Number(indiceEnvio) === Number(indiceEnvioMaisRecente) &&
+      flowReviewNormalizeStatus(statusTarefa).startsWith("emaprov");
+    const envioInfo = aguardando
+      ? `<div class="approval-info-message"><i class="fa-solid fa-clock" aria-hidden="true"></i><span class="approval-info-message__content">Aguardando aprovação</span></div>`
+      : "";
+    container.innerHTML = `${envioInfo}${holdContext}`;
+    container.style.display = aguardando || holdContext ? "block" : "none";
+    return;
+  }
+
+  const nome = decisao.responsavel_nome || `Colaborador ${decisao.responsavel}`;
+  let status = decisao.status_novo || decisao.status || "Revisado";
+  if (flowReviewNormalizeStatus(status) === "aguardandodirecao") {
+    try {
+      const observacoes = decisao.observacoes
+        ? JSON.parse(decisao.observacoes)
+        : null;
+      status = observacoes?.aprovacao_operacional || status;
+    } catch (_) {
+      // Mantém o status original quando observacoes não for JSON válido.
+    }
+  }
+  const data = decisao.data_aprovacao || decisao.data;
+  const dataFormatada = data ? formatarDataHora(new Date(data)) : "";
+  container.innerHTML = `<div class="approval-info-message"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span class="approval-info-message__content"><strong>Revisado por ${escapeHtml(nome)}</strong> — <span>${escapeHtml(status)}</span>${dataFormatada ? `<small>${escapeHtml(dataFormatada)}</small>` : ""}</span></div>${holdContext}`;
+  container.style.display = "block";
+}
+
 function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
   const preservedViewState = options.preserveView
     ? captureFlowReviewViewState()
@@ -4475,6 +4583,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
       const indicesOrdenados = Object.keys(imagensAgrupadas).sort(
         (a, b) => b - a,
       );
+      const indiceEnvioMaisRecente = indicesOrdenados[0] ?? null;
       setEnviosComparisonData(imagensAgrupadas, indicesOrdenados);
 
       if (indicesOrdenados.length === 0) {
@@ -4513,6 +4622,35 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
         const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
         if (isFlowAngulo) {
           updateAngleActionForSelection(imagensDoIndice, item);
+        }
+        flowReviewRenderEnvioApprovalInfo(
+          approvalContainer,
+          indiceSelecionado,
+          imagensAgrupadas,
+          historico,
+          item?.status_atual || item?.status_novo || item?.status,
+          indiceEnvioMaisRecente,
+        );
+
+        const isEnvioMaisRecente =
+          Number(indiceSelecionado) === Number(indiceEnvioMaisRecente);
+        const actionsGroup = document.querySelector(".angulo-actions-group");
+        const angleCanBeSelected =
+          podeAprovar && isFlowAngulo && currentAngleSelection.isP00Finalizacao;
+        if (!isEnvioMaisRecente) {
+          modal.classList.add("hidden");
+          btnAjustesFuncao.style.display = "none";
+          if (angleCanBeSelected) {
+            if (actionsGroup) actionsGroup.style.display = "";
+            btnOpen.style.display = "flex";
+          } else {
+            btnOpen.style.display = "none";
+            if (actionsGroup) actionsGroup.style.display = "none";
+          }
+        } else if (podeAprovar) {
+          if (actionsGroup) actionsGroup.style.display = "";
+          btnOpen.style.display = "flex";
+          btnAjustesFuncao.style.display = isFlowAngulo ? "flex" : "none";
         }
 
         const textoGeral = Array.isArray(imagensDoIndice)

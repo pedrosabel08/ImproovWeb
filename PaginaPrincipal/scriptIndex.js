@@ -18,9 +18,12 @@ if (
 document.addEventListener(
   "keydown",
   (event) => {
-    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k")
+      return;
 
-    const modalSelecaoImagens = document.getElementById("modalSelecionarImagens");
+    const modalSelecaoImagens = document.getElementById(
+      "modalSelecionarImagens",
+    );
     if (modalSelecaoImagens?.classList.contains("is-open")) return;
     if (document.querySelector(".modal.is-open")) return;
 
@@ -153,9 +156,9 @@ function obterFiltrosSelecionadosKanban() {
 function filtrosKanbanEstaoAtivos(filtros = obterFiltrosSelecionadosKanban()) {
   return Boolean(
     filtros.obras.length ||
-      filtros.funcoes.length ||
-      filtros.status.length ||
-      filtros.prazoInicio,
+    filtros.funcoes.length ||
+    filtros.status.length ||
+    filtros.prazoInicio,
   );
 }
 
@@ -212,12 +215,14 @@ function configurarBuscaKanban() {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
-
 }
 
 let kanbanPayloadAtual = null;
 
-function buscarTarefasKanban(termo, filtros = obterFiltrosSelecionadosKanban()) {
+function buscarTarefasKanban(
+  termo,
+  filtros = obterFiltrosSelecionadosKanban(),
+) {
   window.clearTimeout(kanbanBuscaDebounce);
   const sequencia = ++kanbanBuscaSequencia;
   if (kanbanBuscaXhr) kanbanBuscaXhr.abort();
@@ -249,7 +254,8 @@ function buscarTarefasKanban(termo, filtros = obterFiltrosSelecionadosKanban()) 
     try {
       if (obterBuscaKanban() !== normalizarTextoBuscaKanban(termo)) return;
       const filtrosAtuais = obterFiltrosSelecionadosKanban();
-      if (chaveFiltrosKanban(filtrosAtuais) !== chaveFiltrosKanban(filtros)) return;
+      if (chaveFiltrosKanban(filtrosAtuais) !== chaveFiltrosKanban(filtros))
+        return;
       definirLoadingBuscaKanban(false);
       kanbanFiltroResultadoKey = filtrosKanbanEstaoAtivos(filtros)
         ? chaveFiltrosKanban(filtros)
@@ -265,7 +271,11 @@ function buscarTarefasKanban(termo, filtros = obterFiltrosSelecionadosKanban()) 
     kanbanBuscaXhr = null;
     definirLoadingBuscaKanban(false);
   };
-  xhr.open("GET", `PaginaPrincipal/getFuncoesPorColaborador.php?${params.toString()}`, true);
+  xhr.open(
+    "GET",
+    `PaginaPrincipal/getFuncoesPorColaborador.php?${params.toString()}`,
+    true,
+  );
   xhr.send();
 }
 
@@ -2389,19 +2399,23 @@ function abrirReplanejamentoFlowBlock(card) {
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
   };
 
-  const atualizarAvaliacaoRetomada = async ({ projetarSemPrevisao = false } = {}) => {
+  const atualizarAvaliacaoRetomada = async ({
+    projetarSemPrevisao = false,
+  } = {}) => {
     const requestId = ++previewRequest;
     currentEvaluation = null;
     reasonWrap.hidden = true;
     reasonTextWrap.hidden = true;
     const temPrevisao = Boolean(prazoInput.value);
     if (!temPrevisao && !projetarSemPrevisao) {
-      evaluationBox.textContent = "Informe a nova data para avaliar a janela operacional.";
+      evaluationBox.textContent =
+        "Informe a nova data para avaliar a janela operacional.";
       evaluationBox.className = "flow-block-resume-evaluation is-neutral";
       return false;
     }
     if (temPrevisao) {
-      evaluationBox.textContent = "Calculando o prazo e a janela da retomada...";
+      evaluationBox.textContent =
+        "Calculando o prazo e a janela da retomada...";
       evaluationBox.className = "flow-block-resume-evaluation is-neutral";
     }
     try {
@@ -2419,23 +2433,29 @@ function abrirReplanejamentoFlowBlock(card) {
         if (requestId !== previewRequest) return false;
         currentEvaluation = { tem_ciclo: false };
         windowLimit.textContent = "Sem ciclo operacional";
-        windowDetail.textContent = "A nova data será aplicada ao prazo da tarefa.";
+        windowDetail.textContent =
+          "A nova data será aplicada ao prazo da tarefa.";
         if (temPrevisao) {
-          evaluationBox.textContent = "Janela operacional indispon\u00edvel; a nova data ser\u00e1 aplicada ao prazo da tarefa.";
+          evaluationBox.textContent =
+            "Janela operacional indispon\u00edvel; a nova data ser\u00e1 aplicada ao prazo da tarefa.";
           evaluationBox.className = "flow-block-resume-evaluation is-neutral";
         }
         return true;
       }
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.message || "N\u00e3o foi poss\u00edvel avaliar a retomada.");
+        throw new Error(
+          payload?.message || "N\u00e3o foi poss\u00edvel avaliar a retomada.",
+        );
       }
       if (requestId !== previewRequest) return false;
       currentEvaluation = payload.evaluation || null;
       if (!currentEvaluation?.tem_ciclo) {
         windowLimit.textContent = "Sem ciclo operacional";
-        windowDetail.textContent = "A nova data será aplicada ao prazo da tarefa.";
+        windowDetail.textContent =
+          "A nova data será aplicada ao prazo da tarefa.";
         if (temPrevisao) {
-          evaluationBox.textContent = "A tarefa n\u00e3o possui ciclo operacional ativo; a nova data ser\u00e1 aplicada ao prazo da tarefa.";
+          evaluationBox.textContent =
+            "A tarefa n\u00e3o possui ciclo operacional ativo; a nova data ser\u00e1 aplicada ao prazo da tarefa.";
           evaluationBox.className = "flow-block-resume-evaluation is-neutral";
         }
         return true;
@@ -2445,11 +2465,13 @@ function abrirReplanejamentoFlowBlock(card) {
       windowLimit.textContent = avaliacao.limite_data
         ? `Até ${formatarData(avaliacao.limite_data)}`
         : "Sem limite operacional";
-      windowDetail.textContent = avaliacao.situacao === "AGUARDANDO_INICIO"
-        ? `${avaliacao.limite_dias_uteis || 0} dias úteis após o início da retomada.`
-        : `${avaliacao.dias_uteis_hold || 0} dia(s) útil(eis) integral(is) em HOLD adicionados ao saldo restante.`;
+      windowDetail.textContent =
+        avaliacao.situacao === "AGUARDANDO_INICIO"
+          ? `${avaliacao.limite_dias_uteis || 0} dias úteis após o início da retomada.`
+          : `${avaliacao.dias_uteis_hold || 0} dia(s) útil(eis) integral(is) em HOLD adicionados ao saldo restante.`;
       if (!temPrevisao) {
-        evaluationBox.textContent = "Informe a nova data para avaliar a janela operacional.";
+        evaluationBox.textContent =
+          "Informe a nova data para avaliar a janela operacional.";
         evaluationBox.className = "flow-block-resume-evaluation is-neutral";
         return true;
       }
@@ -2492,7 +2514,8 @@ function abrirReplanejamentoFlowBlock(card) {
       return true;
     } catch (error) {
       if (requestId !== previewRequest) return false;
-      evaluationBox.textContent = error.message || "Falha ao avaliar a nova data.";
+      evaluationBox.textContent =
+        error.message || "Falha ao avaliar a nova data.";
       evaluationBox.className = "flow-block-resume-evaluation is-conflict";
       return false;
     }
@@ -2528,10 +2551,15 @@ function abrirReplanejamentoFlowBlock(card) {
       continueButton.textContent = "Reprogramando...";
       try {
         if (!(await atualizarAvaliacaoRetomada())) {
-          throw new Error(evaluationBox.textContent || "N\u00e3o foi poss\u00edvel avaliar a nova data.");
+          throw new Error(
+            evaluationBox.textContent ||
+              "N\u00e3o foi poss\u00edvel avaliar a nova data.",
+          );
         }
         if (currentEvaluation?.exige_justificativa && !reasonSelect.value) {
-          throw new Error("Selecione um motivo para a previs\u00e3o informada.");
+          throw new Error(
+            "Selecione um motivo para a previs\u00e3o informada.",
+          );
         }
         if (reasonText.required && !reasonText.value.trim()) {
           throw new Error("Detalhe a justificativa para o motivo selecionado.");
@@ -3172,6 +3200,15 @@ function processarDados(data) {
     card.dataset.productionBlockReasons = pendenciasProducaoInicio
       .map((requisito) => String(requisito.label || "Pendência de Produção"))
       .join("||");
+    const pendenciasAprovacaoInicio = pendenciasInicio.filter(
+      (requisito) =>
+        String(requisito?.tipo || "")
+          .trim()
+          .toUpperCase() === "APROVACAO",
+    );
+    card.dataset.approvalBlockReasons = pendenciasAprovacaoInicio
+      .map((requisito) => String(requisito.label || "Pendência de aprovação"))
+      .join("||");
     const resumoPendenciasInicio =
       status === "Não iniciado" && pendenciasInicio.length > 0
         ? `<div class="requirements-card-summary">
@@ -3250,6 +3287,9 @@ function processarDados(data) {
     const responsavel = String(item.nome_colaborador || "").trim();
     const anguloCienciaPendente =
       Number(item.angulo_ciencia_pendente || 0) === 1;
+    const colaboradorAnguloCienciaId = Number(
+      colaborador_id || idColaborador || 0,
+    );
     const initials = responsavel
       .split(/\s+/)
       .filter(Boolean)
@@ -3370,6 +3410,40 @@ function processarDados(data) {
       ? "1"
       : "0";
 
+    if (anguloCienciaPendente) {
+      let marcacaoVisualizacaoEmAndamento = false;
+      card.addEventListener(
+        "click",
+        () => {
+          if (marcacaoVisualizacaoEmAndamento) return;
+          marcacaoVisualizacaoEmAndamento = true;
+          fetch("PaginaPrincipal/marcarAnguloCienciaVisualizada.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              funcao_imagem_id: Number(item.idfuncao_imagem),
+              colaborador_id: colaboradorAnguloCienciaId,
+            }),
+          })
+            .then((response) => response.json())
+            .then((payload) => {
+              if (!payload?.success || !payload.visualizado) {
+                marcacaoVisualizacaoEmAndamento = false;
+                return;
+              }
+              card.querySelector(".angle-science-ribbon")?.remove();
+            })
+            .catch(() => {
+              marcacaoVisualizacaoEmAndamento = false;
+            });
+        },
+        { capture: true },
+      );
+    }
+
     card.addEventListener("click", () => {
       document
         .querySelectorAll(".kanban-card.selected")
@@ -3422,10 +3496,6 @@ function processarDados(data) {
           idImagem,
           card.dataset.nomeObraReal || "",
           false,
-          {
-            angleSciencePending: anguloCienciaPendente,
-            angleScienceCard: card,
-          },
         );
       }
     });
@@ -5542,28 +5612,6 @@ function abrirSidebar(
 
       tpMain.appendChild(summaryCard);
 
-      if (options.angleSciencePending) {
-        fetch("PaginaPrincipal/marcarAnguloCienciaVisualizada.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ funcao_imagem_id: Number(idFuncao) }),
-        })
-          .then((response) => response.json())
-          .then((payload) => {
-            if (!payload?.success || !payload.visualizado) return;
-            options.angleScienceCard
-              ?.querySelector(".angle-science-ribbon")
-              ?.remove();
-            summaryCard
-              .querySelector("#tp-preview-wrap")
-              ?.classList.add("tp-angle-science-highlight");
-          })
-          .catch(() => {});
-      }
-
       // Expand preview on click
       if (previewUrl) {
         const previewWrap = summaryCard.querySelector("#tp-preview-wrap");
@@ -6672,7 +6720,8 @@ function preencherFiltros() {
     }
   });
 
-  const opcoesFinalizados = kanbanPayloadAtual?.kanban_meta?.filter_options || {};
+  const opcoesFinalizados =
+    kanbanPayloadAtual?.kanban_meta?.filter_options || {};
   (opcoesFinalizados.obras || []).forEach((obra) => obras.add(obra));
   (opcoesFinalizados.funcoes || []).forEach((funcao) => funcoes.add(funcao));
   (opcoesFinalizados.status || []).forEach((status) => statuses.add(status));
@@ -6868,7 +6917,10 @@ function aplicarFiltros() {
 
   const termoBusca = obterBuscaKanban();
   const filtrosAtivos = filtrosKanbanEstaoAtivos(filtrosSelecionados);
-  if (filtrosAtivos && chaveFiltrosKanban(filtrosSelecionados) !== kanbanFiltroResultadoKey) {
+  if (
+    filtrosAtivos &&
+    chaveFiltrosKanban(filtrosSelecionados) !== kanbanFiltroResultadoKey
+  ) {
     buscarTarefasKanban(termoBusca, filtrosSelecionados);
   } else if (!filtrosAtivos && kanbanFiltroResultadoKey) {
     if (termoBusca.length >= 2) {
@@ -7475,6 +7527,18 @@ function bloqueiosProducao(avaliacao) {
   return bloqueios.map((item) => item?.label).filter(Boolean);
 }
 
+function bloqueiosAprovacao(avaliacao) {
+  const bloqueios = Array.isArray(avaliacao?.bloqueios)
+    ? avaliacao.bloqueios.filter(
+        (item) =>
+          String(item?.tipo || "")
+            .trim()
+            .toUpperCase() === "APROVACAO",
+      )
+    : [];
+  return bloqueios.map((item) => item?.label).filter(Boolean);
+}
+
 function mostrarBloqueioProducao(motivos) {
   const itens = motivos
     .map((motivo) => `<li>${escapeKanbanText(motivo)}</li>`)
@@ -7484,6 +7548,22 @@ function mostrarBloqueioProducao(motivos) {
     title: "Início bloqueado",
     html: `
       <p>Finalize todas as pendências de Produção antes de colocar a tarefa em andamento.</p>
+      ${itens ? `<ul style="text-align:left; margin:10px 0 0 20px;">${itens}</ul>` : ""}
+    `,
+    confirmButtonText: "Entendi",
+    confirmButtonColor: "#3085d6",
+  });
+}
+
+function mostrarBloqueioAprovacao(motivos) {
+  const itens = motivos
+    .map((motivo) => `<li>${escapeKanbanText(motivo)}</li>`)
+    .join("");
+  return Swal.fire({
+    icon: "warning",
+    title: "Aprovação pendente",
+    html: `
+      <p>Resolva as pendências de aprovação antes de colocar a tarefa em andamento.</p>
       ${itens ? `<ul style="text-align:left; margin:10px 0 0 20px;">${itens}</ul>` : ""}
     `,
     confirmButtonText: "Entendi",
@@ -7750,8 +7830,15 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
         return;
       } catch (error) {
         const pendenciasProducao = bloqueiosProducao(error?.payload?.avaliacao);
-        if (pendenciasProducao.length) {
+        const pendenciasAprovacao = bloqueiosAprovacao(
+          error?.payload?.avaliacao,
+        );
+        if (pendenciasAprovacao.length) {
+          await mostrarBloqueioAprovacao(pendenciasAprovacao);
+        } else if (pendenciasProducao.length) {
           await mostrarBloqueioProducao(pendenciasProducao);
+        } else if (error?.message?.includes("pendencias de Aprovacao")) {
+          await mostrarBloqueioAprovacao(["Aprovação da etapa anterior"]);
         } else {
           Toastify({
             text: error?.message || "Não foi possível iniciar a tarefa.",
@@ -7988,6 +8075,12 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
       error: async function (jqXHR, textStatus, errorThrown) {
         const payload = jqXHR.responseJSON || {};
         const pendenciasProducao = bloqueiosProducao(payload.avaliacao);
+        const pendenciasAprovacao = bloqueiosAprovacao(payload.avaliacao);
+
+        if (pendenciasAprovacao.length) {
+          await mostrarBloqueioAprovacao(pendenciasAprovacao);
+          return;
+        }
 
         if (pendenciasProducao.length) {
           await mostrarBloqueioProducao(pendenciasProducao);
@@ -8206,6 +8299,20 @@ if (typeof Sortable !== "undefined") {
         const requiresFileUpload = card?.dataset?.requiresFileUpload === "1";
         const holdMovel = deColuna?.id === "hold" && !imagemEmHold;
         delete cardModal.dataset.confirmarPendencias;
+
+        const motivosAprovacao = String(card.dataset.approvalBlockReasons || "")
+          .split("||")
+          .map((motivo) => motivo.trim())
+          .filter(Boolean);
+        if (
+          deColuna?.id !== novaColuna?.id &&
+          novaColuna?.id === "in-progress" &&
+          motivosAprovacao.length > 0
+        ) {
+          evt.from.appendChild(card);
+          await mostrarBloqueioAprovacao(motivosAprovacao);
+          return;
+        }
 
         if (imagemEmHold) {
           evt.from.appendChild(card);

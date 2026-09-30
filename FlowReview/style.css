@@ -1284,12 +1284,38 @@ h2#dataEnvio {
 /* Approval info (moved from inline) */
 #approval_info {
   display: none;
+  width: 100%;
+  box-sizing: border-box;
   margin-bottom: 10px;
   padding: 8px;
   border-radius: 6px;
   background: #f5f7fa;
   font-size: 14px;
   color: #222;
+}
+
+.approval-info-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.approval-info-message > i {
+  flex: 0 0 16px;
+  text-align: center;
+}
+
+.approval-info-message__content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.approval-info-message__content small {
+  display: block;
+  margin-top: 2px;
 }
 
 .approval-adjustment-action {

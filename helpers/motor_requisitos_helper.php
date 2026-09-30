@@ -130,6 +130,18 @@ function motor_requisitos_tem_bloqueio_producao(array $resultado): bool
     return !empty(motor_requisitos_bloqueios_producao($resultado));
 }
 
+function motor_requisitos_bloqueios_aprovacao(array $resultado): array
+{
+    return array_values(array_filter((array) ($resultado['bloqueios'] ?? []), static function (array $item): bool {
+        return strtoupper(trim((string) ($item['tipo'] ?? ''))) === 'APROVACAO';
+    }));
+}
+
+function motor_requisitos_tem_bloqueio_aprovacao(array $resultado): bool
+{
+    return !empty(motor_requisitos_bloqueios_aprovacao($resultado));
+}
+
 function motor_requisitos_checklist_projeto(mysqli $conn, int $obraId): ?array
 {
     $cacheKey = spl_object_id($conn);
@@ -903,8 +915,8 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
     // regras já existentes de Finalização de imagens secundárias.
     $context = motor_requisitos_contexto_lote($conn, $funcaoImagemId);
     if (!$context) {
-    $stmt = $conn->prepare(
-        "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
+        $stmt = $conn->prepare(
+            "SELECT fi.idfuncao_imagem, fi.imagem_id, fi.funcao_id, fi.status, fi.colaborador_id AS tarefa_responsavel_id,
                 f.nome_funcao,
                 ico.imagem_nome, ico.obra_id, ico.tipo_imagem, ico.subtipo_id,
                 ico.imagem_principal_id,
@@ -926,11 +938,11 @@ function motor_requisitos_avaliar_funcao_imagem(mysqli $conn, int $funcaoImagemI
            LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
           WHERE fi.idfuncao_imagem = ?
           LIMIT 1"
-    );
-    $stmt->bind_param('i', $funcaoImagemId);
-    $stmt->execute();
-    $context = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+        );
+        $stmt->bind_param('i', $funcaoImagemId);
+        $stmt->execute();
+        $context = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
     }
     if (!$context) {
         return motor_requisitos_resultado(true, [], false, 'Tarefa de imagem não localizada para avaliação.');

@@ -23,9 +23,11 @@ function flow_inicio_operacional_validar_requisitos(mysqli $conn, array $tarefa,
     if (motor_requisitos_tem_bloqueio_producao($avaliacao)) {
         throw new DomainException('Conclua todas as pendencias de Producao antes de iniciar a tarefa.');
     }
-    // Pendências de Projeto e demais requisitos informativos não bloqueiam o
-    // início. A regra de negócio para puxar uma tarefa é exclusivamente a
-    // ausência de pendências ativas de Produção.
+    if (motor_requisitos_tem_bloqueio_aprovacao($avaliacao)) {
+        throw new DomainException('Resolva as pendencias de Aprovacao antes de iniciar a tarefa.');
+    }
+    // Pendências de Projeto e demais requisitos informativos podem ser
+    // confirmadas; Produção e Aprovação precisam estar resolvidas para iniciar.
     return $avaliacao;
 }
 

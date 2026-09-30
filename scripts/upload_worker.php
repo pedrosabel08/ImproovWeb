@@ -1210,6 +1210,13 @@ function mark_funcao_upload_quitado(array $meta): void
              )
                    )
                  )
+                 AND NOT (
+                     fi.funcao_id = 4
+                     AND (
+                         NULLIF(TRIM(ico.tipo_imagem), '') IS NULL
+                         OR LOWER(ico.tipo_imagem) LIKE '%humanizada%'
+                     )
+                 )
                  AND NOT EXISTS (
                  SELECT 1
                    FROM render_alta ra

@@ -308,6 +308,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Uma decisao de revisao deve sempre apontar para o envio mais recente.
+        // O bloqueio no servidor cobre tambem telas desatualizadas ou chamadas diretas.
+        if ($historico_id) {
+            $mediaOwnerColumn = $is_animacao_review ? 'funcao_animacao_id' : 'funcao_imagem_id';
+            $mediaOwnerId = $is_animacao_review ? $funcao_animacao_id : $idfuncao_imagem;
+            $stmtSelectedBatch = $conn->prepare(
+                "SELECT COALESCE(indice_envio, 0) FROM historico_aprovacoes_imagens WHERE id = ? AND {$mediaOwnerColumn} = ? LIMIT 1"
+            );
+            if (!$stmtSelectedBatch) {
+                throw new RuntimeException('Falha ao validar o envio selecionado.');
+            }
+            $stmtSelectedBatch->bind_param('ii', $historico_id, $mediaOwnerId);
+            $stmtSelectedBatch->execute();
+            $stmtSelectedBatch->bind_result($selectedIndiceEnvio);
+            $selectedBatchExists = $stmtSelectedBatch->fetch();
+            $stmtSelectedBatch->close();
+
+            if (!$selectedBatchExists) {
+                echo json_encode(['success' => false, 'message' => 'O envio selecionado não pertence a esta tarefa. Recarregue a revisão.']);
+                exit;
+            }
+
+            $stmtLatestBatch = $conn->prepare(
+                "SELECT COALESCE(MAX(indice_envio), 0) FROM historico_aprovacoes_imagens WHERE {$mediaOwnerColumn} = ?"
+            );
+            if (!$stmtLatestBatch) {
+                throw new RuntimeException('Falha ao validar o envio mais recente.');
+            }
+            $stmtLatestBatch->bind_param('i', $mediaOwnerId);
+            $stmtLatestBatch->execute();
+            $stmtLatestBatch->bind_result($latestIndiceEnvio);
+            $stmtLatestBatch->fetch();
+            $stmtLatestBatch->close();
+
+            if ((int)$selectedIndiceEnvio < (int)$latestIndiceEnvio) {
+                echo json_encode(['success' => false, 'message' => 'Somente o envio mais recente pode ser revisado.']);
+                exit;
+            }
+        }
+
         if ($responsavel <= 0) {
             $responsavel = $idcolaborador_session;
         }
@@ -462,6 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $funcao_id_context = null;
         $nome_funcao_db = null;
         $imagem_id_context = $imagem_id ? (int)$imagem_id : null;
+        $tipo_imagem_context = null;
         $colaborador_id_context = 0;
         $status_funcao_context = null;
         $status_id_context = 0;
@@ -469,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $obra_nome_context = '';
         $imagem_nome_context = (string)$imagem_nome;
         $stmtFuncaoContext = $conn->prepare("SELECT fi.funcao_id, fun.nome_funcao, fi.imagem_id, fi.colaborador_id, fi.status,
-                ico.imagem_nome, ico.status_id, o.idobra, COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra)
+                ico.imagem_nome, ico.tipo_imagem, ico.status_id, o.idobra, COALESCE(NULLIF(o.nomenclatura, ''), o.nome_obra)
             FROM funcao_imagem fi
             LEFT JOIN funcao fun ON fun.idfuncao = fi.funcao_id
             LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
@@ -479,7 +520,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmtFuncaoContext) {
             $stmtFuncaoContext->bind_param("i", $idfuncao_imagem);
             $stmtFuncaoContext->execute();
-            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context, $imagem_nome_context, $status_id_context, $obra_id_context, $obra_nome_context);
+            $stmtFuncaoContext->bind_result($funcao_id_context, $nome_funcao_db, $imagem_id_context_db, $colaborador_id_context, $status_funcao_context, $imagem_nome_context, $tipo_imagem_context, $status_id_context, $obra_id_context, $obra_nome_context);
             $stmtFuncaoContext->fetch();
             $stmtFuncaoContext->close();
             if ($imagem_id_context_db) {
@@ -492,6 +533,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $nomeFuncaoLower = mb_strtolower((string)($nome_funcao_db ?: $nome_funcao), 'UTF-8');
         $nomeFuncaoKey = normalize_name((string)($nome_funcao_db ?: $nome_funcao));
+        $isImagemHumanizadaContext = stripos((string)$tipo_imagem_context, 'humanizada') !== false;
+        $tipoImagemContextConhecido = trim((string)$tipo_imagem_context) !== '';
 
         // ── Aprovação dupla de Pós-produção/Alteração ────────────────────────────
         // Quando qualquer aprovador autorizado aprova uma função com dupla
@@ -827,8 +870,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, requires_render_send = ? WHERE idfuncao_imagem = ?");
             $stmt->bind_param("sii", $status, $requires_render_send, $idfuncao_imagem);
         } elseif ($isDirecaoFinalizacaoR00) {
-            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, requires_render_send = 1 WHERE idfuncao_imagem = ?");
-            $stmt->bind_param("si", $status, $idfuncao_imagem);
+            $requires_render_send = $tipoImagemContextConhecido && !$isImagemHumanizadaContext ? 1 : 0;
+            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, requires_render_send = ? WHERE idfuncao_imagem = ?");
+            $stmt->bind_param("sii", $status, $requires_render_send, $idfuncao_imagem);
         } else {
             $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
             $stmt->bind_param("si", $status, $idfuncao_imagem);

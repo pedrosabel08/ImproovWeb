@@ -124,7 +124,7 @@ if ($kanbanMode) {
 
     if ($kanbanBusca === '' && !$kanbanFiltrosAtivos) {
         $stmtOpcoesFiltros = $conn->prepare(
-        "SELECT DISTINCT
+            "SELECT DISTINCT
             o.nomenclatura AS obra,
             CASE
                 WHEN fi.funcao_id = 4 AND si.nome_status = 'P00' THEN 'Escolha de Ângulos'
@@ -139,7 +139,7 @@ if ($kanbanMode) {
          WHERE fi.colaborador_id = ?
            AND o.status_obra = 0
            AND fi.status = 'Finalizado'"
-    );
+        );
         if ($stmtOpcoesFiltros) {
             $stmtOpcoesFiltros->bind_param('i', $colaboradorId);
             $stmtOpcoesFiltros->execute();
@@ -417,6 +417,13 @@ $sql = "SELECT
                           )
                         LIMIT 1
                     )
+                )
+            )
+            AND NOT (
+                fi.funcao_id = 4
+                AND (
+                    NULLIF(TRIM(ico.tipo_imagem), '') IS NULL
+                    OR LOWER(ico.tipo_imagem) LIKE '%humanizada%'
                 )
             )
             AND fi.status IN ('Aprovado', 'Aprovado com ajustes')

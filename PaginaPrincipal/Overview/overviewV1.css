@@ -2528,10 +2528,10 @@ body.overview-page a:focus-visible {
   background: var(--ov-hover);
 }
 .overview-pending-item.is-critico {
-  border-left-color: var(--ov-red);
+  border-left-color: var(--pending-sla-critical);
 }
 .overview-pending-item.is-estourado {
-  border-left-color: var(--ov-amber);
+  border-left-color: var(--pending-sla-overdue);
 }
 .overview-pending-item strong {
   font-size: var(--ov-font-caption);
@@ -2549,6 +2549,100 @@ body.overview-page a:focus-visible {
 }
 .overview-pending-more span {
   color: var(--ov-blue);
+}
+
+/* O Kanban conserva o tema escuro; a lista compartilhada no Overview segue o painel claro. */
+.overview-attention {
+  --attention-surface: #fff;
+  --attention-surface-soft: #f8fafc;
+  --attention-border: #dbe3ec;
+  --attention-text: #263548;
+  --attention-muted: #68788b;
+  --attention-meta: #eef2f7;
+  --attention-meta-text: #526173;
+  --attention-accent: #7048c8;
+  --attention-accent-soft: #f2edff;
+}
+
+.overview-attention .pendencia-op-overview {
+  border-color: var(--attention-border);
+  background: var(--attention-surface);
+}
+.overview-attention .pendencia-op-overview strong {
+  color: var(--attention-accent);
+}
+.overview-attention .pendencia-op-overview div:first-child strong {
+  color: var(--pending-sla-critical);
+}
+.overview-attention .pendencia-op-overview div:nth-child(2) strong {
+  color: var(--pending-sla-overdue);
+}
+.overview-attention .pendencia-op-overview div:nth-child(3) strong {
+  color: var(--pending-sla-within);
+}
+.overview-attention .pendencia-op-overview span {
+  color: var(--attention-muted);
+}
+
+.overview-attention .pendencia-op-group {
+  border-color: var(--attention-border);
+  background: var(--attention-surface);
+  box-shadow: 0 2px 7px rgba(38, 53, 72, 0.06);
+}
+.overview-attention .pendencia-op-summary {
+  color: var(--attention-text);
+}
+.overview-attention .pendencia-op-summary:hover {
+  background: var(--attention-surface-soft);
+}
+.overview-attention .pendencia-op-icon {
+  color: var(--module-color);
+  background: color-mix(in srgb, var(--module-color) 10%, white);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--module-color) 42%, white);
+}
+.overview-attention .pendencia-op-title strong {
+  color: var(--attention-text);
+}
+.overview-attention .pendencia-op-title small {
+  color: var(--attention-muted);
+}
+.overview-attention .pendencia-op-badges span {
+  color: var(--attention-accent);
+  background: var(--attention-accent-soft);
+}
+.overview-attention .pendencia-op-badges .badge-critical {
+  color: #b4232e;
+  background: #fff0f1;
+}
+.overview-attention .pendencia-op-chevron {
+  color: var(--attention-muted);
+}
+
+.overview-attention .pendencia-op-item,
+.overview-attention .pendencia-op-more {
+  color: var(--attention-text);
+  border-color: var(--attention-border);
+  background: var(--attention-surface);
+}
+.overview-attention .pendencia-op-item:hover,
+.overview-attention .pendencia-op-more:hover {
+  border-color: #c6b5ef;
+  background: var(--attention-surface-soft);
+  box-shadow: 0 2px 7px rgba(38, 53, 72, 0.08);
+}
+.overview-attention .pendencia-op-main strong {
+  color: var(--attention-text);
+}
+.overview-attention .pendencia-op-main small {
+  color: var(--attention-muted);
+}
+.overview-attention .pendencia-op-meta span {
+  color: var(--attention-meta-text);
+  background: var(--attention-meta);
+}
+.overview-attention .pendencia-op-open,
+.overview-attention .pendencia-op-more {
+  color: var(--attention-accent);
 }
 
 .original-deadline-list {

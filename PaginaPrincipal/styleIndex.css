@@ -120,7 +120,9 @@ main header nav .flow-view-tabs > button.active {
   border-radius: 10px;
   background: var(--card-bg);
   color: var(--text-log);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .kanban-searchbox:focus-within {
@@ -430,6 +432,11 @@ main header nav .flow-view-tabs > button.active {
   --cor-secundaria: #0050ab;
   --cor-referencias: #ff9b00;
   --text-muted: #9ca3af;
+
+  /* Cores de criticidade das pendencias operacionais, compartilhadas pelo Kanban e Overview. */
+  --pending-sla-within: #22c55e;
+  --pending-sla-overdue: #f97316;
+  --pending-sla-critical: #ef4444;
 
   /* Variáveis adicionadas */
   --bg-sidebar: #ffffff;
@@ -1123,26 +1130,6 @@ main .kanban .kanban-box-pendencias .content:empty::before {
   background-color: #a9fcbd;
 }
 
-/* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  /* border-radius: 8px; */
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  /* border-radius: 8px; */
-  transition: background 0.3s;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #888;
-}
-
 main .kanban .kanban-box .content {
   flex: 1 1 auto;
   max-height: none;
@@ -1558,15 +1545,15 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
 
 .pendencia-op-severity {
   border-radius: 999px;
-  background: #22c55e;
+  background: var(--pending-sla-within);
 }
 
 .pendencia-op-item.sla-estourado .pendencia-op-severity {
-  background: #f97316;
+  background: var(--pending-sla-overdue);
 }
 
 .pendencia-op-item.sla-critico .pendencia-op-severity {
-  background: #ef4444;
+  background: var(--pending-sla-critical);
 }
 
 .pendencia-op-main {
@@ -1789,11 +1776,11 @@ main .kanban .kanban-box:not(.kanban-box-pendencias) .kanban-card .card-footer {
 }
 
 .pendencia-op-card.sla-estourado .pendencia-op-severity {
-  background: #f97316;
+  background: var(--pending-sla-overdue);
 }
 
 .pendencia-op-card.sla-critico .pendencia-op-severity {
-  background: #ef4444;
+  background: var(--pending-sla-critical);
 }
 
 .pendencia-op-check-count {
@@ -6571,19 +6558,6 @@ img.thumb {
     border-color: #444;
   }
 
-  /* Scrollbar dark */
-  ::-webkit-scrollbar {
-    background: #232323;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #444;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #666;
-  }
-
   .modal-func-filter-menu,
   .modal-func-filter-menu {
     color: #fff;
@@ -8413,13 +8387,26 @@ tr.prod-row-recorde td {
 }
 
 @keyframes tp-angle-science-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 123, 104, 0); border-color: transparent; }
-  22% { box-shadow: 0 0 0 5px rgba(22, 123, 104, 0.22); border-color: #167b68; }
-  55% { box-shadow: 0 0 0 8px rgba(22, 123, 104, 0.08); border-color: #5eb4a2; }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 123, 104, 0);
+    border-color: transparent;
+  }
+  22% {
+    box-shadow: 0 0 0 5px rgba(22, 123, 104, 0.22);
+    border-color: #167b68;
+  }
+  55% {
+    box-shadow: 0 0 0 8px rgba(22, 123, 104, 0.08);
+    border-color: #5eb4a2;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tp-preview-wrap.tp-angle-science-highlight { animation: none; border: 2px solid #167b68; }
+  .tp-preview-wrap.tp-angle-science-highlight {
+    animation: none;
+    border: 2px solid #167b68;
+  }
 }
 
 #kanban-section .pending-file-ribbon i,

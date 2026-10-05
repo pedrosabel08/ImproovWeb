@@ -30,6 +30,35 @@ class ContratoPdfService
 
         $html = $this->applyTemplate($template, $placeholders);
 
+        $pdfBytes = $this->renderizarHtml($html, pathinfo($nomeArquivo, PATHINFO_FILENAME));
+
+        // Garantir que o diretório de saída seja gravável; fallback para temp dir se necessário
+        if (!is_dir($this->outputDir)) {
+            $this->ensureOutputDir();
+        }
+        if (!is_writable($this->outputDir)) {
+            $fallbackOut = sys_get_temp_dir();
+            if (!is_writable($fallbackOut)) {
+                throw new RuntimeException('Diretório de saída de PDFs não gravável: ' . $this->outputDir);
+            }
+            $this->outputDir = $fallbackOut;
+        }
+
+        $filePath = $this->getAvailableFilePath($nomeArquivo);
+        $bytes = $this->writeWithRetry($filePath, $pdfBytes);
+        if ($bytes === false) {
+            throw new RuntimeException('Falha ao gravar PDF em: ' . $filePath);
+        }
+
+        return [
+            'file_name' => basename($filePath),
+            'file_path' => $filePath,
+        ];
+    }
+
+    /** Renderização pura reutilizável: não escolhe nome, não publica arquivo e não calcula valores. */
+    public function renderizarHtml(string $html, string $titulo): string
+    {
         $contratosRoot = realpath(__DIR__ . '/..') ?: (__DIR__ . '/..');
         $templateDir = realpath(dirname($this->templatePath)) ?: dirname($this->templatePath);
         $fontCacheDir = $contratosRoot . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'dompdf';
@@ -63,7 +92,7 @@ class ContratoPdfService
         $dompdf->render();
 
         // Definir título do PDF (aparece no viewer)
-        $tituloPdf = pathinfo($nomeArquivo, PATHINFO_FILENAME);
+        $tituloPdf = $titulo;
         $canvas = $dompdf->getCanvas();
         if ($canvas && method_exists($canvas, 'get_cpdf')) {
             $cpdf = $canvas->get_cpdf();
@@ -72,28 +101,7 @@ class ContratoPdfService
             }
         }
 
-        // Garantir que o diretório de saída seja gravável; fallback para temp dir se necessário
-        if (!is_dir($this->outputDir)) {
-            $this->ensureOutputDir();
-        }
-        if (!is_writable($this->outputDir)) {
-            $fallbackOut = sys_get_temp_dir();
-            if (!is_writable($fallbackOut)) {
-                throw new RuntimeException('Diretório de saída de PDFs não gravável: ' . $this->outputDir);
-            }
-            $this->outputDir = $fallbackOut;
-        }
-
-        $filePath = $this->getAvailableFilePath($nomeArquivo);
-        $bytes = $this->writeWithRetry($filePath, $dompdf->output());
-        if ($bytes === false) {
-            throw new RuntimeException('Falha ao gravar PDF em: ' . $filePath);
-        }
-
-        return [
-            'file_name' => basename($filePath),
-            'file_path' => $filePath,
-        ];
+        return $dompdf->output();
     }
 
     private function getAvailableFilePath(string $nomeArquivo): string

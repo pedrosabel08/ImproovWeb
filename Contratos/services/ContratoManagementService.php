@@ -219,7 +219,7 @@ class ContratoManagementService
             'ultima_atualizacao' => $this->getUltimaAtualizacao($row),
             'is_competencia_atual' => $isCurrent,
             'can_generate' => $isCurrent && !$exists,
-            'can_regenerate' => $isCurrent && $exists && $status === 'gerado',
+            'can_regenerate' => $isCurrent && $exists,
             'can_download' => $downloadUrl !== null,
             'can_history' => $exists,
         ];

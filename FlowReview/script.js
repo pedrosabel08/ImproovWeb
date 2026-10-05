@@ -6688,7 +6688,6 @@ function mostrarVideoCompleto(src, id, media = {}) {
 
 let navSelectResizeObserver = null;
 let navSelectObservedMedia = null;
-let navSelectAdjustmentFrame = null;
 
 function ajustarNavSelectAoTamanhoDaImagem() {
   const navSelect = document.querySelector(".nav-select");
@@ -6697,11 +6696,12 @@ function ajustarNavSelectAoTamanhoDaImagem() {
     document.getElementById("video_atual");
 
   if (!navSelect) return;
+  if (navSelect.style.width) {
+    navSelect.style.removeProperty("width");
+  }
 
   // Em telas menores e durante a comparação a barra ocupa o espaço do layout.
-  // Limpar o valor inline evita manter a largura calculada no desktop.
   if (window.innerWidth <= 1024 || enviosComparisonState.active || !media) {
-    navSelect.style.width = "";
     return;
   }
 
@@ -6715,23 +6715,6 @@ function ajustarNavSelectAoTamanhoDaImagem() {
     media.style.maxWidth = "100%";
     media.style.width = "auto";
     media.style.height = "auto";
-
-    if (navSelectAdjustmentFrame) {
-      cancelAnimationFrame(navSelectAdjustmentFrame);
-    }
-    navSelectAdjustmentFrame = requestAnimationFrame(() => {
-      navSelectAdjustmentFrame = requestAnimationFrame(() => {
-        const mediaWidth = Math.round(media.getBoundingClientRect().width);
-        const container = document.getElementById("imagem_completa");
-        const containerWidth = Math.round(
-          container?.getBoundingClientRect().width || window.innerWidth,
-        );
-
-        if (mediaWidth > 0) {
-          navSelect.style.width = `${Math.min(mediaWidth, containerWidth)}px`;
-        }
-      });
-    });
   };
 
   if (navSelectObservedMedia !== media) {

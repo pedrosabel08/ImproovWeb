@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Catálogo FlowAlert</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="assets/css/components/flow-alert.css" />
+    <style>
+      :root {
+        color-scheme: light;
+        --catalog-bg: #f3f5f7;
+        --catalog-panel: #fff;
+        --catalog-ink: #17212b;
+        --catalog-muted: #64717e;
+        --catalog-line: #dce2e8;
+        --catalog-accent: #235d52;
+        --bg-surface: #fff;
+        --bg-surface-alt: #f3f5f7;
+        --bg-overlay: rgba(16, 24, 32, 0.52);
+        --border-default: #dce2e8;
+        --text-primary: #17212b;
+        --text-secondary: #586572;
+        --color-success: #16803a;
+        --color-warning: #c87800;
+        --color-danger: #c93737;
+        --color-info: #2f6fda;
+        --success-subtle: #e7f6ec;
+        --warning-subtle: #fff4db;
+        --danger-subtle: #fbe9e9;
+        --info-subtle: #e9f1ff;
+        font-family: Inter, "Segoe UI", sans-serif;
+        color: var(--catalog-ink);
+        background: var(--catalog-bg);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-width: 320px;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid #48a392;
+        outline-offset: 3px;
+      }
+
+      .page {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 52px 0 72px;
+      }
+      .masthead {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--catalog-line);
+      }
+      .masthead-copy {
+        max-width: 690px;
+      }
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0 0 18px;
+        color: var(--catalog-accent);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .kicker::before {
+        width: 22px;
+        height: 2px;
+        content: "";
+        background: currentColor;
+      }
+      h1 {
+        max-width: 650px;
+        margin: 0;
+        font-size: clamp(36px, 6vw, 62px);
+        letter-spacing: -0.055em;
+        line-height: 0.99;
+      }
+      .intro {
+        max-width: 620px;
+        margin: 18px 0 0;
+        color: var(--catalog-muted);
+        font-size: 17px;
+        line-height: 1.6;
+      }
+      .mark {
+        display: grid;
+        width: 64px;
+        height: 64px;
+        flex: 0 0 auto;
+        place-items: center;
+        color: #fff;
+        background: var(--catalog-accent);
+        border-radius: 18px 18px 18px 5px;
+        font-size: 25px;
+      }
+
+      .section {
+        padding-top: 36px;
+      }
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 18px;
+      }
+      .section-head h2 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.035em;
+      }
+      .section-head p {
+        max-width: 550px;
+        margin: 7px 0 0;
+        color: var(--catalog-muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .section-index {
+        color: #76838d;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
+      .tone-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .tone-card,
+      .demo-card {
+        min-width: 0;
+        padding: 20px;
+        background: var(--catalog-panel);
+        border: 1px solid var(--catalog-line);
+        border-radius: 12px;
+      }
+      .tone-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        font-size: 16px;
+      }
+      .tone-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--tone);
+      }
+      .tone-card > p,
+      .demo-card > p {
+        min-height: 40px;
+        margin: 8px 0 17px;
+        color: var(--catalog-muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .tone-card > .flow-alert {
+        max-width: none;
+        margin: 16px 0 12px;
+        align-self: stretch;
+      }
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .sample-button {
+        min-height: 36px;
+        padding: 8px 11px;
+        color: var(--catalog-ink);
+        background: transparent;
+        border: 1px solid var(--catalog-line);
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 650;
+        transition:
+          background-color 140ms ease,
+          border-color 140ms ease;
+      }
+      .sample-button:hover {
+        background: #eef3f3;
+        border-color: #a8b9b5;
+      }
+      .sample-button.primary {
+        color: #fff;
+        background: var(--catalog-accent);
+        border-color: var(--catalog-accent);
+      }
+      .sample-button.primary:hover {
+        background: #194b41;
+      }
+      .demo-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .demo-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .demo-card h3 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+      .demo-card p {
+        flex: 1;
+      }
+      .demo-card .sample-button {
+        margin-top: auto;
+      }
+      .mode-note {
+        margin: 16px 0 0;
+        padding: 13px 16px;
+        color: #3f514e;
+        background: #e8efed;
+        border-left: 3px solid var(--catalog-accent);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .source-note {
+        margin-top: 42px;
+        padding-top: 18px;
+        border-top: 1px solid var(--catalog-line);
+        color: var(--catalog-muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .source-note code {
+        color: var(--catalog-ink);
+        font-size: 12px;
+      }
+      .source-list {
+        margin-top: 14px;
+      }
+      .source-list summary {
+        width: fit-content;
+        color: var(--catalog-accent);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .source-list ul {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5px 20px;
+        padding-left: 18px;
+      }
+
+      @media (max-width: 760px) {
+        .page {
+          width: min(100% - 28px, 620px);
+          padding-top: 30px;
+        }
+        .masthead {
+          padding-bottom: 25px;
+        }
+        .mark {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px 14px 14px 5px;
+          font-size: 20px;
+        }
+        .tone-grid,
+        .demo-grid {
+          grid-template-columns: 1fr;
+        }
+        .tone-card > p {
+          min-height: 0;
+        }
+        .source-list ul {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 420px) {
+        .page {
+          width: calc(100% - 24px);
+        }
+        .masthead {
+          gap: 12px;
+        }
+        .intro {
+          font-size: 15px;
+        }
+        .section-head {
+          align-items: flex-start;
+        }
+        .tone-card,
+        .demo-card {
+          padding: 16px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="masthead">
+        <div class="masthead-copy">
+          <p class="kicker">Componentes do Flow</p>
+          <h1>Catálogo de alertas</h1>
+          <p class="intro">
+            Uma página de referência para comparar os estilos e testar os
+            formatos de interação usados pelo FlowAlert.
+          </p>
+        </div>
+        <div class="mark" aria-hidden="true">
+          <i class="fa-solid fa-bell"></i>
+        </div>
+      </header>
+
+      <section class="section" aria-labelledby="tones-title">
+        <div class="section-head">
+          <div>
+            <h2 id="tones-title">Tipos visuais</h2>
+            <p>
+              Os quatro tons semânticos do componente. Escolha um modo para
+              abrir a amostra real.
+            </p>
+          </div>
+          <span class="section-index">04 tipos</span>
+        </div>
+        <div class="tone-grid">
+          <article class="tone-card" style="--tone: #16803a">
+            <h3 class="tone-title"><span class="tone-dot"></span>Sucesso</h3>
+            <p>
+              Confirma uma ação concluída, como salvar ou aprovar uma alteração.
+            </p>
+            <div
+              class="flow-alert flow-alert--success flow-alert--toast is-visible"
+              aria-hidden="true"
+            >
+              <span class="flow-alert__icon"
+                ><i class="fa-solid fa-circle-check"></i
+              ></span>
+              <div class="flow-alert__body">
+                <h3 class="flow-alert__title">Alterações salvas</h3>
+                <p class="flow-alert__message">
+                  As informações foram atualizadas com sucesso.
+                </p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button
+                class="sample-button"
+                data-tone="success"
+                data-mode="toast"
+              >
+                Toast
+              </button>
+              <button
+                class="sample-button"
+                data-tone="success"
+                data-mode="notification"
+              >
+                Notificação
+              </button>
+              <button
+                class="sample-button"
+                data-tone="success"
+                data-mode="modal"
+              >
+                Modal
+              </button>
+            </div>
+          </article>
+          <article class="tone-card" style="--tone: #c87800">
+            <h3 class="tone-title"><span class="tone-dot"></span>Atenção</h3>
+            <p>
+              Destaca uma condição que merece revisão ou uma decisão do usuário.
+            </p>
+            <div
+              class="flow-alert flow-alert--warning flow-alert--toast is-visible"
+              aria-hidden="true"
+            >
+              <span class="flow-alert__icon"
+                ><i class="fa-solid fa-triangle-exclamation"></i
+              ></span>
+              <div class="flow-alert__body">
+                <h3 class="flow-alert__title">Revise esta etapa</h3>
+                <p class="flow-alert__message">
+                  Há informações pendentes antes de continuar.
+                </p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button
+                class="sample-button"
+                data-tone="warning"
+                data-mode="toast"
+              >
+                Toast
+              </button>
+              <button
+                class="sample-button"
+                data-tone="warning"
+                data-mode="notification"
+              >
+                Notificação
+              </button>
+              <button
+                class="sample-button"
+                data-tone="warning"
+                data-mode="modal"
+              >
+                Modal
+              </button>
+            </div>
+          </article>
+          <article class="tone-card" style="--tone: #c93737">
+            <h3 class="tone-title"><span class="tone-dot"></span>Erro</h3>
+            <p>Mostra que uma ação falhou e pode indicar o próximo passo.</p>
+            <div
+              class="flow-alert flow-alert--error flow-alert--toast is-visible"
+              aria-hidden="true"
+            >
+              <span class="flow-alert__icon"
+                ><i class="fa-solid fa-circle-xmark"></i
+              ></span>
+              <div class="flow-alert__body">
+                <h3 class="flow-alert__title">Não foi possível concluir</h3>
+                <p class="flow-alert__message">
+                  Ocorreu uma falha ao processar a solicitação.
+                </p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="sample-button" data-tone="error" data-mode="toast">
+                Toast
+              </button>
+              <button
+                class="sample-button"
+                data-tone="error"
+                data-mode="notification"
+              >
+                Notificação
+              </button>
+              <button class="sample-button" data-tone="error" data-mode="modal">
+                Modal
+              </button>
+            </div>
+          </article>
+          <article class="tone-card" style="--tone: #2f6fda">
+            <h3 class="tone-title"><span class="tone-dot"></span>Informação</h3>
+            <p>
+              Apresenta contexto, progresso ou uma orientação sem caráter de
+              erro.
+            </p>
+            <div
+              class="flow-alert flow-alert--info flow-alert--toast is-visible"
+              aria-hidden="true"
+            >
+              <span class="flow-alert__icon"
+                ><i class="fa-solid fa-circle-info"></i
+              ></span>
+              <div class="flow-alert__body">
+                <h3 class="flow-alert__title">Nova atualização</h3>
+                <p class="flow-alert__message">
+                  Os dados mais recentes já estão disponíveis.
+                </p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="sample-button" data-tone="info" data-mode="toast">
+                Toast
+              </button>
+              <button
+                class="sample-button"
+                data-tone="info"
+                data-mode="notification"
+              >
+                Notificação
+              </button>
+              <button class="sample-button" data-tone="info" data-mode="modal">
+                Modal
+              </button>
+            </div>
+          </article>
+        </div>
+        <p class="mode-note">
+          <strong>Modos:</strong> Toast aparece no rodapé; notificação fica
+          centralizada sem bloquear a tela; modal usa fundo escurecido e aguarda
+          interação.
+        </p>
+      </section>
+
+      <section class="section" aria-labelledby="interactions-title">
+        <div class="section-head">
+          <div>
+            <h2 id="interactions-title">Interações</h2>
+            <p>
+              Exemplos dos formatos usados nas chamadas do sistema, com campos e
+              ações funcionais.
+            </p>
+          </div>
+          <span class="section-index">07 formatos</span>
+        </div>
+        <div class="demo-grid">
+          <article class="demo-card">
+            <h3>Confirmação</h3>
+            <p>
+              Modal de atenção com ações para confirmar ou cancelar uma
+              operação.
+            </p>
+            <button class="sample-button primary" data-demo="confirm">
+              Abrir confirmação
+            </button>
+          </article>
+          <article class="demo-card">
+            <h3>Entrada simples</h3>
+            <p>Solicita um valor e retorna o conteúdo enviado pelo usuário.</p>
+            <button class="sample-button primary" data-demo="input">
+              Abrir entrada
+            </button>
+          </article>
+          <article class="demo-card">
+            <h3>Formulário</h3>
+            <p>Combina campos diferentes em um único modal de envio.</p>
+            <button class="sample-button primary" data-demo="form">
+              Abrir formulário
+            </button>
+          </article>
+          <article class="demo-card">
+            <h3>Escolha</h3>
+            <p>
+              Apresenta mais de um caminho possível e devolve a opção
+              selecionada.
+            </p>
+            <button class="sample-button primary" data-demo="choose">
+              Abrir escolhas
+            </button>
+          </article>
+          <article class="demo-card">
+            <h3>Progresso</h3>
+            <p>
+              Exibe o andamento de uma tarefa com indicador percentual
+              atualizável.
+            </p>
+            <button class="sample-button primary" data-demo="progress">
+              Abrir progresso
+            </button>
+          </article>
+          <article class="demo-card">
+            <h3>Carregamento</h3>
+            <p>
+              Indica uma operação em andamento com a animação interna do
+              componente.
+            </p>
+            <button class="sample-button primary" data-demo="loading">
+              Abrir carregamento
+            </button>
+          </article>
+          <article class="demo-card">
+            <h3>Barra determinada</h3>
+            <p>
+              Exemplo de progresso iniciado em valor conhecido; feche pelo botão
+              X.
+            </p>
+            <button class="sample-button primary" data-demo="determinate">
+              Abrir barra em 64%
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <footer class="source-note">
+        O catálogo usa diretamente
+        <code>assets/css/components/flow-alert.css</code> e
+        <code>assets/js/components/flow-alert.js</code>. As amostras são
+        temporárias e não alteram dados do sistema.
+        <details class="source-list">
+          <summary>Arquivos com chamadas encontradas</summary>
+          <ul>
+            <li>Alteracao/script.js</li>
+            <li>ALMA/admin.js</li>
+            <li>ALMA/alma.js</li>
+            <li>Arquitetura/script.js</li>
+            <li>Animacao/script.js</li>
+            <li>BriefingExt/app.js</li>
+            <li>Briefing/app.js</li>
+            <li>Colaborador/script.js</li>
+            <li>Contratos/contratos.js</li>
+            <li>Dashboard/scriptObra.js</li>
+            <li>Dashboard/scriptObra2.js</li>
+            <li>Entregas/script.js</li>
+            <li>FlowBlock/app.js</li>
+            <li>FlowDrive/script.js</li>
+            <li>FlowReferencias/script.js</li>
+            <li>FlowReview/script.js</li>
+            <li>FlowReviewExt/script.js</li>
+            <li>Fotografico/script.js</li>
+            <li>MapaCompatibilizacao/script.js</li>
+            <li>Pagamento/script.js</li>
+            <li>PaginaPrincipal/scriptIndex.js</li>
+            <li>PaginaPrincipal/scriptIndex2.js</li>
+            <li>PlanejamentoCapacidade/script.js</li>
+            <li>PreAlteracao/planejamento.js</li>
+            <li>PreAlteracao/script.js</li>
+            <li>Render/script.js</li>
+            <li>Relatorio/script.js</li>
+            <li>review/script.js</li>
+            <li>review/scriptImagens.js</li>
+            <li>script/script.js</li>
+          </ul>
+        </details>
+      </footer>
+    </main>
+    <script src="assets/js/components/flow-alert.js"></script>
+    <script>
+      const examples = {
+        success: {
+          title: "Alterações salvas",
+          message: "As informações foram atualizadas com sucesso.",
+        },
+        warning: {
+          title: "Revise esta etapa",
+          message: "Há informações pendentes antes de continuar.",
+        },
+        error: {
+          title: "Não foi possível concluir",
+          message: "Ocorreu uma falha ao processar a solicitação.",
+        },
+        info: {
+          title: "Nova atualização",
+          message: "Os dados mais recentes já estão disponíveis.",
+        },
+      };
+
+      document.querySelectorAll("[data-tone]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const type = button.dataset.tone;
+          FlowAlert[type]({
+            ...examples[type],
+            mode: button.dataset.mode,
+            duration: 0,
+          });
+        });
+      });
+
+      document.querySelectorAll("[data-demo]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          switch (button.dataset.demo) {
+            case "confirm": {
+              const result = await FlowAlert.confirm({
+                title: "Arquivar esta tarefa?",
+                message: "Ela continuará disponível no histórico do projeto.",
+                confirmText: "Arquivar",
+              });
+              if (result.isConfirmed)
+                FlowAlert.success({ message: "Tarefa arquivada." });
+              break;
+            }
+            case "input":
+              await FlowAlert.input({
+                title: "Nome da etapa",
+                message: "Digite um nome para identificar esta etapa.",
+                inputLabel: "Nome",
+                inputPlaceholder: "Ex.: Revisão final",
+                value: "",
+              });
+              break;
+            case "form":
+              await FlowAlert.form({
+                type: "info",
+                title: "Adicionar observação",
+                message: "Preencha os dados para registrar a atualização.",
+                fields: [
+                  {
+                    name: "assunto",
+                    label: "Assunto",
+                    type: "text",
+                    placeholder: "Resumo da observação",
+                    required: true,
+                  },
+                  {
+                    name: "categoria",
+                    label: "Categoria",
+                    type: "select",
+                    placeholder: "Selecione",
+                    options: {
+                      projeto: "Projeto",
+                      arquivo: "Arquivo",
+                      prazo: "Prazo",
+                    },
+                  },
+                  {
+                    name: "detalhes",
+                    label: "Detalhes",
+                    type: "textarea",
+                    placeholder: "Escreva um pouco mais",
+                  },
+                ],
+                confirmText: "Registrar",
+              });
+              break;
+            case "choose":
+              await FlowAlert.choose({
+                title: "Como deseja continuar?",
+                message: "Escolha uma das próximas ações.",
+                choices: [
+                  { label: "Manter como rascunho", value: "draft" },
+                  { label: "Enviar para revisão", value: "review" },
+                ],
+                cancelText: "Voltar",
+              });
+              break;
+            case "progress": {
+              const progress = FlowAlert.progress({
+                title: "Enviando arquivos",
+                message: "Preparando os arquivos do projeto.",
+                progress: 0,
+                dismissible: true,
+                cancelAction: { label: "Cancelar envio", onClick: () => true },
+              });
+              let value = 0;
+              const timer = window.setInterval(() => {
+                value = Math.min(value + 12, 84);
+                progress.update({
+                  progress: value,
+                  message: `Envio de arquivos: ${value}%`,
+                });
+                if (value >= 84) window.clearInterval(timer);
+              }, 450);
+              break;
+            }
+            case "loading":
+              FlowAlert.loading({
+                title: "Carregando dados",
+                message: "Aguarde enquanto buscamos as informações.",
+                dismissible: true,
+              });
+              break;
+            case "determinate":
+              FlowAlert.progress({
+                title: "Sincronização em andamento",
+                message: "64% dos itens foram sincronizados.",
+                progress: 64,
+                progressLabel: "Sincronização",
+                loading: false,
+                dismissible: true,
+              });
+              break;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

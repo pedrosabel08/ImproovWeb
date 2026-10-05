@@ -739,15 +739,50 @@ $funcoes = array_values(array_filter($funcoes, function ($f) {
 if ($mesNumero && $ano) {
     require_once __DIR__ . '/financeiro_v2.php';
     $eligible = financeiro_elegiveis($conn, $colaboradorId, $mesNumero, $ano);
+    $ledger = custos_query($conn, 'SELECT pi.* FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
     $existing = [];
     foreach ($funcoes as $f) $existing[$f['origem'] . ':' . $f['identificador']] = $f;
+    $paid = [];
+    $installments = [];
+    foreach ($ledger as $itemLedger) {
+        $ledgerType = custos_tipo($itemLedger);
+        $isCommission = $ledgerType === 'COMISSAO';
+        $key = $itemLedger['origem'] . ':' . $itemLedger['origem_id'] . ':' . ($isCommission ? '1' : '0');
+        $paid[$key] = ($paid[$key] ?? 0) + custos_centavos($itemLedger['valor']);
+        $installments[$key][$ledgerType] = ($installments[$key][$ledgerType] ?? 0) + 1;
+    }
     $funcoes = [];
     foreach ($eligible as $r) {
-        if (!empty($r['parcial'])) continue;
         $key = $r['origem'] . ':' . $r['origem_id'];
-        $f = $existing[$key] ?? array_merge($r, ['identificador' => $r['origem_id'], 'nome_funcao' => $r['origem'] === 'acompanhamento' ? 'Acompanhamento' : 'Animação', 'imagem_nome' => $r['imagem_nome'] ?? 'Custo geral da obra', 'pago_parcial_count' => 0, 'pago_completa_count' => 0]);
+        $paymentKey = $r['origem'] . ':' . $r['origem_id'] . ':' . (!empty($r['comissao_gestor']) ? '1' : '0');
+        $hasPartialPayment = !empty($installments[$paymentKey]['FINALIZACAO_PARCIAL']);
+        if (!empty($r['parcial']) && !$hasPartialPayment) continue;
+        $nomeFuncao = $r['nome_funcao'] ?? null;
+        if ($r['origem'] === 'funcao_imagem' && (int)$r['funcao_id'] === 4 && $nomeFuncao) {
+            $nomeFuncao .= !empty($r['parcial']) ? ' Parcial' : ' Completa';
+        }
+        $f = $existing[$key] ?? array_merge($r, [
+            'identificador' => $r['origem_id'],
+            'nome_funcao' => $nomeFuncao ?? ($r['origem'] === 'acompanhamento' ? 'Acompanhamento' : ($r['origem'] === 'funcao_animacao' ? 'Animação' : '')),
+            'imagem_nome' => $r['imagem_nome'] ?? 'Custo geral da obra',
+            'pago_parcial_count' => 0,
+            'pago_completa_count' => 0,
+        ]);
+        $f['pago_parcial_count'] = $installments[$paymentKey]['FINALIZACAO_PARCIAL'] ?? 0;
+        $f['pago_completa_count'] = $installments[$paymentKey]['FINALIZACAO_COMPLEMENTO'] ?? 0;
         $f['comissao_gestor'] = !empty($r['comissao_gestor']);
+<<<<<<< HEAD
+        $snapshot = (float)$r['valor'];
+        if ($f['comissao_gestor']) $snapshot = ($r['tipo_imagem'] === 'Fachada' && mb_stripos($r['imagem_nome'], 'embasamento') === false) ? 100 : 80;
+        // A reconstrução das tarefas parciais ocorre depois do pós-processamento
+        // da lista. Resolva a mesma origem zerada diretamente pela tarifa apenas
+        // quando o livro comprovar uma parcela anterior.
+        if (!$f['comissao_gestor']) {
+            $snapshot = financeiro_valor_previsto_centavos($conn, $r, $hasPartialPayment) / 100;
+        }
+=======
         $snapshot = financeiro_snapshot($r) / 100;
+>>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
         $f['valor_exibido'] = $snapshot;
         $f['custo'] = $snapshot;
         $f['valor_esperado'] = $snapshot;
@@ -776,7 +811,11 @@ if ($mesNumero && $ano) {
         $r['colaborador_id'] = $colaboradorId;
         return $r;
     }, $eligible);
+<<<<<<< HEAD
+    $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger, $conn));
+=======
     $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger));
+>>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
 }
 $custoTotal = 0.0;
 foreach ($funcoes as $f) {

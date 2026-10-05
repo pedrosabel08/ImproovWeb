@@ -17,6 +17,88 @@
   };
   const active = new Set();
   let modalEntry = null;
+  const flowAlertScriptUrl = document.currentScript?.src || document.baseURI;
+  let flameWrapModulePromise = null;
+
+  function loadFlameWrap() {
+    if (!flameWrapModulePromise) {
+      const moduleUrl = new URL(
+        "../../../components/canvasui/FlameWrapVanilla.js",
+        flowAlertScriptUrl,
+      );
+      flameWrapModulePromise = import(moduleUrl.href).catch(() => null);
+    }
+    return flameWrapModulePromise;
+  }
+
+  function flameColor(element) {
+    const accent =
+      getComputedStyle(element).getPropertyValue("--flow-alert-accent").trim() ||
+      "#2f6fda";
+    const probe = document.createElement("span");
+    probe.style.color = accent;
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    document.body.appendChild(probe);
+    const channels = getComputedStyle(probe).color.match(/[\d.]+/g);
+    probe.remove();
+    if (!channels || channels.length < 3) return [0.18, 0.44, 0.85];
+    return channels.slice(0, 3).map((channel) => Number(channel) / 255);
+  }
+
+  async function addFlameWrap(entry) {
+    if (entry.mode !== "notification" && entry.mode !== "modal") return;
+    const module = await loadFlameWrap();
+    if (entry.closed || !entry.element.isConnected || !module) return;
+
+    const content =
+      entry.mode === "modal"
+        ? entry.element.querySelector(".flow-alert__dialog")
+        : entry.element;
+    const parent = content?.parentElement;
+    if (!content || !parent) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "flow-alert-flame-wrap";
+    const source = document.createElement("canvas");
+    const output = document.createElement("canvas");
+    output.className = "flow-alert-flame-canvas";
+    output.setAttribute("aria-hidden", "true");
+    parent.replaceChild(wrapper, content);
+    wrapper.append(content, output);
+
+    try {
+      entry.flame = module.createFlameWrap(
+        { source, content, output },
+        {
+          color: flameColor(content),
+          intensity: 0.55,
+          height: 30,
+          spread: 9,
+          radius: Number.parseFloat(getComputedStyle(content).borderRadius) || 14,
+          speed: 0.2,
+          scale: 0.8,
+          turbulence: 0.3,
+          turbulenceReach: 8,
+          sparks: 0.55,
+          sparkDensity: 0.45,
+          rim: 1.1,
+          melt: 0,
+          distortion: 1.2,
+          smoke: 0.15,
+          ember: 0.8,
+          scorch: 0,
+        },
+      );
+      entry.flameWrapper = wrapper;
+      if (!entry.flame) {
+        wrapper.replaceWith(content);
+      }
+    } catch (error) {
+      wrapper.replaceWith(content);
+      console.warn("FlowAlert flame effect could not be initialized", error);
+    }
+  }
 
   function ensureRegion(mode) {
     const id = `flow-alert-${mode}-region`;
@@ -46,6 +128,7 @@
     if (!entry || entry.closed) return;
     entry.closed = true;
     window.clearTimeout(entry.timer);
+    entry.flame?.destroy();
     entry.element.classList.add("is-leaving");
     if (
       entry.mode === "notification" &&
@@ -520,6 +603,7 @@
     if (actions.childElementCount) content.appendChild(actions);
 
     region.appendChild(element);
+    void addFlameWrap(entry);
     window.requestAnimationFrame(() => element.classList.add("is-visible"));
 
     if (mode === "toast" && options.duration !== 0) {

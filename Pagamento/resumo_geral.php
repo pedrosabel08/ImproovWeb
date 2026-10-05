@@ -3,7 +3,7 @@ require_once __DIR__ . '/financeiro_v2.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
 
 /** Read model only. Competence eligibility and financial snapshots remain in financeiro_v2. */
-function pagamento_projetar_itens(array $origens, array $ledger): array
+function pagamento_projetar_itens(array $origens, array $ledger, ?mysqli $conn = null): array
 {
     $paid = [];
     foreach ($ledger as $l) {
@@ -13,13 +13,16 @@ function pagamento_projetar_itens(array $origens, array $ledger): array
     }
     $items = [];
     foreach ($origens as $r) {
-        // Same exclusion as the operational view: partial finalizations are not payable here.
-        if (!empty($r['parcial'])) continue;
         $id = (int)$r['colaborador_id'];
         $key = $id . ':' . $r['origem'] . ':' . $r['origem_id'] . ':' . (!empty($r['comissao_gestor']) ? '1' : '0');
-        $v = financeiro_snapshot($r);
         $p = $paid[$key]['valor'] ?? 0;
         $types = $paid[$key]['tipos'] ?? [];
+        $hasPartialInstallment = in_array('FINALIZACAO_PARCIAL', $types, true);
+        // A partially eligible finalization appears only after its first installment exists.
+        if (!empty($r['parcial']) && !$hasPartialInstallment) continue;
+        $v = !empty($r['comissao_gestor']) || $conn === null
+            ? financeiro_snapshot($r)
+            : financeiro_valor_previsto_centavos($conn, $r, $hasPartialInstallment);
         sort($types);
         $repeated = count($types) > 1 && $types !== ['FINALIZACAO_COMPLEMENTO', 'FINALIZACAO_PARCIAL'];
         $withoutLedger = empty($types) && (int)($r['pagamento'] ?? 0) === 1 && empty($r['comissao_gestor']);
@@ -29,7 +32,8 @@ function pagamento_projetar_itens(array $origens, array $ledger): array
         $pending = max(0, $v - $p);
         $role = $r['nome_funcao'] ?? 'Sem função';
         if ($r['origem'] === 'funcao_imagem' && (int)$r['funcao_id'] === 4) {
-            $role = in_array($id, [12, 24], true) ? 'Finalização PH Completa' : 'Finalização Completa';
+            $phase = !empty($r['parcial']) ? 'Parcial' : 'Completa';
+            $role = in_array($id, [12, 24], true) ? "Finalização PH $phase" : "Finalização $phase";
         }
         if (!empty($r['comissao_gestor'])) $role = 'Comissão Gestor';
         $items[] = [
@@ -66,7 +70,6 @@ function pagamento_carregar_ledger(mysqli $conn, array $origens): array
 {
     $ids = [];
     foreach ($origens as $r) {
-        if (!empty($r['parcial'])) continue;
         $ids[$r['origem']][(int)$r['origem_id']] = (int)$r['origem_id'];
     }
     if (!$ids) return [];
@@ -87,7 +90,7 @@ function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
     $names = array_column(custos_query($conn, 'SELECT idcolaborador, nome_colaborador FROM colaborador'), 'nome_colaborador', 'idcolaborador');
     $origens = array_values(array_filter(financeiro_elegiveis($conn, null, $mes, $ano), fn($r) => isset($names[$r['colaborador_id']])));
     custo_tarefa_carregar_contexto($conn, array_keys($names));
-    $items = pagamento_projetar_itens($origens, pagamento_carregar_ledger($conn, $origens));
+    $items = pagamento_projetar_itens($origens, pagamento_carregar_ledger($conn, $origens), $conn);
     $adendos = custos_query($conn, 'SELECT colaborador_id, status FROM adendos WHERE competencia=?', 's', [$ref]);
     $states = ['nao_gerado' => 0, 'gerado' => 0, 'enviado' => 0, 'visualizado' => 0, 'assinado' => 0, 'recusado' => 0, 'expirado' => 0];
     $adendoByColab = [];

@@ -1,6 +1,33 @@
 <?php
+
 require_once __DIR__ . '/PagamentoService.php';
 require_once __DIR__ . '/../helpers/custos_helper.php';
+require_once __DIR__ . '/../helpers/custo_tarefa.php';
+
+/** Resolve a legacy zero snapshot only when a recorded finalization installment
+ * proves that this task already entered the split-payment flow. */
+function financeiro_valor_previsto_centavos(mysqli $conn, array $row, bool $temParcelaFinalizacao): int
+{
+    $valor = custos_centavos($row['valor'] ?? 0);
+    if ($valor > 0 || !$temParcelaFinalizacao
+        || ($row['origem'] ?? '') !== 'funcao_imagem'
+        || (int)($row['funcao_id'] ?? 0) !== 4
+        || !empty($row['valor_aprovado'])) {
+        return $valor;
+    }
+
+    $colaboradorId = (int)($row['colaborador_id'] ?? 0);
+    if ($colaboradorId <= 0) {
+        return $valor;
+    }
+
+    $contexto = custo_tarefa_obter_contexto();
+    if (!array_key_exists($colaboradorId, $contexto['funcao_map'] ?? [])) {
+        custo_tarefa_carregar_contexto($conn, [$colaboradorId]);
+    }
+    $tarifa = calcularCustoTarefa($colaboradorId, 4, $row['imagem_nome'] ?? null);
+    return custos_centavos($tarifa);
+}
 
 /** Shared eligibility for screen and all payment writers. Historical status is the
  * status at competence end, matching the individual screen's existing contract. */
@@ -73,44 +100,91 @@ function financeiro_lancar(mysqli $conn, array $row, int $colab, int $mes, int $
     $origem = $row['origem'];
     $id = (int)$row['origem_id'];
     $tables = ['funcao_imagem' => 'idfuncao_imagem', 'acompanhamento' => 'idacompanhamento', 'funcao_animacao' => 'id'];
-    if (!isset($tables[$origem])) throw new InvalidArgumentException('Origem inválida.');
+    if (!isset($tables[$origem])) {
+        throw new InvalidArgumentException('Origem inválida.');
+    }
     $locked = custos_query($conn, "SELECT * FROM $origem WHERE {$tables[$origem]}=? FOR UPDATE", 'i', [$id])[0] ?? null;
-    if (!$locked) throw new InvalidArgumentException('Origem não encontrada.');
+    if (!$locked) {
+        throw new InvalidArgumentException('Origem não encontrada.');
+    }
     $commission = !empty($row['comissao_gestor']);
     if ($commission) {
-        if ($colab !== 8 || !in_array((int)$locked['colaborador_id'], [23, 40], true) || (int)$locked['funcao_id'] !== 4 || !empty($row['parcial'])) throw new InvalidArgumentException('Comissão não elegível.');
-    } elseif ((int)$locked['colaborador_id'] !== $colab) throw new InvalidArgumentException('Colaborador incompatível com a origem.');
+        if ($colab !== 8 || !in_array((int)$locked['colaborador_id'], [23, 40], true) || (int)$locked['funcao_id'] !== 4 || !empty($row['parcial'])) {
+            throw new InvalidArgumentException('Comissão não elegível.');
+        }
+    } elseif ((int)$locked['colaborador_id'] !== $colab) {
+        throw new InvalidArgumentException('Colaborador incompatível com a origem.');
+    }
     $items = custos_query($conn, 'SELECT * FROM pagamento_itens WHERE origem=? AND origem_id=? ORDER BY idpagamento_item FOR UPDATE', 'si', [$origem, $id]);
     $pago = 0;
     $applicable = [];
     foreach ($items as $i) {
-        if ((custos_tipo($i) === 'COMISSAO') !== $commission) continue;
+        if ((custos_tipo($i) === 'COMISSAO') !== $commission) {
+            continue;
+        }
         $pago += custos_centavos($i['valor']);
         $applicable[] = $i;
     }
-    $previsto = financeiro_snapshot(array_merge($locked, $row, ['valor' => $locked['valor']]));
-    if ($previsto < 0 || $pago < 0 || $pago > $previsto) throw new DomainException('Divergência financeira na origem ' . $origem . ' #' . $id . '. Reconcilie antes de pagar.');
+    $temParcelaFinalizacao = false;
+    foreach ($applicable as $item) {
+        if (custos_tipo($item) === 'FINALIZACAO_PARCIAL') {
+            $temParcelaFinalizacao = true;
+            break;
+        }
+    }
+    $valorRow = $locked;
+    $valorRow['origem'] = $origem;
+    if ($origem === 'funcao_imagem') {
+        $imagem = custos_query($conn, 'SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra=?', 'i', [(int)$locked['imagem_id']])[0] ?? [];
+        $valorRow['imagem_nome'] = $imagem['imagem_nome'] ?? null;
+    }
+    $previsto = financeiro_valor_previsto_centavos($conn, $valorRow, $temParcelaFinalizacao);
+    if ($commission) {
+        $previsto = ($row['tipo_imagem'] === 'Fachada' && mb_stripos($row['imagem_nome'], 'embasamento') === false) ? 10000 : 8000;
+    }
+    if ($previsto < 0 || $pago < 0 || $pago > $previsto) {
+        throw new DomainException('Divergência financeira na origem ' . $origem . ' #' . $id . '. Reconcilie antes de pagar.');
+    }
     if (count($applicable) > 1) {
         $types = array_map('custos_tipo', $applicable);
         sort($types);
-        if ($types !== ['FINALIZACAO_COMPLEMENTO', 'FINALIZACAO_PARCIAL']) throw new DomainException('Lançamentos repetidos exigem reconciliação.');
+        if ($types !== ['FINALIZACAO_COMPLEMENTO', 'FINALIZACAO_PARCIAL']) {
+            throw new DomainException('Lançamentos repetidos exigem reconciliação.');
+        }
     }
     if ($mode === 'parcial') {
-        if ($origem !== 'funcao_imagem' || (int)$locked['funcao_id'] !== 4 || $commission) throw new InvalidArgumentException('Parcela exige tarefa de Finalização.');
-        if ($applicable) return ['id' => $id, 'skipped' => true];
+        if ($origem !== 'funcao_imagem' || (int)$locked['funcao_id'] !== 4 || $commission) {
+            throw new InvalidArgumentException('Parcela exige tarefa de Finalização.');
+        }
+        if ($applicable) {
+            return ['id' => $id, 'skipped' => true];
+        }
         $valor = (int)round($previsto / 2);
         $tipo = 'FINALIZACAO_PARCIAL';
         $obs = 'Finalização Parcial';
     } else {
-        if (!empty($row['parcial'])) return ['id' => $id, 'skipped' => true];
+        // A flag descreve o estado parcial da imagem. Ela impede pagamento
+        // integral de uma tarefa ainda sem parcela, mas não pode apagar o
+        // saldo depois que o livro comprova o pagamento da primeira metade.
+        if (!empty($row['parcial']) && !$temParcelaFinalizacao) {
+            return ['id' => $id, 'skipped' => true];
+        }
         $valor = $previsto - $pago;
         $tipo = $commission ? 'COMISSAO' : ($applicable && $origem === 'funcao_imagem' && (int)$locked['funcao_id'] === 4 ? 'FINALIZACAO_COMPLEMENTO' : ['funcao_imagem' => 'TAREFA', 'funcao_animacao' => 'ANIMACAO', 'acompanhamento' => 'ACOMPANHAMENTO'][$origem]);
         $obs = $commission ? 'Comissão Gestor' : ($tipo === 'FINALIZACAO_COMPLEMENTO' ? 'Pago Completa' : null);
-        if ($valor === 0 || ($applicable && $tipo !== 'FINALIZACAO_COMPLEMENTO')) return ['id' => $id, 'skipped' => true];
-        if ($applicable && custos_tipo($applicable[0]) !== 'FINALIZACAO_PARCIAL') throw new DomainException('Complemento sem parcela identificada.');
+        if ($valor === 0 || ($applicable && $tipo !== 'FINALIZACAO_COMPLEMENTO')) {
+            return ['id' => $id, 'skipped' => true];
+        }
+        if ($applicable && custos_tipo($applicable[0]) !== 'FINALIZACAO_PARCIAL') {
+            throw new DomainException('Complemento sem parcela identificada.');
+        }
     }
-    if ($valor === 0) return ['id' => $id, 'skipped' => true];
-    if (!$items && (int)($locked['pagamento'] ?? 0) === 1 && $mode === 'normal' && !$commission) throw new DomainException('Origem marcada paga sem livro financeiro. Use reconciliação manual.');
+    if ($valor === 0) {
+        return ['id' => $id, 'skipped' => true];
+    }
+    if (!$items && (int)($locked['pagamento'] ?? 0) === 1 && $mode === 'normal' && !$commission) {
+        throw new DomainException('Origem marcada paga sem livro financeiro. Use reconciliação manual.');
+    }
     $service = new PagamentoService($conn, $user);
     $pid = $service->garantirPagamento($colab, $mes, $ano);
     $amount = number_format($valor / 100, 2, '.', '');
@@ -145,24 +219,28 @@ function financeiro_pagar(mysqli $conn, array $input, ?int $user): array
     $colab = (int)($input['colaborador_id'] ?? 0);
     $mes = (int)($input['mes'] ?? 0);
     $ano = (int)($input['ano'] ?? 0);
-    if ($colab <= 0) throw new InvalidArgumentException('Colaborador obrigatório.');
+    if ($colab <= 0) {
+        throw new InvalidArgumentException('Colaborador obrigatório.');
+    }
     $conn->begin_transaction();
     try {
         $eligible = financeiro_elegiveis($conn, $colab, $mes, $ano);
         $map = [];
-        foreach ($eligible as $r) $map[$r['origem'] . ':' . $r['origem_id']] = $r;
-        $selected = $input['ids'] ?? array_map(fn($r) => ['origem' => $r['origem'], 'id' => $r['origem_id']], $eligible);
-        if (!is_array($selected)) throw new InvalidArgumentException('Seleção inválida.');
-        usort($selected, fn($a, $b) => strcmp($a['origem'], $b['origem']) ?: (int)$a['id'] - (int)$b['id']);
+        foreach ($eligible as $r) {
+            $map[$r['origem'] . ':' . $r['origem_id']] = $r;
+        }
+        $selected = $input['ids'] ?? array_map(fn ($r) => ['origem' => $r['origem'], 'id' => $r['origem_id']], $eligible);
+        if (!is_array($selected)) {
+            throw new InvalidArgumentException('Seleção inválida.');
+        }
+        usort($selected, fn ($a, $b) => strcmp($a['origem'], $b['origem']) ?: (int)$a['id'] - (int)$b['id']);
         $out = [];
         foreach ($selected as $s) {
             $key = ($s['origem'] ?? '') . ':' . (int)($s['id'] ?? 0);
-            if (!isset($map[$key])) throw new InvalidArgumentException('Item não elegível nesta competência: ' . $key);
-            $r = $map[$key];
-            if (!empty($r['parcial'])) {
-                if (isset($input['ids'])) throw new DomainException('Finalização parcial exige o registro específico.');
-                continue;
+            if (!isset($map[$key])) {
+                throw new InvalidArgumentException('Item não elegível nesta competência: ' . $key);
             }
+            $r = $map[$key];
             $out[] = financeiro_lancar($conn, $r, $colab, $mes, $ano, $user);
         }
         $conn->commit();

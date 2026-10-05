@@ -4,29 +4,53 @@ require_once __DIR__ . '/../helpers/custos_helper.php';
 
 /** Shared eligibility for screen and all payment writers. Historical status is the
  * status at competence end, matching the individual screen's existing contract. */
-function financeiro_elegiveis(mysqli $conn, int $colab, int $mes, int $ano): array
+function financeiro_elegiveis(mysqli $conn, ?int $colab, int $mes, int $ano): array
 {
     $ref = PagamentoService::competencia($mes, $ano);
     $inicio = $ref . '-01';
     $fim = (new DateTimeImmutable($inicio))->modify('first day of next month')->format('Y-m-d');
     $status = "('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')";
+    $whereColab = $colab === null ? '1=1' : '(fi.colaborador_id=? OR (?=8 AND fi.colaborador_id IN (23,40) AND fi.funcao_id=4))';
     $fi = custos_query(
         $conn,
-        "SELECT fi.*, 'funcao_imagem' origem, fi.idfuncao_imagem origem_id, i.tipo_imagem, i.imagem_nome,
+        "SELECT fi.*, 'funcao_imagem' origem, fi.idfuncao_imagem origem_id, i.tipo_imagem, i.imagem_nome, i.obra_id, f.nome_funcao,
         CASE WHEN fi.funcao_id=4 AND (EXISTS(SELECT 1 FROM funcao_imagem fp JOIN funcao f ON f.idfuncao=fp.funcao_id WHERE fp.imagem_id=fi.imagem_id AND f.nome_funcao='Pré-Finalização') OR
         (SELECT h.status_id FROM historico_imagens h WHERE h.imagem_id=fi.imagem_id AND h.data_movimento < ? ORDER BY h.data_movimento DESC,h.status_id DESC LIMIT 1)=1) THEN 1 ELSE 0 END parcial
         FROM funcao_imagem fi JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra=fi.imagem_id
-        WHERE (fi.colaborador_id=? OR (?=8 AND fi.colaborador_id IN (23,40) AND fi.funcao_id=4))
+        JOIN funcao f ON f.idfuncao=fi.funcao_id
+        WHERE $whereColab
         AND ((LOWER(TRIM(fi.status)) IN $status AND fi.prazo>=? AND fi.prazo<?)
           OR EXISTS(SELECT 1 FROM log_alteracoes l WHERE l.funcao_imagem_id=fi.idfuncao_imagem AND l.data>=? AND l.data<? AND LOWER(TRIM(l.status_novo)) IN $status))",
-        'siissss',
-        [$fim, $colab, $colab, $inicio, $fim, $inicio, $fim]
+        $colab === null ? 'sssss' : 'siissss',
+        $colab === null ? [$fim, $inicio, $fim, $inicio, $fim] : [$fim, $colab, $colab, $inicio, $fim, $inicio, $fim]
     );
-    $ac = custos_query($conn, "SELECT a.*, 'acompanhamento' origem, a.idacompanhamento origem_id, 0 parcial FROM acompanhamento a WHERE a.colaborador_id=? AND a.data>=? AND a.data<?", 'iss', [$colab, $inicio, $fim]);
-    $an = custos_query($conn, "SELECT fa.*, 'funcao_animacao' origem, fa.id origem_id, 0 parcial FROM funcao_animacao fa JOIN animacao a ON a.idanimacao=fa.animacao_id WHERE fa.colaborador_id=? AND a.data_anima>=? AND a.data_anima<? AND LOWER(TRIM(fa.status)) IN $status", 'iss', [$colab, $inicio, $fim]);
-    foreach ($fi as &$r) $r['comissao_gestor'] = (int)$r['colaborador_id'] !== $colab;
+    $whereAC = $colab === null ? '1=1' : 'a.colaborador_id=?';
+    $whereAN = $colab === null ? '1=1' : 'fa.colaborador_id=?';
+    $types = $colab === null ? 'ss' : 'iss';
+    $args = $colab === null ? [$inicio, $fim] : [$colab, $inicio, $fim];
+    $ac = custos_query($conn, "SELECT a.*, 'acompanhamento' origem, a.idacompanhamento origem_id, 'Acompanhamento' nome_funcao, 0 parcial FROM acompanhamento a WHERE $whereAC AND a.data>=? AND a.data<?", $types, $args);
+    $an = custos_query($conn, "SELECT fa.*, 'funcao_animacao' origem, fa.id origem_id, a.obra_id, 'Animação' nome_funcao, 0 parcial FROM funcao_animacao fa JOIN animacao a ON a.idanimacao=fa.animacao_id WHERE $whereAN AND a.data_anima>=? AND a.data_anima<? AND LOWER(TRIM(fa.status)) IN $status", $types, $args);
+    $commissions = [];
+    foreach ($fi as &$r) {
+        $r['comissao_gestor'] = $colab !== null && (int)$r['colaborador_id'] !== $colab;
+        if ($colab === null && in_array((int)$r['colaborador_id'], [23, 40], true) && (int)$r['funcao_id'] === 4 && empty($r['parcial'])) {
+            $commission = $r;
+            $commission['colaborador_origem_id'] = $r['colaborador_id'];
+            $commission['colaborador_id'] = 8;
+            $commission['comissao_gestor'] = true;
+            $commissions[] = $commission;
+        }
+    }
     unset($r);
-    return array_merge($fi, $ac, $an);
+    return array_merge($fi, $commissions, $ac, $an);
+}
+
+function financeiro_snapshot(array $row): int
+{
+    if (!empty($row['comissao_gestor'])) {
+        return (($row['tipo_imagem'] ?? '') === 'Fachada' && mb_stripos($row['imagem_nome'] ?? '', 'embasamento') === false) ? 10000 : 8000;
+    }
+    return custos_centavos($row['valor'] ?? 0);
 }
 
 function financeiro_total(mysqli $conn, int $id): void
@@ -64,8 +88,7 @@ function financeiro_lancar(mysqli $conn, array $row, int $colab, int $mes, int $
         $pago += custos_centavos($i['valor']);
         $applicable[] = $i;
     }
-    $previsto = custos_centavos($locked['valor']);
-    if ($commission) $previsto = ($row['tipo_imagem'] === 'Fachada' && mb_stripos($row['imagem_nome'], 'embasamento') === false) ? 10000 : 8000;
+    $previsto = financeiro_snapshot(array_merge($locked, $row, ['valor' => $locked['valor']]));
     if ($previsto < 0 || $pago < 0 || $pago > $previsto) throw new DomainException('Divergência financeira na origem ' . $origem . ' #' . $id . '. Reconcilie antes de pagar.');
     if (count($applicable) > 1) {
         $types = array_map('custos_tipo', $applicable);

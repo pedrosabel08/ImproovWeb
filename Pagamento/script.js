@@ -614,7 +614,6 @@ document.addEventListener("DOMContentLoaded", function () {
     mesResumo.addEventListener("change", carregarResumo);
     anoResumo.addEventListener("change", carregarResumo);
     setDefaultMesAnoResumo();
-    carregarResumo();
   }
   document
     .getElementById("colaborador")
@@ -630,6 +629,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // Ignora respostas de uma seleção anterior caso o usuário alterne
     // rapidamente entre colaboradores.
     const requisicaoAtual = ++requisicaoColaboradorAtual;
+    if (document.body.dataset.paymentView === 'geral') return;
+    window.pagamentoResumoColaborador = null;
+    window.dispatchEvent(new CustomEvent('pagamento:detalhe', { detail: null }));
     var colaboradorId = document.getElementById("colaborador").value;
     var mesId = document.getElementById("mes").value;
     var anoId = document.getElementById("ano").value;
@@ -667,6 +669,8 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((response) => response.json())
         .then((data) => {
           if (requisicaoAtual !== requisicaoColaboradorAtual) return;
+          window.pagamentoResumoColaborador = data.resumo_financeiro;
+          window.dispatchEvent(new CustomEvent('pagamento:detalhe', { detail: data.resumo_financeiro }));
           var infoColaborador = document.getElementById("info-colaborador");
           var colaborador = data.dadosColaborador;
           if (colaborador) {
@@ -722,7 +726,7 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             checkbox.setAttribute(
               "data-valor",
-              item.valor_exibido != null ? String(item.valor_exibido) : "0",
+              item.pagamento === 1 && item.valor_pago != null ? String(item.valor_pago) : (item.valor_exibido != null ? String(item.valor_exibido) : "0"),
             );
             // counts to allow 2nd confirmation (pago parcial -> pago completa)
             checkbox.setAttribute(
@@ -2618,7 +2622,8 @@ async function abrirModalStatusGeral() {
       '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Carregando...</td></tr>';
 
   try {
-    const res = await fetch("get_adendo_status.php?mode=geral");
+    const competencia = new URLSearchParams({ mode: 'geral', mes: document.getElementById('mes').value, ano: document.getElementById('ano').value });
+    const res = await fetch(`get_adendo_status.php?${competencia}`);
     const json = await res.json();
 
     if (!json.success) throw new Error(json.message || "Erro desconhecido");
@@ -2632,27 +2637,11 @@ async function abrirModalStatusGeral() {
 
     // Summary cards
     if (summaryEl) {
-      summaryEl.innerHTML = `
-        <div class="sg-card c-total">
-          <div class="sg-card-label">Total</div>
-          <div class="sg-card-value">${total}</div>
-        </div>
-        <div class="sg-card c-assinado">
-          <div class="sg-card-label"><i class="fa-solid fa-signature"></i> Assinados</div>
-          <div class="sg-card-value">${counts.assinado}${pct(counts.assinado)}</div>
-        </div>
-        <div class="sg-card c-visualizado">
-          <div class="sg-card-label"><i class="fa-solid fa-eye"></i> Visualizados</div>
-          <div class="sg-card-value">${counts.visualizado}${pct(counts.visualizado)}</div>
-        </div>
-        <div class="sg-card c-enviado">
-          <div class="sg-card-label"><i class="fa-solid fa-paper-plane"></i> Enviados</div>
-          <div class="sg-card-value">${counts.enviado}${pct(counts.enviado)}</div>
-        </div>
-        <div class="sg-card c-nao-enviado">
-          <div class="sg-card-label"><i class="fa-solid fa-circle-minus"></i> Não enviados</div>
-          <div class="sg-card-value">${counts.nao_enviado}${pct(counts.nao_enviado)}</div>
-        </div>`;
+      summaryEl.innerHTML = `<div class="sg-card c-total"><div class="sg-card-label">Total</div><div class="sg-card-value">${total}</div></div>` +
+        ['nao_gerado', 'gerado', 'enviado', 'visualizado', 'assinado', 'recusado', 'expirado'].filter(state => counts[state] > 0).map(state => {
+          const info = adendoStatusInfo(state);
+          return `<div class="sg-card c-${state}"><div class="sg-card-label"><i class="fa-solid ${info.icon}"></i> ${info.label}</div><div class="sg-card-value">${counts[state]}${pct(counts[state])}</div></div>`;
+        }).join('');
     }
 
     // Table
@@ -2957,13 +2946,19 @@ document.addEventListener(
           const el = document.getElementById(id);
           if (el) el.textContent = content;
         };
-        set("total-imagens", allRows.length);
-        set("total-itens-resumo", allRows.length);
-        set("totalValor", money(total));
-        set("total-imagens-nao-pagas", allUnpaid.length);
-        set("totalValorNaoPago", money(unpaidTotal));
-        set("total-imagens-pagas", allPaid.length);
-        set("totalValorPago", money(paidTotal));
+        const resumo = window.pagamentoResumoColaborador;
+        const setNumber = (id, value, kind = 'count') => {
+          const el = document.getElementById(id);
+          if (resumo && window.pagamentoMotion) window.pagamentoMotion.setNumber(el, value, kind);
+          else set(id, kind === 'money' ? money(value / 100) : value);
+        };
+        setNumber("total-imagens", resumo?.itens ?? allRows.length);
+        setNumber("total-itens-resumo", resumo?.itens ?? allRows.length);
+        setNumber("totalValor", resumo ? resumo.total : total * 100, 'money');
+        setNumber("total-imagens-nao-pagas", resumo?.itens_pendentes ?? allUnpaid.length);
+        setNumber("totalValorNaoPago", resumo ? resumo.pendente : unpaidTotal * 100, 'money');
+        setNumber("total-imagens-pagas", resumo?.itens_pagos ?? allPaid.length);
+        setNumber("totalValorPago", resumo ? resumo.pago : paidTotal * 100, 'money');
         set("tab-count-a-pagar", allUnpaid.length);
         set("tab-count-pagos", allPaid.length);
         set("tab-count-divergencias", visibleRows(divergence).length);

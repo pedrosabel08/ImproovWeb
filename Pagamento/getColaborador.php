@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(false);
@@ -746,15 +747,14 @@ if ($mesNumero && $ano) {
         $key = $r['origem'] . ':' . $r['origem_id'];
         $f = $existing[$key] ?? array_merge($r, ['identificador' => $r['origem_id'], 'nome_funcao' => $r['origem'] === 'acompanhamento' ? 'Acompanhamento' : 'Animação', 'imagem_nome' => $r['imagem_nome'] ?? 'Custo geral da obra', 'pago_parcial_count' => 0, 'pago_completa_count' => 0]);
         $f['comissao_gestor'] = !empty($r['comissao_gestor']);
-        $snapshot = (float)$r['valor'];
-        if ($f['comissao_gestor']) $snapshot = ($r['tipo_imagem'] === 'Fachada' && mb_stripos($r['imagem_nome'], 'embasamento') === false) ? 100 : 80;
+        $snapshot = financeiro_snapshot($r) / 100;
         $f['valor_exibido'] = $snapshot;
         $f['custo'] = $snapshot;
         $f['valor_esperado'] = $snapshot;
         $funcoes[] = $f;
     }
     // One bulk query, no per-task ledger lookups.
-    $ledger = custos_query($conn, 'SELECT pi.* FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
+    $ledger = custos_query($conn, 'SELECT pi.*, p.colaborador_id FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
     $paid = [];
     foreach ($ledger as $l) {
         $k = $l['origem'] . ':' . $l['origem_id'] . ':' . (custos_tipo($l) === 'COMISSAO' ? '1' : '0');
@@ -765,10 +765,18 @@ if ($mesNumero && $ano) {
         $p = $paid[$k] ?? 0;
         $v = custos_centavos($f['valor_exibido']);
         $f['valor_exibido'] = max(0, $v - $p) / 100;
+        $f['valor_pago'] = $p / 100;
         $f['divergencia_financeira'] = $p > $v;
         $f['pagamento'] = $p >= $v && $v > 0 ? 1 : 0;
     }
     unset($f);
+    require_once __DIR__ . '/resumo_geral.php';
+    // Commission eligibility keeps the origin owner; the ledger belongs to the selected payee.
+    $summaryOrigins = array_map(function ($r) use ($colaboradorId) {
+        $r['colaborador_id'] = $colaboradorId;
+        return $r;
+    }, $eligible);
+    $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger));
 }
 $custoTotal = 0.0;
 foreach ($funcoes as $f) {
@@ -780,6 +788,7 @@ $response = [
     "funcoes" => $funcoes,
     "debug_counts_by_origem" => $countsByOrigem,
     "custo_total" => round($custoTotal, 2),
+    "resumo_financeiro" => $resumoFinanceiro ?? null,
 ];
 
 echo json_encode($response);

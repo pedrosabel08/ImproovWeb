@@ -71,10 +71,10 @@
           ...data.imagens.flatMap((i) =>
             i.comercial.map((c) => ({ ...c, nome: i.nome })),
           ),
-          ...data.custos_gerais.comercial.map((c) => ({
-            ...c,
-            nome: "Serviço fotográfico",
-          })),
+          ...data.custos_gerais.comercial.map((c) => {
+            const item = (data.itens_projeto || []).find((row) => Number(row.servico_foto_id) === Number(c.id));
+            return { ...c, nome: "Serviço fotográfico", item_id: item?.id || "", custo_previsto: item?.custo_previsto ?? "", justificativa_custo_zero: item?.justificativa_custo_zero ?? "" };
+          }),
         ]
       : [];
   }
@@ -160,6 +160,7 @@
         : r.saude.motivo;
     renderDistribution();
     renderImages();
+    renderProjectItems();
     const g = data.custos_gerais;
     $("general-total").textContent = money(g.totais.projetado);
     $("general-content").innerHTML = g.producao.length
@@ -192,6 +193,15 @@
     $("audit-content").innerHTML = alerts.length
       ? alerts.map((a) => `<p>${esc(a)}</p>`).join("")
       : "<p>Os valores conciliam com os lançamentos identificados.</p>";
+  }
+  function renderProjectItems() {
+    const items = data.itens_projeto || [];
+    $("project-items-body").innerHTML = items.length ? items.map((item) => {
+      const t = item.totais || {};
+      const pending = Number(t.a_pagar) || 0;
+      return `<tr><td>${esc(item.categoria_nome || "Outros")}</td><td>${esc(item.descricao)}${item.alertas?.length ? `<small class="item-warning">${esc(item.alertas.join(" · "))}</small>` : ""}</td><td>${esc(item.origem)}</td><td>${t.vendido == null ? "—" : money(t.vendido)}</td><td>${item.custo_previsto == null && item.modelo_custo === "DIRETO" ? "Pendente" : money(t.previsto)}</td><td>${money(t.realizado)}</td><td>${money(pending)}</td><td><button type="button" data-edit-project-item="${Number(item.id)}">Editar</button> <button type="button" data-record-project-cost="${Number(item.id)}">Registrar realizado</button></td></tr>`;
+    }).join("") : '<tr><td colspan="8" class="empty">Nenhum item financeiro cadastrado.</td></tr>';
+    $("project-item-categories").innerHTML = (data.categorias_itens || []).map((c) => `<option value="${esc(c.nome)}"></option>`).join("");
   }
   function renderDistribution() {
     if (!data) return;
@@ -337,6 +347,10 @@
     document
       .querySelectorAll("[data-image-field]")
       .forEach((e) => (e.hidden = photo));
+    document.querySelectorAll("[data-photo-field]").forEach((e) => (e.hidden = !photo));
+    const f = $("commercial-form").elements;
+    f.custo_previsto.required = photo;
+    f.justificativa_custo_zero.required = photo && f.custo_previsto.value !== "" && Number(f.custo_previsto.value) === 0;
   }
   function editCommercial(index) {
     const f = $("commercial-form");
@@ -401,6 +415,28 @@
     const b = e.target.closest("[data-image]");
     if (b) detail(b.dataset.image);
   });
+  $("project-items-body").addEventListener("click", async (e) => {
+    const edit = e.target.closest("[data-edit-project-item]");
+    const record = e.target.closest("[data-record-project-cost]");
+    if (edit) {
+      const item = (data.itens_projeto || []).find((row) => Number(row.id) === Number(edit.dataset.editProjectItem));
+      if (!item) return;
+      const f = $("project-item-form").elements;
+      for (const key of ["id", "imagem_id", "pacote_id", "servico_foto_id", "tipo_item", "descricao", "quantidade", "unidade", "receita", "custo_previsto", "justificativa_custo_zero"]) f[key].value = item[key] ?? "";
+      f.categoria.value = item.categoria_nome || "";
+      $("project-item-title").textContent = "Editar item do projeto";
+      $("project-item-dialog").showModal();
+    }
+    if (record) {
+      const value = window.prompt("Valor realizado (R$):");
+      if (value === null || !value.trim()) return;
+      const description = window.prompt("Descrição do lançamento (opcional):") || "";
+      try {
+        await api("lancarCustoItem.php", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify({ obra_id: $("obra").value, item_id: Number(record.dataset.recordProjectCost), valor: value, descricao: description }) });
+        await load();
+      } catch (err) { window.alert(err.message); }
+    }
+  });
   document
     .querySelectorAll(".close-dialog")
     .forEach((b) =>
@@ -413,6 +449,26 @@
     $("import-form").hidden = true;
     $("commercial-message").textContent = "";
     $("commercial-dialog").showModal();
+  });
+  $("add-project-item").addEventListener("click", () => {
+    $("project-item-form").reset();
+    $("project-item-form").elements.id.value = "";
+    $("project-item-form").elements.quantidade.value = "1";
+    $("project-item-title").textContent = "Adicionar material ou serviço";
+    $("project-item-dialog").showModal();
+  });
+  document.querySelectorAll("[data-close-project-item]").forEach((b) => b.addEventListener("click", () => $("project-item-dialog").close()));
+  $("project-item-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = Object.fromEntries(new FormData(e.target));
+    payload.obra_id = Number($("obra").value);
+    payload.origem = "EXTRA";
+    payload.modelo_custo = "DIRETO";
+    try {
+      await api("salvarItemProjeto.php", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(payload) });
+      $("project-item-dialog").close();
+      await load();
+    } catch (err) { $("project-item-message").textContent = err.message; }
   });
   $("commercial-list").addEventListener("click", (e) => {
     const b = e.target.closest("[data-commercial]");
@@ -427,6 +483,7 @@
     "change",
     toggleFields,
   );
+  $("commercial-form").elements.custo_previsto.addEventListener("input", toggleFields);
   for (const field of ["valor", "imposto", "comissao_comercial"])
     $("commercial-form").elements[field].addEventListener("input", () => {
       const f = $("commercial-form").elements;

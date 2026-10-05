@@ -8907,6 +8907,8 @@ if (importTxtForm) {
     fd.append("txtFile", file);
     fd.append("obra_id", currentObraId);
     if (currentClienteId) fd.append("cliente_id", currentClienteId);
+    fd.append("valor", document.getElementById("importTxtRevenue")?.value || "");
+    fd.append("imposto", document.getElementById("importTxtTax")?.value || "0");
 
     try {
       const resp = await fetch("importarImagensTxt.php", {
@@ -12348,6 +12350,8 @@ function submitFormImagem(event) {
   const prazo = document.getElementById("prazo").value;
   const imagem = document.getElementById("nome-imagem").value;
   const tipo = document.getElementById("tipo-imagem").value;
+  const valor = document.getElementById("valor-imagem").value;
+  const imposto = document.getElementById("imposto-imagem").value;
   const imagem_principal_id =
     document.getElementById("imagem_principal_id")?.value || "";
 
@@ -12359,6 +12363,8 @@ function submitFormImagem(event) {
     prazo: prazo,
     imagem: imagem,
     tipo: tipo,
+    valor,
+    imposto,
     imagem_principal_id,
   };
 

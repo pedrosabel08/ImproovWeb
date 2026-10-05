@@ -21,6 +21,7 @@
     imagens_importadas: "Imagens importadas",
     sla_definido: "SLA definido",
     pacotes_definidos: "Pacotes definidos",
+    valores_externos_definidos: "Valores cobrados dos itens definidos",
   };
 
   const itemDescriptions = {
@@ -32,6 +33,7 @@
     sla_definido:
       "Pacotes contratados e prazos consolidados no start do projeto.",
     pacotes_definidos: "Configuração comercial validada no onboarding.",
+    valores_externos_definidos: "Todo item novo do projeto tem o valor externo cobrado do cliente informado.",
   };
 
   function notify(message, type) {

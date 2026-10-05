@@ -2591,6 +2591,8 @@ function submitFormImagem(event) {
   const prazo = document.getElementById("prazo").value;
   const imagem = document.getElementById("nome-imagem").value;
   const tipo = document.getElementById("tipo-imagem").value;
+  const valor = document.getElementById("valor-imagem").value;
+  const imposto = document.getElementById("imposto-imagem").value;
 
   const data = {
     opcaoCliente: opcaoCliente,
@@ -2600,6 +2602,8 @@ function submitFormImagem(event) {
     prazo: prazo,
     imagem: imagem,
     tipo: tipo,
+    valor,
+    imposto,
   };
 
   fetch("inserir_imagem.php", {

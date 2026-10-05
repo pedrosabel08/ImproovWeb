@@ -124,11 +124,37 @@
         <p class="disclaimer">Margem de produção do projeto. Custos administrativos e demais despesas da empresa não estão incluídos.</p>
     </div>
 </main>
+<section class="panel project-items-panel">
+    <div class="panel-heading"><div><h2>Materiais e serviços</h2><p class="muted">Custos previstos, realizados e pendentes por item do projeto.</p></div><button id="add-project-item" type="button">+ Adicionar item</button></div>
+    <div class="table-scroll"><table><thead><tr><th>Categoria</th><th>Descrição</th><th>Origem</th><th>Vendido</th><th>Previsto</th><th>Realizado</th><th>Pendente</th><th>Ações</th></tr></thead><tbody id="project-items-body"><tr><td colspan="8" class="empty">Selecione uma obra para consultar seus itens.</td></tr></tbody></table></div>
+</section>
 <dialog id="image-detail" class="drawer">
     <div class="dialog-top">
         <p class="eyebrow">DETALHE FINANCEIRO</p><button class="close-dialog icon-button" aria-label="Fechar detalhe">×</button>
     </div>
     <div id="detail-content"></div>
+</dialog>
+<dialog id="project-item-dialog" class="commercial-dialog">
+    <div class="dialog-top"><div><p class="eyebrow">ITEM DO PROJETO</p><h2 id="project-item-title">Adicionar material ou serviço</h2></div><button class="close-dialog icon-button" data-close-project-item type="button" aria-label="Fechar">×</button></div>
+    <form id="project-item-form">
+        <input name="id" type="hidden">
+        <input name="imagem_id" type="hidden">
+        <input name="pacote_id" type="hidden">
+        <input name="servico_foto_id" type="hidden">
+        <div class="form-grid">
+            <label>Categoria<input name="categoria" list="project-item-categories" maxlength="80" required><datalist id="project-item-categories"></datalist></label>
+            <label>Tipo<select name="tipo_item"><option value="MATERIAL">Material</option><option value="SERVICO">Serviço</option><option value="PACOTE">Pacote</option><option value="OUTRO">Outro</option></select></label>
+            <label>Descrição<input name="descricao" maxlength="255" required></label>
+            <label>Quantidade<input name="quantidade" type="number" min="0.001" step="0.001" value="1" required></label>
+            <label>Unidade<input name="unidade" maxlength="30"></label>
+            <label>Custo previsto (R$)<input name="custo_previsto" type="number" min="0" step="0.01" required></label>
+            <label>Valor vendido (opcional, R$)<input name="receita" type="number" min="0" step="0.01"></label>
+            <label>Justificativa se custo zero<input name="justificativa_custo_zero" maxlength="255"></label>
+        </div>
+        <p class="muted">Custos realizados são lançados no item após o cadastro.</p>
+        <button class="primary" type="submit">Salvar item</button>
+    </form>
+    <div id="project-item-message" role="status"></div>
 </dialog>
 <dialog id="commercial-dialog" class="commercial-dialog">
     <div class="dialog-top">
@@ -145,11 +171,11 @@
     <div class="commercial-actions"><button id="add-commercial">+ Adicionar item</button><button id="show-import">Importar CSV</button></div>
     <div id="commercial-list"></div>
     <form id="commercial-form" hidden>
-        <h3 id="commercial-form-title">Adicionar item</h3><input name="id" type="hidden">
+        <h3 id="commercial-form-title">Adicionar item</h3><input name="id" type="hidden"><input name="item_id" type="hidden">
         <div class="form-grid"><label>Tipo<select name="categoria">
                     <option value="imagem">Imagem</option>
                     <option value="foto">Serviço fotográfico</option>
-                </select></label><label id="commercial-image-label">Imagem<select name="imagem_id" id="commercial-image"></select></label><label>Valor vendido (R$)<input name="valor" type="number" min="0" step="0.01" required></label><label data-image-field>Contrato<input name="numero_contrato" maxlength="255"></label><label data-image-field>Imposto (%)<input name="imposto" type="number" min="0" max="100" step="0.01" value="0"></label><label data-image-field>Imposto (R$)<input name="valor_imposto" type="number" min="0" step="0.01" value="0"></label><label data-image-field>Comissão comercial (%)<input name="comissao_comercial" type="number" min="0" max="100" step="0.01" value="0"></label><label data-image-field>Comissão comercial (R$)<input name="valor_comissao_comercial" type="number" min="0" step="0.01" value="0"></label></div>
+                </select></label><label id="commercial-image-label">Imagem<select name="imagem_id" id="commercial-image"></select></label><label>Valor vendido (R$)<input name="valor" type="number" min="0" step="0.01" required></label><label data-image-field>Contrato<input name="numero_contrato" maxlength="255"></label><label data-image-field>Imposto (%)<input name="imposto" type="number" min="0" max="100" step="0.01" value="0"></label><label data-image-field>Imposto (R$)<input name="valor_imposto" type="number" min="0" step="0.01" value="0"></label><label data-image-field>Comissão comercial (%)<input name="comissao_comercial" type="number" min="0" max="100" step="0.01" value="0"></label><label data-image-field>Comissão comercial (R$)<input name="valor_comissao_comercial" type="number" min="0" step="0.01" value="0"></label><label data-photo-field hidden>Custo interno previsto (R$)<input name="custo_previsto" type="number" min="0" step="0.01"></label><label data-photo-field hidden>Justificativa se custo zero<input name="justificativa_custo_zero" maxlength="255"></label></div>
         <p class="muted">Os percentuais sugerem as deduções em reais. Confira os valores antes de salvar. Serviço fotográfico não possui deduções cadastradas no schema atual.</p><button type="submit" class="primary">Salvar valores</button><button type="button" id="cancel-commercial">Cancelar</button>
     </form>
     <form id="import-form" hidden>

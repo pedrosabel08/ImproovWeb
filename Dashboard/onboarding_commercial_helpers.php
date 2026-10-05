@@ -54,11 +54,11 @@ function dashboard_onboarding_save_image_commercial(mysqli $conn, int $obraId, a
     return $saved;
 }
 
-function dashboard_onboarding_save_photo_service(mysqli $conn, int $obraId, string $value): bool
+function dashboard_onboarding_save_photo_service(mysqli $conn, int $obraId, string $value): int
 {
     $value = trim($value);
     if ($value === '') {
-        return false;
+        return 0;
     }
 
     $values = custos_comercial_validar($conn, $obraId, [
@@ -66,5 +66,6 @@ function dashboard_onboarding_save_photo_service(mysqli $conn, int $obraId, stri
         'valor' => $value,
     ]);
     custos_comercial_salvar($conn, $obraId, $values);
-    return true;
+    $row = custos_query($conn, 'SELECT id FROM servico_foto WHERE obra_id=? ORDER BY id DESC LIMIT 1', 'i', [$obraId]);
+    return (int)($row[0]['id'] ?? 0);
 }

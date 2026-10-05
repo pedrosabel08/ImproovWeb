@@ -23,6 +23,7 @@ require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/onboarding_helpers.php';
 require_once __DIR__ . '/image_import_helpers.php';
 require_once __DIR__ . '/onboarding_commercial_helpers.php';
+require_once __DIR__ . '/../helpers/obra_itens_helper.php';
 require_once __DIR__ . '/../contact_architecture.php';
 
 $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
@@ -261,7 +262,7 @@ function onboarding_build_package_rows(array $packages, string $observacoes): ar
     return $rows;
 }
 
-function onboarding_insert_package_rows(mysqli $conn, int $obraId, array $packageRows): int
+function onboarding_insert_package_rows(mysqli $conn, int $obraId, array $packageRows, array $packageValues = [], ?int $actorId = null): int
 {
     if (empty($packageRows)) {
         return 0;
@@ -289,6 +290,22 @@ function onboarding_insert_package_rows(mysqli $conn, int $obraId, array $packag
             $error = $stmt->error;
             $stmt->close();
             throw new RuntimeException('Erro ao inserir pacote contratado: ' . $error);
+        }
+        $packageId = (int)$stmt->insert_id;
+        if (in_array($tipo, ['ANIMACAO', 'FILME'], true)) {
+            $packageValue = is_array($packageValues[strtolower($tipo === 'ANIMACAO' ? 'animation' : 'film')] ?? null)
+                ? $packageValues[strtolower($tipo === 'ANIMACAO' ? 'animation' : 'film')]
+                : [];
+            obra_item_save($conn, $obraId, [
+                'categoria' => $tipo === 'ANIMACAO' ? 'Animação' : 'Filme',
+                'tipo_item' => 'PACOTE',
+                'descricao' => 'Pacote ' . ($tipo === 'ANIMACAO' ? 'Animação' : 'Filme'),
+                'quantidade' => 1,
+                'origem' => 'ONBOARDING',
+                'pacote_id' => $packageId,
+                'receita' => $packageValue['receita'] ?? '',
+                'modelo_custo' => $tipo === 'ANIMACAO' ? 'TAREFAS' : 'DIRETO',
+            ], $actorId);
         }
         $inserted++;
     }
@@ -413,8 +430,18 @@ if (count($validNewContacts) === 0 && count($legacyDraftContacts) > 0) {
     $validNewContacts = $legacyDraftContacts;
 }
 
-$preparedImages = dashboard_prepare_image_entries($rawImages, $nomenclatura);
+    $preparedImages = dashboard_prepare_image_entries($rawImages, $nomenclatura, 1);
 $preparedImageEntries = $preparedImages['entries'];
+if (!empty($packages['still']['enabled']) && !$preparedImageEntries) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Inclua as imagens e os valores externos do pacote Imagens Still.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+if (empty($packages['still']['enabled']) && $preparedImageEntries) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Imagens e valores comerciais só podem ser enviados quando o pacote Imagens Still estiver selecionado.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 try {
     dashboard_onboarding_validate_commercial_images($preparedImageEntries);
     $photoServiceValue = trim((string) ($payload['servico_fotografico_valor'] ?? ''));
@@ -549,7 +576,7 @@ try {
     $obraId = (int) $stmtObra->insert_id;
     $stmtObra->close();
 
-    $savedPackages = onboarding_insert_package_rows($conn, $obraId, $packageRows);
+    $savedPackages = onboarding_insert_package_rows($conn, $obraId, $packageRows, is_array($payload['package_values'] ?? null) ? $payload['package_values'] : [], $colaboradorId);
 
     $contactSync = onboarding_store_contacts($conn, $clienteId, $obraId, $normalizedSelectedContactIds, $validNewContacts);
     $linkedContacts = contact_arch_fetch_linked_contacts($conn, $obraId);
@@ -559,7 +586,19 @@ try {
         throw new RuntimeException('Não foi possível incluir todas as imagens e seus valores. Nenhuma alteração foi confirmada.');
     }
     $commercialImagesSaved = dashboard_onboarding_save_image_commercial($conn, $obraId, $imageInsert['images'] ?? []);
-    $photoServiceSaved = dashboard_onboarding_save_photo_service($conn, $obraId, $photoServiceValue);
+    $photoServiceId = dashboard_onboarding_save_photo_service($conn, $obraId, $photoServiceValue);
+    if ($photoServiceId > 0) {
+        obra_item_save($conn, $obraId, [
+            'categoria' => 'Fotografia', 'tipo_item' => 'SERVICO', 'descricao' => 'Serviço fotográfico',
+            'quantidade' => 1, 'origem' => 'ONBOARDING', 'servico_foto_id' => $photoServiceId,
+            'receita' => $photoServiceValue,
+        ], $colaboradorId);
+    }
+    foreach (is_array($payload['materiais'] ?? null) ? $payload['materiais'] : [] as $material) {
+        if (!is_array($material)) throw new InvalidArgumentException('Material adicional inválido.');
+        $material['tipo_item'] = in_array(strtoupper((string)($material['tipo_item'] ?? '')), ['MATERIAL', 'SERVICO'], true) ? strtoupper($material['tipo_item']) : 'OUTRO';
+        obra_item_save($conn, $obraId, $material, $colaboradorId);
+    }
 
     onboarding_ensure_remote_project_folder($nomenclatura);
 
@@ -619,7 +658,7 @@ try {
         'contacts_saved' => $savedContacts,
         'images_inserted' => $imageInsert['inserted'],
         'commercial_images_saved' => $commercialImagesSaved,
-        'photo_service_saved' => $photoServiceSaved,
+        'photo_service_saved' => $photoServiceId > 0,
         'duplicates' => count($preparedImages['duplicates']),
         'errors' => array_merge($preparedImages['errors'], $imageInsert['errors']),
         'message' => 'Projeto iniciado com sucesso no onboarding operacional.',

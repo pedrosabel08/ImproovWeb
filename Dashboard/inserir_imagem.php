@@ -5,6 +5,9 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/image_dependency_helpers.php';
 require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
+require_once __DIR__ . '/image_import_helpers.php';
+require_once __DIR__ . '/onboarding_commercial_helpers.php';
+require_once __DIR__ . '/../helpers/obra_itens_helper.php';
 
 // Verify DB connection (match pattern used in saveImages.php)
 if (!isset($conn) || !$conn) {
@@ -27,6 +30,8 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 $clienteId = isset($data['opcaoCliente']) ? (int)$data['opcaoCliente'] : 0;
 $obraId = isset($data['opcaoObra']) ? (int)$data['opcaoObra'] : 0;
 $imagem = isset($data['imagem']) ? trim($data['imagem']) : '';
+$externalValue = trim((string)($data['valor'] ?? ''));
+$taxPercent = trim((string)($data['imposto'] ?? ''));
 $recebimento_arquivos = $data['arquivo'] ?? null;
 $data_inicio = $data['data_inicio'] ?? null;
 $prazo = $data['prazo'] ?? null;
@@ -62,6 +67,27 @@ unset($val);
 if ($clima === null) $clima = '';
 
 $conn->begin_transaction();
+
+try {
+    $obraStmt = $conn->prepare('SELECT idobra, nomenclatura, nome_obra FROM obra WHERE idobra=? AND cliente=? FOR UPDATE');
+    $obraStmt->bind_param('ii', $obraId, $clienteId);
+    $obraStmt->execute();
+    $obra = $obraStmt->get_result()->fetch_assoc();
+    $obraStmt->close();
+    if (!$obra) throw new InvalidArgumentException('Projeto não encontrado ou cliente incompatível.');
+    if ($externalValue === '') throw new InvalidArgumentException('Informe o valor cobrado do cliente para esta imagem.');
+    custos_decimal($externalValue);
+    if ($taxPercent === '') throw new InvalidArgumentException('Informe o percentual de imposto; use 0 quando não houver imposto.');
+    $taxPercent = custos_decimal($taxPercent);
+    if ((float)$taxPercent > 100) throw new InvalidArgumentException('O imposto deve estar entre 0 e 100.');
+    $imageCode = trim((string)($obra['nomenclatura'] ?? '')) ?: trim((string)($obra['nome_obra'] ?? ''));
+    $imagem = dashboard_format_image_name($imagem, $imageCode, dashboard_next_image_sequence($conn, $obraId));
+} catch (Throwable $error) {
+    $conn->rollback();
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => $error->getMessage()]);
+    exit;
+}
 
 // Prepare safe INSERT using binded parameters (types mirror saveImages.php)
 $sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem, antecipada, animacao, clima, dias_trabalhados)
@@ -107,6 +133,24 @@ if (!$relation['success']) {
 }
 
 pendencias_operacionais_sync_image_checklist($conn, $lastId);
+try {
+    obra_item_save($conn, $obraId, [
+        'categoria' => 'Imagem', 'tipo_item' => 'IMAGEM', 'descricao' => $imagem,
+        'origem' => 'EXTRA', 'imagem_id' => $lastId, 'receita' => $externalValue,
+        'modelo_custo' => 'TAREFAS',
+    ], isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null);
+    dashboard_onboarding_save_image_commercial($conn, $obraId, [[
+        'imagem_id' => $lastId,
+        'entry' => ['valor' => $externalValue, 'imposto' => $taxPercent, 'numero_contrato' => ''],
+    ]]);
+} catch (Throwable $error) {
+    $conn->rollback();
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => $error->getMessage()]);
+    $stmt->close();
+    $conn->close();
+    exit;
+}
 
 $conn->commit();
 $stmt->close();

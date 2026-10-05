@@ -38,6 +38,10 @@ body.onb-modal-open {
   z-index: 3000;
 }
 
+#modalAddClienteObra [hidden] {
+  display: none !important;
+}
+
 #modalAddClienteObra .onb-modal-shell {
   width: min(1560px, 100%);
   height: calc(100vh - 36px);
@@ -198,6 +202,7 @@ body.onb-modal-open {
   flex-direction: column;
   padding: 24px;
   overflow: auto;
+  gap: 10px;
 }
 
 #modalAddClienteObra .onb-card-header,

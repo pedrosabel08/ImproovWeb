@@ -1,0 +1,43 @@
+.project-items-panel {
+  margin: 18px auto;
+  width: min(1400px, calc(100% - 32px));
+}
+.project-items-panel .panel-heading > button,
+.project-items-panel td button,
+#project-item-form button {
+  border: 1px solid var(--cost-border, #334155);
+  border-radius: 7px;
+  padding: 8px 11px;
+  color: var(--cost-text, #e2e8f0);
+  background: var(--cost-surface, #111827);
+  cursor: pointer;
+}
+.project-items-panel td small {
+  display: block;
+  margin-top: 4px;
+  color: var(--cost-warning, #fbbf24);
+}
+#project-item-dialog {
+  width: min(760px, calc(100vw - 28px));
+  max-height: 90vh;
+  overflow: auto;
+}
+#project-item-dialog .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+#project-item-dialog .form-grid label {
+  display: grid;
+  gap: 6px;
+}
+#project-item-dialog .form-grid input,
+#project-item-dialog .form-grid select {
+  min-width: 0;
+  padding: 9px;
+}
+@media (max-width: 640px) {
+  #project-item-dialog .form-grid { grid-template-columns: 1fr; }
+  .project-items-panel .panel-heading { align-items: flex-start; }
+}

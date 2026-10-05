@@ -26,7 +26,7 @@ function custos_comercial_validar(mysqli $conn, int $obra, array $input): array
 }
 /** Parent obra row is locked by the caller: serialize insert/upsert without
  * retroactively imposing a uniqueness constraint on commercial history. */
-function custos_comercial_salvar(mysqli $conn, int $obra, array $v, bool $upsert = false): void
+function custos_comercial_salvar(mysqli $conn, int $obra, array $v, bool $upsert = false): int
 {
     $table = $v['categoria'] === 'foto' ? 'servico_foto' : 'imagem_comercial';
     $id = $v['id'];
@@ -60,5 +60,16 @@ function custos_comercial_salvar(mysqli $conn, int $obra, array $v, bool $upsert
         $s->bind_param($types, ...$values);
     }
     $s->execute();
+    if ($table === 'servico_foto' && !$id) $id = (int)$s->insert_id;
     $s->close();
+    if ($table === 'imagem_comercial') {
+        $sum = custos_query($conn, 'SELECT COALESCE(SUM(valor),0) receita FROM imagem_comercial WHERE obra_id=? AND imagem_id=?', 'ii', [$obra, $v['imagem_id']]);
+        $revenue = (string)($sum[0]['receita'] ?? '0.00');
+        $sync = $conn->prepare('UPDATE obra_item_financeiro SET receita=? WHERE obra_id=? AND imagem_id=?');
+        if (!$sync) throw new RuntimeException('Não foi possível sincronizar a receita do item.');
+        $sync->bind_param('sii', $revenue, $obra, $v['imagem_id']);
+        if (!$sync->execute()) throw new RuntimeException('Não foi possível sincronizar a receita do item.');
+        $sync->close();
+    }
+    return $id;
 }

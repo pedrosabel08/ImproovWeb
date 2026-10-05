@@ -973,6 +973,11 @@ $conn->close();
                     <label for="tipo-imagem">Tipo da imagem:</label>
                     <input type="text" name="tipo" id="tipo-imagem">
 
+                    <label for="valor-imagem">Valor cobrado do cliente (R$):</label>
+                    <input type="number" min="0" step="0.01" name="valor" id="valor-imagem" required>
+                    <label for="imposto-imagem">Imposto (%)</label>
+                    <input type="number" min="0" max="100" step="0.01" name="imposto" id="imposto-imagem" value="0" required>
+
                     <label for="imagem_principal_id">Relação entre ângulos:</label>
                     <select name="imagem_principal_id" id="imagem_principal_id">
                         <option value="">Ângulo principal (fluxo completo)</option>
@@ -991,6 +996,10 @@ $conn->close();
                         <h2>Importar Imagens (TXT)</h2>
                         <label for="importTxtFile">Arquivo TXT:</label>
                         <input type="file" id="importTxtFile" name="txtFile" accept=".txt,text/plain" required>
+                        <label for="importTxtRevenue">Valor cobrado por imagem importada (R$):</label>
+                        <input type="number" min="0" step="0.01" id="importTxtRevenue" required>
+                        <label for="importTxtTax">Imposto (%) de cada imagem:</label>
+                        <input type="number" min="0" max="100" step="0.01" id="importTxtTax" value="0" required>
                         <div class="buttons" style="margin: auto; display:flex; gap:10px; justify-content:center;">
                             <button type="button" id="importTxtCancel">Cancelar</button>
                             <button type="submit" id="importTxtSubmit">Importar</button>

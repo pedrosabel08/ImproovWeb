@@ -19,13 +19,14 @@ $conn->close();
     <title>Custos do Projeto · Flow</title>
     <script src="theme.js"></script>
     <link rel="stylesheet" href="../css/styleSidebar.css">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="itens.css?v=1">
 </head>
 
 <body class="custos-page">
     <?php include __DIR__ . '/../sidebar.php'; ?>
     <?php include __DIR__ . '/view.php'; ?>
-    <script src="script.js?v=2" defer></script>
+    <script src="script.js?v=4" defer></script>
     <script src="../script/sidebar.js" defer></script>
     <script src="../script/controleSessao.js" defer></script>
 </body>

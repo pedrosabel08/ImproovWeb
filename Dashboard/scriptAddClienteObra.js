@@ -52,7 +52,30 @@
     selectedImageCount: document.getElementById("onbSelectedImageCount"),
     extraProjectField: document.getElementById("onbExtraProjectField"),
     extraProject: document.getElementById("onbExtraProject"),
+    stillItemsHeader: document.getElementById("onbStillItemsHeader"),
+    stillImagesTitle: document.getElementById("onbStillImagesTitle"),
+    stillImageImport: document.getElementById("onbStillImageImport"),
+    stillImageManual: document.getElementById("onbStillImageManual"),
+    stillImageCommercial: document.getElementById("onbStillImageCommercial"),
+    extraPackage: document.getElementById("onbExtraPackage"),
+    extraPackageDetails: document.getElementById("onbExtraPackageDetails"),
+    extraPackageFields: document.getElementById("onbExtraPackageFields"),
+    extraPackageQuantityField: document.getElementById("onbExtraPackageQuantityField"),
+    extraPackageQuantity: document.getElementById("onbExtraPackageQuantity"),
+    extraPackageDurationField: document.getElementById("onbExtraPackageDurationField"),
+    extraPackageDuration: document.getElementById("onbExtraPackageDuration"),
+    extraPackageRevenueField: document.getElementById("onbExtraPackageRevenueField"),
+    extraPackageRevenue: document.getElementById("onbExtraPackageRevenue"),
     photoServiceValue: document.getElementById("onbPhotoServiceValue"),
+    animationRevenue: document.getElementById("onbAnimationRevenue"),
+    filmRevenue: document.getElementById("onbFilmRevenue"),
+    otherCategory: document.getElementById("onbOtherCategory"),
+    otherDescription: document.getElementById("onbOtherDescription"),
+    otherQuantity: document.getElementById("onbOtherQuantity"),
+    otherUnit: document.getElementById("onbOtherUnit"),
+    otherRevenue: document.getElementById("onbOtherRevenue"),
+    addOtherItem: document.getElementById("onbAddOtherItem"),
+    otherItemsList: document.getElementById("onbOtherItemsList"),
     contactsList: document.getElementById("onbContactsList"),
     contactsState: document.getElementById("onbContactsState"),
     contactsCounter: document.getElementById("onbContactsCounter"),
@@ -157,7 +180,10 @@
         duplicates: [],
         errors: [],
       },
+      otherItems: [],
       extraProjectId: "",
+      extraPackages: [],
+      extraPackageId: "",
       contacts: createContactsState(),
       unique: {
         loading: false,
@@ -680,8 +706,8 @@
       { key: "grupo_interno", label: "Grupo interno criado", done: false },
       {
         key: "imagens_importadas",
-        label: "Imagens importadas",
-        done: imagesImported,
+        label: "Imagens Still importadas (quando aplicável)",
+        done: !state.packages.still.enabled || imagesImported,
       },
       { key: "sla_definido", label: "SLA definido", done: slaDefined },
       {
@@ -728,6 +754,8 @@
     });
 
     elements.extraProjectField.hidden = state.mode !== "extras";
+    renderExtraPackageFields();
+    renderStillImagesSection();
 
     elements.prevStep.style.visibility =
       state.step === 1 || state.mode === "extras" ? "hidden" : "visible";
@@ -739,6 +767,67 @@
       state.step === 4 || state.mode === "extras" ? "block" : "none";
     elements.submit.textContent =
       state.mode === "extras" ? "Adicionar extras" : "Criar projeto";
+  }
+
+  function selectedExtraPackage() {
+    return state.extraPackages.find((item) => String(item.idobra_pacote) === String(state.extraPackageId)) || null;
+  }
+
+  function renderStillImagesSection() {
+    const show = state.mode === "extras"
+      ? selectedExtraPackage()?.tipo === "STILL"
+      : state.mode !== null && state.packages.still.enabled;
+    elements.stillImagesTitle.hidden = !show;
+    elements.stillItemsHeader.hidden = !show;
+    elements.stillImageImport.hidden = !show;
+    elements.stillImageManual.hidden = !show;
+    elements.stillImageCommercial.hidden = !show;
+  }
+
+  function renderExtraPackageFields() {
+    const selected = selectedExtraPackage();
+    const type = selected ? selected.tipo : "";
+    const isAnimation = type === "ANIMACAO";
+    const isFilm = type === "FILME";
+    elements.extraPackageFields.hidden = state.mode !== "extras" || !selected || type === "STILL";
+    elements.extraPackageQuantityField.hidden = !isAnimation;
+    elements.extraPackageDurationField.hidden = !isFilm;
+    elements.extraPackageRevenueField.hidden = !(isAnimation || isFilm);
+    if (state.mode === "extras" && state.extraProjectId && state.extraPackages.length === 0) {
+      elements.extraPackageDetails.textContent = "Este projeto não possui pacotes cadastrados.";
+    } else if (selected) {
+      const detail = selected.tipo === "STILL"
+        ? `Pacote Still · ${selected.quantidade || 0} imagem(ns). O valor será informado por imagem.`
+        : `${selected.label} · extras serão registrados como novo pacote associado.`;
+      elements.extraPackageDetails.textContent = detail;
+    }
+  }
+
+  async function loadExtraPackages(obraId) {
+    state.extraPackages = [];
+    state.extraPackageId = "";
+    elements.extraPackage.innerHTML = '<option value="">Carregando pacotes...</option>';
+    elements.extraPackage.disabled = true;
+    renderExtraPackageFields();
+    if (!obraId) {
+      elements.extraPackage.innerHTML = '<option value="">Selecione primeiro o projeto</option>';
+      return;
+    }
+    try {
+      const response = await fetch(`listarPacotesObra.php?obra_id=${encodeURIComponent(obraId)}`, { credentials: "same-origin" });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || "Não foi possível carregar os pacotes.");
+      state.extraPackages = Array.isArray(data.packages) ? data.packages : [];
+      elements.extraPackage.innerHTML = '<option value="">Selecione um pacote</option>' + state.extraPackages.map((item) => {
+        const details = item.tipo === "STILL" ? `${item.quantidade || 0} imagem(ns)` : `${item.segundos || 0}s`;
+        return `<option value="${Number(item.idobra_pacote)}">${escapeHtml(item.label)} · ${escapeHtml(details)} · #${Number(item.idobra_pacote)}</option>`;
+      }).join("");
+      elements.extraPackage.disabled = state.extraPackages.length === 0;
+      renderExtraPackageFields();
+    } catch (error) {
+      elements.extraPackage.innerHTML = '<option value="">Falha ao carregar pacotes</option>';
+      elements.extraPackageDetails.textContent = error.message;
+    }
   }
 
   function renderContacts() {
@@ -900,27 +989,36 @@
     updateReplicationButtons();
   }
 
+  function renderOtherItems() {
+    elements.otherItemsList.innerHTML = state.otherItems.map((item, index) => `<li class="onb-image-row"><span class="onb-image-name">${escapeHtml(item.categoria)} · ${escapeHtml(item.descricao)} (${escapeHtml(item.quantidade)} ${escapeHtml(item.unidade)})</span><span>Valor externo ${formatMoney(Number(item.receita) || 0)}</span><button type="button" class="onb-ghost-btn" data-remove-other-item="${index}">Remover</button></li>`).join("") || '<li class="onb-image-empty">Nenhum material ou serviço adicional.</li>';
+  }
+
   function renderSummary() {
     const packages = selectedPackages();
     const checklist =
       state.mode === "extras"
         ? [
             {
-              label: "Valores comerciais por imagem",
-              done:
-                state.images.entries.length > 0 &&
-                state.images.entries.every(
-                  (name) =>
-                    String(state.images.values[name]?.valor ?? "").trim() !==
-                      "" &&
-                    String(
-                      state.images.values[name]?.imposto ?? "",
-                    ).trim() !== "",
-                ),
+              label: selectedExtraPackage()?.tipo === "STILL"
+                ? "Valores comerciais por imagem"
+                : "Valor externo do pacote ou material",
+              done: selectedExtraPackage()?.tipo === "STILL"
+                ? state.images.entries.length > 0 && state.images.entries.every((name) =>
+                    String(state.images.values[name]?.valor ?? "").trim() !== "" &&
+                    String(state.images.values[name]?.imposto ?? "").trim() !== "")
+                : Boolean(selectedExtraPackage()) && (
+                    ["ANIMACAO", "FILME"].includes(selectedExtraPackage()?.tipo) &&
+                    elements.extraPackageRevenue.value.trim() !== "" &&
+                    Number(elements.extraPackageRevenue.value) >= 0 &&
+                    state.otherItems.every((item) => String(item.receita ?? "").trim() !== "")
+                  ),
             },
           ]
         : computedChecklist();
     const contactsCount = selectedContactsCount();
+    const showImageCommercial = state.mode === "extras"
+      ? selectedExtraPackage()?.tipo === "STILL"
+      : state.packages.still.enabled;
     const commercialTotals = state.images.entries.reduce(
       (sum, name) => {
         const values = state.images.values[name] || {};
@@ -937,11 +1035,17 @@
     if (state.mode === "extras") {
       const option =
         elements.extraProject.options[elements.extraProject.selectedIndex];
+      const selectedPackage = selectedExtraPackage();
+      const packageDescription = selectedPackage
+        ? `${selectedPackage.label} · pacote #${selectedPackage.idobra_pacote}`
+        : "Selecione um pacote";
       elements.summaryList.innerHTML = `
         <div class="onb-summary-item"><span>Projeto</span><strong>${escapeHtml(option && option.value ? option.textContent.trim() : "Selecione um projeto")}</strong></div>
-        <div class="onb-summary-item"><span>Imagens extras</span><strong>${state.images.entries.length} imagem(ns)</strong></div>
-        <div class="onb-summary-item"><span>Valor bruto</span><strong>${formatMoney(commercialTotals.gross)}</strong></div>
-        <div class="onb-summary-item"><span>Impostos</span><strong>${formatMoney(commercialTotals.tax)}</strong></div>
+        <div class="onb-summary-item"><span>Pacote</span><strong>${escapeHtml(packageDescription)}</strong></div>
+        ${showImageCommercial ? `<div class="onb-summary-item"><span>Imagens extras</span><strong>${state.images.entries.length} imagem(ns)</strong></div>` : ""}
+        <div class="onb-summary-item"><span>Materiais e serviços</span><strong>${state.otherItems.length} item(ns)</strong></div>
+        <div class="onb-summary-item"><span>Valor do pacote extra</span><strong>${elements.extraPackageRevenue.value ? formatMoney(elements.extraPackageRevenue.value) : "Por imagem ou não aplicável"}</strong></div>
+        ${showImageCommercial ? `<div class="onb-summary-item"><span>Valor bruto das imagens</span><strong>${formatMoney(commercialTotals.gross)}</strong></div><div class="onb-summary-item"><span>Impostos das imagens</span><strong>${formatMoney(commercialTotals.tax)}</strong></div>` : ""}
         <div class="onb-summary-item"><span>Serviço fotográfico</span><strong>${photoServiceValue ? formatMoney(photoServiceValue) : "Não informado"}</strong></div>`;
       elements.checklistList.innerHTML = checklist
         .map(
@@ -959,8 +1063,7 @@
             <div class="onb-summary-item"><span>Nomenclatura</span><strong>${escapeHtml(state.code || "A definir")}</strong></div>
               <div class="onb-summary-item"><span>Pacotes</span><strong>${packages.length ? escapeHtml(packages.join(" • ")) : "Nenhum pacote selecionado"}</strong></div>
               <div class="onb-summary-item"><span>Importação</span><strong>${state.images.entries.length} img / ${state.images.duplicates.length} dup / ${state.images.errors.length} err</strong></div>
-            <div class="onb-summary-item"><span>Valor bruto</span><strong>${formatMoney(commercialTotals.gross)}</strong></div>
-            <div class="onb-summary-item"><span>Impostos</span><strong>${formatMoney(commercialTotals.tax)}</strong></div>
+            ${showImageCommercial ? `<div class="onb-summary-item"><span>Valor bruto das imagens</span><strong>${formatMoney(commercialTotals.gross)}</strong></div><div class="onb-summary-item"><span>Impostos das imagens</span><strong>${formatMoney(commercialTotals.tax)}</strong></div>` : ""}
             <div class="onb-summary-item"><span>Serviço fotográfico</span><strong>${photoServiceValue ? formatMoney(photoServiceValue) : "Não informado"}</strong></div>
             <div class="onb-summary-item"><span>Contatos</span><strong>${contactsCount} contato(s) selecionado(s)</strong></div>
             <div class="onb-summary-item"><span>Status inicial</span><strong>ONBOARDING</strong></div>`;
@@ -986,6 +1089,7 @@
     renderUniqueBadges();
     renderContacts();
     renderImageState();
+    renderOtherItems();
     renderSummary();
   }
 
@@ -1012,9 +1116,22 @@
     elements.filmDuration.value = "";
     elements.filmPrazo.value = "";
     elements.filmDiasCorridos.checked = false;
+    elements.animationRevenue.value = "";
+    elements.filmRevenue.value = "";
+    elements.photoServiceValue.value = "";
+    elements.otherCategory.value = "";
+    elements.otherDescription.value = "";
+    elements.otherQuantity.value = "1";
+    elements.otherUnit.value = "";
+    elements.otherRevenue.value = "";
     elements.imageFile.value = "";
     elements.manualImages.value = "";
     elements.extraProject.value = "";
+    elements.extraPackage.innerHTML = '<option value="">Selecione primeiro o projeto</option>';
+    elements.extraPackage.disabled = true;
+    elements.extraPackageQuantity.value = "";
+    elements.extraPackageDuration.value = "";
+    elements.extraPackageRevenue.value = "";
     elements.photoServiceValue.value = "";
     elements.contractBatchValue.value = "";
     elements.selectAllImages.checked = false;
@@ -1052,7 +1169,7 @@
       mode === "extras" ? "Adicionar extras ao projeto" : "Novo projeto";
     elements.modalDescription.textContent =
       mode === "extras"
-        ? "Selecione a obra, importe as imagens extras e registre o valor vendido de cada uma."
+        ? "Selecione o projeto e o pacote. Still é cobrado por imagem; animações e filmes recebem valor externo por pacote extra."
         : "Cadastre o projeto e registre os valores comerciais junto da lista de imagens.";
     renderAll();
     animateStepCards();
@@ -1184,8 +1301,51 @@
         notify("Selecione o projeto que receberá as imagens extras.", "error");
         return false;
       }
-      if (state.mode === "extras" && state.images.entries.length === 0) {
-        notify("Adicione ao menos uma imagem extra.", "error");
+      const extraPackage = selectedExtraPackage();
+      if (state.mode === "extras" && !extraPackage) {
+        notify("Selecione um pacote cadastrado para o projeto.", "error");
+        return false;
+      }
+      if (state.mode === "extras" && extraPackage && extraPackage.tipo === "ANIMACAO") {
+        const seconds = Number(elements.extraPackageQuantity.value);
+        const revenue = String(elements.extraPackageRevenue.value || "").trim();
+        if (!Number.isInteger(seconds) || seconds <= 0) {
+          notify("Informe os segundos de animação que serão adicionados.", "error");
+          return false;
+        }
+        if (!revenue || !Number.isFinite(Number(revenue)) || Number(revenue) < 0) {
+          notify("Informe o valor externo cobrado por este extra.", "error");
+          return false;
+        }
+      }
+      if (state.mode === "extras" && extraPackage && extraPackage.tipo === "FILME") {
+        const duration = String(elements.extraPackageDuration.value || "").trim();
+        const revenue = String(elements.extraPackageRevenue.value || "").trim();
+        if (!duration) {
+          notify("Informe a duração do filme extra.", "error");
+          return false;
+        }
+        if (!revenue || !Number.isFinite(Number(revenue)) || Number(revenue) < 0) {
+          notify("Informe o valor externo cobrado por este extra.", "error");
+          return false;
+        }
+      }
+      if (state.mode === "extras" && extraPackage && extraPackage.tipo !== "STILL" && state.images.entries.length) {
+        notify("Imagens extras só podem ser inseridas pelo pacote Imagens Still.", "error");
+        return false;
+      }
+      if (state.mode !== "extras" && !state.packages.still.enabled && state.images.entries.length) {
+        notify("A lista e os valores por imagem só podem ser preenchidos quando o pacote Imagens Still estiver selecionado.", "error");
+        return false;
+      }
+      if (state.mode === "extras" && state.images.entries.length === 0 && state.otherItems.length === 0) {
+        if (!extraPackage || extraPackage.tipo === "STILL") {
+          notify("Adicione ao menos uma imagem ou material extra.", "error");
+          return false;
+        }
+      }
+      if (state.mode === "extras" && extraPackage && extraPackage.tipo === "STILL" && state.images.entries.length === 0) {
+        notify("Adicione ao menos uma imagem para o pacote Still.", "error");
         return false;
       }
       const missingPrice = state.images.entries.find((name) => {
@@ -1281,6 +1441,14 @@
         );
         return false;
       }
+      for (const [enabled, revenue, label] of [
+        [state.packages.animation.enabled, elements.animationRevenue.value, "animação"],
+        [state.packages.film.enabled, elements.filmRevenue.value, "filme"],
+      ]) {
+        if (enabled && (!revenue.trim() || !Number.isFinite(Number(revenue)) || Number(revenue) < 0)) {
+          notify(`Informe o valor externo cobrado do cliente para o pacote de ${label}.`, "error"); return false;
+        }
+      }
     }
 
     return true;
@@ -1354,6 +1522,13 @@
     return {
       mode: state.mode,
       obra_id: state.mode === "extras" ? Number(state.extraProjectId) : null,
+      extra_package: state.mode === "extras" && selectedExtraPackage() ? {
+        pacote_id: Number(state.extraPackageId),
+        tipo: selectedExtraPackage().tipo,
+        segundos: elements.extraPackageQuantity.value.trim(),
+        duracao: elements.extraPackageDuration.value.trim(),
+        receita: elements.extraPackageRevenue.value.trim(),
+      } : null,
       cliente_id:
         state.clientId !== "" && state.clientId !== "0"
           ? Number(state.clientId)
@@ -1372,7 +1547,13 @@
         valor: state.images.values[name]?.valor ?? "",
         imposto: state.images.values[name]?.imposto ?? "",
         numero_contrato: state.images.values[name]?.numero_contrato ?? "",
+        origem: state.mode === "extras" ? "EXTRA" : "ONBOARDING",
       })),
+      materiais: state.otherItems.map((item) => ({ ...item, origem: state.mode === "extras" ? "EXTRA" : "ONBOARDING" })),
+      package_values: {
+        animation: { receita: elements.animationRevenue.value.trim() },
+        film: { receita: elements.filmRevenue.value.trim() },
+      },
       servico_fotografico_valor: elements.photoServiceValue.value.trim(),
       image_import: {
         file_name: state.images.file_name,
@@ -1430,7 +1611,7 @@
 
       notify(
         state.mode === "extras"
-          ? "Imagens extras e valores adicionados. Atualizando dashboard..."
+          ? "Extras e valores adicionados. Atualizando dashboard..."
           : "Projeto criado com valores comerciais. Atualizando dashboard...",
       );
       close();
@@ -1467,6 +1648,31 @@
   elements.prevStep.addEventListener("click", () => goToStep(state.step - 1));
   elements.nextStep.addEventListener("click", () => goToStep(state.step + 1));
   elements.submit.addEventListener("click", submitOnboarding);
+
+  elements.addOtherItem.addEventListener("click", () => {
+    const item = {
+      categoria: elements.otherCategory.value.trim(),
+      descricao: elements.otherDescription.value.trim(),
+      quantidade: elements.otherQuantity.value.trim() || "1",
+      unidade: elements.otherUnit.value.trim(),
+      receita: elements.otherRevenue.value.trim(),
+    };
+    if (!item.categoria || !item.descricao || item.receita === "" || !Number.isFinite(Number(item.receita)) || Number(item.receita) < 0) {
+      notify("Informe categoria, descrição e valor externo cobrado do cliente.", "error"); return;
+    }
+    if (!Number.isFinite(Number(item.quantidade)) || Number(item.quantidade) <= 0) { notify("A quantidade deve ser maior que zero.", "error"); return; }
+    state.otherItems.push(item);
+    elements.otherDescription.value = "";
+    elements.otherRevenue.value = "";
+    renderAll();
+  });
+  elements.otherItemsList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-other-item]");
+    if (!button) return;
+    state.otherItems.splice(Number(button.dataset.removeOtherItem), 1);
+    renderAll();
+  });
+  for (const field of [elements.animationRevenue, elements.filmRevenue, elements.photoServiceValue, elements.otherRevenue]) field.addEventListener("input", renderSummary);
 
   elements.previewList.addEventListener("input", (event) => {
     const input = event.target.closest("[data-image-price], [data-image-tax]");
@@ -1514,11 +1720,7 @@
       state.images.values[name][field] = sourceValue;
     });
     renderAll();
-    notify(
-      field === "valor"
-        ? "Valor bruto replicado para as demais imagens."
-        : "Percentual de imposto replicado para as demais imagens.",
-    );
+    notify(field === "valor" ? "Valor bruto replicado para as demais imagens." : "Percentual de imposto replicado para as demais imagens.");
   }
 
   elements.replicateGross.addEventListener("click", () =>
@@ -1590,8 +1792,16 @@
 
   elements.extraProject.addEventListener("change", () => {
     state.extraProjectId = elements.extraProject.value || "";
+    loadExtraPackages(state.extraProjectId);
     renderSummary();
   });
+  elements.extraPackage.addEventListener("change", () => {
+    state.extraPackageId = elements.extraPackage.value || "";
+    renderExtraPackageFields();
+    renderStillImagesSection();
+    renderSummary();
+  });
+  [elements.extraPackageQuantity, elements.extraPackageDuration, elements.extraPackageRevenue].forEach((element) => element.addEventListener("input", renderSummary));
   elements.photoServiceValue.addEventListener("input", renderSummary);
 
   elements.clienteSelect.addEventListener("change", () => {

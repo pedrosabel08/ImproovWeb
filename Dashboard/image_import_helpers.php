@@ -108,6 +108,28 @@ function dashboard_normalize_for_search(string $value): string
     return dashboard_remove_accents(mb_strtolower($value, 'UTF-8'));
 }
 
+function dashboard_next_image_sequence_from_names(array $names): int
+{
+    $maximum = 0;
+    foreach ($names as $name) {
+        if (preg_match('/^(\d+)\./', trim((string)$name), $matches)) $maximum = max($maximum, (int)$matches[1]);
+    }
+    return max(1, $maximum + 1);
+}
+
+function dashboard_next_image_sequence(mysqli $conn, int $obraId): int
+{
+    $stmt = $conn->prepare('SELECT imagem_nome FROM imagens_cliente_obra WHERE obra_id=?');
+    if (!$stmt) throw new RuntimeException('Não foi possível consultar a sequência de imagens.');
+    $stmt->bind_param('i', $obraId);
+    if (!$stmt->execute()) throw new RuntimeException('Não foi possível consultar a sequência de imagens.');
+    $result = $stmt->get_result();
+    $names = [];
+    while ($row = $result->fetch_assoc()) $names[] = $row['imagem_nome'];
+    $stmt->close();
+    return dashboard_next_image_sequence_from_names($names);
+}
+
 function dashboard_detect_tipo_imagem(string $imageName): string
 {
     if (trim($imageName) === '') {
@@ -151,7 +173,7 @@ function dashboard_detect_tipo_imagem(string $imageName): string
     return '';
 }
 
-function dashboard_format_image_name(string $rawName, string $nomenclatura): string
+function dashboard_format_image_name(string $rawName, string $nomenclatura, ?int $sequence = null): string
 {
     $rawName = trim($rawName);
     if (preg_match('/^(.*)\(([^)]*)\)\s*$/u', $rawName, $matches)) {
@@ -165,6 +187,14 @@ function dashboard_format_image_name(string $rawName, string $nomenclatura): str
         return dashboard_sanitize_text($rawName);
     }
 
+    if ($sequence !== null) {
+        $rest = $rawName;
+        if (preg_match('/^\d+\.\s*(.*)$/', $rest, $matches)) $rest = $matches[1];
+        $rest = dashboard_sanitize_text($rest);
+        while ($rest !== '' && preg_match('/^' . preg_quote($nomenclatura, '/') . '(?:\s+|$)(.*)$/i', $rest, $matches)) $rest = trim($matches[1]);
+        return $sequence . '.' . $nomenclatura . ($rest !== '' ? ' ' . $rest : '');
+    }
+
     if (preg_match('/^(\d+\.)\s*(.*)$/', $rawName, $matches)) {
         $prefix = $matches[1];
         $rest = dashboard_sanitize_text($matches[2]);
@@ -175,7 +205,7 @@ function dashboard_format_image_name(string $rawName, string $nomenclatura): str
     return $rest !== '' ? $nomenclatura . ' ' . $rest : $nomenclatura;
 }
 
-function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura): array
+function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura, ?int $startSequence = null): array
 {
     $entries = [];
     $duplicates = [];
@@ -223,6 +253,14 @@ function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura
         ];
     }
 
+    if ($startSequence !== null) {
+        foreach ($entries as $index => &$entry) {
+            $entry['imagem_nome'] = dashboard_format_image_name($entry['imagem_nome'], $nomenclatura, $startSequence + $index);
+            $entry['tipo_imagem'] = dashboard_detect_tipo_imagem($entry['imagem_nome']) ?: 'Desconhecido';
+        }
+        unset($entry);
+    }
+
     return [
         'entries' => $entries,
         'duplicates' => $duplicates,
@@ -232,6 +270,7 @@ function dashboard_prepare_image_entries(array $rawEntries, string $nomenclatura
 
 function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraId, array $entries): array
 {
+    require_once __DIR__ . '/../helpers/obra_itens_helper.php';
     $sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem, antecipada, animacao, clima, dias_trabalhados)
             VALUES (?, ?, ?, NULL, NULL, NULL, ?, 0, 0, '', 0)";
     $stmt = $conn->prepare($sql);
@@ -254,6 +293,20 @@ function dashboard_insert_image_entries(mysqli $conn, int $clienteId, int $obraI
 
         $imageId = (int) $conn->insert_id;
         $insertedImages[] = ['imagem_id' => $imageId, 'entry' => $entry];
+        try {
+            obra_item_save($conn, $obraId, [
+                'categoria' => 'Imagem',
+                'tipo_item' => 'IMAGEM',
+                'descricao' => $imageName,
+                'quantidade' => 1,
+                'origem' => $entry['origem'] ?? 'ONBOARDING',
+                'imagem_id' => $imageId,
+                'receita' => $entry['valor'] ?? '',
+                'modelo_custo' => 'TAREFAS',
+            ]);
+        } catch (Throwable $error) {
+            throw new RuntimeException('Valor externo da imagem inválido: ' . $error->getMessage(), 0, $error);
+        }
         $planning = dashboard_insert_planned_functions_for_image($conn, $imageId, $imageType);
         if (!$planning['success']) {
             $errors[] = [

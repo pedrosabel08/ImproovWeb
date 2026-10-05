@@ -30,6 +30,10 @@ foreach ($fixture['tables'] as $table => $rows) {
     $s->close();
 }
 $conn->commit();
+$conn->query("CREATE TABLE IF NOT EXISTS obra_item_categoria (id INT AUTO_INCREMENT PRIMARY KEY,nome VARCHAR(80) NOT NULL UNIQUE,ativo TINYINT(1) NOT NULL DEFAULT 1,criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB");
+$conn->query("CREATE TABLE IF NOT EXISTS obra_item_financeiro (id BIGINT AUTO_INCREMENT PRIMARY KEY,obra_id INT NOT NULL,categoria_id INT NULL,tipo_item VARCHAR(24) NOT NULL,descricao VARCHAR(255) NOT NULL,quantidade DECIMAL(12,3) NOT NULL DEFAULT 1,unidade VARCHAR(30) NULL,origem VARCHAR(24) NOT NULL DEFAULT 'EXTRA',imagem_id INT NULL,pacote_id INT NULL,servico_foto_id INT NULL,receita DECIMAL(12,2) NULL,custo_previsto DECIMAL(12,2) NULL,modelo_custo VARCHAR(16) NOT NULL DEFAULT 'DIRETO',justificativa_custo_zero VARCHAR(255) NULL,criado_por INT NULL,criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE KEY uq_test_image(imagem_id),UNIQUE KEY uq_test_package(pacote_id),UNIQUE KEY uq_test_photo(servico_foto_id),KEY ix_test_project(obra_id,id)) ENGINE=InnoDB");
+$conn->query("CREATE TABLE IF NOT EXISTS obra_item_custo_lancamento (id BIGINT AUTO_INCREMENT PRIMARY KEY,item_id BIGINT NOT NULL,valor DECIMAL(12,2) NOT NULL,descricao VARCHAR(255) NULL,data_lancamento DATE NOT NULL,criado_por INT NULL,criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,KEY ix_test_cost(item_id,data_lancamento,id)) ENGINE=InnoDB");
+$conn->query("INSERT IGNORE INTO obra_item_categoria (nome) VALUES ('Imagem'),('Animação'),('Filme'),('Fotografia'),('Material'),('Serviço')");
 $checks = 0;
 function check($actual, $expected, $name)
 {

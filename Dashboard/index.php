@@ -352,7 +352,7 @@ $conn->close();
                     </button>
                     <button type="button" class="onb-step-chip" data-step="3">
                         <span class="onb-step-index">3</span>
-                        <span>Lista de Imagens</span>
+                        <span>Valores e Itens</span>
                     </button>
                     <button type="button" class="onb-step-chip" data-step="4">
                         <span class="onb-step-index">4</span>
@@ -488,6 +488,7 @@ $conn->close();
                                                     </label>
                                                 </div>
                                             </div>
+                                            <div class="onb-field"><label for="onbAnimationRevenue">Valor cobrado do cliente (R$)</label><input id="onbAnimationRevenue" type="number" min="0" step="0.01"></div>
                                         </div>
                                     </label>
 
@@ -514,6 +515,7 @@ $conn->close();
                                                     </label>
                                                 </div>
                                             </div>
+                                            <div class="onb-field"><label for="onbFilmRevenue">Valor cobrado do cliente (R$)</label><input id="onbFilmRevenue" type="number" min="0" step="0.01"></div>
                                         </div>
                                     </label>
                                 </div>
@@ -522,14 +524,18 @@ $conn->close();
 
                         <div class="onb-panel" data-step-panel="3">
                             <div class="onb-card">
-                                <div class="onb-card-header">
+                                <div class="onb-card-header" id="onbStillItemsHeader" hidden>
                                     <div>
-                                        <h3>3. Lista de Imagens</h3>
-                                        <p>Importe TXT, CSV ou XLSX e complemente a lista manualmente quando necessário.</p>
+                                        <h3>3. Itens e Valores Externos</h3>
+                                        <p>Importe imagens Still e informe o valor externo e os impostos por imagem.</p>
                                     </div>
                                 </div>
 
-                                <div class="onb-import-grid">
+                                <div class="onb-still-images-title" id="onbStillImagesTitle" hidden>
+                                    <h4>Lista de imagens Still</h4>
+                                    <p>Informe o valor externo e o imposto para cada imagem do pacote.</p>
+                                </div>
+                                <div class="onb-import-grid" id="onbStillImageImport" hidden>
                                     <label class="onb-upload-box" for="onbImageFile">
                                         <input id="onbImageFile" type="file" accept=".txt,.csv,.xlsx,.xls" hidden>
                                         <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -579,9 +585,31 @@ $conn->close();
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+                                    <div class="onb-field" id="onbExtraPackageField">
+                                        <label for="onbExtraPackage">Pacote do projeto</label>
+                                        <select id="onbExtraPackage" disabled>
+                                            <option value="">Selecione primeiro o projeto</option>
+                                        </select>
+                                        <small id="onbExtraPackageDetails">Os pacotes cadastrados para o projeto aparecerão aqui.</small>
+                                    </div>
                                 </div>
 
-                                <div class="onb-manual-block">
+                                <div class="onb-form-grid onb-form-grid-3" id="onbExtraPackageFields" hidden>
+                                    <div class="onb-field" id="onbExtraPackageQuantityField" hidden>
+                                        <label for="onbExtraPackageQuantity">Segundos extras</label>
+                                        <input id="onbExtraPackageQuantity" type="number" min="1" step="1" placeholder="10">
+                                    </div>
+                                    <div class="onb-field" id="onbExtraPackageDurationField" hidden>
+                                        <label for="onbExtraPackageDuration">Duração extra</label>
+                                        <input id="onbExtraPackageDuration" type="text" placeholder="Ex.: 30s / 1min">
+                                    </div>
+                                    <div class="onb-field" id="onbExtraPackageRevenueField" hidden>
+                                        <label for="onbExtraPackageRevenue">Valor cobrado do cliente (R$)</label>
+                                        <input id="onbExtraPackageRevenue" type="number" min="0" step="0.01" placeholder="0,00">
+                                    </div>
+                                </div>
+
+                                <div class="onb-manual-block" id="onbStillImageManual" hidden>
                                     <div class="onb-field onb-field-span-3">
                                         <label for="onbManualImages">Adicionar imagens manualmente</label>
                                         <textarea id="onbManualImages" rows="4" placeholder="Uma imagem por linha"></textarea>
@@ -592,7 +620,7 @@ $conn->close();
                                     </div>
                                 </div>
 
-                                <div class="onb-preview-card">
+                                <div class="onb-preview-card" id="onbStillImageCommercial" hidden>
                                     <div class="onb-preview-header">
                                         <div>
                                             <strong>Valores comerciais</strong>
@@ -616,12 +644,25 @@ $conn->close();
                                     <ul id="onbImagePreviewList" class="onb-preview-list"></ul>
                                 </div>
 
+                                <section class="onb-card" aria-labelledby="onbOtherItemsTitle">
+                                    <div class="onb-card-header"><div><h3 id="onbOtherItemsTitle">Outros materiais e serviços</h3><p>Adicione itens que não são imagens, como modelagem, trilha, locução ou mídia.</p></div></div>
+                                    <div class="onb-form-grid onb-form-grid-3">
+                                        <div class="onb-field"><label for="onbOtherCategory">Categoria</label><input id="onbOtherCategory" maxlength="80" placeholder="Ex.: Modelagem"></div>
+                                        <div class="onb-field"><label for="onbOtherDescription">Descrição</label><input id="onbOtherDescription" maxlength="255" placeholder="Ex.: Modelagem do mobiliário"></div>
+                                        <div class="onb-field"><label for="onbOtherQuantity">Quantidade</label><input id="onbOtherQuantity" type="number" min="0.001" step="0.001" value="1"></div>
+                                        <div class="onb-field"><label for="onbOtherUnit">Unidade</label><input id="onbOtherUnit" maxlength="30" placeholder="unidade, hora, licença"></div>
+                                        <div class="onb-field"><label for="onbOtherRevenue">Valor cobrado do cliente (R$)</label><input id="onbOtherRevenue" type="number" min="0" step="0.01" placeholder="0,00"></div>
+                                    </div>
+                                    <button type="button" class="onb-secondary-btn" id="onbAddOtherItem">Adicionar material ou serviço</button>
+                                    <ul id="onbOtherItemsList" class="onb-preview-list"></ul>
+                                </section>
+
                                 <div class="onb-photo-service-card">
                                     <div>
                                         <strong>Serviço fotográfico</strong>
-                                        <span>Opcional · valor vinculado ao projeto</span>
+                                        <span>Opcional · informe o valor cobrado do cliente</span>
                                     </div>
-                                    <label for="onbPhotoServiceValue">Valor (R$)</label>
+                                    <label for="onbPhotoServiceValue">Valor vendido (R$)</label>
                                     <input id="onbPhotoServiceValue" type="number" min="0" step="0.01" placeholder="0,00">
                                 </div>
                             </div>

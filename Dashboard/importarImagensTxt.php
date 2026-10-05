@@ -19,6 +19,10 @@ if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
 
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/planned_function_helpers.php';
+require_once __DIR__ . '/image_import_helpers.php';
+require_once __DIR__ . '/onboarding_commercial_helpers.php';
+require_once __DIR__ . '/../helpers/obra_itens_helper.php';
+require_once __DIR__ . '/../helpers/pendencias_operacionais_helper.php';
 
 if (!isset($conn) || !$conn) {
     http_response_code(500);
@@ -260,6 +264,19 @@ if ($obraId <= 0) {
     echo json_encode(['success' => false, 'message' => 'ID da obra inválido.']);
     exit;
 }
+$externalValue = trim((string)($_POST['valor'] ?? ''));
+$taxPercent = trim((string)($_POST['imposto'] ?? ''));
+try {
+    if ($externalValue === '') throw new InvalidArgumentException('Informe o valor cobrado para cada imagem importada.');
+    custos_decimal($externalValue);
+    if ($taxPercent === '') throw new InvalidArgumentException('Informe o percentual de imposto para cada imagem; use 0 quando não houver imposto.');
+    $taxPercent = custos_decimal($taxPercent);
+    if ((float)$taxPercent > 100) throw new InvalidArgumentException('O percentual de imposto deve estar entre 0 e 100.');
+} catch (Throwable $error) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => $error->getMessage()]);
+    exit;
+}
 
 // Busca nomenclatura
 $nomenclatura = '';
@@ -324,16 +341,21 @@ for ($i = $offset; $i < count($lines); $i++) {
         $imagemRaw = (string)$parts[2];
     }
 
-    $imagemNome = format_name($imagemRaw, $nomenclatura);
+    $conn->begin_transaction();
+    $lock = $conn->prepare('SELECT idobra FROM obra WHERE idobra=? FOR UPDATE');
+    $lock->bind_param('i', $obraId);
+    $lock->execute();
+    $locked = $lock->get_result()->fetch_assoc();
+    $lock->close();
+    if (!$locked) { $conn->rollback(); $erros[] = ['linha' => $i + 1, 'erro' => 'Projeto não encontrado']; continue; }
+    $imagemNome = dashboard_format_image_name($imagemRaw, $nomenclatura, dashboard_next_image_sequence($conn, $obraId));
     if ($imagemNome === '') {
+        $conn->rollback();
         $erros[] = ['linha' => $i + 1, 'erro' => 'Nome de imagem inválido'];
         continue;
     }
-
-    $tipoImagem = detect_tipo_imagem($imagemNome);
+    $tipoImagem = dashboard_detect_tipo_imagem($imagemNome);
     if ($tipoImagem === '') $tipoImagem = 'Desconhecido';
-
-    $conn->begin_transaction();
     $stmt->bind_param('iiss', $clienteId, $obraId, $imagemNome, $tipoImagem);
     if (!$stmt->execute()) {
         $conn->rollback();
@@ -342,6 +364,21 @@ for ($i = $offset; $i < count($lines); $i++) {
     }
 
     $imageId = (int) $conn->insert_id;
+    try {
+        obra_item_save($conn, $obraId, [
+            'categoria' => 'Imagem', 'tipo_item' => 'IMAGEM', 'descricao' => $imagemNome,
+            'origem' => 'EXTRA', 'imagem_id' => $imageId, 'receita' => $externalValue,
+            'modelo_custo' => 'TAREFAS',
+        ], isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null);
+        dashboard_onboarding_save_image_commercial($conn, $obraId, [[
+            'imagem_id' => $imageId,
+            'entry' => ['valor' => $externalValue, 'imposto' => $taxPercent, 'numero_contrato' => ''],
+        ]]);
+    } catch (Throwable $error) {
+        $conn->rollback();
+        $erros[] = ['linha' => $i + 1, 'erro' => $error->getMessage()];
+        continue;
+    }
     $planning = dashboard_insert_planned_functions_for_image($conn, $imageId, $tipoImagem);
     if (!$planning['success']) {
         $conn->rollback();
@@ -352,6 +389,8 @@ for ($i = $offset; $i < count($lines); $i++) {
         ];
         continue;
     }
+
+    pendencias_operacionais_sync_image_checklist($conn, $imageId);
 
     $conn->commit();
     $inseridas++;

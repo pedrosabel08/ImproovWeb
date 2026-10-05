@@ -3,6 +3,7 @@ require_once __DIR__ . '/custos_auth.php';
 custos_auth(true);
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/comercial_helper.php';
+require_once __DIR__ . '/../helpers/obra_itens_helper.php';
 try {
     $input = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
     $obra = (int)($input['obra_id'] ?? 0);
@@ -10,7 +11,16 @@ try {
     $conn->begin_transaction();
     custos_query($conn, 'SELECT idobra FROM obra WHERE idobra=? FOR UPDATE', 'i', [$obra]);
     $v = custos_comercial_validar($conn, $obra, $input);
-    custos_comercial_salvar($conn, $obra, $v);
+    $savedId = custos_comercial_salvar($conn, $obra, $v);
+    if (($v['categoria'] ?? '') === 'foto') {
+        obra_item_save($conn, $obra, [
+            'id' => (int)($input['item_id'] ?? 0),
+            'categoria' => 'Fotografia', 'tipo_item' => 'SERVICO', 'descricao' => 'Serviço fotográfico',
+            'quantidade' => 1, 'origem' => 'EXTRA', 'servico_foto_id' => $savedId,
+            'receita' => $v['valor'], 'custo_previsto' => $input['custo_previsto'] ?? '',
+            'justificativa_custo_zero' => $input['justificativa_custo_zero'] ?? '',
+        ], isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null);
+    }
     $conn->commit();
     custos_json(['success' => true]);
 } catch (InvalidArgumentException | DomainException | JsonException $e) {

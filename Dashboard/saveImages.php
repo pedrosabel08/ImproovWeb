@@ -120,6 +120,24 @@ foreach ($data as $idx => $image) {
         continue;
     }
 
+    $financeStmt = $conn->prepare('UPDATE obra_item_financeiro SET descricao=? WHERE imagem_id=?');
+    if (!$financeStmt) {
+        $conn->rollback();
+        $errors[] = "atualização financeira falhou no item $idx (id $idimagem): " . $conn->error;
+        $success = false;
+        continue;
+    }
+    $financeStmt->bind_param('si', $imagem_nome, $idimagem);
+    if (!$financeStmt->execute()) {
+        $financeError = $financeStmt->error;
+        $financeStmt->close();
+        $conn->rollback();
+        $errors[] = "atualização financeira falhou no item $idx (id $idimagem): " . $financeError;
+        $success = false;
+        continue;
+    }
+    $financeStmt->close();
+
     pendencias_operacionais_sync_image_checklist($conn, $idimagem);
 
     $conn->commit();

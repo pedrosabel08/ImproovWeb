@@ -25,6 +25,7 @@ require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/image_import_helpers.php';
 require_once __DIR__ . '/onboarding_helpers.php';
 require_once __DIR__ . '/onboarding_commercial_helpers.php';
+require_once __DIR__ . '/../helpers/obra_itens_helper.php';
 
 $payload = json_decode(file_get_contents('php://input'), true);
 if (!is_array($payload)) {
@@ -35,6 +36,7 @@ if (!is_array($payload)) {
 
 $obraId = (int) ($payload['obra_id'] ?? 0);
 $rawImages = is_array($payload['images'] ?? null) ? $payload['images'] : [];
+$extraPackage = is_array($payload['extra_package'] ?? null) ? $payload['extra_package'] : null;
 $photoServiceValue = trim((string) ($payload['servico_fotografico_valor'] ?? ''));
 $conn->begin_transaction();
 
@@ -59,9 +61,34 @@ try {
     }
 
     $nomenclatura = trim((string) ($obra['nomenclatura'] ?? $obra['nome_obra'] ?? ''));
-    $prepared = dashboard_prepare_image_entries($rawImages, $nomenclatura);
-    if (!$prepared['entries']) {
-        throw new InvalidArgumentException('Informe ao menos uma imagem nova.');
+    $materials = is_array($payload['materiais'] ?? null) ? $payload['materiais'] : [];
+    $selectedPackageId = (int)($extraPackage['pacote_id'] ?? 0);
+    $selectedPackageType = strtoupper(trim((string)($extraPackage['tipo'] ?? '')));
+    if ($selectedPackageId <= 0 || !in_array($selectedPackageType, ['STILL', 'ANIMACAO', 'FILME'], true)) {
+        throw new InvalidArgumentException('Selecione um pacote cadastrado para este projeto.');
+    }
+    $packageRows = custos_query($conn, 'SELECT idobra_pacote,tipo,prazo_contratual,prazo_dias_corridos FROM obra_pacote WHERE idobra_pacote=? AND obra_id=? FOR UPDATE', 'ii', [$selectedPackageId, $obraId]);
+    if (!$packageRows || strtoupper((string)$packageRows[0]['tipo']) !== $selectedPackageType) {
+        throw new InvalidArgumentException('O pacote selecionado não pertence a este projeto.');
+    }
+    $sourcePackage = $packageRows[0];
+    $prepared = dashboard_prepare_image_entries($rawImages, $nomenclatura, dashboard_next_image_sequence($conn, $obraId));
+    foreach ($prepared['entries'] as &$entry) $entry['origem'] = 'EXTRA';
+    unset($entry);
+    if ($selectedPackageType === 'STILL' && !$prepared['entries'] && !$materials) throw new InvalidArgumentException('Informe ao menos uma imagem Still ou material extra.');
+    if ($selectedPackageType !== 'STILL' && $prepared['entries']) throw new InvalidArgumentException('Imagens extras devem ser vinculadas ao pacote Imagens Still.');
+    if ($selectedPackageType === 'ANIMACAO' || $selectedPackageType === 'FILME') {
+        $packageRevenue = trim((string)($extraPackage['receita'] ?? ''));
+        if ($packageRevenue === '') throw new InvalidArgumentException('Informe o valor externo cobrado do cliente para este extra.');
+        custos_decimal($packageRevenue);
+        if ($selectedPackageType === 'ANIMACAO') {
+            $packageSeconds = filter_var($extraPackage['segundos'] ?? null, FILTER_VALIDATE_INT);
+            if (!$packageSeconds || $packageSeconds < 1) throw new InvalidArgumentException('Informe os segundos de animação do extra.');
+        } else {
+            $filmDuration = trim((string)($extraPackage['duracao'] ?? ''));
+            if ($filmDuration === '' || mb_strlen($filmDuration) > 60) throw new InvalidArgumentException('Informe a duração do filme extra.');
+            $packageSeconds = onboarding_parse_duration_seconds($filmDuration);
+        }
     }
     if ($prepared['duplicates']) {
         throw new InvalidArgumentException('A lista contém nomes de imagem repetidos. Remova as duplicatas antes de continuar.');
@@ -100,18 +127,61 @@ try {
         throw new RuntimeException('Não foi possível incluir todas as imagens e seus valores. Nenhuma alteração foi confirmada.');
     }
     $commercialImagesSaved = dashboard_onboarding_save_image_commercial($conn, $obraId, $imageInsert['images']);
-    $photoServiceSaved = dashboard_onboarding_save_photo_service($conn, $obraId, $photoServiceValue);
+    $extraPackageSaved = false;
+    if ($selectedPackageType === 'ANIMACAO' || $selectedPackageType === 'FILME') {
+        $packageType = $selectedPackageType;
+        $packageQuantity = null;
+        $packageSlaDays = (int)($sourcePackage['prazo_contratual'] ?? 0);
+        $packageCalendarDays = (int)($sourcePackage['prazo_dias_corridos'] ?? 0);
+        $packageStart = date('Y-m-d');
+        $packageStatus = 'HOLD';
+        $packageNotes = 'Pacote extra derivado do pacote #' . $selectedPackageId;
+        $insertPackage = $conn->prepare('INSERT INTO obra_pacote (obra_id,tipo,quantidade,segundos,prazo_contratual,prazo_dias_corridos,data_inicio_sla,status,observacoes) VALUES (?,?,?,?,?,?,?,?,?)');
+        if (!$insertPackage) throw new RuntimeException('Não foi possível preparar o pacote extra.');
+        $insertPackage->bind_param('isiiiisss', $obraId, $packageType, $packageQuantity, $packageSeconds, $packageSlaDays, $packageCalendarDays, $packageStart, $packageStatus, $packageNotes);
+        if (!$insertPackage->execute()) throw new RuntimeException('Não foi possível salvar o pacote extra: ' . $insertPackage->error);
+        $newPackageId = (int)$insertPackage->insert_id;
+        $insertPackage->close();
+        obra_item_save($conn, $obraId, [
+            'categoria' => $selectedPackageType === 'ANIMACAO' ? 'Animações 3D' : 'Filmes',
+            'tipo_item' => 'PACOTE',
+            'descricao' => $selectedPackageType === 'ANIMACAO' ? 'Extra de animação 3D (' . $packageSeconds . 's)' : 'Extra de filme (' . trim((string)$extraPackage['duracao']) . ')',
+            'quantidade' => 1,
+            'origem' => 'EXTRA',
+            'pacote_id' => $newPackageId,
+            'receita' => $packageRevenue,
+            // Production tasks are currently aggregated at project/animation level;
+            // do not assign their forecast to this specific extra package.
+            'modelo_custo' => 'DIRETO',
+        ], isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null);
+        $extraPackageSaved = true;
+    }
+    $photoServiceId = dashboard_onboarding_save_photo_service($conn, $obraId, $photoServiceValue);
+    if ($photoServiceId > 0) {
+        obra_item_save($conn, $obraId, [
+            'categoria' => 'Fotografia', 'tipo_item' => 'SERVICO', 'descricao' => 'Serviço fotográfico',
+            'quantidade' => 1, 'origem' => 'EXTRA', 'servico_foto_id' => $photoServiceId,
+            'receita' => $photoServiceValue,
+        ], isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null);
+    }
+    foreach ($materials as $material) {
+        if (!is_array($material)) throw new InvalidArgumentException('Material adicional inválido.');
+        $material['origem'] = 'EXTRA';
+        $material['tipo_item'] = in_array(strtoupper((string)($material['tipo_item'] ?? '')), ['MATERIAL', 'SERVICO'], true) ? strtoupper($material['tipo_item']) : 'OUTRO';
+        obra_item_save($conn, $obraId, $material, isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : null);
+    }
 
     dashboard_insert_onboarding_event(
         $conn,
         $obraId,
         isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
         'IMAGES_EXTRAS_ADDED',
-        'Imagens extras e valores comerciais adicionados ao projeto.',
+        'Itens extras e seus valores financeiros adicionados ao projeto.',
         [
             'total_adicionado' => $imageInsert['inserted'],
             'valores_comerciais' => $commercialImagesSaved,
-            'servico_fotografico' => $photoServiceSaved,
+            'servico_fotografico' => $photoServiceId > 0,
+            'pacote_extra' => $extraPackageSaved,
             'arquivo' => (string) (($payload['image_import']['file_name'] ?? '') ?: ''),
         ]
     );
@@ -122,8 +192,10 @@ try {
         'obra_id' => $obraId,
         'images_inserted' => $imageInsert['inserted'],
         'commercial_images_saved' => $commercialImagesSaved,
-        'photo_service_saved' => $photoServiceSaved,
-        'message' => 'Imagens extras adicionadas ao projeto.',
+        'photo_service_saved' => $photoServiceId > 0,
+        'package_extra_saved' => $extraPackageSaved,
+        'other_items_saved' => count($materials),
+        'message' => 'Extras e valores adicionados ao projeto.',
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $error) {
     $conn->rollback();

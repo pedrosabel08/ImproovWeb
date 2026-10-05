@@ -65,6 +65,25 @@ function dashboard_decode_onboarding_metadata($metadata): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function dashboard_financial_items_complete(mysqli $conn, int $obraId): bool
+{
+    // The mandatory external-price gate applies to records created by current onboarding
+    // and extras flows. Historical records backfilled by migration are LEGADO and
+    // remain visible for financial review without blocking activation retroactively.
+    $sql = "SELECT COUNT(*) AS pendentes
+            FROM obra_item_financeiro oi
+            WHERE oi.obra_id=?
+              AND oi.origem IN ('ONBOARDING','EXTRA')
+              AND oi.receita IS NULL";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return false;
+    $stmt->bind_param('i', $obraId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return (int)($row['pendentes'] ?? 1) === 0;
+}
+
 function dashboard_get_onboarding_progress(mysqli $conn): array
 {
     $obraMap = [];
@@ -98,9 +117,10 @@ function dashboard_get_onboarding_progress(mysqli $conn): array
                 'imagens_importadas' => false,
                 'sla_definido' => false,
                 'pacotes_definidos' => false,
+                'valores_externos_definidos' => false,
             ],
             'completed_items' => 0,
-            'pending_items' => 5,
+            'pending_items' => 6,
             'is_onboarding' => false,
         ];
     };
@@ -172,15 +192,16 @@ function dashboard_get_onboarding_progress(mysqli $conn): array
     }
 
     foreach ($progress as $obraId => $state) {
+        $progress[$obraId]['checklist']['valores_externos_definidos'] = dashboard_financial_items_complete($conn, (int)$obraId);
         $completed = 0;
-        foreach ($state['checklist'] as $done) {
+        foreach ($progress[$obraId]['checklist'] as $done) {
             if ($done) {
                 $completed++;
             }
         }
 
         $progress[$obraId]['completed_items'] = $completed;
-        $progress[$obraId]['pending_items'] = max(0, 5 - $completed);
+        $progress[$obraId]['pending_items'] = max(0, count($progress[$obraId]['checklist']) - $completed);
         $progress[$obraId]['is_onboarding'] = $progress[$obraId]['is_onboarding'] || $progress[$obraId]['pending_items'] > 0;
     }
 
@@ -259,6 +280,10 @@ function dashboard_finalize_onboarding_if_ready(mysqli $conn, int $obraId, ?int 
 
     if ((int) ($progress['pending_items'] ?? 0) > 0) {
         return ['completed' => false, 'pending_items' => (int) $progress['pending_items']];
+    }
+
+    if (!dashboard_financial_items_complete($conn, $obraId)) {
+        return ['completed' => false, 'pending_items' => (int)($progress['pending_items'] ?? 0) + 1, 'reason' => 'custos_pendentes'];
     }
 
     $existsStmt = $conn->prepare("SELECT 1 FROM acompanhamento_email WHERE obra_id = ? AND tipo = 'ONBOARDING_COMPLETED' LIMIT 1");

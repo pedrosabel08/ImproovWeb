@@ -54,6 +54,29 @@ eq(custos_saude(10000, 5000, false)['codigo'], 'neutro', 'Sem threshold inventad
 eq(custos_saude(10000, 5000, false, 40)['codigo'], 'saudavel', 'Meta configurada');
 eq(custos_saude(0, -100, false)['codigo'], 'critico', 'Margem negativa');
 eq(custos_tipo(['observacao' => 'Finalização parcial']), 'FINALIZACAO_PARCIAL', 'Legacy case adapter');
+$projectItems = fixture();
+$projectItems['itens_projeto'] = [
+    ['id' => 1, 'obra_id' => 1, 'categoria_nome' => 'Imagem', 'descricao' => 'Fachada', 'imagem_id' => 1, 'modelo_custo' => 'DIRETO', 'custo_previsto' => '500.00', 'realizado_direto' => '75.00', 'receita' => null],
+    ['id' => 2, 'obra_id' => 1, 'categoria_nome' => 'Material', 'descricao' => 'Trilha', 'imagem_id' => null, 'modelo_custo' => 'DIRETO', 'custo_previsto' => '200.00', 'realizado_direto' => '25.00', 'receita' => '300.00'],
+];
+$projectCosts = custos_calcular($projectItems);
+eq($projectCosts['resumo']['previsto'], 78000, 'Item direto substitui previsão de tarefas vinculadas sem duplicar');
+eq($projectCosts['resumo']['realizado'], 10000, 'Custos realizados diretos somados ao realizado operacional');
+eq($projectCosts['resumo']['a_pagar'], 68000, 'Pendência por item direto');
+eq($projectCosts['resumo']['vendido'], 200000, 'Receita opcional do material incluída uma única vez');
+eq($projectCosts['imagens'][0]['totais']['previsto'], 50000, 'Previsão direta refletida na imagem');
+$animationPackage = fixture();
+$animationPackage['itens'] = [item(8, 'funcao_animacao', 1, 60)];
+$animationPackage['itens_projeto'] = [[
+    'id' => 3, 'obra_id' => 1, 'categoria_nome' => 'Animação', 'tipo_item' => 'PACOTE', 'descricao' => 'Pacote de animação',
+    'pacote_id' => 1, 'imagem_id' => null, 'modelo_custo' => 'TAREFAS', 'custo_previsto' => '120.00',
+    'realizado_direto' => '0.00', 'receita' => null,
+]];
+$animationCosts = custos_calcular($animationPackage);
+eq($animationCosts['imagens'][0]['totais']['previsto'], 30000, 'Tarefas de animação consolidadas fora da imagem');
+eq($animationCosts['resumo']['previsto'], 50000, 'Pacote de animação não duplica tarefas');
+eq($animationCosts['resumo']['realizado'], 6000, 'Pagamento de animação associado ao pacote');
+eq($animationCosts['itens_projeto'][0]['totais']['a_pagar'], 6000, 'Saldo pendente do pacote de animação');
 foreach (['-1', 'NaN', 'INF', '1.001', '1,50'] as $bad) {
     try {
         custos_decimal($bad);

@@ -220,6 +220,10 @@ $conn->close();
 
                     <label for="tipo-imagem">Tipo da imagem:</label>
                     <input type="text" name="tipo" id="tipo-imagem">
+                    <label for="valor-imagem">Valor cobrado do cliente (R$):</label>
+                    <input type="number" min="0" step="0.01" name="valor" id="valor-imagem" required>
+                    <label for="imposto-imagem">Imposto (%)</label>
+                    <input type="number" min="0" max="100" step="0.01" name="imposto" id="imposto-imagem" value="0" required>
                     <div class="buttons" style="margin: auto">
                         <button type="submit" id="salvar">Salvar</button>
                     </div>

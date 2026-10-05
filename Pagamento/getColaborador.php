@@ -771,6 +771,7 @@ if ($mesNumero && $ano) {
         $f['pago_parcial_count'] = $installments[$paymentKey]['FINALIZACAO_PARCIAL'] ?? 0;
         $f['pago_completa_count'] = $installments[$paymentKey]['FINALIZACAO_COMPLEMENTO'] ?? 0;
         $f['comissao_gestor'] = !empty($r['comissao_gestor']);
+<<<<<<< HEAD
         $snapshot = (float)$r['valor'];
         if ($f['comissao_gestor']) $snapshot = ($r['tipo_imagem'] === 'Fachada' && mb_stripos($r['imagem_nome'], 'embasamento') === false) ? 100 : 80;
         // A reconstrução das tarefas parciais ocorre depois do pós-processamento
@@ -779,6 +780,9 @@ if ($mesNumero && $ano) {
         if (!$f['comissao_gestor']) {
             $snapshot = financeiro_valor_previsto_centavos($conn, $r, $hasPartialPayment) / 100;
         }
+=======
+        $snapshot = financeiro_snapshot($r) / 100;
+>>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
         $f['valor_exibido'] = $snapshot;
         $f['custo'] = $snapshot;
         $f['valor_esperado'] = $snapshot;
@@ -807,7 +811,11 @@ if ($mesNumero && $ano) {
         $r['colaborador_id'] = $colaboradorId;
         return $r;
     }, $eligible);
+<<<<<<< HEAD
     $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger, $conn));
+=======
+    $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger));
+>>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
 }
 $custoTotal = 0.0;
 foreach ($funcoes as $f) {

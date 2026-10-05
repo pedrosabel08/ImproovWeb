@@ -125,6 +125,7 @@ function financeiro_lancar(mysqli $conn, array $row, int $colab, int $mes, int $
         $pago += custos_centavos($i['valor']);
         $applicable[] = $i;
     }
+<<<<<<< HEAD
     $temParcelaFinalizacao = false;
     foreach ($applicable as $item) {
         if (custos_tipo($item) === 'FINALIZACAO_PARCIAL') {
@@ -145,6 +146,10 @@ function financeiro_lancar(mysqli $conn, array $row, int $colab, int $mes, int $
     if ($previsto < 0 || $pago < 0 || $pago > $previsto) {
         throw new DomainException('Divergência financeira na origem ' . $origem . ' #' . $id . '. Reconcilie antes de pagar.');
     }
+=======
+    $previsto = financeiro_snapshot(array_merge($locked, $row, ['valor' => $locked['valor']]));
+    if ($previsto < 0 || $pago < 0 || $pago > $previsto) throw new DomainException('Divergência financeira na origem ' . $origem . ' #' . $id . '. Reconcilie antes de pagar.');
+>>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
     if (count($applicable) > 1) {
         $types = array_map('custos_tipo', $applicable);
         sort($types);

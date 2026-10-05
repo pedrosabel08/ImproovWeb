@@ -49,9 +49,13 @@ payment_check(pagamento_agregar_itens(pagamento_projetar_itens([$approved], []))
 $marked = $task; $marked['pagamento'] = 1;
 payment_check(pagamento_agregar_itens(pagamento_projetar_itens([$marked], []))['divergencias_financeiras'], 1, 'Paid flag without ledger');
 $partial = $task; $partial['parcial'] = 1;
+<<<<<<< HEAD
 payment_check(pagamento_projetar_itens([$partial], []), [], 'Unpaid partial finalization remains excluded');
 $partialSummary = pagamento_agregar_itens(pagamento_projetar_itens([$partial], [$entry]));
 payment_check([$partialSummary['total'], $partialSummary['pago'], $partialSummary['pendente']], [30000, 15000, 15000], 'Paid partial finalization remains visible in general summary');
+=======
+payment_check(pagamento_projetar_itens([$partial], [$entry]), [], 'Same partial eligibility exclusion as individual');
+>>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
 $zero = $task; $zero['valor'] = '0'; $zero['valor_aprovado'] = 1;
 $s = pagamento_agregar_itens(pagamento_projetar_itens([$zero], []));
 payment_check([$s['itens_pendentes'], $s['percentual_pago']], [1, null], 'Zero amount is not a paid item');

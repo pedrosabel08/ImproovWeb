@@ -58,6 +58,60 @@ try {
         throw new DomainException('Só é possível adicionar extras a projetos ativos ou em onboarding.');
     }
 
+    // O modo "extras" não envia cliente_id: o cliente vem da obra.
+    // Obras legadas podem ter obra.cliente vazio; nesse caso, só inferimos
+    // o cliente quando as imagens existentes apontam para um único ID válido.
+    $clienteId = (int) ($obra['cliente'] ?? 0);
+    if ($clienteId > 0) {
+        $clienteStmt = $conn->prepare('SELECT idcliente FROM cliente WHERE idcliente = ? LIMIT 1');
+        if (!$clienteStmt) {
+            throw new RuntimeException('Não foi possível validar o cliente do projeto.');
+        }
+        $clienteStmt->bind_param('i', $clienteId);
+        $clienteStmt->execute();
+        $clienteResult = $clienteStmt->get_result();
+        $clienteValido = $clienteResult && $clienteResult->num_rows > 0;
+        $clienteStmt->close();
+        if (!$clienteValido) {
+            $clienteId = 0;
+        }
+    }
+
+    if ($clienteId <= 0) {
+        $clientesStmt = $conn->prepare(
+            'SELECT DISTINCT cliente_id FROM imagens_cliente_obra WHERE obra_id = ? AND cliente_id IS NOT NULL AND cliente_id > 0 LIMIT 2'
+        );
+        if (!$clientesStmt) {
+            throw new RuntimeException('Não foi possível localizar o cliente associado às imagens do projeto.');
+        }
+        $clientesStmt->bind_param('i', $obraId);
+        $clientesStmt->execute();
+        $clientesResult = $clientesStmt->get_result();
+        $clientesExistentes = [];
+        while ($clienteRow = $clientesResult->fetch_assoc()) {
+            $clientesExistentes[] = (int) $clienteRow['cliente_id'];
+        }
+        $clientesStmt->close();
+
+        if (count($clientesExistentes) !== 1) {
+            throw new DomainException('Este projeto não tem um cliente associado de forma única. Corrija o cadastro do cliente antes de adicionar extras.');
+        }
+
+        $clienteId = $clientesExistentes[0];
+        $clienteStmt = $conn->prepare('SELECT idcliente FROM cliente WHERE idcliente = ? LIMIT 1');
+        if (!$clienteStmt) {
+            throw new RuntimeException('Não foi possível validar o cliente do projeto.');
+        }
+        $clienteStmt->bind_param('i', $clienteId);
+        $clienteStmt->execute();
+        $clienteResult = $clienteStmt->get_result();
+        $clienteValido = $clienteResult && $clienteResult->num_rows > 0;
+        $clienteStmt->close();
+        if (!$clienteValido) {
+            throw new DomainException('O cliente associado às imagens deste projeto não existe mais. Corrija o cadastro antes de adicionar extras.');
+        }
+    }
+
     $nomenclatura = trim((string) ($obra['nomenclatura'] ?? $obra['nome_obra'] ?? ''));
     $prepared = dashboard_prepare_image_entries($rawImages, $nomenclatura);
     if (!$prepared['entries']) {
@@ -95,7 +149,7 @@ try {
         throw new DomainException('Estas imagens já existem no projeto: ' . implode(', ', array_slice($conflicts, 0, 8)) . (count($conflicts) > 8 ? '…' : ''));
     }
 
-    $imageInsert = dashboard_insert_image_entries($conn, (int) $obra['cliente'], $obraId, $prepared['entries']);
+    $imageInsert = dashboard_insert_image_entries($conn, $clienteId, $obraId, $prepared['entries']);
     if (count($imageInsert['images'] ?? []) !== count($prepared['entries'])) {
         throw new RuntimeException('Não foi possível incluir todas as imagens e seus valores. Nenhuma alteração foi confirmada.');
     }

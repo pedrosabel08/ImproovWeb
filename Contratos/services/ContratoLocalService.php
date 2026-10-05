@@ -33,10 +33,6 @@ class ContratoLocalService
         $competencia = $competencia ?: $this->dateService->buildCompetencia();
 
         $existente = $this->getContratoByCompetencia($colaboradorId, $competencia);
-        if ($existente && in_array($existente['status'], ['assinado', 'recusado', 'expirado'], true)) {
-            throw new RuntimeException('Contrato já finalizado para esta competência.');
-        }
-
         $colab = $this->dataService->getColaboradorContratoData($colaboradorId);
         $funcoes = $this->dataService->getColaboradorFuncoes($colaboradorId);
 
@@ -56,8 +52,12 @@ class ContratoLocalService
         $nomesParaDestacar = [];
         $nomeEmpresarial = isset($colab['nome_empresarial']) ? (string)$colab['nome_empresarial'] : '';
         $nomeColaborador = isset($colab['nome_colaborador']) ? (string)$colab['nome_colaborador'] : '';
-        if ($nomeEmpresarial !== '') $nomesParaDestacar[] = $nomeEmpresarial;
-        if ($nomeColaborador !== '') $nomesParaDestacar[] = $nomeColaborador;
+        if ($nomeEmpresarial !== '') {
+            $nomesParaDestacar[] = $nomeEmpresarial;
+        }
+        if ($nomeColaborador !== '') {
+            $nomesParaDestacar[] = $nomeColaborador;
+        }
         $nomesParaDestacar = array_unique($nomesParaDestacar);
         // Escapar e ordenar por comprimento decrescente para evitar substituições parciais
         $nomesEsc = array_map([$this, 'escapeHtml'], $nomesParaDestacar);
@@ -65,7 +65,9 @@ class ContratoLocalService
             return mb_strlen($b, 'UTF-8') <=> mb_strlen($a, 'UTF-8');
         });
         foreach ($nomesEsc as $nEsc) {
-            if ($nEsc === '') continue;
+            if ($nEsc === '') {
+                continue;
+            }
             $qualificacaoEsc = str_replace($nEsc, '<strong>' . $nEsc . '</strong>', $qualificacaoEsc);
         }
         $qualificacaoEsc = preg_replace('/\bCONTRATADA\b/u', '<strong>CONTRATADA</strong>', $qualificacaoEsc) ?? $qualificacaoEsc;
@@ -171,7 +173,9 @@ class ContratoLocalService
         $items = [];
         foreach ($funcoes as $f) {
             $nome = isset($f['nome_funcao']) ? (string)$f['nome_funcao'] : '';
-            if ($nome === '') continue;
+            if ($nome === '') {
+                continue;
+            }
             $items[] = '<li>' . $this->escapeHtml($nome) . '</li>';
         }
         return $items ? implode("\n", $items) : '<li>-</li>';

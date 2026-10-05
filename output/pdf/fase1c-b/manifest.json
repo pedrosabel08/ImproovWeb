@@ -1,0 +1,57 @@
+{
+    "verificado_em_utc":  "2026-10-02T20:35:54.4384475Z",
+    "artefatos":  [
+                      {
+                          "fixture":  "A",
+                          "tamanho_bytes":  201347,
+                          "paginas":  1,
+                          "arquivo":  "fixture-A.pdf",
+                          "dados":  "beneficiários sintéticos; texto jurídico preexistente do template",
+                          "total_snapshot_centavos":  160000,
+                          "finalidade":  "QA; banco de teste descartado",
+                          "sha256":  "0f6f68a5a7aa983faa4e3c5218e63ed0f8556581ff2da7154abaaf3c9891d398"
+                      },
+                      {
+                          "fixture":  "B",
+                          "tamanho_bytes":  201501,
+                          "paginas":  1,
+                          "arquivo":  "fixture-B.pdf",
+                          "dados":  "beneficiários sintéticos; texto jurídico preexistente do template",
+                          "total_snapshot_centavos":  190050,
+                          "finalidade":  "QA; banco de teste descartado",
+                          "sha256":  "545cd2067a6833c3a9c50cd2faeb2a02a6170fd20054c76a7ed854703bf678fd"
+                      },
+                      {
+                          "fixture":  "C",
+                          "tamanho_bytes":  201511,
+                          "paginas":  1,
+                          "arquivo":  "fixture-C.pdf",
+                          "dados":  "beneficiários sintéticos; texto jurídico preexistente do template",
+                          "total_snapshot_centavos":  570000,
+                          "finalidade":  "QA; banco de teste descartado",
+                          "sha256":  "94e94fba5b296ab832d00ae114b755839acd58dc853454179bb1e8ba6c549512"
+                      },
+                      {
+                          "fixture":  "D",
+                          "tamanho_bytes":  201346,
+                          "paginas":  1,
+                          "arquivo":  "fixture-D.pdf",
+                          "dados":  "beneficiários sintéticos; texto jurídico preexistente do template",
+                          "total_snapshot_centavos":  10000,
+                          "finalidade":  "QA; banco de teste descartado",
+                          "sha256":  "ff51f8ef8e620663a618c568839708360efd7269c01291f9629e5a06d30c2571"
+                      },
+                      {
+                          "fixture":  "E",
+                          "tamanho_bytes":  201280,
+                          "paginas":  1,
+                          "arquivo":  "fixture-E.pdf",
+                          "dados":  "beneficiários sintéticos; texto jurídico preexistente do template",
+                          "total_snapshot_centavos":  0,
+                          "finalidade":  "QA; banco de teste descartado",
+                          "sha256":  "14c3b1aac448e554fceddd613bc84b452ed7ba806bfacf140531ea90933b0fb9"
+                      }
+                  ],
+    "renderizador":  "Dompdf 3.1.4",
+    "inspecao":  "Poppler 26.09.0, texto extraído e raster inspecionado"
+}

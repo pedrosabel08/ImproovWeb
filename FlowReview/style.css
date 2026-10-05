@@ -984,6 +984,7 @@ img {
   padding-top: 10px;
   z-index: 1;
   background-color: var(--bg-body);
+  align-self: stretch;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;

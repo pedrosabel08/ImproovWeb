@@ -338,30 +338,32 @@ document.addEventListener(
       divergencesOnly = document.getElementById("somente-divergencias");
     const applyVisualFilters = () => {
       const needle = (search?.value || "").trim().toLocaleLowerCase("pt-BR");
-      const selectedFunctions = Array.from(
-        typeFilters.querySelectorAll("input:checked"),
-      ).map((input) => input.name.toLocaleLowerCase("pt-BR"));
+      const selectedFunctions = new Set(
+        Array.from(typeFilters.querySelectorAll("input:checked"))
+          .map((input) => pagamentoNormalizarNomeFuncao(input.name))
+          .filter(Boolean),
+      );
       [tableUnpaid, tablePaid, divergenceTable].forEach((table) =>
         table.querySelectorAll("tbody tr").forEach((row) => {
-          const functionName = (
+          const functionName = pagamentoNormalizarNomeFuncao(
             row.dataset.functionName ||
             row.children[2]?.textContent ||
             row.children[1]?.textContent ||
-            ""
-          ).toLocaleLowerCase("pt-BR");
+            "",
+          );
           const matchesSearch =
             !needle ||
             row.textContent.toLocaleLowerCase("pt-BR").includes(needle);
           const matchesFunction =
-            !selectedFunctions.length ||
-            selectedFunctions.some((fn) => functionName.includes(fn));
+            !selectedFunctions.size ||
+            selectedFunctions.has(functionName);
           const matchesDivergence =
             !divergencesOnly?.checked || row.dataset.divergence === "1";
           row.style.display =
             matchesSearch && matchesFunction && matchesDivergence ? "" : "none";
         }),
       );
-      const count = selectedFunctions.length;
+      const count = selectedFunctions.size;
       document.getElementById("funcoes-count").textContent = `(${count})`;
       contarLinhasTabela();
     };
@@ -614,7 +616,6 @@ document.addEventListener("DOMContentLoaded", function () {
     mesResumo.addEventListener("change", carregarResumo);
     anoResumo.addEventListener("change", carregarResumo);
     setDefaultMesAnoResumo();
-    carregarResumo();
   }
   document
     .getElementById("colaborador")
@@ -630,17 +631,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // Ignora respostas de uma seleção anterior caso o usuário alterne
     // rapidamente entre colaboradores.
     const requisicaoAtual = ++requisicaoColaboradorAtual;
+    if (document.body.dataset.paymentView === 'geral') return;
+    window.pagamentoResumoColaborador = null;
+    window.dispatchEvent(new CustomEvent('pagamento:detalhe', { detail: null }));
     var colaboradorId = document.getElementById("colaborador").value;
     var mesId = document.getElementById("mes").value;
     var anoId = document.getElementById("ano").value;
-    const tipoFiltros = Array.from(
-      document.querySelectorAll('.tipo-imagem input[type="checkbox"]'),
-    );
-    const filtrosDeTipoAtivos = new Set(
-      tipoFiltros
-        .filter((checkbox) => checkbox.checked)
-        .map((checkbox) => checkbox.name),
-    );
+    pagamentoRenderizarFiltrosFuncoes([]);
 
     const confirmarPagamentoButton = document.getElementById(
       "confirmar-pagamento",
@@ -667,6 +664,8 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((response) => response.json())
         .then((data) => {
           if (requisicaoAtual !== requisicaoColaboradorAtual) return;
+          window.pagamentoResumoColaborador = data.resumo_financeiro;
+          window.dispatchEvent(new CustomEvent('pagamento:detalhe', { detail: data.resumo_financeiro }));
           var infoColaborador = document.getElementById("info-colaborador");
           var colaborador = data.dadosColaborador;
           if (colaborador) {
@@ -690,11 +689,12 @@ document.addEventListener("DOMContentLoaded", function () {
           tabelaPago.innerHTML = "";
           let totalValor = 0;
 
-          tipoFiltros.forEach((checkbox) => {
-            checkbox.checked = filtrosDeTipoAtivos.has(checkbox.name);
-          });
+          const funcoesCarregadas = Array.isArray(data.funcoes)
+            ? data.funcoes
+            : [];
+          pagamentoRenderizarFiltrosFuncoes(funcoesCarregadas);
 
-          data.funcoes.forEach(function (item) {
+          funcoesCarregadas.forEach(function (item) {
             var row = document.createElement("tr");
             row.setAttribute("data-id", item.identificador);
 
@@ -722,7 +722,7 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             checkbox.setAttribute(
               "data-valor",
-              item.valor_exibido != null ? String(item.valor_exibido) : "0",
+              item.pagamento === 1 && item.valor_pago != null ? String(item.valor_pago) : (item.valor_exibido != null ? String(item.valor_exibido) : "0"),
             );
             // counts to allow 2nd confirmation (pago parcial -> pago completa)
             checkbox.setAttribute(
@@ -957,9 +957,7 @@ document.addEventListener("DOMContentLoaded", function () {
           });
 
           contarLinhasTabela();
-          // Reaplica somente filtros escolhidos pelo usuário. Antes, as
-          // funções eram marcadas automaticamente e acabavam ocultando as
-          // linhas de outro colaborador após a troca.
+          // Aplica os filtros com as opcoes ja sincronizadas aos dados carregados.
           window.pagamentoAplicarFiltrosVisuais?.();
           if (confirmarPagamentoButton)
             confirmarPagamentoButton.disabled = false;
@@ -1166,12 +1164,14 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch((error) => {
           if (requisicaoAtual !== requisicaoColaboradorAtual) return;
           console.error("Erro ao carregar dados do colaborador:", error);
+          pagamentoRenderizarFiltrosFuncoes([]);
           document.querySelector("#tabela-a-pagar tbody").innerHTML =
             '<tr><td colspan="7" class="col-center">Não foi possível carregar as tarefas.</td></tr>';
           if (confirmarPagamentoButton)
             confirmarPagamentoButton.disabled = true;
         });
     } else {
+      pagamentoRenderizarFiltrosFuncoes([]);
       document.querySelector("#tabela-a-pagar tbody").innerHTML = "";
       document.querySelector("#tabela-pago tbody").innerHTML = "";
       var totalValorLabel = document.getElementById("totalValor");
@@ -1181,6 +1181,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (_widget) _widget.style.display = "none";
       if (confirmarPagamentoButton) confirmarPagamentoButton.disabled = true;
       atualizarResumoSelecao();
+      document.getElementById("funcoes-count").textContent = "(0)";
     }
   }
 
@@ -1427,6 +1428,63 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
+function pagamentoNormalizarNomeFuncao(valor) {
+  return (valor || "")
+    .toString()
+    .replace(/Pago\s*(?:Parcial|Completa)/gi, "")
+    .replace(/\s*-\s*.*/g, "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("pt-BR");
+}
+
+function pagamentoRenderizarFiltrosFuncoes(funcoes) {
+  const container = document.querySelector(".tipo-imagem");
+  if (!container) return;
+
+  const opcoes = new Map();
+  (Array.isArray(funcoes) ? funcoes : []).forEach((item) => {
+    const nome = (item?.nome_funcao || "").toString().trim();
+    const chave = pagamentoNormalizarNomeFuncao(nome);
+    if (!chave) return;
+    const opcaoExistente = opcoes.get(chave);
+    if (opcaoExistente) {
+      opcaoExistente.quantidade++;
+    } else {
+      opcoes.set(chave, { nome, quantidade: 1 });
+    }
+  });
+
+  container.replaceChildren();
+  Array.from(opcoes.values())
+    .sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }),
+    )
+    .forEach(({ nome, quantidade }) => {
+      const label = document.createElement("label");
+      label.className = "checkbox-label";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = nome;
+      input.checked = true;
+      const texto = document.createElement("span");
+      texto.textContent = nome;
+      const contador = document.createElement("span");
+      contador.className = "tipo-count";
+      contador.textContent = `(${quantidade})`;
+      label.append(input, texto, contador);
+      container.appendChild(label);
+    });
+
+  const contador = document.getElementById("funcoes-count");
+  if (contador) {
+    const quantidadeMarcada = container.querySelectorAll("input:checked").length;
+    contador.textContent = `(${quantidadeMarcada})`;
+  }
+}
+
 function contarLinhasTabela() {
   const linhas = Array.from(
     document.querySelectorAll(
@@ -1529,71 +1587,6 @@ function contarLinhasTabela() {
     elValorPagas.innerText = valorPagas.toFixed(2).replace(".", ",");
   if (elValorNaoPagas)
     elValorNaoPagas.innerText = valorNaoPagas.toFixed(2).replace(".", ",");
-
-  // --- Contagem por função (atualiza cada label dentro de .tipo-imagem) ---
-  // A marcação usa um único container .tipo-imagem com vários <label class="checkbox-label">;
-  // vamos contar as funções nas linhas visíveis e atualizar cada label individualmente.
-  const mapaContagem = {};
-  for (let i = 0; i < linhas.length; i++) {
-    const linha = linhas[i];
-    if (linha.style.display === "none") continue; // apenas linhas visíveis
-    const funcaoCell = linha.cells[2];
-    let funcaoText = funcaoCell
-      ? (funcaoCell.textContent || funcaoCell.innerText).trim()
-      : "";
-    if (!funcaoText) continue;
-    funcaoText = funcaoText
-      .replace(/Pago\s*Parcial/gi, "")
-      .replace(/Pago\s*Completa/gi, "")
-      .replace(/\s*-\s*.*/g, "")
-      .trim();
-    if (!funcaoText) continue;
-    mapaContagem[funcaoText] = (mapaContagem[funcaoText] || 0) + 1;
-  }
-
-  // Seleciona cada label dentro o container e atualiza seu contador
-  const labels = document.querySelectorAll(".tipo-imagem .checkbox-label");
-  labels.forEach((label) => {
-    const input = label.querySelector('input[type="checkbox"]');
-    let nomeFuncao = "";
-    if (input && input.name) {
-      nomeFuncao = input.name.trim();
-    } else {
-      // fallback: texto do próprio label (ex.: <span>...)</
-      const span = label.querySelector("span");
-      nomeFuncao = span
-        ? span.textContent.trim()
-        : (label.textContent || "").trim();
-    }
-
-    // "Planta Humanizada" agrega todas as linhas cujo nome de função contém " ph "
-    let count;
-    if (nomeFuncao === "Planta Humanizada") {
-      count = Object.entries(mapaContagem)
-        .filter(([k]) => k.toLowerCase().includes(" ph "))
-        .reduce((sum, [, v]) => sum + v, 0);
-    } else {
-      count = mapaContagem[nomeFuncao] || 0;
-    }
-
-    // Atualiza ou cria o span .tipo-count dentro do label
-    let spanCount = label.querySelector(".tipo-count");
-    // Mostrar o contador apenas quando for maior que 0
-    if (count > 0) {
-      if (!spanCount) {
-        spanCount = document.createElement("span");
-        spanCount.className = "tipo-count";
-        spanCount.style.marginLeft = "6px";
-        spanCount.style.color = "#666";
-        label.appendChild(spanCount);
-      }
-      spanCount.textContent = `(${count})`;
-      spanCount.style.display = "";
-    } else {
-      // Se existir e o count for zero, remove o elemento para não mostrar
-      if (spanCount) spanCount.remove();
-    }
-  });
 
   atualizarResumoSelecao();
 }
@@ -2618,7 +2611,8 @@ async function abrirModalStatusGeral() {
       '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Carregando...</td></tr>';
 
   try {
-    const res = await fetch("get_adendo_status.php?mode=geral");
+    const competencia = new URLSearchParams({ mode: 'geral', mes: document.getElementById('mes').value, ano: document.getElementById('ano').value });
+    const res = await fetch(`get_adendo_status.php?${competencia}`);
     const json = await res.json();
 
     if (!json.success) throw new Error(json.message || "Erro desconhecido");
@@ -2632,27 +2626,11 @@ async function abrirModalStatusGeral() {
 
     // Summary cards
     if (summaryEl) {
-      summaryEl.innerHTML = `
-        <div class="sg-card c-total">
-          <div class="sg-card-label">Total</div>
-          <div class="sg-card-value">${total}</div>
-        </div>
-        <div class="sg-card c-assinado">
-          <div class="sg-card-label"><i class="fa-solid fa-signature"></i> Assinados</div>
-          <div class="sg-card-value">${counts.assinado}${pct(counts.assinado)}</div>
-        </div>
-        <div class="sg-card c-visualizado">
-          <div class="sg-card-label"><i class="fa-solid fa-eye"></i> Visualizados</div>
-          <div class="sg-card-value">${counts.visualizado}${pct(counts.visualizado)}</div>
-        </div>
-        <div class="sg-card c-enviado">
-          <div class="sg-card-label"><i class="fa-solid fa-paper-plane"></i> Enviados</div>
-          <div class="sg-card-value">${counts.enviado}${pct(counts.enviado)}</div>
-        </div>
-        <div class="sg-card c-nao-enviado">
-          <div class="sg-card-label"><i class="fa-solid fa-circle-minus"></i> Não enviados</div>
-          <div class="sg-card-value">${counts.nao_enviado}${pct(counts.nao_enviado)}</div>
-        </div>`;
+      summaryEl.innerHTML = `<div class="sg-card c-total"><div class="sg-card-label">Total</div><div class="sg-card-value">${total}</div></div>` +
+        ['nao_gerado', 'gerado', 'enviado', 'visualizado', 'assinado', 'recusado', 'expirado'].filter(state => counts[state] > 0).map(state => {
+          const info = adendoStatusInfo(state);
+          return `<div class="sg-card c-${state}"><div class="sg-card-label"><i class="fa-solid ${info.icon}"></i> ${info.label}</div><div class="sg-card-value">${counts[state]}${pct(counts[state])}</div></div>`;
+        }).join('');
     }
 
     // Table
@@ -2900,15 +2878,6 @@ document.addEventListener(
     const transform = () => {
       visibleRows(unpaid).forEach(transformUnpaid);
       visibleRows(paid).forEach(transformPaid);
-      if (
-        !document.getElementById("funcoes-popover")?.dataset.initialized &&
-        (visibleRows(unpaid).length || visibleRows(paid).length)
-      ) {
-        document
-          .querySelectorAll("#funcoes-popover input")
-          .forEach((input) => (input.checked = false));
-        document.getElementById("funcoes-popover").dataset.initialized = "1";
-      }
       syncDivergences();
       atualizarContadoresPagamento();
       window.pagamentoAplicarFiltrosVisuais?.();
@@ -2957,13 +2926,19 @@ document.addEventListener(
           const el = document.getElementById(id);
           if (el) el.textContent = content;
         };
-        set("total-imagens", allRows.length);
-        set("total-itens-resumo", allRows.length);
-        set("totalValor", money(total));
-        set("total-imagens-nao-pagas", allUnpaid.length);
-        set("totalValorNaoPago", money(unpaidTotal));
-        set("total-imagens-pagas", allPaid.length);
-        set("totalValorPago", money(paidTotal));
+        const resumo = window.pagamentoResumoColaborador;
+        const setNumber = (id, value, kind = 'count') => {
+          const el = document.getElementById(id);
+          if (resumo && window.pagamentoMotion) window.pagamentoMotion.setNumber(el, value, kind);
+          else set(id, kind === 'money' ? money(value / 100) : value);
+        };
+        setNumber("total-imagens", resumo?.itens ?? allRows.length);
+        setNumber("total-itens-resumo", resumo?.itens ?? allRows.length);
+        setNumber("totalValor", resumo ? resumo.total : total * 100, 'money');
+        setNumber("total-imagens-nao-pagas", resumo?.itens_pendentes ?? allUnpaid.length);
+        setNumber("totalValorNaoPago", resumo ? resumo.pendente : unpaidTotal * 100, 'money');
+        setNumber("total-imagens-pagas", resumo?.itens_pagos ?? allPaid.length);
+        setNumber("totalValorPago", resumo ? resumo.pago : paidTotal * 100, 'money');
         set("tab-count-a-pagar", allUnpaid.length);
         set("tab-count-pagos", allPaid.length);
         set("tab-count-divergencias", visibleRows(divergence).length);

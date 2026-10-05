@@ -58,6 +58,14 @@ if ($mode === 'by_id') {
 if ($mode === 'geral') {
     // ── Visão geral: todos os adendos ──────────────────────────────────────
     $compRef = (new DateTime('first day of last month'))->format('Y-m');
+    if (isset($_GET['mes']) || isset($_GET['ano'])) {
+        $mes = filter_var($_GET['mes'] ?? '', FILTER_VALIDATE_INT);
+        $ano = filter_var($_GET['ano'] ?? '', FILTER_VALIDATE_INT);
+        if (!$mes || $mes < 1 || $mes > 12 || !$ano || $ano < 2000 || $ano > 2100) {
+            pagamento_json(['success' => false, 'error' => 'Competência inválida.'], 422);
+        }
+        $compRef = sprintf('%04d-%02d', $ano, $mes);
+    }
 
     $sql = "SELECT a.id, a.colaborador_id, c.nome_colaborador,
                    a.competencia, a.status,
@@ -87,6 +95,10 @@ if ($mode === 'geral') {
     }
 
     $counts = [
+        'nao_gerado' => 0,
+        'gerado' => 0,
+        'recusado' => 0,
+        'expirado' => 0,
         'assinado' => 0,
         'visualizado' => 0,
         'enviado' => 0,
@@ -96,6 +108,7 @@ if ($mode === 'geral') {
 
     foreach ($items as $item) {
         $s = $item['status'] ?? '';
+        if (in_array($s, ['nao_gerado', 'gerado', 'recusado', 'expirado'], true)) $counts[$s]++;
         if ($s === 'assinado')
             $counts['assinado']++;
         elseif ($s === 'visualizado')

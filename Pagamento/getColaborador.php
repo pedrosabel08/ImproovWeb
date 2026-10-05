@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(false);
@@ -738,23 +739,53 @@ $funcoes = array_values(array_filter($funcoes, function ($f) {
 if ($mesNumero && $ano) {
     require_once __DIR__ . '/financeiro_v2.php';
     $eligible = financeiro_elegiveis($conn, $colaboradorId, $mesNumero, $ano);
+    $ledger = custos_query($conn, 'SELECT pi.* FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
     $existing = [];
     foreach ($funcoes as $f) $existing[$f['origem'] . ':' . $f['identificador']] = $f;
+    $paid = [];
+    $installments = [];
+    foreach ($ledger as $itemLedger) {
+        $ledgerType = custos_tipo($itemLedger);
+        $isCommission = $ledgerType === 'COMISSAO';
+        $key = $itemLedger['origem'] . ':' . $itemLedger['origem_id'] . ':' . ($isCommission ? '1' : '0');
+        $paid[$key] = ($paid[$key] ?? 0) + custos_centavos($itemLedger['valor']);
+        $installments[$key][$ledgerType] = ($installments[$key][$ledgerType] ?? 0) + 1;
+    }
     $funcoes = [];
     foreach ($eligible as $r) {
-        if (!empty($r['parcial'])) continue;
         $key = $r['origem'] . ':' . $r['origem_id'];
-        $f = $existing[$key] ?? array_merge($r, ['identificador' => $r['origem_id'], 'nome_funcao' => $r['origem'] === 'acompanhamento' ? 'Acompanhamento' : 'Animação', 'imagem_nome' => $r['imagem_nome'] ?? 'Custo geral da obra', 'pago_parcial_count' => 0, 'pago_completa_count' => 0]);
+        $paymentKey = $r['origem'] . ':' . $r['origem_id'] . ':' . (!empty($r['comissao_gestor']) ? '1' : '0');
+        $hasPartialPayment = !empty($installments[$paymentKey]['FINALIZACAO_PARCIAL']);
+        if (!empty($r['parcial']) && !$hasPartialPayment) continue;
+        $nomeFuncao = $r['nome_funcao'] ?? null;
+        if ($r['origem'] === 'funcao_imagem' && (int)$r['funcao_id'] === 4 && $nomeFuncao) {
+            $nomeFuncao .= !empty($r['parcial']) ? ' Parcial' : ' Completa';
+        }
+        $f = $existing[$key] ?? array_merge($r, [
+            'identificador' => $r['origem_id'],
+            'nome_funcao' => $nomeFuncao ?? ($r['origem'] === 'acompanhamento' ? 'Acompanhamento' : ($r['origem'] === 'funcao_animacao' ? 'Animação' : '')),
+            'imagem_nome' => $r['imagem_nome'] ?? 'Custo geral da obra',
+            'pago_parcial_count' => 0,
+            'pago_completa_count' => 0,
+        ]);
+        $f['pago_parcial_count'] = $installments[$paymentKey]['FINALIZACAO_PARCIAL'] ?? 0;
+        $f['pago_completa_count'] = $installments[$paymentKey]['FINALIZACAO_COMPLEMENTO'] ?? 0;
         $f['comissao_gestor'] = !empty($r['comissao_gestor']);
         $snapshot = (float)$r['valor'];
         if ($f['comissao_gestor']) $snapshot = ($r['tipo_imagem'] === 'Fachada' && mb_stripos($r['imagem_nome'], 'embasamento') === false) ? 100 : 80;
+        // A reconstrução das tarefas parciais ocorre depois do pós-processamento
+        // da lista. Resolva a mesma origem zerada diretamente pela tarifa apenas
+        // quando o livro comprovar uma parcela anterior.
+        if (!$f['comissao_gestor']) {
+            $snapshot = financeiro_valor_previsto_centavos($conn, $r, $hasPartialPayment) / 100;
+        }
         $f['valor_exibido'] = $snapshot;
         $f['custo'] = $snapshot;
         $f['valor_esperado'] = $snapshot;
         $funcoes[] = $f;
     }
     // One bulk query, no per-task ledger lookups.
-    $ledger = custos_query($conn, 'SELECT pi.* FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
+    $ledger = custos_query($conn, 'SELECT pi.*, p.colaborador_id FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE p.colaborador_id=?', 'i', [$colaboradorId]);
     $paid = [];
     foreach ($ledger as $l) {
         $k = $l['origem'] . ':' . $l['origem_id'] . ':' . (custos_tipo($l) === 'COMISSAO' ? '1' : '0');
@@ -765,10 +796,18 @@ if ($mesNumero && $ano) {
         $p = $paid[$k] ?? 0;
         $v = custos_centavos($f['valor_exibido']);
         $f['valor_exibido'] = max(0, $v - $p) / 100;
+        $f['valor_pago'] = $p / 100;
         $f['divergencia_financeira'] = $p > $v;
         $f['pagamento'] = $p >= $v && $v > 0 ? 1 : 0;
     }
     unset($f);
+    require_once __DIR__ . '/resumo_geral.php';
+    // Commission eligibility keeps the origin owner; the ledger belongs to the selected payee.
+    $summaryOrigins = array_map(function ($r) use ($colaboradorId) {
+        $r['colaborador_id'] = $colaboradorId;
+        return $r;
+    }, $eligible);
+    $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger, $conn));
 }
 $custoTotal = 0.0;
 foreach ($funcoes as $f) {
@@ -780,6 +819,7 @@ $response = [
     "funcoes" => $funcoes,
     "debug_counts_by_origem" => $countsByOrigem,
     "custo_total" => round($custoTotal, 2),
+    "resumo_financeiro" => $resumoFinanceiro ?? null,
 ];
 
 echo json_encode($response);

@@ -2553,15 +2553,19 @@ body.overview-page a:focus-visible {
 
 /* O Kanban conserva o tema escuro; a lista compartilhada no Overview segue o painel claro. */
 .overview-attention {
-  --attention-surface: #fff;
-  --attention-surface-soft: #f8fafc;
-  --attention-border: #dbe3ec;
-  --attention-text: #263548;
-  --attention-muted: #68788b;
-  --attention-meta: #eef2f7;
-  --attention-meta-text: #526173;
-  --attention-accent: #7048c8;
-  --attention-accent-soft: #f2edff;
+  --attention-surface: #191c28;
+  --attention-surface-soft: #202636;
+  --attention-border: rgba(148, 163, 184, 0.18);
+  --attention-text: #e7edf5;
+  --attention-muted: #aebcd0;
+  --attention-meta: rgba(148, 163, 184, 0.1);
+  --attention-meta-text: #c6d0df;
+  --attention-accent: #c5b1ff;
+  --attention-accent-soft: #10151c;
+  --attention-critical-text: #ffd2cd;
+  --attention-critical-bg: #3a2020;
+  --attention-icon-bg: #121821;
+  --attention-icon-border: var(--module-color);
 }
 
 .overview-attention .pendencia-op-overview {
@@ -2597,8 +2601,8 @@ body.overview-page a:focus-visible {
 }
 .overview-attention .pendencia-op-icon {
   color: var(--module-color);
-  background: color-mix(in srgb, var(--module-color) 10%, white);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--module-color) 42%, white);
+  background: var(--attention-icon-bg);
+  box-shadow: inset 0 0 0 1px var(--attention-icon-border);
 }
 .overview-attention .pendencia-op-title strong {
   color: var(--attention-text);
@@ -2611,8 +2615,8 @@ body.overview-page a:focus-visible {
   background: var(--attention-accent-soft);
 }
 .overview-attention .pendencia-op-badges .badge-critical {
-  color: #b4232e;
-  background: #fff0f1;
+  color: var(--attention-critical-text);
+  background: var(--attention-critical-bg);
 }
 .overview-attention .pendencia-op-chevron {
   color: var(--attention-muted);
@@ -2643,6 +2647,24 @@ body.overview-page a:focus-visible {
 .overview-attention .pendencia-op-open,
 .overview-attention .pendencia-op-more {
   color: var(--attention-accent);
+}
+
+@media (prefers-color-scheme: light) {
+  .overview-attention {
+    --attention-surface: #fff;
+    --attention-surface-soft: #f8fafc;
+    --attention-border: #dbe3ec;
+    --attention-text: #263548;
+    --attention-muted: #68788b;
+    --attention-meta: #eef2f7;
+    --attention-meta-text: #526173;
+    --attention-accent: #7048c8;
+    --attention-accent-soft: #f2edff;
+    --attention-critical-text: #b4232e;
+    --attention-critical-bg: #fff0f1;
+    --attention-icon-bg: color-mix(in srgb, var(--module-color) 10%, white);
+    --attention-icon-border: color-mix(in srgb, var(--module-color) 42%, white);
+  }
 }
 
 .original-deadline-list {

@@ -44,6 +44,7 @@ if ($result_colaboradores->num_rows > 0) {
 	}
 }
 
+$colaboradoresDisponiveis = $colaboradores;
 include __DIR__ . '/../conexaoMain.php';
 
 $conn = conectarBanco();
@@ -52,6 +53,16 @@ $clientes = obterClientes($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 $colaboradores = obterColaboradores($conn);
+// Historical activity can belong to an inactive collaborator selected from the dashboard.
+$colaboradorSolicitado = (int)($_GET['colaborador_id'] ?? 0);
+if ($colaboradorSolicitado > 0 && !in_array($colaboradorSolicitado, array_map('intval', array_column($colaboradores, 'idcolaborador')), true)) {
+	foreach ($colaboradoresDisponiveis as $historico) {
+		if ((int)$historico['idcolaborador'] === $colaboradorSolicitado) {
+			$colaboradores[] = $historico;
+			break;
+		}
+	}
+}
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 
@@ -69,8 +80,9 @@ $conn->close();
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 		integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
 		crossorigin="anonymous" referrerpolicy="no-referrer" />
-	<link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>" />
+	<link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>&payment=<?= filemtime(__DIR__ . '/style.css'); ?>" />
 	<link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
+	<link rel="stylesheet" href="<?php echo asset_url('visao-geral.css'); ?>&payment=<?= filemtime(__DIR__ . '/visao-geral.css'); ?>" />
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -437,7 +449,10 @@ $conn->close();
 	<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-	<script src="<?php echo asset_url('script.js'); ?>"></script>
+	<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+	<script src="<?php echo asset_url('animacoes.js'); ?>&payment=<?= filemtime(__DIR__ . '/animacoes.js'); ?>"></script>
+	<script src="<?php echo asset_url('script.js'); ?>&payment=<?= filemtime(__DIR__ . '/script.js'); ?>"></script>
+	<script src="<?php echo asset_url('visao-geral.js'); ?>&payment=<?= filemtime(__DIR__ . '/visao-geral.js'); ?>"></script>
 	<script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
 	<script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

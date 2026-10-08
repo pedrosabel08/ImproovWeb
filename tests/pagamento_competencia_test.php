@@ -70,6 +70,7 @@ $c->query('UPDATE colaborador SET participa_fechamento_mensal=0 WHERE idcolabora
 $c->query('UPDATE funcao_imagem SET valor=0,pagamento=0 WHERE idfuncao_imagem=2');
 documental_test_migration($c, __DIR__.'/../sql/2026-10-07_pagamento_competencia.sql');
 documental_test_migration($c, __DIR__.'/../sql/2026-10-08_pagamento_retiradas.sql');
+documental_test_migration($c, __DIR__.'/../sql/2026-10-08_pagamento_competencia_inclusao_auditada.sql');
 documental_test_migration($c, __DIR__.'/../FlowConnect/migrations/001_flow_connect_core.sql');
 $s = new FechamentoCompetenciaService($c, 1);
 $ui = new FechamentoInterfaceService($c, $f['root'], 1, true);
@@ -287,5 +288,17 @@ blocked(fn () => $c->query('UPDATE pagamento_fechamento SET numero_revisao=numer
 $race = race($f['db'],'criar');
 ok($race[0]['ok'] && $race[1]['ok'] && $race[0]['ciclo'] === $race[1]['ciclo'],'Criação concorrente mantém uma competência oficial');
 ok((int)$c->query("SELECT COUNT(*) n FROM pagamento_competencia WHERE competencia='2026-10'")->fetch_assoc()['n'] === 1,'Banco garante competência única');
+$ui->mensal('2026-11', true, 'inclusao-tardia-iniciar');
+$c->query("UPDATE colaborador SET ativo=1,participa_fechamento_mensal=1,tipo_remuneracao='FIXO',valor_fixo=9999 WHERE idcolaborador=17");
+$beforeInclusion = $s->resumo('2026-11');
+ok(in_array(17, array_column($beforeInclusion['participantes_disponiveis'], 'colaborador_id'), true), 'Resumo identifica participante apto fora do ciclo');
+$included = $ui->incluirParticipante('2026-11', 17, 'inclusao-tardia-17');
+ok($included['quantidade'] === $beforeInclusion['quantidade'] + 1, 'Inclusão tardia acrescenta somente um participante');
+ok((bool)array_filter($included['colaboradores'], fn ($p) => $p['colaborador_id'] === 17 && $p['preparado']), 'Novo participante recebe revisão inicial');
+ok((int)$c->query("SELECT COUNT(*) n FROM pagamento_competencia_evento WHERE competencia_id=".$included['ciclo_id']." AND tipo='PARTICIPANTE_INCLUIDO'")->fetch_assoc()['n'] === 1, 'Inclusão grava evento de auditoria');
+ok($ui->incluirParticipante('2026-11', 17, 'inclusao-tardia-17')['quantidade'] === $included['quantidade'], 'Retry de inclusão não duplica participante');
+blocked(fn () => $ui->incluirParticipante('2026-11', 17, 'inclusao-tardia-17-outro'), 'Nova chave não duplica participante já incluído');
+blocked(fn () => $ui->incluirParticipante('2026-11', 40, 'inclusao-inativo-40'), 'Inclusão de colaborador inativo bloqueada');
+blocked(fn () => $ui->incluirParticipante('2026-09', 17, 'inclusao-ciclo-concluido'), 'Inclusão em competência concluída bloqueada');
 echo "$checks verificações do ciclo financeiro passaram; banco isolado ".$f['db'].".\n";
 file_put_contents(__DIR__.'/../output/competencia-fixture.json',json_encode($f));

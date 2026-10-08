@@ -164,7 +164,7 @@ const endpoint = (a) =>
     : ["concluir", "quitar", "pagar"].includes(a)
       ? "api/fechamento/competencia.php"
       : "api/" +
-        (["mensal", "iniciar", "obter", "preparar", "decidir"].includes(a)
+        (["mensal", "iniciar", "incluir", "obter", "preparar", "decidir"].includes(a)
           ? "fechamento/"
           : "documento/") +
         a +
@@ -194,9 +194,21 @@ function update() {
     "fm-recalculate",
     "fm-extra-close",
     "fm-refresh",
+    "fm-include",
   ])
     $(id).disabled = locked;
   const closed = monthly?.estado === "CONCLUIDO";
+  const includeAvailable =
+    !closed &&
+    !!monthly?.ciclo_id &&
+    monthly.inclusao_disponivel === true &&
+    (monthly.participantes_disponiveis || []).length > 0;
+  $("fm-include").hidden = !includeAvailable;
+  $("fm-roster-note").hidden =
+    !monthly?.ciclo_id ||
+    closed ||
+    monthly.inclusao_disponivel !== false ||
+    !(monthly.participantes_disponiveis || []).length;
   document
     .querySelectorAll("[data-service-index]")
     .forEach((button) => (button.disabled = locked || closed));
@@ -326,6 +338,23 @@ function summary() {
     )
     .join("");
   const isClosed = m.estado === "CONCLUIDO";
+  const disponiveis = m.participantes_disponiveis || [];
+  $("fm-include").hidden =
+    isClosed || !m.ciclo_id || !m.inclusao_disponivel || !disponiveis.length;
+  $("fm-roster-note").hidden =
+    isClosed || !m.ciclo_id || m.inclusao_disponivel !== false || !disponiveis.length;
+  $("fm-include-person").innerHTML =
+    '<option value="">Selecione um colaborador</option>' +
+    disponiveis
+      .map(
+        (p) =>
+          '<option value="' +
+          esc(p.colaborador_id) +
+          '">' +
+          esc(p.nome) +
+          "</option>",
+      )
+      .join("");
   $("fm-cycle-state").textContent = isClosed ? "Concluído" : "Em andamento";
   $("fm-conclude").hidden = !m.ciclo_id || isClosed;
   $("fm-cycle-financial").textContent = m.estado
@@ -793,6 +822,26 @@ $("fm-refresh").onclick = () =>
     monthly = await read("mensal", { competencia: ref() });
     overview();
   });
+$("fm-include").onclick = () => {
+  $("fm-include-person").value = "";
+  $("fm-include-dialog").showModal();
+};
+$("fm-include-close").onclick = () => $("fm-include-dialog").close();
+$("fm-include-form").onsubmit = (e) => {
+  e.preventDefault();
+  const collaborator = Number($("fm-include-person").value);
+  if (!Number.isSafeInteger(collaborator) || collaborator < 1) return;
+  run("Incluindo colaborador no fechamento", async () => {
+    const name = $("fm-include-person").selectedOptions[0]?.textContent || "Colaborador";
+    monthly = await mutate("incluir", {
+      competencia: ref(),
+      colaborador_id: collaborator,
+    });
+    $("fm-include-dialog").close();
+    overview();
+    message(name + " incluído(a) no fechamento.");
+  });
+};
 $("fm-month").onchange = () =>
   run("Carregando competência", async () => {
     monthly = await read("mensal", { competencia: ref() });
@@ -1038,6 +1087,7 @@ $("fm-retry-button").onclick = () =>
     await mutate(request.action, request.data, true);
     $("fm-month").value = request.data.competencia;
     monthly = await read("mensal", { competencia: request.data.competencia });
+    if (request.action === "incluir") $("fm-include-dialog").close();
     if (request.action === "confirmar") {
       if (index >= 0) await next();
       else overview();

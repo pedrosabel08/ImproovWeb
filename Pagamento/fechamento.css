@@ -266,6 +266,23 @@
 .fc-dialog label {
   margin: 15px 0;
 }
+#fm-include-form {
+  display: grid;
+  gap: 12px;
+}
+#fm-include-form label {
+  display: grid;
+  gap: 8px;
+}
+#fm-include-person {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-color, #454552);
+  border-radius: 8px;
+  color: inherit;
+  background: var(--surface-2, #23232c);
+}
 .fc-dialog footer {
   margin-top: 16px;
   flex-wrap: wrap;

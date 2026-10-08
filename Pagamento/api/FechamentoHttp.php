@@ -37,6 +37,7 @@ final class FechamentoHttp
         }
         $context = ['colaborador_id','competencia'];
         $specific = match($action) {
+            'incluir' => ['idempotency_key'],
             'preparar' => ['expected_version','idempotency_key'],
             'obter' => ['revision_id'],
             'decidir' => ['expected_version','idempotency_key','tipo','input'],
@@ -53,7 +54,7 @@ final class FechamentoHttp
             throw new InvalidArgumentException('Competência inválida.');
         }
         FechamentoFinanceiroRules::periodo($data['competencia']);
-        foreach (['fechamento_id','revision_id','document_id','operation_id','expected_version'] as $field) {
+        foreach (['colaborador_id','fechamento_id','revision_id','document_id','operation_id','expected_version'] as $field) {
             if (array_key_exists($field, $data)) {
                 $data[$field] = self::inteiro($data[$field], $field === 'expected_version');
             }
@@ -227,6 +228,7 @@ final class FechamentoHttp
             $result = match($action) {
                 'mensal' => $service->mensal($ref),
                 'iniciar' => $service->mensal($ref, true, $data['idempotency_key']),
+                'incluir' => $service->incluirParticipante($ref, $b, $data['idempotency_key']),
                 'obter' => $service->obter($b, $ref, $data['revision_id'] ?? null),
                 'revisoes' => $service->revisoes($b, $ref),
                 'preparar' => $service->preparar($b, $ref, $data['expected_version'], $data['idempotency_key']),

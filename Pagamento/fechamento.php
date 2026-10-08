@@ -40,6 +40,8 @@ if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <link rel="stylesheet" href="<?= asset_url('fechamento.css') ?>">
 <link rel="stylesheet" href="<?= asset_url('mensal.css') ?>&m=<?= filemtime(__DIR__.'/mensal.css') ?>">
+<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+		type="image/x-icon">
 </head>
 <body>
 <?php include __DIR__.'/../sidebar.php'; ?>
@@ -71,8 +73,10 @@ if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
 <div class="fm-progress"><span id="fm-progress-label"></span><div><progress id="fm-progress" value="0" max="1" aria-label="Colaboradores revisados"></progress><span id="fm-progress-percent">0%</span></div></div></section>
 <section id="fm-overview">
 <div class="fm-list-heading"><h2>Colaboradores da competência</h2>
+<button class="btn btn-secondary" type="button" id="fm-include" hidden><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Incluir colaborador</button>
 <button class="btn btn-primary" type="button" id="fm-review" disabled>Revisar fechamento</button>
 </div>
+<p id="fm-roster-note" class="fm-roster-note" role="status" hidden>Há colaboradores aptos fora deste ciclo. A implantação precisa ser atualizada para habilitar a inclusão auditada.</p>
 <div class="fm-finish" id="fm-finish" hidden aria-live="polite"></div>
 <table class="fm-list"><thead><tr><th>Colaborador</th><th>Remuneração</th><th>Fixo</th><th>Adendos</th><th>Extras / bônus</th><th>Descontos</th><th>Total</th><th>Revisão</th><th>Pagamento</th></tr></thead><tbody id="fm-list"></tbody></table>
 </section>
@@ -101,6 +105,11 @@ if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
 <label>Valor (R$)<input name="valor" inputmode="decimal" required placeholder="500,00"></label>
 <label>Motivo<textarea name="motivo" required maxlength="1000" rows="2"></textarea></label>
 <footer><button type="submit" class="btn btn-primary">Salvar extra</button></footer></form></dialog>
+<dialog id="fm-include-dialog" class="fc-dialog" aria-labelledby="fm-include-title"><form id="fm-include-form">
+<header><h2 id="fm-include-title">Incluir colaborador</h2><button class="btn btn-secondary" type="button" id="fm-include-close">Fechar</button></header>
+<p>A inclusão será registrada no histórico do fechamento. O colaborador precisa estar ativo e marcado para participar.</p>
+<label>Colaborador<select id="fm-include-person" required><option value="">Selecione um colaborador</option></select></label>
+<footer><button type="submit" class="btn btn-primary">Incluir no fechamento</button></footer></form></dialog>
 <?php endif ?>
 </main>
 <script src="<?= asset_url('../script/sidebar.js') ?>"></script>

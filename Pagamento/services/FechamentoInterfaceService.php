@@ -160,6 +160,15 @@ final class FechamentoInterfaceService
         return ['competencia' => $ref,'colaboradores' => $items,'contagens' => $counts,'quantidade' => count($items),'pendencias_configuracao' => $configuracao];
     }
 
+    public function incluirParticipante(string $ref, int $colaborador, string $key): array
+    {
+        FechamentoFinanceiroRules::periodo($ref);
+        $cycle = new FechamentoCompetenciaService($this->conn, $this->usuario);
+        $cycle->incluirParticipante($ref, $colaborador, $key);
+        // Prepara a revisão inicial do novo participante com o mesmo fluxo usado ao iniciar o ciclo.
+        return $this->mensal($ref, true, 'inclusao:'.$key);
+    }
+
     public function revisoes(int $b, string $ref): array
     {
         $this->contexto($b, $ref);

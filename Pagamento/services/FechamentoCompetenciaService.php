@@ -132,6 +132,54 @@ final class FechamentoCompetenciaService
             return $this->resumo($ref);
         });
     }
+
+    /** Acrescenta um participante elegível a um ciclo iniciado, com snapshot e trilha de auditoria. */
+    public function incluirParticipante(string $ref, int $colaborador, string $key): array
+    {
+        if (!preg_match('/^[A-Za-z0-9_.:-]{1,128}$/D', $key)) {
+            throw new InvalidArgumentException('Chave inválida.');
+        }
+        return $this->transacao(function () use ($ref, $colaborador, $key) {
+            $request = ['acao' => 'incluir_participante','competencia' => $ref,'colaborador_id' => $colaborador];
+            $c = $this->cabecalho($ref, true);
+            if (!$c) {
+                throw new DomainException('Inicie o fechamento antes de incluir participantes.');
+            }
+            if ($this->retry((int)$c['id'], $key, $request)) {
+                return $this->resumo($ref);
+            }
+            if ($c['estado'] === 'CONCLUIDO') {
+                throw new DomainException('Fechamento concluído. Não é possível incluir participantes.');
+            }
+            if (!$this->db->sql("SELECT id FROM pagamento_competencia_evento WHERE competencia_id=? AND tipo='CRIADO'", [$c['id']])) {
+                throw new DomainException('Inicie o fechamento antes de incluir participantes.');
+            }
+            if ($this->db->sql('SELECT m.fechamento_id FROM pagamento_competencia_colaborador m JOIN pagamento_fechamento f ON f.id=m.fechamento_id WHERE m.competencia_id=? AND f.colaborador_id=?', [$c['id'],$colaborador])) {
+                throw new DomainException('Este colaborador já participa do fechamento. Atualize a lista.');
+            }
+
+            $p = $this->db->sql('SELECT idcolaborador,nome_colaborador,tipo_remuneracao,valor_fixo FROM colaborador WHERE idcolaborador=? AND ativo=1 AND participa_fechamento_mensal=1 FOR UPDATE', [$colaborador])[0] ?? null;
+            if (!$p) {
+                throw new DomainException('O cadastro precisa estar ativo e marcado para participar explicitamente do fechamento.');
+            }
+            $guard = $this->db->sql("SELECT ACTION_STATEMENT FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME='pcc_roster_guard'")[0] ?? null;
+            if (!$guard || stripos($guard['ACTION_STATEMENT'], 'PARTICIPANTE_INCLUIDO') === false) {
+                throw new RuntimeException('Migration para inclusão auditada de participante ausente.');
+            }
+
+            $antigo = $this->db->sql('SELECT id,numero_revisao FROM pagamento_fechamento WHERE colaborador_id=? AND competencia=? FOR UPDATE', [$colaborador,$ref])[0] ?? null;
+            if ($antigo && (int)$antigo['numero_revisao'] > 0) {
+                throw new DomainException('Este colaborador já possui uma revisão anterior nesta competência. Confira o histórico antes de incluí-lo.');
+            }
+            $f = $this->db->bloquear($colaborador, $ref, $this->usuario);
+            $snapshot = ['colaborador_id' => $colaborador,'nome' => $p['nome_colaborador'],'tipo_remuneracao' => $p['tipo_remuneracao'],'fixo_cadastro' => $p['valor_fixo']];
+            $this->auditar((int)$c['id'], (int)$f['id'], 'PARTICIPANTE_INCLUIDO', $key, ['incluido' => false], $snapshot, $request);
+            $this->db->sql('INSERT INTO pagamento_competencia_colaborador (competencia_id,fechamento_id,nome,tipo_remuneracao,fixo_cadastro) VALUES (?,?,?,?,?)', [$c['id'],$f['id'],$p['nome_colaborador'],$p['tipo_remuneracao'],$p['valor_fixo']]);
+            $this->pendencias($c);
+            return $this->resumo($ref);
+        });
+    }
+
     private function membros(int $c, bool $lock = false): array
     {
         return $this->db->sql('SELECT m.*,f.colaborador_id,f.numero_revisao,f.competencia FROM pagamento_competencia_colaborador m JOIN pagamento_fechamento f ON f.id=m.fechamento_id WHERE m.competencia_id=? ORDER BY f.id'.($lock ? ' FOR UPDATE' : ''), [$c]);
@@ -472,10 +520,19 @@ final class FechamentoCompetenciaService
         }
         $q = count($items);
         $total = $fechado ? (int)$c['total_fechado_centavos'] : null;
+        $inclusaoDisponivel = false;
+        $disponiveis = [];
+        if ($c && !$fechado) {
+            $guard = $this->db->sql("SELECT ACTION_STATEMENT FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME='pcc_roster_guard'")[0] ?? null;
+            $inclusaoDisponivel = $guard && stripos($guard['ACTION_STATEMENT'], 'PARTICIPANTE_INCLUIDO') !== false;
+            $disponiveis = $this->db->sql('SELECT p.idcolaborador AS colaborador_id,p.nome_colaborador AS nome FROM colaborador p WHERE p.ativo=1 AND p.participa_fechamento_mensal=1 AND NOT EXISTS (SELECT 1 FROM pagamento_competencia_colaborador m JOIN pagamento_fechamento f ON f.id=m.fechamento_id WHERE m.competencia_id=? AND f.colaborador_id=p.idcolaborador) ORDER BY p.nome_colaborador,p.idcolaborador', [$c['id']]);
+            foreach ($disponiveis as &$p) $p['colaborador_id'] = (int)$p['colaborador_id'];
+            unset($p);
+        }
         return ['competencia' => $ref,'ciclo_id' => $c ? (int)$c['id'] : null,'estado' => $fechado ? 'CONCLUIDO' : 'EM_ANDAMENTO','quantidade' => $q,'colaboradores' => $items,'contagens' => $counts,
             'parcial_centavos' => $parcial,'total_fechado_centavos' => $total,'pago_centavos' => $pago,'pendente_centavos' => $fechado ? $total - $pago : null,'quantidade_pagos' => $pagos,
             'previsto_em' => $c['previsto_em'] ?? pagamento_previsao($ref),'concluido_em' => $c['concluido_em'] ?? null,
             'situacao' => $fechado ? ($q && $pagos === $q ? 'QUITADO' : ($pago > 0 ? 'PARCIALMENTE_PAGO' : 'AGUARDANDO_PAGAMENTO')) : 'AGUARDANDO_FECHAMENTO',
-            'pendencias_configuracao' => []];
+            'pendencias_configuracao' => [],'inclusao_disponivel' => (bool)$inclusaoDisponivel,'participantes_disponiveis' => $disponiveis];
     }
 }

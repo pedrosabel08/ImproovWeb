@@ -249,6 +249,14 @@
   gap: 12px;
   margin: 10px 0;
 }
+.fm-list-heading #fm-include {
+  margin-left: auto;
+}
+.fm-roster-note {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 6px 0 12px;
+}
 .fm-page #fm-overview {
   min-height: 0;
   flex: 1 1 0;

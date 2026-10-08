@@ -4,8 +4,23 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/capacidade_colaborador_helper.php';
+require_once __DIR__ . '/../Pagamento/pagamento_auth.php';
+pagamento_require_gestor(true);
 
 $action = $_POST['action'] ?? '';
+
+require_once __DIR__ . '/FechamentoCadastroRules.php';
+if ($action === 'create') {
+    try { $cadastroFechamento=FechamentoCadastroRules::normalizar($_POST,[],true); }
+    catch (InvalidArgumentException $e) { response(false,$e->getMessage()); }
+}
+
+function salvarCadastroFechamento(mysqli $conn,int $id,array $dados): void
+{
+    $stmt=$conn->prepare('UPDATE colaborador SET participa_fechamento_mensal=?,tipo_remuneracao=?,valor_fixo=? WHERE idcolaborador=?');
+    $stmt->bind_param('issi',$dados['participa_fechamento_mensal'],$dados['tipo_remuneracao'],$dados['valor_fixo'],$id);
+    $stmt->execute(); $stmt->close();
+}
 
 function response($success, $message)
 {
@@ -245,6 +260,7 @@ if ($action === 'create') {
         $stmtCol->bind_param("si", $nome_colaborador, $elegivelCapacidade);
         $stmtCol->execute();
         $idcolaborador = $conn->insert_id;
+        salvarCadastroFechamento($conn,$idcolaborador,$cadastroFechamento);
 
         $stmtUsu = $conn->prepare("INSERT INTO usuario (nome_usuario, login, senha, nivel_acesso, idcolaborador) VALUES (?, ?, ?, ?, ?)");
         $stmtUsu->bind_param("sssii", $nome_usuario, $login, $senha, $nivel_acesso, $idcolaborador);
@@ -298,6 +314,12 @@ if ($action === 'update') {
     $conn->begin_transaction();
 
     try {
+        $stmtCadastro=$conn->prepare('SELECT participa_fechamento_mensal,tipo_remuneracao,valor_fixo FROM colaborador WHERE idcolaborador=? FOR UPDATE');
+        $stmtCadastro->bind_param('i',$idcolaborador); $stmtCadastro->execute();
+        $atual=$stmtCadastro->get_result()->fetch_assoc();
+        if (!$atual) throw new InvalidArgumentException('Colaborador inválido.');
+        $cadastroFechamento=FechamentoCadastroRules::normalizar($_POST,$atual);
+        salvarCadastroFechamento($conn,$idcolaborador,$cadastroFechamento);
         if ($elegivelCapacidadeInformada) {
             $stmtCol = $conn->prepare("UPDATE colaborador SET nome_colaborador = ?, elegivel_capacidade = ? WHERE idcolaborador = ?");
             $stmtCol->bind_param("sii", $nome_colaborador, $elegivelCapacidade, $idcolaborador);
@@ -336,6 +358,7 @@ if ($action === 'update') {
     } catch (Throwable $e) {
         $conn->rollback();
         error_log('Erro ao atualizar colaborador: ' . $e->getMessage());
+        if ($e instanceof InvalidArgumentException) response(false,$e->getMessage());
         response(false, 'Erro ao atualizar colaborador.');
     }
 }

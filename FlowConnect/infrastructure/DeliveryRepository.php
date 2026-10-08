@@ -34,17 +34,25 @@ final class DeliveryRepository
         return $id;
     }
 
-    public function claimEligible(int $limit, string $workerId): array
+    public function claimEligible(int $limit, string $workerId,bool $financialOnly=false): array
     {
         $limit = max(1, min(500, $limit));
         $this->conn->begin_transaction();
         try {
-            $this->conn->query("UPDATE flow_connect_deliveries SET status=IF(attempt_count>0,'RETRY_WAIT','PENDING'), claimed_by=NULL, claimed_at=NULL, claim_expires_at=NULL WHERE status='SENDING' AND claim_expires_at < UTC_TIMESTAMP(6)");
-            $result = $this->conn->query("SELECT d.*
+            // Webhook não deduplica no provedor: um envio financeiro ambíguo exige conferência,
+            // sem repetir a chamada. Demais notificações preservam a política existente.
+            $this->conn->query("UPDATE flow_connect_deliveries d JOIN flow_connect_notifications n ON n.id=d.notification_id JOIN flow_connect_events e ON e.id=n.event_id
+                SET d.status='DEAD',d.last_error_code='financial_send_ambiguous',d.last_error_safe='Envio financeiro interrompido; conferir o canal antes de qualquer reenvio',d.claimed_by=NULL,d.claimed_at=NULL,d.claim_expires_at=NULL
+                WHERE d.status='SENDING' AND d.claim_expires_at < UTC_TIMESTAMP(6) AND e.event_type IN ('pagamento.competencia.fechamento','pagamento.competencia.pagamento')");
+            $this->conn->query("UPDATE flow_connect_notifications n SET status='ERROR',completed_at=UTC_TIMESTAMP(6) WHERE EXISTS(SELECT 1 FROM flow_connect_deliveries d WHERE d.notification_id=n.id AND d.last_error_code='financial_send_ambiguous') AND NOT EXISTS(SELECT 1 FROM flow_connect_deliveries d WHERE d.notification_id=n.id AND d.status IN ('PENDING','SENDING','RETRY_WAIT'))");
+            if (!$financialOnly) $this->conn->query("UPDATE flow_connect_deliveries SET status=IF(attempt_count>0,'RETRY_WAIT','PENDING'), claimed_by=NULL, claimed_at=NULL, claim_expires_at=NULL WHERE status='SENDING' AND claim_expires_at < UTC_TIMESTAMP(6)");
+            $scope=$financialOnly?" AND e.event_type IN ('pagamento.competencia.fechamento','pagamento.competencia.pagamento')":'';
+            $result = $this->conn->query("SELECT d.*, e.event_type IN ('pagamento.competencia.fechamento','pagamento.competencia.pagamento') AS financial_once
                 FROM flow_connect_deliveries d
                 INNER JOIN flow_connect_notifications n ON n.id=d.notification_id
+                INNER JOIN flow_connect_events e ON e.id=n.event_id
                 WHERE d.status IN ('PENDING','RETRY_WAIT')
-                  AND n.delivery_mode <> 'SHADOW'
+                  AND n.delivery_mode <> 'SHADOW' {$scope}
                   AND (d.next_attempt_at IS NULL OR d.next_attempt_at <= UTC_TIMESTAMP(6))
                 ORDER BY d.id ASC LIMIT {$limit} FOR UPDATE SKIP LOCKED");
             if (!$result) {

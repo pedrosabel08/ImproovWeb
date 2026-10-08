@@ -1,0 +1,50 @@
+<?php
+require_once __DIR__.'/../Pagamento/services/FechamentoFinanceiroRules.php';
+require_once __DIR__.'/../Pagamento/services/FechamentoComposicaoRules.php';
+$checks=0;
+function same($a,$b,string $label):void {global $checks;if($a!==$b)throw new RuntimeException($label.': '.json_encode([$a,$b]));$checks++;}
+$snapshot=new DateTimeImmutable('2026-10-06T10:00:00-03:00');
+$origem=['origem'=>'funcao_imagem','origem_id'=>109178,'colaborador_id'=>6,'funcao_id'=>4,'imagem_id'=>2082,'imagem_nome'=>'9.WER_RIO Brinquedoteca','nome_funcao'=>'Finalização','valor'=>'380','pagamento'=>1,'status'=>'Finalizado','prazo'=>'2026-09-09','finalizacao_parcial'=>0];
+$pago=['origem'=>'funcao_imagem','origem_id'=>109178,'beneficiario_id'=>6,'idpagamento_item'=>3496,'pagamento_id'=>200,'valor'=>'190','observacao'=>'Pago Completa','mes_ref'=>'2026-07'];
+$run=fn($o,$ledger,$mensal=true,$b=6)=>(new FechamentoFinanceiroRules())->calcular(['origens'=>[$o],'ledger'=>$ledger],$b,'2026-09',$snapshot,$mensal);
+$r=$run($origem,[$pago]);$i=$r['itens_analisados'][0];
+same($i['situacao'],'QUITADO','Pago Completa encerra o serviço');
+same($i['saldo_centavos'],0,'Não cobra diferença de tarifa');
+same($i['pago_centavos'],19000,'Não fabrica lançamento da parcela de outro executor');
+same($i['saldo_bruto_centavos'],19000,'Diferença aritmética preservada na auditoria');
+same($i['quitacao_final']['lancamentos_ids'],[3496],'Quitação identifica o lançamento real');
+same($r['servicos_devidos'],[],'Pago Completa não entra no adendo');
+same($r['subtotal_servicos_centavos'],0,'Sem cobrança duplicada');
+same($run($origem,[$pago],false)['subtotal_servicos_centavos'],19000,'Snapshot legado conserva regra anterior');
+$structured=$pago;$structured['observacao']=null;$structured['tipo_lancamento']='FINALIZACAO_COMPLEMENTO';
+same($run($origem,[$structured])['itens_analisados'][0]['situacao'],'QUITADO','Tipo estruturado de complemento também encerra');
+$partial=$pago;$partial['observacao']='Finalização Parcial';
+$r=$run($origem,[$partial]);
+same($r['subtotal_servicos_centavos'],19000,'Parcela parcial mantém complemento devido');
+same($r['itens_analisados'][0]['descricao']['funcao'],'Finalização completa com pagamento final','Nome do complemento');
+$o=$origem;$o['pagamento']=0;
+same($run($o,[])['itens_analisados'][0]['descricao']['funcao'],'Finalização completa','Nome sem parcela');
+$o['finalizacao_parcial']=1;
+same($run($o,[])['itens_analisados'][0]['descricao']['funcao'],'Finalização parcial','Nome na etapa parcial');
+$o['finalizacao_parcial']=0;$o['pago_parcial_count']=1;
+same($run($o,[])['itens_analisados'][0]['descricao']['funcao'],'Finalização completa com pagamento final','Parcela de executor anterior preserva o conceito');
+$foreign=$pago;$foreign['beneficiario_id']=20;
+same($run($origem,[$foreign])['itens_analisados'][0]['situacao'],'PENDENCIA','Pagamento de outro beneficiário não quita');
+same($run($origem,[])['itens_analisados'][0]['situacao'],'PENDENCIA','Flag sem ledger continua exigindo conferência');
+$wrong=$pago;$wrong['origem_id']=1;
+same($run($origem,[$wrong])['itens_analisados'][0]['situacao'],'PENDENCIA','Outra origem não quita');
+$excess=$pago;$excess['valor']='500';
+same($run($origem,[$excess])['pendencias'][0]['codigo'],'PAGO_ACIMA_DO_DEVIDO','Quitação não mascara excesso');
+$o=$origem;$o['colaborador_id']=23;$o['tipo_imagem']='Fachada';$o['pagamento']=0;
+$commission=$pago;$commission['beneficiario_id']=8;$commission['observacao']='Comissão Gestor';$commission['valor']='80';
+$r=$run($o,[$commission],true,8);
+same($r['subtotal_servicos_centavos'],2000,'Comissão mantém sua própria classe/saldo');
+same($r['itens_analisados'][0]['quitacao_final']['aplicavel'],false,'Comissão não é encerrada como tarefa');
+$source=['colaborador_id'=>1,'competencia'=>'2026-09','snapshot_em'=>'2026-10-06T10:00:00-03:00','timezone'=>'America/Sao_Paulo','rule_version'=>FechamentoFinanceiroRules::VERSION,'subtotal_servicos_centavos'=>0,'subtotal_servicos_completo'=>true,'bloqueado'=>false,'pendencias'=>[],'servicos_devidos'=>[],'itens_analisados'=>[]];
+foreach(['FIXO','FIXO_VARIAVEL'] as $type) {
+ $r=(new FechamentoComposicaoRules())->compor($source,['colaborador_id'=>1,'competencia'=>'2026-09','fluxo'=>'fechamento_mensal_v1','tipo_remuneracao'=>$type,'fixo'=>['configurado'=>'4000'],'extras'=>[]]);
+ same($r['total_final_centavos'],400000,'Nicolle recebe acompanhamento uma vez '.$type);
+ same($r['componentes']['VALOR_FIXO'],0,'Fixo alocado apenas em acompanhamento '.$type);
+ same($r['componentes']['ACOMPANHAMENTO_ESPECIAL'],400000,'Acompanhamento usa cadastro '.$type);
+}
+echo "$checks verificações das pendências mensais passaram.\n";

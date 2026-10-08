@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/_cli.php';
+require_once dirname(__DIR__,2).'/config/pagamento_fechamento.php';
+require_once dirname(__DIR__,2).'/Pagamento/services/FechamentoCompetenciaAutomacao.php';
 
 use FlowConnect\Application\OperationalCycleRepository;
 use FlowConnect\Application\OperationalMilestonePolicy;
@@ -21,11 +23,23 @@ $idleSeconds = (int) ($config['operational']['scheduler_idle_seconds'] ?? 1);
 $policy = new OperationalMilestonePolicy();
 $provider = new OperationalStateProvider();
 $backoffSeconds = 1;
+$financeDay = null;
 
 /** A scheduler only appends events/milestones; delivery remains a separate worker. */
-$runBatch = static function () use ($limit, $onlyCycleId, $policy, $provider, $timezone, $verbose, &$backoffSeconds): int {
+$runBatch = static function () use ($limit, $onlyCycleId, $policy, $provider, $timezone, $verbose, &$backoffSeconds, &$financeDay): int {
     try {
         $conn = conectarBanco();
+        $nowFinance = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+        if (pagamento_fechamento_enabled() && $financeDay !== $nowFinance->format('Y-m-d') && FechamentoCompetenciaService::disponivel($conn)) {
+            try {
+                (new FechamentoCompetenciaAutomacao($conn,(int)(getenv('PAGAMENTO_AUTOMACAO_USUARIO_ID')?:1)))->executar($nowFinance);
+                $financeDay=$nowFinance->format('Y-m-d');
+            } catch (Throwable $e) {
+                // Um erro financeiro não paralisa os ciclos operacionais já existentes.
+                flow_connect_cli_log('financial_cycle failed=' . get_class($e), true);
+            }
+        }
+
         $table = $conn->query("SHOW TABLES LIKE 'flow_connect_pending_cycles'");
         if (!$table || $table->num_rows === 0) {
             flow_connect_cli_log('operational_scheduler_worker skipped: migration 002 not applied', true);

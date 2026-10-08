@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 $events = [
+    'pagamento.competencia.fechamento',
+    'pagamento.competencia.pagamento',
     'contratos.documento.status_atualizado',
     'fotografico.registro.criado',
     'fotografico.plano.notificacao',

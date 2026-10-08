@@ -28,6 +28,7 @@ try {
         // A chamada externa acontece fora da transação de claim.
         $result = $adapter->send($delivery);
         $decision = $retry->decide($result, (int) $delivery['attempt_count']);
+        if (!empty($delivery['financial_once']) && empty($result['ok']) && ($result['http_status']??0)!==429) $decision=['status'=>'DEAD','next_attempt_at'=>null];
         $deliveries->completeAttempt($delivery, $result, $decision);
         if ($decision['status'] === 'DEAD') {
             $deadLetters->record(null, (int) $delivery['notification_id'], (int) $delivery['id'], 'delivery_exhausted', [

@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/pagamento_auth.php';
@@ -6,7 +7,8 @@ pagamento_require_gestor(false);
 require_once __DIR__ . '/../conexao.php';
 
 // Helpers
-function get_last_month_ref() {
+function get_last_month_ref()
+{
     $dt = new DateTime('first day of last month');
     return [$dt->format('Y'), $dt->format('n'), $dt->format('Y-m')];
 }
@@ -19,6 +21,19 @@ if (!$ano || !$mes) {
     $mes_ref = sprintf('%04d-%02d', $ano, $mes);
 }
 
+require_once __DIR__.'/resumo_geral.php';
+if (FechamentoCompetenciaService::disponivel($conn) && pagamento_competencia_nova($mes_ref)) {
+    $c=(new FechamentoCompetenciaService($conn,pagamento_current_user_id()))->resumo($mes_ref);
+    $items=[];
+    foreach($c['colaboradores'] as $p) {
+        $items[]=['colaborador_id'=>$p['colaborador_id'],'nome'=>$p['nome'],'mes_ref'=>$mes_ref,
+            'valor'=>$p['pendente_centavos']===null?null:$p['pendente_centavos']/100,
+            'valor_fixo'=>((int)($p['resumo']['VALOR_FIXO']??0)+(int)($p['resumo']['ACOMPANHAMENTO_ESPECIAL']??0))/100,
+            'valor_mes'=>$c['estado']==='CONCLUIDO'?$p['total_centavos']/100:null,
+            'status'=>$p['pagamento_status'],'ultima_atualizacao'=>$p['pago_em'],'pagamento_id'=>null];
+    }
+    pagamento_json(['items'=>$items,'mes_ref'=>$mes_ref,'fonte_financeira'=>'FECHAMENTO','fechamento'=>$c]);
+}
 // Carregar colaboradores
 $cols = [];
 $res = $conn->query("SELECT idcolaborador, nome_colaborador FROM colaborador ORDER BY nome_colaborador");
@@ -55,7 +70,9 @@ GROUP BY colaborador_id";
 if ($r = $conn->query($sqlFI)) {
     while ($row = $r->fetch_assoc()) {
         $id = (int)$row['colaborador_id'];
-        if (!isset($cols[$id])) continue;
+        if (!isset($cols[$id])) {
+            continue;
+        }
         $cols[$id]['valor_pendente'] += (float)$row['valor_pendente'];
         $cols[$id]['valor_mes'] += (float)$row['valor_mes'];
         $cols[$id]['ultima_atualizacao'] = max($cols[$id]['ultima_atualizacao'] ?? '0000-00-00', $row['last_update'] ?? '0000-00-00');
@@ -74,27 +91,30 @@ GROUP BY colaborador_id";
 if ($r = $conn->query($sqlAC)) {
     while ($row = $r->fetch_assoc()) {
         $id = (int)$row['colaborador_id'];
-        if (!isset($cols[$id])) continue;
+        if (!isset($cols[$id])) {
+            continue;
+        }
         $cols[$id]['valor_pendente'] += (float)$row['valor_pendente'];
         $cols[$id]['valor_mes'] += (float)$row['valor_mes'];
         $cols[$id]['ultima_atualizacao'] = max($cols[$id]['ultima_atualizacao'] ?? '0000-00-00', $row['last_update'] ?? '0000-00-00');
     }
 }
 
-// Aggregate funcao_animacao (tasks within animacao, date from animacao.data_anima)
+// Aggregate funcao_animacao by its payment competence date (funcao_animacao.prazo).
 $sqlAN = "SELECT fa.colaborador_id,
   SUM(CASE WHEN fa.pagamento = 0 THEN IFNULL(fa.valor,0) ELSE 0 END) AS valor_pendente,
   SUM(IFNULL(fa.valor,0)) AS valor_mes,
-  MAX(GREATEST(IFNULL(fa.data_pagamento, '0000-00-00'), IFNULL(an.data_anima, '0000-00-00'))) AS last_update
+  MAX(GREATEST(IFNULL(fa.data_pagamento, '0000-00-00'), IFNULL(fa.prazo, '0000-00-00'))) AS last_update
 FROM funcao_animacao fa
-JOIN animacao an ON fa.animacao_id = an.idanimacao
-WHERE fa.colaborador_id IN ($ids) AND YEAR(an.data_anima) = $ano AND MONTH(an.data_anima) = $mes
+WHERE fa.colaborador_id IN ($ids) AND YEAR(fa.prazo) = $ano AND MONTH(fa.prazo) = $mes
 GROUP BY fa.colaborador_id";
 
 if ($r = $conn->query($sqlAN)) {
     while ($row = $r->fetch_assoc()) {
         $id = (int)$row['colaborador_id'];
-        if (!isset($cols[$id])) continue;
+        if (!isset($cols[$id])) {
+            continue;
+        }
         $cols[$id]['valor_pendente'] += (float)$row['valor_pendente'];
         $cols[$id]['valor_mes'] += (float)$row['valor_mes'];
         $cols[$id]['ultima_atualizacao'] = max($cols[$id]['ultima_atualizacao'] ?? '0000-00-00', $row['last_update'] ?? '0000-00-00');
@@ -108,7 +128,9 @@ if ($stmt->execute()) {
     $rs = $stmt->get_result();
     while ($row = $rs->fetch_assoc()) {
         $id = (int)$row['colaborador_id'];
-        if (!isset($cols[$id])) continue;
+        if (!isset($cols[$id])) {
+            continue;
+        }
         $cols[$id]['status'] = $row['status'];
         $cols[$id]['pagamento_id'] = (int)$row['idpagamento'];
         // Prefer DB updated time
@@ -128,7 +150,9 @@ if ($check && $check->num_rows > 0) {
     if ($r = $conn->query($sqlFixo)) {
         while ($row = $r->fetch_assoc()) {
             $id = (int)$row['idcolaborador'];
-            if (!isset($cols[$id])) continue;
+            if (!isset($cols[$id])) {
+                continue;
+            }
             $cols[$id]['valor_fixo'] = (float)$row['valor_fixo'];
             // include fixed value in the monthly total so UI shows combined amount
             $cols[$id]['valor_mes'] += (float)$row['valor_fixo'];
@@ -143,7 +167,9 @@ $items = [];
 foreach ($cols as $c) {
     // Only include rows that have any activity (valor or a pagamento record)
     $hasValor = ($c['valor_mes'] > 0) || ($c['valor_pendente'] > 0) || !is_null($c['pagamento_id']);
-    if (!$hasValor) continue;
+    if (!$hasValor) {
+        continue;
+    }
 
     $status = $c['status'];
     if (!$status) {

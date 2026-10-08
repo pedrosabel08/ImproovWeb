@@ -97,6 +97,7 @@ final class FechamentoDocumentoRepository
     public function resumo(array $d): array
     {
         return ['document_id'=>(int)$d['id'],'fechamento_id'=>(int)$d['fechamento_id'],'revision_id'=>(int)$d['revisao_id'],
+            'modelo_version'=>json_decode($d['modelo_json'],true)['version']??null,
             'numero_documento'=>(int)$d['numero'],'estado'=>$d['estado'],'financial_snapshot_hash'=>$d['financial_snapshot_hash'],
             'pdf_hash'=>$d['pdf_hash'],'tamanho_bytes'=>$d['tamanho_bytes']===null?null:(int)$d['tamanho_bytes'],
             'arquivo_preview'=>$d['arquivo_preview'],'arquivo_definitivo'=>$d['estado']==='CONFIRMADO'?$d['arquivo_definitivo']:null,

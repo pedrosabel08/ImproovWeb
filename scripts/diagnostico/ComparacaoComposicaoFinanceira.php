@@ -9,7 +9,8 @@ final class ComparacaoComposicaoFinanceira
     {
         $source = file_get_contents(__DIR__ . '/../../Contratos/services/AdendoLocalService.php');
         $hash = hash('sha256', $source);
-        if ($hash !== 'aba9ad09b2ca9e335a7fd1dcab390dbbbefaaf1e6e8933057f85aa855a1a18bb') throw new RuntimeException('AdendoLocalService mudou; auditar diagnóstico 1B.');
+        // Fonte atual auditada: ajustes de tabela/animação anteriores; R09 permanece id 1 / R$ 4.000.
+        if (!in_array($hash,['aba9ad09b2ca9e335a7fd1dcab390dbbbefaaf1e6e8933057f85aa855a1a18bb','e94acec55b996d04934b13603822fbf86ab0a833859299bf5b48033e19b637b8'],true)) throw new RuntimeException('AdendoLocalService mudou; auditar diagnóstico 1B.');
         $pattern = '/if\s*\(\$colaboradorId\s*===\s*(\d+)\)\s*\{\s*\/\/[^\n]*\n\s*\$extras\s*=\s*\[\[\x27categoria\x27\s*=>\s*\x27([^\x27]+)\x27,\s*\x27valor\x27\s*=>\s*([\d.]+)\]\]/';
         if (!preg_match($pattern, $source, $m)) throw new RuntimeException('Regra especial legada não reconhecida; auditar.');
         return ['aplicavel' => $b === (int)$m[1], 'valor_centavos' => $b === (int)$m[1] ? FechamentoComposicaoSupport::moeda($m[3]) : 0,

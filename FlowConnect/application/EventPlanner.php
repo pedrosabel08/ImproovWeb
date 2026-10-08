@@ -38,7 +38,7 @@ final class EventPlanner
         $this->templates = new TemplateRenderer();
     }
 
-    public function plan(array $event): array
+    public function plan(array $event,bool $manageTransaction=true): array
     {
         $definition = $this->definitions[$event['event_type']] ?? null;
         if ($definition === null) throw new RuntimeException('flow_connect_event_definition_missing');
@@ -48,7 +48,7 @@ final class EventPlanner
         $configuredMode = (string) $definition['delivery_mode'];
         $deliveryMode = $producerMode === 'shadow' && !in_array($configuredMode, ['HISTORY_ONLY', 'SUPPRESSED'], true) ? 'SHADOW' : $configuredMode;
 
-        $this->conn->begin_transaction();
+        if ($manageTransaction) $this->conn->begin_transaction();
         try {
             $primary = $this->createNotification($event, $definition, $deliveryMode, (string) $definition['template'], $strategy, '');
             $notificationIds = [$primary['notification_id']];
@@ -60,10 +60,10 @@ final class EventPlanner
                 $deliveryIds = array_merge($deliveryIds, $secondary['delivery_ids']);
             }
             $this->applyScheduleEffects($event);
-            $this->conn->commit();
+            if ($manageTransaction) $this->conn->commit();
             return ['notification_id' => $primary['notification_id'], 'notification_ids' => $notificationIds, 'delivery_ids' => $deliveryIds, 'delivery_mode' => $deliveryMode, 'template' => $definition['template']];
         } catch (\Throwable $e) {
-            $this->conn->rollback();
+            if ($manageTransaction) $this->conn->rollback();
             throw $e;
         }
     }

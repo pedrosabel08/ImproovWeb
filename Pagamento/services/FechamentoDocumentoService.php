@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/FechamentoDocumentoRepository.php';
+require_once __DIR__.'/FechamentoCompetenciaService.php';
 require_once __DIR__.'/FechamentoDocumentoFiles.php';
 require_once __DIR__.'/../../Contratos/services/ContratoPdfService.php';
 
@@ -8,8 +9,9 @@ final class FechamentoDocumentoService
 {
     private FechamentoDocumentoRepository $db;
     private FechamentoDocumentoFiles $files;
-    public function __construct(mysqli $conn,string $storageRoot)
+    public function __construct(private mysqli $conn,string $storageRoot)
     {
+        FechamentoCompetenciaService::disponivel($conn);
         $this->db=new FechamentoDocumentoRepository($conn); $this->files=new FechamentoDocumentoFiles($storageRoot);
     }
     private static function request(int $u,string $key,array $r): string
@@ -27,10 +29,13 @@ final class FechamentoDocumentoService
         $request=['tipo'=>'GERAR','fechamento_id'=>$f,'revision_id'=>$rev,'data_documental'=>$dataDocumental];
         $hash=self::request($u,$key,$request); $this->db->autorizar($u); $this->db->conferir();
         $reserved=$this->db->transacao(function() use($f,$rev,$u,$key,$request,$hash,$dataDocumental) {
+            $this->travarCiclo($f,$u);
             if (!$this->db->sql('SELECT id FROM pagamento_fechamento WHERE id=? FOR UPDATE',[$f])) throw new DomainException('Fechamento não encontrado.');
             $this->db->autorizar($u,true); $op=$this->db->operacao($u,$key); self::conferirOperacao($op,$hash,'GERAR');
             if ($op) return ['doc'=>$this->db->documento((int)$op['documento_id']),'op'=>$op];
-            $r=$this->db->revisao($rev,$f); $identity=$this->db->identidade($r['colaborador_id']);
+            $r=$this->db->revisao($rev,$f);
+            $this->conferirRevisaoMensalAtual($r);
+            $identity=$this->db->identidade($r['colaborador_id']);
             $date=$dataDocumental??(new DateTimeImmutable('now',new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
             $model=(new FechamentoDocumentoProjection())->projetar($r,$identity,$date);
             $tpl=file_get_contents(__DIR__.'/../../Contratos/templates/adendo_modelo.html'); if (!$tpl) throw new RuntimeException('Template documental ausente.');
@@ -83,7 +88,10 @@ final class FechamentoDocumentoService
         $request=['tipo'=>'CONFIRMAR','document_id'=>$id,'revision_id'=>$expectedRevision,'pdf_hash'=>$expectedPdfHash];
         $hash=self::request($u,$key,$request); $this->db->autorizar($u); $this->db->conferir();
         $reserved=$this->db->transacao(function() use($id,$expectedRevision,$expectedPdfHash,$u,$key,$hash,$request) {
-            $doc=$this->db->documento($id,true); $this->db->autorizar($u,true); $this->db->vinculo($doc);
+            $this->travarCiclo((int)$this->db->documento($id)['fechamento_id'],$u);
+            $doc=$this->db->documento($id,true); $this->db->autorizar($u,true); $r=$this->db->vinculo($doc);
+            $this->conferirRevisaoMensalAtual($r);
+            if ($doc['estado']!=='CONFIRMADO' && isset($r['snapshot']['composicao']['monthly_rule_version']) && (json_decode($doc['modelo_json'],true)['version']??null)!==FechamentoDocumentoProjection::VERSION) throw new DomainException('Gere o novo adendo antes de confirmar: o preview anterior usa regras documentais antigas.');
             if ((int)$doc['revisao_id']!==$expectedRevision || $doc['pdf_hash']!==$expectedPdfHash) throw new DomainException('Documento/revisão/hash esperados não correspondem ao visualizado.');
             if (!in_array($doc['estado'],['PREVIEW','CONFIRMADO'],true)) throw new DomainException('Preview ainda não publicado.');
             $op=$this->db->operacao($u,$key); self::conferirOperacao($op,$hash,'CONFIRMAR');
@@ -99,10 +107,15 @@ final class FechamentoDocumentoService
             $bytes=$this->files->ler($doc,$doc['estado']==='CONFIRMADO');
             if ($doc['estado']==='PREVIEW') $this->files->publicar($doc,$bytes);
             return $this->db->transacao(function() use($id,$u,$key) {
-                $doc=$this->db->documento($id,true); $this->db->autorizar($u,true); $this->db->vinculo($doc);
+                $this->travarCiclo((int)$this->db->documento($id)['fechamento_id'],$u);
+                $doc=$this->db->documento($id,true); $this->db->autorizar($u,true); $r=$this->db->vinculo($doc);
+                $this->conferirRevisaoMensalAtual($r);
                 $this->files->ler($doc,$doc['estado']==='CONFIRMADO');
                 if ($doc['estado']==='PREVIEW') $this->db->sql("UPDATE pagamento_fechamento_documento SET estado='CONFIRMADO',confirmado_por=?,confirmado_em=UTC_TIMESTAMP(6) WHERE id=?",[$u,$id]);
                 $doc=$this->db->documento($id); $op=$this->db->operacao($u,$key); $result=$this->db->resumo($doc); $this->db->concluir($op,$result);
+                $cycle=new FechamentoCompetenciaService($this->conn,$u);
+                $cab=$cycle->cabecalho($r['competencia']);
+                if ($cab) $cycle->sincronizar((int)$cab['id']);
                 return $result;
             });
         });
@@ -112,6 +125,25 @@ final class FechamentoDocumentoService
         $this->db->autorizar($u); $d=$this->db->documento($id); $this->db->vinculo($d);
         if ($d['estado']!==null) $this->files->ler($d,$d['estado']==='CONFIRMADO');
         return $this->db->resumo($d);
+    }
+
+    private function conferirRevisaoMensalAtual(array $r): void
+    {
+        if (($r['snapshot']['composicao']['monthly_rule_version']??null)!=='fechamento_mensal_v1') return;
+        $f=$this->db->sql('SELECT numero_revisao FROM pagamento_fechamento WHERE id=? FOR UPDATE',[$r['fechamento_id']])[0];
+        $capturado=FechamentoCompetenciaService::disponivel($this->conn) && $this->db->sql('SELECT fechamento_id FROM pagamento_competencia_colaborador WHERE fechamento_id=?',[$r['fechamento_id']]);
+        if (!$capturado) {
+            $cadastro=$this->db->sql('SELECT ativo,participa_fechamento_mensal FROM colaborador WHERE idcolaborador=? FOR UPDATE',[$r['colaborador_id']])[0]??null;
+            if (!$cadastro || (int)$cadastro['ativo']!==1 || $cadastro['participa_fechamento_mensal']===null || (int)$cadastro['participa_fechamento_mensal']!==1) throw new DomainException('O colaborador precisa estar ativo e participar explicitamente do fechamento mensal.');
+        }
+        if ((int)$f['numero_revisao']!==$r['numero']) throw new DomainException('STALE_VERSION: atualize os valores e confira o novo adendo.');
+    }
+    private function travarCiclo(int $f,int $u): void
+    {
+        if (!FechamentoCompetenciaService::disponivel($this->conn)) return;
+        // Lock somente no ciclo, antes do indivíduo, sem criar uma read view anterior ao commit concorrente.
+        $scope=$this->db->sql('SELECT f.colaborador_id,c.competencia FROM pagamento_competencia c JOIN pagamento_fechamento f ON f.competencia=c.competencia WHERE f.id=? FOR UPDATE OF c',[$f])[0]??null;
+        if ($scope) (new FechamentoCompetenciaService($this->conn,$u))->permitirRevisao((int)$scope['colaborador_id'],$scope['competencia']);
     }
     public function listar(int $f,int $u): array
     {

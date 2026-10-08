@@ -16,6 +16,8 @@ final class AdendoDocumentalApresentacao
         return $this->numeroPorExtenso($r).' '.($r===1?'real':'reais').($cent ? ' e '.$this->numeroPorExtenso($cent).' '.($cent===1?'centavo':'centavos') : '');
     }
     public function pagamento(string $ref): string {
+        require_once __DIR__.'/../../helpers/pagamento_competencia_helper.php';
+        if (pagamento_competencia_nova($ref)) return (new ContratoDateService())->formatDataPtBr(new DateTimeImmutable(pagamento_previsao($ref),new DateTimeZone('America/Sao_Paulo')));
         [$ano,$mes]=array_map('intval',explode('-',$ref));
         return (new ContratoDateService())->formatDataPtBr($this->getQuintoDiaUtilProximoMes($mes,$ano));
     }

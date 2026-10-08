@@ -32,6 +32,12 @@ if ($mesNumero && $ano) {
     $snapStatusCond = "ico.status_id = 1";
 }
 
+require_once __DIR__.'/services/FechamentoCompetenciaService.php';
+if ($mesNumero && $ano && FechamentoCompetenciaService::disponivel($conn) && pagamento_competencia_nova(sprintf('%04d-%02d',$ano,$mesNumero))) {
+    $c=(new FechamentoCompetenciaService($conn,pagamento_current_user_id()))->resumo(sprintf('%04d-%02d',$ano,$mesNumero));
+    $p=array_values(array_filter($c['colaboradores'],fn($p)=>$p['colaborador_id']===$colaboradorId))[0]??null;
+    pagamento_json(['fonte_financeira'=>'FECHAMENTO','fechamento'=>$c,'colaborador'=>$p,'funcoes'=>[],'custo_total'=>$p && $c['estado']==='CONCLUIDO'?$p['total_centavos']/100:null,'resumo_financeiro'=>null]);
+}
 $dadosColaborador = [];
 
 // Primeira consulta: informações básicas do colaborador
@@ -68,6 +74,11 @@ if ($resultColaborador->num_rows > 0) {
 }
 
 $stmtColaborador->close();
+$hasTipo=(int)$conn->query("SELECT COUNT(*) n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='colaborador' AND COLUMN_NAME='tipo_remuneracao'")->fetch_assoc()['n'];
+$stmtTipo=$conn->prepare('SELECT '.($hasTipo?'tipo_remuneracao':'NULL tipo_remuneracao').' FROM colaborador WHERE idcolaborador=?');
+$stmtTipo->bind_param('i',$colaboradorId); $stmtTipo->execute();
+$dadosColaborador['tipo_remuneracao']=$stmtTipo->get_result()->fetch_assoc()['tipo_remuneracao']??null;
+$stmtTipo->close();
 
 // Consultas adicionais de acordo com o colaboradorId
 if ($colaboradorId == 1) {
@@ -402,7 +413,7 @@ SELECT
   ' - ', 
   CONCAT(
     UPPER(LEFT(an.tipo_animacao, 1)), 
-    LOWER(SUBSTRING(an.tipo_animacao, 2))
+    CASE WHEN UPPER(TRIM(an.tipo_animacao)) = 'IA' THEN 'A' ELSE LOWER(SUBSTRING(an.tipo_animacao, 2)) END
   )
 ) AS imagem_nome,
     fa.funcao_id,
@@ -448,8 +459,7 @@ WHERE
     $sql .= "
 ORDER BY
     obra_id,
-    tem_par_animacao_pos ASC,
-    animacao_id_ordem,
+    imagem_id,
     CASE
         WHEN funcao_id = 10 THEN 1
         WHEN funcao_id = 5 THEN 2
@@ -771,7 +781,6 @@ if ($mesNumero && $ano) {
         $f['pago_parcial_count'] = $installments[$paymentKey]['FINALIZACAO_PARCIAL'] ?? 0;
         $f['pago_completa_count'] = $installments[$paymentKey]['FINALIZACAO_COMPLEMENTO'] ?? 0;
         $f['comissao_gestor'] = !empty($r['comissao_gestor']);
-<<<<<<< HEAD
         $snapshot = (float)$r['valor'];
         if ($f['comissao_gestor']) $snapshot = ($r['tipo_imagem'] === 'Fachada' && mb_stripos($r['imagem_nome'], 'embasamento') === false) ? 100 : 80;
         // A reconstrução das tarefas parciais ocorre depois do pós-processamento
@@ -780,9 +789,6 @@ if ($mesNumero && $ano) {
         if (!$f['comissao_gestor']) {
             $snapshot = financeiro_valor_previsto_centavos($conn, $r, $hasPartialPayment) / 100;
         }
-=======
-        $snapshot = financeiro_snapshot($r) / 100;
->>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
         $f['valor_exibido'] = $snapshot;
         $f['custo'] = $snapshot;
         $f['valor_esperado'] = $snapshot;
@@ -811,12 +817,44 @@ if ($mesNumero && $ano) {
         $r['colaborador_id'] = $colaboradorId;
         return $r;
     }, $eligible);
-<<<<<<< HEAD
     $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger, $conn));
-=======
-    $resumoFinanceiro = pagamento_agregar_itens(pagamento_projetar_itens($summaryOrigins, $ledger));
->>>>>>> 093e0b0c8aa585f296f434253713285fa571e732
 }
+
+// Keep the payment list grouped by project, image, then function after the
+// monthly financial projection rebuilds the task array.
+usort($funcoes, static function (array $a, array $b): int {
+    $comparacao = (int)($a['obra_id'] ?? 0) <=> (int)($b['obra_id'] ?? 0);
+    if ($comparacao !== 0) {
+        return $comparacao;
+    }
+
+    $comparacao = (int)($a['imagem_id'] ?? 0) <=> (int)($b['imagem_id'] ?? 0);
+    if ($comparacao !== 0) {
+        return $comparacao;
+    }
+
+    $ordemFuncao = static function (array $item): int {
+        return match ((int)($item['funcao_id'] ?? 0)) {
+            10 => 1, // Animação
+            5 => 2,  // Pós-produção
+            default => 3,
+        };
+    };
+
+    $comparacao = $ordemFuncao($a) <=> $ordemFuncao($b);
+    if ($comparacao !== 0) {
+        return $comparacao;
+    }
+
+    $comparacao = strnatcasecmp((string)($a['imagem_nome'] ?? ''), (string)($b['imagem_nome'] ?? ''));
+    if ($comparacao !== 0) {
+        return $comparacao;
+    }
+
+    return (int)($a['identificador'] ?? $a['origem_id'] ?? 0)
+        <=> (int)($b['identificador'] ?? $b['origem_id'] ?? 0);
+});
+
 $custoTotal = 0.0;
 foreach ($funcoes as $f) {
     $custoTotal += (float) ($f['custo'] ?? 0);

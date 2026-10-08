@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(false);
 require_once __DIR__ . '/resumo_geral.php';

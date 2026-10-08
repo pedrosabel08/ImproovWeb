@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(false);
@@ -10,17 +11,31 @@ $mes = intval(date('n'));
 
 // Allow overriding via GET (web) or CLI args (--colaborador_id=, --ano=, --mes=)
 if (PHP_SAPI !== 'cli') {
-    if (isset($_GET['colaborador_id'])) $colaborador_id = intval($_GET['colaborador_id']);
-    if (isset($_GET['ano'])) $ano = intval($_GET['ano']);
-    if (isset($_GET['mes'])) $mes = intval($_GET['mes']);
+    if (isset($_GET['colaborador_id'])) {
+        $colaborador_id = intval($_GET['colaborador_id']);
+    }
+    if (isset($_GET['ano'])) {
+        $ano = intval($_GET['ano']);
+    }
+    if (isset($_GET['mes'])) {
+        $mes = intval($_GET['mes']);
+    }
 } else {
     // parse CLI args
     global $argv;
     foreach ($argv as $a) {
-        if (strpos($a, '--colaborador_id=') === 0) $colaborador_id = intval(substr($a, strlen('--colaborador_id=')));
-        if (strpos($a, '--col=') === 0) $colaborador_id = intval(substr($a, strlen('--col=')));
-        if (strpos($a, '--ano=') === 0) $ano = intval(substr($a, strlen('--ano=')));
-        if (strpos($a, '--mes=') === 0) $mes = intval(substr($a, strlen('--mes=')));
+        if (strpos($a, '--colaborador_id=') === 0) {
+            $colaborador_id = intval(substr($a, strlen('--colaborador_id=')));
+        }
+        if (strpos($a, '--col=') === 0) {
+            $colaborador_id = intval(substr($a, strlen('--col=')));
+        }
+        if (strpos($a, '--ano=') === 0) {
+            $ano = intval(substr($a, strlen('--ano=')));
+        }
+        if (strpos($a, '--mes=') === 0) {
+            $mes = intval(substr($a, strlen('--mes=')));
+        }
     }
 }
 $mes_ref = sprintf('%04d-%02d', $ano, $mes);
@@ -88,12 +103,12 @@ try {
     $q->close();
 
     // funcao_animacao
-    $q = $conn->prepare("SELECT fa.id, IFNULL(fa.valor,0) AS valor, an.data_anima FROM funcao_animacao fa JOIN animacao an ON fa.animacao_id = an.idanimacao WHERE fa.colaborador_id = ? AND fa.pagamento = 0 AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?");
+    $q = $conn->prepare("SELECT fa.id, IFNULL(fa.valor,0) AS valor, fa.prazo FROM funcao_animacao fa WHERE fa.colaborador_id = ? AND fa.pagamento = 0 AND YEAR(fa.prazo) = ? AND MONTH(fa.prazo) = ?");
     $q->bind_param('iii', $colaborador_id, $ano, $mes);
     $q->execute();
     $rs = $q->get_result();
     while ($row = $rs->fetch_assoc()) {
-        $item = ['id' => (int)$row['id'], 'valor' => (float)$row['valor'], 'data_anima' => $row['data_anima']];
+        $item = ['id' => (int)$row['id'], 'valor' => (float)$row['valor'], 'prazo' => $row['prazo']];
         $out['items']['animacao'][] = $item;
         $out['valor_total'] += $item['valor'];
     }
@@ -102,15 +117,21 @@ try {
     // Build intended actions (no writes)
     // Mark origins as paid
     if (!empty($out['items']['funcao_imagem'])) {
-        $ids = array_map(function($i){return $i['idfuncao_imagem'];}, $out['items']['funcao_imagem']);
+        $ids = array_map(function ($i) {
+            return $i['idfuncao_imagem'];
+        }, $out['items']['funcao_imagem']);
         $out['actions'][] = ['action' => 'UPDATE funcao_imagem', 'set' => ['pagamento' => 1, 'data_pagamento' => 'NOW()'], 'where' => ['idfuncao_imagem IN' => $ids]];
     }
     if (!empty($out['items']['acompanhamento'])) {
-        $ids = array_map(function($i){return $i['idacompanhamento'];}, $out['items']['acompanhamento']);
+        $ids = array_map(function ($i) {
+            return $i['idacompanhamento'];
+        }, $out['items']['acompanhamento']);
         $out['actions'][] = ['action' => 'UPDATE acompanhamento', 'set' => ['pagamento' => 1, 'data_pagamento' => 'NOW()'], 'where' => ['idacompanhamento IN' => $ids]];
     }
     if (!empty($out['items']['animacao'])) {
-        $ids = array_map(function($i){return $i['id'];}, $out['items']['animacao']);
+        $ids = array_map(function ($i) {
+            return $i['id'];
+        }, $out['items']['animacao']);
         $out['actions'][] = ['action' => 'UPDATE funcao_animacao', 'set' => ['pagamento' => 1, 'data_pagamento' => 'NOW()'], 'where' => ['id IN' => $ids]];
     }
 
@@ -129,10 +150,12 @@ try {
             $r->free();
         }
         $isFinalizacaoFunc = (isset($it['funcao_id']) && intval($it['funcao_id']) === 4);
-        $obs = ($isFinalizacaoFunc && ( (isset($it['status_id']) && intval($it['status_id']) === 1) || $hasPrefinal )) ? 'Finalização Parcial' : null;
+        $obs = ($isFinalizacaoFunc && ((isset($it['status_id']) && intval($it['status_id']) === 1) || $hasPrefinal)) ? 'Finalização Parcial' : null;
         $toInsert[] = ['pagamento_id' => $pagamento_ref, 'origem' => 'funcao_imagem', 'origem_id' => $it['idfuncao_imagem'], 'valor' => $it['valor'], 'observacao' => $obs];
     }
-    if (isset($chk) && $chk) $chk->close();
+    if (isset($chk) && $chk) {
+        $chk->close();
+    }
     foreach ($out['items']['acompanhamento'] as $it) {
         $toInsert[] = ['pagamento_id' => $pagamento_ref, 'origem' => 'acompanhamento', 'origem_id' => $it['idacompanhamento'], 'valor' => $it['valor'], 'observacao' => null];
     }
@@ -146,7 +169,7 @@ try {
     $out['actions'][] = ['action' => 'UPDATE pagamentos (simulated)', 'set' => ['status' => 'pago', 'valor_total' => $out['valor_total'], 'data_pagamento' => 'NOW()', 'pago_em' => 'NOW()'], 'where' => ['idpagamento' => $pagamento_ref]];
 
     // Event
-    $out['actions'][] = ['action' => 'INSERT pagamento_eventos (simulated)', 'row' => ['pagamento_id' => $pagamento_ref, 'tipo' => 'pago', 'descricao' => 'Pagamento marcado como PAGO e itens confirmados ('.(count($out['items']['funcao_imagem'])+count($out['items']['acompanhamento'])+count($out['items']['animacao'])).' itens)']];
+    $out['actions'][] = ['action' => 'INSERT pagamento_eventos (simulated)', 'row' => ['pagamento_id' => $pagamento_ref, 'tipo' => 'pago', 'descricao' => 'Pagamento marcado como PAGO e itens confirmados ('.(count($out['items']['funcao_imagem']) + count($out['items']['acompanhamento']) + count($out['items']['animacao'])).' itens)']];
 
     echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {

@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/pagamento_auth.php';
+require_once __DIR__ . '/../config/pagamento_fechamento.php';
+require_once __DIR__.'/../helpers/pagamento_competencia_helper.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
 	if ($__p && is_file($__p)) {
@@ -94,7 +96,7 @@ $conn->close();
 	<link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
-<body>
+<body data-pagamento-inicio="<?= htmlspecialchars(pagamento_competencia_inicio(), ENT_QUOTES, 'UTF-8') ?>">
 
 	<?php include __DIR__ . '/../sidebar.php'; ?>
 
@@ -158,6 +160,11 @@ $conn->close();
 				</select>
 			</div>
 		</div>
+
+		<?php if (pagamento_fechamento_enabled()): ?>
+		<a id="fechamento-v2-link" href="fechamento.php">Fechamento</a>
+		<?php endif; ?>
+		<p id="remuneracao-info" hidden><span id="remuneracao-badge" class="results-badge"></span> <a href="../Colaborador/">Editar cadastro</a></p>
 
 		<!-- Scrollable content -->
 		<div class="table-scroll-area">
@@ -452,7 +459,10 @@ $conn->close();
 	<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
 	<script src="<?php echo asset_url('animacoes.js'); ?>&payment=<?= filemtime(__DIR__ . '/animacoes.js'); ?>"></script>
 	<script src="<?php echo asset_url('script.js'); ?>&payment=<?= filemtime(__DIR__ . '/script.js'); ?>"></script>
+	<script src="<?= asset_url('../assets/js/thinking-orbs.js') ?>"></script>
+	<script src="<?php echo asset_url('competencia.js').'&ui='.filemtime(__DIR__.'/competencia.js'); ?>"></script>
 	<script src="<?php echo asset_url('visao-geral.js'); ?>&payment=<?= filemtime(__DIR__ . '/visao-geral.js'); ?>"></script>
+	<?php if (pagamento_fechamento_enabled()): ?><script src="<?= asset_url('fechamento-link.js') ?>&v1d=<?= filemtime(__DIR__.'/fechamento-link.js') ?>"></script><?php endif; ?>
 	<script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
 	<script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

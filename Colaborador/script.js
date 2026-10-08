@@ -149,6 +149,11 @@ function carregarUsuarios() {
       });
 
       document.getElementById("resultsCount").textContent = data.length;
+      const requested=new URLSearchParams(location.search).get('colaborador_id');
+      if (requested && !window.remuneracaoCadastroAberto) {
+        const selected=data.find(u=>String(u.idcolaborador)===requested);
+        if(selected) { window.remuneracaoCadastroAberto=true; abrirModalEdicao(selected.idusuario); }
+      }
 
       document.querySelectorAll(".usuario-row").forEach((row) => {
         row.addEventListener("click", function () {
@@ -198,6 +203,10 @@ function abrirModalEdicao(idusuario) {
       atualizarAtuacoesFuncoes();
       document.getElementById("elegivelCapacidade").checked =
         parseInt(data.usuario.elegivel_capacidade ?? 1, 10) === 1;
+      document.getElementById("tipoRemuneracao").value = data.usuario.tipo_remuneracao || "";
+      document.getElementById("participaFechamentoMensal").value = data.usuario.participa_fechamento_mensal ?? "";
+      atualizarCadastroFechamento();
+      document.getElementById("valorFixo").value = data.usuario.valor_fixo === null ? "" : String(data.usuario.valor_fixo).replace(".", ",");
 
       const ativo = parseInt(data.usuario.ativo) === 1;
       const btnToggle = document.getElementById("btnToggleStatus");
@@ -231,6 +240,10 @@ function abrirModalNovo() {
   $("#nivelArquitetura").val("");
   $("#nivelAnimacao").val("");
   document.getElementById("elegivelCapacidade").checked = true;
+  document.getElementById("tipoRemuneracao").value = "";
+  document.getElementById("participaFechamentoMensal").value = "";
+  atualizarCadastroFechamento();
+  document.getElementById("valorFixo").value = "";
   atualizarNivelFinalizacao();
   atualizarAtuacoesFuncoes();
 }
@@ -281,7 +294,7 @@ function toggleStatus(idusuario, ativo, fromModal = false) {
   $.ajax({
     type: "POST",
     url: "salvar_colaborador.php",
-    data: { action: "toggle_status", idusuario, ativo },
+    data: { action: "toggle_status", idusuario, ativo, csrf_token: document.querySelector('meta[name="pagamento-csrf"]').content },
     dataType: "json",
     success: function (response) {
       if (response.success) {
@@ -383,6 +396,10 @@ $("#form").on("submit", function (e) {
     idusuario: $("#idusuario").val(),
     idcolaborador: $("#idcolaborador").val(),
     nome_colaborador: $("#nome_colaborador").val(),
+    tipo_remuneracao: $("#tipoRemuneracao").val(),
+    participa_fechamento_mensal: $("#participaFechamentoMensal").val(),
+    valor_fixo: $("#valorFixo").val(),
+    csrf_token: document.querySelector('meta[name="pagamento-csrf"]').content,
     nome_usuario: $("#nome_usuario").val(),
     login: $("#login").val(),
     senha: $("#senha").val(),
@@ -481,7 +498,7 @@ $("#btnExcluir").on("click", async function () {
   $.ajax({
     type: "POST",
     url: "salvar_colaborador.php",
-    data: { action: "delete", idusuario, idcolaborador },
+    data: { action: "delete", idusuario, idcolaborador, csrf_token: document.querySelector('meta[name="pagamento-csrf"]').content },
     dataType: "json",
     success: function (response) {
       if (response.success) {
@@ -497,3 +514,18 @@ $("#btnExcluir").on("click", async function () {
     },
   });
 });
+
+function atualizarCadastroFechamento() {
+  const participa=document.getElementById("participaFechamentoMensal");
+  const tipo=document.getElementById("tipoRemuneracao");
+  const sim=participa.value === "1";
+  participa.required=document.getElementById("action").value === "create";
+  tipo.required=sim;
+  document.getElementById("valorFixo").required=sim && ["FIXO","FIXO_VARIAVEL"].includes(tipo.value);
+  document.getElementById("fechamentoCadastroHelp").textContent=sim
+    ? "Forma de remuneração obrigatória. Informe o valor fixo quando aplicável."
+    : participa.value === "0" ? "Remuneração e valor fixo são opcionais para o fechamento."
+    : "Participação pendente de revisão. Não entra na fila até ser marcada como Sim.";
+}
+document.getElementById("participaFechamentoMensal").addEventListener("change",atualizarCadastroFechamento);
+document.getElementById("tipoRemuneracao").addEventListener("change",atualizarCadastroFechamento);

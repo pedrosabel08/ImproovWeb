@@ -1,0 +1,70 @@
+{
+    "documents": [
+        {
+            "id": "1",
+            "revisao_id": "16",
+            "estado": "CONFIRMADO",
+            "pdf_hash": "e8136b98344be65892d87879718206712cc21a6fbce2b4a534cbcdcfb3e0ae4d",
+            "numero": "3",
+            "total_final_centavos": "160000",
+            "preview_hash_ok": true,
+            "same_bytes": true
+        },
+        {
+            "id": "2",
+            "revisao_id": "15",
+            "estado": "PREVIEW",
+            "pdf_hash": "d6fe5ee7d65906b8c43e5694f81b56caa92a41f2f081c5ea5de0cd9f8ef15f79",
+            "numero": "2",
+            "total_final_centavos": "10000",
+            "preview_hash_ok": true
+        },
+        {
+            "id": "3",
+            "revisao_id": "22",
+            "estado": "PREVIEW",
+            "pdf_hash": "8494e8fc2078b587281105a5cea828d6efb606dd23ec2c0b6523efc737db82c1",
+            "numero": "3",
+            "total_final_centavos": "4500",
+            "preview_hash_ok": true
+        }
+    ],
+    "financial": [
+        {
+            "colaborador_id": "1",
+            "revisoes": "3",
+            "ultima": "3"
+        },
+        {
+            "colaborador_id": "2",
+            "revisoes": "4",
+            "ultima": "4"
+        },
+        {
+            "colaborador_id": "3",
+            "revisoes": "3",
+            "ultima": "3"
+        },
+        {
+            "colaborador_id": "4",
+            "revisoes": "4",
+            "ultima": "4"
+        },
+        {
+            "colaborador_id": "5",
+            "revisoes": "2",
+            "ultima": "2"
+        },
+        {
+            "colaborador_id": "6",
+            "revisoes": "4",
+            "ultima": "4"
+        },
+        {
+            "colaborador_id": "8",
+            "revisoes": "2",
+            "ultima": "2"
+        }
+    ],
+    "reserved": 0
+}

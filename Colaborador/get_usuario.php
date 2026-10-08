@@ -5,12 +5,19 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../conexao.php'; // Certifique-se de incluir a conexão com o banco
 
 $idusuario = $_GET['idusuario'] ?? 0;
+$hasTipo=(int)$conn->query("SELECT COUNT(*) n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='colaborador' AND COLUMN_NAME='tipo_remuneracao'")->fetch_assoc()['n'];
+$tipoSelect=$hasTipo?'c.tipo_remuneracao':'NULL AS tipo_remuneracao';
+$hasParticipacao=(int)$conn->query("SELECT COUNT(*) n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='colaborador' AND COLUMN_NAME='participa_fechamento_mensal'")->fetch_assoc()['n'];
+$participacaoSelect=$hasParticipacao?'c.participa_fechamento_mensal':'NULL AS participa_fechamento_mensal';
 
 // Consulta para pegar as informações do usuário
 $sql_usuario = "SELECT 
                     u.*,
                     c.nome_colaborador,
                     c.elegivel_capacidade,
+                    $tipoSelect,
+                    $participacaoSelect,
+                    c.valor_fixo,
                     CONCAT(UPPER(LEFT(SUBSTRING_INDEX(u.nome_usuario, ' ', 1), 1)), LOWER(SUBSTRING(SUBSTRING_INDEX(u.nome_usuario, ' ', 1), 2))) AS primeiro_nome_formatado
                 FROM 
                     usuario u

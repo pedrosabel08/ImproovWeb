@@ -307,12 +307,12 @@ class AdendoLocalService
         $cols = $showValor ? 4 : 3;
         if (!$rows) {
             return '<table class="tabela"><thead><tr><th>No.</th><th>Nome da Imagem</th><th>Função</th>'
-                . ($showValor ? '<th>Valor (R$)</th>' : '')
+                . ($showValor ? '<th class="cell-right">Valor (R$)</th>' : '')
                 . '</tr></thead><tbody><tr><td colspan="' . $cols . '">Sem itens para este período.</td></tr></tbody></table>';
         }
 
         $html = '<table class="tabela">';
-        $html .= '<thead><tr><th>No.</th><th>Nome da Imagem</th><th>Função</th>' . ($showValor ? '<th>Valor (R$)</th>' : '') . '</tr></thead>';
+        $html .= '<thead><tr><th>No.</th><th>Nome da Imagem</th><th>Função</th>' . ($showValor ? '<th class="cell-right">Valor (R$)</th>' : '') . '</tr></thead>';
         $html .= '<tbody>';
         foreach ($rows as $r) {
             $html .= '<tr>';
@@ -349,11 +349,11 @@ class AdendoLocalService
     private function buildExtrasTabelaHtml(array $extras): string
     {
         if (!$extras) {
-            return '<table class="tabela"><thead><tr><th>Categoria</th><th>Valor (R$)</th></tr></thead><tbody><tr><td colspan="2">Sem extras.</td></tr></tbody></table>';
+            return '<table class="tabela"><thead><tr><th>Categoria</th><th class="cell-right">Valor (R$)</th></tr></thead><tbody><tr><td colspan="2">Sem extras.</td></tr></tbody></table>';
         }
 
         $html = '<table class="tabela">';
-        $html .= '<thead><tr><th>Categoria</th><th>Valor (R$)</th></tr></thead>';
+        $html .= '<thead><tr><th>Categoria</th><th class="cell-right">Valor (R$)</th></tr></thead>';
         $html .= '<tbody>';
         foreach ($extras as $extra) {
             $categoria = $this->escapeHtml((string)($extra['categoria'] ?? ''));
@@ -854,11 +854,14 @@ SELECT
     'funcao_animacao' AS origem,
     fa.id AS identificador,
     an.imagem_id,
-    ico.imagem_nome,
+    CONCAT(ico.imagem_nome, ' - ', CASE
+        WHEN UPPER(TRIM(an.tipo_animacao)) = 'IA' THEN 'IA'
+        ELSE CONCAT(UPPER(LEFT(an.tipo_animacao, 1)), LOWER(SUBSTRING(an.tipo_animacao, 2)))
+    END) AS imagem_nome,
     fa.funcao_id,
     f.nome_funcao AS nome_funcao,
     fa.status,
-    an.data_anima as prazo,
+    fa.prazo,
     fa.pagamento,
     fa.valor,
     fa.data_pagamento,
@@ -874,8 +877,9 @@ JOIN
 LEFT JOIN 
     imagens_cliente_obra ico ON an.imagem_id = ico.idimagens_cliente_obra
 WHERE 
-    fa.colaborador_id = ? AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?
-ORDER BY obra_id, imagem_nome";
+    fa.colaborador_id = ?
+    AND YEAR(fa.prazo) = ? AND MONTH(fa.prazo) = ?
+ORDER BY obra_id, imagem_id, funcao_id DESC";
         } else {
             $sql = "SELECT 
         fi.colaborador_id,

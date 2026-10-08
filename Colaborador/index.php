@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../Pagamento/pagamento_auth.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -42,6 +43,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(),ENT_QUOTES,'UTF-8') ?>">
     <title>Colaboradores</title>
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <!-- Google Fonts -->
@@ -117,6 +119,29 @@ $conn->close();
                     <input type="hidden" id="action" name="action" value="create">
 
                     <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="participaFechamentoMensal">Participa do fechamento mensal?</label>
+                            <select class="form-input" id="participaFechamentoMensal" name="participa_fechamento_mensal">
+                                <option value="">Ainda não definido</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                            <small class="form-help" id="fechamentoCadastroHelp">Defina a participação após revisar o cadastro.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="tipoRemuneracao">Forma de remuneração</label>
+                            <select class="form-input" id="tipoRemuneracao" name="tipo_remuneracao">
+                                <option value="">Não definido</option>
+                                <option value="FIXO">Fixo</option>
+                                <option value="VARIAVEL">Variável</option>
+                                <option value="FIXO_VARIAVEL">Fixo + variável</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="valorFixo">Valor fixo mensal (R$)</label>
+                            <input class="form-input" id="valorFixo" name="valor_fixo" inputmode="decimal" placeholder="Não configurado">
+                            <small class="form-help">Obrigatório para participantes com fixo. Zero é um valor válido.</small>
+                        </div>
                         <div class="form-group">
                             <label class="form-label" for="nome_colaborador">Colaborador</label>
                             <input type="text" class="form-input" id="nome_colaborador" name="nome_colaborador" required placeholder="Nome completo">

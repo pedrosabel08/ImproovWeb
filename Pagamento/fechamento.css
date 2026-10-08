@@ -1,0 +1,362 @@
+/* FASE 1D: reuse os tokens do módulo; hierarquia documental, sem redesign do legado. */
+.fechamento-page {
+  overflow-y: auto;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  min-width: 0;
+  padding-bottom: 0;
+  overscroll-behavior: contain;
+}
+.fechamento-page,
+.fechamento-page *,
+.fechamento-page *::before,
+.fechamento-page *::after {
+  box-sizing: border-box;
+}
+.fechamento-page [hidden] {
+  display: none !important;
+}
+.fc-header,
+.fc-state,
+.fc-dialog header,
+.fc-dialog footer {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+.fc-header {
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.fc-header h1 {
+  font-size: 26px;
+  margin: 8px 0;
+}
+.fc-header p,
+.fc-section > p,
+.fc-state p {
+  color: var(--text-secondary, #aaa);
+  line-height: 1.6;
+}
+.fc-mode {
+  border: 1px solid var(--border-card, #777);
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.fc-context {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.fechamento-page label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+}
+.fc-context label:first-child {
+  flex: 1;
+  min-width: 220px;
+}
+.fechamento-page input,
+.fechamento-page select,
+.fechamento-page textarea {
+  border: 1px solid var(--border-card, #686570);
+  border-radius: 6px;
+  padding: 10px;
+  color: var(--text-primary, #eee);
+  background: var(--bg-input, #202127);
+  font: inherit;
+  width: 100%;
+}
+.fechamento-page button:focus-visible,
+.fechamento-page a:focus-visible,
+.fechamento-page input:focus-visible,
+.fechamento-page select:focus-visible,
+.fechamento-page textarea:focus-visible {
+  outline: 2px solid var(--accent, #a480ef);
+  outline-offset: 3px;
+}
+.fechamento-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.fc-busy {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+}
+.fc-notice {
+  margin: 12px 0;
+  padding: 14px;
+  border-left: 3px solid var(--accent, #a480ef);
+  background: var(--bg-card, #26242d);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.fc-state {
+  margin: 22px 0 16px;
+  flex-wrap: wrap;
+}
+.fc-state h2 {
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+.fc-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--border-card, #45424d);
+  border-radius: 8px;
+  margin: 0 0 22px;
+}
+.fc-summary > div {
+  padding: 16px;
+}
+.fc-summary dt,
+.fc-fixo dt {
+  color: var(--text-secondary, #aaa);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.fc-summary dd,
+.fc-fixo dd {
+  margin: 0;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.fc-summary .fc-total {
+  grid-column: 1/-1;
+  border-top: 1px solid var(--border-card, #45424d);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fc-total dt {
+  color: var(--text-primary, #eee);
+  margin: 0;
+}
+.fc-total dd {
+  font-size: 23px;
+  font-weight: 600;
+}
+.fc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.fc-main,
+.fc-history {
+  min-width: 0;
+}
+.fc-section {
+  border-top: 1px solid var(--border-card, #45424d);
+  padding: 18px 0;
+}
+.fc-section h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+.fc-section h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.fc-table-wrap {
+  overflow: auto;
+  max-height: 480px;
+}
+.fc-table {
+  width: 100%;
+  min-width: 580px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.fc-table th,
+.fc-table td {
+  text-align: left;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-card, #45424d);
+}
+.fc-table th {
+  font-size: 12px;
+  font-weight: 500;
+}
+.fc-table td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fc-table small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary, #aaa);
+}
+.fc-fixo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 12px 0;
+}
+.fc-fixo dd {
+  font-size: 16px;
+}
+.fc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.fc-item {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--bg-card, #26242d);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+.fc-item p {
+  margin: 5px 0;
+  line-height: 1.5;
+}
+.fc-history button {
+  text-align: left;
+}
+.fc-history-item {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  color: var(--text-primary, #eee);
+  background: var(--bg-card, #26242d);
+  border: 1px solid var(--border-card, #45424d);
+  border-radius: 6px;
+}
+.fc-history-item[aria-current="true"] {
+  border-color: var(--accent, #a480ef);
+}
+.fc-history-item small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary, #aaa);
+}
+.fc-dialog {
+  width: min(650px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  margin: auto;
+  padding: 22px;
+  border: 1px solid var(--border-card, #45424d);
+  border-radius: 10px;
+  color: var(--text-primary, #eee);
+  background: var(--bg-modal, #18191e);
+}
+.fc-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+.fc-dialog h2 {
+  font-size: 20px;
+  margin: 0;
+}
+.fc-dialog label {
+  margin: 15px 0;
+}
+.fc-dialog footer {
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.fc-row {
+  padding: 12px;
+  border: 1px solid var(--border-card, #45424d);
+  border-radius: 6px;
+  margin: 12px 0;
+}
+.fc-pdf-dialog {
+  width: min(1060px, calc(100vw - 24px));
+}
+.fc-pdf-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.fc-pdf-pages {
+  height: 55dvh;
+  overflow: auto;
+  padding: 12px;
+  background: #52545a;
+}
+.fc-pdf-pages canvas {
+  display: block;
+  margin: 0 auto;
+  background: white;
+}
+.fc-pdf-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.fc-dialog #fc-decision-error {
+  color: var(--danger, #f49b94);
+}
+@media (max-width: 1180px) {
+  .fc-layout {
+    grid-template-columns: 1fr;
+  }
+  .fc-history {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+@media (max-width: 840px) {
+  .fc-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fc-header h1 {
+    font-size: 23px;
+  }
+}
+@media (max-width: 540px) {
+  .fechamento-page {
+    padding: 20px 12px 32px;
+  }
+  .fc-history {
+    display: block;
+  }
+  .fc-context label,
+  .fc-context button {
+    width: 100%;
+  }
+  .fc-context label:first-child {
+    min-width: 0;
+  }
+  .fc-state {
+    align-items: stretch;
+  }
+  .fc-state > button {
+    width: 100%;
+  }
+  .fc-total {
+    flex-wrap: wrap;
+  }
+  .fc-summary dd {
+    font-size: 16px;
+  }
+  .fc-dialog {
+    padding: 14px;
+  }
+  .fc-actions .btn {
+    flex: 1 1 160px;
+  }
+}

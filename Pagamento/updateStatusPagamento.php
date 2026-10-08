@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(true);
@@ -32,6 +33,8 @@ if ($status === null) {
 }
 
 $mes_ref = PagamentoService::competencia($mes, $ano);
+require_once __DIR__.'/services/FechamentoCompetenciaService.php';
+if (FechamentoCompetenciaService::disponivel($conn) && pagamento_competencia_nova($mes_ref)) pagamento_json(['success'=>false,'error'=>'Use o fechamento mensal para revisar e liquidar esta competência.'],409);
 
 if ($status === 'pago') {
     require_once __DIR__ . '/financeiro_v2.php';

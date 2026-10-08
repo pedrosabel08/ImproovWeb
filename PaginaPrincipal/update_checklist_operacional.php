@@ -53,6 +53,11 @@ if (!$checklist || ($checklist['status'] ?? '') === 'cancelado') {
 }
 
 $moduleKey = (string) ($checklist['module_key'] ?? '');
+if ($moduleKey === 'pagamentos') {
+    http_response_code(409);
+    echo json_encode(['success'=>false,'message'=>'Esta pendência é concluída automaticamente pelo fechamento ou pagamento da competência.']);
+    exit;
+}
 $responsavelId = isset($checklist['responsavel_id']) ? (int) $checklist['responsavel_id'] : 0;
 if ($moduleKey === 'projeto' && !in_array($nivelAcesso, [1, 2, 3], true)) {
     http_response_code(403);

@@ -54,7 +54,7 @@ function entregas_feriados_moveis(int $ano): array
     ];
 }
 
-function entregas_adicionar_dias_uteis(string $dataInicial, int $diasUteis): string
+function entregas_adicionar_dias_uteis(string $dataInicial, int $diasUteis, bool $incluirSabado = false): string
 {
     $diasAdicionados = 0;
     $data = strtotime($dataInicial);
@@ -66,7 +66,7 @@ function entregas_adicionar_dias_uteis(string $dataInicial, int $diasUteis): str
         $mesDia = date('m-d', $data);
         $ano = (int) date('Y', $data);
 
-        if ($diaSemana >= 6) {
+        if ($diaSemana === 7 || ($diaSemana === 6 && !$incluirSabado)) {
             continue;
         }
 

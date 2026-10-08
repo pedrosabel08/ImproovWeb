@@ -1190,6 +1190,9 @@ function pendencias_operacionais_fetch(
         'fotografico'      => pendencias_operacionais_empty_module('fotografico', 'Fotográfico', 'Planejamento, execução e conferência fotográfica', 'ri-camera-line', '#2563eb'),
     ];
 
+    require_once __DIR__.'/pagamento_pendencias_helper.php';
+    pagamento_pendencias_append($conn,$modules,$colaboradorId,$obraScopeId);
+
     pendencias_operacionais_append_fotografico(
         $conn,
         $modules['fotografico'],

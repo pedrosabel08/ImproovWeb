@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(true);
@@ -28,7 +29,7 @@ try {
 
     $atualizados = 0;
     foreach ($data['itens'] as $item) {
-        $id        = isset($item['id'])        ? intval($item['id'])          : 0;
+        $id        = isset($item['id']) ? intval($item['id']) : 0;
         $valorNovo = isset($item['valor_novo']) ? floatval($item['valor_novo']) : null;
 
         if ($id <= 0 || $valorNovo === null) {

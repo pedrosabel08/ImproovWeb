@@ -48,7 +48,7 @@ if (!function_exists('pagamento_require_gestor')) {
 
         $provided = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? ''));
         if ($provided === '' || !hash_equals(pagamento_csrf_token(), $provided)) {
-            pagamento_json(['success' => false, 'error' => 'Token CSRF inválido. Atualize a página e tente novamente.'], 419);
+            pagamento_json(['success' => false, 'error' => 'Token CSRF inválido. Atualize a página e tente novamente.'], 403);
         }
     }
 }

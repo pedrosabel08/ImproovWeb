@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Serves the pending temp adendo PDF inline (for preview modal).
  * Only works when an adendo_pendente entry exists in the session.

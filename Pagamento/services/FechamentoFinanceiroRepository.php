@@ -9,7 +9,7 @@ final class FechamentoFinanceiroRepository
         'funcao_animacao', 'animacao', 'acompanhamento', 'pagamento_itens', 'pagamentos'];
     private mysqli $conn;
 
-    public function __construct(mysqli $conn) { $this->conn = $conn; }
+    public function __construct(mysqli $conn, private bool $mensal = false) { $this->conn = $conn; }
 
     private function select(string $sql, string $types = '', array $values = []): array
     {
@@ -110,7 +110,13 @@ final class FechamentoFinanceiroRepository
         if (!$colab) throw new InvalidArgumentException('Colaborador não encontrado.');
         // SQL carrega candidatos; status/log e classe são decididos no domínio.
         $scope = '(fi.colaborador_id=? OR (?=8 AND fi.colaborador_id IN (23,40) AND fi.funcao_id=4))';
-        $fi = $this->select("SELECT fi.*, 'funcao_imagem' AS origem, fi.idfuncao_imagem AS origem_id,
+        $apresentacao = $this->mensal ? ", CASE WHEN fi.funcao_id=4 AND (
+            EXISTS(SELECT 1 FROM funcao_imagem fp JOIN funcao fpar ON fpar.idfuncao=fp.funcao_id WHERE fp.imagem_id=fi.imagem_id AND fpar.nome_funcao='Pré-Finalização')
+            OR (SELECT h.status_id FROM historico_imagens h WHERE h.imagem_id=fi.imagem_id AND h.data_movimento<'$fim' ORDER BY h.data_movimento DESC,h.idhistorico DESC LIMIT 1)=1
+            ) THEN 1 ELSE 0 END AS finalizacao_parcial,
+            (SELECT COUNT(*) FROM pagamento_itens pip JOIN funcao_imagem fip ON pip.origem='funcao_imagem' AND pip.origem_id=fip.idfuncao_imagem
+             WHERE fip.imagem_id=fi.imagem_id AND fip.funcao_id=4 AND LOWER(TRIM(pip.observacao))='finalização parcial') AS pago_parcial_count" : '';
+        $fi = $this->select("SELECT fi.* $apresentacao, 'funcao_imagem' AS origem, fi.idfuncao_imagem AS origem_id,
             ico.imagem_nome, ico.tipo_imagem, f.nome_funcao
             FROM funcao_imagem fi JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=fi.imagem_id
             LEFT JOIN funcao f ON f.idfuncao=fi.funcao_id WHERE $scope
@@ -125,8 +131,8 @@ final class FechamentoFinanceiroRepository
             LEFT JOIN animacao a ON a.idanimacao=fa.animacao_id
             LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=a.imagem_id
             LEFT JOIN funcao f ON f.idfuncao=fa.funcao_id WHERE fa.colaborador_id=?
-            AND ((fa.prazo>=? AND fa.prazo<?) OR (a.data_anima>=? AND a.data_anima<?)) ORDER BY fa.id",
-            'issss', [$beneficiario,$inicio,$fim,$inicio,$fim]);
+            AND fa.prazo>=? AND fa.prazo<? ORDER BY fa.id",
+            'iss', [$beneficiario,$inicio,$fim]);
         $ac = $this->select("SELECT ac.*, 'acompanhamento' AS origem, ac.idacompanhamento AS origem_id,
             ico.imagem_nome FROM acompanhamento ac LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=ac.imagem_id
             WHERE ac.colaborador_id=? AND ac.data>=? AND ac.data<? ORDER BY ac.idacompanhamento", 'iss', [$beneficiario,$inicio,$fim]);

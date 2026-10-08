@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/PagamentoService.php';
+require_once __DIR__ . '/services/FechamentoCompetenciaService.php';
 require_once __DIR__ . '/../helpers/custos_helper.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
 
@@ -56,7 +57,21 @@ function financeiro_elegiveis(mysqli $conn, ?int $colab, int $mes, int $ano): ar
     $types = $colab === null ? 'ss' : 'iss';
     $args = $colab === null ? [$inicio, $fim] : [$colab, $inicio, $fim];
     $ac = custos_query($conn, "SELECT a.*, 'acompanhamento' origem, a.idacompanhamento origem_id, 'Acompanhamento' nome_funcao, 0 parcial FROM acompanhamento a WHERE $whereAC AND a.data>=? AND a.data<?", $types, $args);
-    $an = custos_query($conn, "SELECT fa.*, 'funcao_animacao' origem, fa.id origem_id, a.obra_id, 'Animação' nome_funcao, 0 parcial FROM funcao_animacao fa JOIN animacao a ON a.idanimacao=fa.animacao_id WHERE $whereAN AND a.data_anima>=? AND a.data_anima<? AND LOWER(TRIM(fa.status)) IN $status", $types, $args);
+    $an = custos_query(
+        $conn,
+        "SELECT fa.*, 'funcao_animacao' origem, fa.id origem_id, a.obra_id, a.imagem_id,
+            CONCAT(ico.imagem_nome, ' - ', CASE
+                WHEN UPPER(TRIM(a.tipo_animacao)) = 'IA' THEN 'IA'
+                ELSE CONCAT(UPPER(LEFT(a.tipo_animacao, 1)), LOWER(SUBSTRING(a.tipo_animacao, 2)))
+            END) imagem_nome,
+            'Animação' nome_funcao, 0 parcial
+         FROM funcao_animacao fa
+         JOIN animacao a ON a.idanimacao=fa.animacao_id
+         LEFT JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra=a.imagem_id
+         WHERE $whereAN AND fa.prazo>=? AND fa.prazo<? AND LOWER(TRIM(fa.status)) IN $status",
+        $types,
+        $args
+    );
     $commissions = [];
     foreach ($fi as &$r) {
         $r['comissao_gestor'] = $colab !== null && (int)$r['colaborador_id'] !== $colab;
@@ -97,6 +112,7 @@ function financeiro_tem_semantica(mysqli $conn): bool
  * No client amount is accepted. Multiple entries are legitimate only as installments. */
 function financeiro_lancar(mysqli $conn, array $row, int $colab, int $mes, int $ano, ?int $user, string $mode = 'normal', ?string $date = null): array
 {
+    if (FechamentoCompetenciaService::disponivel($conn)) pagamento_bloquear_legado(PagamentoService::competencia($mes,$ano));
     $origem = $row['origem'];
     $id = (int)$row['origem_id'];
     $tables = ['funcao_imagem' => 'idfuncao_imagem', 'acompanhamento' => 'idacompanhamento', 'funcao_animacao' => 'id'];
@@ -216,6 +232,7 @@ function financeiro_lancar(mysqli $conn, array $row, int $colab, int $mes, int $
 
 function financeiro_pagar(mysqli $conn, array $input, ?int $user): array
 {
+    if (FechamentoCompetenciaService::disponivel($conn)) pagamento_bloquear_legado(PagamentoService::competencia((int)($input['mes']??0),(int)($input['ano']??0)));
     $colab = (int)($input['colaborador_id'] ?? 0);
     $mes = (int)($input['mes'] ?? 0);
     $ano = (int)($input['ano'] ?? 0);

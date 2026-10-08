@@ -128,7 +128,7 @@ final class FechamentoFinanceiroRules
             'identidade' => $id, 'valores' => $valores, 'evidencias' => $evidencia, 'mensagem' => $mensagem];
     }
 
-    public function calcular(array $dados, int $beneficiario, string $competencia, DateTimeImmutable $snapshot): array
+    public function calcular(array $dados, int $beneficiario, string $competencia, DateTimeImmutable $snapshot, bool $mensal = false): array
     {
         self::periodo($competencia);
         if ($beneficiario <= 0) throw new InvalidArgumentException('Colaborador inválido.');
@@ -172,6 +172,8 @@ final class FechamentoFinanceiroRules
             $pagamentos = [];
             $ignorados = [];
             $pago = 0;
+            $quitacoesFinais = [];
+            $parcelaAnterior = (int)($origem['pago_parcial_count']??0)>0;
             $problemas = [];
             foreach ($ledgerPorOrigem[$tipo . ':' . (int)$origem['origem_id']] ?? [] as $linha) {
                 $benefPagamento = (int)($linha['beneficiario_id'] ?? $linha['colaborador_id'] ?? 0);
@@ -186,6 +188,11 @@ final class FechamentoFinanceiroRules
                     continue;
                 }
                 $valor = self::centavos($linha['valor']);
+                if (custos_tipo($linha)==='FINALIZACAO_PARCIAL') $parcelaAnterior=true;
+                if ($mensal && !$comissao && $tipo==='funcao_imagem' && (int)($origem['funcao_id']??0)===4
+                    && (custos_tipo($linha)==='FINALIZACAO_COMPLEMENTO' || mb_strtolower(trim($linha['observacao']??''))==='pago completa')) {
+                    $quitacoesFinais[]=(int)$linha['idpagamento_item'];
+                }
                 $pago = self::somar($pago, $valor);
                 $pagamentos[] = ['idpagamento_item' => (int)$linha['idpagamento_item'], 'pagamento_id' => (int)$linha['pagamento_id'],
                     'beneficiario_id' => $benefPagamento, 'origem' => $tipo, 'origem_id' => (int)$linha['origem_id'],
@@ -195,6 +202,9 @@ final class FechamentoFinanceiroRules
                     'aplicacao' => 'MESMO_BENEFICIARIO_ORIGEM_ID_E_CLASSE'];
             }
             $valores = self::saldo($base, $pago);
+            // O complemento encerra a Finalização; a parcela anterior pode pertencer a outro executor.
+            // Não fabricar pagamento: conservar base, ledger e saldo bruto observados.
+            if ($quitacoesFinais) $valores['saldo_centavos']=0;
             $flag = (int)($origem['pagamento'] ?? 0);
             if ($elegivel['elegivel']) {
                 if (!$comissao && $flag === 1 && !$pagamentos) {
@@ -214,7 +224,7 @@ final class FechamentoFinanceiroRules
             }
             $indeterminado = count(array_filter($problemas, fn($p) => $p['codigo'] !== 'PAGO_ACIMA_DO_DEVIDO')) > 0;
             $situacao = !$elegivel['elegivel'] ? 'NAO_ELEGIVEL' : ($problemas ? 'PENDENCIA'
-                : ($valores['saldo_centavos'] > 0 ? 'DEVIDO' : ($base > 0 ? 'QUITADO' : 'SEM_VALOR_DEVIDO')));
+                : ($valores['saldo_centavos'] > 0 ? 'DEVIDO' : ($base > 0 || $quitacoesFinais ? 'QUITADO' : 'SEM_VALOR_DEVIDO')));
             $exclusao = $situacao === 'DEVIDO' ? null : match ($situacao) {
                 'NAO_ELEGIVEL' => $elegivel['motivo'], 'PENDENCIA' => 'PENDENCIA_FINANCEIRA_BLOQUEANTE',
                 'QUITADO' => 'R06_SALDO_ZERO', default => 'SEM_VALOR_POSITIVO',
@@ -231,6 +241,13 @@ final class FechamentoFinanceiroRules
                 'flag_legada_pagamento' => $flag, 'flag_refere_a_classe' => !$comissao,
                 'regra_base' => $comissao ? 'R07_COMISSAO_100_80' : 'R05_VALOR_PERSISTIDO_DA_ORIGEM',
                 'situacao' => $situacao, 'motivo_exclusao' => $exclusao, 'divergencias' => $problemas];
+            if ($mensal) {
+                if ($tipo==='funcao_imagem' && (int)($origem['funcao_id']??0)===4) {
+                    $item['descricao']['funcao']=!empty($origem['finalizacao_parcial'])?'Finalização parcial'
+                        :($parcelaAnterior?'Finalização completa com pagamento final':'Finalização completa');
+                }
+                $item['quitacao_final']= ['regra'=>'PAGO_COMPLETA_ENCERRA_FINALIZACAO','lancamentos_ids'=>$quitacoesFinais,'aplicavel'=>(bool)$quitacoesFinais];
+            }
             $itens[$key] = $item;
             foreach ($problemas as $problema) $pendencias[] = $problema;
         }

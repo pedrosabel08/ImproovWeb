@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/financeiro_v2.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
 
@@ -19,7 +20,9 @@ function pagamento_projetar_itens(array $origens, array $ledger, ?mysqli $conn =
         $types = $paid[$key]['tipos'] ?? [];
         $hasPartialInstallment = in_array('FINALIZACAO_PARCIAL', $types, true);
         // A partially eligible finalization appears only after its first installment exists.
-        if (!empty($r['parcial']) && !$hasPartialInstallment) continue;
+        if (!empty($r['parcial']) && !$hasPartialInstallment) {
+            continue;
+        }
         $v = !empty($r['comissao_gestor']) || $conn === null
             ? financeiro_snapshot($r)
             : financeiro_valor_previsto_centavos($conn, $r, $hasPartialInstallment);
@@ -35,7 +38,9 @@ function pagamento_projetar_itens(array $origens, array $ledger, ?mysqli $conn =
             $phase = !empty($r['parcial']) ? 'Parcial' : 'Completa';
             $role = in_array($id, [12, 24], true) ? "Finalização PH $phase" : "Finalização $phase";
         }
-        if (!empty($r['comissao_gestor'])) $role = 'Comissão Gestor';
+        if (!empty($r['comissao_gestor'])) {
+            $role = 'Comissão Gestor';
+        }
         $items[] = [
             'chave' => $key, 'colaborador_id' => $id, 'origem' => $r['origem'], 'origem_id' => (int)$r['origem_id'],
             'obra_id' => (int)($r['obra_id'] ?? 0), 'funcao' => $role,
@@ -52,7 +57,9 @@ function pagamento_agregar_itens(array $items): array
 {
     $total = ['total' => 0, 'pago' => 0, 'pendente' => 0, 'excesso' => 0, 'itens' => 0, 'itens_pagos' => 0, 'itens_pendentes' => 0, 'divergencias' => 0, 'divergencias_tarifa' => 0, 'divergencias_financeiras' => 0];
     foreach ($items as $i) {
-        foreach (['total', 'pago', 'pendente', 'excesso'] as $k) $total[$k] += $i[$k];
+        foreach (['total', 'pago', 'pendente', 'excesso'] as $k) {
+            $total[$k] += $i[$k];
+        }
         $total['itens']++;
         $total[$i['quitado'] ? 'itens_pagos' : 'itens_pendentes']++;
         $total['divergencias'] += (int)$i['divergencia'];
@@ -60,7 +67,7 @@ function pagamento_agregar_itens(array $items): array
         $total['divergencias_financeiras'] += (int)$i['divergencia_financeira'];
     }
     $total['consistente'] = $total['total'] === $total['pago'] + $total['pendente'];
-    $total['grafico_financeiro_disponivel'] = $total['consistente'] && $total['total'] > 0 && $total['pago'] >= 0 && $total['pendente'] >= 0 && !array_filter($items, fn($i) => $i['total'] < 0 || $i['pago'] < 0 || $i['excesso'] > 0);
+    $total['grafico_financeiro_disponivel'] = $total['consistente'] && $total['total'] > 0 && $total['pago'] >= 0 && $total['pendente'] >= 0 && !array_filter($items, fn ($i) => $i['total'] < 0 || $i['pago'] < 0 || $i['excesso'] > 0);
     $total['percentual_pago'] = $total['grafico_financeiro_disponivel'] ? round($total['pago'] / $total['total'] * 100, 1) : null;
     $total['percentual_pendente'] = $total['grafico_financeiro_disponivel'] ? round($total['pendente'] / $total['total'] * 100, 1) : null;
     return $total;
@@ -72,8 +79,12 @@ function pagamento_carregar_ledger(mysqli $conn, array $origens): array
     foreach ($origens as $r) {
         $ids[$r['origem']][(int)$r['origem_id']] = (int)$r['origem_id'];
     }
-    if (!$ids) return [];
-    $conditions = []; $args = []; $types = '';
+    if (!$ids) {
+        return [];
+    }
+    $conditions = [];
+    $args = [];
+    $types = '';
     foreach ($ids as $origem => $list) {
         $conditions[] = '(pi.origem=? AND pi.origem_id IN (' . implode(',', array_fill(0, count($list), '?')) . '))';
         $args[] = $origem;
@@ -87,8 +98,10 @@ function pagamento_carregar_ledger(mysqli $conn, array $origens): array
 function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
 {
     $ref = PagamentoService::competencia($mes, $ano);
+    require_once __DIR__.'/resumo_competencia.php';
+    if (FechamentoCompetenciaService::disponivel($conn) && pagamento_competencia_nova($ref)) return pagamento_resumo_competencia($conn,$ref);
     $names = array_column(custos_query($conn, 'SELECT idcolaborador, nome_colaborador FROM colaborador'), 'nome_colaborador', 'idcolaborador');
-    $origens = array_values(array_filter(financeiro_elegiveis($conn, null, $mes, $ano), fn($r) => isset($names[$r['colaborador_id']])));
+    $origens = array_values(array_filter(financeiro_elegiveis($conn, null, $mes, $ano), fn ($r) => isset($names[$r['colaborador_id']])));
     custo_tarefa_carregar_contexto($conn, array_keys($names));
     $items = pagamento_projetar_itens($origens, pagamento_carregar_ledger($conn, $origens), $conn);
     $adendos = custos_query($conn, 'SELECT colaborador_id, status FROM adendos WHERE competencia=?', 's', [$ref]);
@@ -98,12 +111,17 @@ function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
         $states[$a['status']] = ($states[$a['status']] ?? 0) + 1;
         $adendoByColab[(int)$a['colaborador_id']] = ($adendoByColab[(int)$a['colaborador_id']] ?? 0) + 1;
     }
-    $grouped = []; $roles = [];
+    $grouped = [];
+    $roles = [];
     foreach ($items as $i) {
         $grouped[$i['colaborador_id']][] = $i;
         $roles[$i['funcao']] = ($roles[$i['funcao']] ?? 0) + $i['total'];
     }
-    foreach ($adendoByColab as $id => $count) if (isset($names[$id]) && !isset($grouped[$id])) $grouped[$id] = [];
+    foreach ($adendoByColab as $id => $count) {
+        if (isset($names[$id]) && !isset($grouped[$id])) {
+            $grouped[$id] = [];
+        }
+    }
     $colabs = [];
     foreach ($grouped as $id => $list) {
         $sum = pagamento_agregar_itens($list);
@@ -114,14 +132,14 @@ function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
             'situacao' => $sum['divergencias'] > 0 ? 'Divergência' : ($sum['itens_pendentes'] > 0 ? 'Pendente' : ($sum['itens'] > 0 ? 'Pago' : 'Sem itens')),
         ]);
     }
-    usort($colabs, fn($a, $b) => ($b['total'] <=> $a['total']) ?: strcasecmp($a['nome'], $b['nome']));
+    usort($colabs, fn ($a, $b) => ($b['total'] <=> $a['total']) ?: strcasecmp($a['nome'], $b['nome']));
     arsort($roles);
     $obraIds = array_values(array_unique(array_filter(array_column($items, 'obra_id'))));
     $obras = $obraIds ? custos_query($conn, 'SELECT idobra id, nomenclatura nome FROM obra WHERE idobra IN (' . implode(',', array_fill(0, count($obraIds), '?')) . ') ORDER BY nomenclatura', str_repeat('i', count($obraIds)), $obraIds) : [];
     return [
         'competencia' => $ref, 'unidade_monetaria' => 'centavos', 'resumo' => pagamento_agregar_itens($items),
         'adendos' => ['total' => count($adendos), 'nao_assinados' => count($adendos) - $states['assinado'], 'status' => $states],
-        'funcoes' => array_map(fn($name, $value) => ['nome' => $name, 'total' => $value], array_keys($roles), array_values($roles)),
+        'funcoes' => array_map(fn ($name, $value) => ['nome' => $name, 'total' => $value], array_keys($roles), array_values($roles)),
         'colaboradores' => $colabs, 'obras' => $obras,
     ];
 }

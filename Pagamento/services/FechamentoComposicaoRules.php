@@ -3,6 +3,7 @@
 require_once __DIR__ . '/FechamentoFixoRules.php';
 require_once __DIR__ . '/FechamentoExtrasRules.php';
 require_once __DIR__ . '/FechamentoRubricasEspeciais.php';
+require_once __DIR__ . '/FechamentoMensalRules.php';
 
 /** FASE 1B: consome o resultado 1A integralmente, sem recalcular seus serviços. */
 final class FechamentoComposicaoRules
@@ -28,6 +29,7 @@ final class FechamentoComposicaoRules
             || !is_array($servicos['pendencias'] ?? null) || ($servicos['timezone'] ?? null) !== 'America/Sao_Paulo') {
             throw new InvalidArgumentException('Resultado 1A incompleto ou inválido.');
         }
+        if (($contexto['fluxo'] ?? null) === FechamentoMensalRules::VERSION) return (new FechamentoMensalRules())->compor($servicos,$contexto);
         $fixo = (new FechamentoFixoRules())->calcular($contexto['fixo'] ?? [], $b, $ref, $snapshot);
         $extras = (new FechamentoExtrasRules())->calcular($contexto['extras'] ?? [], $b, $ref, $snapshot);
         $especial = (new FechamentoRubricasEspeciais())->obter($b, $ref);

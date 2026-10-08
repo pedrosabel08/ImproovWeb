@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/pagamento_auth.php';
 pagamento_require_gestor(true);

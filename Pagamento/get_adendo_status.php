@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/pagamento_auth.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -46,8 +47,9 @@ if ($mode === 'by_id') {
             $stmtLog->bind_param('i', $adendo['id']);
             $stmtLog->execute();
             $resLog = $stmtLog->get_result();
-            while ($row = $resLog->fetch_assoc())
+            while ($row = $resLog->fetch_assoc()) {
                 $log[] = $row;
+            }
             $stmtLog->close();
         }
     }
@@ -108,15 +110,18 @@ if ($mode === 'geral') {
 
     foreach ($items as $item) {
         $s = $item['status'] ?? '';
-        if (in_array($s, ['nao_gerado', 'gerado', 'recusado', 'expirado'], true)) $counts[$s]++;
-        if ($s === 'assinado')
+        if (in_array($s, ['nao_gerado', 'gerado', 'recusado', 'expirado'], true)) {
+            $counts[$s]++;
+        }
+        if ($s === 'assinado') {
             $counts['assinado']++;
-        elseif ($s === 'visualizado')
+        } elseif ($s === 'visualizado') {
             $counts['visualizado']++;
-        elseif ($s === 'enviado')
+        } elseif ($s === 'enviado') {
             $counts['enviado']++;
-        else
+        } else {
             $counts['nao_enviado']++;
+        }
     }
 
     echo json_encode([

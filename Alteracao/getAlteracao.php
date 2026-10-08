@@ -46,8 +46,13 @@ JOIN obra o ON o.idobra = i.obra_id
 JOIN status_imagem s ON s.idstatus = a.status_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
 WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id
-AND (f.status != 'Finalizado' OR (f.status = 'Finalizado' AND i.prazo = CURDATE()))";
-
+AND (
+    f.status NOT IN ('Finalizado', 'Aprovado')
+    OR (
+        f.status IN ('Finalizado', 'Aprovado')
+        AND i.prazo = CURDATE()
+    )
+)";
 $params = [];
 $types = '';
 

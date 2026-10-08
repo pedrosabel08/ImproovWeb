@@ -95,11 +95,64 @@ function pagamento_carregar_ledger(mysqli $conn, array $origens): array
     return custos_query($conn, 'SELECT pi.*, p.colaborador_id FROM pagamento_itens pi JOIN pagamentos p ON p.idpagamento=pi.pagamento_id WHERE ' . implode(' OR ', $conditions), $types, $args);
 }
 
-function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
+function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano, bool $incluirComparacao = true): array
 {
     $ref = PagamentoService::competencia($mes, $ano);
     require_once __DIR__.'/resumo_competencia.php';
-    if (FechamentoCompetenciaService::disponivel($conn) && pagamento_competencia_nova($ref)) return pagamento_resumo_competencia($conn,$ref);
+    if (FechamentoCompetenciaService::disponivel($conn) && pagamento_competencia_nova($ref)) {
+        $payload = pagamento_resumo_competencia($conn, $ref);
+        if ($incluirComparacao && ($payload['fechamento']['estado'] ?? null) === 'CONCLUIDO') {
+            $previousDate = (new DateTimeImmutable($ref . '-01'))->modify('-1 month');
+            $previous = pagamento_resumo_geral($conn, (int)$previousDate->format('n'), (int)$previousDate->format('Y'), false);
+            $previousIsOfficial = isset($previous['fechamento']['estado']);
+            $comparisonAvailable = !$previousIsOfficial || $previous['fechamento']['estado'] === 'CONCLUIDO';
+            $previousFunctions = [];
+            if ($comparisonAvailable) {
+                foreach ($previous['funcoes'] ?? [] as $function) {
+                    $key = mb_strtolower(trim((string)$function['nome']), 'UTF-8');
+                    $previousFunctions[$key] = ['nome' => (string)$function['nome'],'total' => (int)$function['total']];
+                }
+            }
+            $currentFunctions = [];
+            foreach ($payload['funcoes'] as $function) {
+                $key = mb_strtolower(trim((string)$function['nome']), 'UTF-8');
+                $currentFunctions[$key] = $function;
+            }
+            foreach ($previousFunctions as $key => $function) {
+                if (!isset($currentFunctions[$key])) {
+                    $currentFunctions[$key] = ['nome' => $function['nome'],'total' => 0,'tarefas' => 0];
+                }
+            }
+            foreach ($currentFunctions as $key => &$function) {
+                $before = (int)($previousFunctions[$key]['total'] ?? 0);
+                $function['mes_anterior_centavos'] = $comparisonAvailable ? $before : null;
+                $function['variacao_percentual'] = !$comparisonAvailable ? null
+                    : ($before > 0 ? round((((int)$function['total'] - $before) / $before) * 100, 1)
+                        : ((int)$function['total'] > 0 ? null : 0.0));
+            }
+            unset($function);
+            $payload['funcoes'] = array_values($currentFunctions);
+            usort($payload['funcoes'], fn ($a, $b) => ($b['total'] <=> $a['total']) ?: strcasecmp($a['nome'], $b['nome']));
+
+            $previousCollaborators = [];
+            if ($comparisonAvailable) {
+                foreach ($previous['colaboradores'] ?? [] as $collaborator) {
+                    $previousCollaborators[(int)$collaborator['colaborador_id']] = (int)$collaborator['total'];
+                }
+            }
+            foreach ($payload['colaboradores'] as &$collaborator) {
+                $before = $previousCollaborators[(int)$collaborator['colaborador_id']] ?? 0;
+                $current = (int)$collaborator['total'];
+                $collaborator['mes_anterior_centavos'] = $comparisonAvailable ? $before : null;
+                $collaborator['variacao_percentual'] = !$comparisonAvailable ? null
+                    : ($before > 0 ? round((($current - $before) / $before) * 100, 1)
+                        : ($current > 0 ? null : 0.0));
+            }
+            unset($collaborator);
+            $payload['comparacao_mes_anterior'] = ['competencia' => $previousDate->format('Y-m'),'disponivel' => $comparisonAvailable];
+        }
+        return $payload;
+    }
     $names = array_column(custos_query($conn, 'SELECT idcolaborador, nome_colaborador FROM colaborador'), 'nome_colaborador', 'idcolaborador');
     $origens = array_values(array_filter(financeiro_elegiveis($conn, null, $mes, $ano), fn ($r) => isset($names[$r['colaborador_id']])));
     custo_tarefa_carregar_contexto($conn, array_keys($names));
@@ -115,7 +168,11 @@ function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
     $roles = [];
     foreach ($items as $i) {
         $grouped[$i['colaborador_id']][] = $i;
-        $roles[$i['funcao']] = ($roles[$i['funcao']] ?? 0) + $i['total'];
+        $roles[$i['funcao']] ??= ['nome' => $i['funcao'],'total' => 0,'tarefas' => 0];
+        $roles[$i['funcao']]['total'] += (int)$i['total'];
+        if ((int)$i['total'] > 0) {
+            $roles[$i['funcao']]['tarefas']++;
+        }
     }
     foreach ($adendoByColab as $id => $count) {
         if (isset($names[$id]) && !isset($grouped[$id])) {
@@ -133,13 +190,14 @@ function pagamento_resumo_geral(mysqli $conn, int $mes, int $ano): array
         ]);
     }
     usort($colabs, fn ($a, $b) => ($b['total'] <=> $a['total']) ?: strcasecmp($a['nome'], $b['nome']));
-    arsort($roles);
+    $roles = array_values($roles);
+    usort($roles, fn ($a, $b) => ($b['total'] <=> $a['total']) ?: strcasecmp($a['nome'], $b['nome']));
     $obraIds = array_values(array_unique(array_filter(array_column($items, 'obra_id'))));
     $obras = $obraIds ? custos_query($conn, 'SELECT idobra id, nomenclatura nome FROM obra WHERE idobra IN (' . implode(',', array_fill(0, count($obraIds), '?')) . ') ORDER BY nomenclatura', str_repeat('i', count($obraIds)), $obraIds) : [];
     return [
         'competencia' => $ref, 'unidade_monetaria' => 'centavos', 'resumo' => pagamento_agregar_itens($items),
         'adendos' => ['total' => count($adendos), 'nao_assinados' => count($adendos) - $states['assinado'], 'status' => $states],
-        'funcoes' => array_map(fn ($name, $value) => ['nome' => $name, 'total' => $value], array_keys($roles), array_values($roles)),
+        'funcoes' => $roles,
         'colaboradores' => $colabs, 'obras' => $obras,
     ];
 }

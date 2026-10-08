@@ -25,7 +25,9 @@ final class FechamentoFinanceiroRules
 
     public static function identidade(int $beneficiario, string $origem, int $id, string $classe): array
     {
-        if ($beneficiario <= 0 || $id <= 0) throw new InvalidArgumentException('Identidade financeira inválida.');
+        if ($beneficiario <= 0 || $id <= 0) {
+            throw new InvalidArgumentException('Identidade financeira inválida.');
+        }
         return ['beneficiario_id' => $beneficiario, 'origem' => $origem, 'origem_id' => $id, 'classe' => $classe];
     }
 
@@ -53,9 +55,13 @@ final class FechamentoFinanceiroRules
 
     public static function saldo(int $base, int $pago): array
     {
-        if ($pago === PHP_INT_MIN) throw new OverflowException('Saldo fora do intervalo.');
+        if ($pago === PHP_INT_MIN) {
+            throw new OverflowException('Saldo fora do intervalo.');
+        }
         $bruto = self::somar($base, -$pago);
-        if ($bruto === PHP_INT_MIN) throw new OverflowException('Excesso fora do intervalo.');
+        if ($bruto === PHP_INT_MIN) {
+            throw new OverflowException('Excesso fora do intervalo.');
+        }
         return ['saldo_bruto_centavos' => $bruto, 'saldo_centavos' => max($bruto, 0),
             'excesso_centavos' => $bruto < 0 ? -$bruto : 0];
     }
@@ -131,25 +137,39 @@ final class FechamentoFinanceiroRules
     public function calcular(array $dados, int $beneficiario, string $competencia, DateTimeImmutable $snapshot, bool $mensal = false): array
     {
         self::periodo($competencia);
-        if ($beneficiario <= 0) throw new InvalidArgumentException('Colaborador inválido.');
+        if ($beneficiario <= 0) {
+            throw new InvalidArgumentException('Colaborador inválido.');
+        }
         $ledgerPorOrigem = [];
         foreach ($dados['ledger'] ?? [] as $linha) {
             $ledgerPorOrigem[$linha['origem'] . ':' . (int)$linha['origem_id']][] = $linha;
         }
         $logsPorTarefa = [];
-        foreach ($dados['logs'] ?? [] as $log) $logsPorTarefa[(int)$log['funcao_imagem_id']][] = $log;
+        foreach ($dados['logs'] ?? [] as $log) {
+            $logsPorTarefa[(int)$log['funcao_imagem_id']][] = $log;
+        }
         $legados = [];
-        foreach ($dados['animacoes_legadas'] ?? [] as $legado) $legados[(int)$legado['idanimacao']] = $legado;
+        foreach ($dados['animacoes_legadas'] ?? [] as $legado) {
+            $legados[(int)$legado['idanimacao']] = $legado;
+        }
         $pendencias = [];
         $legadosAmbiguos = [];
         foreach ($legados as $id => $legado) {
-            $pagos = array_values(array_filter($ledgerPorOrigem['animacao:' . $id] ?? [],
-                fn($p) => (int)($p['beneficiario_id'] ?? $p['colaborador_id'] ?? 0) === $beneficiario));
-            if (!$pagos) continue;
+            $pagos = array_values(array_filter(
+                $ledgerPorOrigem['animacao:' . $id] ?? [],
+                fn ($p) => (int)($p['beneficiario_id'] ?? $p['colaborador_id'] ?? 0) === $beneficiario
+            ));
+            if (!$pagos) {
+                continue;
+            }
             $ref = self::identidade($beneficiario, 'animacao', $id, 'ANIMACAO_LEGADA');
-            $pendencias[] = self::pendencia('ANIMACAO_LEGADA_AMBIGUA', $ref, ['base_legada' => $legado['valor'] ?? null],
+            $pendencias[] = self::pendencia(
+                'ANIMACAO_LEGADA_AMBIGUA',
+                $ref,
+                ['base_legada' => $legado['valor'] ?? null],
                 ['origem_legada' => $legado, 'pagamentos_legados' => $pagos],
-                'Pagamento de animação legada exige reconciliação; não foi convertido em pagamento de função.');
+                'Pagamento de animação legada exige reconciliação; não foi convertido em pagamento de função.'
+            );
             $legadosAmbiguos[$id] = true;
         }
         $itens = [];
@@ -158,7 +178,9 @@ final class FechamentoFinanceiroRules
             $dono = (int)$origem['colaborador_id'];
             $comissao = $tipo === 'funcao_imagem' && $beneficiario === 8
                 && in_array($dono, [23, 40], true) && (int)$origem['funcao_id'] === 4;
-            if ($dono !== $beneficiario && !$comissao) continue;
+            if ($dono !== $beneficiario && !$comissao) {
+                continue;
+            }
             $classe = $comissao ? self::COMISSAO : match ($tipo) {
                 'funcao_imagem' => self::TAREFA, 'funcao_animacao' => self::ANIMACAO,
                 'acompanhamento' => self::ACOMPANHAMENTO,
@@ -166,14 +188,16 @@ final class FechamentoFinanceiroRules
             };
             $id = self::identidade($beneficiario, $tipo, (int)$origem['origem_id'], $classe);
             $key = self::chave($id);
-            if (isset($itens[$key])) throw new RuntimeException('Direito financeiro duplicado: ' . $key);
+            if (isset($itens[$key])) {
+                throw new RuntimeException('Direito financeiro duplicado: ' . $key);
+            }
             $elegivel = self::elegibilidade($origem, $logsPorTarefa[(int)$origem['origem_id']] ?? [], $competencia);
             $base = $comissao ? self::comissao($origem) : self::centavos($origem['valor'] ?? null);
             $pagamentos = [];
             $ignorados = [];
             $pago = 0;
             $quitacoesFinais = [];
-            $parcelaAnterior = (int)($origem['pago_parcial_count']??0)>0;
+            $parcelaAnterior = (int)($origem['pago_parcial_count'] ?? 0) > 0;
             $problemas = [];
             foreach ($ledgerPorOrigem[$tipo . ':' . (int)$origem['origem_id']] ?? [] as $linha) {
                 $benefPagamento = (int)($linha['beneficiario_id'] ?? $linha['colaborador_id'] ?? 0);
@@ -182,16 +206,23 @@ final class FechamentoFinanceiroRules
                     $ignorados[] = ['pagamento' => $linha, 'motivo' => $benefPagamento !== $beneficiario
                         ? 'OUTRO_BENEFICIARIO' : 'OUTRA_CLASSE_FINANCEIRA', 'classe_classificada' => $classePagamento];
                     if ($benefPagamento === $beneficiario && $classePagamento === null && $elegivel['elegivel']) {
-                        $problemas[] = self::pendencia('CLASSE_LEDGER_NAO_RECONHECIDA', $id, [], ['pagamento' => $linha],
-                            'Classificação do lançamento precisa de reconciliação.');
+                        $problemas[] = self::pendencia(
+                            'CLASSE_LEDGER_NAO_RECONHECIDA',
+                            $id,
+                            [],
+                            ['pagamento' => $linha],
+                            'Classificação do lançamento precisa de reconciliação.'
+                        );
                     }
                     continue;
                 }
                 $valor = self::centavos($linha['valor']);
-                if (custos_tipo($linha)==='FINALIZACAO_PARCIAL') $parcelaAnterior=true;
-                if ($mensal && !$comissao && $tipo==='funcao_imagem' && (int)($origem['funcao_id']??0)===4
-                    && (custos_tipo($linha)==='FINALIZACAO_COMPLEMENTO' || mb_strtolower(trim($linha['observacao']??''))==='pago completa')) {
-                    $quitacoesFinais[]=(int)$linha['idpagamento_item'];
+                if (custos_tipo($linha) === 'FINALIZACAO_PARCIAL') {
+                    $parcelaAnterior = true;
+                }
+                if ($mensal && !$comissao && $tipo === 'funcao_imagem' && (int)($origem['funcao_id'] ?? 0) === 4
+                    && (custos_tipo($linha) === 'FINALIZACAO_COMPLEMENTO' || mb_strtolower(trim($linha['observacao'] ?? '')) === 'pago completa')) {
+                    $quitacoesFinais[] = (int)$linha['idpagamento_item'];
                 }
                 $pago = self::somar($pago, $valor);
                 $pagamentos[] = ['idpagamento_item' => (int)$linha['idpagamento_item'], 'pagamento_id' => (int)$linha['pagamento_id'],
@@ -204,25 +235,40 @@ final class FechamentoFinanceiroRules
             $valores = self::saldo($base, $pago);
             // O complemento encerra a Finalização; a parcela anterior pode pertencer a outro executor.
             // Não fabricar pagamento: conservar base, ledger e saldo bruto observados.
-            if ($quitacoesFinais) $valores['saldo_centavos']=0;
+            if ($quitacoesFinais) {
+                $valores['saldo_centavos'] = 0;
+            }
             $flag = (int)($origem['pagamento'] ?? 0);
             if ($elegivel['elegivel']) {
                 if (!$comissao && $flag === 1 && !$pagamentos) {
-                    $problemas[] = self::pendencia('PAGAMENTO_SEM_LEDGER', $id, ['base_centavos' => $base, 'flag_pagamento' => $flag],
+                    $problemas[] = self::pendencia(
+                        'PAGAMENTO_SEM_LEDGER',
+                        $id,
+                        ['base_centavos' => $base, 'flag_pagamento' => $flag],
                         ['origem' => $origem, 'ledger_compativel' => [], 'ledger_nao_aplicavel' => $ignorados],
-                        'Origem marcada paga sem ledger compatível; valor pago e saldo não foram determinados.');
+                        'Origem marcada paga sem ledger compatível; valor pago e saldo não foram determinados.'
+                    );
                 }
                 if ($valores['excesso_centavos'] > 0) {
-                    $problemas[] = self::pendencia('PAGO_ACIMA_DO_DEVIDO', $id,
+                    $problemas[] = self::pendencia(
+                        'PAGO_ACIMA_DO_DEVIDO',
+                        $id,
                         ['base_centavos' => $base, 'pago_centavos' => $pago, 'excesso_centavos' => $valores['excesso_centavos']],
-                        ['pagamentos' => $pagamentos], 'Pagamentos excedem a base financeira; exige decisão explícita.');
+                        ['pagamentos' => $pagamentos],
+                        'Pagamentos excedem a base financeira; exige decisão explícita.'
+                    );
                 }
                 if ($tipo === 'funcao_animacao' && isset($legadosAmbiguos[(int)($origem['animacao_id'] ?? 0)])) {
-                    $problemas[] = self::pendencia('ANIMACAO_LEGADA_AMBIGUA', $id, ['base_centavos' => $base],
-                        ['animacao_id' => (int)$origem['animacao_id']], 'Função vinculada a animação com pagamento legado não reconciliado.');
+                    $problemas[] = self::pendencia(
+                        'ANIMACAO_LEGADA_AMBIGUA',
+                        $id,
+                        ['base_centavos' => $base],
+                        ['animacao_id' => (int)$origem['animacao_id']],
+                        'Função vinculada a animação com pagamento legado não reconciliado.'
+                    );
                 }
             }
-            $indeterminado = count(array_filter($problemas, fn($p) => $p['codigo'] !== 'PAGO_ACIMA_DO_DEVIDO')) > 0;
+            $indeterminado = count(array_filter($problemas, fn ($p) => $p['codigo'] !== 'PAGO_ACIMA_DO_DEVIDO')) > 0;
             $situacao = !$elegivel['elegivel'] ? 'NAO_ELEGIVEL' : ($problemas ? 'PENDENCIA'
                 : ($valores['saldo_centavos'] > 0 ? 'DEVIDO' : ($base > 0 || $quitacoesFinais ? 'QUITADO' : 'SEM_VALOR_DEVIDO')));
             $exclusao = $situacao === 'DEVIDO' ? null : match ($situacao) {
@@ -231,7 +277,10 @@ final class FechamentoFinanceiroRules
             };
             $item = ['identidade' => $id, 'descricao' => ['imagem_id' => $origem['imagem_id'] ?? null,
                 'imagem' => $origem['imagem_nome'] ?? null, 'funcao_id' => $origem['funcao_id'] ?? null,
-                'funcao' => $origem['nome_funcao'] ?? ($tipo === 'acompanhamento' ? 'Acompanhamento' : null)],
+                'funcao' => $origem['nome_funcao'] ?? ($tipo === 'acompanhamento' ? 'Acompanhamento' : null),
+                'tipo_animacao' => $tipo === 'funcao_animacao' ? ($origem['tipo_animacao'] ?? null) : null,
+                'animacao_id' => $tipo === 'funcao_animacao' ? ($origem['animacao_id'] ?? null) : null,
+                'obra_id' => $origem['obra_id'] ?? null, 'obra_nome' => $origem['obra_nome'] ?? null],
                 'elegibilidade' => $elegivel, 'valor_original' => $origem['valor'] ?? null, 'base_centavos' => $base,
                 'pagamentos' => $pagamentos, 'pagamentos_nao_aplicaveis' => $ignorados,
                 'pago_ledger_centavos' => $pago, 'pago_centavos' => $indeterminado ? null : $pago,
@@ -242,20 +291,24 @@ final class FechamentoFinanceiroRules
                 'regra_base' => $comissao ? 'R07_COMISSAO_100_80' : 'R05_VALOR_PERSISTIDO_DA_ORIGEM',
                 'situacao' => $situacao, 'motivo_exclusao' => $exclusao, 'divergencias' => $problemas];
             if ($mensal) {
-                if ($tipo==='funcao_imagem' && (int)($origem['funcao_id']??0)===4) {
-                    $item['descricao']['funcao']=!empty($origem['finalizacao_parcial'])?'Finalização parcial'
-                        :($parcelaAnterior?'Finalização completa com pagamento final':'Finalização completa');
+                if ($tipo === 'funcao_imagem' && (int)($origem['funcao_id'] ?? 0) === 4) {
+                    $item['descricao']['funcao'] = !empty($origem['finalizacao_parcial']) ? 'Finalização parcial'
+                        : ($parcelaAnterior ? 'Finalização completa com pagamento final' : 'Finalização completa');
                 }
-                $item['quitacao_final']= ['regra'=>'PAGO_COMPLETA_ENCERRA_FINALIZACAO','lancamentos_ids'=>$quitacoesFinais,'aplicavel'=>(bool)$quitacoesFinais];
+                $item['quitacao_final'] = ['regra' => 'PAGO_COMPLETA_ENCERRA_FINALIZACAO','lancamentos_ids' => $quitacoesFinais,'aplicavel' => (bool)$quitacoesFinais];
             }
             $itens[$key] = $item;
-            foreach ($problemas as $problema) $pendencias[] = $problema;
+            foreach ($problemas as $problema) {
+                $pendencias[] = $problema;
+            }
         }
         ksort($itens, SORT_STRING);
-        $devidos = array_values(array_filter($itens, fn($i) => $i['situacao'] === 'DEVIDO'));
+        $devidos = array_values(array_filter($itens, fn ($i) => $i['situacao'] === 'DEVIDO'));
         $subtotal = 0;
-        foreach ($devidos as $item) $subtotal = self::somar($subtotal, $item['saldo_centavos']);
-        $completo = !$legadosAmbiguos && !array_filter($itens, fn($i) => $i['elegibilidade']['elegivel'] && $i['saldo_centavos'] === null);
+        foreach ($devidos as $item) {
+            $subtotal = self::somar($subtotal, $item['saldo_centavos']);
+        }
+        $completo = !$legadosAmbiguos && !array_filter($itens, fn ($i) => $i['elegibilidade']['elegivel'] && $i['saldo_centavos'] === null);
         return ['colaborador_id' => $beneficiario, 'competencia' => $competencia,
             'snapshot_em' => $snapshot->setTimezone(new DateTimeZone('America/Sao_Paulo'))->format('Y-m-d\TH:i:s.uP'),
             'timezone' => 'America/Sao_Paulo', 'rule_version' => self::VERSION,

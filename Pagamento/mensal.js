@@ -49,6 +49,10 @@ function sanitizeFileName(value) {
     .replace(/^[ -]+|[ -]+$/g, "");
   return safe || "ADENDO";
 }
+function setDocumentState(text) {
+  const label = $("fm-document-state").querySelector("span");
+  if (label) label.textContent = text;
+}
 function documentFileName() {
   const [year, month] = monthly.competencia.split("-");
   const nome = monthly.colaboradores[index]?.nome ?? "COLABORADOR";
@@ -155,13 +159,16 @@ const context = () => ({
 });
 const apiRoot = document.querySelector('meta[name="mensal-test-api"]')?.content;
 const endpoint = (a) =>
-  apiRoot ? apiRoot + encodeURIComponent(a) :
-  ["concluir", "quitar", "pagar"].includes(a) ? "api/fechamento/competencia.php" : "api/" +
-      (["mensal", "iniciar", "obter", "preparar", "decidir"].includes(a)
-        ? "fechamento/"
-        : "documento/") +
-      a +
-      ".php";
+  apiRoot
+    ? apiRoot + encodeURIComponent(a)
+    : ["concluir", "quitar", "pagar"].includes(a)
+      ? "api/fechamento/competencia.php"
+      : "api/" +
+        (["mensal", "iniciar", "obter", "preparar", "decidir"].includes(a)
+          ? "fechamento/"
+          : "documento/") +
+        a +
+        ".php";
 const message = (t) => {
   $("fm-message").textContent = t;
   $("fm-message").hidden = !t;
@@ -190,13 +197,23 @@ function update() {
   ])
     $(id).disabled = locked;
   const closed = monthly?.estado === "CONCLUIDO";
-  document.querySelectorAll("[data-service-index]").forEach(button => button.disabled = locked || closed);
-  for (const id of ["fm-withdraw-function", "fm-restore-function"]) $(id).disabled = locked || closed || !$("fm-service-function").options.length;
+  document
+    .querySelectorAll("[data-service-index]")
+    .forEach((button) => (button.disabled = locked || closed));
+  for (const id of ["fm-withdraw-function", "fm-restore-function"])
+    $(id).disabled =
+      locked || closed || !$("fm-service-function").options.length;
   $("fm-service-submit").disabled = locked || closed;
   $("fm-start").disabled = locked || (!monthly?.estado && !monthly?.quantidade);
-  if ($("fm-conclude")) $("fm-conclude").disabled = locked || closed || !monthly?.quantidade || monthly.contagens.CONFIRMADO !== monthly.quantidade;
+  if ($("fm-conclude"))
+    $("fm-conclude").disabled =
+      locked ||
+      closed ||
+      !monthly?.quantidade ||
+      monthly.contagens.CONFIRMADO !== monthly.quantidade;
   $("fm-recalculate").disabled ||= closed;
-  if ($("fm-discount")) $("fm-discount").disabled = locked || closed || !financial?.revisao;
+  if ($("fm-discount"))
+    $("fm-discount").disabled = locked || closed || !financial?.revisao;
   $("fm-review").disabled =
     locked ||
     !monthly?.colaboradores.some(
@@ -237,8 +254,7 @@ async function run(label, fn, { global = true } = {}) {
     message(text);
     if (index >= 0 && !viewed) {
       placeholder("Não foi possível abrir o adendo", text);
-      $("fm-document-state").textContent =
-        "Adendo indisponível para conferência.";
+      setDocumentState("Adendo indisponível para conferência.");
     }
   } finally {
     busy = false;
@@ -274,7 +290,11 @@ async function mutate(a, data, repeat = false) {
   const response = await fetch(endpoint(request.action), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
-    body: JSON.stringify(["concluir", "quitar", "pagar"].includes(request.action) ? { ...request.data, acao: request.action } : request.data),
+    body: JSON.stringify(
+      ["concluir", "quitar", "pagar"].includes(request.action)
+        ? { ...request.data, acao: request.action }
+        : request.data,
+    ),
   });
   const result = await response.json();
   if (!response.ok || !result.success) {
@@ -305,11 +325,17 @@ function summary() {
         " — revisar cadastro</a></li>",
     )
     .join("");
-  const isClosed=m.estado === "CONCLUIDO";
-  $("fm-cycle-title").textContent="Fechamento • " + new Date(m.competencia+"-02T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-  $("fm-cycle-state").textContent=isClosed?"Concluído":"Em andamento";
-  $("fm-conclude").hidden=!m.ciclo_id || isClosed;
-  $("fm-cycle-financial").textContent=m.estado ? (isClosed?"Total fechado: "+money(m.total_fechado_centavos):"Parcial consolidado: "+money(m.parcial_centavos))+" · Pagamento previsto: "+m.previsto_em.split("-").reverse().join("/")+" (5º dia útil)" : "";
+  const isClosed = m.estado === "CONCLUIDO";
+  $("fm-cycle-state").textContent = isClosed ? "Concluído" : "Em andamento";
+  $("fm-conclude").hidden = !m.ciclo_id || isClosed;
+  $("fm-cycle-financial").textContent = m.estado
+    ? (isClosed
+        ? "Total fechado " + money(m.total_fechado_centavos)
+        : "Parcial " + money(m.parcial_centavos)) +
+      " · Previsto " +
+      m.previsto_em.split("-").reverse().join("/") +
+      " (5º dia útil)"
+    : "";
   $("fm-period").textContent = new Date(
     m.competencia + "-02T12:00:00",
   ).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -333,9 +359,9 @@ function summary() {
   ].join(":");
   if (nextStatsSignature !== statsSignature) {
     $("fm-stats").innerHTML =
-    stat(m.quantidade, "aptos", "fa-users") +
-    stat(c.NAO_REVISADO, "não revisados", "fa-file-lines", "neutral") +
-    stat(c.ATENCAO, "em atenção", "fa-triangle-exclamation", "attention") +
+      stat(m.quantidade, "aptos", "fa-users") +
+      stat(c.NAO_REVISADO, "não revisados", "fa-file-lines", "neutral") +
+      stat(c.ATENCAO, "em atenção", "fa-triangle-exclamation", "attention") +
       stat(c.CONFIRMADO, "revisados", "fa-circle-check", "confirmed");
     statsSignature = nextStatsSignature;
     window.pagamentoMotion?.animate($("fm-stats"));
@@ -388,13 +414,20 @@ function overview(finished = false) {
           p.pendencias.map((t) => "<small>" + esc(t) + "</small>").join("") +
           "</td><td>" +
           esc(types[p.tipo_remuneracao] || "Não definido") +
-          "</td>" + [
-            (p.resumo?.VALOR_FIXO || 0) + (p.resumo?.ACOMPANHAMENTO_ESPECIAL || 0),
-            (p.resumo?.SERVICOS || 0) + (p.reconciliacao?.credito_historico_centavos || 0),
-            (p.resumo?.BONUS_EXTRAS || 0) + (p.resumo?.BONUS_PRODUTIVIDADE || 0),
+          "</td>" +
+          [
+            (p.resumo?.VALOR_FIXO || 0) +
+              (p.resumo?.ACOMPANHAMENTO_ESPECIAL || 0),
+            (p.resumo?.SERVICOS || 0) +
+              (p.reconciliacao?.credito_historico_centavos || 0),
+            (p.resumo?.BONUS_EXTRAS || 0) +
+              (p.resumo?.BONUS_PRODUTIVIDADE || 0),
             Math.abs(p.resumo?.DESCONTO || 0),
-          ].map((v)=>"<td>"+money(v)+"</td>").join("") + "<td>" +
-          '<span ' +
+          ]
+            .map((v) => "<td>" + money(v) + "</td>")
+            .join("") +
+          "<td>" +
+          "<span " +
           paymentNumberAttrs(p.total_centavos, "money") +
           ">" +
           money(p.total_centavos) +
@@ -403,7 +436,13 @@ function overview(finished = false) {
           p.status +
           '">' +
           statuses[p.status] +
-          "</span></td><td>" + (p.pagamento_status === "PAGO" ? "Pago" : p.pagamento_status === "PENDENTE" ? "Pendente" : "Aguardando fechamento") + "</td></tr>",
+          "</span></td><td>" +
+          (p.pagamento_status === "PAGO"
+            ? "Pago"
+            : p.pagamento_status === "PENDENTE"
+              ? "Pendente"
+              : "Aguardando fechamento") +
+          "</td></tr>",
       )
       .join("") ||
     '<tr><td colspan="9">Nenhum colaborador ativo está marcado como participante. Revise os cadastros e clique em Atualizar cadastros.</td></tr>';
@@ -431,7 +470,10 @@ async function clearPdf() {
   if (blobURL) URL.revokeObjectURL(blobURL);
   blobURL = null;
   await pdf.close();
-  placeholder("Adendo para conferência", "Carregando os valores do colaborador.");
+  placeholder(
+    "Adendo para conferência",
+    "Carregando os valores do colaborador.",
+  );
   update();
 }
 function breakdown(r) {
@@ -449,27 +491,32 @@ function breakdown(r) {
   const bonus = r.bonus_produtividade;
   const acompanhamentoFixo =
     r.acompanhamento_especial.regra === "MENSAL_ACOMPANHAMENTO_VALOR_CADASTRO";
+  const finalizador = r.financeiro_servicos.itens_analisados.some(
+    (item) => Number(item.descricao.funcao_id) === 4,
+  );
   $("fm-breakdown").innerHTML =
     row(
       "Serviços / variável",
       r.resumo.SERVICOS,
       r.tipo_remuneracao === "FIXO" ? "Produção apenas para consulta" : "",
     ) +
-    row(
-      "Bônus produtividade",
-      r.resumo.BONUS_PRODUTIVIDADE,
-      "Finalização R0: " +
-        bonus.quantidade_finalizacao_r0 +
-        " imagens · Meta: 20" +
-        (bonus.quantidade_bonus
-          ? " · +" +
-            bonus.quantidade_bonus +
-            " " +
-            (bonus.quantidade_bonus === 1 ? "imagem" : "imagens") +
-            " · " +
-            money(bonus.tarifa_centavos)
-          : ""),
-    ) +
+    (finalizador
+      ? row(
+          "Bônus produtividade",
+          r.resumo.BONUS_PRODUTIVIDADE,
+          "Finalização R0: " +
+            bonus.quantidade_finalizacao_r0 +
+            " imagens · Meta: 20" +
+            (bonus.quantidade_bonus
+              ? " · +" +
+                bonus.quantidade_bonus +
+                " " +
+                (bonus.quantidade_bonus === 1 ? "imagem" : "imagens") +
+                " · " +
+                money(bonus.tarifa_centavos)
+              : ""),
+        )
+      : "") +
     (acompanhamentoFixo
       ? ""
       : row(
@@ -479,7 +526,8 @@ function breakdown(r) {
     (r.acompanhamento_especial.aplicavel
       ? row("Acompanhamento", r.resumo.ACOMPANHAMENTO_ESPECIAL)
       : "") +
-    row("Extra manual", r.resumo.BONUS_EXTRAS) + row("Desconto", Math.abs(r.resumo.DESCONTO || 0), r.desconto?.motivo || "");
+    row("Extra manual", r.resumo.BONUS_EXTRAS) +
+    row("Desconto", Math.abs(r.resumo.DESCONTO || 0), r.desconto?.motivo || "");
   $("fm-total-summary").innerHTML = row(
     "Total",
     r.total_final_centavos,
@@ -491,15 +539,41 @@ function breakdown(r) {
   $("fm-attention").innerHTML = r.pendencias
     .map((p) => '<div class="fm-notice"><p>' + esc(p.mensagem) + "</p></div>")
     .join("");
-  const serviceItems = r.financeiro_servicos.itens_analisados;
+  const compareText = (left, right) =>
+    String(left || "").localeCompare(String(right || ""), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  const serviceItems = [...r.financeiro_servicos.itens_analisados].sort(
+    (a, b) =>
+      compareText(
+        a.descricao.obra_nome || a.descricao.obra_id,
+        b.descricao.obra_nome || b.descricao.obra_id,
+      ) ||
+      compareText(a.descricao.imagem, b.descricao.imagem) ||
+      compareText(a.descricao.animacao_id, b.descricao.animacao_id) ||
+      compareText(a.descricao.funcao, b.descricao.funcao),
+  );
   const serviceFunctions = new Map();
-  serviceItems.forEach(s => { const id = Number(s.descricao.funcao_id); if (id > 0) serviceFunctions.set(id, id === 4 ? "Finalização" : s.descricao.funcao); });
-  $("fm-service-function").innerHTML = [...serviceFunctions].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),"pt-BR")).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join("");
-  for (const id of ["fm-withdraw-function","fm-restore-function"]) $(id).disabled = busy || !!pending || monthly.estado === "CONCLUIDO" || !serviceFunctions.size;
+  serviceItems.forEach((s) => {
+    const id = Number(s.descricao.funcao_id);
+    if (id > 0)
+      serviceFunctions.set(id, id === 4 ? "Finalização" : s.descricao.funcao);
+  });
+  $("fm-service-function").innerHTML = [...serviceFunctions]
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), "pt-BR"))
+    .map(([id, name]) => `<option value="${id}">${esc(name)}</option>`)
+    .join("");
+  for (const id of ["fm-withdraw-function", "fm-restore-function"])
+    $(id).disabled =
+      busy ||
+      !!pending ||
+      monthly.estado === "CONCLUIDO" ||
+      !serviceFunctions.size;
   $("fm-services").innerHTML =
     serviceItems
       .map(
-        (s, serviceIndex) =>
+        (s) =>
           "<tr><td>" +
           esc(s.descricao.imagem || "Serviço") +
           "<small>" +
@@ -509,7 +583,15 @@ function breakdown(r) {
           "</td><td>" +
           esc(serviceStates[s.situacao] || "Conferir") +
           (s.retirada ? "<small>" + esc(s.retirada.motivo) + "</small>" : "") +
-          "</td><td>" + (monthly.estado !== "CONCLUIDO" && (s.situacao === "RETIRADO" || (s.elegibilidade.elegivel && !s.pagamentos.length && s.situacao !== "QUITADO")) ? `<button type="button" class="btn btn-secondary" data-service-index="${serviceIndex}" ${busy || pending ? "disabled" : ""}>${s.situacao === "RETIRADO" ? "Restaurar" : "Retirar"}</button>` : "—") + "</td></tr>",
+          "</td><td>" +
+          (monthly.estado !== "CONCLUIDO" &&
+          (s.situacao === "RETIRADO" ||
+            (s.elegibilidade.elegivel &&
+              !s.pagamentos.length &&
+              s.situacao !== "QUITADO"))
+            ? `<button type="button" class="btn btn-secondary" data-service-index="${r.financeiro_servicos.itens_analisados.indexOf(s)}" ${busy || pending ? "disabled" : ""}>${s.situacao === "RETIRADO" ? "Restaurar" : "Retirar"}</button>`
+            : "—") +
+          "</td></tr>",
       )
       .join("") ||
     '<tr><td colspan="4">Nenhum serviço nesta competência.</td></tr>';
@@ -560,15 +642,16 @@ async function showDocument(doc) {
   $("fm-download").download = documentFileName();
   $("fm-download").hidden = false;
   viewed = true;
-  $("fm-document-state").textContent =
+  setDocumentState(
     doc.estado === "CONFIRMADO"
       ? "Adendo confirmado."
-      : "Confira o adendo antes de confirmar.";
+      : "Confira o adendo antes de confirmar.",
+  );
   $("fm-pdf-placeholder").hidden = true;
 }
 async function loadStep() {
   await clearPdf();
-  $("fm-document-state").textContent = "Carregando valores…";
+  setDocumentState("Carregando valores…");
   financial = await read("obter", context());
   const r = financial.revisao;
   if (!r || r.monthly_rule_version !== "fechamento_mensal_v1") {
@@ -578,7 +661,7 @@ async function loadStep() {
     $("fm-extras").innerHTML = "";
     $("fm-attention").innerHTML =
       '<p class="fm-notice">Inicie o fechamento ou atualize os valores para preparar este colaborador.</p>';
-    $("fm-document-state").textContent = "Adendo ainda não preparado.";
+    setDocumentState("Adendo ainda não preparado.");
     placeholder(
       "Adendo ainda não preparado",
       "Inicie o fechamento ou atualize os valores deste colaborador.",
@@ -588,22 +671,27 @@ async function loadStep() {
   $("fm-type").textContent = types[r.tipo_remuneracao] || "Não definido";
   breakdown(r);
   if (!r.total_final_determinado) {
-    $("fm-document-state").textContent =
-      "Resolva os itens com atenção e atualize os valores para abrir o adendo.";
+    setDocumentState(
+      "Resolva os itens com atenção e atualize os valores para abrir o adendo.",
+    );
     placeholder(
       "Há itens para conferir",
       "Resolva as pendências indicadas ao lado e atualize os valores para preparar o PDF.",
     );
     return;
   }
-  $("fm-document-state").textContent = "Preparando PDF para conferência…";
+  setDocumentState("Preparando PDF para conferência…");
   pdfLoading(
     "Preparando adendo",
     "Gerando ou carregando o PDF para conferência.",
   );
   const listing = await read("listar", context());
   let doc = listing.documentos.findLast(
-    (d) => d.revision_id === r.id && d.estado && (d.estado === 'CONFIRMADO' || d.modelo_version === 'adendo_revisao_documental_v2'),
+    (d) =>
+      d.revision_id === r.id &&
+      d.estado &&
+      (d.estado === "CONFIRMADO" ||
+        d.modelo_version === "adendo_revisao_documental_v4"),
   );
   if (!doc) {
     const op = listing.operacoes_pendentes.find((o) => o.tipo === "GERAR");
@@ -618,7 +706,11 @@ async function loadStep() {
           fechamento_id: r.fechamento_id,
           revision_id: r.id,
         });
-    if (doc.revision_id !== r.id || (doc.estado !== "CONFIRMADO" && doc.modelo_version !== "adendo_revisao_documental_v2")) {
+    if (
+      doc.revision_id !== r.id ||
+      (doc.estado !== "CONFIRMADO" &&
+        doc.modelo_version !== "adendo_revisao_documental_v4")
+    ) {
       doc = await mutate("gerar", {
         ...context(),
         fechamento_id: r.fechamento_id,
@@ -721,27 +813,39 @@ for (const [id, direction] of [
   ["fm-person-next", 1],
 ])
   $(id).onclick = () =>
-    run("Abrindo colaborador", async () => {
-      const i = index + direction;
-      if (i < 0 || i >= monthly.quantidade) return;
-      newQueue(i);
-      queuePosition = 0;
-      await enter(i);
-    }, { global: false });
+    run(
+      "Abrindo colaborador",
+      async () => {
+        const i = index + direction;
+        if (i < 0 || i >= monthly.quantidade) return;
+        newQueue(i);
+        queuePosition = 0;
+        await enter(i);
+      },
+      { global: false },
+    );
 $("fm-review").onclick = () =>
-  run("Abrindo adendo", async () => {
-    newQueue();
-    await next();
-  }, { global: false });
+  run(
+    "Abrindo adendo",
+    async () => {
+      newQueue();
+      await next();
+    },
+    { global: false },
+  );
 $("fm-list").onclick = (e) => {
   const b = e.target.closest("[data-person]");
   if (b)
-    run("Abrindo colaborador", async () => {
-      const i = Number(b.dataset.person);
-      newQueue(i);
-      if (monthly.colaboradores[i].status === "CONFIRMADO") await enter(i);
-      else await next();
-    }, { global: false });
+    run(
+      "Abrindo colaborador",
+      async () => {
+        const i = Number(b.dataset.person);
+        newQueue(i);
+        if (monthly.colaboradores[i].status === "CONFIRMADO") await enter(i);
+        else await next();
+      },
+      { global: false },
+    );
 };
 $("fm-skip").onclick = () =>
   run("Abrindo próximo colaborador", next, { global: false });
@@ -773,21 +877,35 @@ $("fm-recalculate").onclick = () =>
     monthly = await read("mensal", { competencia: monthly.competencia });
     await enter(index);
   });
-let discountMode=false;
-$("fm-discount").onclick=()=>{
-  discountMode=true; $("fm-extra-form").reset(); $("fm-extra-title").textContent="Desconto manual";
-  $("fm-extra-form").querySelector("[type=submit]").textContent="Salvar desconto";
-  $("fm-extra-description").hidden=true; $("fm-extra-form").elements.categoria.required=false;
-  $("fm-extra-form").elements.valor.value=decimal(financial?.revisao?.desconto?.valor_centavos||0);
-  $("fm-extra-scope").textContent=monthly.colaboradores[index].nome+" · "+monthly.competencia;
+let discountMode = false;
+$("fm-discount").onclick = () => {
+  discountMode = true;
+  $("fm-extra-form").reset();
+  $("fm-extra-title").textContent = "Desconto manual";
+  $("fm-extra-form").querySelector("[type=submit]").textContent =
+    "Salvar desconto";
+  $("fm-extra-description").hidden = true;
+  $("fm-extra-form").elements.categoria.required = false;
+  $("fm-extra-form").elements.valor.value = decimal(
+    financial?.revisao?.desconto?.valor_centavos || 0,
+  );
+  $("fm-extra-scope").textContent =
+    monthly.colaboradores[index].nome + " · " + monthly.competencia;
   $("fm-extra-dialog").showModal();
 };
-$("fm-conclude").onclick=()=>run("Concluindo fechamento",async()=>{
-  await mutate("concluir",{competencia:monthly.competencia});
-  monthly=await read("mensal",{competencia:monthly.competencia}); overview();
-});
+$("fm-conclude").onclick = () =>
+  run("Concluindo fechamento", async () => {
+    await mutate("concluir", { competencia: monthly.competencia });
+    monthly = await read("mensal", { competencia: monthly.competencia });
+    overview();
+  });
 $("fm-extra").onclick = () => {
-  discountMode=false; $("fm-extra-title").textContent="Extra manual"; $("fm-extra-form").querySelector("[type=submit]").textContent="Salvar extra"; $("fm-extra-description").hidden=false; $("fm-extra-form").elements.categoria.required=true;
+  discountMode = false;
+  $("fm-extra-title").textContent = "Extra manual";
+  $("fm-extra-form").querySelector("[type=submit]").textContent =
+    "Salvar extra";
+  $("fm-extra-description").hidden = false;
+  $("fm-extra-form").elements.categoria.required = true;
   $("fm-extra-form").reset();
   $("fm-extra-scope").textContent =
     monthly.colaboradores[index].nome + " · " + monthly.competencia;
@@ -797,31 +915,56 @@ $("fm-extra-close").onclick = () => $("fm-extra-dialog").close();
 let serviceDecision = null;
 function serviceDialog(estado, alvo, s = null) {
   if (busy || pending || monthly.estado === "CONCLUIDO") return;
-  serviceDecision = {estado, alvo};
+  serviceDecision = { estado, alvo };
   if (alvo === "ITEM") serviceDecision.identidade = s.identidade;
   else serviceDecision.funcao_id = Number($("fm-service-function").value);
-  const target = alvo === "ITEM" ? `${s.descricao.imagem} · ${s.descricao.funcao}` : $("fm-service-function").selectedOptions[0]?.textContent;
+  const target =
+    alvo === "ITEM"
+      ? `${s.descricao.imagem} · ${s.descricao.funcao}`
+      : $("fm-service-function").selectedOptions[0]?.textContent;
   $("fm-service-form").reset();
-  $("fm-service-title").textContent = `${estado === "RETIRAR" ? "Retirar" : "Restaurar"} ${alvo === "ITEM" ? "tarefa" : "função"}`;
-  $("fm-service-target").textContent = `${monthly.colaboradores[index].nome} · ${monthly.competencia} · ${target}`;
-  $("fm-service-submit").textContent = estado === "RETIRAR" ? "Confirmar retirada" : "Confirmar restauração";
+  $("fm-service-title").textContent =
+    `${estado === "RETIRAR" ? "Retirar" : "Restaurar"} ${alvo === "ITEM" ? "tarefa" : "função"}`;
+  $("fm-service-target").textContent =
+    `${monthly.colaboradores[index].nome} · ${monthly.competencia} · ${target}`;
+  $("fm-service-submit").textContent =
+    estado === "RETIRAR" ? "Confirmar retirada" : "Confirmar restauração";
   $("fm-service-dialog").showModal();
 }
-$("fm-services").onclick = e => {
-  const button = e.target.closest("[data-service-index]"); if (!button) return;
-  const s = financial.revisao.financeiro_servicos.itens_analisados[Number(button.dataset.serviceIndex)];
+$("fm-services").onclick = (e) => {
+  const button = e.target.closest("[data-service-index]");
+  if (!button) return;
+  const s =
+    financial.revisao.financeiro_servicos.itens_analisados[
+      Number(button.dataset.serviceIndex)
+    ];
   serviceDialog(s.situacao === "RETIRADO" ? "RESTAURAR" : "RETIRAR", "ITEM", s);
 };
 $("fm-withdraw-function").onclick = () => serviceDialog("RETIRAR", "FUNCAO");
 $("fm-restore-function").onclick = () => serviceDialog("RESTAURAR", "FUNCAO");
 $("fm-service-close").onclick = () => $("fm-service-dialog").close();
-$("fm-service-form").onsubmit = e => {
-  e.preventDefault(); const input = {...serviceDecision, motivo:new FormData(e.target).get("motivo")};
-  run("Atualizando tarefas do fechamento", async () => {
-    await mutate("decidir", {...context(), expected_version:financial.latest_version, tipo:"SERVICOS", input});
-    $("fm-service-dialog").close(); monthly = await read("mensal", {competencia:monthly.competencia}); await enter(index);
-    $("fm-service-details").open = true;
-  }, {global:false});
+$("fm-service-form").onsubmit = (e) => {
+  e.preventDefault();
+  const input = {
+    ...serviceDecision,
+    motivo: new FormData(e.target).get("motivo"),
+  };
+  run(
+    "Atualizando tarefas do fechamento",
+    async () => {
+      await mutate("decidir", {
+        ...context(),
+        expected_version: financial.latest_version,
+        tipo: "SERVICOS",
+        input,
+      });
+      $("fm-service-dialog").close();
+      monthly = await read("mensal", { competencia: monthly.competencia });
+      await enter(index);
+      $("fm-service-details").open = true;
+    },
+    { global: false },
+  );
 };
 
 function extraItems() {
@@ -853,8 +996,20 @@ $("fm-extra-form").onsubmit = (e) => {
   run("Salvando extra", async () => {
     const f = new FormData(e.target);
     if (discountMode) {
-      await mutate("decidir",{...context(),expected_version:financial.latest_version,tipo:"DESCONTO",input:{estado:"DEFINIDO",motivo:f.get("motivo"),valor:f.get("valor")}});
-      $("fm-extra-dialog").close(); monthly=await read("mensal",{competencia:monthly.competencia}); await enter(index); return;
+      await mutate("decidir", {
+        ...context(),
+        expected_version: financial.latest_version,
+        tipo: "DESCONTO",
+        input: {
+          estado: "DEFINIDO",
+          motivo: f.get("motivo"),
+          valor: f.get("valor"),
+        },
+      });
+      $("fm-extra-dialog").close();
+      monthly = await read("mensal", { competencia: monthly.competencia });
+      await enter(index);
+      return;
     }
     const items = extraItems();
     items.push({

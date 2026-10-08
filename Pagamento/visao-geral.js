@@ -97,11 +97,12 @@ document.addEventListener("DOMContentLoaded", () => {
     <div id="overview-feedback" role="status" aria-live="polite"></div>
     <div class="overview-kpis" id="overview-kpis"></div>
     <div class="overview-grid">
-      <article class="overview-card"><header>${icon("fa-chart-simple")}<div><h2>Pagamento do mês</h2><p>Distribuição financeira dos itens da competência</p></div></header><div id="overview-month"></div></article>
-      <article class="overview-card"><header>${icon("fa-chart-pie")}<div><h2>Status dos pagamentos</h2><p>Quantidade de itens por situação financeira</p></div></header><div id="overview-status"></div></article>
-      <article class="overview-card"><header>${icon("fa-file-contract")}<div><h2>Status dos adendos</h2><p>Situação documental nesta competência</p></div></header><div id="overview-amendments"></div></article>
-      <article class="overview-card overview-functions"><header>${icon("fa-cube")}<div><h2>Custo por função</h2><p>Valores salvos nos itens, em ordem de custo</p></div></header><div id="overview-functions"></div></article>
-      <article class="overview-card"><header>${icon("fa-users")}<div><h2>Top colaboradores do mês</h2><p>Selecione uma pessoa para consultar os detalhes</p></div></header><div id="overview-top"></div></article>
+      <article class="overview-card" data-overview-panel="payment"><header>${icon("fa-chart-simple")}<div><h2>Pagamento do mês</h2><p>Distribuição financeira dos itens da competência</p></div></header><div id="overview-month"></div></article>
+      <article class="overview-card" data-overview-panel="status"><header>${icon("fa-chart-pie")}<div><h2>Status dos pagamentos</h2><p>Quantidade de itens por situação financeira</p></div></header><div id="overview-status"></div></article>
+      <article class="overview-card" data-overview-panel="review"><header>${icon("fa-file-contract")}<div><h2>Status dos adendos</h2><p>Situação documental nesta competência</p></div></header><div id="overview-amendments"></div></article>
+      <article class="overview-card overview-functions" data-overview-panel="functions"><header><div class="overview-function-heading">${icon("fa-chart-column")}<div><h2>Custos por função</h2><p>Participação no custo do mês e comparação com o mês anterior</p></div></div><div id="overview-function-highlights" class="overview-function-highlights"></div></header><div id="overview-functions"></div></article>
+      <article class="overview-card" data-overview-panel="top"><header>${icon("fa-users")}<div><h2>Top colaboradores do mês</h2><p>Selecione uma pessoa para consultar os detalhes</p></div></header><div id="overview-top"></div></article>
+      <article class="overview-card" data-overview-panel="works"><header>${icon("fa-building")}<div><h2>Obras com maior impacto no mês</h2><p>Ranking de obras por custo total e produtividade associada</p></div></header><div id="overview-works"></div></article>
     </div>
     <section class="overview-card overview-operational" aria-labelledby="operational-title">
       <header>${icon("fa-user-group")}<div><h2 id="operational-title">Resumo operacional</h2><p>Consolidado por colaborador nesta competência</p></div><span id="overview-results" class="overview-results"></span></header>
@@ -121,6 +122,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const role = document.getElementById("overview-role");
   const work = document.getElementById("overview-work");
   const pending = document.getElementById("overview-pending");
+  const overviewGrid = overview.querySelector(".overview-grid");
+  const overviewKpis = document.getElementById("overview-kpis");
   const setHtml = (id, html) => {
     document.getElementById(id).innerHTML = html;
   };
@@ -200,50 +203,133 @@ document.addEventListener("DOMContentLoaded", () => {
     const docs = data.adendos;
     const c = data.fechamento;
     const official = data.fonte_financeira === "FECHAMENTO";
-    window.pagamentoAtualizarColaboradoresCompetencia?.(official ? data.colaboradores : null,data.competencia);
+    window.pagamentoAtualizarColaboradoresCompetencia?.(
+      official ? data.colaboradores : null,
+      data.competencia,
+    );
     const closed = c?.estado === "CONCLUIDO";
-    const competenceLabel = new Date(data.competencia+"-02T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-    overview.querySelector(".overview-footnote").textContent=official?"Competência: "+competenceLabel+" · Pagamento previsto: "+c.previsto_em.split("-").reverse().join("/")+" (5º dia útil). Valores e gráficos usam o mesmo fechamento.":"Pago inclui a liquidação dos itens selecionados, mesmo em outro mês. Adendos documentam valores e não são somados ao custo.";
-    overview.querySelector(".overview-functions h2").textContent=official?"Componentes do fechamento":"Custo por função";
-    overview.querySelector(".overview-functions p").textContent=official?"Composição preservada na revisão oficial":"Valores salvos nos itens, em ordem de custo";
+    const completedOfficial = official && closed;
+    overviewGrid.classList.toggle("is-closed", completedOfficial);
+    overviewKpis.classList.toggle("is-closed", completedOfficial);
+    overview.querySelector('[data-overview-panel="status"]').hidden =
+      completedOfficial;
+    overview.querySelector('[data-overview-panel="review"]').hidden =
+      completedOfficial;
+    overview.querySelector('[data-overview-panel="works"]').hidden =
+      !completedOfficial;
+    const competenceLabel = new Date(
+      data.competencia + "-02T12:00:00",
+    ).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    overview.querySelector(".overview-footnote").textContent = official
+      ? "Competência: " +
+        competenceLabel +
+        " · Pagamento previsto: " +
+        c.previsto_em.split("-").reverse().join("/") +
+        " (5º dia útil). Valores e gráficos usam o mesmo fechamento."
+      : "Pago inclui a liquidação dos itens selecionados, mesmo em outro mês. Adendos documentam valores e não são somados ao custo.";
+    overview.querySelector(".overview-functions h2").textContent =
+      completedOfficial
+        ? "Custos por função"
+        : official
+          ? "Componentes do fechamento"
+          : "Custo por função";
+    overview.querySelector(".overview-functions p").textContent =
+      completedOfficial
+        ? "Participação no custo do mês e comparação com o mês anterior"
+        : official
+          ? "Composição preservada na revisão oficial"
+          : "Valores salvos nos itens, em ordem de custo";
+    overview.querySelector('[data-overview-panel="top"] h2').textContent =
+      completedOfficial ? "Colaboradores do mês" : "Top colaboradores do mês";
+    overview.querySelector('[data-overview-panel="top"] header p').textContent =
+      completedOfficial
+        ? "Participação no custo do mês e comparação com o mês anterior"
+        : "Selecione uma pessoa para consultar os detalhes";
     overviewCount.innerHTML = `${icon("fa-layer-group")} <span id="overview-item-count">${r.itens}</span> ${official ? "colaboradores" : "itens"} na competência`;
-    overview.querySelector('#overview-month').closest('article').querySelector('h2').textContent = official ? 'Pagamento da competência' : 'Pagamento do mês';
-    overview.querySelector('#overview-month').closest('article').querySelector('header p').textContent = official ? 'Valores consolidados no fechamento' : 'Distribuição financeira dos itens da competência';
-    overview.querySelector('#overview-status').closest('article').querySelector('header p').textContent = official ? 'Quantidade de colaboradores por situação financeira' : 'Quantidade de itens por situação financeira';
-    overview.querySelector('#overview-amendments').closest('article').querySelector('h2').textContent = official ? 'Revisão do fechamento' : 'Status dos adendos';
-    overview.querySelector('#overview-amendments').closest('article').querySelector('header p').textContent = official ? 'Confirmação documental dos colaboradores aptos' : 'Situação documental nesta competência';
-    overview.querySelector(".overview-table thead th:nth-child(2)").textContent = official ? "Fechamentos" : "Itens";
-    overview.querySelector('#operational-title').textContent = official ? 'Resumo da competência' : 'Resumo operacional';
+    overview
+      .querySelector("#overview-month")
+      .closest("article")
+      .querySelector("h2").textContent = official
+      ? "Pagamento da competência"
+      : "Pagamento do mês";
+    overview
+      .querySelector("#overview-month")
+      .closest("article")
+      .querySelector("header p").textContent = official
+      ? "Valores consolidados no fechamento"
+      : "Distribuição financeira dos itens da competência";
+    overview
+      .querySelector("#overview-status")
+      .closest("article")
+      .querySelector("header p").textContent = official
+      ? "Quantidade de colaboradores por situação financeira"
+      : "Quantidade de itens por situação financeira";
+    overview
+      .querySelector("#overview-amendments")
+      .closest("article")
+      .querySelector("h2").textContent = official
+      ? "Revisão do fechamento"
+      : "Status dos adendos";
+    overview
+      .querySelector("#overview-amendments")
+      .closest("article")
+      .querySelector("header p").textContent = official
+      ? "Confirmação documental dos colaboradores aptos"
+      : "Situação documental nesta competência";
+    overview.querySelector(
+      ".overview-table thead th:nth-child(2)",
+    ).textContent = official ? "Fechamentos" : "Itens";
+    overview.querySelector("#operational-title").textContent = official
+      ? "Resumo da competência"
+      : "Resumo operacional";
     setHtml(
       "overview-kpis",
       [
         kpi(
-          official ? (closed ? "Total fechado" : "Parcial consolidado") : "Custo total da produção",
+          official
+            ? closed
+              ? "Total fechado"
+              : "Parcial consolidado"
+            : "Custo total da produção",
           official && !closed ? c.parcial_centavos : r.total,
-          official ? (closed ? "Fechamento concluído" : `${c.contagens.CONFIRMADO} de ${c.quantidade} revisados`) : `${r.itens} itens`,
+          official
+            ? closed
+              ? "Fechamento concluído"
+              : `${c.contagens.CONFIRMADO} de ${c.quantidade} revisados`
+            : `${r.itens} itens`,
           "cost",
           "fa-layer-group",
         ),
         kpi(
           "Pago",
           r.pago,
-          `${r.itens_pagos} ${official ? "colaboradores pagos" : "itens quitados"}${r.percentual_pago === null ? "" : ` · ${percentage(r.percentual_pago)} do valor`}`,
+          completedOfficial
+            ? r.percentual_pago === null
+              ? ""
+              : `${percentage(r.percentual_pago)} do total`
+            : `${r.itens_pagos} ${official ? "colaboradores pagos" : "itens quitados"}${r.percentual_pago === null ? "" : ` · ${percentage(r.percentual_pago)} do valor`}`,
           "paid",
           "fa-circle-check",
         ),
         kpi(
           "Pendente",
           r.pendente,
-          `${r.itens_pendentes} ${official ? "colaboradores" : "itens"}${r.percentual_pendente === null ? "" : ` · ${percentage(r.percentual_pendente)} do valor`}`,
+          completedOfficial
+            ? r.percentual_pendente === null
+              ? ""
+              : `${percentage(r.percentual_pendente)} do total`
+            : `${r.itens_pendentes} ${official ? "colaboradores" : "itens"}${r.percentual_pendente === null ? "" : ` · ${percentage(r.percentual_pendente)} do valor`}`,
           "pending",
           "fa-clock",
         ),
         kpi(
           official ? "Pagamentos" : "Divergências",
           official ? c.quantidade_pagos : r.divergencias,
-          official ? `${c.quantidade_pagos}/${c.quantidade} concluídos` : r.divergencias
-            ? "Itens que precisam de conferência"
-            : "Nenhuma divergência identificada",
+          official
+            ? `${c.quantidade_pagos}/${c.quantidade} concluídos`
+            : r.divergencias
+              ? "Itens que precisam de conferência"
+              : "Nenhuma divergência identificada",
           "danger",
           "fa-triangle-exclamation",
           "count",
@@ -252,21 +338,29 @@ document.addEventListener("DOMContentLoaded", () => {
         kpi(
           official ? "Revisados" : "Adendos",
           official ? c.contagens.CONFIRMADO : docs.total,
-          official ? `${c.contagens.CONFIRMADO}/${c.quantidade} PDFs confirmados` : `${docs.nao_assinados} não assinados`,
+          official
+            ? `${c.contagens.CONFIRMADO}/${c.quantidade} PDFs confirmados`
+            : `${docs.nao_assinados} não assinados`,
           "documents",
           "fa-file-lines",
           "count",
           " registros",
         ),
-      ].join(""),
+      ]
+        .filter((_, index) => !completedOfficial || index < 3)
+        .join(""),
     );
     setHtml(
       "overview-feedback",
-      official ? `<div class="overview-notice">${closed?"Fechamento concluído · "+(c.situacao === "QUITADO"?"Pagamento concluído · Quitado":c.situacao === "PARCIALMENTE_PAGO"?"Pagamento em andamento":"Pagamento pendente"):"Fechamento em andamento · Pagamento aguardando fechamento"} <a href="fechamento.php?competencia=${escape(data.competencia)}">Abrir fechamento</a></div>` : !r.itens
-        ? empty("Nenhum item de pagamento encontrado nesta competência.")
-        : r.divergencias_financeiras
-          ? `<div class="overview-notice">${icon("fa-triangle-exclamation")} ${r.divergencias_financeiras} item(ns) com inconsistência no livro financeiro. ${r.excesso > 0 ? `Há ${escape(money(r.excesso))} pagos acima dos valores salvos. ` : ""}Confira os colaboradores com divergência.</div>`
-          : "",
+      official
+        ? closed && c.situacao === "QUITADO"
+          ? ""
+          : `<div class="overview-notice">${closed ? "Fechamento concluído · " + (c.situacao === "PARCIALMENTE_PAGO" ? "Pagamento em andamento" : "Pagamento pendente") : "Fechamento em andamento · Pagamento aguardando fechamento"} <a href="fechamento.php?competencia=${escape(data.competencia)}">Abrir fechamento</a></div>`
+        : !r.itens
+          ? empty("Nenhum item de pagamento encontrado nesta competência.")
+          : r.divergencias_financeiras
+            ? `<div class="overview-notice">${icon("fa-triangle-exclamation")} ${r.divergencias_financeiras} item(ns) com inconsistência no livro financeiro. ${r.excesso > 0 ? `Há ${escape(money(r.excesso))} pagos acima dos valores salvos. ` : ""}Confira os colaboradores com divergência.</div>`
+            : "",
     );
     let distribution = empty(
       r.itens
@@ -276,9 +370,45 @@ document.addEventListener("DOMContentLoaded", () => {
     if (r.grafico_financeiro_disponivel) {
       distribution = `<div class="overview-segment" role="img" aria-label="${percentage(r.percentual_pago)} pago e ${percentage(r.percentual_pendente)} pendente em valores"><span class="paid" style="width:${pct(r.pago, r.total)}%">${r.percentual_pago >= 12 ? percentage(r.percentual_pago) : ""}</span><span class="pending" style="width:${pct(r.pendente, r.total)}%">${r.percentual_pendente >= 12 ? percentage(r.percentual_pendente) : ""}</span></div>`;
     }
+    const settlementByDate = new Map();
+    if (completedOfficial) {
+      data.colaboradores.forEach((member) => {
+        const date = member.pago_em ? String(member.pago_em).slice(0, 10) : "";
+        if (!date || member.situacao !== "Pago") return;
+        const day = settlementByDate.get(date) || {
+          date,
+          total: 0,
+          collaborators: 0,
+        };
+        day.total += Number(member.pago || 0);
+        day.collaborators += 1;
+        settlementByDate.set(date, day);
+      });
+    }
+    const settlementDays = [...settlementByDate.values()].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+    const maxSettlementDay = Math.max(
+      0,
+      ...settlementDays.map((day) => day.total),
+    );
+    const formatPaymentDate = (value, year = false) => {
+      if (!value) return "—";
+      const date = new Date(`${value}T12:00:00`);
+      return Number.isNaN(date.getTime())
+        ? "—"
+        : date.toLocaleDateString(
+            "pt-BR",
+            year ? undefined : { day: "2-digit", month: "2-digit" },
+          );
+    };
+    const lastSettlementDate = settlementDays.at(-1)?.date || "";
+    const paymentInsights = completedOfficial
+      ? `<div class="overview-payment-insights"><div class="overview-payment-average"><span>Média do fechamento</span><strong>${money(c.quantidade ? r.total / c.quantidade : 0)}</strong><small>por colaborador · ${c.quantidade} no fechamento</small></div><div class="overview-payment-timeline"><header><strong>Pagamentos concluídos por dia</strong><small>${settlementDays.length ? `${formatPaymentDate(settlementDays[0].date)} a ${formatPaymentDate(lastSettlementDate)}` : "Nenhum pagamento concluído"}</small></header>${settlementDays.length ? `<div class="overview-payment-days">${settlementDays.map((day) => `<div class="overview-payment-day"><time datetime="${escape(day.date)}">${formatPaymentDate(day.date)}</time><span class="overview-track" aria-hidden="true"><span style="width:${pct(day.total, maxSettlementDay)}%"></span></span><strong>${money(day.total)}</strong><small>${day.collaborators} ${day.collaborators === 1 ? "colaborador" : "colaboradores"}</small></div>`).join("")}</div>` : '<p class="overview-payment-empty">Os pagamentos aparecerão aqui quando forem registrados.</p>'}${c.situacao === "QUITADO" && lastSettlementDate ? `<p class="overview-payment-complete">${icon("fa-calendar-check")} Quitação completa em <strong>${formatPaymentDate(lastSettlementDate, true)}</strong></p>` : `<p class="overview-payment-pending">${icon("fa-clock")} Faltam <strong>${r.itens_pendentes} ${r.itens_pendentes === 1 ? "colaborador" : "colaboradores"}</strong> · ${money(r.pendente)} pendentes</p>`}${r.pago > 0 && r.pendente > 0 ? '<small class="overview-payment-footnote">Pagamentos parciais estão somados ao total Pago; o gráfico mostra as quitações completas.</small>' : ""}</div></div>`
+      : "";
     setHtml(
       "overview-month",
-      `${distribution}<div class="overview-month-legend"><div class="paid"><span>${icon("fa-circle")} Pago</span><strong>${number(r.pago, "money")}</strong><small>${r.itens_pagos} ${official ? "colaboradores pagos" : "itens quitados"}</small></div><div class="pending"><span>${icon("fa-circle")} Pendente</span><strong>${number(r.pendente, "money")}</strong><small>${r.itens_pendentes} ${official ? "colaboradores pendentes" : "itens"}</small></div></div>`,
+      `${distribution}<div class="overview-month-legend"><div class="paid"><span>${icon("fa-circle")} Pago</span><strong>${number(r.pago, "money")}</strong><small>${r.itens_pagos} ${official ? "colaboradores pagos" : "itens quitados"}</small></div><div class="pending"><span>${icon("fa-circle")} Pendente</span><strong>${number(r.pendente, "money")}</strong><small>${r.itens_pendentes} ${official ? "colaboradores pendentes" : "itens"}</small></div></div>${paymentInsights}`,
     );
     setHtml(
       "overview-status",
@@ -287,11 +417,23 @@ document.addEventListener("DOMContentLoaded", () => {
         : empty("Nenhum item nesta competência."),
     );
     if (official && !closed) {
-      setHtml("overview-month", empty("Aguardando conclusão do fechamento. O parcial consolidado ainda não é o valor definitivo a pagar."));
-      const cards=document.querySelectorAll("#overview-kpis .overview-kpi strong");
-      if(cards[1]) cards[1].textContent="—"; if(cards[2]) cards[2].textContent="—";
+      setHtml(
+        "overview-month",
+        empty(
+          "Aguardando conclusão do fechamento. O parcial consolidado ainda não é o valor definitivo a pagar.",
+        ),
+      );
+      const cards = document.querySelectorAll(
+        "#overview-kpis .overview-kpi strong",
+      );
+      if (cards[1]) cards[1].textContent = "—";
+      if (cards[2]) cards[2].textContent = "—";
     }
-    if (official) setHtml("overview-status", `${metricBar("Pagos", c.quantidade_pagos,c.quantidade,"paid")}${metricBar("Pendentes",c.quantidade-c.quantidade_pagos,c.quantidade,"pending")}`);
+    if (official)
+      setHtml(
+        "overview-status",
+        `${metricBar("Pagos", c.quantidade_pagos, c.quantidade, "paid")}${metricBar("Pendentes", c.quantidade - c.quantidade_pagos, c.quantidade, "pending")}`,
+      );
     const states = Object.entries(docs.status).filter(([, count]) => count > 0);
     setHtml(
       "overview-amendments",
@@ -299,7 +441,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ? states
             .map(([state, count]) =>
               metricBar(
-                state === "confirmado" ? "Revisado (PDF confirmado)" : adendoStatusInfo(state).label,
+                state === "confirmado"
+                  ? "Revisado (PDF confirmado)"
+                  : adendoStatusInfo(state).label,
                 count,
                 docs.total,
                 state === "assinado"
@@ -314,18 +458,121 @@ document.addEventListener("DOMContentLoaded", () => {
             .join("")
         : empty("Nenhum adendo registrado nesta competência."),
     );
+    const functionCostsTotal = data.funcoes.reduce(
+      (total, item) => total + Number(item.total),
+      0,
+    );
+    const functionTasksTotal = data.funcoes.reduce(
+      (total, item) => total + Number(item.tarefas || 0),
+      0,
+    );
+    const topThreeFunctions = data.funcoes
+      .filter((item) => Number(item.total) > 0)
+      .slice(0, 3);
+    const topThreeCost = topThreeFunctions.reduce(
+      (total, item) => total + Number(item.total),
+      0,
+    );
+    setHtml(
+      "overview-function-highlights",
+      completedOfficial && functionCostsTotal > 0
+        ? `<div class="overview-function-highlight"><span>${icon("fa-trophy")} Top 3 funções = ${percentage((topThreeCost / functionCostsTotal) * 100)} do custo por função</span><small>${money(topThreeCost)} do custo de tarefas no mês</small></div><div class="overview-function-highlight"><span>${icon("fa-calculator")} Ticket médio: ${functionTasksTotal ? money(functionCostsTotal / functionTasksTotal) : "—"}</span><small>por tarefa</small></div>`
+        : "",
+    );
     setHtml(
       "overview-functions",
       data.funcoes.length
-        ? `<div class="overview-rank-list">${data.funcoes.map((item) => `<div class="overview-function-row"><span title="${escape(item.nome)}">${escape(item.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(item.total, r.total)}%"></span></span><strong>${number(item.total, "money")}</strong><small>${r.total > 0 && item.total >= 0 ? number((item.total / r.total) * 100, "percent") : "—"}</small></div>`).join("")}</div>`
-        : empty(official && !closed ? "Disponível após a conclusão do fechamento." : "Nenhum custo por função nesta competência."),
+        ? completedOfficial
+          ? `<div class="overview-function-table"><div class="overview-function-row overview-function-head"><span>Função</span><span class="overview-function-bar-heading" aria-hidden="true"></span><span>Custo (R$)</span><span>% do total</span><span>vs mês anterior</span></div>${data.funcoes
+              .map((item) => {
+                const variation = item.variacao_percentual;
+                const trend =
+                  variation === null || variation === undefined
+                    ? item.mes_anterior_centavos === 0 && Number(item.total) > 0
+                      ? `<span class="overview-trend trend-up">▲ Novo</span>`
+                      : '<span class="overview-trend trend-neutral">—</span>'
+                    : variation > 0
+                      ? `<span class="overview-trend trend-up">▲ +${percentage(variation)}</span>`
+                      : variation < 0
+                        ? `<span class="overview-trend trend-down">▼ ${percentage(variation)}</span>`
+                        : '<span class="overview-trend trend-neutral">— 0%</span>';
+                return `<div class="overview-function-row"><span class="overview-function-name" title="${escape(item.nome)}">${escape(item.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(item.total, functionCostsTotal)}%"></span></span><strong>${money(item.total)}</strong><small>${functionCostsTotal > 0 ? percentage((item.total / functionCostsTotal) * 100) : "—"}</small>${trend}</div>`;
+              })
+              .join(
+                "",
+              )}</div>${data.comparacao_mes_anterior?.disponivel ? "" : '<p class="overview-small-note">Comparação indisponível: o fechamento do mês anterior ainda não foi concluído.</p>'}`
+          : `<div class="overview-rank-list">${data.funcoes.map((item) => `<div class="overview-function-row"><span title="${escape(item.nome)}">${escape(item.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(item.total, functionCostsTotal)}%"></span></span><strong>${number(item.total, "money")}</strong><small>${functionCostsTotal > 0 && item.total >= 0 ? number((item.total / functionCostsTotal) * 100, "percent") : "—"}</small></div>`).join("")}</div>`
+        : empty(
+            official && !closed
+              ? "Disponível após a conclusão do fechamento."
+              : "Nenhum custo por função nesta competência.",
+          ),
     );
-    const top = official && !closed ? [] : data.colaboradores.filter((c) => c.itens > 0).sort((a,b)=>b.total-a.total).slice(0, 5);
+    const top =
+      official && !closed
+        ? []
+        : data.colaboradores
+            .filter((c) => c.itens > 0)
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 5);
+    const collaboratorRows = completedOfficial
+      ? [...data.colaboradores].sort(
+          (a, b) =>
+            Number(b.total) - Number(a.total) ||
+            a.nome.localeCompare(b.nome, "pt-BR"),
+        )
+      : top;
+    const collaboratorCostsTotal = collaboratorRows.reduce(
+      (total, c) => total + Number(c.total),
+      0,
+    );
+    const collaboratorTrend = (c) => {
+      const variation = c.variacao_percentual;
+      if (variation === null || variation === undefined) {
+        return c.mes_anterior_centavos === 0 && Number(c.total) > 0
+          ? '<span class="overview-trend trend-up">▲ Novo</span>'
+          : '<span class="overview-trend trend-neutral">—</span>';
+      }
+      if (variation > 0)
+        return `<span class="overview-trend trend-up">▲ +${percentage(variation)}</span>`;
+      if (variation < 0)
+        return `<span class="overview-trend trend-down">▼ ${percentage(variation)}</span>`;
+      return '<span class="overview-trend trend-neutral">— 0%</span>';
+    };
     setHtml(
       "overview-top",
-      top.length
-        ? `<div class="overview-rank-list">${top.map((c, index) => `<button type="button" class="overview-top-row" data-colaborador="${c.colaborador_id}"><span class="overview-rank">${index + 1}</span><span>${escape(c.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(c.total, top[0].total)}%"></span></span><strong>${number(c.total, "money")}</strong></button>`).join("")}</div>`
-        : empty(official && !closed ? "Disponível após a conclusão do fechamento." : "Nenhum colaborador com itens nesta competência."),
+      collaboratorRows.length
+        ? completedOfficial
+          ? `<div class="overview-collaborator-table"><div class="overview-collaborator-row overview-collaborator-head"><span>Colaborador</span><span aria-hidden="true"></span><span>Custo (R$)</span><span>% do total</span><span>vs mês anterior</span></div>${collaboratorRows.map((c) => `<button type="button" class="overview-collaborator-row" data-colaborador="${c.colaborador_id}"><span class="overview-collaborator-name" title="${escape(c.nome)}">${escape(c.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(c.total, collaboratorCostsTotal)}%"></span></span><strong>${money(c.total)}</strong><small>${collaboratorCostsTotal > 0 ? percentage((c.total / collaboratorCostsTotal) * 100) : "—"}</small>${collaboratorTrend(c)}</button>`).join("")}</div>${data.comparacao_mes_anterior?.disponivel ? "" : '<p class="overview-small-note">Comparação indisponível: o fechamento do mês anterior ainda não foi concluído.</p>'}`
+          : `<div class="overview-rank-list">${top.map((c, index) => `<button type="button" class="overview-top-row" data-colaborador="${c.colaborador_id}"><span class="overview-rank">${index + 1}</span><span>${escape(c.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(c.total, top[0].total)}%"></span></span><strong>${number(c.total, "money")}</strong></button>`).join("")}</div>`
+        : empty(
+            official && !closed
+              ? "Disponível após a conclusão do fechamento."
+              : "Nenhum colaborador com itens nesta competência.",
+          ),
+    );
+    const works = completedOfficial
+      ? data.obras.filter((obra) => Number(obra.total) > 0)
+      : [];
+    const costlyWorks = works;
+    const worksTotal = works.reduce(
+      (total, obra) => total + Number(obra.total),
+      0,
+    );
+    const reconciledWithoutWork = Number(
+      data.creditos_reconciliados_sem_obra_centavos || 0,
+    );
+    const taskCostsWithoutWork = Math.max(
+      0,
+      Number(data.custos_sem_obra_centavos || 0) - reconciledWithoutWork,
+    );
+    setHtml(
+      "overview-works",
+      costlyWorks.length
+        ? `<div class="overview-work-table"><div class="overview-work-row overview-work-head"><span>#</span><span>Obra</span><span class="overview-work-bar-heading" aria-hidden="true"></span><span>Custo total (R$)</span><span>% do total</span><span>Tarefas</span><span>Médio/tarefa</span></div>${costlyWorks.map((obra, index) => `<div class="overview-work-row"><span class="overview-rank">${index + 1}</span><span class="overview-work-name" title="${escape(obra.nome)}">${escape(obra.nome)}</span><span class="overview-track" aria-hidden="true"><span style="width:${pct(obra.total, costlyWorks[0].total)}%"></span></span><strong>${money(obra.total)}</strong><small>${worksTotal > 0 ? percentage((obra.total / worksTotal) * 100) : "—"}</small><span>${Number(obra.tarefas || 0).toLocaleString("pt-BR")}</span><span>${obra.tarefas ? money(obra.total / Number(obra.tarefas)) : "—"}</span></div>`).join("")}</div><p class="overview-small-note">Média calculada sobre tarefas com custo reconhecido. ${taskCostsWithoutWork > 0 ? `${money(taskCostsWithoutWork)} em tarefas sem obra` : ""}${taskCostsWithoutWork > 0 && reconciledWithoutWork > 0 ? " · " : ""}${reconciledWithoutWork > 0 ? `${money(reconciledWithoutWork)} em créditos reconciliados sem vínculo individual com uma obra` : ""}${taskCostsWithoutWork > 0 || reconciledWithoutWork > 0 ? " ficam fora do ranking." : " Custos fixos e bônus não são atribuídos a obras."}</p>`
+        : empty(
+            "Nenhum custo de tarefa ou serviço vinculado a obras nesta competência.",
+          ),
     );
     const oldRole = role.value;
     const oldWork = work.value;
@@ -425,9 +672,12 @@ document.addEventListener("DOMContentLoaded", () => {
     skeleton();
     const params = new URLSearchParams({ mes: mes.value, ano: ano.value });
     try {
-      const response = await fetch(`${document.querySelector('meta[name="pagamento-test-overview"]')?.content || "getVisaoGeral.php?"}${params}`, {
-        signal: request.signal,
-      });
+      const response = await fetch(
+        `${document.querySelector('meta[name="pagamento-test-overview"]')?.content || "getVisaoGeral.php?"}${params}`,
+        {
+          signal: request.signal,
+        },
+      );
       const data = await response.json();
       if (request.signal.aborted) return;
       if (!data.success)

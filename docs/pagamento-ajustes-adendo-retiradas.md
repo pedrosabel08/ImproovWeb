@@ -5,9 +5,12 @@ Esta entrega atende aos três ajustes autorizados: PDF sem tarefas quitadas, sá
 ## Regras
 
 - A seleção continua baseada na atribuição de cada tarefa. Caderno, Alteração e outras funções podem aparecer para qualquer colaborador atribuído, sem divergência automática por função habitual.
-- O PDF mensal novo ou pendente exclui `QUITADO` e `RETIRADO`. Tarefas sem remuneração de colaboradores FIXO continuam com `−` quando não estiverem quitadas ou retiradas.
-- Pagamentos históricos permanecem na composição financeira oficial e no ledger. As linhas do PDF usam o saldo não pago; seu valor documental desconta os pagamentos da competência já incluídos na revisão. `total_centavos` do modelo preserva o valor financeiro reconhecido; `total_documental_centavos` identifica o valor efetivamente apresentado no adendo.
-- Documentos confirmados permanecem imutáveis. Previews antigos são preservados, mas a interface prepara um novo preview v2; o backend recusa confirmar um preview mensal v1.
+- O PDF mensal novo ou pendente exclui `RETIRADO`. Serviços `QUITADO` aparecem para consulta quando têm pagamento positivo com `mes_ref` igual à competência selecionada, identificados como pagos e com o valor pago nessa competência; quitações de outras competências continuam fora. Tarefas sem remuneração de colaboradores FIXO continuam com `−` quando não estiverem quitadas ou retiradas.
+- Pagamentos históricos permanecem na composição financeira oficial e no ledger. O adendo mostra o valor pago para tarefas quitadas na competência selecionada, e desconta esses pagamentos do total documental. `total_centavos` do modelo preserva o valor financeiro reconhecido; `total_documental_centavos` identifica o valor efetivamente apresentado no adendo.
+- Animações são identificadas por `nome da imagem - tipo`, com capitalização de título e `IA` em maiúsculas; serviços e adendo seguem a ordem de projeto, imagem, animação e tarefas da animação.
+- O bônus de produtividade de Finalização R0 aparece na conferência somente para colaboradores com tarefas de Finalização.
+- Documentos confirmados permanecem imutáveis. Previews antigos são preservados, mas a interface prepara um novo preview v4; o backend recusa confirmar previews mensais antigos.
+- A faixa após os KPIs mostra apenas o estado e os valores resumidos da competência selecionada, com a previsão e a ação de conclusão, sem repetir o mês/ano.
 - Sábado conta como dia útil para Pagamentos. Domingo e os feriados do calendário existente não contam. A regra de Entregas mantém o comportamento anterior, pois o parâmetro opcional `incluirSabado` é falso por padrão.
 - Setembro/2026: previsão **06/10/2026**. O ajuste da competência aberta foi explícito, auditado como `PREVISAO_ALTERADA` e refletido nos prazos dos checklists. Competências concluídas não recebem alteração de data.
 - Retiradas exigem motivo, gestor autenticado, CSRF, versão vigente e chave idempotente. São decisões da pessoa/competência, sem alterar produção ou cadastro.
@@ -49,6 +52,12 @@ php scripts/validar_pagamento_competencia.php 2026-09
 ```
 
 Os testes usam MySQL loopback na porta 3320 e um banco `pagamento_1cb_test_*`. O teste HTTP exige a fixture aberta, preparada por `--browser-ready`, e altera somente o banco sintético.
+
+Na revisão visual de 08/10/2026, a URL HTTPS oficial abriu a tela autenticada antes da atualização; após recarregar, o fechamento ficou no indicador “Carregando fechamento”. A URL HTTP oficial exigiu login; depois do login, navegar por Financeiro → Pagamento → Fechamento também ficou carregando. O MySQL isolado da porta 3320 recusou a conexão até com acesso local permitido, então a integração e a validação visual final ficaram bloqueadas pelo ambiente. PHP lint e `node --check` passaram.
+
+Na conferência posterior da aba **Por colaborador**, a URL HTTP oficial voltou a carregar a competência autenticada. A aba agora usa toda a largura disponível, com identificação e status no topo, cartões de total/pago/pendente, composição e pagamento em painéis e lista expansível de funções. Foram conferidos Ana Carolina (pendente), Adriana (paga), seleção vazia, edição e limpeza da observação e expansão das funções. Desktop, notebook 1366 × 768, iPad 1024 × 768 e 768 × 1024 e mobile 390 × 844 foram conferidos; a quebra das ações no mobile foi corrigida. Nenhuma quitação foi enviada. A sintaxe do JavaScript e `git diff --check` passaram. Esta conferência não substitui a integração isolada que depende da porta 3320.
+
+Os valores da aba individual agora usam `pagamentoMotion`, com contagem de zero até o valor oficial e respeito a `prefers-reduced-motion`. Ao enviar a quitação, o botão mostra “Registrando…” com o Thinking Orbs global, indica processamento para acessibilidade e bloqueia envios repetidos. O indicador é encerrado tanto no sucesso quanto no erro; o erro restaura o botão. A contagem inicial, os totais finais e a ausência de erros foram conferidos no navegador autenticado. Os três testes de `node --test tests/pagamento_individual_motion_test.cjs` passaram usando transporte simulado, sem banco ou quitações reais, cobrindo integração dos valores com a animação, duplicidade/erro e sucesso com atualização dos valores.
 
 ## Roteiro da interface
 

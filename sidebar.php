@@ -272,6 +272,7 @@ if ($__isProd) {
                             href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i
                             class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
                 <?php endif; ?>
+                <li><a title="Mapa de pavimento" href="<?= htmlspecialchars(improov_sidebar_url('MapaPavimento/'), ENT_QUOTES, 'UTF-8') ?>"><i class="fa-solid fa-draw-polygon"></i><span> Mapa de pavimento</span></a></li>
                 <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span> SIRE</span></a></li>
 
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
@@ -425,6 +426,7 @@ if ($__isProd) {
             <section class="sidebar-panel-section" id="sidebar-panel-ferramentas" data-sidebar-section="ferramentas" aria-labelledby="sidebar-panel-ferramentas-title" hidden>
                 <h3 id="sidebar-panel-ferramentas-title">Ferramentas</h3>
                 <ul class="sidebar-panel-links">
+                    <li><a title="Mapa de pavimento" href="<?= htmlspecialchars(improov_sidebar_url('MapaPavimento/'), ENT_QUOTES, 'UTF-8') ?>"><i class="fa-solid fa-draw-polygon"></i><span>Mapa de pavimento</span></a></li>
                     <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span>SIRE</span></a></li>
                      <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span>Mapa Compatib.</span></a></li>

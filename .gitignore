@@ -156,3 +156,8 @@ Render/deadline_worker.lock
 Render/deadline_worker.stop
 
 ALMA/scripts/reports
+
+# Ferramenta e evidências temporárias de validação do Mapa de Pavimento
+/tmp/agent-browser-cache/
+/tmp/mapa-pavimento-qa/
+/uploads/referencias_arquitetonicas/*/

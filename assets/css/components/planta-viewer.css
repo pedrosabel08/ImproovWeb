@@ -1,0 +1,97 @@
+.pv-viewport {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 300px;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  background-color: var(--mp-workspace, #e9edf2);
+  background-image: radial-gradient(
+    var(--mp-dot, #c7ced9) 0.7px,
+    transparent 0.7px
+  );
+  background-size: 18px 18px;
+}
+.pv-viewport:active {
+  cursor: grabbing;
+}
+.pv-viewport.is-drawing {
+  cursor: crosshair;
+}
+.pv-viewport:focus-visible {
+  outline: 2px solid var(--mp-accent);
+  outline-offset: -3px;
+}
+.pv-surface {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  background: white;
+  box-shadow: 0 3px 24px #17213b20;
+}
+.pv-surface[hidden] {
+  display: none;
+}
+.pv-surface > canvas,
+.pv-surface > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.pv-surface > canvas {
+  pointer-events: none;
+}
+.pv-region {
+  cursor: pointer;
+}
+.pv-region polygon {
+  fill: #5874c928;
+  stroke: #4966b9;
+  stroke-width: 1.5;
+}
+.pv-region:hover polygon,
+.pv-region:focus polygon,
+.pv-region.is-selected polygon {
+  fill: #5874c94d;
+  stroke: #304d9e;
+  stroke-width: 2.5;
+}
+.pv-region text {
+  fill: #182d61;
+  stroke: #ffffffeb;
+  stroke-width: 3px;
+  paint-order: stroke;
+  stroke-linejoin: round;
+  font-family: inherit;
+  font-weight: 600;
+  pointer-events: none;
+}
+.pv-viewport.is-drawing .pv-region {
+  pointer-events: none;
+}
+.pv-draft {
+  fill: #5874c932;
+  stroke: #4966b9;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+.pv-vertex {
+  fill: #4966b9;
+  stroke: white;
+  stroke-width: 2;
+  pointer-events: auto;
+  cursor: move;
+}
+.pv-vertex.is-first {
+  fill: #c75742;
+}
+.pv-crop-mask { fill: #17213b66; pointer-events: none; }
+.pv-crop-outline { fill: none; stroke: #3156b7; stroke-width: 2; stroke-dasharray: 6 3; pointer-events: none; }
+.pv-vertex.is-active { fill: #ec9d2a; }
+.pv-surface { background: transparent; }
+.pv-viewport.is-inspecting .pv-region { pointer-events: none; }

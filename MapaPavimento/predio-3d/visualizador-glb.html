@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Visualizador de GLB · Diagnóstico</title>
+    <style>
+      :root {
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        color: #e8edf4;
+        background: #101318;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --muted: #8590a1;
+        --line: #29303b;
+        --panel: #171b22;
+        --accent: #91e5c0;
+        --blue: #94bfff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+        color: inherit;
+      }
+      .app {
+        height: 100vh;
+        min-height: 600px;
+        display: grid;
+        grid-template-rows: 62px 1fr;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--line);
+        background: #14171d;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 250px;
+      }
+      .mark {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: #263e37;
+        color: var(--accent);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+      }
+      .brand strong {
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+      .brand small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      .filebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+      }
+      .filebar input[type="text"] {
+        width: min(420px, 55vw);
+        background: #0f1217;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        color: #dfe7f1;
+        padding: 9px 11px;
+        font-size: 12px;
+      }
+      .btn {
+        background: #222832;
+        border: 1px solid #343d49;
+        padding: 8px 12px;
+        border-radius: 7px;
+        font-size: 12px;
+      }
+      .btn:hover {
+        background: #2b3440;
+      }
+      .btn.primary {
+        background: #a1edca;
+        border-color: #a1edca;
+        color: #13241c;
+        font-weight: 700;
+      }
+      .status {
+        font-size: 11px;
+        color: var(--muted);
+        margin-left: auto;
+        white-space: nowrap;
+      }
+      .status.error {
+        color: #ff9b9b;
+      }
+      .layout {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 300px minmax(350px, 1fr) 310px;
+      }
+      .panel {
+        background: var(--panel);
+        min-height: 0;
+        overflow: auto;
+      }
+      .left {
+        border-right: 1px solid var(--line);
+      }
+      .right {
+        border-left: 1px solid var(--line);
+      }
+      .panel-head {
+        height: 48px;
+        padding: 0 15px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        z-index: 2;
+      }
+      .panel-head h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: #aeb8c6;
+        margin: 0;
+      }
+      .count {
+        font:
+          11px ui-monospace,
+          monospace;
+        color: var(--muted);
+      }
+      .tree {
+        padding: 10px 8px 24px;
+      }
+      .tree-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 29px;
+        padding: 4px 7px;
+        border-radius: 5px;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        cursor: pointer;
+        color: #cbd3df;
+      }
+      .tree-row:hover {
+        background: #222832;
+      }
+      .tree-row.selected {
+        background: #283e38;
+        color: #b8f1d4;
+      }
+      .tree-row.dim {
+        color: #8993a1;
+      }
+      .twisty {
+        width: 11px;
+        color: #728092;
+        text-align: center;
+        flex: none;
+        font-size: 10px;
+      }
+      .kind {
+        width: 15px;
+        text-align: center;
+        flex: none;
+        color: var(--blue);
+        font-size: 11px;
+      }
+      .node-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .viewport {
+        min-width: 0;
+        min-height: 0;
+        position: relative;
+        background: radial-gradient(
+          ellipse at 50% 40%,
+          #252d38 0%,
+          #171b22 52%,
+          #111419 100%
+        );
+        overflow: hidden;
+      }
+      .viewport canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .empty {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        pointer-events: none;
+      }
+      .empty-card {
+        max-width: 350px;
+        padding: 25px;
+        color: #aeb8c6;
+      }
+      .empty-icon {
+        font-size: 40px;
+        color: #506273;
+        margin-bottom: 14px;
+      }
+      .empty h1 {
+        color: #e3eaf2;
+        font-size: 17px;
+        margin: 0 0 8px;
+      }
+      .empty p {
+        font-size: 12px;
+        line-height: 1.6;
+        margin: 0;
+      }
+      .view-tools {
+        position: absolute;
+        top: 13px;
+        right: 13px;
+        display: flex;
+        gap: 6px;
+      }
+      .view-tools button {
+        background: #191e26d9;
+        border: 1px solid #3a4350;
+        border-radius: 6px;
+        padding: 7px 9px;
+        font-size: 11px;
+      }
+      .view-tools button:hover {
+        background: #29323d;
+      }
+      .hint {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #13171dd9;
+        border: 1px solid #333b47;
+        color: #a8b2bf;
+        padding: 7px 10px;
+        border-radius: 6px;
+        font-size: 10px;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      .details {
+        padding: 13px;
+      }
+      .empty-detail {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .object-title {
+        font-size: 14px;
+        font-weight: 650;
+        word-break: break-word;
+        margin: 2px 0 4px;
+      }
+      .object-type {
+        font-size: 11px;
+        color: var(--accent);
+        font-family: ui-monospace, monospace;
+        margin-bottom: 15px;
+      }
+      .section {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: #8390a0;
+        margin: 17px 0 7px;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        border-bottom: 1px solid #262d36;
+        padding: 7px 0;
+        font-size: 11px;
+      }
+      .kv span:first-child {
+        color: #96a1af;
+      }
+      .kv span:last-child {
+        text-align: right;
+        color: #dce4ed;
+        font-family: ui-monospace, monospace;
+        max-width: 165px;
+        overflow-wrap: anywhere;
+      }
+      .summary {
+        padding: 12px 13px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+      }
+      .stat {
+        background: #1e242c;
+        border: 1px solid #2b333e;
+        border-radius: 6px;
+        padding: 8px;
+      }
+      .stat strong {
+        display: block;
+        font:
+          600 16px ui-monospace,
+          monospace;
+        color: #e9f1fa;
+      }
+      .stat small {
+        display: block;
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 3px;
+      }
+      .drop {
+        position: absolute;
+        inset: 10px;
+        border: 1px dashed #9be9c3;
+        border-radius: 10px;
+        background: #183126aa;
+        display: none;
+        place-items: center;
+        font-size: 15px;
+        color: #d1ffe7;
+        z-index: 3;
+        pointer-events: none;
+      }
+      .viewport.dragging .drop {
+        display: grid;
+      }
+      .material-swatch {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 6px;
+        border: 1px solid #ffffff55;
+        vertical-align: middle;
+      }
+      @media (max-width: 1000px) {
+        .layout {
+          grid-template-columns: 250px minmax(300px, 1fr);
+        }
+        .right {
+          position: absolute;
+          z-index: 4;
+          right: 0;
+          top: 62px;
+          bottom: 0;
+          width: 280px;
+          box-shadow: -12px 0 24px #0005;
+        }
+        .brand {
+          min-width: 180px;
+        }
+        .status {
+          display: none;
+        }
+      }
+      @media (max-width: 650px) {
+        .app {
+          height: 100dvh;
+          grid-template-rows: auto 1fr;
+        }
+        .topbar {
+          min-height: 92px;
+          align-content: center;
+          flex-wrap: wrap;
+          padding: 10px 12px;
+          gap: 8px;
+        }
+        .brand {
+          min-width: 0;
+          flex: 1;
+        }
+        .filebar {
+          order: 2;
+          flex-basis: 100%;
+        }
+        .filebar input[type="text"] {
+          flex: 1;
+          width: auto;
+          min-width: 0;
+        }
+        .layout {
+          grid-template-columns: 1fr;
+          grid-template-rows: 210px minmax(300px, 1fr);
+        }
+        .left {
+          border: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .tree {
+          display: flex;
+          overflow: auto;
+          padding: 8px;
+          gap: 4px;
+        }
+        .tree-row {
+          min-width: max-content;
+        }
+        .right {
+          top: 92px;
+          width: min(280px, 85vw);
+        }
+        .hint {
+          font-size: 9px;
+        }
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">3D</div>
+          <div>
+            <strong>GLB Inspector</strong
+            ><small>Visualizador diagnóstico</small>
+          </div>
+        </div>
+        <div class="filebar">
+          <input
+            id="url"
+            type="text"
+            value="./Fachada_Teste_001.glb"
+            aria-label="Caminho do arquivo GLB"
+          />
+          <button class="btn primary" id="loadUrl">Carregar</button>
+          <button class="btn" id="choose">Abrir arquivo…</button>
+          <input
+            id="file"
+            type="file"
+            accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+            hidden
+          />
+        </div>
+        <div class="status" id="status">Aguardando modelo</div>
+      </header>
+      <main class="layout">
+        <aside class="panel left">
+          <div class="panel-head">
+            <h2>Árvore da cena</h2>
+            <span class="count" id="treeCount">0 nós</span>
+          </div>
+          <div class="tree" id="tree">
+            <div class="empty-detail">
+              Carregue um GLB para listar a hierarquia.
+            </div>
+          </div>
+        </aside>
+        <section class="viewport" id="viewport" aria-label="Visualização 3D">
+          <div class="empty" id="empty">
+            <div class="empty-card">
+              <div class="empty-icon">⬡</div>
+              <h1>Inspecione o conteúdo do modelo</h1>
+              <p>
+                Carregue <code>Fachada_Teste_001.glb</code> ou escolha outro
+                arquivo GLB/GLTF. A hierarquia e os dados de cada objeto
+                aparecerão ao lado.
+              </p>
+            </div>
+          </div>
+          <div class="drop">Solte o arquivo GLB/GLTF para carregar</div>
+          <div class="view-tools">
+            <button id="fit">Enquadrar modelo</button
+            ><button id="axes">Eixos: ligados</button
+            ><button id="grid">Grade: ligada</button>
+          </div>
+          <div class="hint">
+            Arraste para orbitar · roda para zoom · botão direito para mover
+          </div>
+        </section>
+        <aside class="panel right">
+          <div class="panel-head">
+            <h2>Inspeção</h2>
+            <span class="count" id="selectedType">Cena</span>
+          </div>
+          <div class="summary">
+            <div class="summary-grid" id="stats">
+              <div class="stat"><strong>—</strong><small>Objetos</small></div>
+              <div class="stat"><strong>—</strong><small>Meshes</small></div>
+              <div class="stat">
+                <strong>—</strong><small>Triângulos</small>
+              </div>
+              <div class="stat"><strong>—</strong><small>Materiais</small></div>
+            </div>
+          </div>
+          <div class="details" id="details">
+            <div class="empty-detail">
+              Selecione um nó na árvore para ver nome, tipo, pai, filhos,
+              transformações, geometria e materiais.
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      const $ = (id) => document.getElementById(id),
+        viewport = $("viewport"),
+        tree = $("tree");
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+      });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      viewport.prepend(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x171b22);
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100000);
+      camera.position.set(5, 4, 7);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      scene.add(new THREE.HemisphereLight(0xdcecff, 0x39404c, 2));
+      const key = new THREE.DirectionalLight(0xffffff, 2.6);
+      key.position.set(5, 8, 6);
+      scene.add(key);
+      const fill = new THREE.DirectionalLight(0xb4d1ff, 1.3);
+      fill.position.set(-6, 3, -4);
+      scene.add(fill);
+      const grid = new THREE.GridHelper(10, 20, 0x536171, 0x343d49);
+      grid.material.transparent = true;
+      grid.material.opacity = 0.45;
+      scene.add(grid);
+      const axes = new THREE.AxesHelper(1.5);
+      scene.add(axes);
+      let model = null,
+        gltfInfo = null,
+        selected = null,
+        nodeRecords = [],
+        currentUrl = "";
+      const resize = () => {
+        const w = viewport.clientWidth,
+          h = viewport.clientHeight;
+        if (!w || !h) return;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      };
+      new ResizeObserver(resize).observe(viewport);
+      resize();
+      (function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      })();
+      function fmt(n) {
+        return Number.isFinite(n) ? Number(n.toPrecision(5)).toString() : "—";
+      }
+      function setStatus(text, error = false) {
+        $("status").textContent = text;
+        $("status").classList.toggle("error", error);
+      }
+      function materialList(o) {
+        if (!o.material) return [];
+        return Array.isArray(o.material) ? o.material : [o.material];
+      }
+      function vector(v) {
+        return `${fmt(v.x)}, ${fmt(v.y)}, ${fmt(v.z)}`;
+      }
+      function boundsFor(o) {
+        const box = new THREE.Box3().setFromObject(o);
+        if (box.isEmpty()) return null;
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        return { min: box.min, max: box.max, size };
+      }
+      function frameObject(o) {
+        const b = boundsFor(o);
+        if (!b) return;
+        const center = new THREE.Vector3();
+        new THREE.Box3().setFromObject(o).getCenter(center);
+        const radius = Math.max(b.size.x, b.size.y, b.size.z, 0.01);
+        controls.target.copy(center);
+        camera.near = Math.max(radius / 10000, 0.001);
+        camera.far = Math.max(radius * 100, 100);
+        camera.position
+          .copy(center)
+          .add(new THREE.Vector3(radius * 1.6, radius * 1.05, radius * 1.8));
+        camera.updateProjectionMatrix();
+        controls.update();
+      }
+      function addKv(target, label, value) {
+        const row = document.createElement("div");
+        row.className = "kv";
+        const a = document.createElement("span"),
+          b = document.createElement("span");
+        a.textContent = label;
+        b.textContent = value;
+        row.append(a, b);
+        target.append(row);
+      }
+      function showDetail(o) {
+        selected = o;
+        $("selectedType").textContent = o.type || "Object3D";
+        document
+          .querySelectorAll(".tree-row")
+          .forEach((el) =>
+            el.classList.toggle("selected", el.dataset.uuid === o.uuid),
+          );
+        const d = $("details");
+        d.replaceChildren();
+        const title = document.createElement("div");
+        title.className = "object-title";
+        title.textContent = o.name || "(sem nome)";
+        d.append(title);
+        const typ = document.createElement("div");
+        typ.className = "object-type";
+        typ.textContent = o.type;
+        d.append(typ);
+        const sec = (t) => {
+          const e = document.createElement("div");
+          e.className = "section";
+          e.textContent = t;
+          d.append(e);
+        };
+        sec("Hierarquia");
+        addKv(d, "Nome", o.name || "(sem nome)");
+        addKv(d, "Tipo", o.type);
+        addKv(d, "Pai", o.parent?.name || "(raiz)");
+        addKv(d, "Filhos", String(o.children.length));
+        addKv(d, "Visível", String(o.visible));
+        addKv(d, "UUID", o.uuid);
+        sec("Transformação local");
+        addKv(d, "Posição", vector(o.position));
+        addKv(
+          d,
+          "Rotação (°)",
+          `${fmt(THREE.MathUtils.radToDeg(o.rotation.x))}, ${fmt(THREE.MathUtils.radToDeg(o.rotation.y))}, ${fmt(THREE.MathUtils.radToDeg(o.rotation.z))}`,
+        );
+        addKv(d, "Escala", vector(o.scale));
+        const b = boundsFor(o);
+        if (b) {
+          sec("Limites no mundo");
+          addKv(d, "Dimensões", vector(b.size));
+          addKv(d, "Mínimo", vector(b.min));
+          addKv(d, "Máximo", vector(b.max));
+        }
+        if (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) {
+          sec("Geometria");
+          const g = o.geometry;
+          addKv(d, "Tipo", g?.type || "—");
+          addKv(d, "Vértices", String(g?.attributes?.position?.count ?? "—"));
+          addKv(
+            d,
+            "Triângulos",
+            String(
+              g?.index
+                ? g.index.count / 3
+                : (g?.attributes?.position?.count ?? 0) / 3,
+            ),
+          );
+          if (g?.attributes?.normal) addKv(d, "Normais", "sim");
+          if (g?.attributes?.uv) addKv(d, "UVs", "sim");
+          if (o.isSkinnedMesh) addKv(d, "Skinned mesh", "sim");
+          if (o.isInstancedMesh) addKv(d, "Instâncias", String(o.count));
+          const mats = materialList(o);
+          sec(`Materiais (${mats.length})`);
+          mats.forEach((m, i) => {
+            const row = document.createElement("div");
+            row.className = "kv";
+            const a = document.createElement("span"),
+              b2 = document.createElement("span");
+            a.textContent = m.name || `Material ${i + 1}`;
+            const color = m.color?.getHexString();
+            b2.innerHTML = "";
+            if (color) {
+              const sw = document.createElement("i");
+              sw.className = "material-swatch";
+              sw.style.background = "#" + color;
+              b2.append(sw);
+            }
+            b2.append(
+              document.createTextNode(
+                `${m.type}${color ? " · #" + color : ""}`,
+              ),
+            );
+            row.append(a, b2);
+            d.append(row);
+            for (const key of [
+              "map",
+              "normalMap",
+              "roughnessMap",
+              "metalnessMap",
+              "emissiveMap",
+              "alphaMap",
+            ])
+              if (m[key])
+                addKv(
+                  d,
+                  `${key}`,
+                  `${m[key].image?.width || "?"}×${m[key].image?.height || "?"}`,
+                );
+          });
+        }
+        if (o.isLight) {
+          sec("Luz");
+          addKv(d, "Intensidade", fmt(o.intensity));
+          if (o.color) addKv(d, "Cor", "#" + o.color.getHexString());
+        }
+        if (o.isCamera) {
+          sec("Câmera");
+          addKv(d, "Near", fmt(o.near));
+          addKv(d, "Far", fmt(o.far));
+          if (o.isPerspectiveCamera) addKv(d, "FOV", `${fmt(o.fov)}°`);
+        }
+      }
+      function icon(o) {
+        return o.isMesh
+          ? "◈"
+          : o.isLight
+            ? "☼"
+            : o.isCamera
+              ? "▣"
+              : o.isBone
+                ? "⌁"
+                : o.isGroup
+                  ? "▱"
+                  : "○";
+      }
+      function buildTree(root) {
+        nodeRecords = [];
+        tree.replaceChildren();
+        const frag = document.createDocumentFragment();
+        const visit = (o, depth) => {
+          nodeRecords.push(o);
+          const row = document.createElement("div");
+          row.className = "tree-row";
+          row.dataset.uuid = o.uuid;
+          row.style.paddingLeft = `${7 + depth * 14}px`;
+          const twist = document.createElement("span");
+          twist.className = "twisty";
+          twist.textContent = o.children.length ? "▾" : "";
+          const ico = document.createElement("span");
+          ico.className = "kind";
+          ico.textContent = icon(o);
+          const name = document.createElement("span");
+          name.className = "node-name";
+          name.textContent = o.name || "(sem nome)";
+          row.append(twist, ico, name);
+          row.addEventListener("click", () => showDetail(o));
+          frag.append(row);
+          o.children.forEach((c) => visit(c, depth + 1));
+        };
+        visit(root, 0);
+        tree.append(frag);
+        $("treeCount").textContent = `${nodeRecords.length} nós`;
+      }
+      function updateStats(root) {
+        let objects = 0,
+          meshes = 0,
+          triangles = 0,
+          materials = new Set();
+        root.traverse((o) => {
+          objects++;
+          if (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) {
+            meshes++;
+            const g = o.geometry;
+            triangles += g?.index
+              ? g.index.count / 3
+              : (g?.attributes?.position?.count || 0) / 3;
+            materialList(o).forEach((m) => materials.add(m));
+          }
+        });
+        const vals = [
+          objects,
+          meshes,
+          Math.round(triangles).toLocaleString("pt-BR"),
+          materials.size,
+        ];
+        const labels = ["Objetos", "Meshes", "Triângulos", "Materiais"];
+        $("stats").innerHTML = "";
+        vals.forEach((v, i) => {
+          const box = document.createElement("div");
+          box.className = "stat";
+          const strong = document.createElement("strong"),
+            small = document.createElement("small");
+          strong.textContent = v;
+          small.textContent = labels[i];
+          box.append(strong, small);
+          $("stats").append(box);
+        });
+      }
+      function install(gltf, label) {
+        if (model) scene.remove(model);
+        gltfInfo = gltf;
+        model = gltf.scene;
+        scene.add(model);
+        $("empty").style.display = "none";
+        buildTree(model);
+        updateStats(model);
+        frameObject(model);
+        setStatus(`${label} carregado`);
+        showDetail(model);
+      }
+      function loadUrl(url) {
+        const clean = url.trim();
+        if (!clean) return;
+        setStatus("Carregando modelo…");
+        new GLTFLoader().load(
+          clean,
+          (gltf) => install(gltf, clean.split("/").pop() || clean),
+          undefined,
+          (e) => {
+            console.error("Falha ao carregar GLB:", e);
+            setStatus(
+              e?.message || "Não foi possível carregar o arquivo",
+              true,
+            );
+            $("details").innerHTML =
+              '<div class="empty-detail">Falha no carregamento. Confira o caminho, a conexão e se o servidor permite acessar o arquivo. Arquivos locais podem ser abertos pelo botão “Abrir arquivo…”.</div>';
+          },
+        );
+      }
+      $("loadUrl").addEventListener("click", () => loadUrl($("url").value));
+      $("url").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") loadUrl($("url").value);
+      });
+      $("choose").addEventListener("click", () => $("file").click());
+      $("file").addEventListener("change", (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        setStatus("Carregando arquivo…");
+        const u = URL.createObjectURL(f);
+        new GLTFLoader().load(
+          u,
+          (g) => {
+            install(g, f.name);
+            if (currentUrl) URL.revokeObjectURL(currentUrl);
+            currentUrl = u;
+          },
+          undefined,
+          (err) => {
+            URL.revokeObjectURL(u);
+            setStatus(err?.message || "Não foi possível abrir o arquivo", true);
+            console.error(err);
+          },
+        );
+      });
+      $("fit").addEventListener("click", () => model && frameObject(model));
+      $("axes").addEventListener("click", (e) => {
+        axes.visible = !axes.visible;
+        e.currentTarget.textContent = `Eixos: ${axes.visible ? "ligados" : "desligados"}`;
+      });
+      $("grid").addEventListener("click", (e) => {
+        grid.visible = !grid.visible;
+        e.currentTarget.textContent = `Grade: ${grid.visible ? "ligada" : "desligada"}`;
+      });
+      viewport.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        viewport.classList.add("dragging");
+      });
+      viewport.addEventListener("dragleave", (e) => {
+        if (!viewport.contains(e.relatedTarget))
+          viewport.classList.remove("dragging");
+      });
+      viewport.addEventListener("drop", (e) => {
+        e.preventDefault();
+        viewport.classList.remove("dragging");
+        const f = [...e.dataTransfer.files].find((x) =>
+          /\.gl(b|tf)$/i.test(x.name),
+        );
+        if (f) {
+          $("file").files;
+          const u = URL.createObjectURL(f);
+          setStatus("Carregando arquivo…");
+          new GLTFLoader().load(
+            u,
+            (g) => {
+              install(g, f.name);
+              if (currentUrl) URL.revokeObjectURL(currentUrl);
+              currentUrl = u;
+            },
+            undefined,
+            (err) => {
+              URL.revokeObjectURL(u);
+              setStatus(err?.message || "Erro ao abrir arquivo", true);
+            },
+          );
+        }
+      });
+      const params = new URLSearchParams(location.search),
+        src = params.get("src");
+      if (src) {
+        $("url").value = src;
+        loadUrl(src);
+      } else loadUrl($("url").value);
+    </script>
+    
+  </body>
+</html>

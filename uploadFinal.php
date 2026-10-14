@@ -257,7 +257,7 @@ $mapa_funcao_pasta = [
     'pré-finalização' => '03.Models',
     'alteração' => '03.Models',
     'Pós-Produção' => '04.Finalizacao',
-    'Planta Humanizada' => '04.Finalizacao',
+    'Planta Humanizada' => '03.Models',
 ];
 
 // Define pasta destino baseado no nome_funcao (case insensitive)
@@ -393,7 +393,7 @@ for ($i = 0; $i < $total; $i++) {
     } else {
         $remote_dir = $upload_ok;
 
-        if ($pasta_funcao === '03.Models') {
+        if ($pasta_funcao === '03.Models' && $nome_funcao_lower !== 'planta humanizada') {
             $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 
             $subpasta_img = $nomeImagemSanitizado;
@@ -458,20 +458,36 @@ for ($i = 0; $i < $total; $i++) {
     // === BLOCO ESPECIAL PARA PÓS-PRODUÇÃO E PLANTA HUMANIZADA ===
     $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
     if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção' || $funcao_normalizada === 'planta humanizada') {
-        $nome_final = "{$nome_imagem}_{$revisao}.{$extensao}";
+        $nome_final = "{$nome_base}-{$revisao}.{$extensao}";
         $pasta_revisao = $revisao;
 
-        if (!$sftp->is_dir("$upload_ok/$pasta_revisao")) {
+        if ($funcao_normalizada !== 'planta humanizada' && !$sftp->is_dir("$upload_ok/$pasta_revisao")) {
             $sftp->mkdir("$upload_ok/$pasta_revisao");
             $sftp->chmod(0777, $caminhoAtual); // define permissão completa
         }
 
         if ($funcao_normalizada === 'planta humanizada') {
-            if (!$sftp->is_dir("$upload_ok/$pasta_revisao/PH")) {
-                $sftp->mkdir("$upload_ok/$pasta_revisao/PH");
-                $sftp->chmod(0777, $caminhoAtual); // define permissão completa
+            $mapa_funcao_planta = [
+                'modelagem' => 'MT',
+                'composição' => 'Comp',
+                'composicao' => 'Comp',
+                'finalização' => 'Final',
+                'finalizacao' => 'Final',
+                'pré-finalização' => 'Final',
+                'pre-finalizacao' => 'Final',
+                'escolha de ângulos' => 'Final',
+                'alteração' => 'Final',
+                'alteracao' => 'Final',
+                'planta humanizada' => 'PH',
+            ];
+            $subpasta_funcao = $mapa_funcao_planta[$nome_funcao_lower] ?? 'OUTROS';
+            $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
+            $pasta_planta = "$upload_ok/$nomeImagemSanitizado/$subpasta_funcao";
+            if (!$sftp->is_dir($pasta_planta)) {
+                $sftp->mkdir($pasta_planta);
+                $sftp->chmod(0777, $pasta_planta);
             }
-            $remote_path = "$upload_ok/$pasta_revisao/PH/{$nome_final}";
+            $remote_path = "$pasta_planta/{$nome_final}";
         } else {
             $remote_path = "$upload_ok/$pasta_revisao/{$nome_final}";
         }

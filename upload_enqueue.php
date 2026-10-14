@@ -455,9 +455,9 @@ for ($i = 0; $i < $total; $i++) {
             $nome_imagem_clean = sanitizeFilename_enqueue($nome_imagem);
             $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipoCalc}-{$processo}";
             $revisao = resolveRevisaoFromDbUploadEnqueue($dataIdFuncoes);
-            // Regras especiais: Pós-Produção e Planta Humanizada usam padrão diferente
+            // Pós-Produção usa o nome_imagem_revisao.pdf; as demais usam nome_base_revisao.ext.
             $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
-            if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'planta humanizada') {
+            if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao') {
                 $nome_final_pdf = "{$nome_imagem_clean}_{$revisao}.{$extLower}";
             } else {
                 $nome_final_pdf = "{$nome_base}-{$revisao}.{$extLower}";

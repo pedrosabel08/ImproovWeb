@@ -542,7 +542,7 @@ function mapFuncaoParaPasta($nome_funcao)
         'pré-finalização' => '03.Models',
         'alteração' => '03.Models',
         'Pós-Produção' => '04.Finalizacao',
-        'Planta Humanizada' => '04.Finalizacao',
+        'Planta Humanizada' => '03.Models',
     ];
 
     foreach ($mapa as $k => $v) {
@@ -551,6 +551,26 @@ function mapFuncaoParaPasta($nome_funcao)
         }
     }
     return '';
+}
+
+/** Mapeia o nome da função para a subpasta usada em 03.Models. */
+function mapSubpastaFuncaoWorker(?string $nome_funcao): string
+{
+    $funcao = mb_strtolower(trim(fix_mojibake_worker((string) $nome_funcao)), 'UTF-8');
+    $mapa = [
+        'modelagem' => 'MT',
+        'composição' => 'Comp',
+        'composicao' => 'Comp',
+        'finalização' => 'Final',
+        'finalizacao' => 'Final',
+        'pré-finalização' => 'Final',
+        'pre-finalizacao' => 'Final',
+        'escolha de ângulos' => 'Final',
+        'alteração' => 'Final',
+        'alteracao' => 'Final',
+        'planta humanizada' => 'PH',
+    ];
+    return $mapa[$funcao] ?? 'OUTROS';
 }
 
 /**
@@ -585,17 +605,6 @@ function normalizar_data_id_funcoes_worker($valor): array
  */
 function contexto_por_funcao_id_worker(int $funcaoId, ?string $tipoImagem = null): ?array
 {
-    $tipoImagem = mb_strtolower(trim((string) $tipoImagem), 'UTF-8');
-    if (str_contains($tipoImagem, 'planta')) {
-        return [
-            'codigo' => 'PLANTA',
-            'nome' => 'Planta Humanizada',
-            'pasta' => '04.Finalizacao',
-            'subpasta' => null,
-            'processo' => 'PLA',
-        ];
-    }
-
     $mapa = [
         1 => ['codigo' => 'CADERNO', 'nome' => 'Caderno', 'pasta' => '02.Projetos', 'subpasta' => null, 'processo' => 'CAD'],
         2 => ['codigo' => 'MODELAGEM', 'nome' => 'Modelagem', 'pasta' => '03.Models', 'subpasta' => 'MT', 'processo' => 'MOD'],
@@ -603,10 +612,26 @@ function contexto_por_funcao_id_worker(int $funcaoId, ?string $tipoImagem = null
         4 => ['codigo' => 'FINALIZACAO', 'nome' => 'Finalização', 'pasta' => '03.Models', 'subpasta' => 'Final', 'processo' => 'FIN'],
         5 => ['codigo' => 'POS_PRODUCAO', 'nome' => 'Pós-Produção', 'pasta' => '04.Finalizacao', 'subpasta' => null, 'processo' => 'POS'],
         6 => ['codigo' => 'ALTERACAO', 'nome' => 'Alteração', 'pasta' => '03.Models', 'subpasta' => 'Final', 'processo' => 'ALT'],
-        7 => ['codigo' => 'PLANTA', 'nome' => 'Planta Humanizada', 'pasta' => '04.Finalizacao', 'subpasta' => null, 'processo' => 'PLA'],
+        7 => ['codigo' => 'PLANTA', 'nome' => 'Planta Humanizada', 'pasta' => '03.Models', 'subpasta' => 'PH', 'processo' => 'PLA'],
         8 => ['codigo' => 'FILTRO_ASSETS', 'nome' => 'Filtro de assets', 'pasta' => '02.Projetos', 'subpasta' => null, 'processo' => 'FIL'],
         9 => ['codigo' => 'PRE_FINALIZACAO', 'nome' => 'Pré-Finalização', 'pasta' => '03.Models', 'subpasta' => 'Final', 'processo' => 'PRE'],
     ];
+
+    $tipoImagem = mb_strtolower(trim((string) $tipoImagem), 'UTF-8');
+    if (str_contains($tipoImagem, 'planta')) {
+        // A imagem planta altera a pasta-base; função e processo continuam
+        // sendo os da tarefa vinculada (por exemplo, Finalização => Final/FIN).
+        $contexto = $mapa[$funcaoId] ?? null;
+        return [
+            'codigo' => 'PLANTA',
+            'nome' => $contexto['nome'] ?? 'Planta Humanizada',
+            'pasta' => '03.Models',
+            'subpasta' => $contexto['subpasta']
+                ?? mapSubpastaFuncaoWorker($contexto['nome'] ?? 'Planta Humanizada'),
+            'processo' => $contexto['processo'] ?? 'PLA',
+        ];
+    }
+
     return $mapa[$funcaoId] ?? null;
 }
 
@@ -1784,7 +1809,15 @@ do {
             // O nome legado e usado apenas para jobs antigos sem referencia.
             $codigoFuncao = $contextoFuncao['codigo'];
             $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
-            if ($pasta_funcao === '03.Models') {
+            if ($codigoFuncao === 'PLANTA' || ($codigoFuncao === null && $funcao_normalizada === 'planta humanizada')) {
+                // Mantém o apelido de pasta correspondente à função do upload.
+                $nomeFuncaoSubpasta = $nome_funcao !== '' ? $nome_funcao : ($contextoFuncao['nome'] ?? '');
+                $subpasta_funcao = $contextoFuncao['subpasta']
+                    ?? mapSubpastaFuncaoWorker($nomeFuncaoSubpasta);
+                $nomeImagemSanitizado = sanitizeFilename_worker($nome_imagem);
+                $nome_final = "{$nome_base}-{$revisao}.{$ext}";
+                $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/{$subpasta_funcao}";
+            } elseif ($pasta_funcao === '03.Models') {
                 $nomeImagemSanitizado = sanitizeFilename_worker($nome_imagem);
                 if ($codigoFuncao === 'ALTERACAO' || ($codigoFuncao === null && ($funcao_normalizada === 'alteração' || $funcao_normalizada === 'alteracao'))) {
                     $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/Final/{$revisao}";
@@ -1801,9 +1834,6 @@ do {
                 // Pós-Produção: nome_final = nome_imagem_revisao.ext em pasta revisao
                 $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
                 $remote_dir = $remote_dir . "/{$revisao}";
-            } elseif ($codigoFuncao === 'PLANTA' || ($codigoFuncao === null && $funcao_normalizada === 'planta humanizada')) {
-                $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
-                $remote_dir = $remote_dir . "/{$revisao}/PH";
             }
         }
 

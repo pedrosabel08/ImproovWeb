@@ -238,6 +238,11 @@
         updateRailBadges(moduleCounts);
       }
       if (data.counts_by_obra) {
+        document
+          .querySelectorAll('.sidebar-badge[data-obra-id]')
+          .forEach(function (el) {
+            setBadge(el, 0);
+          });
         Object.keys(data.counts_by_obra).forEach(function (obraId) {
           document
             .querySelectorAll('.sidebar-badge[data-obra-id="' + obraId + '"]')

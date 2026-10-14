@@ -19,6 +19,7 @@ if (!$userId) {
     exit;
 }
 $notificationUserId = (int) ($_SESSION['idusuario'] ?? 0);
+$canViewWorkNotificationCounts = (int) ($_SESSION['nivel_acesso'] ?? 0) === 1;
 if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
@@ -57,6 +58,9 @@ foreach (array_keys($counts_by_obra) as $obraId) {
     if (!improov_usuario_pode_acessar_obra($conn, (int) $obraId)) {
         unset($counts_by_obra[$obraId]);
     }
+}
+if (!$canViewWorkNotificationCounts) {
+    $counts_by_obra = [];
 }
 $total_ready = array_sum(array_map('intval', $counts_by_obra));
 

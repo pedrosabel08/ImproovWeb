@@ -161,3 +161,5 @@ ALMA/scripts/reports
 /tmp/agent-browser-cache/
 /tmp/mapa-pavimento-qa/
 /uploads/referencias_arquitetonicas/*/
+
+*.glb

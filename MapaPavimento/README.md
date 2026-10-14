@@ -1,5 +1,85 @@
 # Mapa arquitetônico — Fase 2
 
+## Sol astronômico na navegação 3D
+
+No visualizador integrado, ative **☀ Sol → Ativar Sol** no painel lateral. Escolha a data e o horário local da obra, ou use o slider de 00:00 a 23:55 em passos de cinco minutos. O campo de horário também aceita minutos individuais e permite testar a madrugada. **Agora** usa a hora atual no fuso da obra. Essas mudanças atualizam a mesma luz direcional e suas sombras, sem recarregar o GLB. Data, horário e ativação pertencem à visualização atual; coordenadas, Norte e fuso permanecem na configuração persistida por obra.
+
+O fluxo usa `espacial_configuracao` e o Norte salvo, sem uma segunda configuração de orientação. Sem latitude, longitude, Norte ou fuso válido, o Sol permanece indisponível e o painel oferece a configuração existente. Zero é um Norte válido; `NULL` não vira −Z automaticamente. Durante a edição visual do Norte, o Sol fica pausado; a luz só passa a usar a nova orientação após salvar as configurações espaciais.
+
+Dependências locais e fixas em `assets/libs/solar`: [SunCalc 1.9.0](https://github.com/mourner/suncalc/tree/v1.9.0) e [Luxon 3.7.2](https://moment.github.io/luxon/api-docs/index.html), com licenças e hashes. O cálculo não envia localização a um serviço externo. Não atualizar SunCalc sem rever a conversão: a versão utilizada devolve altitude e azimute em **radianos**, com azimute começando no sul e crescendo para oeste.
+
+**Conversão:** `azimuteVerdadeiro = (azimuth * 180 / PI + 180) mod 360`. A convenção interna fica 0° Norte, 90° Leste, 180° Sul e 270° Oeste. `northDirection(norte_graus)` é a mesma função usada pela seta e pela bússola. A base Leste é `(-north.z, 0, north.x)`; a componente horizontal é `north*cos(azimute) + east*sin(azimute)`. Multiplica-se por `cos(altitude)` e define-se Y como `sin(altitude)`. O resultado é um vetor unitário do empreendimento até o Sol.
+
+**Fuso:** `timezone` IANA é armazenado na tabela espacial existente, validado no PHP e editável no mesmo formulário. O padrão inicial é `America/Sao_Paulo`, incluindo TES_TES. Luxon interpreta a data/hora nessa zona e fornece o instante UTC para SunCalc. O timezone do computador não determina o resultado. Horários inexistentes em transições de horário de verão são recusados; em horários repetidos usa-se explicitamente a primeira ocorrência, indicada na UI. Clientes antigos que omitem o campo preservam o fuso existente.
+
+**Iluminação e sombras:** reutiliza a única `DirectionalLight` preexistente, com raios paralelos. O Sol fica a oito raios do bounding box e mira seu centro. A intensidade é `2.8 * sqrt(sin(altitude))` acima do horizonte e zero quando a elevação é ≤ 0; a HemisphereLight secundária permanece suave (0.45). Desativar Sol restaura a iluminação de navegação. O indicador é um mesh sem sombra e sem picking, acompanhado de uma etiqueta projetada; quando fora do enquadramento, a etiqueta indica a direção na borda.
+
+Sombras usam PCFSoftShadowMap, 2048×2048. Os oito cantos do bounding box e o receptor local do chão são transformados para o espaço da luz, de onde vêm left/right/top/bottom/near/far. Bias e normalBias acompanham a escala do GLB. O receptor é dimensionado pelas projeções dos cantos no chão para conter as sombras diurnas; sua extensão é limitada a dez raios do empreendimento perto do horizonte, evitando um plano infinito e um shadow map impraticável. A câmera de navegação não define a direção da luz nem o frustum. Os limites do modelo são guardados por carregamento; alterar o relógio não percorre novamente todos os meshes. A shadow map é invalidada quando a luz/geometria visível muda.
+
+Lajes, paredes, pisos e demais volumes opacos projetam e recebem sombras. Vidro totalmente transmissivo não é tratado como bloqueador opaco. Os materiais existentes do TES_TES são PBR e foram preservados. A bússola simples N/L/S/O usa o Norte compartilhado e acompanha o giro horizontal da câmera; ela não gira nem reorienta o GLB. A navegação/mapa 2D existente continua com seu comportamento próprio, sem controle solar no PDF.
+
+Aplicar a migração existente em ambientes já instalados acrescenta somente a coluna de fuso, de forma idempotente, sem alterar latitude, longitude, Norte ou versão de edição:
+
+```powershell
+C:/xampp/php/php.exe scripts/migrate_mapa_espacial.php
+C:/xampp/php/php.exe tests/mapa_espacial_test.php --integration
+node tests/solar_position_test.mjs
+node tests/north_direction_test.mjs
+# Verificação geométrica opcional: indicar um módulo Three.js r180 local, com three.core.js ao lado.
+node tests/solar_shadow_test.mjs --three-module=CAMINHO/three.module.js
+```
+
+QA em 13/10/2026, TES_TES (74): Norte salvo **83.9°**, latitude **−27.0992256**, longitude **−48.6179817**, America/Sao_Paulo; orientação e versão 4 foram preservadas. Foram conferidos Sol/sombras em 08h, 09h, 12h, 16h e ausência de luz solar/indicador às 02h, Agora, slider de cinco minutos e resposta da bússola ao giro da câmera. O cálculo produz aproximadamente azimute/elevação 74.3°/43.0° às 09h, 0.8°/70.7° às 12h e 277.1°/30.4° às 16h. Testes validam bases Norte/Leste, vetor unitário, intensidade, fusos e transições de horário de verão; processos com TZ=UTC, Asia/Tokyo e America/Los_Angeles retornaram resultados idênticos. O teste geométrico passou em 108 combinações de escala/Norte/azimute/elevação, usando a atualização real de sombras do Three.js r180. Layout conferido em 950×913 e 390×844; abertura/cancelamento da ferramenta de Norte e entrada/retorno do mapa 2D preservaram o Sol da visualização. Console sem erros. Evidências locais em `tmp/solar-qa/`.
+
+### Projeção solar somente no 3D
+
+Com o Sol ativado, **Mostrar projeção solar** desenha até 25 raios paralelos, com setas no sentido Sol → empreendimento e pontos no primeiro bloqueio. **Mostrar trajetória do dia** acrescenta a curva acima do horizonte e marcações de 06h/08h/12h/16h/18h, quando visíveis. Os dois controles são opcionais, independentes e pertencem à visualização atual. Nenhum recurso foi acrescentado ao PDF/mapa 2D. Ao entrar no mapa os auxiliares são ocultados e os cálculos pendentes são cancelados; ao voltar, as opções são restauradas. Os raios retomam somente depois que a animação de retorno restaurar a visibilidade e os materiais completos do prédio.
+
+Os raios reutilizam `solarAt()` e seu vetor de direção já orientado pelo Norte salvo. O campo 5×5 amostra um plano perpendicular ao Sol, projetado sobre os limites do modelo. O [Raycaster do Three.js](https://threejs.org/docs/pages/Raycaster.html) consulta primeiro caixas delimitadoras e depois triângulos dos candidatos, interrompendo no obstáculo opaco mais próximo ou no receptor local do chão. Modelos sem interseção em uma amostra não recebem um ponto artificial. O critério de material opaco é compartilhado com as sombras: vidro com transmissão ≥0.95 e materiais praticamente invisíveis deixam o raio passar. Os materiais de teste enxergam ambos os lados de paredes/lajes e o material original do mesh é restaurado no mesmo bloco síncrono, inclusive em erro. Geometria, layers e materiais compartilhados do GLB não são alterados permanentemente.
+
+A representação é uma amostra geométrica de luz direta, sem cálculo de energia, reflexão, refração ou relatório de insolação. Interseções seguem a geometria dos meshes; transparências recortadas por textura não são uma simulação óptica. Os auxiliares não entram na seleção de pavimentos e não projetam sombras. As caixas são indexadas por carregamento do modelo estático; mover a câmera não refaz raycasts. Alterar o horário processa os raios em lotes com orçamento de tempo por frame e descarta resultados antigos durante arrastes rápidos. Buffers de desenho são reutilizados.
+
+`solarDayPositions()` amostra o dia local em instantes UTC a cada dez minutos, usando o mesmo cálculo astronômico da luz. Dias de 23/25 horas respeitam o fuso; a trajetória é guardada por data/coordenadas/Norte/fuso e não é recalculada em cada mudança de horário. À noite os raios desaparecem; a trajetória diurna pode continuar visível para consulta.
+
+Testes adicionais:
+
+```powershell
+node tests/solar_projection_test.mjs --three-module=CAMINHO/three.module.js
+node tests/solar_shadow_test.mjs --three-module=CAMINHO/three.module.js
+node tests/solar_position_test.mjs
+```
+
+Os testes exercitam paralelismo/sentido, primeiro obstáculo, vidro, grupos de materiais, faces pelo verso, visibilidade, transformações, restauração de materiais em erro, cancelamento de cálculos, cache da trajetória e dias de 23/25 horas.
+
+QA local em TES_TES, modelo 1: projeção e trajetória conferidas às 09h/12h/16h, raios ocultos às 02h, layout de 390×844 e retorno do mapa Lazer preservando horário/opções e os mesmos 23 raios/12 impactos às 09h. Console sem erros. Norte salvo de 83.9° preservado; esta implementação não altera banco, API ou o mapa arquitetônico 2D.
+
+## Configurações espaciais da obra
+
+Na navegação 3D integrada, o botão **Configurações espaciais** usa a obra selecionada, a mesma API autenticada e as mesmas permissões de edição (níveis 1/2 e CSRF). A leitura é independente do carregamento do GLB; ausência de configuração não impede a navegação. Em falhas de consulta, o formulário informa o erro e impede gravação de valores incompletos.
+
+`mapa_obra_configuracoes_espaciais` guarda uma linha por `obra_id`, com latitude, longitude, Norte, versão, autor e datas. As tabelas anteriores de modelos, vínculos e PDFs não representam configurações espaciais por obra, por isso foi criada esta estrutura específica. Valores `NULL` indicam não definido; zero é um valor válido. Coordenadas têm sete casas decimais; Norte tem uma casa. Latitude aceita −90 a 90; longitude, −180 a 180. O backend valida também tipo e limites. Edições concorrentes retornam HTTP 409 sem sobrescrever a configuração.
+
+**Convenção do Norte:** plano horizontal XZ do GLB tal como carregado no Three.js, +Y vertical. 0° aponta para −Z; 90° para +X; 180° para +Z; 270° para −X. O ângulo aumenta no sentido horário visto de +Y em direção à origem e é normalizado em [0°, 360°). A direção é `(sin(θ), 0, −cos(θ))`. A câmera somente projeta a seta e sua etiqueta N; não participa do valor persistido. Modelos da mesma obra devem compartilhar a orientação de seus eixos.
+
+Definir no modelo abre um círculo arrastável e um slider acessível por teclado, com seta horizontal sobre o empreendimento. Câmera e seleção de pavimentos ficam suspensas nesse modo. Confirmar atualiza o rascunho; Cancelar/Escape restaura o Norte anterior do rascunho. Somente **Salvar** persiste os três campos; cancelar o formulário restaura a indicação salva. O indicador simples reutiliza a mesma função de direção, preparada para uma bússola futura. A seção Sol acima usa a mesma orientação persistida.
+
+Ações de API: `espacial_configuracao` (GET, `obra_id`), `espacial_salvar` (POST JSON, `obra_id`, `latitude`, `longitude`, `norte_graus`, `versao`). A obra é validada pela autorização existente, inclusive na leitura.
+
+Migração CLI idempotente, sem DDL em requisições web. A inicialização é parametrizada e não sobrescreve dados existentes:
+
+```powershell
+C:/xampp/php/php.exe scripts/migrate_mapa_espacial.php
+# Dados iniciais solicitados para TES_TES; Norte permanece NULL:
+C:/xampp/php/php.exe scripts/migrate_mapa_espacial.php --obra=74 --latitude=-27.0992256 --longitude=-48.6179817
+C:/xampp/php/php.exe tests/mapa_espacial_test.php
+C:/xampp/php/php.exe tests/mapa_espacial_test.php --integration
+node tests/north_direction_test.mjs
+```
+
+O teste de integração usa uma tabela temporária da conexão, com o mesmo esquema e sem alterar registros espaciais reais. Cobre criação, leitura, limites, campos vazios, Norte zero, isolamento e conflito de edição.
+
+QA inicial da configuração espacial em 13/10/2026: migração aplicada e reexecutada; testes espaciais PHP/banco/JS e sintaxe passaram. Na sessão autenticada em localhost:8066, foram conferidos valores iniciais, edição visual, câmera parada, cancelamento, latitude inválida e persistência do Norte de teste após recarga. Layout conferido em desktop e 390×844; arraste do círculo, teclado, entrada no mapa e retorno ao empreendimento também passaram, sem erros de console. O ângulo de teste foi removido ao finalizar, deixando as coordenadas solicitadas e Norte não definido. O teste legado `mapa_modelos_3d_test.php` espera dois pavimentos, mas o GLB atual também contém `PAVTO_LAZER_02`; essa divergência preexistente permanece fora desta alteração.
+
 ## Integração experimental com empreendimento 3D
 
 Disponível somente em `predio-3d/visualizador-glb-navegacao.html?obra_id=74`. Nenhum controle foi acrescentado à tela da obra. O teste usa o modelo `Projeto-TES_TES.glb`, cadastrado para TES_TES. O subtipo Lazer existente é `id=3`.
@@ -35,15 +115,15 @@ Reenviar conteúdo idêntico na mesma obra reutiliza o documento por SHA-256 e i
 
 ## Estrutura e reaproveitamento
 
-| Estrutura | Responsabilidade |
-|---|---|
-| `subtipo_imagem` | Fonte canônica de pavimento/subtipo, compartilhada com a tela da obra. |
-| `imagens_cliente_obra` | Todas as imagens disponíveis por `obra_id`, independentemente do subtipo. |
-| `mapa_documentos` | PDF privado da obra, nome, tamanho, páginas, hash, autor e datas. Único por obra/hash. |
+| Estrutura                    | Responsabilidade                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `subtipo_imagem`             | Fonte canônica de pavimento/subtipo, compartilhada com a tela da obra.                                       |
+| `imagens_cliente_obra`       | Todas as imagens disponíveis por `obra_id`, independentemente do subtipo.                                    |
+| `mapa_documentos`            | PDF privado da obra, nome, tamanho, páginas, hash, autor e datas. Único por obra/hash.                       |
 | `referencias_arquitetonicas` | Configuração por obra/subtipo: documento, página, layers, área útil e versão. `UNIQUE(obra_id, subtipo_id)`. |
-| `ambientes` | Identidade, nome, `referencia_id`, autor, datas e versão de edição. |
-| `ambiente_demarcacoes` | Polígono do ambiente e referência correspondente. |
-| `ambiente_imagens` | Relação N:N com imagens existentes; uma imagem pode estar em vários ambientes. |
+| `ambientes`                  | Identidade, nome, `referencia_id`, autor, datas e versão de edição.                                          |
+| `ambiente_demarcacoes`       | Polígono do ambiente e referência correspondente.                                                            |
+| `ambiente_imagens`           | Relação N:N com imagens existentes; uma imagem pode estar em vários ambientes.                               |
 
 Não existe `UNIQUE(documento_id, pagina)`. A antiga `obra_pavimentos` deixa de existir após a migração verificada. Configurações sem correspondência inequívoca ficam com `subtipo_id=NULL`, preservadas e disponíveis para visualizar/associar pela interface; nenhum subtipo é inventado automaticamente.
 
@@ -56,7 +136,17 @@ O viewer reaproveita a abordagem PDF.js/canvas/SVG do mapa antigo e os component
 Área útil:
 
 ```json
-{"version":3,"coordinate_space":"page_normalized","points":[[0.1,0.2],[0.8,0.2],[0.9,0.6],[0.7,0.8],[0.1,0.8]]}
+{
+  "version": 3,
+  "coordinate_space": "page_normalized",
+  "points": [
+    [0.1, 0.2],
+    [0.8, 0.2],
+    [0.9, 0.6],
+    [0.7, 0.8],
+    [0.1, 0.8]
+  ]
+}
 ```
 
 Pontos relativos à página exibida pelo PDF.js, considerando rotação/CropBox, origem superior esquerda e x/y de 0 a 1. `NULL` significa página inteira. Recortes retangulares anteriores são convertidos para polígonos compatíveis na leitura.
@@ -64,7 +154,15 @@ Pontos relativos à página exibida pelo PDF.js, considerando rotação/CropBox,
 Ambientes:
 
 ```json
-{"version":2,"coordinate_space":"useful_area_normalized","points":[[0.1,0.2],[0.4,0.2],[0.3,0.5]]}
+{
+  "version": 2,
+  "coordinate_space": "useful_area_normalized",
+  "points": [
+    [0.1, 0.2],
+    [0.4, 0.2],
+    [0.3, 0.5]
+  ]
+}
 ```
 
 Os pontos são relativos à **caixa delimitadora** da área útil, não ao interior irregular do polígono. Sem área útil, a caixa é a página inteira. Para converter à página: `xPagina = caixa.x + x * caixa.width`, `yPagina = caixa.y + y * caixa.height`. Essa transformação permite consumo futuro em outros viewers; nenhum alinhamento GLB é implementado aqui.
@@ -107,20 +205,20 @@ PDFs em `uploads/referencias_arquitetonicas/` são privados. Manter o `.htaccess
 
 `MapaPavimento/api.php?action=...`. Sessão Flow, obras permitidas por `obterObras()`, leitura autenticada, escrita para níveis 1/2 com `X-CSRF-Token` emitido na página.
 
-| Ação | Método | Dados principais |
-|---|---|---|
-| contexto | GET | obra_id |
-| subtipo_salvar | POST JSON | obra_id, nome |
-| documento_upload | POST multipart | obra_id, pdf |
-| documento_pdf | GET | obra_id, documento_id |
-| paginas | GET | obra_id, documento_id |
-| pagina_vincular | POST JSON | obra_id, subtipo_id, documento_id, pagina, versao_config, confirmar_reuso |
-| legado_associar | POST JSON | obra_id, subtipo_id, referencia_id |
-| mapa | GET | obra_id, subtipo_id; ou legado_id para configuração pendente |
-| imagens | GET | obra_id, subtipo_id, referencia_id opcional; imagens da obra com lista de ambientes vinculados; preservadas vazio por compatibilidade |
-| referencia_configurar | POST JSON | obra_id, subtipo_id, referencia_id, versao_config, layers, area_util (inclusive NULL) |
-| ambiente_salvar | POST JSON | obra_id, subtipo_id, referencia_id, versao_referencia, nome, geometria, imagem_ids; id/versao_edicao para editar |
-| ambiente_excluir | POST JSON | obra_id, subtipo_id, referencia_id, id, versao_edicao |
+| Ação                  | Método         | Dados principais                                                                                                                      |
+| --------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| contexto              | GET            | obra_id                                                                                                                               |
+| subtipo_salvar        | POST JSON      | obra_id, nome                                                                                                                         |
+| documento_upload      | POST multipart | obra_id, pdf                                                                                                                          |
+| documento_pdf         | GET            | obra_id, documento_id                                                                                                                 |
+| paginas               | GET            | obra_id, documento_id                                                                                                                 |
+| pagina_vincular       | POST JSON      | obra_id, subtipo_id, documento_id, pagina, versao_config, confirmar_reuso                                                             |
+| legado_associar       | POST JSON      | obra_id, subtipo_id, referencia_id                                                                                                    |
+| mapa                  | GET            | obra_id, subtipo_id; ou legado_id para configuração pendente                                                                          |
+| imagens               | GET            | obra_id, subtipo_id, referencia_id opcional; imagens da obra com lista de ambientes vinculados; preservadas vazio por compatibilidade |
+| referencia_configurar | POST JSON      | obra_id, subtipo_id, referencia_id, versao_config, layers, area_util (inclusive NULL)                                                 |
+| ambiente_salvar       | POST JSON      | obra_id, subtipo_id, referencia_id, versao_referencia, nome, geometria, imagem_ids; id/versao_edicao para editar                      |
+| ambiente_excluir      | POST JSON      | obra_id, subtipo_id, referencia_id, id, versao_edicao                                                                                 |
 
 URL de reabertura: `obra_id` + `subtipo_id`. Bookmarks anteriores com `pavimento_id` são resolvidos pelos metadados migrados.
 

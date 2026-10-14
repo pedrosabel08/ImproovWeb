@@ -1,3 +1,5 @@
+import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js";
+
 const apiUrl = new URL("../api.php", import.meta.url);
 const mapUrl = new URL("../index.php", import.meta.url);
 const reducedMotion = () =>
@@ -34,6 +36,7 @@ export class EmpreendimentoMapBridge {
     this.obraId = Number(this.params.get("obra_id") || 74);
     this.modelId = Number(this.params.get("modelo_id") || 0);
     this.createUI();
+    this.spatial = new EmpreendimentoSpatialSettings(this, hooks.spatial);
     window.addEventListener("message", (event) => this.onMessage(event));
   }
 
@@ -101,10 +104,17 @@ export class EmpreendimentoMapBridge {
     this.frame = el("iframe");
     this.frame.id = "floorMapFrame";
     this.frame.title = "Mapa arquitetônico do pavimento";
-    this.frame.addEventListener('load',()=>{
-      if(!this.pendingMap||this.frame.contentDocument?.URL==='about:blank')return;
-      if(!this.frame.contentDocument?.getElementById('mapaPavimento')){
-        clearTimeout(this.mapTimer);this.pendingMap.reject(new Error('Sua sessão expirou ou o mapa não está disponível. Entre no Flow e tente novamente.'));this.pendingMap=null;
+    this.frame.addEventListener("load", () => {
+      if (!this.pendingMap || this.frame.contentDocument?.URL === "about:blank")
+        return;
+      if (!this.frame.contentDocument?.getElementById("mapaPavimento")) {
+        clearTimeout(this.mapTimer);
+        this.pendingMap.reject(
+          new Error(
+            "Sua sessão expirou ou o mapa não está disponível. Entre no Flow e tente novamente.",
+          ),
+        );
+        this.pendingMap = null;
       }
     });
     this.stage.append(bar, this.frame);
@@ -131,6 +141,7 @@ export class EmpreendimentoMapBridge {
     document.getElementById("backToProject").disabled = value;
     this.changeMapLink.disabled = value || !this.canEdit;
     this.app.setAttribute("aria-busy", String(value));
+    this.spatial?.sync();
   }
 
   async api(actionName, data = {}, method = "GET") {
@@ -161,6 +172,7 @@ export class EmpreendimentoMapBridge {
   }
 
   async start() {
+    this.spatial.reset();
     this.setBusy(true, "Buscando obra e modelos 3D");
     try {
       const data = await this.api("modelos_3d");
@@ -170,7 +182,8 @@ export class EmpreendimentoMapBridge {
         ...data.obras.map((work) => new Option(work.nome, work.id)),
       );
       this.workSelect.value = String(this.obraId);
-      document.getElementById('projectName').textContent=this.workSelect.selectedOptions[0]?.textContent || 'Empreendimento';
+      document.getElementById("projectName").textContent =
+        this.workSelect.selectedOptions[0]?.textContent || "Empreendimento";
       this.models = data.modelos;
       this.modelSelect.replaceChildren(
         ...this.models.map((model) => new Option(model.nome, model.id)),
@@ -185,7 +198,11 @@ export class EmpreendimentoMapBridge {
         this.hooks.status(
           "Esta obra ainda não possui um modelo 3D cadastrado.",
         );
-        const panel=this.panel();panel.append(el('h3','Nenhum modelo 3D cadastrado'),el('p','Selecione outra obra para visualizar seu empreendimento.'));
+        const panel = this.panel();
+        panel.append(
+          el("h3", "Nenhum modelo 3D cadastrado"),
+          el("p", "Selecione outra obra para visualizar seu empreendimento."),
+        );
         this.updateUrl();
         return;
       }
@@ -208,6 +225,7 @@ export class EmpreendimentoMapBridge {
   }
 
   async loadModel() {
+    this.spatial.reset();
     this.setBusy(true, "Carregando empreendimento 3D");
     try {
       this.currentFloor = null;
@@ -215,6 +233,7 @@ export class EmpreendimentoMapBridge {
       this.hooks.clearModel();
       const data = await this.refreshContext();
       await this.hooks.loadModel(data.modelo.src);
+      void this.spatial.load();
       document.getElementById("projectName").textContent =
         this.workSelect.selectedOptions[0]?.textContent || data.modelo.nome;
       document.title = `${data.modelo.nome} · Mapa do empreendimento`;
@@ -371,7 +390,7 @@ export class EmpreendimentoMapBridge {
       link = this.links.get(floor.id),
       error = this.dialog.querySelector('[role="alert"]');
     this.saveButton.disabled = this.cancelButton.disabled = true;
-    this.dialog.querySelector('select').disabled=true;
+    this.dialog.querySelector("select").disabled = true;
     error.hidden = true;
     try {
       const data = await this.api(
@@ -399,7 +418,7 @@ export class EmpreendimentoMapBridge {
     } finally {
       this.saving = false;
       this.saveButton.disabled = this.cancelButton.disabled = false;
-      this.dialog.querySelector('select').disabled=false;
+      this.dialog.querySelector("select").disabled = false;
     }
   }
 

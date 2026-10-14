@@ -1319,6 +1319,19 @@ function applyHomeFilters() {
   );
 
   exibirCardsDeObra(filtradas);
+
+  const tarefasDaObraSelecionada = filtros.obra
+    ? dadosTarefas.filter((task) => task.nomenclatura === filtros.obra)
+    : dadosTarefas;
+  const obraId = filtros.obra
+    ? tarefasDaObraSelecionada[0]?.idobra
+    : null;
+  const colaboradorId = filtros.colaborador
+    ? dadosTarefas.find(
+        (task) => task.nome_colaborador === filtros.colaborador,
+      )?.colaborador_id
+    : null;
+  loadKpis(obraId, colaboradorId);
 }
 
 // ── KPI Bar module ────────────────────────────────────────────────────────────
@@ -1334,7 +1347,7 @@ function frFormatHoras(h) {
   return d + "d" + (rem > 0 ? " " + rem + "h" : "");
 }
 
-async function loadKpis(obraId = null) {
+async function loadKpis(obraId = null, colaboradorId = null) {
   const bar = document.getElementById("fr-kpi-bar");
   if (!bar) return;
 
@@ -1351,9 +1364,11 @@ async function loadKpis(obraId = null) {
   bar.classList.remove("hidden");
 
   try {
-    const url = obraId
-      ? `getKpis.php?obra_id=${encodeURIComponent(obraId)}`
-      : "getKpis.php";
+    const params = new URLSearchParams();
+    if (obraId) params.set("obra_id", obraId);
+    if (colaboradorId) params.set("colaborador_id", colaboradorId);
+    const query = params.toString();
+    const url = query ? `getKpis.php?${query}` : "getKpis.php";
     const res = await fetch(url);
     if (!res.ok) throw new Error("Erro ao buscar KPIs");
     const data = await res.json();
@@ -1891,8 +1906,13 @@ function filtrarTarefasPorObra(obraSelecionada) {
       link.textContent = nomenclatura;
     });
 
-    // Atualiza KPI bar com filtro por obra
-    loadKpis(obraId);
+    // Mantém as KPIs alinhadas aos filtros de obra e colaborador.
+    const colaboradorIdSelecionado = colaboradorSelecionado
+      ? tarefasDaObra.find(
+          (t) => t.nome_colaborador === colaboradorSelecionado,
+        )?.colaborador_id
+      : null;
+    loadKpis(obraId, colaboradorIdSelecionado);
   }
 
   // Aplica os filtros adicionais (colaborador, função e status)
@@ -2986,6 +3006,18 @@ async function atualizarAnguloEscolhido(acao, observacao = "") {
     historico_id: parseInt(ap_imagem_id, 10),
   };
 
+  const angleProgress = FlowAlert.progress({
+    title: "Salvando decisão do ângulo…",
+    message: "Registrando a aprovação e atualizando o histórico.",
+    progress: 20,
+    dismissible: false,
+  });
+  let angleProgressValue = 20;
+  const angleProgressTimer = setInterval(() => {
+    angleProgressValue = Math.min(angleProgressValue + 8, 85);
+    angleProgress.update({ progress: angleProgressValue });
+  }, 3000);
+
   try {
     const res = await fetch("atualizar_angulo.php", {
       method: "POST",
@@ -2994,12 +3026,45 @@ async function atualizarAnguloEscolhido(acao, observacao = "") {
     });
     const data = await res.json();
     if (!data.success) {
+      clearInterval(angleProgressTimer);
+      angleProgress.update({
+        title: "Não foi possível aprovar o ângulo",
+        message: data.message || "Erro ao atualizar ângulo.",
+        progress: 100,
+        type: "error",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      angleProgress.close();
       alert(data.message || "Erro ao atualizar ângulo.");
       return;
     }
+
+    angleProgress.update({
+      title: "Atualizando histórico…",
+      message: "A decisão foi registrada. Atualizando os dados da tarefa.",
+      progress: Math.max(85, angleProgressValue),
+    });
     await flowReviewRefreshPriorityData();
-    historyAJAX(funcaoImagemId);
+    await historyAJAX(funcaoImagemId);
+    clearInterval(angleProgressTimer);
+    angleProgress.update({
+      title: "Concluído!",
+      message: "A decisão do ângulo foi registrada com sucesso.",
+      progress: 100,
+      type: "success",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    angleProgress.close();
   } catch (e) {
+    clearInterval(angleProgressTimer);
+    angleProgress.update({
+      title: "Ocorreu um erro",
+      message: "Falha ao atualizar a decisão do ângulo.",
+      progress: 100,
+      type: "error",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    angleProgress.close();
     console.error(e);
     alert("Erro ao atualizar ângulo.");
   }

@@ -32,6 +32,9 @@ if (!improov_can_view_kpi_scope('management', $currentUserId)) {
 
 // ── Input validation ──────────────────────────────────────────────────────────
 $obra_id = isset($_GET['obra_id']) ? (int) $_GET['obra_id'] : null;
+$colaborador_id = isset($_GET['colaborador_id']) && (int) $_GET['colaborador_id'] > 0
+    ? (int) $_GET['colaborador_id']
+    : null;
 
 $conn = conectarBanco();
 
@@ -55,6 +58,9 @@ $main_date_clause_end = $is_obra_view ? '' : 'AND h_end.data_aprovacao >= ?';
 
 // Optional obra filter clause and bind helpers
 $obra_clause = $obra_id ? 'AND ico.obra_id = ?' : '';
+$colaborador_clause = $colaborador_id ? 'AND fi.colaborador_id = ?' : '';
+$scope_types = ($obra_id ? 'i' : '') . ($colaborador_id ? 'i' : '');
+$scope_params = array_values(array_filter([$obra_id, $colaborador_id], static fn($value) => $value !== null));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -117,9 +123,10 @@ $rows_cur = fr_kpi_fetch(
        AND o.status_obra = 0
        AND fi.funcao_id NOT IN (7, 9)
        $obra_clause
+       $colaborador_clause
      GROUP BY fi.funcao_id",
-    $obra_id ? 'i' : '',
-    $obra_id ? [$obra_id] : []
+    $scope_types,
+    $scope_params
 );
 
 $ea_total        = 0;
@@ -147,9 +154,10 @@ $ea_cur_rows = fr_kpi_fetch(
      FROM historico_aprovacoes h
      $base_trend_joins
        AND h.data_aprovacao >= ?
-       $obra_clause",
-    $obra_id ? 'si' : 's',
-    $obra_id ? [$trend_cur_from, $obra_id] : [$trend_cur_from]
+       $obra_clause
+       $colaborador_clause",
+    's' . $scope_types,
+    array_merge([$trend_cur_from], $scope_params)
 );
 $ea_trend_cur = (int) ($ea_cur_rows[0]['cnt'] ?? 0);
 
@@ -160,9 +168,10 @@ $ea_prev_rows = fr_kpi_fetch(
      $base_trend_joins
        AND h.data_aprovacao >= ?
        AND h.data_aprovacao < ?
-       $obra_clause",
-    $obra_id ? 'ssi' : 'ss',
-    $obra_id ? [$trend_prev_from, $trend_prev_to, $obra_id] : [$trend_prev_from, $trend_prev_to]
+       $obra_clause
+       $colaborador_clause",
+    'ss' . $scope_types,
+    array_merge([$trend_prev_from, $trend_prev_to], $scope_params)
 );
 $ea_trend_prev = (int) ($ea_prev_rows[0]['cnt'] ?? 0);
 
@@ -191,9 +200,10 @@ $aj_rows = fr_kpi_fetch(
        AND fi.funcao_id NOT IN (7, 9)
        $main_date_clause
        $obra_clause
+       $colaborador_clause
      GROUP BY fi.funcao_id",
-    $obra_id ? 'i' : 's',
-    $obra_id ? [$obra_id] : [$now_6m]
+    ($obra_id ? '' : 's') . $scope_types,
+    array_merge($obra_id ? [] : [$now_6m], $scope_params)
 );
 
 $aj_total        = 0;
@@ -231,9 +241,10 @@ $aj_prev_rows = fr_kpi_fetch(
        AND h.data_aprovacao < ?
        AND o.status_obra = 0
        AND fi.funcao_id NOT IN (7, 9)
-       $obra_clause",
-    $obra_id ? 'ssi' : 'ss',
-    $obra_id ? [$trend_prev_from, $trend_prev_to, $obra_id] : [$trend_prev_from, $trend_prev_to]
+       $obra_clause
+       $colaborador_clause",
+    'ss' . $scope_types,
+    array_merge([$trend_prev_from, $trend_prev_to], $scope_params)
 );
 $ajp_total      = (int) ($aj_prev_rows[0]['total_itens'] ?? 0);
 $ajp_com_ajuste = (int) ($aj_prev_rows[0]['itens_com_ajuste'] ?? 0);
@@ -272,13 +283,14 @@ $med_sql = "
       AND fi.funcao_id NOT IN (7, 9)
       $main_date_clause_end
       $obra_clause
+      $colaborador_clause
     HAVING horas >= 0";
 
 $med_rows = fr_kpi_fetch(
     $conn,
     $med_sql,
-    $obra_id ? 'i' : 's',
-    $obra_id ? [$obra_id] : [$now_6m]
+    ($obra_id ? '' : 's') . $scope_types,
+    array_merge($obra_id ? [] : [$now_6m], $scope_params)
 );
 
 $med_all_horas     = [];
@@ -318,13 +330,14 @@ $med_prev_sql = "
       AND o.status_obra = 0
       AND fi.funcao_id NOT IN (7, 9)
       $obra_clause
+      $colaborador_clause
     HAVING horas >= 0";
 
 $med_prev_rows = fr_kpi_fetch(
     $conn,
     $med_prev_sql,
-    $obra_id ? 'ssi' : 'ss',
-    $obra_id ? [$trend_prev_from, $trend_prev_to, $obra_id] : [$trend_prev_from, $trend_prev_to]
+    'ss' . $scope_types,
+    array_merge([$trend_prev_from, $trend_prev_to], $scope_params)
 );
 $med_prev_horas = array_map(static fn($r) => (int) $r['horas'], $med_prev_rows);
 $mediana_prev   = fr_kpi_median($med_prev_horas);

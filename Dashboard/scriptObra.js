@@ -2454,9 +2454,6 @@ function renderModernAllocationModal(response, idImagem) {
   const isSecondaryImage =
     !isAnimacaoMode &&
     response?.dependencia_imagem?.tipo_relacao === "secundaria";
-  if (isSecondaryImage) {
-    modernFuncoesState.visibleKeysOverride = new Set(["finalizacao"]);
-  }
   const selectedRow = isAnimacaoMode
     ? document.querySelector(
         `#tabela-animacoes tbody tr[data-animacao-id="${response?.animacao?.idanimacao}"]`,
@@ -2512,7 +2509,7 @@ function renderModernAllocationModal(response, idImagem) {
     subtitle.textContent = isAnimacaoMode
       ? "Gerencie respons\u00e1veis, prazos e status da anima\u00e7\u00e3o e da p\u00f3s-produ\u00e7\u00e3o."
       : isSecondaryImage
-        ? `Ângulo secundário de ${response?.dependencia_imagem?.imagem_principal_nome || "imagem principal"}. Somente Finalização é executada aqui.`
+        ? `Ângulo secundário de ${response?.dependencia_imagem?.imagem_principal_nome || "imagem principal"}. Gerencie as funções desta imagem.`
         : "Gerencie respons\u00e1veis, prazos e status das fun\u00e7\u00f5es desta imagem.";
   }
 
@@ -5719,22 +5716,14 @@ function infosObra(obraId) {
           }
 
           // Célula normal
-          const inheritedProcess = isSecondaryImage && coluna.funcaoId !== 4;
-          const colaborador = inheritedProcess
-            ? "-"
-            : item[`${coluna.col}_colaborador`] || "-";
-          const status = inheritedProcess
-            ? "Dependente da imagem principal"
-            : item[`${coluna.col}_status`] || "-";
+          const colaborador = item[`${coluna.col}_colaborador`] || "-";
+          const status = item[`${coluna.col}_status`] || "-";
 
           const cellColaborador = document.createElement("td");
           cellColaborador.textContent = colaborador;
           cellColaborador.setAttribute("data-status", status);
           cellColaborador.setAttribute("data-funcao", coluna.col);
           cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
-          if (inheritedProcess)
-            cellColaborador.classList.add("func-cell--dependent");
-
           cellColaborador.addEventListener("mouseenter", (event) => {
             const complexidade =
               coluna.col === "modelagem" ? modelagemComplexidadeObra : "";
@@ -5758,7 +5747,6 @@ function infosObra(obraId) {
           row.appendChild(cellColaborador);
 
           if (
-            !inheritedProcess &&
             isPendenteProducao &&
             coluna.funcaoId &&
             unlinkedFuncoes.has(coluna.funcaoId)
@@ -5771,8 +5759,7 @@ function infosObra(obraId) {
             cellColaborador.appendChild(badge);
           }
 
-          if (!inheritedProcess)
-            applyStyleNone(cellColaborador, null, colaborador);
+          applyStyleNone(cellColaborador, null, colaborador);
 
           const statusNormalizado = status.trim().toLowerCase();
           const statusValidos = [
@@ -5791,7 +5778,6 @@ function infosObra(obraId) {
           }
 
           if (
-            !inheritedProcess &&
             !(item.imagem_status === "EF" && item.imagem_sub_status === "EF")
           ) {
             applyStatusStyle(cellColaborador, status, colaborador);
@@ -8907,7 +8893,10 @@ if (importTxtForm) {
     fd.append("txtFile", file);
     fd.append("obra_id", currentObraId);
     if (currentClienteId) fd.append("cliente_id", currentClienteId);
-    fd.append("valor", document.getElementById("importTxtRevenue")?.value || "");
+    fd.append(
+      "valor",
+      document.getElementById("importTxtRevenue")?.value || "",
+    );
     fd.append("imposto", document.getElementById("importTxtTax")?.value || "0");
 
     try {
@@ -15763,23 +15752,156 @@ if (markInactiveBtn) {
     }
   }
 
-  // O status já vem em infosObra.php; o rótulo inicial é atualizado quando
-  // a resposta crítica é renderizada, sem buscar a lista completa de obras.
-  markInactiveBtn.addEventListener("click", function () {
-    var _obraId =
+  function getObraStatusBasePath() {
+    return window.location.pathname.includes("/flow/ImproovWeb/")
+      ? "/flow/ImproovWeb/"
+      : "/ImproovWeb/";
+  }
+
+  function getReactivationPackageLabel(tipo) {
+    const labels = {
+      STILL: "Imagens",
+      ANIMACAO: "Animações",
+      FILME: "Filme",
+    };
+    return labels[String(tipo || "").toUpperCase()] || tipo || "Pacote";
+  }
+
+  async function askReactivationDetails(obraId) {
+    const packagesUrl = new URL(
+      getObraStatusBasePath() + "atualizarObraPacoteStatus.php",
+      window.location.origin,
+    );
+    packagesUrl.searchParams.set("obra_id", String(obraId));
+    const response = await fetch(packagesUrl);
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(
+        result?.message || "Não foi possível carregar os pacotes.",
+      );
+    }
+
+    const packages = (result.packages || []).filter(function (item) {
+      return ["ATIVO", "HOLD", "CONCLUIDO"].includes(
+        String(item.status || "").toUpperCase(),
+      );
+    });
+    if (!packages.length) {
+      await FlowAlert.info({
+        title: "Nenhum pacote disponível",
+        message: "Esta obra não possui pacotes que possam ser retomados.",
+        mode: "modal",
+      });
+      return null;
+    }
+
+    const fields = packages.map(function (item, index) {
+      const packageId = Number(item.idobra_pacote);
+      const packageType = String(item.tipo || "").toUpperCase();
+      const packageStatus = String(item.status || "").toUpperCase();
+      const statusLabels = {
+        ATIVO: "em andamento",
+        HOLD: "aguardando",
+        CONCLUIDO: "concluído",
+      };
+      const statusLabel = statusLabels[packageStatus] || packageStatus;
+      return {
+        type: "checkbox",
+        name: "pacote_" + packageId,
+        label: index === 0 ? "Pacotes para reativar" : "",
+        optionLabel:
+          getReactivationPackageLabel(packageType) + " · " + statusLabel,
+        checked: packageStatus === "ATIVO",
+      };
+    });
+    fields.push(
+      {
+        type: "radio",
+        name: "manter_prazos",
+        label: "Os prazos atuais permanecem?",
+        options: { sim: "Sim, manter", nao: "Não, definir nova data-base" },
+        value: "sim",
+      },
+      {
+        type: "date",
+        name: "nova_data_base",
+        label: "Nova data-base dos prazos",
+        visibleWhen: function (values) {
+          return values.manter_prazos === "nao";
+        },
+      },
+    );
+
+    const formResult = await FlowAlert.form({
+      type: "info",
+      title: "Reativar obra",
+      message:
+        "Escolha os pacotes que devem voltar e informe se os prazos atuais permanecem.",
+      fields,
+      confirmText: "Reativar obra",
+      cancelText: "Cancelar",
+      validate: function (values) {
+        const selected = packages.some(function (item) {
+          return values["pacote_" + Number(item.idobra_pacote)] === true;
+        });
+        if (!selected) return "Selecione pelo menos um pacote para reativar.";
+        if (
+          values.manter_prazos === "nao" &&
+          !/^\d{4}-\d{2}-\d{2}$/.test(values.nova_data_base || "")
+        ) {
+          return "Informe a nova data-base dos prazos.";
+        }
+        return "";
+      },
+    });
+    if (!formResult?.isConfirmed) return null;
+
+    return {
+      pacote_ids: packages
+        .filter(function (item) {
+          return (
+            formResult.value["pacote_" + Number(item.idobra_pacote)] === true
+          );
+        })
+        .map(function (item) {
+          return Number(item.idobra_pacote);
+        }),
+      manter_prazos: formResult.value.manter_prazos === "sim",
+      nova_data_base:
+        formResult.value.manter_prazos === "sim"
+          ? null
+          : formResult.value.nova_data_base,
+    };
+  }
+
+  async function updateObraStatus(updateUrl, payload) {
+    const response = await fetch(updateUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(
+        result?.message || "Resposta inválida ao atualizar o status.",
+      );
+    }
+    return result;
+  }
+
+  markInactiveBtn.addEventListener("click", async function () {
+    const currentObraId =
       typeof obraId !== "undefined" && obraId
         ? obraId
         : localStorage.getItem("obraId") ||
           localStorage.getItem("idObra") ||
           null;
-    if (!_obraId) {
+    if (!currentObraId) {
       alert("ID da obra não encontrado na página.");
       return;
     }
 
-    const basePath = window.location.pathname.includes("/flow/ImproovWeb/")
-      ? "/flow/ImproovWeb/"
-      : "/ImproovWeb/";
+    const basePath = getObraStatusBasePath();
     const statusUrl = new URL(
       basePath + "Obras/getObras.php",
       window.location.origin,
@@ -15789,132 +15911,74 @@ if (markInactiveBtn) {
       window.location.origin,
     ).toString();
 
-    // Primeiro tentamos obter o status atual da obra para decidir a ação (toggle)
-    fetch(statusUrl)
-      .then(function (r) {
-        return r.json();
-      })
-      .then(async function (list) {
-        var found = null;
-        if (Array.isArray(list)) {
-          found = list.find(function (o) {
-            return parseInt(o.idobra) === parseInt(_obraId);
-          });
-        }
-        var currentStatus =
-          found && typeof found.status_obra !== "undefined"
-            ? parseInt(found.status_obra)
-            : null;
-        var newStatus, confirmMsg;
-        if (currentStatus === 0) {
-          newStatus = 1; // marcar inativa
-          confirmMsg = "Tem certeza que deseja marcar esta obra como inativa?";
-        } else if (currentStatus === 1) {
-          newStatus = 0; // marcar ativa
-          confirmMsg = "Tem certeza que deseja marcar esta obra como ativa?";
-        } else {
-          // fallback: perguntar ao usuário qual ação deseja
-          if (
-            !(
-              await FlowAlert.confirm({
-                title: "Status desconhecido",
-                message:
-                  "Não foi possível determinar o status atual. Deseja marcar como inativa?",
-                confirmText: "Marcar inativa",
-              })
-            ).isConfirmed
-          )
-            return;
-          newStatus = 1;
-        }
-
-        if (
-          !(
-            await FlowAlert.confirm({
-              title: "Alterar status da obra?",
-              message: confirmMsg,
-              confirmText: "Confirmar",
-            })
-          ).isConfirmed
-        )
-          return;
-
-        fetch(updateUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            obra_id: parseInt(_obraId),
-            status: newStatus,
-          }),
-        })
-          .then(function (resp) {
-            return resp.json();
-          })
-          .then(function (json) {
-            if (json && json.success) {
-              var msg =
-                newStatus === 1
-                  ? "Obra marcada como inativa."
-                  : "Obra marcada como ativa.";
-              // Atualiza texto do botão antes de recarregar para feedback imediato
-              setMarkBtnLabelByStatus(newStatus === 1 ? 1 : 0);
-              FlowAlert.success({
-                message: msg + " A página será recarregada.",
-                mode: "modal",
-                onClose: () => window.location.reload(),
-              });
-            } else {
-              alert(
-                "Erro: " +
-                  (json && json.message ? json.message : "Resposta inválida"),
-              );
-            }
-          })
-          .catch(function (err) {
-            alert("Erro na requisição: " + err);
-          });
-      })
-      .catch(async function (err) {
-        // Se não for possível obter o status, mantém comportamento antigo (marcar inativa)
-        console.warn("Não foi possível obter status da obra:", err);
-        if (
-          !(
-            await FlowAlert.confirm({
-              title: "Status indisponível",
-              message:
-                "Não foi possível verificar o status atual. Deseja marcar como inativa?",
-              confirmText: "Marcar inativa",
-            })
-          ).isConfirmed
-        )
-          return;
-        fetch(updateUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ obra_id: parseInt(_obraId), status: 1 }),
-        })
-          .then(function (resp) {
-            return resp.json();
-          })
-          .then(function (json) {
-            if (json && json.success) {
-              FlowAlert.success({
-                message:
-                  "Obra marcada como inativa. A página será recarregada.",
-                mode: "modal",
-                onClose: () => window.location.reload(),
-              });
-            } else {
-              alert(
-                "Erro: " +
-                  (json && json.message ? json.message : "Resposta inválida"),
-              );
-            }
-          })
-          .catch(function (err) {
-            alert("Erro na requisição: " + err);
-          });
+    try {
+      const response = await fetch(statusUrl);
+      const list = await response.json();
+      if (!response.ok || !Array.isArray(list)) {
+        throw new Error("Não foi possível consultar o status da obra.");
+      }
+      const found = list.find(function (item) {
+        return Number(item.idobra) === Number(currentObraId);
       });
+      const currentStatus =
+        found && typeof found.status_obra !== "undefined"
+          ? Number(found.status_obra)
+          : null;
+
+      if (currentStatus === 1) {
+        const reactivation = await askReactivationDetails(currentObraId);
+        if (!reactivation) return;
+        const result = await updateObraStatus(updateUrl, {
+          obra_id: Number(currentObraId),
+          status: 0,
+          pacote_ids: reactivation.pacote_ids,
+          manter_prazos: reactivation.manter_prazos,
+          nova_data_base: reactivation.nova_data_base,
+        });
+        setMarkBtnLabelByStatus(0);
+        FlowAlert.success({
+          message: result.message + " A página será recarregada.",
+          mode: "modal",
+          onClose: () => window.location.reload(),
+        });
+        return;
+      }
+
+      if (currentStatus !== 0) {
+        const confirmUnknown = await FlowAlert.confirm({
+          title: "Status desconhecido",
+          message:
+            "Não foi possível determinar o status atual. Deseja marcar esta obra como inativa?",
+          confirmText: "Marcar inativa",
+        });
+        if (!confirmUnknown.isConfirmed) return;
+      } else {
+        const confirmInactive = await FlowAlert.confirm({
+          title: "Alterar status da obra?",
+          message: "Tem certeza que deseja marcar esta obra como inativa?",
+          confirmText: "Marcar inativa",
+        });
+        if (!confirmInactive.isConfirmed) return;
+      }
+
+      const result = await updateObraStatus(updateUrl, {
+        obra_id: Number(currentObraId),
+        status: 1,
+      });
+      setMarkBtnLabelByStatus(1);
+      FlowAlert.success({
+        message: result.message + " A página será recarregada.",
+        mode: "modal",
+        onClose: () => window.location.reload(),
+      });
+    } catch (error) {
+      console.error("Erro ao alterar status da obra:", error);
+      await FlowAlert.error({
+        title: "Não foi possível alterar o status",
+        message: error.message || "Erro na requisição.",
+        mode: "modal",
+      });
+    }
   });
 }
 

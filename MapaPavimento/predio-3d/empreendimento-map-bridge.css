@@ -134,6 +134,11 @@
   color: var(--muted);
   font-size: 11px;
 }
+.model-context label[hidden],
+.spatial-button[hidden],
+.map-bar button[hidden] {
+  display: none !important;
+}
 .model-context select,
 .link-dialog select {
   width: 100%;

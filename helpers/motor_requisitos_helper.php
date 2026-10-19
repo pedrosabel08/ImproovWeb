@@ -274,11 +274,12 @@ function motor_requisitos_preparar_lote(mysqli $conn, array $funcaoImagemIds): v
     }
 
     if (flow_block_has_tables($conn)) {
-        $sqlIssues = "SELECT i.id, i.codigo, i.status, i.confirmada_em, i.funcao_imagem_id, a.metadados
-                        FROM flow_issue i
+        $issueScope = flow_block_task_scope_sql('i.funcao_imagem_id', 'fi_block');
+        $sqlIssues = "SELECT i.id, i.codigo, i.status, i.confirmada_em, fi_block.idfuncao_imagem AS funcao_imagem_id, a.metadados
+                        FROM funcao_imagem fi_block JOIN flow_issue i ON $issueScope
                         LEFT JOIN flow_issue_atividade a
                           ON a.id = (SELECT ia.id FROM flow_issue_atividade ia WHERE ia.issue_id = i.id AND ia.tipo = 'CRIADA' ORDER BY ia.id ASC LIMIT 1)
-                       WHERE i.funcao_imagem_id IN ({$idsSql})
+                       WHERE fi_block.idfuncao_imagem IN ({$idsSql})
                          AND i.bloqueante = 1
                          AND (i.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (i.status = 'RESOLVIDA' AND i.confirmada_em IS NULL))
                        ORDER BY i.atualizado_em DESC, i.id DESC";

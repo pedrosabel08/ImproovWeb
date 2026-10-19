@@ -1122,6 +1122,7 @@
   }
   function startCrop() {
     if (
+      !canEdit ||
       state.busy ||
       state.drawing ||
       state.preparing ||
@@ -1315,6 +1316,7 @@
     }
   });
   $("inspectLayers").addEventListener("click", async () => {
+    if (!canEdit) return;
     if (inspector.active) {
       inspector.cancel();
       controls();

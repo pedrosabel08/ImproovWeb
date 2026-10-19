@@ -22,10 +22,14 @@ $actorId = flow_block_actor_id();
 
 function fb_issue_select(): string
 {
+    $pairScope = flow_block_task_scope_sql('fb_label.idfuncao_imagem', 'fi');
     return "SELECT i.*, t.nome AS tipo_nome, t.codigo AS tipo_codigo, q.nome AS fila_nome,
                    r.nome_colaborador AS responsavel_nome, cr.nome_colaborador AS criador_nome,
                    fi.status AS tarefa_status, fi.colaborador_id AS tarefa_colaborador_id,
-                   COALESCE(f.nome_funcao, 'Pendência operacional') AS nome_funcao,
+                   CASE WHEN EXISTS (SELECT 1 FROM funcao_imagem fb_label
+                        WHERE fb_label.idfuncao_imagem <> fi.idfuncao_imagem AND $pairScope)
+                     THEN 'Caderno + Filtro de Assets'
+                     ELSE COALESCE(f.nome_funcao, 'Pendência operacional') END AS nome_funcao,
                    ico.idimagens_cliente_obra AS imagem_id,
                    COALESCE(ico.imagem_nome, op.source_title) AS imagem_nome,
                    COALESCE(ico.obra_id, op.obra_id) AS obra_id,
@@ -345,8 +349,8 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
         if (!$task || !flow_block_can_access_task($task)) {
             flow_block_json_response(['ok' => false, 'message' => 'Tarefa não encontrada.'], 404);
         }
-        $stmt = $conn->prepare(fb_issue_select() . " WHERE i.funcao_imagem_id = ? AND (i.status IN ('ABERTA','AGUARDANDO_ACAO','PAUSADA') OR (i.status='RESOLVIDA' AND i.confirmada_em IS NULL)) ORDER BY i.criado_em ASC");
-        $stmt->bind_param('i', $taskId);
+        $taskIds = flow_block_task_ids_sql($conn, $taskId);
+        $stmt = $conn->prepare(fb_issue_select() . " WHERE i.funcao_imagem_id IN ($taskIds) AND (i.status IN ('ABERTA','AGUARDANDO_ACAO','PAUSADA') OR (i.status='RESOLVIDA' AND i.confirmada_em IS NULL)) ORDER BY i.criado_em ASC");
         $stmt->execute();
         $issues = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
@@ -387,6 +391,18 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
         $stmt->execute();
         $tasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+        $groupedTasks = [];
+        foreach ($tasks as $candidate) {
+            $members = flow_block_task_members($conn, (int) $candidate['id']);
+            if (count($members) === 2) {
+                $representative = $members[0]['status'] === 'Finalizado' ? $members[1] : $members[0];
+                $candidate['id'] = (int) $representative['idfuncao_imagem'];
+                $candidate['status'] = $representative['status'];
+                $candidate['nome_funcao'] = 'Caderno + Filtro de Assets';
+            }
+            $groupedTasks[(int) $candidate['id']] = $candidate;
+        }
+        $tasks = array_values($groupedTasks);
         flow_block_json_response(['ok' => true, 'tasks' => $tasks]);
     }
 
@@ -590,6 +606,17 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
         if ($unitForHold) {
             $taskId = (int) $unitForHold['composicao']['idfuncao_imagem'];
         }
+        // A inclusão manual pode chegar pelo ID de uma etapa já concluída.
+        // Vincula o impedimento à etapa ainda pendente do mesmo card.
+        $holdMembers = flow_block_task_members($conn, $taskId);
+        if (count($holdMembers) === 2) {
+            foreach ($holdMembers as $holdMember) {
+                if ($holdMember['status'] !== 'Finalizado') {
+                    $taskId = (int) $holdMember['idfuncao_imagem'];
+                    break;
+                }
+            }
+        }
         $task = flow_block_task($conn, $taskId);
         if (!$task || !flow_block_can_access_task($task)) {
             flow_block_json_response(['ok' => false, 'message' => 'Você não pode bloquear esta tarefa.'], 403);
@@ -671,22 +698,16 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
             'requirement_source_url' => $requirementSourceUrl,
             'requirement_context' => $requirementContext,
         ]);
-        $taskStatusChanged = !empty($promocaoHold['aplicada']) && $beforeStatus !== 'HOLD';
-        if ($beforeStatus !== 'HOLD' && empty($promocaoHold['aplicada'])) {
-            $hold = $conn->prepare("UPDATE funcao_imagem SET status='HOLD', observacao=? WHERE idfuncao_imagem=?");
-            $hold->bind_param('si', $description, $taskId);
-            $hold->execute();
-            $hold->close();
-            $taskStatusChanged = true;
+        $changedTaskIds = flow_block_apply_task_hold($conn, $taskId, $description);
+        if (!empty($promocaoHold['aplicada']) && $beforeStatus !== 'HOLD') {
+            $changedTaskIds[] = $taskId;
         }
+        $taskStatusChanged = count($changedTaskIds) > 0;
         if ($taskStatusChanged && flow_janela_schema_disponivel($conn)) {
-            flow_janela_pausar(
-                $conn,
-                $taskId,
-                $actorId ?: null,
-                isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
-                (int) $issueId
-            );
+            foreach (array_unique($changedTaskIds) as $changedTaskId) {
+                flow_janela_pausar($conn, $changedTaskId, $actorId ?: null,
+                    isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null, (int) $issueId);
+            }
         }
         flow_block_notify($conn, $responsibleId ?? 0, $taskId, "$code foi atribuída a você no Flow Block.");
         $conn->commit();
@@ -1203,51 +1224,58 @@ ORDER BY o.nomenclatura LIMIT 100')->fetch_all(MYSQLI_ASSOC);
         $previousDeadline = $task['prazo'] ?? null;
         $actorUserId = (int) ($_SESSION['idusuario'] ?? 0);
         $historyNote = $replanNote !== '' ? $replanNote : null;
-        $prazoResult = funcao_imagem_prazo_atualizar(
-            $conn,
-            $taskId,
-            $newDeadline,
-            [
-                'origem' => 'flow_block',
-                'motivo' => $historyNote,
-                'alterado_por_colaborador_id' => $actorId,
-                'alterado_por_usuario_id' => $actorUserId,
-                'status_novo' => $statusAfter,
-            ]
-        );
-        if (!$prazoResult['alterado']) {
-            $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em andamento' WHERE idfuncao_imagem = ? AND status = 'HOLD'");
-            if (!$stmt) {
-                throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
+        $taskIds = flow_block_task_ids_sql($conn, $taskId);
+        foreach (flow_block_task_members($conn, $taskId) as $member) {
+            if ($member['status'] !== 'HOLD') {
+                continue;
             }
-            $stmt->bind_param('i', $taskId);
-            $stmt->execute();
-            if ($stmt->affected_rows !== 1) {
-                $stmt->close();
-                throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
-            }
-            $stmt->close();
-        }
-
-        $log = $conn->prepare('INSERT INTO log_alteracoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id) VALUES (?, ?, ?, ?)');
-        $log->bind_param('issi', $taskId, $statusBefore, $statusAfter, $actorId);
-        $log->execute();
-        $log->close();
-
-        if (flow_janela_schema_disponivel($conn)) {
-            flow_janela_retomar(
+            $memberId = (int) $member['idfuncao_imagem'];
+            $prazoResult = funcao_imagem_prazo_atualizar(
                 $conn,
-                $taskId,
-                $actorId ?: null,
-                $actorUserId ?: null,
+                $memberId,
                 $newDeadline,
-                $motivoCodigo,
-                $motivoTexto
+                [
+                    'origem' => 'flow_block',
+                    'motivo' => $historyNote,
+                    'alterado_por_colaborador_id' => $actorId,
+                    'alterado_por_usuario_id' => $actorUserId,
+                    'status_novo' => $statusAfter,
+                ]
             );
+            if (!$prazoResult['alterado']) {
+                $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em andamento' WHERE idfuncao_imagem = ? AND status = 'HOLD'");
+                if (!$stmt) {
+                    throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
+                }
+                $stmt->bind_param('i', $memberId);
+                $stmt->execute();
+                if ($stmt->affected_rows !== 1) {
+                    $stmt->close();
+                    throw new RuntimeException('A tarefa não pôde ser atualizada; atualize a tela e tente novamente.');
+                }
+                $stmt->close();
+            }
+
+            $log = $conn->prepare('INSERT INTO log_alteracoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id) VALUES (?, ?, ?, ?)');
+            $log->bind_param('issi', $memberId, $statusBefore, $statusAfter, $actorId);
+            $log->execute();
+            $log->close();
+
+            if (flow_janela_schema_disponivel($conn)) {
+                flow_janela_retomar(
+                    $conn,
+                    $memberId,
+                    $actorId ?: null,
+                    $actorUserId ?: null,
+                    $newDeadline,
+                    $motivoCodigo,
+                    $motivoTexto
+                );
+            }
+
         }
 
-        $lastIssue = $conn->prepare("SELECT id FROM flow_issue WHERE funcao_imagem_id = ? AND bloqueante = 1 AND (status = 'CANCELADA' OR (status = 'RESOLVIDA' AND confirmada_em IS NOT NULL)) ORDER BY COALESCE(confirmada_em, resolvido_em, atualizado_em) DESC, id DESC LIMIT 1");
-        $lastIssue->bind_param('i', $taskId);
+        $lastIssue = $conn->prepare("SELECT id FROM flow_issue WHERE funcao_imagem_id IN ($taskIds) AND bloqueante = 1 AND (status = 'CANCELADA' OR (status = 'RESOLVIDA' AND confirmada_em IS NOT NULL)) ORDER BY COALESCE(confirmada_em, resolvido_em, atualizado_em) DESC, id DESC LIMIT 1");
         $lastIssue->execute();
         $issueId = (int) (($lastIssue->get_result()->fetch_assoc()['id'] ?? 0));
         $lastIssue->close();

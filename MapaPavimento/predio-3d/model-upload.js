@@ -111,7 +111,7 @@ export class ModelUpload {
   }
 
   open() {
-    if (this.uploadButton.disabled) return;
+    if (!this.bridge.canEdit || this.uploadButton.disabled) return;
     this.form.reset();
     this.file.setCustomValidity("");
     this.error.hidden = true;
@@ -154,7 +154,7 @@ export class ModelUpload {
   }
 
   async send() {
-    if (this.sending) return;
+    if (!this.bridge.canEdit || this.sending) return;
     const file = this.file.files[0];
     if (!file || !/\.glb$/i.test(file.name)) {
       this.showError(this.error, "Selecione um arquivo .glb.");
@@ -237,7 +237,7 @@ export class ModelUpload {
   }
 
   async openHistory() {
-    if (this.historyButton.disabled) return;
+    if (!this.bridge.canEdit || this.historyButton.disabled) return;
     const list = this.history.querySelector(".model-version-list");
     const errorNode = this.history.querySelector(".bridge-error");
     errorNode.hidden = true;
@@ -294,7 +294,7 @@ export class ModelUpload {
   }
 
   async activate(versionId, currentFile, errorNode) {
-    if (this.restoring) return;
+    if (!this.bridge.canEdit || this.restoring) return;
     this.restoring = true;
     errorNode.hidden = true;
     for (const button of this.history.querySelectorAll("button"))

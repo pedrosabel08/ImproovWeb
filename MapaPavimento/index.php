@@ -1,12 +1,13 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/../helpers/mapa_permissoes_helper.php';
 if (($_SESSION['logado'] ?? false) !== true) {
     header('Location: ../index.html');
     exit;
 }
 $_SESSION['mapa_pavimento_csrf'] ??= bin2hex(random_bytes(32));
-$canEdit = in_array((int) ($_SESSION['nivel_acesso'] ?? 0), [1, 2], true);
+$canEdit = mp_can_edit($_SESSION);
 $embedded = ($_GET['embed'] ?? '') === '3d';
 $conn = conectarBanco();
 $obras = obterObras($conn);
@@ -56,11 +57,11 @@ $version = max(filemtime(__DIR__ . '/script.js'), filemtime(__DIR__ . '/style.cs
         <label class="mp-field mp-floor-field"><span id="pavimentoLabel">Pavimento / subtipo</span>
             <select id="pavimentoSelect" disabled><option value="">Selecione o subtipo</option></select>
         </label>
-        <label class="mp-field mp-document-field">Referência / PDF
+        <label class="mp-field mp-document-field" <?= $canEdit ? '' : 'hidden' ?>>Referência / PDF
             <select id="documentSelect" disabled><option value="">Selecionar PDF…</option></select>
         </label>
         <?php if ($canEdit): ?><label id="uploadLabel" class="mp-button mp-secondary mp-upload is-disabled" aria-disabled="true"><span>+ Enviar PDF</span><input id="pdfInput" type="file" accept="application/pdf,.pdf" disabled></label><?php endif; ?>
-        <div class="mp-page-choice"><span>Página</span><button id="choosePage" type="button" class="mp-button mp-secondary" disabled>Selecionar página</button></div>
+        <div class="mp-page-choice" <?= $canEdit ? '' : 'hidden' ?>><span>Página</span><button id="choosePage" type="button" class="mp-button mp-secondary" disabled>Selecionar página</button></div>
     </section>
         <button id="openModel3d" class="mp-button mp-secondary" type="button" title="Abrir modelo 3D em uma nova aba" disabled>Modelo 3D</button>
         <button id="themeToggle" class="mp-icon-button" type="button" aria-label="Alternar tema" title="Alternar tema">◐</button>
@@ -85,7 +86,7 @@ $version = max(filemtime(__DIR__ . '/script.js'), filemtime(__DIR__ . '/style.cs
         <div class="mp-preparation-heading mp-sr-only"><h2 id="preparationTitle">Preparação da referência</h2><p id="layersStatus" aria-live="polite"></p><p id="cropStatus" aria-live="polite"></p></div>
         <?php if ($canEdit): ?><div class="mp-preparation-actions"><button id="configureLayers" type="button" class="mp-button mp-secondary">Configurar camadas</button><button id="defineCrop" type="button" class="mp-button mp-secondary">Definir área útil</button></div><?php endif; ?>
         <?php if (!$canEdit): ?><span id="referenceReadout" class="mp-reference-readout"></span><?php endif; ?>
-        <button id="inspectLayers" type="button" class="mp-button mp-secondary" aria-pressed="false">Inspecionar camada</button>
+        <button id="inspectLayers" type="button" class="mp-button mp-secondary" aria-pressed="false" <?= $canEdit ? '' : 'hidden' ?>>Inspecionar camada</button>
     </section>
 </div>
                 <div id="plantaViewport" class="pv-viewport" role="region" tabindex="0" aria-label="Planta do pavimento. Arraste para mover e use os botões para ampliar.">

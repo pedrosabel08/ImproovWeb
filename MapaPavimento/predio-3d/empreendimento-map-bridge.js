@@ -1,5 +1,5 @@
-import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js";
-import { ModelUpload } from "./model-upload.js";
+import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js?v=20261019-permissions";
+import { ModelUpload } from "./model-upload.js?v=20261019-permissions";
 
 const apiUrl = new URL("../api.php", import.meta.url);
 const mapUrl = new URL("../index.php", import.meta.url);
@@ -31,6 +31,7 @@ export class EmpreendimentoMapBridge {
   constructor(hooks) {
     this.hooks = hooks;
     this.busy = false;
+    this.canEdit = false;
     this.mapShown = false;
     this.links = new Map();
     this.params = new URLSearchParams(location.search);
@@ -56,6 +57,8 @@ export class EmpreendimentoMapBridge {
     this.modelSelect.id = "modelo3d";
     workLabel.append(this.workSelect);
     modelLabel.append(this.modelSelect);
+    modelLabel.hidden = true;
+    this.modelLabel = modelLabel;
     this.context.append(workLabel, modelLabel);
     document
       .querySelector(".top")
@@ -66,6 +69,7 @@ export class EmpreendimentoMapBridge {
       this.start();
     });
     this.modelSelect.addEventListener("change", () => {
+      if (!this.canEdit) return;
       this.modelId = Number(this.modelSelect.value);
       this.loadModel().catch((error) => this.showFailure(error));
     });
@@ -115,6 +119,7 @@ export class EmpreendimentoMapBridge {
     this.changeMapLink = action("Alterar vínculo", () =>
       this.requestReturn(true),
     );
+    this.changeMapLink.hidden = true;
     this.mapError = el("p", "", "bridge-error");
     this.mapError.hidden = true;
     this.mapError.setAttribute("role", "alert");
@@ -160,7 +165,10 @@ export class EmpreendimentoMapBridge {
     this.loading.querySelector("canvas").setAttribute("aria-label", text);
     this.workSelect.disabled = value || this.mapShown;
     this.modelSelect.disabled =
-      value || this.mapShown || !this.modelSelect.options.length;
+      value ||
+      !this.canEdit ||
+      this.mapShown ||
+      !this.modelSelect.options.length;
     document.getElementById("backToProject").disabled = value;
     this.changeMapLink.disabled = value || !this.canEdit;
     this.buildingButton.disabled = value;
@@ -205,6 +213,8 @@ export class EmpreendimentoMapBridge {
       const data = await this.api("modelos_3d");
       this.csrf = data.csrf;
       this.canEdit = data.can_edit;
+      this.modelLabel.hidden = !this.canEdit;
+      this.changeMapLink.hidden = !this.canEdit;
       this.uploadMax = data.upload_max_bytes;
       this.uploader.notice.hidden = true;
       this.workSelect.replaceChildren(
@@ -452,7 +462,7 @@ export class EmpreendimentoMapBridge {
   }
 
   async saveLink() {
-    if (this.saving) return;
+    if (!this.canEdit || this.saving) return;
     this.saving = true;
     const floor = this.currentFloor,
       link = this.links.get(floor.id),

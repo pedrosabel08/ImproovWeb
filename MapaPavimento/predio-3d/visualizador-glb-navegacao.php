@@ -18,7 +18,7 @@ $html = preg_replace_callback('~(href|src)="(\.{1,2}/[^"?]+)(?:\?[^\"]*)?"~', st
     $file = __DIR__ . '/' . $match[2];
     return $match[1] . '="' . $match[2] . (is_file($file) ? '?v=' . filemtime($file) : '') . '"';
 }, $html);
-$html = str_replace('</head>', '<link rel="stylesheet" href="../../css/styleSidebar.css"><link rel="stylesheet" href="./flow-spatial-shell.css?v=' . filemtime(__DIR__ . '/flow-spatial-shell.css') . '"></head>', $html);
+$html = str_replace('</head>', '<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon"><link rel="stylesheet" href="../../css/styleSidebar.css"><link rel="stylesheet" href="./flow-spatial-shell.css?v=' . filemtime(__DIR__ . '/flow-spatial-shell.css') . '"></head>', $html);
 $html = str_replace('</body>', '<script src="../../script/sidebar.js"></script><script src="../../script/controleSessao.js"></script></body>', $html);
 $html = str_replace('<body class="spatial-workspace">', '<body class="spatial-workspace flow-spatial-page">' . $flowSidebar . '<div id="flowSpatialWorkspace"></div>', $html);
 echo $html;

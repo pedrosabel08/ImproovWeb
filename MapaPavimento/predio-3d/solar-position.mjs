@@ -93,9 +93,22 @@ function positionAtInstant(config, date) {
   const azimuth = trueAzimuth(position.azimuth);
   return {
     azimuth,
-    altitude: position.altitude * 180 / Math.PI,
+    altitude: (position.altitude * 180) / Math.PI,
     direction: solarDirection(azimuth, position.altitude, config.norte_graus),
     intensity: solarIntensity(position.altitude),
+  };
+}
+
+/** Posição no instante real, inclusive segundos e ocorrências repetidas do relógio. */
+export function solarAtInstant(config, millis = Date.now()) {
+  const error = solarConfigError(config);
+  if (error) throw new Error(error);
+  const date = new Date(millis);
+  if (!Number.isFinite(date.getTime())) throw new Error("Instante inválido.");
+  return {
+    date,
+    utcISO: date.toISOString(),
+    ...positionAtInstant(config, date),
   };
 }
 
@@ -112,12 +125,20 @@ export function solarAt(config, date, time) {
 export function solarDayPositions(config, date) {
   const error = solarConfigError(config);
   if (error) throw new Error(error);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Informe uma data válida.");
-  const start = DateTime.fromISO(date, { zone: config.timezone }).startOf("day");
-  if (!start.isValid || start.toISODate() !== date) throw new Error("Esta data não existe nesse fuso.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+    throw new Error("Informe uma data válida.");
+  const start = DateTime.fromISO(date, { zone: config.timezone }).startOf(
+    "day",
+  );
+  if (!start.isValid || start.toISODate() !== date)
+    throw new Error("Esta data não existe nesse fuso.");
   const end = start.plus({ days: 1 }).startOf("day");
   const samples = [];
-  for (let millis = start.toMillis(); millis < end.toMillis(); millis += 10 * 60000) {
+  for (
+    let millis = start.toMillis();
+    millis < end.toMillis();
+    millis += 10 * 60000
+  ) {
     const instant = new Date(millis);
     samples.push({ date: instant, ...positionAtInstant(config, instant) });
   }

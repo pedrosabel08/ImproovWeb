@@ -12,6 +12,7 @@ export class EmpreendimentoSpatialSettings {
     this.button.className = "btn spatial-button";
     this.button.textContent = "⚙ Configurações espaciais";
     this.button.disabled = true;
+    this.button.hidden = true;
     bridge.context.after(this.button);
     this.button.addEventListener("click", () => this.open());
     this.dialog = document.createElement("dialog");
@@ -83,7 +84,9 @@ export class EmpreendimentoSpatialSettings {
     });
   }
   sync() {
+    this.button.hidden = !this.bridge.canEdit;
     this.button.disabled =
+      !this.bridge.canEdit ||
       this.bridge.busy ||
       this.bridge.mapShown ||
       !this.ready ||
@@ -121,7 +124,7 @@ export class EmpreendimentoSpatialSettings {
     this.sync();
   }
   async open() {
-    if (this.button.disabled) return;
+    if (!this.bridge.canEdit || this.button.disabled) return;
     this.button.disabled = true;
     const obraId = this.bridge.obraId,
       modelId = this.bridge.modelId;

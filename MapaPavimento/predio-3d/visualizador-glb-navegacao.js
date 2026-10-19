@@ -1,8 +1,8 @@
+import { createViewerGlass } from "./viewer-glass.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261016-deferred-floor";
+import { createModelLoader } from "./model-loader.js";
+import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261019-permissions";
 import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
 import { SolarLighting } from "./solar-lighting.js?v=20261016-projection-off";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
@@ -127,12 +127,8 @@ $("axes").textContent = "Eixos: desligados";
 $("grid").textContent = "Grade: desligada";
 $("axes").setAttribute("aria-pressed", "false");
 $("grid").setAttribute("aria-pressed", "false");
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath(
-  "https://www.gstatic.com/draco/versioned/decoders/1.5.7/",
-);
-const loader = new GLTFLoader().setDRACOLoader(dracoLoader),
-  raycaster = new THREE.Raycaster(),
+const { loader } = createModelLoader();
+const raycaster = new THREE.Raycaster(),
   pointer = new THREE.Vector2();
 const floorObjectPattern = /^(PAVTO_.+_[0-9]+)_([0-9]+)$/i;
 // Only meshes with a recognized floor identifier use the picking layer.
@@ -1365,19 +1361,7 @@ function install(gltf, sourceName) {
       )
         return material;
       if (!adjustedGlass.has(material)) {
-        const glass = material.clone();
-        glass.userData.viewerGlass = true;
-        glass.transmission = 0;
-        glass.opacity = Math.min(material.opacity, 0.16);
-        glass.transparent = true;
-        glass.depthWrite = false;
-        glass.depthTest = true;
-        glass.roughness = Math.max(0.16, Math.min(material.roughness, 0.3));
-        glass.metalness = 0;
-        glass.ior = 1.1;
-        glass.thickness = 0;
-        glass.envMapIntensity = Math.min(material.envMapIntensity, 0.12);
-        glass.needsUpdate = true;
+        const glass = createViewerGlass(material);
         adjustedGlass.set(material, glass);
       }
       changed = true;
@@ -1896,7 +1880,10 @@ for (const [label, direction, up = [0, 1, 0]] of cubeViews) {
   button.addEventListener("click", async () => {
     if (!modelRoot || transitioning || northDefining || mapBridge?.busy) return;
     const focusedFloor = activeFloor || viewerState.selectedFloor;
-    const bounds = focusedFloor ? floorBounds(focusedFloor) : modelBounds;
+    const bounds = focusedFloor
+      ? floorBounds(focusedFloor)
+      : new THREE.Box3().setFromObject(modelRoot, true);
+    if (bounds.isEmpty()) return;
     const pose = cameraPoseFor(
       bounds,
       label === "Superior" || label === "Inferior",

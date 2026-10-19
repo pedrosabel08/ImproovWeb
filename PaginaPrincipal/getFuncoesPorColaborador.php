@@ -237,6 +237,10 @@ if ($kanbanMode) {
 // ====================
 // FUNÇÕES (SEM FILTROS)
 // ====================
+$flowBlockScope_fbi = flow_block_task_scope_sql('fbi.funcao_imagem_id', 'fi');
+$flowBlockScope_fbi_confirmada = flow_block_task_scope_sql('fbi_confirmada.funcao_imagem_id', 'fi');
+$flowBlockScope_fbi_bloqueante = flow_block_task_scope_sql('fbi_bloqueante.funcao_imagem_id', 'fi');
+
 $sql = "SELECT
     ico.idimagens_cliente_obra AS imagem_id,
     ico.imagem_nome,
@@ -296,14 +300,14 @@ $sql = "SELECT
     (
         SELECT COUNT(*)
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
     ) AS flow_block_issues_abertas,
     (
         SELECT fbi.id
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
         ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
@@ -311,7 +315,7 @@ $sql = "SELECT
     (
         SELECT fbi.status
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
         ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
@@ -320,7 +324,7 @@ $sql = "SELECT
         SELECT ft.nome
         FROM flow_issue fbi
         JOIN flow_issue_tipo ft ON ft.id = fbi.tipo_id
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
         ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
@@ -328,7 +332,7 @@ $sql = "SELECT
     (
         SELECT fbi.criado_em
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
         ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
@@ -336,7 +340,7 @@ $sql = "SELECT
     (
         SELECT fbi.proxima_cobranca_em
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
         ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
@@ -344,7 +348,7 @@ $sql = "SELECT
     (
         SELECT CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 1 ELSE 0 END
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
           AND (fbi.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi.status = 'RESOLVIDA' AND fbi.confirmada_em IS NULL))
         ORDER BY CASE WHEN fbi.proxima_cobranca_em IS NOT NULL AND fbi.proxima_cobranca_em < NOW() THEN 0 ELSE 1 END, FIELD(fbi.urgencia, 'CRITICA', 'ALTA', 'NORMAL', 'BAIXA'), fbi.criado_em ASC, fbi.atualizado_em DESC, fbi.id ASC LIMIT 1
@@ -352,20 +356,20 @@ $sql = "SELECT
     (
         SELECT MIN(fbi.criado_em)
         FROM flow_issue fbi
-        WHERE fbi.funcao_imagem_id = fi.idfuncao_imagem
+        WHERE {$flowBlockScope_fbi}
           AND fbi.bloqueante = 1
     ) AS flow_block_hold_desde,
     CASE
         WHEN fi.status = 'HOLD'
          AND EXISTS (
              SELECT 1 FROM flow_issue fbi_confirmada
-             WHERE fbi_confirmada.funcao_imagem_id = fi.idfuncao_imagem
+             WHERE {$flowBlockScope_fbi_confirmada}
                AND fbi_confirmada.bloqueante = 1
                AND (fbi_confirmada.status = 'CANCELADA' OR (fbi_confirmada.status = 'RESOLVIDA' AND fbi_confirmada.confirmada_em IS NOT NULL))
          )
          AND NOT EXISTS (
              SELECT 1 FROM flow_issue fbi_bloqueante
-             WHERE fbi_bloqueante.funcao_imagem_id = fi.idfuncao_imagem
+             WHERE {$flowBlockScope_fbi_bloqueante}
                AND fbi_bloqueante.bloqueante = 1
                AND (fbi_bloqueante.status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (fbi_bloqueante.status = 'RESOLVIDA' AND fbi_bloqueante.confirmada_em IS NULL))
          )

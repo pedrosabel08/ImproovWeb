@@ -1,0 +1,617 @@
+/* Layout específico da Planta. Tokens e controles vêm de spatial-workspace.css. */
+.mp-page {
+  height: 100dvh;
+  overflow: hidden;
+  font-family: var(--spatial-font);
+}
+.mp-page .mp-app {
+  position: fixed;
+  inset: 0 0 0 64px;
+  height: auto;
+  min-height: 0;
+  margin-left: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mp-page .mp-header {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.mp-page .mp-brand {
+  flex: 0 1 220px;
+}
+.mp-page .mp-brand h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.mp-page .mp-brand p {
+  margin: 3px 0 0;
+  color: var(--mp-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.mp-page .mp-context {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.mp-page .mp-context .mp-field {
+  flex: 1 1 150px;
+  max-width: 240px;
+  min-width: 0;
+  gap: 4px;
+  font-weight: 400;
+}
+.mp-page .mp-context .mp-document-field {
+  flex: 1.4 1 210px;
+  max-width: 340px;
+}
+.mp-page .mp-page-choice {
+  width: auto;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--mp-muted);
+}
+.mp-page .mp-context .mp-button {
+  min-height: 36px;
+  white-space: nowrap;
+}
+.mp-page #themeToggle {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  align-self: center;
+}
+.mp-page .mp-workbench {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--spatial-inspector-width);
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--mp-bg);
+}
+.mp-page .mp-plan {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.mp-page .mp-plan-header {
+  flex-shrink: 0;
+  min-height: 52px;
+  padding: 9px 16px;
+  background: var(--spatial-header);
+  border-bottom: 1px solid var(--mp-line);
+}
+.mp-page .mp-plan-caption {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mp-page .mp-plan-caption h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mp-page .mp-plan-caption > span {
+  font-size: 10px;
+  color: var(--mp-muted);
+}
+.mp-page .mp-plan-header p {
+  margin: 3px 0 0;
+  font-size: 10px;
+  color: var(--mp-muted);
+}
+.mp-page .mp-viewer-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mp-page .pv-viewport {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  inset: auto;
+  background: transparent;
+}
+.mp-page .pv-surface {
+  box-shadow: 0 8px 30px #0003;
+}
+.mp-page .pv-region polygon {
+  fill: #237c6728;
+  stroke: var(--spatial-markup);
+}
+.mp-page .pv-region:hover polygon,
+.mp-page .pv-region:focus polygon,
+.mp-page .pv-region.is-selected polygon {
+  fill: #237c6740;
+  stroke: var(--spatial-markup);
+}
+.mp-page .pv-region text {
+  fill: #1a5749;
+}
+.mp-page .pv-draft,
+.mp-page .pv-crop-outline {
+  stroke: var(--spatial-markup);
+}
+.mp-page .pv-draft {
+  fill: #237c6728;
+}
+.mp-page .pv-vertex {
+  fill: var(--spatial-markup);
+}
+.mp-page .mp-viewport-tools {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 0;
+  z-index: 2;
+}
+.mp-page
+  .mp-viewport-tools:has(#viewTools[hidden]):has(
+    #referencePreparation[hidden]
+  ) {
+  display: none;
+}
+.mp-page .mp-view-tools {
+  position: static;
+  transform: none;
+  width: max-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  padding: 3px;
+  border-radius: var(--spatial-radius);
+  box-shadow: none;
+  background: var(--spatial-float);
+}
+.mp-page .mp-view-tools button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  font-size: 17px !important;
+}
+.mp-page .mp-view-tools > span {
+  height: 16px;
+  margin: 0 2px;
+}
+.mp-page .mp-view-tools output {
+  min-width: 40px;
+  text-align: center;
+  color: var(--mp-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.mp-page .mp-preparation {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.mp-page .mp-preparation-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: auto;
+  gap: 6px;
+}
+.mp-page .mp-reference-readout {
+  min-width: 0;
+  font-size: 11px;
+  color: var(--mp-muted);
+  overflow-wrap: anywhere;
+}
+.mp-page .mp-preparation:has(.mp-reference-readout) {
+  flex-wrap: wrap;
+}
+.mp-page .mp-plan-footer {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
+  z-index: 1;
+  text-align: center;
+}
+.mp-page .mp-panel {
+  min-height: 0;
+  max-height: none;
+  border-top: 0;
+  border-left: 1px solid var(--mp-line);
+  overflow-y: auto;
+}
+.mp-page .mp-panel > .spatial-inspector-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+}
+.mp-page .mp-panel > .spatial-inspector-head > span {
+  color: var(--mp-muted);
+  font-size: 10px;
+}
+.mp-page .mp-panel-header {
+  padding: 16px 14px 6px;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.mp-page .mp-panel-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+.mp-page .mp-count {
+  display: inline;
+  color: var(--mp-muted);
+  font-size: 11px;
+}
+.mp-page .mp-panel-header .mp-button {
+  width: auto;
+  margin: 0;
+}
+.mp-page .mp-environment-list {
+  min-height: 0;
+  max-height: none;
+  padding: 8px;
+  overflow: visible;
+}
+.mp-page .mp-environment-item {
+  position: relative;
+  padding: 12px 12px 12px 16px;
+  margin: 2px 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  gap: 3px;
+}
+.mp-page .mp-environment-item strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.mp-page .mp-environment-item span {
+  font-size: 10px;
+}
+.mp-page .mp-environment-item:hover {
+  background: var(--spatial-hover);
+  border-color: transparent;
+}
+.mp-page .mp-environment-item.is-selected {
+  background: var(--spatial-selected);
+  border-color: var(--spatial-control-border);
+}
+.mp-page .mp-environment-item.is-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--mp-accent);
+  border-radius: 2px;
+}
+.mp-page .mp-panel-empty {
+  padding: 14px;
+  font-size: 11px;
+}
+.mp-page .mp-details {
+  padding: 16px 14px;
+}
+.mp-page .mp-details h3 {
+  margin: 0 0 5px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.mp-page .mp-detail-actions {
+  margin: 12px 0;
+  gap: 6px;
+}
+.mp-page .mp-gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.mp-page .mp-drawing-bar,
+.mp-page .mp-crop-bar {
+  flex-shrink: 0;
+  max-height: 32%;
+  overflow-y: auto;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--mp-accent);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--mp-accent-soft);
+}
+.mp-page .mp-drawing-bar > strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mp-page .mp-drawing-bar > span {
+  font-size: 11px;
+}
+.mp-page .mp-crop-bar h2 {
+  margin: 0;
+  font-size: 13px;
+}
+.mp-page .mp-crop-bar p {
+  font-size: 11px;
+}
+.mp-page .mp-crop-actions {
+  flex-direction: row;
+  gap: 6px;
+}
+.mp-page .mp-plan:has(#drawingBar:not([hidden])) .mp-viewer-wrap {
+  min-height: 0;
+}
+.mp-page .mp-legacy {
+  flex-shrink: 0;
+  max-height: 25dvh;
+  overflow-y: auto;
+  border: 0;
+  border-bottom: 1px solid var(--mp-line);
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 0;
+}
+.mp-page .mp-message {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 12px;
+}
+.mp-page .mp-empty svg {
+  margin-bottom: 14px;
+  width: 90px;
+}
+.mp-page .mp-empty h3 {
+  font-size: 16px;
+  font-weight: 500;
+}
+.mp-page .mp-empty p {
+  font-size: 12px;
+}
+.mp-page .mp-busy {
+  background: var(--spatial-float);
+  z-index: 4;
+}
+.mp-page .mp-tooltip {
+  background: var(--spatial-float);
+  border-color: var(--spatial-control-border);
+  color: var(--mp-text);
+  font-size: 11px;
+}
+.mp-page .mp-context .select2-selection--single {
+  min-height: 36px;
+  border-color: var(--spatial-control-border);
+  border-radius: var(--spatial-radius);
+  background: var(--spatial-input);
+}
+.mp-page .mp-context .select2-selection--single .select2-selection__rendered {
+  color: var(--mp-text);
+  line-height: 34px;
+  padding-left: 7px;
+  padding-right: 28px;
+  font-size: 11px;
+}
+.mp-page .mp-context .select2-selection--single .select2-selection__arrow {
+  height: 34px;
+}
+.mp-page .mp-dialog {
+  background: var(--mp-surface);
+  color: var(--mp-text);
+  border-color: var(--mp-line);
+  font-family: var(--spatial-font);
+}
+.mp-page #layersDialog {
+  top: 110px;
+  max-height: calc(100dvh - 130px);
+}
+.mp-page #layersDialog > form {
+  max-height: calc(100dvh - 130px);
+}
+.mp-page .mp-dialog header h2 {
+  font-size: 17px;
+  font-weight: 500;
+}
+.mp-page .mp-layer-options {
+  border: 0;
+  border-top: 1px solid var(--mp-line);
+}
+.mp-page .mp-layer-options .mp-image-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 8px;
+  border-bottom: 1px solid var(--mp-line);
+  cursor: pointer;
+  font-size: 12px;
+}
+.mp-page .mp-layer-options .mp-image-option:hover,
+.mp-page .mp-layer-options .mp-image-option:focus-within {
+  background: var(--spatial-hover);
+}
+.mp-page .mp-layer-options input {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--mp-accent);
+}
+.mp-page .mp-layer-options span {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 901px) and (max-width: 1400px) {
+  .mp-page .mp-brand {
+    flex-basis: 170px;
+  }
+  .mp-page .mp-context .mp-field {
+    flex-basis: 135px;
+  }
+  .mp-page .mp-context .mp-document-field {
+    flex-basis: 200px;
+  }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .mp-page .mp-brand {
+    flex: 1;
+  }
+  .mp-page .mp-header .mp-context {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .mp-page .mp-context .mp-field {
+    flex-basis: 120px;
+  }
+  .mp-page .mp-context .mp-document-field {
+    flex-basis: 150px;
+  }
+  .mp-page .mp-preparation {
+    justify-content: flex-start;
+  }
+  .mp-page .mp-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+@media (max-width: 600px) {
+  .mp-page .mp-brand {
+    flex: 1;
+  }
+  .mp-page .mp-context {
+    order: 3;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-basis: 100%;
+    gap: 6px 8px;
+  }
+  .mp-page .mp-context .mp-field {
+    width: auto;
+    max-width: none;
+  }
+  .mp-page .mp-context .mp-document-field {
+    grid-column: 1 / -1;
+  }
+  .mp-page .mp-page-choice > span {
+    display: none;
+  }
+  .mp-page .mp-page-choice .mp-button {
+    width: 100%;
+  }
+  .mp-page .mp-workbench {
+    display: flex;
+    flex-direction: column;
+  }
+  .mp-page .mp-plan {
+    flex: 1;
+    min-height: 0;
+  }
+  .mp-page .mp-panel {
+    flex: 0 0 172px;
+    border-left: 0;
+    border-top: 1px solid var(--mp-line);
+  }
+  .mp-page .mp-panel > .spatial-inspector-head {
+    min-height: 34px;
+  }
+  .mp-page .mp-panel-header {
+    padding: 8px 12px 0;
+  }
+  .mp-page .mp-panel-header .mp-button {
+    min-height: 32px;
+  }
+  .mp-page .mp-environment-list {
+    padding: 4px 8px;
+  }
+  .mp-page .mp-environment-item {
+    padding: 8px 12px;
+  }
+  .mp-page .mp-plan-header {
+    min-height: 45px;
+    padding: 6px 10px;
+  }
+  .mp-page .mp-plan-caption > span {
+    font-size: 9px;
+  }
+  .mp-page .mp-viewport-tools {
+    gap: 5px;
+    padding: 6px 8px 0;
+  }
+  .mp-page .mp-preparation {
+    flex-wrap: nowrap;
+    width: 100%;
+    justify-content: space-between;
+    gap: 4px;
+  }
+  .mp-page .mp-preparation-actions {
+    gap: 4px;
+  }
+  .mp-page .mp-preparation .mp-button {
+    min-height: 32px;
+    padding: 6px;
+    font-size: 10px !important;
+  }
+  .mp-page .mp-view-tools {
+    margin: 0 auto;
+  }
+  .mp-page .mp-view-tools button {
+    width: 28px;
+    min-height: 28px;
+    height: 28px;
+  }
+  .mp-page .mp-plan-footer {
+    bottom: 5px;
+    padding: 4px 7px;
+    font-size: 8px;
+  }
+  .mp-page .mp-drawing-bar,
+  .mp-page .mp-crop-bar {
+    padding: 8px;
+    max-height: 40%;
+  }
+  .mp-page #layersDialog {
+    inset: auto 12px 12px auto;
+    max-height: 75dvh;
+  }
+  .mp-page #layersDialog > form {
+    max-height: 75dvh;
+  }
+}

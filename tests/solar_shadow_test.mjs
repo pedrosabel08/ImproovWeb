@@ -8,13 +8,19 @@ const threeURL = pathToFileURL(resolve(modulePath)).href;
 const THREE = await import(threeURL);
 const { fitSolarShadow, boxCorners } = await loadViewerModule("solar-shadow.js", threeURL);
 const { SolarLighting } = await loadViewerModule("solar-lighting.js", threeURL);
+const { createShadowCatcher } = await loadViewerModule("shadow-catcher.js", threeURL);
 const { solarDirection } = await import("../MapaPavimento/predio-3d/solar-position.mjs");
 let cases=0;
 for (const scale of [.1,1,100]) for (const north of [0,83.9,270]) for (const azimuth of [0,74,277]) for (const altitude of [.01,30,70,90]) {
  const bounds = new THREE.Box3(new THREE.Vector3(123*scale,30*scale,-40*scale),new THREE.Vector3(153*scale,140*scale,10*scale));
  const center = bounds.getCenter(new THREE.Vector3()), radius=bounds.getSize(new THREE.Vector3()).length()/2;
  const direction=solarDirection(azimuth,altitude*Math.PI/180,north);
- const receiver=new THREE.Mesh(new THREE.PlaneGeometry(1,1));
+ const receiver=createShadowCatcher();
+ assert.ok(receiver.material.isShadowMaterial && receiver.material.transparent);
+ assert.equal(receiver.material.depthWrite,false);
+ assert.equal(receiver.userData.isShadowCatcher,true);
+ assert.equal(receiver.castShadow,false);
+ assert.equal(receiver.receiveShadow,true);
  const state={bounds,center,radius,receiver};
  SolarLighting.prototype.fitReceiver.call(state,direction);
  const light = new THREE.DirectionalLight();
@@ -31,12 +37,22 @@ for (const scale of [.1,1,100]) for (const north of [0,83.9,270]) for (const azi
    assert.ok(Math.abs(projected.x)<=1.000001 && Math.abs(projected.y)<=1.000001 && Math.abs(projected.z)<=1.000001, 'Frustum cortou prédio ou receptor.');
  }
  assert.ok(camera.near>0 && camera.far>camera.near);
- if(altitude>=30) for(const corner of boxCorners(bounds)) {
+ const catchSize=state.receiverBounds.getSize(new THREE.Vector3());
+ const modelSize=bounds.getSize(new THREE.Vector3());
+ const fadeEnd=receiver.userData.shadowFade.fadeRange.value.y;
+ assert.ok(catchSize.x<=modelSize.x+fadeEnd*2+radius*.061 && catchSize.z<=modelSize.z+fadeEnd*2+radius*.061,'Receptor não deve crescer sem limite no horizonte.');
+ assert.ok(camera.right-camera.left<radius*9,'Frustum deve permanecer proporcional ao empreendimento.');
+ for(const corner of boxCorners(bounds)) {
    const travel=(corner.y-state.receiverBounds.min.y)/direction.y;
    const foot=corner.clone().addScaledVector(new THREE.Vector3(direction.x,direction.y,direction.z),-travel);
    foot.y=state.receiverBounds.min.y;
-   assert.ok(state.receiverBounds.containsPoint(foot),'Receptor cortou sombra nos horários de teste.');
+   const outside = Math.hypot(
+     Math.max(bounds.min.x-foot.x,foot.x-bounds.max.x,0),
+     Math.max(bounds.min.z-foot.z,foot.z-bounds.max.z,0),
+   );
+   if (outside < fadeEnd)
+     assert.ok(state.receiverBounds.containsPoint(foot),'Receptor cortou sombra antes de completar o fade.');
  }
- receiver.geometry.dispose(); light.dispose(); cases++;
+ receiver.geometry.dispose(); receiver.material.dispose(); light.dispose(); cases++;
 }
-console.log('OK: '+cases+' combinações de escala, Norte, azimute e elevação; frustum cobre modelo/receptor e sombras diurnas cabem no chão.');
+console.log('OK: '+cases+' combinações de escala, Norte, azimute e elevação; frustum cobre modelo/receptor, sombra visível cabe no receptor e o horizonte não expande sua área indefinidamente.');

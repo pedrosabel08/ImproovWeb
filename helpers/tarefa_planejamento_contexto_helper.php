@@ -250,6 +250,11 @@ function flow_tarefa_planejamento_contexto_vazio(array $tarefa): array
  * Linha do tempo para obras legadas/sem plano confirmado. Ela preserva a
  * sequência realmente cadastrada em funcao_imagem e nunca sintetiza prazo.
  */
+function flow_tarefa_ordem_funcoes_operacionais(): array
+{
+    return [1 => 10, 8 => 11, 2 => 20, 3 => 30, 9 => 35, 4 => 40, 5 => 50, 6 => 60, 7 => 70];
+}
+
 function flow_tarefa_timeline_operacional_fallback_lote(mysqli $conn, array $porTarefa, array $contextos): array
 {
     $imagemIds = array_values(array_unique(array_filter(array_map(static fn (array $t): int => (int) ($t['imagem_id'] ?? 0), $porTarefa))));
@@ -277,7 +282,7 @@ function flow_tarefa_timeline_operacional_fallback_lote(mysqli $conn, array $por
     }
     $stmt->close();
     $logs = $todos ? flow_execucao_carregar_logs($conn, $todos) : [];
-    $ordem = [1 => 10, 8 => 11, 2 => 20, 3 => 30, 9 => 35, 4 => 40, 5 => 50, 6 => 60, 7 => 70];
+    $ordem = flow_tarefa_ordem_funcoes_operacionais();
 
     foreach ($porTarefa as $id => $tarefa) {
         $itens = $porImagem[(int) ($tarefa['imagem_id'] ?? 0)] ?? [];

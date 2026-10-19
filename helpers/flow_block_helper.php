@@ -3,12 +3,69 @@
 /**
  * Shared domain rules for Flow Block.
  *
- * An Issue is intentionally scoped to one funcao_imagem.  HOLD is a derived
- * task state, never an independently editable workflow in this module.
+ * An Issue references one funcao_imagem and blocks the unseparated Caderno /
+ * Filtro pair when applicable. HOLD is derived from the blocking issues.
  */
 
 require_once __DIR__ . '/flow_block_operacional_helper.php';
 require_once __DIR__ . '/flow_block_dependencia_helper.php';
+
+/** Mesmo escopo do card legado: mesma imagem, responsável e par não separado. */
+function flow_block_task_scope_sql(string $issueTaskColumn, string $taskAlias): string
+{
+    return "($issueTaskColumn = $taskAlias.idfuncao_imagem OR (
+        $taskAlias.funcao_id IN (1, 8)
+        AND NOT EXISTS (SELECT 1 FROM funcao_par_separado fps_block
+            WHERE fps_block.imagem_id = $taskAlias.imagem_id AND fps_block.par_tipo = 'caderno_filtro')
+        AND EXISTS (SELECT 1 FROM funcao_imagem pair_block
+            WHERE pair_block.idfuncao_imagem = $issueTaskColumn
+              AND pair_block.imagem_id = $taskAlias.imagem_id
+              AND pair_block.colaborador_id = $taskAlias.colaborador_id
+              AND pair_block.funcao_id IN (1, 8)
+              AND pair_block.funcao_id <> $taskAlias.funcao_id)
+    ))";
+}
+
+function flow_block_task_members(mysqli $conn, int $taskId): array
+{
+    $scope = flow_block_task_scope_sql('fb_member.idfuncao_imagem', 'fb_task');
+    $stmt = $conn->prepare("SELECT fb_member.* FROM funcao_imagem fb_task
+        JOIN funcao_imagem fb_member ON $scope
+        WHERE fb_task.idfuncao_imagem = ? ORDER BY fb_member.funcao_id, fb_member.idfuncao_imagem");
+    $stmt->bind_param('i', $taskId);
+    $stmt->execute();
+    $members = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $members;
+}
+
+function flow_block_task_ids_sql(mysqli $conn, int $taskId): string
+{
+    $ids = array_map('intval', array_column(flow_block_task_members($conn, $taskId), 'idfuncao_imagem'));
+    return implode(',', $ids ?: [0]);
+}
+
+/** Aplica um mesmo impedimento ao par inteiro, sem reabrir etapas concluídas. */
+function flow_block_apply_task_hold(mysqli $conn, int $taskId, ?string $description = null): array
+{
+    $members = flow_block_task_members($conn, $taskId);
+    $hasPendingMember = count(array_filter($members, static fn ($member) => $member['status'] !== 'Finalizado')) > 0;
+    $changedIds = [];
+    foreach ($members as $member) {
+        if (count($members) > 1 && $hasPendingMember && $member['status'] === 'Finalizado') {
+            continue;
+        }
+        $memberId = (int) $member['idfuncao_imagem'];
+        $stmt = $conn->prepare("UPDATE funcao_imagem SET status='HOLD', observacao=COALESCE(?, observacao) WHERE idfuncao_imagem=?");
+        $stmt->bind_param('si', $description, $memberId);
+        $stmt->execute();
+        $stmt->close();
+        if ($member['status'] !== 'HOLD') {
+            $changedIds[] = $memberId;
+        }
+    }
+    return $changedIds;
+}
 
 if (!function_exists('flow_block_active_statuses')) {
     function flow_block_active_statuses(): array
@@ -117,10 +174,11 @@ if (!function_exists('flow_block_find_active_issue_by_requirement')) {
             return null;
         }
 
+        $taskIds = flow_block_task_ids_sql($conn, $taskId);
         $stmt = $conn->prepare(
             "SELECT id, codigo, status, confirmada_em
                FROM flow_issue
-              WHERE funcao_imagem_id = ?
+              WHERE funcao_imagem_id IN ($taskIds)
                 AND bloqueante = 1
                 AND (
                     status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')
@@ -131,7 +189,6 @@ if (!function_exists('flow_block_find_active_issue_by_requirement')) {
         if (!$stmt) {
             return null;
         }
-        $stmt->bind_param('i', $taskId);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
@@ -420,15 +477,15 @@ if (!function_exists('flow_block_publish_mention')) {
 if (!function_exists('flow_block_has_blocking_issues')) {
     function flow_block_has_blocking_issues(mysqli $conn, int $taskId): bool
     {
+        $taskIds = flow_block_task_ids_sql($conn, $taskId);
         $stmt = $conn->prepare(
             "SELECT COUNT(*) AS total FROM flow_issue
-             WHERE funcao_imagem_id = ? AND bloqueante = 1
+             WHERE funcao_imagem_id IN ($taskIds) AND bloqueante = 1
                AND (
                     status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')
                     OR (status = 'RESOLVIDA' AND confirmada_em IS NULL)
                )"
         );
-        $stmt->bind_param('i', $taskId);
         $stmt->execute();
         $total = (int) (($stmt->get_result()->fetch_assoc()['total'] ?? 0));
         $stmt->close();
@@ -444,12 +501,12 @@ if (!function_exists('flow_block_task_ready_to_continue')) {
             return false;
         }
 
+        $taskIds = flow_block_task_ids_sql($conn, $taskId);
         $stmt = $conn->prepare(
             "SELECT COUNT(*) AS total FROM flow_issue
-             WHERE funcao_imagem_id = ? AND bloqueante = 1
+             WHERE funcao_imagem_id IN ($taskIds) AND bloqueante = 1
                AND (status = 'CANCELADA' OR (status = 'RESOLVIDA' AND confirmada_em IS NOT NULL))"
         );
-        $stmt->bind_param('i', $taskId);
         $stmt->execute();
         $total = (int) (($stmt->get_result()->fetch_assoc()['total'] ?? 0));
         $stmt->close();
@@ -468,10 +525,7 @@ if (!function_exists('flow_block_refresh_task_status')) {
         $hasBlockingIssues = flow_block_has_blocking_issues($conn, $taskId);
 
         if ($hasBlockingIssues) {
-            $update = $conn->prepare("UPDATE funcao_imagem SET status = 'HOLD' WHERE idfuncao_imagem = ?");
-            $update->bind_param('i', $taskId);
-            $update->execute();
-            $update->close();
+            flow_block_apply_task_hold($conn, $taskId);
             return false;
         }
 

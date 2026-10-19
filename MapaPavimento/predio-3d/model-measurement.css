@@ -1,0 +1,292 @@
+.inspection-tools {
+  display: flex;
+  gap: 5px;
+  position: sticky;
+  top: 48px;
+  z-index: 3;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--spatial-border);
+  background: var(--spatial-panel);
+}
+.inspection-tools .btn {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  font-size: 12px;
+}
+.inspection-tools [aria-pressed="true"],
+.measurement-item[aria-pressed="true"] {
+  border-color: var(--spatial-accent);
+  background: var(--spatial-selected);
+  color: var(--spatial-text);
+}
+.measurement-panel {
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--spatial-border);
+  color: var(--spatial-text);
+}
+.measurement-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.measurement-panel h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+.measurement-panel header span {
+  color: var(--spatial-text-muted);
+  font-size: 11px;
+}
+.measurement-panel label {
+  display: block;
+  color: var(--spatial-text-muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.measurement-panel select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--spatial-control-border);
+  border-radius: var(--spatial-radius);
+  background: var(--spatial-input);
+  color: var(--spatial-text);
+  font: inherit;
+  font-size: 13px;
+}
+.measurement-help,
+.measurement-instruction {
+  margin: 12px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--spatial-text-muted);
+}
+.measurement-instruction {
+  color: var(--spatial-accent);
+  min-height: 38px;
+}
+.measurement-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 11px;
+}
+.measurement-result {
+  padding: 14px;
+  border: 1px solid var(--spatial-control-border);
+  border-radius: var(--spatial-radius);
+  background: var(--spatial-input);
+}
+.measurement-result span {
+  display: block;
+  color: var(--spatial-text-muted);
+  font-size: 11px;
+}
+.measurement-result output {
+  display: block;
+  margin-top: 5px;
+  color: var(--spatial-accent);
+  font-size: 27px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.measurement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+.measurement-actions .btn {
+  min-height: 36px;
+  font-size: 11px;
+}
+.measurement-history h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+#measurementList {
+  display: grid;
+  gap: 5px;
+  max-height: 180px;
+  overflow: auto;
+}
+.measurement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--spatial-control-border);
+  border-radius: var(--spatial-radius);
+  padding: 10px;
+  text-align: left;
+  color: var(--spatial-text-muted);
+  background: var(--spatial-input);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.measurement-item strong {
+  font-weight: 600;
+  color: var(--spatial-text);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.measurement-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+.measurement-marker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid #dbf3ec;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #19463ee8;
+  color: #e6f9f2;
+  font: 600 9px var(--spatial-font);
+  box-shadow: 0 0 0 3px #a0d8c421;
+}
+.measurement-label {
+  position: absolute;
+  transform: translate(-50%, -135%);
+  pointer-events: auto;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid #567a75;
+  border-radius: 6px;
+  background: #0a1822ed;
+  color: #e3f7ef;
+  font: 600 12px var(--spatial-font);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 3px 14px #0004;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.measurement-label.is-selected {
+  border-color: #b2dfd5;
+}
+/* Durante a escolha A/B, nenhuma etiqueta pode interceptar o clique na superfície. */
+.measurement-overlay.is-picking .measurement-label {
+  pointer-events: none;
+}
+.measurement-panel[hidden],
+.measurement-history[hidden],
+.measurement-overlay[hidden],
+.measurement-overlay [hidden],
+.measurement-actions [hidden] {
+  display: none;
+}
+.app.measuring canvas.gl {
+  cursor: crosshair;
+}
+.app.measuring #tree {
+  opacity: 0.55;
+}
+.measurement-label:focus-visible,
+.measurement-item:focus-visible {
+  outline: 2px solid var(--spatial-accent);
+  outline-offset: 3px;
+}
+@media (max-width: 650px) {
+  .measurement-panel {
+    padding: 14px;
+  }
+  .inspection-tools {
+    padding: 8px;
+  }
+  .measurement-result output {
+    font-size: 24px;
+  }
+}
+@media (max-width: 600px) {
+  .inspection-tools {
+    top: 0;
+  }
+  .app.integrated.measuring .layout {
+    overflow: hidden;
+  }
+  .app.integrated.measuring .left {
+    display: none;
+  }
+  .app.integrated.measuring .viewport {
+    flex: 1 1 0;
+    min-height: 180px;
+  }
+  .app.integrated.measuring .right {
+    flex: 0 1 42%;
+    min-height: 180px;
+    max-height: 42%;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .app.measuring .measurement-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 10px;
+    padding: 12px;
+  }
+  .app.measuring .measurement-panel header {
+    grid-column: 1 / -1;
+    margin-bottom: 2px;
+  }
+  .app.measuring .measurement-panel label {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+  }
+  .app.measuring .measurement-panel select {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .app.measuring #measurementTypeHelp {
+    display: none;
+  }
+  .app.measuring .measurement-result {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    padding: 9px 11px;
+  }
+  .app.measuring .measurement-result output {
+    font-size: 22px;
+  }
+  .app.measuring
+    :is(
+      .measurement-points,
+      .measurement-instruction,
+      .measurement-actions,
+      .measurement-history,
+      .measurement-panel > .measurement-help
+    ) {
+    grid-column: 1 / -1;
+  }
+  .app.measuring .measurement-instruction {
+    min-height: 0;
+    margin: 0;
+    font-size: 11px;
+  }
+  .app.measuring .measurement-actions {
+    margin-top: 0;
+    gap: 5px;
+  }
+  .app.measuring .measurement-actions .btn {
+    min-height: 32px;
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+}

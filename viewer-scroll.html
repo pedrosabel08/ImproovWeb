@@ -427,7 +427,7 @@
 
           // Multiplicador da distância calculada. Menor aproxima; maior afasta.
           // Recomendado: 0.94.
-          cameraDistanceMultiplier: 0.88,
+          cameraDistanceMultiplier: 5.88,
 
           // Offsets do ponto observado, em unidades do GLB.
           // X positivo move o target à direita; Y positivo sobe; Z positivo avança.
@@ -458,7 +458,7 @@
           // Centro horizontal do viewer. Maior move à direita; menor à esquerda.
           viewerCenterXRatio: 0.72,
 
-          hideTerrain: false,
+          hideTerrain: true,
 
           contactShadowOpacity: 0.18,
         },
@@ -1025,7 +1025,7 @@
 
       const loader = new GLTFLoader();
       loader.load(
-        "assets/Fachada_GLB_002.glb",
+        "MapaPavimento/predio-3d/Projeto-TES_TES.glb",
         (gltf) => {
           modelRoot = gltf.scene;
           scene.add(modelRoot);

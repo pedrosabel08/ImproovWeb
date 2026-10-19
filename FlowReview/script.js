@@ -392,12 +392,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const params = new URLSearchParams(window.location.search);
   const obraNome = params.get("obra_nome");
+  const requestedTaskId = Number(params.get("funcao_imagem_id"));
+  const directTaskId = Number.isSafeInteger(requestedTaskId) && requestedTaskId > 0 ? requestedTaskId : 0;
 
-  if (obraNome) {
+  if (obraNome || directTaskId > 0) {
     // Primeiro carrega as tarefas
     fetchObrasETarefas().then(() => {
       // Depois filtra pela obra
-      filtrarTarefasPorObra(obraNome);
+      if (obraNome) filtrarTarefasPorObra(obraNome);
+      // Link específico por tarefa, sem disputar o fr_goto entre abas.
+      if (directTaskId > 0) {
+        setTimeout(() => {
+          historyAJAX(directTaskId, 'imagem');
+          window._stabSetActive?.(directTaskId);
+        }, 400);
+        return;
+      }
 
       // Deep link from PaginaPrincipal kanban: auto-select specific function
       const frGotoRaw = localStorage.getItem("fr_goto");
@@ -4199,6 +4209,12 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
     })
     .then((response) => {
       if (requestSequence !== historyRequestSequence) return;
+      if (!Array.isArray(response.historico) || !response.historico.length) {
+        document.querySelector('.main')?.classList.remove('hidden');
+        document.querySelector('.container-aprovacao')?.classList.add('hidden');
+        Swal.fire({icon: 'info', title: 'Esta função ainda não possui envios para revisão', text: 'Consulte o andamento pelo card da tarefa no Flow.'});
+        return;
+      }
       // console.log("Funcao Imagem:", idfuncao_imagem);
       const main = document.querySelector(".main");
       main.classList.add("hidden");

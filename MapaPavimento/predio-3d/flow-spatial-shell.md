@@ -1,0 +1,29 @@
+# Prédio e planta no Flow
+
+Tema espacial: `--spatial-accent: #74a9e8` é compartilhado por controles, seleção e contorno 3D; hover 3D usa `--spatial-highlight-hover: #a8c7e8`. Header, painéis e fundo usam grafite. O fundo continua sendo o CSS `--spatial-canvas`, com `scene.background = null` e clear transparente; o cubemap grafite 512² alimenta somente o ambiente PMREM. Vidros arquitetônicos usam transparência alpha de baixa opacidade e reflexos sutis, acompanhando o fundo e deixando geometrias atrás deles visíveis. O marcador `viewerGlass` mantém esses materiais fora das sombras opacas e da tintura de seleção, mesmo com `transmission = 0`.
+
+O quadrado escuro e as regiões brancas vinham do cubo unitário interno de background do Three.js r180: projetado por câmera ortográfica, ele não cobre o viewport, deixando exposto o clear branco utilizado pelo shadow pass. O fundo CSS transparente elimina esse objeto de background sem desligar sombras reais ou alterar a iluminação de ambiente.
+
+Referências do pipeline: [WebGLBackground r180](https://github.com/mrdoob/three.js/blob/r180/src/renderers/webgl/WebGLBackground.js) e [WebGLShadowMap r180](https://github.com/mrdoob/three.js/blob/r180/src/renderers/webgl/WebGLShadowMap.js).
+
+Ao isolar um pavimento, meshes ocultos deixam de lançar sombras. Lajes de contexto que começam na fronteira superior do corte são ocultadas por inteiro: recortá-las com tolerância deixava a face inferior bloqueando o Sol. `visibleModelBounds` considera ancestrais visíveis e os clipping planes atuais; a luz, seu target, o receptor e o shadow frustum são recalculados nesse volume. O índice de raios é reutilizado e seus resultados são invalidados. Voltar ao empreendimento restaura visibilidade, materiais, participação nas sombras e limites de iluminação.
+
+As laterais 3D iniciam recolhidas. No estado recolhido, as colunas têm largura zero e apenas os botões flutuantes permanecem visíveis. Abertura independente e restauração do estado após sair do pavimento continuam disponíveis.
+
+`visualizador-glb-navegacao.php` é a entrada autenticada, com a sidebar compartilhada do Flow. A URL HTML antiga redireciona preservando os parâmetros; o modo de diagnóstico `src` continua disponível.
+
+O seletor Prédio 3D / Mapa arquitetônico alterna as vistas com fade de 280 ms (sem animação quando o usuário prefere movimento reduzido). O modelo, a câmera e o pavimento permanecem carregados. A planta usa o `index.php?embed=3d` existente, obtido com a sessão atual e incorporado via `srcdoc`, com base URL explícita para scripts, estilos, API e PDF. O identificador do bridge vem do HTML autenticado. Mensagens conferem origem, janela, bridge, obra, subtipo e referência.
+
+O documento da planta é reutilizado ao alternar para o mesmo vínculo, preservando zoom e deslocamento. Trocar de pavimento carrega a referência correspondente. A saída consulta o editor e fica bloqueada durante desenho, preparação, salvamento ou diálogo aberto. A sidebar permanece disponível em ambas as vistas.
+
+Validação em 15/10/2026 no Edge conectado: mapas do Tipo (3 ambientes) e Lazer 1 (13 ambientes), retorno ao mesmo pavimento/câmera, zoom da planta preservado, bloqueio de saída durante edição da área útil e saída após cancelar, menu Ferramentas da sidebar, layouts desktop, notebook, iPad landscape/portrait e mobile. JavaScript e PHP passaram nas verificações de sintaxe.
+
+Validação em 16/10/2026 no Edge autenticado, CIB_HYP / P00 versão 4: órbita superior a 360°, vista quase horizontal, aproximação, afastamento, enquadramento e mudança temporária do fundo; seleção de Tipo 20, Tipo 37, Lazer 1 e Térreo, retorno ao empreendimento e alternância do Sol. Nenhum erro/aviso de console. Desktop 1912×867, notebook 1366×768, iPad 1180×820 e 820×1180, mobile 390×844. Testes de visibilidade, projeção e 108 combinações de shadow frustum passaram. A regressão de visibilidade cobre a laje na fronteira do corte, sombras dos meshes ocultos, limites recortados, vidro alpha e restauração.
+
+## Navegação espacial 2D/3D — 16/10/2026
+
+A planta reutiliza `solar-position.mjs` em `map-spatial-controls.js`: Norte e fuso vêm da configuração da obra, a rotação adicional do PDF acompanha a bússola e a direção solar. O estudo usa Popover API (fechamento por clique externo, botão e Escape). A direção é uma referência esquemática no plano, sem cálculo de sombras 2D; pressupõe o alinhamento da planta ao plano XZ do empreendimento, com topo da referência correspondendo a −Z antes da rotação de visualização.
+
+O header 3D mantém somente os seletores de obra e modelo. O header incorporado 2D preserva pavimento, PDF, página e ferramentas de preparação. Trocar o pavimento na planta usa somente o loading local do mapa; mensagens conferem origem, janela, bridge e obra, atualizam o contexto e adiam o enquadramento do modelo até a mudança para a visão 3D. A saída continua consultando o bloqueio de edição. A abertura independente leva `subtipo_id` ao 3D, procura o vínculo nos modelos da obra e enquadra o pavimento correspondente; uma ausência de vínculo é informada ao usuário. O URL acompanha o pavimento atual e o ícone da shell alterna entre 2D e 3D.
+
+O ViewCube oferece sete orientações; a vista Perspectiva usa o enquadramento oblíquo da câmera ortográfica já adotada pelo visualizador. A interpolação orbital evita atravessar o centro do modelo em vistas opostas e respeita movimento reduzido. O Sol e a trajetória mantêm o padrão ativo, enquanto “Mostrar projeção solar” inicia desligado; a bússola opcional aparece exclusivamente no entorno do modelo. No 2D, o Sol aparece fora dos limites visíveis da planta, com feixe translúcido e eixo tracejado, acompanhando data, horário, Norte, rotação, zoom e deslocamento. O popover fica junto à bússola e preserva botão de fechamento, clique externo e Escape.

@@ -5195,6 +5195,10 @@ function infosObra(obraId) {
     })
     .then((data) => {
       if (!OBRA_LOAD.isCurrent(load.request)) return;
+      window.__obra3dData = { obraId: String(obraId), obra: data.obra };
+      window.dispatchEvent(
+        new CustomEvent("obra-dados-updated", { detail: window.__obra3dData }),
+      );
       if (batchMode) {
         // Remove a coluna de checkboxes do header
         const headerRow = document.querySelector(
@@ -8017,29 +8021,50 @@ function initSelect2Filters() {
     if (window.jQuery && jQuery().select2) {
       // inicializa com placeholders e allowClear
       $("#tipo_imagem").select2({
-        placeholder: "Tipo de imagem",
+        placeholder: "Todos",
         allowClear: true,
-        width: "resolve",
+        width: "100%",
+        dropdownCssClass: "obra-filter-dropdown",
       });
       $("#antecipada_obra").select2({
-        placeholder: "Antecipada",
+        placeholder: "Todos",
         allowClear: true,
-        width: "resolve",
+        width: "100%",
+        dropdownCssClass: "obra-filter-dropdown",
       });
       $("#imagem_status_etapa_filtro").select2({
-        placeholder: "Status etapa",
+        placeholder: "Todos",
         allowClear: true,
-        width: "resolve",
+        width: "100%",
+        dropdownCssClass: "obra-filter-dropdown",
       });
       $("#imagem_status_filtro").select2({
-        placeholder: "Status imagem",
+        placeholder: "Todos",
         allowClear: true,
-        width: "resolve",
+        width: "100%",
+        dropdownCssClass: "obra-filter-dropdown",
       });
       $("#subtipo_filtro").select2({
-        placeholder: "Subtipo",
+        placeholder: "Todos",
         allowClear: true,
-        width: "resolve",
+        width: "100%",
+        dropdownCssClass: "obra-filter-dropdown",
+      });
+
+      document.querySelectorAll(".obra-filter-field").forEach((field) => {
+        const label = field.querySelector("label");
+        const select = field.querySelector("select");
+        if (!label || !select) return;
+        label.id = `${select.id}-label`;
+        field
+          .querySelector(".select2-selection")
+          ?.setAttribute("aria-labelledby", label.id);
+        field
+          .querySelector(".select2-search__field")
+          ?.setAttribute(
+            "aria-label",
+            `Filtrar por ${label.textContent.toLowerCase()}`,
+          );
       });
 
       // quando Select2 muda, dispara filtrarTabela

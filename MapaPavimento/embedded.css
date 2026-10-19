@@ -1,81 +1,79 @@
-/* O mesmo mapa, com contexto fixo e espaço ocupado pelo visualizador 3D. */
+/* A mesma shell; o contexto do mapa incorporado vem do header 3D. */
 .mp-embedded .mp-app {
-  margin: 0;
-  padding: 12px;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+  inset: 0;
+  margin-left: 0;
 }
-.mp-embedded .mp-header,
-.mp-embedded .mp-context,
 .mp-embedded .mp-legacy {
   display: none;
 }
-.mp-embedded .mp-workbench {
-  flex: 1;
-  height: auto;
-  min-height: 0;
-  grid-template-columns: minmax(0, 1fr) 290px;
-}
-.mp-embedded .mp-plan {
-  height: auto;
-  min-height: 0;
-}
-.mp-embedded .mp-viewer-wrap {
-  min-height: 220px;
-}
-.mp-embedded .mp-view-tools { width: max-content; flex-wrap: nowrap; }
-.mp-embedded .mp-preparation {
-  flex-shrink: 0;
+.mp-embedded .mp-plan-header {
+  padding-right: 145px;
 }
 .mp-embedded #layersDialog {
-  inset: 110px 20px auto auto;
-  max-width: calc(100vw - 40px);
+  inset: 70px 16px auto auto;
+  max-width: calc(100vw - 32px);
 }
-@media (max-width: 1000px) {
-  .mp-embedded .mp-workbench {
-    grid-template-columns: minmax(0, 1fr) 240px;
-  }
-  .mp-embedded .mp-panel-header {
-    padding: 12px;
-    display: block;
-  }
-  .mp-embedded .mp-panel-header .mp-button { width: 100%; margin-top: 12px; }
-  .mp-embedded .mp-preparation {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-  }
+.mp-embedded #layersDialog > form {
+  max-height: calc(100dvh - 100px);
 }
-@media (max-width: 700px) {
-  .mp-embedded .mp-app {
-    height: auto;
-    min-height: 100dvh;
-    padding: 8px;
-  }
-  .mp-embedded .mp-workbench {
-    grid-template-columns: minmax(0, 1fr);
-    flex: none;
-  }
-  .mp-embedded .mp-plan {
-    height: 68dvh;
-    min-height: 360px;
-  }
-  .mp-embedded .mp-panel {
-    max-height: none;
-  }
-  .mp-embedded .mp-environment-list {
-    max-height: 200px;
-  }
-  .mp-embedded .mp-preparation-heading {
-    flex-basis: 100%;
-  }
-  .mp-embedded .mp-preparation { padding: 12px; }
-  .mp-embedded .mp-preparation-actions { width: 100%; flex-direction: row; }
-  .mp-embedded .mp-preparation-actions .mp-button { flex: 1; padding: 7px; min-height: 36px; font-size: 12px !important; }
+@media (max-width: 600px) {
   .mp-embedded #layersDialog {
     inset: auto 12px 12px auto;
+  }
+  .mp-embedded #layersDialog > form {
+    max-height: 75dvh;
+  }
+}
+.mp-embedded .mp-brand,
+.mp-embedded #openModel3d {
+  display: none;
+}
+@media (max-width: 600px) {
+  .mp-embedded .mp-header {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .mp-embedded .mp-header .mp-context {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    order: 0;
+    gap: 8px;
+    align-items: flex-end;
+    flex-basis: 100%;
+    padding-bottom: 4px;
+  }
+  .mp-embedded .mp-context .mp-field {
+    flex: 0 0 150px;
+  }
+  .mp-embedded .mp-context .mp-document-field {
+    flex-basis: 220px;
+  }
+  .mp-embedded .mp-page-choice {
+    flex: 0 0 100px;
+  }
+  .mp-embedded #uploadLabel {
+    flex-shrink: 0;
+  }
+  .mp-embedded #themeToggle {
+    display: none;
+  }
+  .mp-embedded .mp-plan-header p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     max-width: calc(100vw - 24px);
   }
+  .mp-embedded .mp-plan-header {
+    padding-right: 10px;
+  }
+  .mp-embedded .mp-panel {
+    flex-basis: 126px;
+  }
+}
+.mp-embedded .mp-header .mp-context {
+  order: 0;
+}
+.mp-embedded #themeToggle {
+  order: 1;
 }

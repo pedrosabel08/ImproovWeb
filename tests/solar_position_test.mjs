@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { solarAt, solarNow, solarLocalTime, solarDirection, solarIntensity, trueAzimuth, solarConfigError } from '../MapaPavimento/predio-3d/solar-position.mjs';
+import { solarAtInstant, solarAt, solarNow, solarLocalTime, solarDirection, solarIntensity, trueAzimuth, solarConfigError } from '../MapaPavimento/predio-3d/solar-position.mjs';
 import { northDirection } from '../MapaPavimento/predio-3d/north-direction.js';
 const config = { latitude: -27.0992256, longitude: -48.6179817, norte_graus: 83.9, timezone: 'America/Sao_Paulo' };
 const close = (a, b, message) => assert.ok(Math.abs(a-b) < 1e-10, message);
@@ -46,3 +46,11 @@ assert.equal(solarLocalTime('2026-10-13','12:00','Europe/Lisbon').utcISO,'2026-1
 assert.deepEqual(solarNow('Asia/Tokyo', Date.parse('2026-10-13T23:00:00Z')), { date:'2026-10-14',time:'08:00' });
 console.log('OK: azimute, Norte salvo, vetor unitário, leste/oeste, intensidade, noite, UTC, outros fusos e transições de horário de verão.');
 console.log(JSON.stringify([morning,noon,afternoon,night].map(s=>({utc:s.utcISO,azimuth:s.azimuth,altitude:s.altitude,intensity:s.intensity}))));
+
+const preciseInstant = Date.parse('2026-10-13T12:00:37.123Z');
+assert.equal(solarAtInstant(config, preciseInstant).utcISO, '2026-10-13T12:00:37.123Z');
+close(solarAtInstant(config, morning.date.getTime()).azimuth, morning.azimuth);
+assert.notEqual(solarAtInstant(config, preciseInstant).azimuth, morning.azimuth);
+assert.throws(() => solarAtInstant(config, NaN));
+const newYork = {...config, timezone:'America/New_York'};
+assert.equal(solarAtInstant(newYork, Date.parse('2026-11-01T06:30:00Z')).utcISO, '2026-11-01T06:30:00.000Z');

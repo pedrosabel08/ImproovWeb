@@ -1,0 +1,401 @@
+/* Somente a apresentação 3D. Os estilos da área operacional não são alterados. */
+.obra-3d-hero[hidden],
+.obra-3d-layer [hidden] {
+  display: none !important;
+}
+#obra3dInitialLoading[hidden] {
+  display: none !important;
+}
+.obra-3d-hero:not([data-metadata-ready]) .obra-3d-info {
+  visibility: hidden;
+}
+.obra-3d-layer[data-waiting-info] {
+  visibility: hidden !important;
+}
+.obra-3d-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  align-items: center;
+  gap: clamp(24px, 3vw, 64px);
+  min-height: calc(100svh - 90px);
+  padding: 30px clamp(24px, 4vw, 68px) 40px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  background:
+    radial-gradient(
+      ellipse at 73% 43%,
+      rgba(93, 130, 153, 0.2),
+      transparent 53%
+    ),
+    var(--bg);
+}
+.obra-3d-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: 78%;
+  height: 46%;
+  right: -8%;
+  bottom: -6%;
+  background-image:
+    linear-gradient(rgba(139, 165, 183, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 165, 183, 0.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(480px) rotateX(58deg) scale(1.4);
+  mask-image: radial-gradient(ellipse, #0008, transparent 68%);
+}
+.obra-3d-info {
+  min-width: 0;
+  position: relative;
+}
+.obra-3d-info h2 {
+  max-width: 11ch;
+  font-size: clamp(54px, 6.4vw, 120px);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  overflow-wrap: anywhere;
+}
+.obra-3d-location {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.obra-3d-location::before {
+  content: "\f3c5";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: var(--cor-principal);
+  margin-right: 12px;
+}
+.obra-3d-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 46px;
+}
+.obra-3d-stat {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-content: center;
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 6px;
+  min-width: 0;
+  min-height: 124px;
+  padding: 20px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+  font-size: 12px;
+}
+.obra-3d-stat i {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--cor-principal);
+  font-size: 20px;
+  background: color-mix(in srgb, var(--cor-principal) 12%, transparent);
+}
+.obra-3d-stat:nth-child(2) i {
+  color: #e5af62;
+  background: rgba(229, 175, 98, 0.1);
+}
+.obra-3d-stat:nth-child(3) i {
+  color: #ac9aed;
+  background: rgba(172, 154, 237, 0.1);
+}
+.obra-3d-stat span,
+.obra-3d-stat small {
+  grid-column: 2;
+  color: var(--muted);
+}
+.obra-3d-stat strong {
+  grid-column: 2;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 650;
+}
+.obra-3d-stat small {
+  font-size: 11px;
+}
+.obra-3d-slot {
+  position: relative;
+  width: 100%;
+  justify-self: center;
+  height: clamp(470px, calc(100svh - 160px), 900px);
+  min-width: 0;
+}
+.obra-3d-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  transform-origin: 0 0;
+  will-change: transform;
+  color: var(--text);
+  touch-action: none;
+}
+.obra-3d-canvas-wrap,
+.obra-3d-gl {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.obra-3d-gl {
+  outline: none;
+}
+.obra-3d-gl:focus-visible {
+  outline: 2px solid var(--cor-principal);
+  outline-offset: -3px;
+  border-radius: 10px;
+}
+.obra-3d-toolbar {
+  position: absolute;
+  right: 0;
+  top: 30%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+  backdrop-filter: blur(8px);
+}
+.obra-3d-toolbar button,
+.obra-3d-toolbar a {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 17px;
+}
+.obra-3d-toolbar > [data-action="fit"] {
+  border-top: 0;
+  border-radius: 11px 11px 0 0;
+}
+.obra-3d-toolbar > [data-action="open"] {
+  order: 4;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 11px 11px;
+}
+.obra-3d-toolbar > button {
+  border-top: 1px solid var(--border);
+}
+
+.obra-3d-toolbar button:hover,
+.obra-3d-toolbar a:hover {
+  background: var(--surface);
+  border-color: var(--cor-principal);
+}
+.obra-3d-toolbar :focus-visible,
+.obra-3d-return:focus-visible {
+  outline: 2px solid var(--cor-principal);
+  outline-offset: 3px;
+}
+.obra-3d-north {
+  position: absolute;
+  top: -92px;
+  left: -8px;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--muted) 65%, transparent);
+  border-radius: 50%;
+}
+.obra-3d-north span {
+  position: absolute;
+  top: -8px;
+  padding: 0 4px;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+}
+.obra-3d-north i {
+  font-size: 26px;
+  color: var(--text);
+}
+.obra-3d-loading,
+.obra-3d-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 24px;
+}
+.obra-3d-error {
+  max-width: 330px;
+  margin: auto;
+  line-height: 1.6;
+}
+.obra-3d-return {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.obra-3d-layer.is-minimap {
+  touch-action: auto;
+  pointer-events: none;
+  clip-path: var(--obra3d-crop, none);
+}
+.obra-3d-layer.is-minimap .obra-3d-gl {
+  pointer-events: none;
+}
+.obra-3d-layer.is-minimap .obra-3d-return {
+  pointer-events: auto;
+}
+@media (max-width: 1100px) {
+  .obra-3d-hero {
+    gap: 20px;
+    padding-inline: 24px;
+    grid-template-columns: minmax(260px, 1fr) minmax(300px, 1fr);
+  }
+  .obra-3d-stat {
+    grid-template-columns: 1fr;
+    padding: 15px 10px;
+  }
+  .obra-3d-stat i {
+    grid-row: auto;
+    width: 34px;
+    height: 34px;
+    font-size: 17px;
+  }
+  .obra-3d-stat span,
+  .obra-3d-stat strong,
+  .obra-3d-stat small {
+    grid-column: 1;
+  }
+}
+@media (max-width: 900px) {
+  .obra-3d-hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding-block: 30px;
+  }
+  .obra-3d-info h2 {
+    max-width: 18ch;
+    font-size: clamp(44px, 7vw, 64px);
+  }
+  .obra-3d-stats {
+    margin-top: 24px;
+    max-width: 540px;
+  }
+  .obra-3d-stat {
+    grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 10px;
+    min-height: 110px;
+  }
+  .obra-3d-stat i {
+    grid-row: 1 / 4;
+  }
+  .obra-3d-stat span,
+  .obra-3d-stat strong,
+  .obra-3d-stat small {
+    grid-column: 2;
+  }
+  .obra-3d-slot {
+    height: 430px;
+  }
+  .obra-3d-toolbar {
+    top: 50%;
+  }
+  .obra-3d-hero::after {
+    width: 100%;
+    height: 30%;
+  }
+}
+@media (max-width: 600px) {
+  .obra-3d-hero {
+    padding: 26px 16px;
+  }
+  .obra-3d-info h2 {
+    max-width: 11ch;
+    font-size: clamp(40px, 10vw, 56px);
+  }
+  .obra-3d-stat {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px 9px;
+  }
+  .obra-3d-stat i {
+    grid-row: auto;
+  }
+  .obra-3d-stat span,
+  .obra-3d-stat strong,
+  .obra-3d-stat small {
+    grid-column: 1;
+  }
+  .obra-3d-stat strong {
+    font-size: 26px;
+  }
+  .obra-3d-slot {
+    height: 360px;
+  }
+  .obra-3d-toolbar button,
+  .obra-3d-toolbar a {
+    width: 40px;
+    height: 44px;
+    font-size: 15px;
+  }
+  .obra-3d-north {
+    width: 48px;
+    height: 48px;
+    left: -4px;
+    top: -72px;
+  }
+  .obra-3d-north i {
+    font-size: 22px;
+  }
+}
+
+/* Moldura quadrada independente da proporcao do unico canvas WebGL. */
+.obra-3d-mini-frame {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: var(--obra3d-frame-border, 1px) solid var(--border);
+  border-radius: var(--obra3d-frame-radius, 10px);
+  box-sizing: border-box;
+}
+.obra-3d-layer.is-minimap .obra-3d-mini-frame {
+  display: block;
+}
+.obra-3d-layer.is-minimap .obra-3d-canvas-wrap {
+  position: relative;
+}
+.obra-3d-layer.is-minimap .obra-3d-toolbar {
+  display: none;
+}

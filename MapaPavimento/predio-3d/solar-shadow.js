@@ -10,7 +10,7 @@ export function boxCorners(box) {
 }
 
 /** Ajusta o frustum no espaço da luz, após aplicar a direção solar.
- * Inclui o edifício inteiro e o receptor local do chão. Não segue a câmera de navegação.
+ * Inclui a geometria atualmente visível e o receptor local do chão. Não segue a câmera de navegação.
  * O raio solar real não é necessário para luz direcional (raios paralelos). */
 export function fitSolarShadow(light, bounds, receiverBounds = null) {
   if (!bounds || bounds.isEmpty()) return;

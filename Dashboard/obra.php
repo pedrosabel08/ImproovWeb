@@ -154,8 +154,27 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes da Obra</title>
+    <script>
+        // Decide a entrada antes dos scripts e consultas da área operacional.
+        window.__obra3dEntry = (() => {
+            const id = String(localStorage.getItem('obraId') || '');
+            if (!/^\d+$/.test(id)) return null;
+            const controller = new AbortController();
+            const url = new URL('../MapaPavimento/api.php', location.href);
+            url.search = new URLSearchParams({ action: 'modelos_3d', obra_id: id });
+            const result = fetch(url, { credentials: 'same-origin', signal: controller.signal })
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok || !data.sucesso) throw new Error(data.erro || `HTTP ${response.status}`);
+                    return { data };
+                }).catch(error => ({ error }));
+            return { id, controller, result, used: false };
+        })();
+    </script>
+    <script defer src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset_url('styleObra.css') . '&t=' . filemtime(__DIR__ . '/styleObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('onboardingObra.css') . '&t=' . filemtime(__DIR__ . '/onboardingObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('obra-3d.css') . '&t=' . filemtime(__DIR__ . '/obra-3d.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('popoverAcomp.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
@@ -177,6 +196,7 @@ $conn->close();
     <!-- Select2 for improved multi-select UI -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="<?php echo asset_url('obra-navigation.css') . '&t=' . filemtime(__DIR__ . '/obra-navigation.css'); ?>">
     <style>
         /* Visual hint for image types */
         .tipo-desconhecido td {
@@ -219,77 +239,38 @@ $conn->close();
                 </button>
             </div>
 
-            <!-- Quick access links: in-page anchors + Drive, Fotográfico, Review Studio -->
-            <div id="quickAccess" class="quick-access" aria-label="Acessos rápidos" style="display: none;">
-                <!-- Internal anchors -->
-                <a class="quick-link" href="#tabela-obra" title="Ir para Tabela" aria-hidden="false">
-                    <i class="fa-solid fa-table-cells"></i>
-                    <span class="qa-label">Tabela</span>
-                </a>
-                <a class="quick-link" href="#list_acomp" title="Ir para Histórico" aria-hidden="false">
-                    <i class="fa-solid fa-list"></i>
-                    <span class="qa-label">Histórico</span>
-                </a>
-                <a class="quick-link" href="#secao-infos-obra" title="Ir para Informações da Obra" aria-hidden="false">
-                    <i class="fa-solid fa-clipboard-list"></i>
-                    <span class="qa-label">Info. Obra</span>
-                </a>
-                <a class="quick-link" href="#secao-arquivos" title="Ir para Arquivos" aria-hidden="false">
-                    <i class="fa-solid fa-file"></i>
-                    <span class="qa-label">Arquivos</span>
-                </a>
-                <a class="quick-link alma-obra" href="" title="Ir para Direção Visual ALMA" aria-hidden="false">
-                    <i class="fa-solid fa-compass"></i>
-                    <span class="qa-label">ALMA</span>
-                </a>
-                <?php if ($pode_ver_plano_r00): ?>
-                    <a id="quick_production_plan" class="quick-link" href="#" title="Plano de Produção R00" aria-hidden="true" style="display:none;">
-                        <i class="fa-solid fa-chart-gantt"></i>
-                        <span class="qa-label">Plano R00</span>
-                    </a>
-                <?php endif; ?>
-
-                <!-- Handoff Comercial -->
-                <a id="quick_handoff" class="quick-link" href="#" title="Handoff Comercial" aria-hidden="false">
-                    <i class="fa-solid fa-handshake"></i>
-                    <span class="qa-label">Handoff</span>
-                </a>
-
-                <!-- Briefing (Arquivos) -->
-                <a id="quick_briefing_arquivos" class="quick-link" href="#" title="Briefing (Arquivos)"
-                    aria-hidden="false">
-                    <i class="fa-solid fa-clipboard-list"></i>
-                    <span class="qa-label">Briefing</span>
-                </a>
-
-                <a id="quick_eventos_obra" class="quick-link" href="#secao-eventos-obra" title="Eventos da Obra"
-                    aria-hidden="false">
-                    <i class="fa-solid fa-calendar-plus"></i>
-                    <span class="qa-label">Eventos</span>
-                </a>
-
-                <!-- External quick links -->
-                <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
-                    title="Fotográfico" aria-hidden="true">
-                    <i class="fa-solid fa-camera"></i>
-                    <span class="qa-label">Fotográfico</span>
-                </a>
-                <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Drive"
-                    aria-hidden="true">
-                    <i class="fa-brands fa-google-drive"></i>
-                    <span class="qa-label">Drive</span>
-                </a>
-                <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
-                    title="Review Studio" aria-hidden="true">
-                    <i class="fa-solid fa-folder-open"></i>
-                    <span class="qa-label">Review</span>
-                </a>
-                <a id="quick_flow_review" class="quick-link hidden" href="#" target="_blank" rel="noopener noreferrer"
-                    title="Flow Review" aria-hidden="true" style="display:none;">
-                    <i class="fa-solid fa-eye"></i>
-                    <span class="qa-label">Flow Review</span>
-                </a>
-            </div>
+            <nav id="quickAccess" class="quick-access obra-menu" aria-label="Navega&ccedil;&atilde;o da obra" style="display:none">
+                <a id="quick_predio_3d" class="quick-link" href="#obra3dHero" hidden><i class="fa-solid fa-cube" aria-hidden="true"></i><span class="qa-label">Pr&eacute;dio 3D</span></a>
+                <a  class="quick-link" href="#tabela-obra" ><i class="fa-solid fa-table-cells" aria-hidden="true"></i><span class="qa-label">Tabela</span></a>
+                <a id="quick_mapa_pavimento" class="quick-link" href="#" hidden><i class="fa-solid fa-map" aria-hidden="true"></i><span class="qa-label">Mapa de pavimentos</span></a>
+                <a  class="quick-link" href="#list_acomp" ><i class="fa-solid fa-list" aria-hidden="true"></i><span class="qa-label">Hist&oacute;rico</span></a>
+                <details id="obraMore" class="obra-more">
+                    <summary>Mais <i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
+                    <div class="obra-more-panel">
+                        <div class="obra-menu-group"><h2>Obra</h2>
+                            <a  class="quick-link" href="#secao-infos-obra" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span class="qa-label">Informa&ccedil;&otilde;es da obra</span></a>
+                            <a  class="quick-link" href="#secao-arquivos" ><i class="fa-solid fa-file" aria-hidden="true"></i><span class="qa-label">Arquivos</span></a>
+                            <a id="quick_briefing_arquivos" class="quick-link" href="#" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span class="qa-label">Briefing</span></a>
+                            <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-brands fa-google-drive" aria-hidden="true"></i><span class="qa-label">Drive</span></a>
+                        </div>
+                        <div class="obra-menu-group"><h2>Produ&ccedil;&atilde;o</h2>
+                            <a class="quick-link alma-obra" href="#"><i class="fa-solid fa-compass" aria-hidden="true"></i><span class="qa-label">ALMA</span></a>
+                            <?php if ($pode_ver_plano_r00): ?>
+                            <a id="quick_production_plan" class="quick-link" href="#" aria-hidden="true" style="display:none"><i class="fa-solid fa-chart-gantt" aria-hidden="true"></i><span class="qa-label">Plano R00</span></a>
+                            <?php endif; ?>
+                            <a id="quick_handoff" class="quick-link" href="#" ><i class="fa-solid fa-handshake" aria-hidden="true"></i><span class="qa-label">Handoff</span></a>
+                            <a id="quick_eventos_obra" class="quick-link" href="#secao-eventos-obra" ><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span class="qa-label">Eventos</span></a>
+                        </div>
+                        <div class="obra-menu-group"><h2>Links</h2>
+                            <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span class="qa-label">Review</span></a>
+                            <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-solid fa-camera" aria-hidden="true"></i><span class="qa-label">Fotogr&aacute;fico</span></a>
+                            <a id="quick_google_earth" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="qa-label">Google Earth</span></a>
+                            <p class="obra-links-empty" hidden>Nenhum link cadastrado.</p>
+                        </div>
+                    </div>
+                </details>
+                <a id="quick_flow_review" class="quick-link hidden" href="#" target="_blank" rel="noopener noreferrer" title="Flow Review" aria-hidden="true" style="display:none"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="qa-label">Flow Review</span></a>
+            </nav>
             <!-- Mobile hamburger for quick access (visible on small screens) -->
             <button id="quickHamburger" class="quick-hamburger" aria-label="Acessos rápidos" aria-expanded="false">
                 <i class="fa-solid fa-bars"></i>
@@ -300,46 +281,48 @@ $conn->close();
                 <div class="quick-mobile-inner">
                     <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i
                             class="fa-solid fa-times"></i></button>
-                    <nav id="quickMobileNav" class="quick-mobile-nav">
-                        <!-- Items populated by JS: internal anchors and external links -->
-                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i
-                                class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
-                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i>
-                            <span>Histórico</span></a>
-                        <a class="mobile-link" id="mobile_obs" href="#secao-infos-obra"><i
-                                class="fa-solid fa-clipboard-list"></i> <span>Info. Obra</span></a>
-                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
-                                class="fa-solid fa-file"></i> <span>Arquivos</span></a>
-                        <a class="mobile-link alma-obra" id="mobile_alma" href="#"><i class="fa-solid fa-compass"></i> <span>ALMA</span></a>
+                    <nav id="quickMobileNav" class="quick-mobile-nav" aria-label="Navega&ccedil;&atilde;o compacta da obra">
+                        <a class="mobile-link" id="mobile_predio_3d" href="#obra3dHero" hidden><i class="fa-solid fa-cube" aria-hidden="true"></i><span>Pr&eacute;dio 3D</span></a>
+                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra" ><i class="fa-solid fa-table-cells" aria-hidden="true"></i><span>Tabela</span></a>
+                        <a class="mobile-link" id="mobile_mapa_pavimento" href="#" hidden><i class="fa-solid fa-map" aria-hidden="true"></i><span>Mapa de pavimentos</span></a>
+                        <a class="mobile-link" id="mobile_hist" href="#list_acomp" ><i class="fa-solid fa-list" aria-hidden="true"></i><span>Hist&oacute;rico</span></a>
+                        <h2 class="obra-mobile-group">Obra</h2>
+                        <a class="mobile-link" id="mobile_obs" href="#secao-infos-obra" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Informa&ccedil;&otilde;es da obra</span></a>
+                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos" ><i class="fa-solid fa-file" aria-hidden="true"></i><span>Arquivos</span></a>
+                        <a class="mobile-link" id="mobile_briefing_arquivos" href="#" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Briefing</span></a>
+                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-google-drive" aria-hidden="true"></i><span>Drive</span></a>
+                        <h2 class="obra-mobile-group">Produ&ccedil;&atilde;o</h2>
+                        <a class="mobile-link alma-obra" id="mobile_alma" href="#"><i class="fa-solid fa-compass" aria-hidden="true"></i><span>ALMA</span></a>
                         <?php if ($pode_ver_plano_r00): ?>
-                            <a class="mobile-link" id="mobile_production_plan" href="#" aria-hidden="true" style="display:none;"><i
-                                    class="fa-solid fa-chart-gantt"></i> <span>Plano R00</span></a>
+                        <a class="mobile-link" id="mobile_production_plan" href="#" aria-hidden="true" style="display:none"><i class="fa-solid fa-chart-gantt" aria-hidden="true"></i><span>Plano R00</span></a>
                         <?php endif; ?>
-
-                        <a class="mobile-link" id="mobile_handoff" href="#"><i class="fa-solid fa-handshake"></i>
-                            <span>Handoff</span></a>
-
-                        <a class="mobile-link" id="mobile_briefing_arquivos" href="#"><i
-                                class="fa-solid fa-clipboard-list"></i>
-                            <span>Briefing</span></a>
-                        <a class="mobile-link" id="mobile_eventos_obra" href="#secao-eventos-obra"><i
-                                class="fa-solid fa-calendar-plus"></i>
-                            <span>Eventos</span></a>
-                        <hr>
-                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank"
-                            rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
-                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i
-                                class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
-                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i
-                                class="fa-solid fa-folder-open"></i> <span>Review</span></a>
-                        <a class="mobile-link" id="mobile_flow_review" href="#" target="_blank"
-                            rel="noopener noreferrer" style="display:none;"><i class="fa-solid fa-eye"></i> <span>Flow
-                                Review</span></a>
-
+                        <a class="mobile-link" id="mobile_handoff" href="#" ><i class="fa-solid fa-handshake" aria-hidden="true"></i><span>Handoff</span></a>
+                        <a class="mobile-link" id="mobile_eventos_obra" href="#secao-eventos-obra" ><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span>Eventos</span></a>
+                        <h2 class="obra-mobile-group">Links</h2>
+                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>Review</span></a>
+                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-camera" aria-hidden="true"></i><span>Fotogr&aacute;fico</span></a>
+                        <a class="mobile-link" id="mobile_google_earth" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span>Google Earth</span></a>
+                        <a class="mobile-link" id="mobile_flow_review" href="#" target="_blank" rel="noopener noreferrer" style="display:none"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>Flow Review</span></a>
                     </nav>
                 </div>
             </div>
         </header>
+        <section id="obra3dHero" class="obra-3d-hero" aria-labelledby="obra3dName" data-state="checking" aria-busy="true">
+            <div class="obra-3d-info">
+                <h2 id="obra3dName"></h2>
+                <p id="obra3dLocation" class="obra-3d-location" hidden></p>
+                <div class="obra-3d-stats" aria-label="Resumo do empreendimento">
+                    <div class="obra-3d-stat"><i class="fa-regular fa-images" aria-hidden="true"></i><span>Total de imagens</span><strong data-obra3d-mirror="#imagens-totais .imagens-totais-texto">—</strong></div>
+                    <div class="obra-3d-stat"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span>Pendências</span><strong data-obra3d-mirror="#dashboardPendenciasTotal">—</strong><small data-obra3d-mirror="#dashboardPendenciasCaption"></small></div>
+                    <div class="obra-3d-stat"><i class="fa-solid fa-box-open" aria-hidden="true"></i><span>Entregas</span><strong data-obra3d-mirror="#dashboardEntregasTotal">—</strong><small>Pendentes</small></div>
+                </div>
+            </div>
+            <div class="obra-3d-slot" id="obra3dSlot"></div>
+                <div id="obra3dInitialLoading" class="obra-3d-loading" role="status">
+                    <canvas data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Preparando a obra"></canvas>
+                    <span>Preparando a obra</span>
+                </div>
+        </section>
         <div id="obraPendenciasDialog" class="obra-pendencias-dialog" role="dialog" aria-modal="true" aria-label="Pendências da obra" hidden>
             <div class="obra-pendencias-dialog-head">
                 <div><strong>Pendências da obra</strong><small id="obraPendenciasSummary"></small></div>
@@ -387,20 +370,14 @@ $conn->close();
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
             <div class="filtro">
-                <div class="filtros-select">
-                    <input type="search" id="imagem_busca_filtro" class="imagem-busca-filtro" placeholder="Buscar imagem">
-                    <select name="tipo_imagem" id="tipo_imagem" multiple>
-                        <option value="0">Todos</option>
-                    </select>
-                    <select id="subtipo_filtro" multiple></select>
-
-                    <select id="antecipada_obra" multiple size="2">
-                        <option value="">Todos as imagens</option>
-                        <option value="1">Antecipada</option>
-                    </select>
-
-                    <select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro" multiple></select>
-                    <select name="imagem_status_filtro" id="imagem_status_filtro" multiple></select>
+                <div class="filtros-select obra-filter-bar" role="search" aria-label="Filtros das imagens">
+                    <label class="obra-filter-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="imagem_busca_filtro" class="imagem-busca-filtro" aria-label="Buscar imagem" placeholder="Buscar imagem..."></label>
+                    <div class="obra-filter-field"><label for="tipo_imagem">Tipo de imagem</label><select name="tipo_imagem" id="tipo_imagem" multiple><option value="0">Todos</option></select></div>
+                    <div class="obra-filter-field"><label for="subtipo_filtro">Subtipo</label><select id="subtipo_filtro" multiple></select></div>
+                    <div class="obra-filter-field"><label for="antecipada_obra">Antecipada</label><select id="antecipada_obra" multiple size="2"><option value="">Todas as imagens</option><option value="1">Antecipada</option></select></div>
+                    <div class="obra-filter-field"><label for="imagem_status_etapa_filtro">Status etapa</label><select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro" multiple></select></div>
+                    <div class="obra-filter-field"><label for="imagem_status_filtro">Status imagem</label><select name="imagem_status_filtro" id="imagem_status_filtro" multiple></select></div>
+                    <button id="clearFilters" class="obra-filter-clear" type="button">Limpar filtros</button>
                 </div>
 
                 <div id="prazos-list"></div>
@@ -3087,7 +3064,10 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script src="<?php echo asset_url('../assets/js/upload-ws.js'); ?>"></script>
+    <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+    <script type="module" src="<?php echo asset_url('obra-3d.js') . '&t=' . filemtime(__DIR__ . '/obra-3d.js'); ?>"></script>
     <script src="<?php echo asset_url('scriptObra.js') . '&t=' . filemtime(__DIR__ . '/scriptObra.js'); ?>"></script>
+    <script src="<?php echo asset_url('obra-navigation.js') . '&t=' . filemtime(__DIR__ . '/obra-navigation.js'); ?>"></script>
     <script src="<?php echo asset_url('onboardingObra.js') . '&t=' . filemtime(__DIR__ . '/onboardingObra.js'); ?>"></script>
     <script src="<?php echo asset_url('obraContacts.js') . '&t=' . filemtime(__DIR__ . '/obraContacts.js'); ?>"></script>
     <script src="<?php echo asset_url('almaObra.js') . '&t=' . filemtime(__DIR__ . '/almaObra.js'); ?>"></script>
@@ -3139,7 +3119,6 @@ echo json_encode($statusArr);
                 parent.insertBefore(placeholder, filtros);
             }
 
-            let cachedWidth = 0;
             let cachedHeight = 0;
 
             function updateFixed() {
@@ -3151,7 +3130,6 @@ echo json_encode($statusArr);
 
                 // cache size while in normal flow
                 if (!filtros.classList.contains('fixed')) {
-                    cachedWidth = filtrosRect.width;
                     cachedHeight = filtrosRect.height;
                 }
 
@@ -3161,7 +3139,7 @@ echo json_encode($statusArr);
 
                 if (shouldFix) {
                     placeholder.style.display = 'block';
-                    placeholder.style.width = (cachedWidth || filtrosRect.width) + 'px';
+                    placeholder.style.width = '100%';
                     placeholder.style.height = (cachedHeight || filtrosRect.height) + 'px';
                     placeholder.style.flex = '0 0 auto';
 
@@ -3169,7 +3147,8 @@ echo json_encode($statusArr);
                     filtros.classList.add('fixed');
                     filtros.style.top = topOffset + 'px';
                     filtros.style.left = placeholderRect.left + 'px';
-                    // filtros.style.width = placeholderRect.width + 'px';
+                    filtros.style.width = placeholderRect.width + 'px';
+                    placeholder.style.height = filtros.getBoundingClientRect().height + 'px';
                 } else {
                     filtros.classList.remove('fixed');
                     filtros.style.top = '';

@@ -5043,6 +5043,25 @@ if (kanbanBoardForDensity && typeof ResizeObserver !== "undefined") {
 }
 
 // Task Panel overlay
+document.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get("embed_task") !== "1") return;
+  const taskId = Number(params.get("focus_task")),
+    imageId = Number(params.get("imagem_id"));
+  if (
+    !Number.isSafeInteger(taskId) ||
+    taskId <= 0 ||
+    !Number.isSafeInteger(imageId) ||
+    imageId <= 0
+  )
+    return;
+  openMindmapModal();
+  abrirSidebar(taskId, imageId)
+    .catch(() => {})
+    .finally(() => {
+      window.parent.postMessage({ type: "flow-task-ready" }, location.origin);
+    });
+});
 const mindmapModal = document.getElementById("taskPanelOverlay");
 const mindmapContent = document.getElementById("task-panel-content");
 
@@ -5059,6 +5078,10 @@ function resetMindmapModal() {
 }
 
 function closeMindmapModal() {
+  if (new URLSearchParams(location.search).get("embed_task") === "1") {
+    window.parent.postMessage({ type: "flow-task-close" }, location.origin);
+    return;
+  }
   if (!mindmapModal) return;
   mindmapModal.classList.remove("tp-overlay-enter");
   mindmapModal.classList.add("tp-overlay-exit");
@@ -5675,7 +5698,7 @@ function abrirSidebar(
             <div class="tp-info-value">${funcao.nome_colaborador || "-"}</div>
           </div>
           <div class="tp-info-item">
-            <div class="tp-info-label">Status da imagem</div>
+            <div class="tp-info-label">Etapa</div>
             <div class="tp-info-value">
               <span class="status-badge ${statusImgClass}">${revisionName || "-"}</span>
             </div>
@@ -9244,7 +9267,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   window.FlowHomeViews = { showOverview, showKanban, showLista };
 
   const focusTask = params.get("focus_task");
-  if (focusTask) {
+  if (focusTask && params.get("embed_task") !== "1") {
     const escaped = window.CSS?.escape
       ? window.CSS.escape(focusTask)
       : focusTask.replace(/[^0-9]/g, "");

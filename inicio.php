@@ -150,6 +150,14 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
 
     <title>Improov+Flow</title>
+<?php if (($_GET['embed_task'] ?? '') === '1'): ?>
+    <style>
+      body { overflow:hidden; }
+      body > .sidebar, body > .container, #upload-badge-bar, #notificacao-sino { visibility:hidden; }
+      #taskPanelOverlay { inset:0; padding:0; background:var(--bg-primary, #141a20); }
+      #task-panel-content { width:100%; max-width:none; }
+    </style>
+<?php endif; ?>
 </head>
 
 <body>

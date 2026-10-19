@@ -1,0 +1,778 @@
+.map-spatial-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+}
+.map-compass {
+  position: absolute;
+  left: 18px;
+  bottom: 20px;
+  width: 88px;
+  text-align: center;
+  color: var(--spatial-muted, #a7b3c5);
+}
+.map-compass-dial {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  margin: 0 auto 6px;
+  border: 1px solid #66758a66;
+  border-radius: 50%;
+  background: #171d26e8;
+  color: #b5c2d2;
+}
+.map-compass-dial b,
+.map-compass-dial span {
+  position: absolute;
+  font-size: 10px;
+  line-height: 12px;
+}
+.map-compass-dial .north {
+  top: 3px;
+  left: 30px;
+  color: #8dbcf4;
+}
+.map-compass-dial .east {
+  right: 5px;
+  top: 29px;
+}
+.map-compass-dial .south {
+  bottom: 3px;
+  left: 30px;
+}
+.map-compass-dial .west {
+  left: 4px;
+  top: 29px;
+}
+.map-compass-dial i {
+  position: absolute;
+  inset: 16px;
+  font-size: 28px;
+  line-height: 34px;
+  font-style: normal;
+  color: #8dbcf4;
+}
+.map-compass small {
+  font-size: 10px;
+}
+.map-compass.is-unconfigured .map-compass-dial {
+  opacity: 0.35;
+}
+.solar-map-button {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  pointer-events: auto;
+}
+.map-solar-popover {
+  pointer-events: auto;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  top: 190px;
+  left: 300px;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid #47556b;
+  border-radius: 12px;
+  background: #1b222d;
+  color: #dce5f0;
+  box-shadow: 0 18px 50px #0007;
+  font: 12px/1.5 inherit;
+}
+.map-solar-popover h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.map-solar-popover small {
+  display: block;
+  color: #a5b3c5;
+  line-height: 1.6;
+  margin-top: 12px;
+  font-size: 11px;
+}
+.map-solar-fields {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 10px;
+}
+.map-solar-fields label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.map-solar-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #47556b;
+  border-radius: 6px;
+  background: #121923;
+  color: #e4ebf5;
+  color-scheme: dark;
+}
+.map-solar-popover input[type="range"] {
+  width: 100%;
+  margin: 16px 0;
+  accent-color: #8dbcf4;
+}
+.map-solar-popover dl {
+  display: flex;
+  gap: 28px;
+  margin: 0 0 16px;
+}
+.map-solar-popover dd {
+  margin: 3px 0;
+  color: #edc576;
+  font-size: 18px;
+}
+.solar-map-status {
+  font-size: 11px;
+  color: #a5b3c5;
+}
+.map-solar-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.map-solar-direction {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 32px;
+  height: 220px;
+  pointer-events: none;
+  z-index: 9;
+  text-align: center;
+  color: #f4c76e;
+  transform-origin: center;
+}
+.map-solar-direction span {
+  font-size: 26px;
+}
+.map-solar-direction i {
+  display: block;
+  width: 1px;
+  height: 125px;
+  margin: auto;
+  background: linear-gradient(#f4c76ecc, transparent);
+}
+.map-solar-direction small {
+  display: block;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.map-solar-direction[hidden] {
+  display: none;
+}
+.spatial-viewcube {
+  position: absolute;
+  right: 16px;
+  top: 62px;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(3, 55px);
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid #43516a99;
+  border-radius: 9px;
+  background: #171e28eb;
+}
+.spatial-viewcube button {
+  padding: 8px 2px;
+  border: 1px solid #52627b66;
+  border-radius: 4px;
+  background: #273344;
+  color: #c8d7ea;
+  font: 10px inherit;
+  cursor: pointer;
+}
+.spatial-viewcube button:hover,
+.spatial-viewcube button[aria-pressed="true"] {
+  background: #3c5677;
+  color: #fff;
+}
+.spatial-viewcube button:first-child {
+  grid-column: 2;
+}
+.spatial-viewcube button:last-child {
+  grid-column: 1 / -1;
+}
+.spatial-viewcube button:focus-visible,
+.solar-map-button:focus-visible {
+  outline: 2px solid #8dbcf4;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .map-compass {
+    left: 10px;
+    bottom: 12px;
+    transform: scale(0.85);
+    transform-origin: bottom left;
+  }
+  .solar-map-button {
+    left: 10px;
+    top: 10px;
+  }
+  .map-solar-popover {
+    left: 12px;
+    top: 150px;
+  }
+  .spatial-viewcube {
+    right: 10px;
+    top: 104px;
+    grid-template-columns: repeat(3, 46px);
+  }
+  .spatial-viewcube button {
+    font-size: 9px;
+    padding: 7px 1px;
+  }
+}
+.model-pdf-context {
+  display: block;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 9px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.mp-embedded .mp-app {
+  inset: 0;
+}
+:root[data-theme="light"] .map-solar-popover {
+  background: #f5f8fc;
+  color: #243247;
+  border-color: #bdcadb;
+}
+:root[data-theme="light"] .map-solar-fields input {
+  background: white;
+  color: #243247;
+  color-scheme: light;
+}
+/* Três faces principais formam o cubo; as vistas opostas ficam logo abaixo. */
+.spatial-viewcube {
+  display: block;
+  width: 170px;
+  height: 186px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.spatial-viewcube button {
+  position: absolute;
+  min-height: 26px;
+  font-family: inherit;
+  font-size: 10px;
+}
+.spatial-viewcube button:nth-child(1) {
+  left: 25px;
+  top: 0;
+  width: 120px;
+  height: 60px;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  padding-bottom: 10px;
+}
+.spatial-viewcube button:nth-child(2) {
+  left: 25px;
+  top: 30px;
+  width: 60px;
+  height: 75px;
+  clip-path: polygon(0 0, 100% 40%, 100% 100%, 0 60%);
+  padding-top: 18px;
+}
+.spatial-viewcube button:nth-child(5) {
+  left: 85px;
+  top: 30px;
+  width: 60px;
+  height: 75px;
+  clip-path: polygon(0 40%, 100% 0, 100% 60%, 0 100%);
+  padding-top: 18px;
+}
+.spatial-viewcube button:nth-child(3) {
+  left: 0;
+  top: 114px;
+  width: 52px;
+}
+.spatial-viewcube button:nth-child(4) {
+  left: 57px;
+  top: 114px;
+  width: 57px;
+}
+.spatial-viewcube button:nth-child(6) {
+  left: 119px;
+  top: 114px;
+  width: 51px;
+}
+.spatial-viewcube button:nth-child(7) {
+  left: 25px;
+  top: 148px;
+  width: 120px;
+}
+@media (max-width: 600px) {
+  .spatial-viewcube {
+    transform: scale(0.8);
+    transform-origin: top right;
+    top: 104px;
+  }
+}
+.solar-map-button {
+  top: auto;
+  bottom: 124px;
+}
+@media (max-width: 600px) {
+  .solar-map-button {
+    top: auto;
+    bottom: 105px;
+  }
+}
+.map-spatial-controls {
+  pointer-events: none;
+}
+.map-compass {
+  pointer-events: none;
+}
+.map-open .spatial-viewcube {
+  display: none;
+}
+.map-solar-popover {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.map-solar-popover:popover-open {
+  animation: mapSolarReveal 0.16s ease-out;
+}
+@keyframes mapSolarReveal {
+  from {
+    opacity: 0;
+    translate: 0 5px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-solar-popover:popover-open {
+    animation: none;
+  }
+}
+/* Estudo solar: composição espacial conforme a referência do produto. */
+.map-compass {
+  left: 18px;
+  bottom: 20px;
+  width: 180px;
+  height: 214px;
+  padding: 18px 10px 10px;
+  border: 1px solid #465367;
+  border-radius: 10px;
+  background: #191e25ed;
+  box-shadow: 0 8px 24px #0002;
+}
+.map-compass-dial {
+  width: 146px;
+  height: 146px;
+  background: radial-gradient(
+    circle,
+    transparent 32%,
+    #74839818 33%,
+    transparent 34%,
+    transparent 63%,
+    #74839820 64%,
+    transparent 65%
+  );
+  border: 1px solid #60708655;
+}
+.map-compass-dial::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 6px solid #62748b22;
+  border-radius: 50%;
+  mask: repeating-conic-gradient(#000 0deg 1deg, transparent 1deg 10deg);
+}
+.map-compass-dial b,
+.map-compass-dial span {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 14px;
+}
+.map-compass-dial .north {
+  top: -10px;
+  left: 66px;
+  color: #d9e9ff;
+  background: #1b2028;
+}
+.map-compass-dial .east {
+  right: -7px;
+  top: 65px;
+}
+.map-compass-dial .south {
+  bottom: -9px;
+  left: 66px;
+}
+.map-compass-dial .west {
+  left: -8px;
+  top: 65px;
+}
+.map-compass-dial i {
+  inset: auto;
+  left: calc(50% - 7px);
+  top: 14px;
+  width: 14px;
+  height: 38px;
+  background: linear-gradient(90deg, #528ed9 50%, #88bfff 50%);
+  clip-path: polygon(50% 0, 100% 100%, 50% 80%, 0 100%);
+  filter: drop-shadow(0 0 7px #74a9e8);
+}
+.compass-origin {
+  position: absolute;
+  left: calc(50% - 4px);
+  top: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e4ecf6;
+}
+.compass-sun {
+  position: absolute;
+  color: #ffcf50;
+  font-size: 25px;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 8px #ffc43c99);
+}
+.compass-clock {
+  display: block;
+  margin: 12px 0 0;
+  color: #f7c84f;
+  font-size: 14px;
+  font-weight: 600;
+}
+.map-compass small {
+  display: none;
+}
+.map-compass.is-unconfigured small {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+}
+.map-compass.is-unconfigured .compass-clock {
+  display: none;
+}
+.solar-map-button {
+  top: auto;
+  left: 18px;
+  bottom: 244px;
+  min-height: 32px;
+  font-size: 11px;
+}
+.map-solar-popover {
+  width: 320px;
+  padding: 16px 17px 12px;
+  border-color: #476a92;
+  background: linear-gradient(150deg, #1d242df8, #151b22f8);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px #0004;
+  font-size: 12px;
+}
+.map-solar-popover header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.map-solar-popover h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.map-solar-close {
+  border: 0;
+  background: transparent;
+  color: #8eadd2;
+  padding: 0 4px;
+  font-size: 24px;
+  line-height: 24px;
+  cursor: pointer;
+}
+.map-solar-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+}
+.map-solar-fields label {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+.map-solar-fields label > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #b5c9e3;
+}
+.map-solar-fields label > span > span {
+  font-size: 11px;
+}
+.map-solar-fields input {
+  padding: 5px 8px;
+  height: 30px;
+  background: #252d37;
+  border-color: #4b5665;
+  font-size: 11px;
+  border-radius: 5px;
+}
+.map-solar-popover dl {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+.map-solar-popover dl > div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+.map-solar-popover dt {
+  display: flex;
+  gap: 10px;
+  color: #b5c9e3;
+  font-size: 13px;
+}
+.map-solar-popover dt span {
+  font-size: 11px;
+}
+.map-solar-popover dd {
+  margin: 0;
+  font-size: 12px;
+  color: #e5edf7;
+}
+.map-solar-slider {
+  display: flex;
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.map-solar-slider > span {
+  color: #ffcb42;
+  font-size: 26px;
+  line-height: 25px;
+}
+.map-solar-slider > div {
+  flex: 1;
+  min-width: 0;
+}
+.map-solar-popover input[type="range"] {
+  appearance: none;
+  height: 6px;
+  border-radius: 4px;
+  margin: 10px 0 4px;
+  display: block;
+  background: linear-gradient(
+    to right,
+    #f2c530 0%,
+    #f0b54c var(--solar-progress, 50%),
+    #515965 var(--solar-progress, 50%),
+    #515965 100%
+  );
+  cursor: pointer;
+}
+.map-solar-popover input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 2px solid #ffc73d;
+  border-radius: 50%;
+  background: #f6f9fc;
+  box-shadow: 0 1px 6px #0005;
+}
+.map-solar-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #b5c9e3;
+}
+.map-solar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.map-solar-toggle input {
+  appearance: none;
+  width: 40px;
+  height: 22px;
+  flex: 0 0 40px;
+  margin: 0;
+  background: #505b6b;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+}
+.map-solar-toggle input::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f3f7fc;
+  transition: transform 0.16s;
+}
+.map-solar-toggle input:checked {
+  background: #5c9aea;
+}
+.map-solar-toggle input:checked::before {
+  transform: translateX(18px);
+}
+.solar-map-status {
+  font-size: 10px;
+  line-height: 1.4;
+  margin: 10px 0 0;
+  color: #9caec5;
+}
+.map-solar-direction {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  pointer-events: none;
+  z-index: 9;
+}
+.map-solar-direction svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.solar-axis {
+  stroke: #f3c450;
+  stroke-width: 1.5;
+  stroke-dasharray: 9 7;
+  opacity: 0.9;
+}
+.map-sun {
+  fill: #ffda58;
+  stroke: #ffce49;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 9px #ffd045aa);
+}
+.map-solar-close:focus-visible,
+.map-solar-toggle input:focus-visible {
+  outline: 2px solid #8dbcf4;
+  outline-offset: 3px;
+}
+:root[data-theme="light"] .map-compass {
+  background: #eef3faed;
+  color: #40526b;
+}
+:root[data-theme="light"] .map-compass .north {
+  background: #eef3fa;
+  color: #245ba2;
+}
+:root[data-theme="light"] .map-solar-popover {
+  background: #f3f7fc;
+  color: #243247;
+}
+:root[data-theme="light"]
+  .map-solar-popover
+  :is(dt, dd, .map-solar-fields label > span) {
+  color: #344d70;
+}
+@media (max-width: 900px) {
+  .map-compass {
+    width: 140px;
+    height: 176px;
+    padding-top: 17px;
+  }
+  .map-compass-dial {
+    width: 110px;
+    height: 110px;
+  }
+  .map-compass-dial .north,
+  .map-compass-dial .south {
+    left: 48px;
+  }
+  .map-compass-dial .east,
+  .map-compass-dial .west {
+    top: 48px;
+  }
+  .compass-clock {
+    font-size: 12px;
+    margin-top: 12px;
+  }
+  .solar-map-button {
+    bottom: 204px;
+  }
+}
+@media (max-width: 600px) {
+  .map-compass {
+    left: 10px;
+    bottom: 12px;
+    width: 112px;
+    height: 142px;
+    transform: none;
+    padding: 15px 10px 8px;
+  }
+  .map-compass-dial {
+    width: 86px;
+    height: 86px;
+  }
+  .map-compass-dial .north,
+  .map-compass-dial .south {
+    left: 36px;
+  }
+  .map-compass-dial .east,
+  .map-compass-dial .west {
+    top: 35px;
+  }
+  .map-compass-dial i {
+    top: 10px;
+    height: 24px;
+    width: 10px;
+    left: calc(50% - 5px);
+  }
+  .map-compass-dial :is(b, span) {
+    font-size: 10px;
+  }
+  .compass-sun {
+    font-size: 18px;
+  }
+  .compass-clock {
+    font-size: 11px;
+    margin-top: 10px;
+  }
+  .solar-map-button {
+    left: 10px;
+    bottom: 166px;
+  }
+  .map-solar-popover {
+    width: 300px;
+    max-width: calc(100vw - 24px);
+    padding: 12px;
+  }
+  .map-solar-popover dl {
+    margin: 10px 0 12px;
+    gap: 8px;
+  }
+  .map-solar-popover header {
+    margin-bottom: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-solar-toggle input::before {
+    transition: none;
+  }
+}

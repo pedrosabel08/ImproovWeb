@@ -1,4 +1,5 @@
 import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js";
+import { ModelUpload } from "./model-upload.js";
 
 const apiUrl = new URL("../api.php", import.meta.url);
 const mapUrl = new URL("../index.php", import.meta.url);
@@ -37,6 +38,7 @@ export class EmpreendimentoMapBridge {
     this.modelId = Number(this.params.get("modelo_id") || 0);
     this.createUI();
     this.spatial = new EmpreendimentoSpatialSettings(this, hooks.spatial);
+    this.uploader = new ModelUpload(this);
     window.addEventListener("message", (event) => this.onMessage(event));
   }
 
@@ -67,6 +69,22 @@ export class EmpreendimentoMapBridge {
       this.modelId = Number(this.modelSelect.value);
       this.loadModel().catch((error) => this.showFailure(error));
     });
+    this.viewSwitch = el("nav", undefined, "spatial-view-switch");
+    this.viewSwitch.setAttribute(
+      "aria-label",
+      "Visualização do empreendimento",
+    );
+    this.buildingButton = action("Prédio 3D", () => this.requestReturn());
+    this.mapButton = action("Mapa arquitetônico", () => {
+      if (this.currentFloor) this.openMap(this.currentFloor);
+    });
+    this.buildingButton.setAttribute("aria-pressed", "true");
+    this.mapButton.setAttribute("aria-pressed", "false");
+    this.mapButton.disabled = true;
+    this.viewSwitch.append(this.buildingButton, this.mapButton);
+    document
+      .querySelector(".top")
+      .insertBefore(this.viewSwitch, document.getElementById("status"));
 
     this.dialog = el("dialog", undefined, "link-dialog");
     this.dialog.id = "linkFloorDialog";
@@ -100,7 +118,12 @@ export class EmpreendimentoMapBridge {
     this.mapError = el("p", "", "bridge-error");
     this.mapError.hidden = true;
     this.mapError.setAttribute("role", "alert");
-    bar.append(this.mapTitle, this.changeMapLink, this.mapError);
+    bar.append(
+      this.mapTitle,
+      action("Voltar ao prédio 3D", () => this.requestReturn()),
+      this.changeMapLink,
+      this.mapError,
+    );
     this.frame = el("iframe");
     this.frame.id = "floorMapFrame";
     this.frame.title = "Mapa arquitetônico do pavimento";
@@ -140,8 +163,12 @@ export class EmpreendimentoMapBridge {
       value || this.mapShown || !this.modelSelect.options.length;
     document.getElementById("backToProject").disabled = value;
     this.changeMapLink.disabled = value || !this.canEdit;
+    this.buildingButton.disabled = value;
+    this.mapButton.disabled =
+      value || !this.links.get(this.currentFloor?.id)?.mapa_configurado;
     this.app.setAttribute("aria-busy", String(value));
     this.spatial?.sync();
+    this.uploader?.sync();
   }
 
   async api(actionName, data = {}, method = "GET") {
@@ -178,6 +205,8 @@ export class EmpreendimentoMapBridge {
       const data = await this.api("modelos_3d");
       this.csrf = data.csrf;
       this.canEdit = data.can_edit;
+      this.uploadMax = data.upload_max_bytes;
+      this.uploader.notice.hidden = true;
       this.workSelect.replaceChildren(
         ...data.obras.map((work) => new Option(work.nome, work.id)),
       );
@@ -192,6 +221,7 @@ export class EmpreendimentoMapBridge {
         this.modelId = this.models[0]?.id || 0;
       this.modelSelect.value = String(this.modelId);
       if (!this.modelId) {
+        this.model = null;
         this.hooks.clearModel();
         this.links.clear();
         this.currentFloor = null;
@@ -201,7 +231,12 @@ export class EmpreendimentoMapBridge {
         const panel = this.panel();
         panel.append(
           el("h3", "Nenhum modelo 3D cadastrado"),
-          el("p", "Selecione outra obra para visualizar seu empreendimento."),
+          el(
+            "p",
+            this.canEdit
+              ? "Use “Enviar modelo 3D” para cadastrar o empreendimento desta obra."
+              : "Solicite o cadastro do modelo a um usuário com permissão de edição.",
+          ),
         );
         this.updateUrl();
         return;
@@ -231,7 +266,32 @@ export class EmpreendimentoMapBridge {
       this.currentFloor = null;
       this.hooks.highlight(null);
       this.hooks.clearModel();
-      const data = await this.refreshContext();
+      let data = await this.refreshContext();
+      const requestedSubtype = Number(this.params.get("subtipo_id"));
+      if (
+        requestedSubtype &&
+        ![...this.links.values()].some(
+          (link) => Number(link.subtipo_id) === requestedSubtype,
+        )
+      ) {
+        for (const model of this.models.filter(
+          (model) => model.id !== this.modelId,
+        )) {
+          const candidate = await this.api("modelo_3d_contexto", {
+            modelo_id: model.id,
+          });
+          if (
+            !candidate.vinculos.some(
+              (link) => Number(link.subtipo_id) === requestedSubtype,
+            )
+          )
+            continue;
+          this.modelId = model.id;
+          this.modelSelect.value = String(model.id);
+          data = await this.refreshContext();
+          break;
+        }
+      }
       await this.hooks.loadModel(data.modelo.src);
       void this.spatial.load();
       document.getElementById("projectName").textContent =
@@ -240,6 +300,23 @@ export class EmpreendimentoMapBridge {
       this.updateUrl();
       this.hooks.refreshTree();
       this.showIntro();
+      const subtype = Number(this.params.get("subtipo_id"));
+      if (subtype) {
+        const link = [...this.links.values()].find(
+          (item) => Number(item.subtipo_id) === subtype,
+        );
+        const floor = link && this.hooks.findFloor(link.object_name);
+        if (floor) {
+          await this.hooks.focusFloor(floor);
+          this.currentFloor = floor;
+          this.showSummary(floor);
+        } else
+          this.hooks.status(
+            "Este pavimento ainda não possui vínculo com o modelo 3D.",
+            true,
+          );
+        this.params.delete("subtipo_id");
+      }
     } finally {
       this.setBusy(false);
     }
@@ -250,6 +327,9 @@ export class EmpreendimentoMapBridge {
     url.searchParams.set("obra_id", this.obraId);
     if (this.modelId) url.searchParams.set("modelo_id", this.modelId);
     else url.searchParams.delete("modelo_id");
+    const subtype = this.links.get(this.currentFloor?.id)?.subtipo_id;
+    if (subtype) url.searchParams.set("subtipo_id", subtype);
+    else url.searchParams.delete("subtipo_id");
     url.searchParams.delete("src");
     history.replaceState(null, "", url);
   }
@@ -262,12 +342,15 @@ export class EmpreendimentoMapBridge {
   }
 
   showIntro() {
+    this.currentFloor = null;
+    this.updateUrl();
+    this.mapButton.disabled = true;
     const panel = this.panel();
     panel.append(
-      el("h3", "Entre em um pavimento"),
+      el("h3", "Explore os pavimentos"),
       el(
         "p",
-        "Clique no prédio ou selecione um pavimento na lista. O vínculo leva ao mapa arquitetônico cadastrado no Flow.",
+        "Clique no prédio ou selecione um pavimento na lista para aproximar e orbitar em 3D. Use Ver mapa arquitetônico para abrir a planta cadastrada no Flow.",
       ),
     );
   }
@@ -287,53 +370,43 @@ export class EmpreendimentoMapBridge {
     panel.append(actions);
   }
 
-  showSummary(floor) {
+  showSummary(floor, target = null) {
     const link = this.links.get(floor.id),
-      panel = this.panel();
-    panel.append(el("h3", floor.id));
-    panel.append(
-      el(
-        "p",
-        link
-          ? `Vinculado a: ${link.subtipo_nome}`
-          : "Este objeto 3D ainda não está vinculado a um pavimento da obra.",
-      ),
-    );
-    const actions = el("div", undefined, "link-actions");
+      panel = target || this.panel();
+    this.currentFloor = floor;
+    this.updateUrl();
+    this.mapButton.disabled = this.busy || !link?.mapa_configurado;
+    panel.replaceChildren();
+    panel.append(el("h3", link?.subtipo_nome || floor.id.replace(/_/g, " ")));
     if (link) {
-      if (link.mapa_configurado)
-        actions.append(
-          action("Entrar no mapa", () => this.openMap(floor), true),
-        );
-      else {
-        panel.append(
-          el(
-            "p",
-            `O pavimento ${link.subtipo_nome} ainda não possui um Mapa de Pavimento configurado.`,
-          ),
-        );
-        if (this.canEdit) {
-          const configure = el("a", "Configurar mapa", "btn primary");
-          const url = new URL(mapUrl);
-          url.search = new URLSearchParams({
-            obra_id: this.obraId,
-            subtipo_id: link.subtipo_id,
-          });
-          configure.href = url.href;
-          configure.target = "_blank";
-          configure.rel = "noopener";
-          configure.title = "Configurar mapa em uma nova aba";
-          actions.append(configure);
-        }
-      }
-    }
+      const counts = el("div", undefined, "floor-counts");
+      counts.append(
+        el(
+          "span",
+          `${link.total_ambientes} ${link.total_ambientes === 1 ? "ambiente" : "ambientes"}`,
+        ),
+        el(
+          "span",
+          `${link.total_imagens} ${link.total_imagens === 1 ? "imagem" : "imagens"}`,
+        ),
+      );
+      panel.append(counts);
+    } else
+      panel.append(
+        el("p", "Vincule o pavimento para consultar ambientes e imagens."),
+      );
+    const actions = el("div", undefined, "link-actions");
+    const mapAction = link?.mapa_configurado
+      ? action("Ver mapa arquitetônico", () => this.openMap(floor), true)
+      : action("Ver mapa arquitetônico", () => {}, true);
+    if (!link?.mapa_configurado) mapAction.disabled = true;
+    actions.append(mapAction);
+    mapAction.title = link?.mapa_configurado
+      ? `Ver mapa de ${link.subtipo_nome}`
+      : "Mapa arquitetônico ainda não configurado";
     if (this.canEdit)
       actions.append(
-        action(
-          link ? "Alterar vínculo" : "Vincular pavimento",
-          () => this.showLinkDialog(floor),
-          !link,
-        ),
+        action("Alterar vínculo", () => this.showLinkDialog(floor), !link),
       );
     else if (!link)
       panel.append(
@@ -348,13 +421,8 @@ export class EmpreendimentoMapBridge {
   async activateFloor(floor) {
     if (this.busy || this.mapShown) return;
     this.currentFloor = floor;
-    this.hooks.highlight(floor);
+    void this.hooks.focusFloor(floor);
     this.showSummary(floor);
-    if (!this.links.has(floor.id)) {
-      if (this.canEdit) this.showLinkDialog(floor);
-      return;
-    }
-    await this.openMap(floor);
   }
 
   showLinkDialog(floor) {
@@ -410,7 +478,7 @@ export class EmpreendimentoMapBridge {
       this.hooks.refreshTree();
       this.showSummary(floor);
       this.hooks.status(
-        "Vínculo salvo. Selecione Entrar no mapa para continuar.",
+        "Vínculo salvo. Selecione Ver mapa arquitetônico para continuar.",
       );
     } catch (failure) {
       error.textContent = failure.message;
@@ -422,7 +490,12 @@ export class EmpreendimentoMapBridge {
     }
   }
 
-  prepareFrame(link) {
+  async prepareFrame(link) {
+    if (
+      this.loadedMapKey ===
+      `${this.obraId}:${link.subtipo_id}:${link.referencia_id}`
+    )
+      return Promise.resolve();
     this.bridgeId = crypto.randomUUID();
     this.expectedLink = link;
     const url = new URL(mapUrl);
@@ -432,7 +505,18 @@ export class EmpreendimentoMapBridge {
       subtipo_id: link.subtipo_id,
       bridge: this.bridgeId,
     });
-    this.frame.src = url.href;
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok)
+      throw new Error("Não foi possível carregar o mapa arquitetônico.");
+    const documentMap = new DOMParser().parseFromString(
+      await response.text(),
+      "text/html",
+    );
+    if (!documentMap.getElementById("mapaPavimento"))
+      throw new Error("Sua sessão expirou. Entre no Flow e tente novamente.");
+    const base = documentMap.createElement("base");
+    base.href = url.href;
+    documentMap.head.prepend(base);
     return new Promise((resolve, reject) => {
       this.pendingMap = { resolve, reject };
       this.mapTimer = setTimeout(() => {
@@ -443,6 +527,8 @@ export class EmpreendimentoMapBridge {
           ),
         );
       }, 45000);
+      this.frame.srcdoc =
+        "<!doctype html>" + documentMap.documentElement.outerHTML;
     });
   }
 
@@ -452,22 +538,65 @@ export class EmpreendimentoMapBridge {
       event.origin !== location.origin ||
       event.source !== this.frame.contentWindow ||
       data?.bridge !== this.bridgeId ||
-      Number(data.obra_id) !== this.obraId ||
-      Number(data.subtipo_id) !== this.expectedLink?.subtipo_id
+      Number(data.obra_id) !== this.obraId
     )
+      return;
+    // A planta troca seu próprio contexto. O modelo permanece intacto até voltar ao 3D.
+    if (
+      data.type === "mp:context-change" &&
+      this.mapShown &&
+      !this.pendingMap
+    ) {
+      const subtypeId = Number(data.subtipo_id);
+      if (!Number.isSafeInteger(subtypeId) || subtypeId < 0) return;
+      const subtype = this.subtypes.find(
+        (item) => Number(item.id) === subtypeId,
+      ) || {
+        id: subtypeId,
+        nome:
+          typeof data.subtipo_nome === "string"
+            ? data.subtipo_nome.slice(0, 160)
+            : "Mapa arquitetônico",
+      };
+      const link = [...this.links.values()].find(
+        (item) => Number(item.subtipo_id) === Number(subtype.id),
+      );
+      this.currentFloor = link ? this.hooks.findFloor(link.object_name) : null;
+      this.expectedLink = {
+        ...link,
+        subtipo_id: Number(subtype.id),
+        referencia_id: null,
+      };
+      this.loadedMapKey = null;
+      this.focusOnReturn = true;
+      const url = new URL(location.href);
+      url.searchParams.set("subtipo_id", subtype.id);
+      history.replaceState(null, "", url);
+      document.getElementById("modeLabel").textContent =
+        `Mapa arquitetônico · ${subtype.nome}`;
+      this.hooks.status(`Mapa do ${subtype.nome}`);
+      return;
+    }
+    if (Number(data.subtipo_id) !== Number(this.expectedLink?.subtipo_id))
       return;
     if (
       data.type === "mp:ready" &&
       this.pendingMap &&
-      Number(data.referencia_id) === this.expectedLink.referencia_id
+      Number(data.referencia_id) === Number(this.expectedLink.referencia_id)
     ) {
       clearTimeout(this.mapTimer);
+      this.loadedMapKey = `${this.obraId}:${data.subtipo_id}:${data.referencia_id}`;
       this.pendingMap.resolve();
       this.pendingMap = null;
+    } else if (data.type === "mp:ready" && this.mapShown && !this.pendingMap) {
+      this.expectedLink.referencia_id = Number(data.referencia_id);
+      this.loadedMapKey = `${this.obraId}:${data.subtipo_id}:${data.referencia_id}`;
     } else if (data.type === "mp:error" && this.pendingMap) {
       clearTimeout(this.mapTimer);
       this.pendingMap.reject(new Error(data.message));
       this.pendingMap = null;
+    } else if (data.type === "mp:return-3d") {
+      this.requestReturn();
     } else if (
       this.pendingLeave &&
       ["mp:leave-ok", "mp:leave-blocked"].includes(data.type)
@@ -479,7 +608,7 @@ export class EmpreendimentoMapBridge {
   }
 
   async openMap(floor) {
-    if (this.busy) return;
+    if (this.busy || this.mapShown) return;
     this.setBusy(true, "Preparando o mapa arquitetônico");
     try {
       await this.refreshContext();
@@ -490,21 +619,25 @@ export class EmpreendimentoMapBridge {
       this.mapError.hidden = true;
       this.mapTitle.textContent = `${link.subtipo_nome} · Mapa arquitetônico`;
       this.changeMapLink.hidden = !this.canEdit;
-      const results = await Promise.allSettled([
-        this.prepareFrame(link),
-        this.hooks.enterFloor(floor),
-      ]);
-      const failure = results.find((result) => result.status === "rejected");
-      if (failure) throw failure.reason;
+      // PDF rendering needs an active frame even while the 3D view covers it.
+      this.stage.classList.add("is-preparing");
+      this.stage.inert = false;
+      await this.prepareFrame(link);
       this.mapShown = true;
       this.app.classList.add("map-open");
+      document.querySelector(".top .spatial-mark").textContent = "2D";
       this.background.forEach((element) => {
         element.inert = true;
       });
       this.stage.inert = false;
       this.stage.classList.add("is-visible");
+      this.stage.classList.remove("is-preparing");
       await fade(this.stage, 0, 1);
       this.hooks.setMapVisible(true);
+      this.buildingButton.setAttribute("aria-pressed", "false");
+      this.mapButton.setAttribute("aria-pressed", "true");
+      document.getElementById("backToProject").textContent =
+        "← Voltar ao prédio 3D";
       document.getElementById("modeLabel").textContent =
         `Mapa arquitetônico · ${link.subtipo_nome}`;
       document.getElementById("backToProject").focus();
@@ -513,10 +646,17 @@ export class EmpreendimentoMapBridge {
       clearTimeout(this.mapTimer);
       this.hooks.setMapVisible(false);
       this.frame.removeAttribute("src");
-      await this.hooks.leaveFloor();
-      this.hooks.highlight(floor);
+      this.frame.removeAttribute("srcdoc");
+      this.loadedMapKey = null;
+      this.stage.classList.remove("is-preparing");
+      this.stage.inert = true;
+      this.currentFloor = floor;
+      await this.hooks.focusFloor(floor);
       this.showSummary(floor);
       this.panelError(error.message);
+      const notice = el("p", error.message, "bridge-error");
+      notice.setAttribute("role", "alert");
+      document.getElementById("floorPopoverContent").append(notice);
       this.hooks.status(error.message, true);
     } finally {
       this.setBusy(false);
@@ -565,16 +705,32 @@ export class EmpreendimentoMapBridge {
       });
       this.mapShown = false;
       this.app.classList.remove("map-open");
-      this.frame.removeAttribute("src");
-      this.expectedLink = null;
-      await this.hooks.leaveFloor();
-      this.currentFloor = null;
-      this.showIntro();
+      document.querySelector(".top .spatial-mark").textContent = "3D";
+      if (this.focusOnReturn) {
+        if (floor) await this.hooks.focusFloor(floor);
+        else await this.hooks.leaveFloor();
+        this.focusOnReturn = false;
+      }
+      this.buildingButton.setAttribute("aria-pressed", "true");
+      this.mapButton.setAttribute("aria-pressed", "false");
+      document.getElementById("backToProject").textContent =
+        "← Voltar ao empreendimento";
+      document.getElementById("modeLabel").textContent = floor
+        ? `Navegação 3D · ${floor.id.replace(/_/g, " ")}`
+        : "Empreendimento completo";
+      if (floor) this.showSummary(floor);
+      else this.showIntro();
+      this.mapButton.focus();
+      this.hooks.status(
+        floor
+          ? `Navegação 3D · ${floor.id.replace(/_/g, " ")}`
+          : "Este subtipo ainda não possui vínculo com um pavimento do modelo 3D.",
+      );
     } finally {
       this.returning = false;
       this.setBusy(false);
     }
-    if (editLink) {
+    if (editLink && floor) {
       this.currentFloor = floor;
       this.showSummary(floor);
       this.showLinkDialog(floor);

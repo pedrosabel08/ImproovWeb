@@ -1,6 +1,14 @@
 /* PDF.js + SVG. Geometria relativa à área útil, independente de zoom e resolução.
  * Extraído da abordagem do MapaCompatibilizacao, com viewport e render próprios. */
 (() => {
+  // A mesma identidade visual é usada na planta, na lista e no painel.
+  window.plantaEnvironmentColor = (id) => {
+    const hue = (Number(id) * 137.508) % 360;
+    return {
+      color: `hsl(${hue.toFixed(2)} 70% 48%)`,
+      ink: `hsl(${hue.toFixed(2)} 72% 27%)`,
+    };
+  };
   const ns = "http://www.w3.org/2000/svg";
   const svgElement = (tag, attributes = {}) => {
     const element = document.createElementNS(ns, tag);
@@ -10,9 +18,10 @@
     return element;
   };
   class PlantaViewer extends EventTarget {
-    constructor(container) {
+    constructor(container, { fitPadding = 20 } = {}) {
       super();
       this.container = container;
+      this.fitPadding = fitPadding;
       this.surface = container.querySelector(".pv-surface");
       this.canvas = container.querySelector("canvas");
       this.svg = container.querySelector("svg");
@@ -157,7 +166,8 @@
       }
       this.document = document;
       const pageNumber = Number(configuration.pagina || 1);
-      if (pageNumber < 1 || pageNumber > document.numPages) throw new Error('Página não encontrada no documento.');
+      if (pageNumber < 1 || pageNumber > document.numPages)
+        throw new Error("Página não encontrada no documento.");
       const page = await document.getPage(pageNumber);
       if (generation !== this.generation) return false;
       this.page = page;
@@ -168,7 +178,9 @@
       const optionalContent = await document.getOptionalContentConfig();
       if (generation !== this.generation) return false;
       this.optionalContent = optionalContent;
-      this.layerCatalog = Object.entries(optionalContent.getGroups() || {}).map(([id, group]) => ({ id, name: group.name || id }));
+      this.layerCatalog = Object.entries(optionalContent.getGroups() || {}).map(
+        ([id, group]) => ({ id, name: group.name || id }),
+      );
       this.setLayers(configuration.layers);
       this.setCrop(configuration.area_util);
       this.surface.hidden = false;
@@ -192,7 +204,7 @@
       this.layerCatalog = [];
       this.crop = null;
       this.area = null;
-      this.surface.style.clipPath = '';
+      this.surface.style.clipPath = "";
       this.rectangleMode = false;
       this.environments = [];
       this.regions.replaceChildren();
@@ -224,7 +236,14 @@
       const task = this.page.render({
         canvasContext: buffer.getContext("2d"),
         viewport,
-        transform: [1, 0, 0, 1, -crop.x * viewport.width, -crop.y * viewport.height],
+        transform: [
+          1,
+          0,
+          0,
+          1,
+          -crop.x * viewport.width,
+          -crop.y * viewport.height,
+        ],
         optionalContentConfigPromise: Promise.resolve(this.optionalContent),
       });
       this.renderTask = task;
@@ -241,36 +260,72 @@
       }
     }
     getLayers() {
-      return { version: 1, groups: (this.layerCatalog || []).map(layer => ({ ...layer, visible: this.optionalContent.getGroup(layer.id).visible })) };
+      return {
+        version: 1,
+        groups: (this.layerCatalog || []).map((layer) => ({
+          ...layer,
+          visible: this.optionalContent.getGroup(layer.id).visible,
+        })),
+      };
     }
     setLayers(configuration) {
       this.renderTask?.cancel();
-      const visibility = new Map((configuration?.groups || []).map(group => [group.id, group.visible]));
-      (this.layerCatalog || []).forEach(layer => this.optionalContent.setVisibility(layer.id, visibility.get(layer.id) ?? true));
+      const visibility = new Map(
+        (configuration?.groups || []).map((group) => [group.id, group.visible]),
+      );
+      (this.layerCatalog || []).forEach((layer) =>
+        this.optionalContent.setVisibility(
+          layer.id,
+          visibility.get(layer.id) ?? true,
+        ),
+      );
     }
     setCrop(crop = null) {
       if (!this.page) return;
       this.renderTask?.cancel();
-      this.area = crop?.points ? crop : (crop ? { points: [[crop.x,crop.y],[crop.x+crop.width,crop.y],[crop.x+crop.width,crop.y+crop.height],[crop.x,crop.y+crop.height]] } : null);
+      this.area = crop?.points
+        ? crop
+        : crop
+          ? {
+              points: [
+                [crop.x, crop.y],
+                [crop.x + crop.width, crop.y],
+                [crop.x + crop.width, crop.y + crop.height],
+                [crop.x, crop.y + crop.height],
+              ],
+            }
+          : null;
       const points = this.area?.points;
-      const xs=points?.map(p=>p[0]), ys=points?.map(p=>p[1]);
-      this.crop = points ? { x:Math.min(...xs), y:Math.min(...ys), width:Math.max(...xs)-Math.min(...xs), height:Math.max(...ys)-Math.min(...ys) } : null;
+      const xs = points?.map((p) => p[0]),
+        ys = points?.map((p) => p[1]);
+      this.crop = points
+        ? {
+            x: Math.min(...xs),
+            y: Math.min(...ys),
+            width: Math.max(...xs) - Math.min(...xs),
+            height: Math.max(...ys) - Math.min(...ys),
+          }
+        : null;
       this.updateDisplayGeometry();
       this.fit();
     }
     rotate(degrees = 90) {
       if (!this.page) return;
-      this.rotation = ((this.rotation + degrees) % 360 + 360) % 360;
+      this.rotation = (((this.rotation + degrees) % 360) + 360) % 360;
       this.updateDisplayGeometry();
       this.setEnvironments(this.environments);
       this.fit();
     }
     rotatePagePoint(point) {
       switch (this.rotation) {
-        case 90: return [1 - point[1], point[0]];
-        case 180: return [1 - point[0], 1 - point[1]];
-        case 270: return [point[1], 1 - point[0]];
-        default: return point;
+        case 90:
+          return [1 - point[1], point[0]];
+        case 180:
+          return [1 - point[0], 1 - point[1]];
+        case 270:
+          return [point[1], 1 - point[0]];
+        default:
+          return point;
       }
     }
     updateDisplayGeometry() {
@@ -280,10 +335,12 @@
         [source.x + source.width, source.y],
         [source.x + source.width, source.y + source.height],
         [source.x, source.y + source.height],
-      ].map(point => this.rotatePagePoint(point));
-      const xs = corners.map(point => point[0]), ys = corners.map(point => point[1]);
+      ].map((point) => this.rotatePagePoint(point));
+      const xs = corners.map((point) => point[0]),
+        ys = corners.map((point) => point[1]);
       this.displayCrop = {
-        x: Math.min(...xs), y: Math.min(...ys),
+        x: Math.min(...xs),
+        y: Math.min(...ys),
         width: Math.max(...xs) - Math.min(...xs),
         height: Math.max(...ys) - Math.min(...ys),
       };
@@ -294,27 +351,49 @@
       this.height = pageHeight * this.displayCrop.height;
       this.surface.style.width = `${this.width}px`;
       this.surface.style.height = `${this.height}px`;
-      this.svg.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
+      this.svg.setAttribute("viewBox", `0 0 ${this.width} ${this.height}`);
       this.surface.style.clipPath = this.area
-        ? 'polygon('+this.area.points.map(point=>{
-          const rotated=this.rotatePagePoint(point);
-          return ((rotated[0]-this.displayCrop.x)/this.displayCrop.width*100)+'% '+((rotated[1]-this.displayCrop.y)/this.displayCrop.height*100)+'%';
-        }).join(',')+')'
-        : '';
+        ? "polygon(" +
+          this.area.points
+            .map((point) => {
+              const rotated = this.rotatePagePoint(point);
+              return (
+                ((rotated[0] - this.displayCrop.x) / this.displayCrop.width) *
+                  100 +
+                "% " +
+                ((rotated[1] - this.displayCrop.y) / this.displayCrop.height) *
+                  100 +
+                "%"
+              );
+            })
+            .join(",") +
+          ")"
+        : "";
     }
     toDisplayPixels(point) {
       const crop = this.crop || { x: 0, y: 0, width: 1, height: 1 };
-      const pagePoint = [crop.x + point[0] * crop.width, crop.y + point[1] * crop.height];
+      const pagePoint = [
+        crop.x + point[0] * crop.width,
+        crop.y + point[1] * crop.height,
+      ];
       const rotated = this.rotatePagePoint(pagePoint);
       return [
-        ((rotated[0] - this.displayCrop.x) / this.displayCrop.width) * this.width,
-        ((rotated[1] - this.displayCrop.y) / this.displayCrop.height) * this.height,
+        ((rotated[0] - this.displayCrop.x) / this.displayCrop.width) *
+          this.width,
+        ((rotated[1] - this.displayCrop.y) / this.displayCrop.height) *
+          this.height,
       ];
     }
     containsPoint(point) {
-      if (!point.every(value=>value>=0 && value<=1)) return false;
+      if (!point.every((value) => value >= 0 && value <= 1)) return false;
       if (!this.area) return true;
-      return window.plantaPointInPolygon([this.crop.x+point[0]*this.crop.width,this.crop.y+point[1]*this.crop.height],this.area.points);
+      return window.plantaPointInPolygon(
+        [
+          this.crop.x + point[0] * this.crop.width,
+          this.crop.y + point[1] * this.crop.height,
+        ],
+        this.area.points,
+      );
     }
     transform() {
       this.surface.style.transform = `translate(${this.x}px,${this.y}px) scale(${this.scale})`;
@@ -335,9 +414,17 @@
     }
     fit() {
       if (!this.page) return;
+      const padding = Math.min(
+        this.fitPadding,
+        Math.max(
+          12,
+          Math.min(this.container.clientWidth, this.container.clientHeight) *
+            0.08,
+        ),
+      );
       this.scale = Math.min(
-        (this.container.clientWidth - 40) / this.width,
-        (this.container.clientHeight - 40) / this.height,
+        (this.container.clientWidth - padding * 2) / this.width,
+        (this.container.clientHeight - padding * 2) / this.height,
       );
       this.scale = Math.max(0.001, this.scale);
       this.x = (this.container.clientWidth - this.width * this.scale) / 2;
@@ -387,13 +474,23 @@
       ];
       let pagePoint;
       switch (this.rotation) {
-        case 90: pagePoint = [point[1], 1 - point[0]]; break;
-        case 180: pagePoint = [1 - point[0], 1 - point[1]]; break;
-        case 270: pagePoint = [1 - point[1], point[0]]; break;
-        default: pagePoint = point;
+        case 90:
+          pagePoint = [point[1], 1 - point[0]];
+          break;
+        case 180:
+          pagePoint = [1 - point[0], 1 - point[1]];
+          break;
+        case 270:
+          pagePoint = [1 - point[1], point[0]];
+          break;
+        default:
+          pagePoint = point;
       }
       const crop = this.crop || { x: 0, y: 0, width: 1, height: 1 };
-      return [(pagePoint[0] - crop.x) / crop.width, (pagePoint[1] - crop.y) / crop.height];
+      return [
+        (pagePoint[0] - crop.x) / crop.width,
+        (pagePoint[1] - crop.y) / crop.height,
+      ];
     }
     toScreen(point) {
       const rect = this.surface.getBoundingClientRect();
@@ -410,7 +507,7 @@
       this.container.setPointerCapture(e.pointerId);
       this.pointers.set(e.pointerId, [e.clientX, e.clientY]);
       if (this.pointers.size === 2) {
-        this.dispatchEvent(new Event('rectanglecancel'));
+        this.dispatchEvent(new Event("rectanglecancel"));
         this.drag.moved = true;
         this.drag.pinched = true;
         this.pinchDistance = this.pointerDistance();
@@ -425,15 +522,20 @@
         pan: !this.drawing || e.button === 1 || this.space,
         target: e.target,
       };
-      const vertex=e.target.closest?.('[data-vertex]');
+      const vertex = e.target.closest?.("[data-vertex]");
       if (this.drawing && vertex && !this.drag.pan) {
-        this.drag.vertex=Number(vertex.dataset.vertex);
-        this.dispatchEvent(new CustomEvent('vertexstart',{detail:this.drag.vertex}));
+        this.drag.vertex = Number(vertex.dataset.vertex);
+        this.dispatchEvent(
+          new CustomEvent("vertexstart", { detail: this.drag.vertex }),
+        );
       }
       if (this.rectangleMode && !this.drag.pan) {
         const point = this.toPoint(e.clientX, e.clientY);
-        this.drag.rectangle = point.every(value => value >= 0 && value <= 1);
-        if (this.drag.rectangle) this.dispatchEvent(new CustomEvent('rectanglestart', { detail: point }));
+        this.drag.rectangle = point.every((value) => value >= 0 && value <= 1);
+        if (this.drag.rectangle)
+          this.dispatchEvent(
+            new CustomEvent("rectanglestart", { detail: point }),
+          );
       }
     }
     pointerDistance() {
@@ -464,18 +566,34 @@
         this.fitted = false;
         this.transform();
       }
-      if (this.drag.rectangle && !this.drag.pinched) this.dispatchEvent(new CustomEvent('rectanglemove', {
-        detail: this.toPoint(e.clientX, e.clientY).map(value => Math.max(0, Math.min(1, value)))
-      }));
-      if (this.drag.vertex!==undefined && !this.drag.pinched) this.dispatchEvent(new CustomEvent('vertexmove',{detail:{index:this.drag.vertex,point:this.toPoint(e.clientX,e.clientY).map(v=>Math.max(0,Math.min(1,v)))}}));
+      if (this.drag.rectangle && !this.drag.pinched)
+        this.dispatchEvent(
+          new CustomEvent("rectanglemove", {
+            detail: this.toPoint(e.clientX, e.clientY).map((value) =>
+              Math.max(0, Math.min(1, value)),
+            ),
+          }),
+        );
+      if (this.drag.vertex !== undefined && !this.drag.pinched)
+        this.dispatchEvent(
+          new CustomEvent("vertexmove", {
+            detail: {
+              index: this.drag.vertex,
+              point: this.toPoint(e.clientX, e.clientY).map((v) =>
+                Math.max(0, Math.min(1, v)),
+              ),
+            },
+          }),
+        );
     }
     pointerUp(e) {
       if (!this.pointers.has(e.pointerId)) return;
       this.pointers.delete(e.pointerId);
-      if (this.drag?.rectangle && !this.drag.pinched) this.dispatchEvent(new Event('rectangleend'));
+      if (this.drag?.rectangle && !this.drag.pinched)
+        this.dispatchEvent(new Event("rectangleend"));
       if (
         this.drag &&
-        this.drag.vertex===undefined &&
+        this.drag.vertex === undefined &&
         !this.rectangleMode &&
         !this.drag.moved &&
         !this.drag.pinched &&
@@ -499,7 +617,7 @@
         this.container.releasePointerCapture(e.pointerId);
     }
     cancelPointers() {
-      this.dispatchEvent(new Event('rectanglecancel'));
+      this.dispatchEvent(new Event("rectanglecancel"));
       this.pointers.clear();
       this.drag = null;
       this.pinchDistance = 0;
@@ -507,7 +625,11 @@
     setDrawing(active) {
       this.drawing = active;
       this.container.classList.toggle("is-drawing", active);
-      this.regions.querySelectorAll('[data-environment]').forEach(region => region.setAttribute('tabindex', active ? '-1' : '0'));
+      this.regions
+        .querySelectorAll("[data-environment]")
+        .forEach((region) =>
+          region.setAttribute("tabindex", active ? "-1" : "0"),
+        );
       this.dispatchEvent(new CustomEvent("environmenthover", { detail: null }));
     }
     setEnvironments(environments) {
@@ -520,13 +642,16 @@
           class: "pv-region",
           tabindex: 0,
           role: "button",
-          "aria-label": `${environment.nome}, ${environment.imagem_ids.length} ${environment.imagem_ids.length === 1 ? 'imagem' : 'imagens'}`,
+          "aria-label": `${environment.nome}, ${environment.imagem_ids.length} ${environment.imagem_ids.length === 1 ? "imagem" : "imagens"}`,
         });
-        const displayPoints = points.map(point => this.toDisplayPixels(point));
+        const colors = window.plantaEnvironmentColor(environment.id);
+        group.style.setProperty("--environment-color", colors.color);
+        group.style.setProperty("--environment-ink", colors.ink);
+        const displayPoints = points.map((point) =>
+          this.toDisplayPixels(point),
+        );
         const polygon = svgElement("polygon", {
-          points: displayPoints
-            .map((p) => `${p[0]},${p[1]}`)
-            .join(" "),
+          points: displayPoints.map((p) => `${p[0]},${p[1]}`).join(" "),
           "vector-effect": "non-scaling-stroke",
         });
         const title = svgElement("title");
@@ -534,7 +659,10 @@
         polygon.append(title);
         group.append(polygon);
         const center = displayPoints.reduce(
-          (a, p) => [a[0] + p[0] / displayPoints.length, a[1] + p[1] / displayPoints.length],
+          (a, p) => [
+            a[0] + p[0] / displayPoints.length,
+            a[1] + p[1] / displayPoints.length,
+          ],
           [0, 0],
         );
         const label = svgElement("text", {
@@ -545,19 +673,45 @@
           "font-size": 12 / this.scale,
         });
         label.textContent = environment.nome;
-        group.append(label);
+        group.append(
+          svgElement("rect", {
+            class: "pv-region-label",
+            "vector-effect": "non-scaling-stroke",
+          }),
+          label,
+        );
         this.regions.append(group);
       });
       this.updateLabels();
       this.highlight(this.selectedId);
     }
     updateLabels() {
-      this.regions.querySelectorAll('text').forEach(label => {
-        label.setAttribute('font-size', 12 / this.scale);
-        label.style.display = '';
-        const available = label.parentElement.querySelector('polygon').getBBox().width * this.scale - 12;
+      this.regions.querySelectorAll("text").forEach((label) => {
+        label.setAttribute("font-size", 12 / this.scale);
+        label.style.display = "";
+        const group = label.parentElement;
+        const available =
+          group.querySelector("polygon").getBBox().width * this.scale - 12;
         // Nomes longos permanecem no tooltip, painel e aria-label das áreas pequenas.
-        label.style.display = label.getComputedTextLength() * this.scale > available ? 'none' : '';
+        const width = label.getComputedTextLength();
+        const hidden =
+          width * this.scale > available &&
+          !group.classList.contains("is-selected") &&
+          !group.classList.contains("is-hovered");
+        label.style.display = hidden ? "none" : "";
+        const background = group.querySelector(".pv-region-label");
+        background.style.display = hidden ? "none" : "";
+        background.setAttribute(
+          "x",
+          Number(label.getAttribute("x")) - width / 2 - 6 / this.scale,
+        );
+        background.setAttribute(
+          "y",
+          Number(label.getAttribute("y")) - 11 / this.scale,
+        );
+        background.setAttribute("width", width + 12 / this.scale);
+        background.setAttribute("height", 22 / this.scale);
+        background.setAttribute("rx", 4 / this.scale);
       });
     }
     select(id) {
@@ -575,6 +729,45 @@
             Number(g.dataset.environment) === id,
           ),
         );
+      const selected = [...this.regions.children].find(
+        (g) => Number(g.dataset.environment) === id,
+      );
+      if (selected) this.regions.append(selected);
+      this.updateLabels();
+    }
+    hoverEnvironment(id) {
+      this.regions
+        .querySelectorAll("[data-environment]")
+        .forEach((g) =>
+          g.classList.toggle(
+            "is-hovered",
+            Number(g.dataset.environment) === id,
+          ),
+        );
+      this.updateLabels();
+    }
+    focusEnvironment(id) {
+      const region = [...this.regions.children].find(
+        (g) => Number(g.dataset.environment) === id,
+      );
+      if (!region || !this.page || this.drawing) return;
+      const box = region.querySelector("polygon").getBBox(),
+        margin = 24;
+      const left = this.x + box.x * this.scale,
+        top = this.y + box.y * this.scale;
+      if (
+        left >= margin &&
+        top >= margin &&
+        left + box.width * this.scale <= this.container.clientWidth - margin &&
+        top + box.height * this.scale <= this.container.clientHeight - margin
+      )
+        return;
+      this.x =
+        this.container.clientWidth / 2 - (box.x + box.width / 2) * this.scale;
+      this.y =
+        this.container.clientHeight / 2 - (box.y + box.height / 2) * this.scale;
+      this.fitted = false;
+      this.transform();
     }
     hover(e) {
       if (this.drawing || this.drag) return;
@@ -599,11 +792,24 @@
   window.PlantaViewer = PlantaViewer;
   window.plantaSvgElement = svgElement;
   window.plantaPointInPolygon = (p, points) => {
-    let inside=false;
-    for(let i=0,j=points.length-1;i<points.length;j=i++) {
-      const a=points[j],b=points[i],cross=(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);
-      if(Math.abs(cross)<1e-8 && p[0]>=Math.min(a[0],b[0])-1e-8 && p[0]<=Math.max(a[0],b[0])+1e-8 && p[1]>=Math.min(a[1],b[1])-1e-8 && p[1]<=Math.max(a[1],b[1])+1e-8)return true;
-      if((a[1]>p[1])!==(b[1]>p[1]) && p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])inside=!inside;
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const a = points[j],
+        b = points[i],
+        cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+      if (
+        Math.abs(cross) < 1e-8 &&
+        p[0] >= Math.min(a[0], b[0]) - 1e-8 &&
+        p[0] <= Math.max(a[0], b[0]) + 1e-8 &&
+        p[1] >= Math.min(a[1], b[1]) - 1e-8 &&
+        p[1] <= Math.max(a[1], b[1]) + 1e-8
+      )
+        return true;
+      if (
+        a[1] > p[1] !== b[1] > p[1] &&
+        p[0] < ((b[0] - a[0]) * (p[1] - a[1])) / (b[1] - a[1]) + a[0]
+      )
+        inside = !inside;
     }
     return inside;
   };

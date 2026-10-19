@@ -1,0 +1,10 @@
+# Apache com mod_php (o VPS com PHP-FPM usa .user.ini).
+<Files ".user.ini">
+    Require all denied
+</Files>
+<IfModule php_module>
+    php_value upload_max_filesize 500M
+    php_value post_max_size 512M
+    php_value max_input_time 600
+    php_value max_execution_time 300
+</IfModule>

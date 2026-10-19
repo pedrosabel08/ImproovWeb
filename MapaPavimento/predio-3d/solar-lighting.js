@@ -1,11 +1,22 @@
 import * as THREE from "three";
 import { solarAt, solarNow, solarConfigError } from "./solar-position.mjs";
-import { fitSolarShadow, boxCorners } from "./solar-shadow.js";
-import { SolarProjection } from "./solar-projection.js";
+import { fitSolarShadow } from "./solar-shadow.js";
+import { createShadowCatcher, fitShadowCatcher } from "./shadow-catcher.js";
+import { SolarProjection } from "./solar-projection.js?v=20261016-visible-bounds";
+import { solarGlowTexture, SOLAR_ORBIT_SCALE } from "./solar-visuals.js";
 
 /** Uma única DirectionalLight: navegação quando desativado, Sol astronômico quando ativado. */
 export class SolarLighting {
-  constructor({ scene, light, ambient, viewport, onRestore, onConfigure, getModel = () => null }) {
+  constructor({
+    scene,
+    light,
+    ambient,
+    viewport,
+    onRestore,
+    onConfigure,
+    onCompassChange = () => {},
+    getModel = () => null,
+  }) {
     Object.assign(this, {
       scene,
       light,
@@ -13,15 +24,44 @@ export class SolarLighting {
       viewport,
       onRestore,
       onConfigure,
+      onCompassChange,
       getModel,
     });
     this.enabled = false;
+    this.preferredEnabled = true;
+    this.navigationColor = light.color.clone();
     this.panel = document.createElement("section");
     this.panel.id = "solarPanel";
     this.panel.className = "solar-panel";
     this.panel.setAttribute("aria-labelledby", "solarTitle");
-    this.panel.innerHTML =
-      '<header><h2 id="solarTitle">☀ Sol</h2><label class="solar-toggle"><input id="solarEnabled" type="checkbox" disabled> Ativar Sol</label></header><div id="solarControls" hidden><div class="solar-fields"><label>Data<input id="solarDate" type="date" required></label><label>Horário<input id="solarTime" type="time" step="60" required></label></div><label class="solar-slider-label" for="solarRange">Horário do empreendimento <output id="solarClock" for="solarRange"></output></label><input id="solarRange" type="range" min="0" max="1435" step="5" value="720" aria-label="Horário do Sol" aria-describedby="solarZone"><div class="solar-ticks" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:55</span></div><button type="button" class="btn" id="solarNow">Agora</button><p id="solarLocalDate" class="solar-date"></p><dl class="solar-readings"><div><dt>Azimute</dt><dd id="solarAzimuth">—</dd></div><div><dt>Elevação</dt><dd id="solarAltitude">—</dd></div></dl><p id="solarZone" class="solar-meta"></p><p id="solarNorth" class="solar-meta"></p><div class="solar-projection-options" role="group" aria-label="Projeção solar no 3D"><label><input id="solarProjectionEnabled" type="checkbox" aria-describedby="solarProjectionHelp"> Mostrar projeção solar</label><label><input id="solarPathEnabled" type="checkbox" aria-describedby="solarProjectionHelp"> Mostrar trajetória do dia</label><p id="solarProjectionHelp" class="solar-meta" hidden>Setas: sentido da luz. Pontos: primeiro bloqueio opaco. Curva: trajetória do dia.</p><p id="solarProjectionStatus" class="solar-meta" role="status" aria-live="polite" hidden></p></div></div><p id="solarStatus" class="solar-status" role="status" aria-live="polite">Carregando configurações espaciais…</p><button type="button" class="btn" id="solarConfigure" hidden>Configurar localização e Norte</button>';
+    this.panel.innerHTML = `
+      <header><h2 id="solarTitle"><span class="solar-title-icon" aria-hidden="true">☀</span> Sol</h2>
+        <label class="solar-toggle"><input id="solarEnabled" type="checkbox" disabled> Ativar Sol</label></header>
+      <div id="solarControls" hidden>
+        <div class="solar-fields">
+          <label>Data<input id="solarDate" type="date" required></label>
+          <label>Horário<input id="solarTime" type="time" step="60" required></label>
+        </div>
+        <label class="solar-slider-label" for="solarRange">Horário do empreendimento <output id="solarClock" for="solarRange"></output></label>
+        <input id="solarRange" type="range" min="0" max="1435" step="5" value="720" aria-label="Horário do Sol" aria-describedby="solarZone">
+        <div class="solar-ticks" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:55</span></div>
+        <div class="solar-moment"><p id="solarLocalDate" class="solar-date"></p><button type="button" class="btn" id="solarNow">Agora</button></div>
+        <dl class="solar-readings"><div><dt>Azimute</dt><dd id="solarAzimuth">—</dd></div><div><dt>Elevação</dt><dd id="solarAltitude">—</dd></div></dl>
+        <p id="solarZone" class="solar-meta"></p><p id="solarNorth" class="solar-meta"></p>
+      </div>
+      <p id="solarStatus" class="solar-status" role="status" aria-live="polite">Carregando configurações espaciais…</p>
+      <fieldset id="solarVisualOptions" class="solar-projection-options" hidden>
+        <legend>Opções visuais</legend>
+        <label><input id="solarProjectionEnabled" type="checkbox" aria-describedby="solarProjectionHelp"> Mostrar projeção solar</label>
+        <label><input id="solarPathEnabled" type="checkbox" aria-describedby="solarProjectionHelp"> Mostrar trajetória do dia</label>
+        <label><input id="solarCompassEnabled" type="checkbox" aria-describedby="solarCompassHelp"> Mostrar bússola do entorno</label>
+        <p id="solarCompassHelp" class="solar-meta">Orientada pelo Norte salvo da obra.</p>
+        <details class="solar-technical"><summary>Sobre a visualização</summary>
+          <p id="solarProjectionHelp" class="solar-meta" hidden>Raios: direção da luz. Pontos: primeiro bloqueio. Arco: trajetória do dia no horário local da obra.</p>
+          <p id="solarProjectionStatus" class="solar-meta" role="status" aria-live="polite" hidden></p>
+        </details>
+      </fieldset>
+      <button type="button" class="btn" id="solarConfigure" hidden>Configurar localização e Norte</button>`;
     document.querySelector(".right .head").after(this.panel);
     const select = (id) => this.panel.querySelector("#" + id);
     this.toggle = select("solarEnabled");
@@ -34,20 +74,26 @@ export class SolarLighting {
     this.configure = select("solarConfigure");
     this.projectionToggle = select("solarProjectionEnabled");
     this.pathToggle = select("solarPathEnabled");
+    this.compassToggle = select("solarCompassEnabled");
+    this.projectionToggle.checked = false;
+    this.pathToggle.checked = true;
     this.projectionHelp = select("solarProjectionHelp");
     this.projectionStatus = select("solarProjectionStatus");
-    this.projection = new SolarProjection(scene, viewport, state => {
+    this.projection = new SolarProjection(scene, viewport, (state) => {
       this.rayStatus = state;
       this.updateProjectionStatus();
     });
-    this.projectionToggle.addEventListener("change", () => this.refreshProjection());
+    this.projectionToggle.addEventListener("change", () =>
+      this.refreshProjection(),
+    );
     this.pathToggle.addEventListener("change", () => this.refreshProjection());
+    this.compassToggle.addEventListener("change", () =>
+      this.refreshProjection(),
+    );
     this.toggle.addEventListener("change", () => {
       this.enabled = this.toggle.checked;
-      this.body.hidden = !this.enabled;
-      document
-        .querySelector(".app")
-        .classList.toggle("solar-enabled", this.enabled);
+      this.preferredEnabled = this.enabled;
+      this.syncEnabled();
       this.relight();
     });
     this.date.addEventListener("input", () => this.relight());
@@ -65,10 +111,31 @@ export class SolarLighting {
       this.relight();
     });
     this.configure.addEventListener("click", () => this.onConfigure());
-    this.marker = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 16, 12),
-      new THREE.MeshBasicMaterial({ color: 0xffdb8b, toneMapped: false }),
+    this.marker = new THREE.Group();
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 24, 16),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff5cc,
+        toneMapped: false,
+        depthWrite: false,
+      }),
     );
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: solarGlowTexture(true),
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    halo.scale.set(13, 13, 1);
+    this.marker.add(core, halo);
+    this.marker.traverse((object) => {
+      object.raycast = () => {};
+      object.castShadow = object.receiveShadow = false;
+    });
     this.marker.name = "Indicador visual do Sol";
     this.marker.visible = false;
     this.marker.castShadow = this.marker.receiveShadow = false;
@@ -76,89 +143,58 @@ export class SolarLighting {
     scene.add(this.marker);
     this.markerLabel = document.createElement("span");
     this.markerLabel.className = "solar-marker-label";
-    this.markerLabel.textContent = "☀";
     this.markerLabel.setAttribute("role", "img");
     this.markerLabel.hidden = true;
     viewport.append(this.markerLabel);
-    // Receptor local neutro para visualizar sombras mesmo em GLBs sem terreno.
-    // Sua extensão acompanha o edifício; não é chão infinito nem área de estudo solar.
-    this.receiver = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshStandardMaterial({
-        color: 0x4a5055,
-        roughness: 1,
-        metalness: 0,
-      }),
-    );
-    this.receiver.rotation.x = -Math.PI / 2;
-    this.receiver.receiveShadow = true;
-    this.receiver.castShadow = false;
-    this.receiver.raycast = () => {};
-    this.receiver.visible = false;
+    this.receiver = createShadowCatcher();
     scene.add(this.receiver);
     this.light.shadow.autoUpdate = false;
     this.viewPoint = new THREE.Vector3();
   }
   setBounds(bounds) {
+    this.projection.setModel(
+      bounds && !bounds.isEmpty() ? this.getModel() : null,
+      bounds,
+    );
+    this.setVisibleBounds(bounds);
+  }
+  setVisibleBounds(bounds) {
     this.bounds = bounds && !bounds.isEmpty() ? bounds.clone() : null;
-    this.projection.setModel(this.bounds ? this.getModel() : null, this.bounds);
-    this.projectionToggle.checked = this.pathToggle.checked = false;
+    this.projection.setBounds(this.bounds);
     if (this.bounds) {
       this.center = this.bounds.getCenter(new THREE.Vector3());
       const size = this.bounds.getSize(new THREE.Vector3());
       this.radius = Math.max(size.length() / 2, 0.5);
-      const half = Math.max(size.x, size.z, size.y, 1) * 1.25;
-      const y = this.bounds.min.y - this.radius * 0.0005;
-      this.receiver.position.set(this.center.x, y, this.center.z);
-      this.receiver.scale.set(half * 2, half * 2, 1);
-      this.receiverBounds = new THREE.Box3(
-        new THREE.Vector3(this.center.x - half, y, this.center.z - half),
-        new THREE.Vector3(this.center.x + half, y, this.center.z + half),
-      );
-      this.marker.scale.setScalar(this.radius * 0.018);
+      this.fitReceiver(new THREE.Vector3(0, 1, 0));
+      this.marker.scale.setScalar(this.radius * 0.032);
+      this.enabled =
+        this.preferredEnabled &&
+        !!this.config &&
+        !this.loadError &&
+        !solarConfigError(this.config);
     } else {
       this.enabled = false;
       this.toggle.checked = false;
       this.body.hidden = true;
       document.querySelector(".app").classList.remove("solar-enabled");
     }
+    this.syncEnabled();
     this.relight();
   }
+  syncEnabled() {
+    this.toggle.checked = this.enabled;
+    this.body.hidden = !this.enabled;
+    this.panel.querySelector("#solarVisualOptions").hidden = !this.enabled;
+    document
+      .querySelector(".app")
+      .classList.toggle("solar-enabled", this.enabled);
+  }
   fitReceiver(direction) {
-    const y = this.bounds.min.y - this.radius * 0.0005;
-    const footprint = new THREE.Box3(
-      new THREE.Vector3(this.bounds.min.x, y, this.bounds.min.z),
-      new THREE.Vector3(this.bounds.max.x, y, this.bounds.max.z),
+    this.receiverBounds = fitShadowCatcher(
+      this.receiver,
+      this.bounds,
+      direction,
     );
-    if (direction.y > 0) {
-      // Projeta os oito cantos até o chão na direção oposta à luz. Assim 08h/16h
-      // não cortam sombras longas na borda de um receptor dimensionado só pela planta.
-      const reach = this.radius * 10;
-      for (const corner of boxCorners(this.bounds)) {
-        const travel = (corner.y - y) / direction.y;
-        const x = THREE.MathUtils.clamp(
-          corner.x - direction.x * travel,
-          this.center.x - reach,
-          this.center.x + reach,
-        );
-        const z = THREE.MathUtils.clamp(
-          corner.z - direction.z * travel,
-          this.center.z - reach,
-          this.center.z + reach,
-        );
-        footprint.expandByPoint(new THREE.Vector3(x, y, z));
-      }
-    }
-    const padding = this.radius * 0.15;
-    footprint.min.x -= padding;
-    footprint.max.x += padding;
-    footprint.min.z -= padding;
-    footprint.max.z += padding;
-    const center = footprint.getCenter(new THREE.Vector3()),
-      size = footprint.getSize(new THREE.Vector3());
-    this.receiver.position.copy(center);
-    this.receiver.scale.set(size.x, size.z, 1);
-    this.receiverBounds = footprint;
   }
   setConfig(config, loadError = "") {
     const changed =
@@ -168,13 +204,16 @@ export class SolarLighting {
         config.timezone !== this.config.timezone);
     this.config = config ? { ...config } : null;
     this.loadError = loadError;
-    if (!config || solarConfigError(config)) {
+    if (!config || loadError || solarConfigError(config)) {
       this.enabled = false;
       this.toggle.checked = false;
       this.body.hidden = true;
       document.querySelector(".app").classList.remove("solar-enabled");
     }
     if (changed && !solarConfigError(config)) this.now();
+    if (config && !loadError && !solarConfigError(config) && this.bounds)
+      this.enabled = this.preferredEnabled;
+    this.syncEnabled();
     this.relight();
   }
   setSuspended(value) {
@@ -190,11 +229,14 @@ export class SolarLighting {
   navigation() {
     this.result = null;
     this.projection.hide();
+    this.onCompassChange(false);
+    this.compassToggle.disabled = true;
     this.projectionToggle.disabled = this.pathToggle.disabled = true;
     this.projectionHelp.hidden = this.projectionStatus.hidden = true;
     this.marker.visible = this.receiver.visible = false;
     this.markerLabel.hidden = true;
     this.light.intensity = 2.25;
+    this.light.color.copy(this.navigationColor);
     this.ambient.intensity = 1.65;
     if (this.bounds) this.onRestore(this.bounds);
   }
@@ -231,6 +273,7 @@ export class SolarLighting {
       return;
     }
     this.result = result;
+    this.light.color.set(0xffe4b3);
     const direction = new THREE.Vector3(
       result.direction.x,
       result.direction.y,
@@ -243,11 +286,11 @@ export class SolarLighting {
     this.light.intensity = result.intensity;
     this.ambient.intensity = 0.45;
     this.fitReceiver(direction);
-    this.receiver.visible = true;
+    this.receiver.visible = result.altitude > 0;
     this.marker.visible = result.altitude > 0;
     this.marker.position
       .copy(this.center)
-      .addScaledVector(direction, this.radius * 1.12);
+      .addScaledVector(direction, this.radius * SOLAR_ORBIT_SCALE);
     fitSolarShadow(this.light, this.bounds, this.receiverBounds);
     const minutes =
       Number(this.time.value.slice(0, 2)) * 60 +
@@ -290,7 +333,15 @@ export class SolarLighting {
     this.refreshProjection();
   }
   refreshProjection() {
-    const active = this.enabled && this.bounds && this.result && !this.suspended && !this.mapVisible && !this.projectionSuspended;
+    const active =
+      this.enabled &&
+      this.bounds &&
+      this.result &&
+      !this.suspended &&
+      !this.mapVisible &&
+      !this.projectionSuspended;
+    this.compassToggle.disabled = !active;
+    this.onCompassChange(!!active && this.compassToggle.checked);
     this.projectionToggle.disabled = !active;
     this.pathToggle.disabled = !active;
     if (!active) {
@@ -299,21 +350,45 @@ export class SolarLighting {
       return;
     }
     if (this.projectionToggle.checked && this.result.altitude > 0) {
-      void this.projection.requestRays(this.result.direction, this.receiverBounds);
+      void this.projection.requestRays(
+        this.result.direction,
+        this.receiverBounds,
+      );
     } else this.projection.hideRays();
-    if (this.pathToggle.checked) this.projection.showPath(this.config, this.date.value);
+    if (this.pathToggle.checked)
+      this.projection.showPath(this.config, this.date.value);
     else this.projection.hidePath();
     this.updateProjectionStatus();
   }
   updateProjectionStatus() {
-    const active = this.enabled && !!this.result && !this.suspended && !this.mapVisible && !this.projectionSuspended;
+    const active =
+      this.enabled &&
+      !!this.result &&
+      !this.suspended &&
+      !this.mapVisible &&
+      !this.projectionSuspended;
     const selected = this.projectionToggle.checked || this.pathToggle.checked;
-    this.projectionHelp.hidden = this.projectionStatus.hidden = !active || !selected;
+    this.projectionHelp.hidden = this.projectionStatus.hidden =
+      !active || !selected;
     if (!active || !selected) return;
     if (this.projectionToggle.checked) {
       const state = this.rayStatus;
-      this.projectionStatus.textContent = this.result.altitude <= 0 ? "Projeção indisponível: Sol abaixo do horizonte." : state?.error || (state?.pending ? "Calculando projeção…" : state ? state.rays + " raios exibidos · " + state.buildings + " impactos no modelo." : "Calculando projeção…");
-    } else this.projectionStatus.textContent = this.projection.path.visible ? "Trajetória do dia · horários locais da obra." : "Sem trajetória acima do horizonte nesta data.";
+      this.projectionStatus.textContent =
+        this.result.altitude <= 0
+          ? "Projeção indisponível: Sol abaixo do horizonte."
+          : state?.error ||
+            (state?.pending
+              ? "Calculando projeção…"
+              : state
+                ? state.rays +
+                  " raios exibidos · " +
+                  state.buildings +
+                  " impactos no modelo."
+                : "Calculando projeção…");
+    } else
+      this.projectionStatus.textContent = this.projection.path.visible
+        ? "Trajetória do dia · horários locais da obra."
+        : "Sem trajetória acima do horizonte nesta data.";
   }
   update(camera) {
     this.projection.update(camera);
@@ -322,7 +397,6 @@ export class SolarLighting {
       return;
     }
     this.viewPoint.copy(this.marker.position).project(camera);
-    this.markerLabel.hidden = this.viewPoint.z < -1 || this.viewPoint.z > 1;
     const x = ((this.viewPoint.x + 1) / 2) * this.viewport.clientWidth;
     const y = ((1 - this.viewPoint.y) / 2) * this.viewport.clientHeight;
     const outside =
@@ -330,6 +404,9 @@ export class SolarLighting {
       x > this.viewport.clientWidth - 18 ||
       y < 18 ||
       y > this.viewport.clientHeight - 18;
+    // O astro é desenhado no 3D. O HUD só o substitui quando sai do enquadramento.
+    this.markerLabel.hidden =
+      !outside || this.viewPoint.z < -1 || this.viewPoint.z > 1;
     this.markerLabel.classList.toggle("offscreen", outside);
     this.markerLabel.style.left =
       Math.max(18, Math.min(this.viewport.clientWidth - 18, x)) + "px";

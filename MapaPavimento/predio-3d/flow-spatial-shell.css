@@ -1,0 +1,123 @@
+.flow-spatial-page {
+  height: 100dvh;
+  overflow: hidden;
+}
+#flowSpatialWorkspace {
+  position: fixed;
+  inset: 0 0 0 64px;
+  min-width: 0;
+}
+#flowSpatialWorkspace .app.integrated {
+  height: 100%;
+}
+.spatial-view-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--spatial-border);
+  border-radius: 8px;
+}
+.spatial-view-switch .btn {
+  white-space: nowrap;
+}
+.spatial-view-switch .btn[aria-pressed="true"] {
+  background: var(--spatial-accent);
+  color: var(--spatial-on-accent);
+  border-color: transparent;
+}
+.map-stage.is-preparing {
+  visibility: visible;
+  opacity: 0;
+  pointer-events: none;
+}
+.flow-spatial-page .map-stage .map-bar {
+  position: static;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  border-bottom: 1px solid var(--spatial-border);
+}
+#flowSpatialWorkspace .app.map-open .top {
+  display: flex;
+}
+#flowSpatialWorkspace .map-open .model-context,
+#flowSpatialWorkspace .map-open .spatial-button {
+  display: none;
+}
+@media (max-width: 600px) {
+  #flowSpatialWorkspace .top {
+    gap: 6px;
+  }
+  .spatial-view-switch {
+    order: 3;
+  }
+  .map-bar {
+    padding: 8px;
+    gap: 8px;
+  }
+}
+#flowSpatialWorkspace .map-open .model-context {
+  display: flex;
+  flex: 0 1 250px;
+  min-width: 0;
+}
+#flowSpatialWorkspace
+  .map-open
+  .model-context
+  > label:not(.spatial-floor-context) {
+  display: none;
+}
+#flowSpatialWorkspace .map-open .model-context .spatial-floor-context {
+  width: 100%;
+}
+#flowSpatialWorkspace .map-open .model-actions {
+  display: none;
+}
+.flow-spatial-page .map-stage .map-bar {
+  display: none;
+}
+@media (max-width: 600px) {
+  #flowSpatialWorkspace .app.map-open .top {
+    display: flex;
+    gap: 6px;
+  }
+  #flowSpatialWorkspace .app.map-open .brand {
+    flex: 1 1 100%;
+  }
+  #flowSpatialWorkspace .app.map-open #backToProject {
+    display: none;
+  }
+  #flowSpatialWorkspace .map-open .model-context {
+    flex: 1 1 100%;
+    order: 1;
+  }
+  #flowSpatialWorkspace .map-open .spatial-view-switch {
+    order: 2;
+  }
+}
+/* Quatro campos precisam de uma linha própria antes de ficarem estreitos. */
+#flowSpatialWorkspace .app:not(.map-open) .model-context {
+  flex: 1 1 640px;
+  min-width: 0;
+}
+#flowSpatialWorkspace .app .model-context label {
+  min-width: 130px;
+}
+@media (max-width: 600px) {
+  #flowSpatialWorkspace .app:not(.map-open) .model-context {
+    flex-basis: 100%;
+  }
+}
+/* O contexto 3D permanece com obra e modelo; o pavimento pertence à planta. */
+#flowSpatialWorkspace .app:not(.map-open) .model-context {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+#flowSpatialWorkspace .map-open .model-context {
+  display: none;
+}
+@media (max-width: 600px) {
+  #flowSpatialWorkspace .app:not(.map-open) .model-context {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+}

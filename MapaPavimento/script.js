@@ -4,7 +4,9 @@
     app = $("mapaPavimento"),
     canEdit = app.dataset.canEdit === "1";
   const embedded = app.dataset.embedded === "1" && window.parent !== window;
-  const bridgeId = new URLSearchParams(location.search).get("bridge");
+  const bridgeId =
+    app.dataset.bridge || new URLSearchParams(location.search).get("bridge");
+  const mapOrigin = new URL(document.baseURI).origin;
   const notifyParent = (type, extra = {}) => {
     if (embedded)
       window.parent.postMessage(
@@ -15,10 +17,10 @@
           subtipo_id: state.subtypeId,
           ...extra,
         },
-        location.origin,
+        mapOrigin,
       );
   };
-  const viewer = new PlantaViewer($("plantaViewport")),
+  const viewer = new PlantaViewer($("plantaViewport"), { fitPadding: 40 }),
     editor = new PlantaPolygonEditor(viewer),
     cropEditor = new PlantaPolygonEditor(viewer),
     inspector = new PlantaLayerInspector(viewer);
@@ -76,6 +78,15 @@
     controls();
   }
   function controls() {
+    $("workspaceProject").textContent = state.obraId
+      ? $("obraSelect").selectedOptions[0]?.textContent || "Mapa arquitetônico"
+      : "Mapa arquitetônico";
+    $("workspaceContext").textContent = state.subtypeId
+      ? "Planta · " +
+        ($("pavimentoSelect").selectedOptions[0]?.textContent ||
+          "Mapa arquitetônico")
+      : "Planta · Ambientes e imagens da obra";
+    $("planSubtitle").title = $("planSubtitle").textContent;
     const locked =
       state.busy ||
       state.drawing ||
@@ -85,7 +96,8 @@
     const configured =
       !!viewer.page && !!state.reference?.subtipo_id && !state.previewLegacyId;
     $("obraSelect").disabled = embedded || locked;
-    $("pavimentoSelect").disabled = embedded || locked || !state.obraId;
+    $("openModel3d").disabled = locked || !state.obraId;
+    $("pavimentoSelect").disabled = locked || !state.obraId;
     $("documentSelect").disabled =
       !canEdit ||
       locked ||
@@ -157,7 +169,7 @@
       });
   }
   async function api(action, data = {}, method = "GET") {
-    const url = new URL("api.php", location.href);
+    const url = new URL("api.php", document.baseURI);
     url.searchParams.set("action", action);
     const options = { method, headers: { Accept: "application/json" } };
     if (method === "GET")
@@ -181,7 +193,7 @@
     return result;
   }
   function pdfUrl(id) {
-    const url = new URL("api.php", location.href);
+    const url = new URL("api.php", document.baseURI);
     url.search = new URLSearchParams({
       action: "documento_pdf",
       obra_id: state.obraId,
@@ -195,6 +207,7 @@
     $("emptyDescription").textContent = description;
   }
   function updateContextUrl() {
+    if (embedded) return;
     const url = new URL(location.href);
     [
       ["obra_id", state.obraId],
@@ -207,6 +220,7 @@
     history.replaceState(null, "", url);
   }
   function resetMap() {
+    operationalPanel.close();
     inspector.cancel();
     stopCrop(false);
     cancelDrawing();
@@ -400,7 +414,10 @@
       if (legacyId) await selectLegacy(legacyId);
       else if (initialSubtype) await selectSubtype();
     } catch (error) {
-      if (request === state.request) {message(error.message);notifyParent('mp:error',{message:error.message});}
+      if (request === state.request) {
+        message(error.message);
+        notifyParent("mp:error", { message: error.message });
+      }
     } finally {
       if (request === state.request) busy(false);
     }
@@ -459,6 +476,11 @@
   async function selectSubtype() {
     const request = ++state.request;
     state.subtypeId = Number($("pavimentoSelect").value);
+    notifyParent("mp:context-change", {
+      subtipo_nome:
+        $("pavimentoSelect").selectedOptions[0]?.textContent ||
+        "Selecione um pavimento",
+    });
     state.previewLegacyId = 0;
     resetMap();
     message();
@@ -493,8 +515,11 @@
           notifyParent("mp:ready", {
             referencia_id: Number(state.reference?.id || 0),
           });
-        } else if(embedded) {
-          notifyParent('mp:error',{message:'Este pavimento ainda não possui um Mapa de Pavimento disponível.'});
+        } else if (embedded) {
+          notifyParent("mp:error", {
+            message:
+              "Este pavimento ainda não possui um Mapa de Pavimento disponível.",
+          });
         }
       }
     }
@@ -741,34 +766,79 @@
     state.environments.forEach((environment) => {
       const item = button(
         "",
-        () => selectEnvironment(environment.id),
+        () => selectEnvironment(environment.id, true),
         "mp-environment-item",
       );
       item.classList.toggle("is-selected", state.selectedId === environment.id);
+      item.classList.toggle(
+        "is-hovered",
+        state.hoveredEnvironmentId === environment.id,
+      );
+      item.dataset.environmentId = environment.id;
+      item.style.setProperty(
+        "--environment-color",
+        window.plantaEnvironmentColor(environment.id).color,
+      );
+      item.addEventListener("pointerenter", () =>
+        setEnvironmentHover(environment.id),
+      );
+      item.addEventListener("pointerleave", () => setEnvironmentHover(null));
+      item.addEventListener("focus", () => setEnvironmentHover(environment.id));
+      item.addEventListener("blur", () => setEnvironmentHover(null));
       item.setAttribute(
         "aria-pressed",
         String(state.selectedId === environment.id),
       );
-      item.append(
+      const copy = node("span", undefined, "mp-environment-copy");
+      copy.append(
         node("strong", environment.nome),
         node("span", imageCount(environment.imagem_ids.length)),
       );
+      const dot = node("span", undefined, "mp-environment-dot");
+      dot.setAttribute("aria-hidden", "true");
+      const arrow = node("span", "›", "mp-environment-arrow");
+      arrow.setAttribute("aria-hidden", "true");
+      item.append(dot, copy, arrow);
       list.append(item);
     });
-    $("environmentCount").textContent =
-      `${state.environments.length} ${state.environments.length === 1 ? "ambiente" : "ambientes"}`;
+    $("environmentCount").textContent = "· " + state.environments.length;
     $("environmentCount").hidden = !state.reference;
   }
   function imageCount(count) {
     return `${count} ${count === 1 ? "imagem" : "imagens"}`;
   }
-  function selectEnvironment(id) {
+  const operationalPanel = new window.AmbienteOperacionalPanel(
+    app,
+    (ids) => api("imagens_contexto_operacional", { imagem_ids: ids.join(",") }),
+    () => {
+      state.selectedId = null;
+      state.hoveredEnvironmentId = null;
+      viewer.highlight(null);
+      viewer.hoverEnvironment(null);
+      renderEnvironments();
+    },
+  );
+  function setEnvironmentHover(id) {
+    if (state.drawing || inspector.active) return;
+    state.hoveredEnvironmentId = id;
+    viewer.hoverEnvironment(id);
+    $("environmentList")
+      .querySelectorAll("[data-environment-id]")
+      .forEach((item) =>
+        item.classList.toggle(
+          "is-hovered",
+          Number(item.dataset.environmentId) === id,
+        ),
+      );
+  }
+  function selectEnvironment(id, focusMap = false) {
     if (state.drawing || state.busy || state.preparing || state.layersOpen)
       return;
     const environment = state.environments.find((item) => item.id === id);
     if (!environment) return;
     state.selectedId = id;
     viewer.highlight(id);
+    if (focusMap) viewer.focusEnvironment(id);
     renderEnvironments();
     const details = $("environmentDetails");
     details.replaceChildren();
@@ -793,46 +863,16 @@
       );
       details.append(actions);
     }
-    const gallery = node("div", undefined, "mp-gallery");
     const images = state.images.filter((image) =>
       environment.imagem_ids.includes(image.id),
     );
-    if (!images.length)
-      gallery.append(
-        node(
-          "p",
-          "Nenhuma imagem relacionada a este ambiente.",
-          "mp-panel-empty",
-        ),
-      );
-    images.forEach((image) => {
-      const card = node("div");
-      if (image.preview_url) {
-        const link = node("a");
-        link.href = image.preview_url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        const img = node("img");
-        img.src = image.preview_url;
-        img.alt = image.imagem_nome;
-        img.loading = "lazy";
-        img.addEventListener(
-          "error",
-          () =>
-            link.replaceWith(
-              node("div", "Prévia indisponível", "mp-no-preview"),
-            ),
-          { once: true },
-        );
-        link.append(img);
-        card.append(link);
-      } else card.append(node("div", "Prévia indisponível", "mp-no-preview"));
-      card.append(node("p", image.imagem_nome));
-      gallery.append(card);
-    });
-    details.append(gallery);
-    if (matchMedia("(max-width:850px)").matches)
-      details.scrollIntoView({ block: "nearest", behavior: "auto" });
+    details.hidden = true;
+    operationalPanel.open(
+      environment,
+      images,
+      $("planTitle").textContent,
+      details.querySelector(".mp-detail-actions"),
+    );
   }
   function startDrawing(environment = null, editPoints = false) {
     inspector.cancel();
@@ -848,7 +888,11 @@
       return;
     state.editing = environment;
     state.geometry = null;
+    operationalPanel.close();
     state.drawing = true;
+    $("drawingTitle").textContent = environment
+      ? "Editando área do ambiente"
+      : "Criando ambiente";
     $("drawingBar").hidden = false;
     editor.start(editPoints ? environment?.geometria : null);
     controls();
@@ -870,6 +914,7 @@
   function openEnvironment(environment, geometry) {
     if (state.preparing || state.busy || state.saving || state.layersOpen)
       return;
+    operationalPanel.close();
     state.editing = environment;
     state.geometry = geometry;
     state.selectedImages = new Set(environment?.imagem_ids || []);
@@ -947,22 +992,16 @@
         state.selectedImages = new Set((jq(select).val() || []).map(Number));
         selectedCount();
       });
-    jq(select)
-      .next(".select2-container")
-      .find(".select2-selection")
-      .attr({
-        "aria-labelledby": "environmentImagesLabel",
-        "aria-describedby": "environmentImagesHelp",
-        "aria-controls": "select2-environmentImages-results",
-      });
-    jq(select)
-      .next(".select2-container")
-      .find(".select2-search__field")
-      .attr({
-        "aria-label": "Buscar imagens da obra",
-        role: "textbox",
-        "aria-multiline": "false",
-      });
+    jq(select).next(".select2-container").find(".select2-selection").attr({
+      "aria-labelledby": "environmentImagesLabel",
+      "aria-describedby": "environmentImagesHelp",
+      "aria-controls": "select2-environmentImages-results",
+    });
+    jq(select).next(".select2-container").find(".select2-search__field").attr({
+      "aria-label": "Buscar imagens da obra",
+      role: "textbox",
+      "aria-multiline": "false",
+    });
     jq(select)
       .data("select2")
       .on("results:all", () => {
@@ -1006,6 +1045,7 @@
     renderPreparation();
     if (selectedId) selectEnvironment(selectedId);
     else {
+      operationalPanel.close();
       state.selectedId = null;
       viewer.highlight(null);
       $("environmentDetails").hidden = true;
@@ -1053,17 +1093,32 @@
     const layers = viewer.getLayers().groups,
       hidden = layers.filter((l) => !l.visible).length;
     $("layersStatus").textContent = layers.length
-      ? hidden +
-        (hidden === 1 ? " camada oculta de " : " camadas ocultas de ") +
-        layers.length
+      ? layers.length - hidden + "/" + layers.length + " camadas visíveis"
       : "Este PDF não possui layers editáveis.";
     $("cropStatus").textContent = state.reference?.area_util
       ? "Área útil poligonal definida"
       : "Área útil não definida · Página inteira";
-    if (canEdit)
+    if (canEdit) {
+      $("configureLayers").textContent = layers.length
+        ? "Camadas " + (layers.length - hidden) + "/" + layers.length
+        : "Camadas";
+      $("configureLayers").title = $("layersStatus").textContent;
+      $("configureLayers").setAttribute(
+        "aria-label",
+        "Configurar camadas: " + $("layersStatus").textContent,
+      );
       $("defineCrop").textContent = state.reference?.area_util
-        ? "Editar área útil"
-        : "Definir área útil";
+        ? "Área útil ✓"
+        : "Área útil";
+      $("defineCrop").title = $("cropStatus").textContent;
+      $("defineCrop").setAttribute(
+        "aria-label",
+        state.reference?.area_util ? "Editar área útil" : "Definir área útil",
+      );
+    } else {
+      $("referenceReadout").textContent = $("layersStatus").textContent;
+      $("referenceReadout").title = $("cropStatus").textContent;
+    }
   }
   function startCrop() {
     if (
@@ -1167,35 +1222,52 @@
     if (!state.layerBase || !viewer.page) return;
     viewer.setLayers(state.layerBase);
     viewer.renderPdf().catch((error) => message(error.message));
+    renderPreparation();
   }
-  function previewLayer(id) {
-    if (!viewer.page || state.saving) return;
-    const isolated = structuredClone(state.layerBase);
-    isolated.groups.forEach((g) => (g.visible = g.id === id));
-    viewer.setLayers(isolated);
+  function selectedLayers() {
+    const layers = structuredClone(state.layerBase);
+    const visibility = new Map(
+      [...$("layerOptions").querySelectorAll("input")].map((input) => [
+        input.value,
+        input.checked,
+      ]),
+    );
+    layers.groups.forEach(
+      (layer) => (layer.visible = visibility.get(layer.id)),
+    );
+    return layers;
+  }
+  function previewSelectedLayers() {
+    if (!state.layerBase || !viewer.page || state.saving) return;
+    viewer.setLayers(selectedLayers());
     viewer.renderPdf().catch((error) => message(error.message));
+    renderPreparation();
   }
   function renderLayerOptions() {
     const list = $("layerOptions");
     list.replaceChildren();
-    state.layerBase.groups.forEach((layer) => {
-      const label = node("label", undefined, "mp-image-option"),
-        input = node("input");
-      input.type = "checkbox";
-      input.value = layer.id;
-      input.checked = layer.visible;
-      label.append(input, node("span", layer.name));
-      label.addEventListener("pointerenter", () => previewLayer(layer.id));
-      label.addEventListener("pointerleave", restoreLayerPreview);
-      input.addEventListener("focus", () => previewLayer(layer.id));
-      input.addEventListener("blur", restoreLayerPreview);
-      list.append(label);
+    const names = new Intl.Collator("pt-BR", {
+      numeric: true,
+      sensitivity: "base",
     });
+    [...state.layerBase.groups]
+      .sort((a, b) => names.compare(a.name, b.name))
+      .forEach((layer) => {
+        const label = node("label", undefined, "mp-image-option"),
+          input = node("input");
+        input.type = "checkbox";
+        input.value = layer.id;
+        input.checked = layer.visible;
+        label.append(input, node("span", layer.name));
+        input.addEventListener("change", previewSelectedLayers);
+        list.append(label);
+      });
   }
   function markLayers(visible) {
     $("layerOptions")
       .querySelectorAll("input")
       .forEach((input) => (input.checked = visible));
+    previewSelectedLayers();
   }
   $("allLayers").addEventListener("click", () => markLayers(true));
   $("noLayers").addEventListener("click", () => markLayers(false));
@@ -1215,14 +1287,7 @@
     state.saving = true;
     controls();
     $("layersError").hidden = true;
-    const layers = structuredClone(state.layerBase);
-    const visibility = new Map(
-      [...$("layerOptions").querySelectorAll("input")].map((i) => [
-        i.value,
-        i.checked,
-      ]),
-    );
-    layers.groups.forEach((l) => (l.visible = visibility.get(l.id)));
+    const layers = selectedLayers();
     $("layersDialog")
       .querySelectorAll("button,input")
       .forEach((i) => (i.disabled = true));
@@ -1311,6 +1376,16 @@
   }
 
   $("obraSelect").addEventListener("change", () => selectObra());
+  $("openModel3d").addEventListener("click", () => {
+    const url = new URL(
+      "predio-3d/visualizador-glb-navegacao.php",
+      location.href,
+    );
+    url.searchParams.set("obra_id", state.obraId);
+    url.searchParams.set("subtipo_id", state.subtypeId);
+    if (embedded) notifyParent("mp:return-3d");
+    else location.assign(url.href);
+  });
   $("documentSelect").addEventListener("change", () => {
     const id = Number($("documentSelect").value);
     if (id) openPages(id);
@@ -1337,6 +1412,7 @@
   });
   viewer.addEventListener("environmenthover", (e) => {
     if (inspector.active) return;
+    setEnvironmentHover(e.detail?.environment.id ?? null);
     const tooltip = $("tooltip");
     tooltip.hidden = !e.detail;
     if (!e.detail) return;
@@ -1356,8 +1432,10 @@
       ) + "px";
   });
   editor.addEventListener("change", (e) => {
-    $("drawingHint").textContent =
-      e.detail + " vértices. Arraste pontos; clique numa borda para inserir.";
+    $("drawingHint").textContent = editor.closed
+      ? e.detail + " vértices. Arraste pontos; clique numa borda para inserir."
+      : e.detail +
+        " vértices. Clique na planta para marcar; feche no primeiro ponto ou conclua o contorno.";
     $("finishPolygon").disabled = e.detail < 3;
     $("undoPoint").disabled = e.detail === 0;
     controls();
@@ -1526,10 +1604,10 @@
   });
   try {
     const theme = localStorage.getItem("flow-mapa-theme");
-    if (theme === "light" || theme === "dark")
-      document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme =
+      theme === "light" ? "light" : "dark";
   } catch (_) {
-    /* private browser */
+    document.documentElement.dataset.theme = "dark";
   }
 
   window.thinkingOrbs($("busyOverlay"));
@@ -1537,7 +1615,7 @@
     document.documentElement.dataset.theme = "dark";
     window.addEventListener("message", (event) => {
       if (
-        event.origin !== location.origin ||
+        event.origin !== mapOrigin ||
         event.source !== window.parent ||
         event.data?.bridge !== bridgeId ||
         event.data?.type !== "mp:request-leave"
@@ -1548,7 +1626,10 @@
         state.drawing ||
         state.preparing ||
         state.saving ||
-        state.layersOpen || $('environmentDialog').open || $('pagesDialog').open || $('reuseDialog').open;
+        state.layersOpen ||
+        $("environmentDialog").open ||
+        $("pagesDialog").open ||
+        $("reuseDialog").open;
       notifyParent(blocked ? "mp:leave-blocked" : "mp:leave-ok", {
         message: blocked
           ? "Conclua ou cancele a edição no mapa antes de voltar ao empreendimento."
@@ -1568,5 +1649,12 @@
       Number(app.dataset.initialPavimento),
     );
   } else initializeSubtypes({ obra: [], demais: [] });
+  import("./map-spatial-controls.js?v=20261016-reference-solar")
+    .then(({ MapSpatialControls }) => {
+      const spatial = new MapSpatialControls(viewer, () => state.obraId);
+      $("obraSelect").addEventListener("change", () => spatial.load());
+      spatial.load();
+    })
+    .catch((error) => console.error("Controles espaciais", error));
   controls();
 })();

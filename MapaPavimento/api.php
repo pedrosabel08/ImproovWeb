@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/referencia_arquitetonica_helper.php';
 require_once __DIR__ . '/../helpers/pdf_reference_helper.php';
 require_once __DIR__ . '/../helpers/subtipo_imagem_helper.php';
 require_once __DIR__ . '/../helpers/mapa_modelo_3d_helper.php';
+require_once __DIR__ . '/../helpers/modelo_3d_upload_helper.php';
 require_once __DIR__ . '/../helpers/mapa_espacial_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
@@ -14,7 +15,7 @@ try {
     if (($_SESSION['logado'] ?? false) !== true) throw new RuntimeException('Sua sessão expirou. Entre novamente.', 401);
     $method = $_SERVER['REQUEST_METHOD'];
     $action = (string)($_GET['action'] ?? '');
-    $writes = ['subtipo_salvar', 'documento_upload', 'pagina_vincular', 'legado_associar', 'referencia_configurar', 'ambiente_salvar', 'ambiente_excluir', 'modelo_3d_vincular', 'espacial_salvar'];
+    $writes = ['subtipo_salvar', 'documento_upload', 'pagina_vincular', 'legado_associar', 'referencia_configurar', 'ambiente_salvar', 'ambiente_excluir', 'modelo_3d_vincular', 'espacial_salvar', 'modelo_3d_upload', 'modelo_3d_ativar_versao'];
     if ($action === 'modelos_3d') $_SESSION['mapa_pavimento_csrf'] ??= bin2hex(random_bytes(32));
     if (in_array($action, $writes, true)) {
         if ($method !== 'POST') throw new RuntimeException('Use POST para esta operação.', 405);
@@ -22,7 +23,8 @@ try {
         if (empty($_SESSION['mapa_pavimento_csrf']) || !hash_equals($_SESSION['mapa_pavimento_csrf'], (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) throw new RuntimeException('Atualize a página e tente novamente.', 403);
     } elseif ($method !== 'GET') throw new RuntimeException('Método não permitido.', 405);
     $author = (int)($_SESSION['idcolaborador'] ?? 0);
-    $input = $method === 'POST' ? ($action === 'documento_upload' ? $_POST : json_decode(file_get_contents('php://input'), true, 64, JSON_THROW_ON_ERROR)) : $_GET;
+    if ($action === 'modelo_3d_upload' && empty($_POST) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) throw new RuntimeException('O envio excede o limite do servidor. Verifique post_max_size e o limite do proxy no VPS.', 413);
+    $input = $method === 'POST' ? (in_array($action, ['documento_upload', 'modelo_3d_upload'], true) ? $_POST : json_decode(file_get_contents('php://input'), true, 64, JSON_THROW_ON_ERROR)) : $_GET;
     if (!is_array($input)) throw new InvalidArgumentException('Dados inválidos.');
     $obra = (int)($input['obra_id'] ?? 0);
     $subtype = (int)($input['subtipo_id'] ?? 0);
@@ -31,6 +33,17 @@ try {
     if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
     $result = [];
     switch ($action) {
+        case 'imagens_contexto_operacional':
+            require_once __DIR__ . '/../helpers/imagem_contexto_operacional_helper.php';
+            $rawIds = $input['imagem_ids'] ?? '';
+            if (!is_string($rawIds) || !preg_match('/^[1-9][0-9]*(,[1-9][0-9]*)*$/D', $rawIds)) throw new InvalidArgumentException('Informe os IDs das imagens.');
+            $ids = array_values(array_unique(array_map('intval', explode(',', $rawIds))));
+            if (count($ids) > 100) throw new InvalidArgumentException('Consulte até 100 imagens por vez.');
+            $marks = implode(',', array_fill(0, count($ids), '?'));
+            $found = mp_rows($conn, "SELECT idimagens_cliente_obra FROM imagens_cliente_obra WHERE obra_id=? AND idimagens_cliente_obra IN ($marks)", 'i' . str_repeat('i', count($ids)), array_merge([$obra], $ids));
+            if (count($found) !== count($ids)) throw new RuntimeException('Uma ou mais imagens não pertencem à obra informada.', 403);
+            $result['contextos'] = array_values(flow_imagens_contextos_operacionais_lote($conn, $ids));
+            break;
         case 'espacial_configuracao':
             $result['configuracao'] = mpe_get($conn, $obra);
             break;
@@ -40,6 +53,7 @@ try {
         case 'modelos_3d':
             $result['csrf'] = $_SESSION['mapa_pavimento_csrf'];
             $result['can_edit'] = in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 2], true);
+            $result['upload_max_bytes'] = mp3d_upload_limit();
             $result['obras'] = array_map(fn($o) => ['id' => (int)$o['idobra'], 'nome' => $o['nomenclatura'] . ' — ' . $o['nome_obra']], obterObras($conn));
             $result['modelos'] = mp_rows($conn, 'SELECT id,nome,arquivo FROM mapa_modelos_3d WHERE obra_id=? ORDER BY nome,id', 'i', [$obra]);
             foreach ($result['modelos'] as &$model) $model['id'] = (int)$model['id'];
@@ -48,10 +62,26 @@ try {
         case 'modelo_3d_contexto':
             $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0));
             $result['modelo'] = $model;
-            $result['modelo']['src'] = './' . rawurlencode($model['arquivo']) . '?v=' . filemtime(mp3d_file($model['arquivo']));
+            $result['modelo']['src'] = '../api.php?' . http_build_query(['action' => 'modelo_3d_arquivo', 'obra_id' => $obra, 'modelo_id' => $model['id'], 'v' => filemtime(mp3d_file($model['arquivo']))]);
             $result['subtipos'] = mp3d_subtypes($conn, $obra);
             $result['vinculos'] = mp3d_links($conn, $model['id']);
             break;
+        case 'modelo_3d_upload':
+            $result = mp3d_upload($conn, $obra, $author, $input, $_FILES['glb'] ?? null);
+            break;
+        case 'modelo_3d_versoes':
+            $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0));
+            $result['arquivo_atual'] = $model['arquivo'];
+            $result['versoes'] = mp3d_versions($conn, $model);
+            break;
+        case 'modelo_3d_ativar_versao':
+            mp3d_activate_version($conn, $obra, $input);
+            break;
+        case 'modelo_3d_arquivo':
+            $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0));
+            $conn->close();
+            $conn = null;
+            mp3d_stream($model);
         case 'modelo_3d_vincular':
             $modelId = (int)($input['modelo_id'] ?? 0);
             mp3d_save_link($conn, $obra, $modelId, (string)($input['object_name'] ?? ''), $subtype, (int)($input['versao'] ?? 0), $author);
@@ -228,7 +258,7 @@ try {
         $message = $status === 409 ? 'Já existe uma configuração neste contexto.' : 'O mapa está temporariamente indisponível.';
         error_log('MapaPavimento: ' . $e->getMessage());
     } else {
-        $status = in_array($e->getCode(), [401, 403, 404, 405, 409], true) ? $e->getCode() : 500;
+        $status = in_array($e->getCode(), [401, 403, 404, 405, 409, 413], true) ? $e->getCode() : 500;
         $message = $status === 500 ? 'Não foi possível concluir a operação. Tente novamente.' : $e->getMessage();
         if ($status === 500) error_log('MapaPavimento: ' . $e->getMessage());
     }

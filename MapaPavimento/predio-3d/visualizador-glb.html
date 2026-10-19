@@ -473,7 +473,7 @@
           <input
             id="url"
             type="text"
-            value="./Fachada_Teste_001.glb"
+            value="./arquivo-otimizado.glb"
             aria-label="Caminho do arquivo GLB"
           />
           <button class="btn primary" id="loadUrl">Carregar</button>
@@ -505,7 +505,7 @@
               <div class="empty-icon">⬡</div>
               <h1>Inspecione o conteúdo do modelo</h1>
               <p>
-                Carregue <code>Fachada_Teste_001.glb</code> ou escolha outro
+                Carregue <code>arquivo-otimizado.glb</code> ou escolha outro
                 arquivo GLB/GLTF. A hierarquia e os dados de cada objeto
                 aparecerão ao lado.
               </p>
@@ -549,6 +549,13 @@
       import * as THREE from "three";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath(
+        "https://www.gstatic.com/draco/versioned/decoders/1.5.7/",
+      );
+      const gltfLoader = new GLTFLoader().setDRACOLoader(dracoLoader);
 
       const $ = (id) => document.getElementById(id),
         viewport = $("viewport"),
@@ -852,7 +859,7 @@
         const clean = url.trim();
         if (!clean) return;
         setStatus("Carregando modelo…");
-        new GLTFLoader().load(
+        gltfLoader.load(
           clean,
           (gltf) => install(gltf, clean.split("/").pop() || clean),
           undefined,
@@ -877,7 +884,7 @@
         if (!f) return;
         setStatus("Carregando arquivo…");
         const u = URL.createObjectURL(f);
-        new GLTFLoader().load(
+        gltfLoader.load(
           u,
           (g) => {
             install(g, f.name);
@@ -919,7 +926,7 @@
           $("file").files;
           const u = URL.createObjectURL(f);
           setStatus("Carregando arquivo…");
-          new GLTFLoader().load(
+          gltfLoader.load(
             u,
             (g) => {
               install(g, f.name);

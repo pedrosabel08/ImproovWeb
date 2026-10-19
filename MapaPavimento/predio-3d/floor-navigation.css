@@ -1,0 +1,331 @@
+/* Complementa a shell existente, incluindo os painéis responsivos do Hub. */
+.app.spatial-workspace .layout {
+  --floor-sidebar-width: 220px;
+  --hub-sidebar-width: 320px;
+  grid-template-columns: var(--floor-sidebar-width) minmax(0, 1fr) var(
+      --hub-sidebar-width
+    );
+  transition: grid-template-columns 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.app.spatial-workspace .layout.left-collapsed {
+  --floor-sidebar-width: 40px;
+}
+.app.spatial-workspace .layout.right-collapsed {
+  --hub-sidebar-width: 40px;
+}
+.app .side .head {
+  gap: 6px;
+}
+.app .side .head h2 {
+  flex: 1;
+  min-width: 0;
+}
+.app .model-context label {
+  min-width: 150px;
+}
+.app .side .sidebar-toggle {
+  flex: 0 0 28px;
+  min-height: 28px;
+  padding: 0;
+  font-size: 22px !important;
+  line-height: 1;
+}
+.app .side.is-collapsed {
+  overflow: hidden;
+}
+.app .side.is-collapsed > :not(.head) {
+  display: none;
+}
+.app .side.is-collapsed .head {
+  padding: 5px;
+  justify-content: center;
+}
+.app .side.is-collapsed .head > :not(.sidebar-toggle) {
+  display: none;
+}
+.app .row.floor.active {
+  border-color: var(--spatial-accent);
+}
+.floor-popover {
+  position: absolute;
+  z-index: 5;
+  right: 12px;
+  bottom: 48px;
+  width: 300px;
+  max-width: calc(100% - 24px);
+  max-height: calc(50% - 24px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--spatial-control-border);
+  border-radius: var(--spatial-radius);
+  background: var(--spatial-float);
+  box-shadow: 0 8px 24px #0003;
+  scrollbar-width: thin;
+}
+.floor-popover[hidden] {
+  display: none;
+}
+.floor-popover h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.floor-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 12px 0;
+  color: var(--spatial-text-muted);
+  font-size: 12px;
+}
+.floor-popover h3 {
+  font-size: 17px;
+}
+.floor-popover .link-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.floor-popover .link-actions .btn {
+  justify-content: center;
+  width: 100%;
+}
+.floor-popover p {
+  font-size: 11px;
+  margin: 6px 0;
+  color: var(--spatial-text-muted);
+}
+.floor-popover .link-actions {
+  margin-top: 10px;
+  gap: 6px;
+}
+.floor-popover a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.floor-popover > .btn {
+  margin-top: 8px;
+}
+.floor-popover .floor-id {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.app.measuring .floor-popover,
+.viewport.north-defining .floor-popover {
+  display: none;
+}
+@media (min-width: 901px) and (max-width: 1200px) {
+  .app.spatial-workspace .layout {
+    --floor-sidebar-width: 180px;
+    --hub-sidebar-width: 280px;
+  }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .app.spatial-workspace .layout {
+    --hub-sidebar-width: 260px;
+    grid-template-columns: minmax(0, 1fr) var(--hub-sidebar-width);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .app .side.left .head {
+    position: static;
+    flex-direction: row;
+    flex-basis: 145px;
+    padding: 0 8px;
+  }
+  .app .side.left .count {
+    display: none;
+  }
+  .app .side.left.is-collapsed {
+    max-height: 38px;
+  }
+  .app .side.left.is-collapsed .head {
+    flex-basis: 40px;
+    height: 38px;
+  }
+}
+@media (max-width: 600px) {
+  .app.spatial-workspace .top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+  }
+  .app.spatial-workspace .top .brand {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+  .app.spatial-workspace .top .model-context {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+  .app.spatial-workspace .top > .btn {
+    width: 100%;
+  }
+  .app.spatial-workspace .layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .app.spatial-workspace .side.right .head {
+    display: flex;
+    height: 38px;
+    min-height: 38px;
+  }
+  .app.spatial-workspace .side.is-collapsed {
+    flex: 0 0 38px;
+    max-height: 38px;
+  }
+  .app.spatial-workspace .side.is-collapsed .head {
+    justify-content: flex-start;
+  }
+  .app.spatial-workspace .viewport {
+    flex: 1 0 52dvh;
+  }
+  .floor-popover {
+    right: 8px;
+    bottom: 42px;
+    max-width: calc(100% - 16px);
+    max-height: calc(60% - 24px);
+    padding: 10px;
+  }
+  .floor-popover .btn {
+    min-height: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app.spatial-workspace .layout {
+    transition: none;
+  }
+  .app.spatial-workspace .side > :not(.head) {
+    transition: none;
+  }
+}
+
+/* Recolhido: somente o botão flutua sobre a cena, sem trilho reservado. */
+.app.spatial-workspace .layout.left-collapsed {
+  --floor-sidebar-width: 0px;
+}
+.app.spatial-workspace .layout.right-collapsed {
+  --hub-sidebar-width: 0px;
+}
+.app.spatial-workspace .side.is-collapsed {
+  position: absolute;
+  top: 12px;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  max-height: 28px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  z-index: 8;
+}
+.app.spatial-workspace .side.left.is-collapsed {
+  left: 12px;
+  right: auto;
+}
+.app.spatial-workspace .side.right.is-collapsed {
+  right: 12px;
+  left: auto;
+  bottom: auto;
+}
+.app.spatial-workspace .side.is-collapsed .head {
+  position: static;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex-basis: auto;
+}
+.app.spatial-workspace .side > :not(.head) {
+  transition:
+    opacity 140ms ease,
+    transform 180ms ease,
+    visibility 0s;
+}
+.app.spatial-workspace .side.is-collapsed > :not(.head) {
+  display: block;
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0ms, 0ms, 140ms;
+  transform: translateX(8px);
+  pointer-events: none;
+}
+.app.spatial-workspace .side.left.is-collapsed > :not(.head) {
+  transform: translateX(-8px);
+}
+.app.spatial-workspace .viewtools {
+  right: 52px;
+}
+.app.spatial-workspace .row.selected,
+.app.spatial-workspace .row.floor.active {
+  background: var(--spatial-selected);
+  color: var(--spatial-accent);
+}
+.app.spatial-workspace .row.floor:hover,
+.app.spatial-workspace .row.floor:focus-visible {
+  background: var(--spatial-selected);
+  border-color: var(--spatial-accent);
+}
+.app.spatial-workspace .stat {
+  background: var(--spatial-surface);
+  border-color: var(--spatial-border);
+}
+.app.spatial-workspace .solar-toggle input:checked,
+.app.spatial-workspace .solar-projection-options input:checked {
+  background: var(--spatial-accent);
+  border-color: var(--spatial-accent);
+}
+.app.spatial-workspace .solar-controls :is(input, select),
+.app.spatial-workspace
+  .solar-panel
+  :is(input[type="date"], input[type="time"]) {
+  background: var(--spatial-input);
+  border-color: var(--spatial-control-border);
+}
+.app.spatial-workspace .floor-switcher button[aria-pressed="true"] {
+  background: var(--spatial-accent);
+  color: var(--spatial-on-accent);
+}
+@media (min-width: 601px) {
+  .app.spatial-workspace .layout {
+    grid-template-columns: var(--floor-sidebar-width) minmax(0, 1fr) var(
+        --hub-sidebar-width
+      );
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .app.spatial-workspace .side.left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .app.spatial-workspace .viewport {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .app.spatial-workspace .side.right {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+@media (max-width: 600px) {
+  .app.spatial-workspace .viewport .viewtools {
+    top: 52px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    flex-wrap: wrap;
+  }
+  .app.spatial-workspace .viewport .viewtools button {
+    flex: 1;
+    white-space: nowrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app.spatial-workspace .layout,
+  .app.spatial-workspace .side > :not(.head) {
+    transition: none;
+  }
+}

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 2) . '/config/session_bootstrap.php';
 require_once dirname(__DIR__, 2) . '/config/version.php';
 require_once dirname(__DIR__, 2) . '/includes/flow-motion-assets.php';
+include '../../conexaoMain.php';
 
 if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     header('Location: ../../index.html');
@@ -19,6 +20,20 @@ $userName = trim((string) ($_SESSION['nome_usuario'] ?? ''));
 $userPhoto = trim((string) ($_SESSION['foto_colaborador'] ?? ''));
 $initial = $userName !== '' ? mb_strtoupper(mb_substr($userName, 0, 1, 'UTF-8')) : 'F';
 $backgroundPayload = json_encode(['dark' => $backgrounds('dark'), 'light' => $backgrounds('light')], JSON_UNESCAPED_SLASHES);
+
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+
+$conn->close();
+
+
 ?>
 <!doctype html>
 <html lang="pt-BR">

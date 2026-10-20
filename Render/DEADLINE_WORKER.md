@@ -13,8 +13,9 @@
 - `script.py` continua responsável apenas pelo Backburner. Um registro que tenha
   `deadline_job_id` não é removido por esse script.
 
-Não são gravados metadados customizados nos jobs do Deadline. A associação usa
-nome do job e o estado persistido no banco do Flow.
+A descoberta normal usa nome do Job e estado persistido no Flow. Jobs EF
+criados pela ação manual recebem `FlowRenderEFRequest` para que outro worker
+não descubra o Job suspenso antes de sua vinculação explícita.
 
 ## Modelo persistente
 
@@ -194,9 +195,47 @@ não existe retorno automático seguro ao modelo de um único Job ID.
 
 - Nenhuma migration é aplicada automaticamente pelo worker.
 - O backfill não cria exclusões históricas em massa.
-- O worker não cria jobs; ele associa jobs submetidos externamente ao Flow.
+- A descoberta normal associa Jobs submetidos externamente; solicitações EF
+  confirmadas pelo usuário também permitem criar um novo Job suspenso.
 - A execução de `DeleteJob` só ocorre a partir de um comando confirmado no
   banco e somente quando o dry-run está desligado.
 - Efeitos externos existentes, como FTP e Slack, continuam dependentes dos
   respectivos serviços; a chave de evento impede repetição por estado, mas não
   oferece transação distribuída com serviços externos.
+
+## Render em alta (ação manual EF)
+
+Aplicar `sql/2026-10-20_render_ef.sql` e reiniciar o worker. A migration apenas
+cria `render_ef_solicitacoes`; não altera renders ou Jobs existentes. A versão
+do heartbeat passa a ser 2.1. O PHP precisa acessar a mesma tabela do worker.
+
+No menu de três pontos do render, **Render em alta** fica habilitado somente
+quando a etapa atual da imagem é EF. A inspeção exige o Job original Deleted,
+plugin 3ds Max, as chaves reais de resolução, o .max e todos os auxiliares.
+`deadline_ef_export.py` é executado pelo Python integrado do Deadline, usando
+`GetDeletedJob` e `CreateJobSubmissionFiles`. A origem permanece Deleted.
+
+O fator de escala é `5000 / max(largura, altura)`. A dimensão menor é arredondada
+ao pixel mais próximo, incluindo `.5` para cima. A interface exibe os tamanhos
+antes/depois, cena, câmera, renderer, Job original e saída antes da confirmação.
+
+O armazenamento usa `config/secure_env.php` e `improov_sftp_config()`. Por padrão
+`renders2` e `renders` são mapeados para `/mnt/renders2` e `/mnt/renders`. Ambientes
+com outro mapeamento podem configurar `IMPROOV_SFTP_RENDERS2_ROOT` ou
+`IMPROOV_SFTP_RENDERS_ROOT`. `DEADLINE_PHP` permite escolher o executável PHP.
+A pasta resultante é `<obra>/EF/<imagem>_EF`; o pai e a pasta anterior precisam
+existir. Uma subpasta EF preenchida bloqueia o envio para evitar sobrescrita.
+
+Depois de confirmar, o worker revalida a origem, cria a pasta, copia Job Info e
+Plugin Info e muda somente nome EF, estado inicial suspenso, dimensões e saídas
+(principal, Render Elements e diretórios de saída). A submissão inclui os mesmos
+auxiliares; o Deadline guarda sua própria cópia. O novo Job é conferido antes
+de criar/vincular o registro e a tentativa EF pelo repositório padrão. Um EF já
+vinculado bloqueia duplicidade; um registro aguardando Job pode ser vinculado.
+Somente depois o worker executa ResumeJob e confirma o status do novo Job.
+
+As etapas ficam persistidas e a interface as consulta enquanto o processo roda.
+Fechar o diálogo não cancela a operação. Retomar um erro com Job identificado
+revalida esse mesmo Job. Falhas sem confirmação da submissão ou interrupções
+prolongadas exigem conferência no Monitor; nunca fazem uma segunda submissão
+automática. Não existe remoção ou purge de Jobs neste fluxo.

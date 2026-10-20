@@ -20,6 +20,7 @@ from deadline_domain import (
     state_from_deadline,
 )
 from deadline_repository import DeadlineRepository
+from deadline_render_ef import RenderEF
 
 BASE_DIR = Path(__file__).resolve().parent
 LOG_DIR = BASE_DIR / "logs"
@@ -165,6 +166,7 @@ class DeadlineWorker:
         deadline_monitor.DEADLINE_COMMAND_TIMEOUT = settings.command_timeout
         deadline_monitor.EXTERNAL_LOGGER = self.logger
         self.business = deadline_monitor
+        self.render_ef = RenderEF(self)
 
     def observation_fingerprint(
         self, target: str, job_data: dict, task_data: dict
@@ -188,6 +190,8 @@ class DeadlineWorker:
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def process_one_command(self) -> bool:
+        if self.render_ef.process_one():
+            return True
         command = self.repository.reserve_command(self.settings.worker_id)
         if not command:
             return False
@@ -372,8 +376,16 @@ class DeadlineWorker:
                     },
                 )
                 self.business.publish_render_update(
-                    "render.preview_changed" if not plan["state_changed"] else "render.status_changed",
-                    {"render_id": attempt["render_id"], "imagem_id": attempt["imagem_id"], "status": target},
+                    (
+                        "render.preview_changed"
+                        if not plan["state_changed"]
+                        else "render.status_changed"
+                    ),
+                    {
+                        "render_id": attempt["render_id"],
+                        "imagem_id": attempt["imagem_id"],
+                        "status": target,
+                    },
                 )
             except Exception:
                 self.logger.exception("active synchronization failed", extra=context)
@@ -395,6 +407,9 @@ class DeadlineWorker:
             job_name = str(
                 job_data.get("Name") or job_data.get("JobName") or ""
             ).strip()
+            # Manual EF requests own their suspended Job until linking commits.
+            if "FlowRenderEFRequest=" in str(job_data.get("ExtraInfoDictionary", "")):
+                continue
             if not job_name or "ANIMA" in job_name.upper():
                 continue
             target_info = self.repository.discovery_target(job_id, job_name)

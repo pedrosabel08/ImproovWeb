@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/deadline_flow.php';
@@ -37,7 +38,9 @@ function render_manual_completion_schema_ready(mysqli $conn): bool
            AND COLUMN_NAME IN ('render_id', 'tentativa_id', 'colaborador_id', 'status_anterior', 'justificativa', 'criado_em')"
     );
     if (!$stmt || !$stmt->execute()) {
-        if ($stmt) $stmt->close();
+        if ($stmt) {
+            $stmt->close();
+        }
         return $ready = false;
     }
     $row = $stmt->get_result()->fetch_assoc();
@@ -850,6 +853,7 @@ LIMIT $limit OFFSET $offset";
                          manual_colaborador.nome_colaborador AS concluido_manualmente_por"
                     : ', 0 AS concluido_manualmente, NULL AS justificativa_conclusao_manual, NULL AS concluido_manualmente_em, NULL AS concluido_manualmente_por';
                 $sql = "SELECT r.*, i.imagem_nome, i.tipo_imagem, c.nome_colaborador, s.nome_status,
+                               (SELECT nome_status FROM status_imagem WHERE idstatus = i.status_id) AS imagem_etapa_atual,
                                o.nomenclatura AS obra_nomenclatura $manualSelect
                         FROM render_alta r
                         JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
@@ -960,7 +964,7 @@ LIMIT $limit OFFSET $offset";
                 $startDate = null;
                 if ($render) {
                     $startDate = !empty($render['submitted']) ? $render['submitted']
-                        : (!empty($render['data'])      ? $render['data'] : null);
+                        : (!empty($render['data']) ? $render['data'] : null);
                 }
 
                 if ($startDate) {
@@ -988,7 +992,7 @@ LIMIT $limit OFFSET $offset";
                     // Fallback: show current status from render_alta when no logs exist
                     if ($render) {
                         $fallbackDate   = !empty($render['last_updated']) ? $render['last_updated']
-                            : (!empty($render['data'])         ? $render['data'] : null);
+                            : (!empty($render['data']) ? $render['data'] : null);
                         $currentStatus  = $render['status'] ?? null;
 
                         // Only add if the date differs from the start anchor (avoid duplicate)
@@ -1057,7 +1061,9 @@ if (isset($_POST['action'])) {
                 $stmt->execute();
                 $render = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
-                if (!$render) throw new RuntimeException('Render não encontrado.');
+                if (!$render) {
+                    throw new RuntimeException('Render não encontrado.');
+                }
                 if (mb_strtolower(trim((string) $render['nome_status']), 'UTF-8') === 'p00') {
                     throw new RuntimeException('P00 mantém o fluxo de aprovação e Follow-up atual.');
                 }
@@ -1080,51 +1086,61 @@ if (isset($_POST['action'])) {
                 $references = [];
                 if (!$isPlantaHumanizada) {
                     $posId = (int) ($render['idpos_producao'] ?? 0);
-                if ($posId <= 0) {
-                    $responsavel = (int) ($render['responsavel_id'] ?: $colaboradorId);
-                    $insertPos = $conn->prepare("INSERT INTO pos_producao
+                    if ($posId <= 0) {
+                        $responsavel = (int) ($render['responsavel_id'] ?: $colaboradorId);
+                        $insertPos = $conn->prepare("INSERT INTO pos_producao
                         (render_id, imagem_id, obra_id, colaborador_id, status_id, responsavel_id, refs, obs, data_pos)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-                    $insertPos->bind_param('iiiiiiss', $renderId, $render['imagem_id'], $render['obra_id'], $responsavel, $render['status_id'], $responsavel, $refs, $obs);
-                    if (!$insertPos->execute()) throw new RuntimeException('Não foi possível criar a Pós-Produção.');
-                    $posId = (int) $conn->insert_id;
-                    $insertPos->close();
-                } else {
-                    $updatePos = $conn->prepare('UPDATE pos_producao SET refs = ?, obs = ?, data_pos = NOW() WHERE idpos_producao = ?');
-                    $updatePos->bind_param('ssi', $refs, $obs, $posId);
-                    if (!$updatePos->execute()) throw new RuntimeException('Não foi possível atualizar a Pós-Produção.');
-                    $updatePos->close();
-                }
+                        $insertPos->bind_param('iiiiiiss', $renderId, $render['imagem_id'], $render['obra_id'], $responsavel, $render['status_id'], $responsavel, $refs, $obs);
+                        if (!$insertPos->execute()) {
+                            throw new RuntimeException('Não foi possível criar a Pós-Produção.');
+                        }
+                        $posId = (int) $conn->insert_id;
+                        $insertPos->close();
+                    } else {
+                        $updatePos = $conn->prepare('UPDATE pos_producao SET refs = ?, obs = ?, data_pos = NOW() WHERE idpos_producao = ?');
+                        $updatePos->bind_param('ssi', $refs, $obs, $posId);
+                        if (!$updatePos->execute()) {
+                            throw new RuntimeException('Não foi possível atualizar a Pós-Produção.');
+                        }
+                        $updatePos->close();
+                    }
 
-                $primaryReferenceId = pos_referencias_ensure_render_principal($conn, $posId, $renderId, (string)($render['previa_jpg'] ?? ''), $colaboradorId);
-                $savedFiles = pos_referencias_insert_uploads($conn, $posId, $colaboradorId, $_FILES['references'] ?? []);
-                $referenceMap = ['main' => $primaryReferenceId];
-                foreach ($savedFiles as $savedFile) {
-                    if (!empty($savedFile['reference_id'])) $referenceMap['upload_' . (int)$savedFile['input_index']] = (int)$savedFile['reference_id'];
-                }
-                $drafts = json_decode((string)($_POST['reference_review_drafts'] ?? '{}'), true);
-                if (is_array($drafts)) {
-                    foreach ($drafts as $draftKey => $annotations) {
-                        $referenceId = $referenceMap[$draftKey] ?? 0;
-                        if ($referenceId <= 0 || !is_array($annotations)) continue;
-                        foreach ($annotations as $annotation) {
-                            if (!is_array($annotation)) continue;
-                            pos_referencias_annotation_create(
-                                $conn,
-                                $referenceId,
-                                $colaboradorId,
-                                trim((string)($annotation['texto'] ?? '')),
-                                (string)($annotation['tipo'] ?? 'freehand'),
-                                isset($annotation['x']) ? (float)$annotation['x'] : null,
-                                isset($annotation['y']) ? (float)$annotation['y'] : null,
-                                isset($annotation['path_data']) ? json_encode($annotation['path_data'], JSON_UNESCAPED_UNICODE) : null,
-                                (string)($annotation['cor'] ?? '#f59e0b'),
-                                (int)($annotation['espessura'] ?? 2),
-                                array_key_exists('possui_desenho', $annotation) ? (bool)$annotation['possui_desenho'] : null
-                            );
+                    $primaryReferenceId = pos_referencias_ensure_render_principal($conn, $posId, $renderId, (string)($render['previa_jpg'] ?? ''), $colaboradorId);
+                    $savedFiles = pos_referencias_insert_uploads($conn, $posId, $colaboradorId, $_FILES['references'] ?? []);
+                    $referenceMap = ['main' => $primaryReferenceId];
+                    foreach ($savedFiles as $savedFile) {
+                        if (!empty($savedFile['reference_id'])) {
+                            $referenceMap['upload_' . (int)$savedFile['input_index']] = (int)$savedFile['reference_id'];
                         }
                     }
-                }
+                    $drafts = json_decode((string)($_POST['reference_review_drafts'] ?? '{}'), true);
+                    if (is_array($drafts)) {
+                        foreach ($drafts as $draftKey => $annotations) {
+                            $referenceId = $referenceMap[$draftKey] ?? 0;
+                            if ($referenceId <= 0 || !is_array($annotations)) {
+                                continue;
+                            }
+                            foreach ($annotations as $annotation) {
+                                if (!is_array($annotation)) {
+                                    continue;
+                                }
+                                pos_referencias_annotation_create(
+                                    $conn,
+                                    $referenceId,
+                                    $colaboradorId,
+                                    trim((string)($annotation['texto'] ?? '')),
+                                    (string)($annotation['tipo'] ?? 'freehand'),
+                                    isset($annotation['x']) ? (float)$annotation['x'] : null,
+                                    isset($annotation['y']) ? (float)$annotation['y'] : null,
+                                    isset($annotation['path_data']) ? json_encode($annotation['path_data'], JSON_UNESCAPED_UNICODE) : null,
+                                    (string)($annotation['cor'] ?? '#f59e0b'),
+                                    (int)($annotation['espessura'] ?? 2),
+                                    array_key_exists('possui_desenho', $annotation) ? (bool)$annotation['possui_desenho'] : null
+                                );
+                            }
+                        }
+                    }
                     $references = pos_referencias_list($conn, $posId);
                 }
 
@@ -1134,13 +1150,17 @@ if (isset($_POST['action'])) {
 
                 $updateRender = $conn->prepare("UPDATE render_alta SET status = 'Aprovado', data = NOW() WHERE idrender_alta = ?");
                 $updateRender->bind_param('i', $renderId);
-                if (!$updateRender->execute()) throw new RuntimeException('Não foi possível aprovar o render.');
+                if (!$updateRender->execute()) {
+                    throw new RuntimeException('Não foi possível aprovar o render.');
+                }
                 $updateRender->close();
                 $deadlineFlowResult = deadline_flow_approve_locked($conn, $renderId);
                 $conn->commit();
 
                 notifyRenderUpdate($isPlantaHumanizada ? 'render.approved_without_pos' : 'render.approved_to_pos', ['render_id' => $renderId, 'imagem_id' => (int) $render['imagem_id'], 'pos_producao_id' => $posId, 'tipo_imagem' => $render['tipo_imagem'] ?? null]);
-                if (!$isPlantaHumanizada && function_exists('notifyPosProducaoUpdate')) notifyPosProducaoUpdate('references_changed', ['render_id' => $renderId, 'pos_producao_id' => $posId]);
+                if (!$isPlantaHumanizada && function_exists('notifyPosProducaoUpdate')) {
+                    notifyPosProducaoUpdate('references_changed', ['render_id' => $renderId, 'pos_producao_id' => $posId]);
+                }
                 echo json_encode(['status' => 'sucesso', 'render_id' => $renderId, 'pos_producao_id' => $posId, 'skip_pos_producao' => $isPlantaHumanizada, 'tipo_imagem' => $render['tipo_imagem'] ?? null, 'references' => $references, 'deadline_command_created' => $deadlineFlowResult['command']['created'] ?? false]);
             } catch (Throwable $e) {
                 $conn->rollback();
@@ -1246,15 +1266,21 @@ if (isset($_POST['action'])) {
                 $saved = pos_referencias_insert_uploads($conn, (int)$pos['idpos_producao'], $colaboradorId, $_FILES['references'] ?? []);
                 $referenceMap = [];
                 foreach ($saved as $savedFile) {
-                    if (!empty($savedFile['reference_id'])) $referenceMap['upload_' . (int)$savedFile['input_index']] = (int)$savedFile['reference_id'];
+                    if (!empty($savedFile['reference_id'])) {
+                        $referenceMap['upload_' . (int)$savedFile['input_index']] = (int)$savedFile['reference_id'];
+                    }
                 }
                 $drafts = json_decode((string)($_POST['reference_review_drafts'] ?? '{}'), true);
                 if (is_array($drafts)) {
                     foreach ($drafts as $draftKey => $annotations) {
                         $referenceId = $referenceMap[$draftKey] ?? 0;
-                        if ($referenceId <= 0 || !is_array($annotations)) continue;
+                        if ($referenceId <= 0 || !is_array($annotations)) {
+                            continue;
+                        }
                         foreach ($annotations as $annotation) {
-                            if (!is_array($annotation)) continue;
+                            if (!is_array($annotation)) {
+                                continue;
+                            }
                             pos_referencias_annotation_create(
                                 $conn,
                                 $referenceId,
@@ -1404,7 +1430,9 @@ if (isset($_POST['action'])) {
                                     'message' => 'A alteração desta imagem não possui aprovação interna registrada.',
                                     'question' => 'A alteração foi aprovada?',
                                 ];
-                                if ($debug) $resp['logs'] = $logs;
+                                if ($debug) {
+                                    $resp['logs'] = $logs;
+                                }
                                 echo json_encode($resp);
                                 break;
                             }
@@ -1412,7 +1440,9 @@ if (isset($_POST['action'])) {
                             $registradoPor = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : 0;
                             if ($registradoPor <= 0) {
                                 $resp = ['status' => 'erro', 'message' => 'Usuário sem colaborador vinculado para registrar a aprovação interna.'];
-                                if ($debug) $resp['logs'] = $logs;
+                                if ($debug) {
+                                    $resp['logs'] = $logs;
+                                }
                                 echo json_encode($resp);
                                 break;
                             }
@@ -1460,7 +1490,9 @@ if (isset($_POST['action'])) {
                         $conn->rollback();
                         $logs[] = 'deadline_flow.rework_error=' . $e->getMessage();
                         $resp = ['status' => 'erro', 'success' => false, 'message' => 'Erro ao registrar a reprovacao e a fila Deadline.'];
-                        if ($debug) $resp['logs'] = $logs;
+                        if ($debug) {
+                            $resp['logs'] = $logs;
+                        }
                         echo json_encode($resp);
                     }
                     break;
@@ -1488,7 +1520,9 @@ if (isset($_POST['action'])) {
                         $conn->rollback();
                         $transactionStarted = false;
                         $resp = ['status' => 'erro', 'message' => 'Erro ao registrar aprovação interna.'];
-                        if ($debug) $resp['logs'] = $logs;
+                        if ($debug) {
+                            $resp['logs'] = $logs;
+                        }
                         echo json_encode($resp);
                         break;
                     }
@@ -1509,7 +1543,7 @@ if (isset($_POST['action'])) {
                 $okUpd = $stmtUpd->execute();
                 $stmtUpd->close();
 
-                if ($okUpd === TRUE) {
+                if ($okUpd === true) {
                     if (strtolower($status) === 'aprovado') {
                         try {
                             $deadlineFlowResult = deadline_flow_approve_locked($conn, (int) $idrender_alta);
@@ -1572,7 +1606,7 @@ if (isset($_POST['action'])) {
                             status ENUM('pendente','escolhido','em_producao') DEFAULT 'pendente',
                             UNIQUE KEY uniq_render_file (render_id, filename)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-                        if ($conn->query($createSql) === TRUE) {
+                        if ($conn->query($createSql) === true) {
                             $logs[] = 'followup_angles: ok (CREATE TABLE IF NOT EXISTS)';
                         } else {
                             $logs[] = 'followup_angles: erro ao criar/validar tabela: ' . $conn->error;
@@ -1592,8 +1626,9 @@ if (isset($_POST['action'])) {
                                 $stmtImg->bind_param('i', $idrender_alta);
                                 $stmtImg->execute();
                                 $rImg = $stmtImg->get_result()->fetch_assoc();
-                                if ($rImg && isset($rImg['imagem_id']))
+                                if ($rImg && isset($rImg['imagem_id'])) {
                                     $imagem_id = $rImg['imagem_id'];
+                                }
                                 $stmtImg->close();
                             }
 
@@ -1606,8 +1641,9 @@ if (isset($_POST['action'])) {
                                 $insertStmt->bind_param('iiss', $idrender_alta, $imagem_id, $filename, $uploaded_at);
                                 $insertStmt->execute();
                             }
-                            if ($insertStmt)
+                            if ($insertStmt) {
                                 $insertStmt->close();
+                            }
                             $stmtPre->close();
 
                             // ---------- Flow Review (2ª etapa): importar ângulos quando imagem for P00 ----------
@@ -1694,7 +1730,9 @@ if (isset($_POST['action'])) {
                                             $stPrev2->execute();
                                             $resPrev2 = $stPrev2->get_result();
                                             while ($p = $resPrev2->fetch_assoc()) {
-                                                if (!empty($p['filename'])) $previewsToImport[] = $p['filename'];
+                                                if (!empty($p['filename'])) {
+                                                    $previewsToImport[] = $p['filename'];
+                                                }
                                             }
                                             $stPrev2->close();
                                         }
@@ -1824,7 +1862,9 @@ if (isset($_POST['action'])) {
                         $resp['deadline_command_created'] = $deadlineFlowResult['command']['created'] ?? false;
                         $resp['deadline_command_status'] = $deadlineFlowResult['command']['status'] ?? null;
                     }
-                    if ($debug) $resp['logs'] = $logs;
+                    if ($debug) {
+                        $resp['logs'] = $logs;
+                    }
                     notifyRenderUpdate('render.status_changed', ['render_id' => (int) $idrender_alta, 'status' => $status]);
                     if ($flowReviewMediaCreated && $flowReviewMediaContext) {
                         notifyFlowReviewUpdate($conn, 'media.created', array_merge($flowReviewMediaContext, [
@@ -1839,7 +1879,9 @@ if (isset($_POST['action'])) {
                     }
                     $logs[] = 'Erro ao atualizar o render (execute=false): ' . $conn->error;
                     $resp = ['status' => 'erro', 'message' => 'Erro ao atualizar o render'];
-                    if ($debug) $resp['logs'] = $logs;
+                    if ($debug) {
+                        $resp['logs'] = $logs;
+                    }
                     echo json_encode($resp);
                 }
             }

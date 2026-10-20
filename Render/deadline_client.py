@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 import locale
+import os
 import re
 import subprocess
 from dataclasses import dataclass
 
 from deadline_domain import delete_output_means_not_found, valid_job_id
+
+
+def _windows_oem_encoding() -> str | None:
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+
+        return f"cp{ctypes.windll.kernel32.GetOEMCP()}"
+    except (AttributeError, OSError, ValueError):
+        return None
 
 
 @dataclass
@@ -161,9 +173,6 @@ class DeadlineClient:
             completed = subprocess.run(
                 command,
                 capture_output=True,
-                text=True,
-                encoding=encoding,
-                errors="replace",
                 timeout=self.timeout,
                 check=False,
                 shell=False,
@@ -172,7 +181,28 @@ class DeadlineClient:
             return CommandResult(False, str(exc), timed_out=True)
         except (FileNotFoundError, OSError) as exc:
             return CommandResult(False, str(exc))
-        output = ((completed.stdout or "") + "\n" + (completed.stderr or "")).strip()
+
+        def decode(value):
+            if isinstance(value, str):
+                return value
+            try:
+                return (value or b"").decode("utf-8-sig")
+            except UnicodeDecodeError:
+                # DeadlineCommand can use the Windows OEM code page when its
+                # stdout is redirected by the worker service. The ANSI locale
+                # code page may decode CP850 bytes into plausible but wrong
+                # characters (for example, çã becoming ‡Æ).
+                oem_encoding = _windows_oem_encoding()
+                if oem_encoding and oem_encoding.lower() != encoding.lower():
+                    try:
+                        return (value or b"").decode(oem_encoding)
+                    except (LookupError, UnicodeDecodeError):
+                        pass
+                return (value or b"").decode(encoding, errors="replace")
+
+        # Deadline emits UTF-8 when redirected, even with a Windows cp1252
+        # locale. Preserve accented scene names and Render Element paths.
+        output = (decode(completed.stdout) + "\n" + decode(completed.stderr)).strip()
         return CommandResult(
             completed.returncode == 0,
             output,

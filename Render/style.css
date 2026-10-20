@@ -1532,6 +1532,173 @@ body {
   outline: none;
 }
 
+.btn-render-ef {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+.modal-more-menu .btn-render-ef {
+  width: 100%;
+  justify-content: flex-start;
+  height: 36px;
+  padding: 0 10px;
+  white-space: nowrap;
+  background: transparent;
+}
+.btn-render-ef:hover {
+  background: var(--accent-subtle);
+}
+.btn-render-ef:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.render-ef-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.65);
+}
+.render-ef-overlay[hidden],
+.render-ef-overlay [hidden] {
+  display: none !important;
+}
+.render-ef-dialog {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 24px;
+  box-sizing: border-box;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-modal);
+  background: var(--bg-modal);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-modal);
+}
+.render-ef-dialog header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.render-ef-dialog h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+.render-ef-dialog p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.render-ef-dialog header .modal-close {
+  flex-shrink: 0;
+}
+.render-ef-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+}
+.render-ef-status canvas {
+  flex-shrink: 0;
+  background: transparent;
+}
+.render-ef-status strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+.render-ef-overlay.has-error .render-ef-status strong {
+  color: var(--danger);
+}
+.render-ef-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.render-ef-steps li {
+  border-top: 3px solid var(--border-modal);
+  padding-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+.render-ef-steps li.is-current {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.render-ef-steps li.is-done {
+  border-color: var(--success);
+  color: var(--success);
+}
+.render-ef-details {
+  display: grid;
+  grid-template-columns: 135px minmax(0, 1fr);
+  gap: 10px 14px;
+  margin: 0;
+  padding: 16px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.render-ef-details dt {
+  color: var(--text-secondary);
+}
+.render-ef-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.render-ef-dialog .render-ef-notice,
+.render-ef-dialog .render-ef-warning {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+}
+.render-ef-dialog .render-ef-warning {
+  color: var(--golden);
+  background: color-mix(in srgb, var(--golden) 8%, transparent);
+  margin: 0 0 16px;
+}
+.render-ef-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.render-ef-dialog footer .btn-action {
+  white-space: normal;
+  height: auto;
+  min-height: 36px;
+  padding: 10px 14px;
+}
+@media (max-width: 520px) {
+  .render-ef-dialog {
+    padding: 16px;
+  }
+  .render-ef-details {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .render-ef-details dd {
+    margin-bottom: 10px;
+  }
+  .render-ef-steps {
+    gap: 5px;
+  }
+  .render-ef-steps li {
+    font-size: 10px;
+  }
+}
+
 .btn-action {
   display: inline-flex;
   align-items: center;

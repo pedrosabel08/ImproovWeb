@@ -221,7 +221,7 @@ class DeadlineRepository:
                     status = VALUES(status),
                     detalhes = VALUES(detalhes)
                 """,
-                (worker_id, hostname, pid, "2.0", status, details[:65535]),
+                (worker_id, hostname, pid, "2.1", status, details[:65535]),
             )
 
     def reserve_command(self, worker_id: str) -> dict | None:
@@ -601,14 +601,8 @@ class DeadlineRepository:
                 return {
                     "outcome": "AMBIGUOUS_WAITING_ATTEMPT",
                     **image,
-                    "attempt_ids": [
-                        row["tentativa_id"]
-                        for row in waiting
-                    ],
-                    "render_ids": [
-                        row["render_id"]
-                        for row in waiting
-                    ],
+                    "attempt_ids": [row["tentativa_id"] for row in waiting],
+                    "render_ids": [row["render_id"] for row in waiting],
                 }
 
             # Sem tentativa aguardando, verifica se há render na etapa atual.
@@ -639,6 +633,7 @@ class DeadlineRepository:
                 **image,
                 "render_id": render["render_id"],
             }
+
     def create_first_render(
         self, candidate: dict, job_id: str, job_name: str, initial_state: str
     ) -> dict:

@@ -25,6 +25,10 @@ include '../conexaoMain.php';
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
+if (empty($_SESSION['render_ef_csrf'])) {
+    $_SESSION['render_ef_csrf'] = bin2hex(random_bytes(32));
+}
+$renderEfCsrf = $_SESSION['render_ef_csrf'];
 // Use DB server time for ultima_atividade to avoid clock/timezone mismatches
 // $ultima_atividade = date('Y-m-d H:i:s');
 
@@ -367,6 +371,9 @@ $conn->close();
                         <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
                     </button>
                     <div class="modal-more-menu" id="modalMoreMenu" role="menu" aria-hidden="true">
+                        <button type="button" class="btn-action btn-render-ef" id="renderHighResolution" role="menuitem" disabled>
+                            <i class="fa-solid fa-expand" aria-hidden="true"></i> Render em alta
+                        </button>
                         <button type="button" class="btn-action btn-excluir" id="deleteRender" role="menuitem">
                             <i class="fa-solid fa-trash"></i> Excluir
                         </button>
@@ -389,6 +396,22 @@ $conn->close();
         </div><!-- /.modal-content -->
     </div><!-- /#myModal -->
 
+
+    <div id="renderEfModal" class="render-ef-overlay" hidden>
+        <section class="render-ef-dialog" role="dialog" aria-modal="true" aria-labelledby="renderEfTitle" data-csrf="<?php echo htmlspecialchars($renderEfCsrf, ENT_QUOTES, 'UTF-8'); ?>">
+            <header><div><h2 id="renderEfTitle">Render em alta</h2><p>5000 px na maior dimensão · etapa EF</p></div><button type="button" id="renderEfClose" class="modal-close" aria-label="Fechar render em alta"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
+            <div class="render-ef-status" role="status" aria-live="polite" aria-atomic="true">
+                <canvas id="renderEfOrb" data-thinking-orb data-orb-state="composing" data-orb-size="56" aria-label="Conferindo o render"></canvas>
+                <div><strong id="renderEfStage">Conferindo o render</strong><p id="renderEfMessage"></p></div>
+            </div>
+            <p id="renderEfWorkerWarning" class="render-ef-warning" role="alert" hidden>O worker atualizado não confirmou atividade recentemente. A solicitação permanecerá na fila até ele ficar disponível.</p>
+            <ol class="render-ef-steps" aria-label="Etapas do envio"><li data-ef-step="0">Conferir origem</li><li data-ef-step="1">Revisar destino</li><li data-ef-step="2">Criar Job EF</li><li data-ef-step="3">Registrar no Flow</li><li data-ef-step="4">Liberar render</li></ol>
+            <dl id="renderEfDetails" class="render-ef-details" hidden></dl>
+            <p id="renderEfBackground" class="render-ef-notice" hidden>A solicitação continua após fechar esta janela. Use Render em alta novamente para acompanhar.</p>
+            <p id="renderEfNotice" class="render-ef-notice" hidden>O novo Job usará uma cópia do .max auxiliar original e será conferido enquanto estiver suspenso, antes de liberar a renderização.</p>
+            <footer><button type="button" id="renderEfCancel" class="btn-action">Fechar</button><button type="button" id="renderEfRetry" class="btn-action" hidden>Conferir novamente</button><button type="button" id="renderEfConfirm" class="btn-action btn-render-ef" hidden>Confirmar envio EF</button><button type="button" id="renderEfOpen" class="btn-action btn-render-ef" hidden>Abrir render EF</button></footer>
+        </section>
+    </div>
 
     <!-- ===== POS MODAL ===== -->
     <div id="modalPOS" class="modal">
@@ -469,6 +492,8 @@ $conn->close();
     <?php flow_motion_assets('../'); ?>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script src="<?php echo asset_url('reference-review.js') . '&t=' . filemtime(__DIR__ . '/reference-review.js'); ?>"></script>
+    <script src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
+    <script src="<?php echo asset_url('render-ef.js') . '&t=' . filemtime(__DIR__ . '/render-ef.js'); ?>"></script>
     <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

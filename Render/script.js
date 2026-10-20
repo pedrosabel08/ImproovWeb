@@ -856,6 +856,18 @@ function editRender(idrender_alta) {
     success: function (response) {
       if (response.status == "sucesso") {
         const r = response.render;
+        const canRenderEf =
+          String(r.imagem_etapa_atual || "")
+            .trim()
+            .toUpperCase() === "EF";
+        $("#renderHighResolution")
+          .prop("disabled", !canRenderEf)
+          .attr(
+            "title",
+            canRenderEf
+              ? "Criar novo render EF em alta resolução"
+              : "Disponível somente quando a imagem já está na etapa EF",
+          );
         const isPlantaHumanizada =
           String(r.tipo_imagem || "")
             .trim()
@@ -1198,14 +1210,18 @@ function mostrarModalAprovacaoInterna() {
   FlowAlert.choose({
     type: "warning",
     title: "A altera\u00e7\u00e3o foi aprovada?",
-    message: "A altera\u00e7\u00e3o desta imagem n\u00e3o possui aprova\u00e7\u00e3o interna registrada.",
+    message:
+      "A altera\u00e7\u00e3o desta imagem n\u00e3o possui aprova\u00e7\u00e3o interna registrada.",
     choices: [
       { label: "Sim, presencialmente", value: "presencial" },
       { label: "Sim, via WhatsApp", value: "whatsapp" },
     ],
     cancelText: "N\u00e3o",
   }).then(function (result) {
-    if (result.isConfirmed && ["presencial", "whatsapp"].includes(result.value)) {
+    if (
+      result.isConfirmed &&
+      ["presencial", "whatsapp"].includes(result.value)
+    ) {
       aprovarRender(result.value);
       return;
     }

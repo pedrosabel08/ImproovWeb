@@ -2,7 +2,7 @@ import { createViewerGlass } from "./viewer-glass.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
-import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261019-permissions";
+import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261021-floor-elevation";
 import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
 import { SolarLighting } from "./solar-lighting.js?v=20261016-projection-off";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
@@ -308,6 +308,13 @@ function buildIndex(root, sourceName = "") {
       a.bounds.min.y - b.bounds.min.y ||
       a.id.localeCompare(b.id, "pt-BR", { numeric: true }),
   );
+  const groundFloor =
+    floors.find((floor) => /(^|_)(TERREO|TÉRREO|GROUND)(_|$)/i.test(floor.id)) ||
+    floors[0];
+  const groundElevation = groundFloor?.bounds.min.y;
+  floors.forEach((floor) => {
+    floor.groundElevation = groundElevation;
+  });
   return { floors, records };
 }
 function floorLabel(id) {
@@ -998,6 +1005,7 @@ function activateFloor(floor) {
 // A seleção 3D é independente da vista isolada usada apenas ao abrir o mapa.
 async function focusFloor(floor) {
   if (!modelRoot || !floor || floor.bounds.isEmpty()) return;
+  measurements.setScope(floor.id);
   if (viewerState.mode === "building") {
     const damping = controls.enableDamping;
     controls.enableDamping = false;
@@ -1107,6 +1115,7 @@ function closeFloorPopover() {
 }
 async function resetBuildingView() {
   if (!modelRoot) return;
+  measurements.setScope(null);
   ++transitionToken;
   transitioning = false;
   clearVisualHighlights();
@@ -1560,7 +1569,19 @@ function raycastModel(event, measuring = false) {
     .filter((hit) => !hit.object.userData.isShadowCatcher);
 }
 function pickMeasurement(event) {
-  return raycastModel(event, true).find(visibleSurface) || null;
+  const floorId = viewerState.mode === "floor"
+    ? viewerState.selectedFloor?.id
+    : null;
+  return (
+    raycastModel(event, true).find((hit) => {
+      const record = recordByObject.get(hit.object);
+      return (
+        visibleSurface(hit) &&
+        (!floorId || record?.floor === floorId) &&
+        (!floorId || wasVisible(hit.object))
+      );
+    }) || null
+  );
 }
 function pickRecord(event) {
   // Only identified floor objects are pickable; hidden floors and context cannot intercept clicks.

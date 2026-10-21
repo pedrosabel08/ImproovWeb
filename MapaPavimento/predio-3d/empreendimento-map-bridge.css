@@ -225,6 +225,11 @@ select:focus-visible {
   color: #a1a9b7;
   overflow-wrap: anywhere;
 }
+.link-summary .floor-height {
+  margin: 0 0 10px;
+  color: #dce6f1;
+  font-variant-numeric: tabular-nums;
+}
 .link-summary strong {
   color: #e8edf4;
 }

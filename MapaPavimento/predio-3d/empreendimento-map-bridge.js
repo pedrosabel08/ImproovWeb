@@ -3,6 +3,10 @@ import { ModelUpload } from "./model-upload.js?v=20261019-permissions";
 
 const apiUrl = new URL("../api.php", import.meta.url);
 const mapUrl = new URL("../index.php", import.meta.url);
+const floorHeightFormat = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const reducedMotion = () =>
   matchMedia("(prefers-reduced-motion: reduce)").matches;
 const el = (tag, text, className) => {
@@ -388,6 +392,15 @@ export class EmpreendimentoMapBridge {
     this.mapButton.disabled = this.busy || !link?.mapa_configurado;
     panel.replaceChildren();
     panel.append(el("h3", link?.subtipo_nome || floor.id.replace(/_/g, " ")));
+    const heightFromGround = floor.bounds.min.y - floor.groundElevation;
+    if (Number.isFinite(heightFromGround) && heightFromGround >= 0)
+      panel.append(
+        el(
+          "p",
+          `Altura em relação ao térreo: ${floorHeightFormat.format(heightFromGround)} m`,
+          "floor-height",
+        ),
+      );
     if (link) {
       const counts = el("div", undefined, "floor-counts");
       counts.append(

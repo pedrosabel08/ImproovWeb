@@ -19,6 +19,7 @@ export class ModelMeasurement {
   constructor({ scene, camera, viewport, pick, onModeChange }) {
     Object.assign(this, { scene, camera, viewport, pick, onModeChange });
     this.records = [];
+    this.scope = null;
     this.active = this.available = this.suspended = false;
     this.sequence = 0;
     this.projected = new THREE.Vector3();
@@ -119,6 +120,25 @@ export class ModelMeasurement {
     this.sync();
   }
 
+  setScope(scope) {
+    if (scope === this.scope) return;
+    this.scope = scope;
+    this.cancelDraft();
+    this.selected = null;
+    this.records.forEach((record) => this.setRecordVisible(record));
+    this.renderList();
+    this.sync();
+  }
+
+  setRecordVisible(record) {
+    const visible = record.scope === this.scope;
+    record.line.visible = visible && record.pointB !== null;
+    record.guide.visible = visible && record.pointB !== null && record.hasGuide;
+    record.markerA.hidden = !visible || record.pointB === null;
+    record.markerB.hidden = !visible || record.pointB === null;
+    record.valueLabel.hidden = !visible || record.pointB === null;
+  }
+
   setSuspended(value) {
     this.suspended = value;
     if (value) this.exit();
@@ -200,6 +220,7 @@ export class ModelMeasurement {
     }
     const record = this.draft;
     record.id = `medicao-${++this.sequence}`;
+    record.scope = this.scope;
     record.tipo = this.type.value;
     this.updateRecord(record, point);
     this.records.push(record);
@@ -257,6 +278,7 @@ export class ModelMeasurement {
     this.overlay.append(markerA, markerB, valueLabel);
     const record = {
       id: null,
+      scope: this.scope,
       tipo: this.type.value,
       pointA: pointA.clone(),
       pointB: null,
@@ -290,8 +312,12 @@ export class ModelMeasurement {
     updateLine(record.line, record.pointA, end);
     updateLine(record.guide, end, record.pointB);
     record.guide.computeLineDistances();
-    record.line.visible = true;
-    record.guide.visible = end.distanceToSquared(record.pointB) > 1e-12;
+    record.hasGuide = end.distanceToSquared(record.pointB) > 1e-12;
+    const visible = record.scope === this.scope;
+    record.line.visible = visible;
+    record.guide.visible = visible && record.hasGuide;
+    record.markerA.hidden = record.markerB.hidden = record.valueLabel.hidden =
+      !visible;
     record.valueLabel.textContent = formatMeasurement(record.valor);
     record.valueLabel.setAttribute(
       "aria-label",
@@ -325,8 +351,9 @@ export class ModelMeasurement {
 
   clearAll() {
     this.cancelDraft();
-    this.records.forEach((record) => this.disposeRecord(record));
-    this.records = [];
+    const removed = this.records.filter((record) => record.scope === this.scope);
+    removed.forEach((record) => this.disposeRecord(record));
+    this.records = this.records.filter((record) => record.scope !== this.scope);
     this.selected = null;
     this.renderList();
     this.sync();
@@ -334,7 +361,12 @@ export class ModelMeasurement {
 
   reset() {
     this.exit();
-    this.clearAll();
+    this.cancelDraft();
+    this.records.forEach((record) => this.disposeRecord(record));
+    this.records = [];
+    this.selected = null;
+    this.renderList();
+    this.sync();
     this.setAvailable(false);
   }
 
@@ -351,7 +383,8 @@ export class ModelMeasurement {
 
   renderList() {
     this.list.replaceChildren();
-    this.records.forEach((record, index) => {
+    const records = this.records.filter((record) => record.scope === this.scope);
+    records.forEach((record, index) => {
       const button = this.button("", () => this.select(record));
       button.className = "measurement-item";
       button.dataset.measurementId = record.id;
@@ -366,24 +399,27 @@ export class ModelMeasurement {
       this.list.append(button);
     });
     this.panel.querySelector("#measurementCount").textContent = String(
-      this.records.length,
+      records.length,
     );
     this.panel.querySelector(".measurement-history").hidden =
-      !this.records.length;
+      !records.length;
   }
 
   sync() {
     const current = this.draft || this.selected;
+    const scopedRecords = this.records.filter(
+      (record) => record.scope === this.scope,
+    );
     this.overlay.classList.toggle("is-picking", this.active && !this.selected);
     this.measureButton.disabled = !this.available;
     this.inspectButton.setAttribute("aria-pressed", String(!this.active));
     this.measureButton.setAttribute("aria-pressed", String(this.active));
-    this.panel.hidden = !this.active && !this.records.length;
+    this.panel.hidden = !this.active && !scopedRecords.length;
     this.type.disabled = !this.available;
     this.newButton.disabled = !this.available;
     this.clearButton.disabled = !current;
     this.exitButton.hidden = !this.active;
-    this.clearAllButton.disabled = !this.records.length && !this.draft;
+    this.clearAllButton.disabled = !scopedRecords.length && !this.draft;
     this.pointAStatus.textContent = `Ponto A: ${current ? "definido" : "não definido"}`;
     this.pointBStatus.textContent = `Ponto B: ${this.selected ? "definido" : "não definido"}`;
     this.instruction.textContent = !this.active
@@ -401,7 +437,7 @@ export class ModelMeasurement {
         "Distância horizontal, desconsiderando a diferença de altura.",
       vertical: "Diferença de altura entre os dois pontos.",
     }[this.type.value];
-    this.records.forEach((record, index) => {
+    scopedRecords.forEach((record, index) => {
       record.line.material.opacity = record === this.selected ? 1 : 0.65;
       record.valueLabel.classList.toggle(
         "is-selected",
@@ -439,6 +475,7 @@ export class ModelMeasurement {
     for (const record of this.draft
       ? [...this.records, this.draft]
       : this.records) {
+      if (record.scope !== this.scope) continue;
       place(record.markerA, record.pointA);
       if (record.pointB) {
         place(record.markerB, record.pointB);

@@ -226,7 +226,7 @@ function render_deadline_progress_for_jobs($conn, array $rawJobIds): array
         }
         error_log(
             '[Render] Deadline progress query failed. exit=' . (string) $exitCode
-            . ($details !== '' ? ' stderr=' . $details : '')
+                . ($details !== '' ? ' stderr=' . $details : '')
         );
         return $progressByJob;
     }
@@ -269,7 +269,7 @@ function render_deadline_progress_for_jobs($conn, array $rawJobIds): array
         }
         error_log(
             '[Render] One or more Deadline progress queries are unavailable.'
-            . ($details !== '' ? ' stderr=' . $details : '')
+                . ($details !== '' ? ' stderr=' . $details : '')
         );
     }
 
@@ -1951,15 +1951,77 @@ if (isset($_POST['action'])) {
             if (isset($_POST['idrender_alta'], $_POST['responsavel_id'])) {
                 $id = (int)$_POST['idrender_alta'];
                 $resp_id = (int)$_POST['responsavel_id'];
-                $stmt = $conn->prepare("UPDATE render_alta SET responsavel_id = ? WHERE idrender_alta = ?");
-                $stmt->bind_param('ii', $resp_id, $id);
-                if ($stmt->execute()) {
+
+                $conn->begin_transaction();
+                try {
+                    $stmtRender = $conn->prepare(
+                        "SELECT imagem_id FROM render_alta WHERE idrender_alta = ? LIMIT 1 FOR UPDATE"
+                    );
+                    if (!$stmtRender) {
+                        throw new RuntimeException($conn->error);
+                    }
+                    $stmtRender->bind_param('i', $id);
+                    if (!$stmtRender->execute()) {
+                        throw new RuntimeException($stmtRender->error);
+                    }
+                    $render = $stmtRender->get_result()->fetch_assoc();
+                    $stmtRender->close();
+
+                    if (!$render) {
+                        throw new RuntimeException('Render não encontrado.');
+                    }
+
+                    $imagemId = (int) $render['imagem_id'];
+                    $stmt = $conn->prepare("UPDATE render_alta SET responsavel_id = ? WHERE idrender_alta = ?");
+                    if (!$stmt) {
+                        throw new RuntimeException($conn->error);
+                    }
+                    $stmt->bind_param('ii', $resp_id, $id);
+                    if (!$stmt->execute()) {
+                        throw new RuntimeException($stmt->error);
+                    }
+                    $stmt->close();
+
+                    // Mantém a mesma prioridade usada ao criar o render: função 6, depois 4.
+                    $stmtFuncao = $conn->prepare(
+                        "SELECT idfuncao_imagem
+                         FROM funcao_imagem
+                         WHERE imagem_id = ? AND funcao_id IN (6, 4)
+                         ORDER BY FIELD(funcao_id, 6, 4)
+                         LIMIT 1"
+                    );
+                    if (!$stmtFuncao) {
+                        throw new RuntimeException($conn->error);
+                    }
+                    $stmtFuncao->bind_param('i', $imagemId);
+                    if (!$stmtFuncao->execute()) {
+                        throw new RuntimeException($stmtFuncao->error);
+                    }
+                    $funcaoImagem = $stmtFuncao->get_result()->fetch_assoc();
+                    $stmtFuncao->close();
+
+                    if ($funcaoImagem) {
+                        $funcaoImagemId = (int) $funcaoImagem['idfuncao_imagem'];
+                        $stmtAtualizaFuncao = $conn->prepare(
+                            "UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ?"
+                        );
+                        if (!$stmtAtualizaFuncao) {
+                            throw new RuntimeException($conn->error);
+                        }
+                        $stmtAtualizaFuncao->bind_param('ii', $resp_id, $funcaoImagemId);
+                        if (!$stmtAtualizaFuncao->execute()) {
+                            throw new RuntimeException($stmtAtualizaFuncao->error);
+                        }
+                        $stmtAtualizaFuncao->close();
+                    }
+
+                    $conn->commit();
                     notifyRenderUpdate('render.assignee_changed', ['render_id' => $id, 'responsavel_id' => $resp_id]);
                     echo json_encode(['status' => 'sucesso']);
-                } else {
-                    echo json_encode(['status' => 'erro', 'message' => $stmt->error]);
+                } catch (Throwable $e) {
+                    $conn->rollback();
+                    echo json_encode(['status' => 'erro', 'message' => $e->getMessage()]);
                 }
-                $stmt->close();
             }
             break;
     }

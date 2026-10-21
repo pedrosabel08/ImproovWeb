@@ -6,7 +6,18 @@ if (empty($_SESSION['logado'])) {
 }
 require_once __DIR__ . '/../config/version.php';
 $issueId = max(0, (int) ($_GET['id'] ?? 0));
+// Carrega conexão com o banco antes de executar atualizações de logs
+include '../conexaoMain.php';
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+
+$conn->close();
 ?>
+
 <!doctype html>
 <html lang="pt-BR">
 

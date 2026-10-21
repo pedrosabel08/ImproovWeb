@@ -165,7 +165,7 @@ if ($__isProd) {
                 <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i
                             class="fas fa-check"></i><span> Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
                 <li><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i
-                            class="fa-solid fa-ban"></i><span> Flow Block</span></a></li>
+                            class="fa-solid fa-ban"></i><span> Flow Block</span><span class="sidebar-badge" data-module="flow_block" aria-hidden="true"></span></a></li>
                 <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i
                             class="fas fa-cube"></i><span> Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
                 <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i
@@ -377,7 +377,7 @@ if ($__isProd) {
                 <h3 id="sidebar-panel-producao-title">Produção</h3>
                 <ul class="sidebar-panel-links">
                     <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span>Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
-                    <li><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-ban"></i><span>Flow Block</span></a></li>
+                    <li><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-ban"></i><span>Flow Block</span><span class="sidebar-badge" data-module="flow_block" aria-hidden="true"></span></a></li>
                     <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-cube"></i><span>Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
                     <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-film"></i><span>Lista Pós-Produção</span><span class="sidebar-badge" data-module="pos_producao" aria-hidden="true"></span></a></li>
                     <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?><li><a title="Planejamento Fotográfico" href="<?php echo htmlspecialchars(improov_sidebar_url('Fotografico'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-camera-retro"></i><span>Fotográfico</span></a></li><?php endif; ?>
@@ -442,6 +442,7 @@ if ($__isProd) {
                     <ul class="sidebar-panel-links" data-sidebar-alerts-list>
                         <li class="sidebar-alerts-manage"><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
                         <li data-sidebar-alert-module="flow_review"><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span>Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
+                        <li data-sidebar-alert-module="flow_block"><a title="Flow Block" href="<?php echo htmlspecialchars(improov_sidebar_url('FlowBlock'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-ban"></i><span>Flow Block</span><span class="sidebar-badge" data-module="flow_block" aria-hidden="true"></span></a></li>
                         <li data-sidebar-alert-module="render"><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-cube"></i><span>Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
                         <li data-sidebar-alert-module="pos_producao"><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-film"></i><span>Lista Pós-Produção</span><span class="sidebar-badge" data-module="pos_producao" aria-hidden="true"></span></a></li>
                         <li data-sidebar-alert-module="entregas"><a title="Entregas" href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-module-link="entregas" data-default-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas'), ENT_QUOTES, 'UTF-8'); ?>" data-pending-href="<?php echo htmlspecialchars(improov_sidebar_url('Entregas?pendencias=1'), ENT_QUOTES, 'UTF-8'); ?>"><i class="fa-solid fa-truck-fast"></i><span>Entregas</span><span class="sidebar-badge" data-module="entregas" aria-hidden="true"></span></a></li>

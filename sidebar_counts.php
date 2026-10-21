@@ -141,6 +141,40 @@ if ($stmt_fr) {
     $stmt_fr->close();
 }
 
+// Flow Block: colaborador 21 acompanha todas as issues ativas; os demais
+// recebem a contagem somente das issues atribuídas diretamente a eles.
+$flow_block_count = 0;
+$flowBlockTableResult = $conn->query(
+    "SELECT 1 FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name = 'flow_issue' LIMIT 1"
+);
+if ($flowBlockTableResult && $flowBlockTableResult->num_rows > 0) {
+    if ($userId === 21) {
+        $flowBlockStmt = $conn->prepare(
+            "SELECT COUNT(*) AS cnt
+             FROM flow_issue
+             WHERE status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')"
+        );
+    } else {
+        $flowBlockStmt = $conn->prepare(
+            "SELECT COUNT(*) AS cnt
+             FROM flow_issue
+             WHERE status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA')
+               AND responsavel_colaborador_id = ?"
+        );
+        if ($flowBlockStmt) {
+            $flowBlockStmt->bind_param('i', $userId);
+        }
+    }
+    if ($flowBlockStmt && $flowBlockStmt->execute()) {
+        $flowBlockRow = $flowBlockStmt->get_result()->fetch_assoc();
+        $flow_block_count = (int) ($flowBlockRow['cnt'] ?? 0);
+    }
+    if ($flowBlockStmt) {
+        $flowBlockStmt->close();
+    }
+}
+
 $pre_alt_analise_count = 0;
 $preAltTablesReady = false;
 $resPreAltTables = $conn->query(
@@ -285,6 +319,7 @@ $modules = [
     'pos_producao' => $pos_count,
     'render' => $render_count,
     'flow_review' => $flow_review_count,
+    'flow_block' => $flow_block_count,
     'pre_alt_analise' => $pre_alt_analise_count,
     'obras_updates' => array_reduce($counts_by_obra, function ($acc, $v) {
         return $acc + ($v > 0 ? 1 : 0);

@@ -380,10 +380,11 @@ $conn->close();
                     </div>
                     <select id="indiceSelect"></select>
                     <div class="buttons">
-                        <button type="button" id="compare-envios-btn" class="compare-envios-btn" hidden>
+                        <button type="button" id="compare-envios-btn" class="compare-envios-btn" aria-label="Comparar envios" data-tooltip="Comparar envios" hidden>
                             <i class="fa-solid fa-code-compare"></i>
                             <span>Comparar envios</span>
                         </button>
+                        <button type="button" id="compare-slider-btn" class="compare-envios-btn" aria-label="Comparar antes e depois" data-tooltip="Comparar antes e depois" hidden><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>
                         <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>
                         <button id="btn-menos-zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
                         <button id="btn-mais-zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
@@ -395,6 +396,14 @@ $conn->close();
                     <div class="envios-comparison-toolbar">
                         <strong>Comparar envios</strong>
                         <span>Selecione um envio em cada lado. Zoom e movimento são independentes.</span>
+                    </div>
+                    <div id="comparison-slider-stage" hidden style="--split:50%">
+                        <div data-slider-layer="b"></div>
+                        <div data-slider-layer="a"></div>
+                        <span class="slider-label before">Antes</span>
+                        <span class="slider-label after">Depois</span>
+                        <div class="slider-divider" aria-hidden="true"><span>‹ ›</span></div>
+                        <input id="comparison-slider-range" type="range" min="0" max="100" value="50" aria-label="Divisão entre antes e depois">
                     </div>
                     <div class="envios-comparison-grid">
                         <article class="envios-comparison-side" data-compare-side="a">

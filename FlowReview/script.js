@@ -393,7 +393,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const params = new URLSearchParams(window.location.search);
   const obraNome = params.get("obra_nome");
   const requestedTaskId = Number(params.get("funcao_imagem_id"));
-  const directTaskId = Number.isSafeInteger(requestedTaskId) && requestedTaskId > 0 ? requestedTaskId : 0;
+  const directTaskId =
+    Number.isSafeInteger(requestedTaskId) && requestedTaskId > 0
+      ? requestedTaskId
+      : 0;
 
   if (obraNome || directTaskId > 0) {
     // Primeiro carrega as tarefas
@@ -403,7 +406,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // Link específico por tarefa, sem disputar o fr_goto entre abas.
       if (directTaskId > 0) {
         setTimeout(() => {
-          historyAJAX(directTaskId, 'imagem');
+          historyAJAX(directTaskId, "imagem");
           window._stabSetActive?.(directTaskId);
         }, 400);
         return;
@@ -1333,13 +1336,10 @@ function applyHomeFilters() {
   const tarefasDaObraSelecionada = filtros.obra
     ? dadosTarefas.filter((task) => task.nomenclatura === filtros.obra)
     : dadosTarefas;
-  const obraId = filtros.obra
-    ? tarefasDaObraSelecionada[0]?.idobra
-    : null;
+  const obraId = filtros.obra ? tarefasDaObraSelecionada[0]?.idobra : null;
   const colaboradorId = filtros.colaborador
-    ? dadosTarefas.find(
-        (task) => task.nome_colaborador === filtros.colaborador,
-      )?.colaborador_id
+    ? dadosTarefas.find((task) => task.nome_colaborador === filtros.colaborador)
+        ?.colaborador_id
     : null;
   loadKpis(obraId, colaboradorId);
 }
@@ -1918,9 +1918,8 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
     // Mantém as KPIs alinhadas aos filtros de obra e colaborador.
     const colaboradorIdSelecionado = colaboradorSelecionado
-      ? tarefasDaObra.find(
-          (t) => t.nome_colaborador === colaboradorSelecionado,
-        )?.colaborador_id
+      ? tarefasDaObra.find((t) => t.nome_colaborador === colaboradorSelecionado)
+          ?.colaborador_id
       : null;
     loadKpis(obraId, colaboradorIdSelecionado);
   }
@@ -3649,6 +3648,7 @@ class EnvioCompareViewer {
         ? "Este envio não contém uma imagem comparável."
         : "Envio sem imagem.";
       this.content.appendChild(empty);
+      updateComparisonSlider();
       return;
     }
 
@@ -3658,6 +3658,7 @@ class EnvioCompareViewer {
     img.draggable = false;
     img.src = `https://improov.com.br/flow/ImproovWeb/${encodeURI(media.imagem)}`;
     this.content.appendChild(img);
+    updateComparisonSlider();
 
     img.addEventListener("click", (event) => {
       if (this.dragMoved || drawingTool !== "ponto") return;
@@ -3745,6 +3746,7 @@ function updateEnviosComparisonAvailability() {
   if (!button) return;
   const isDesktop = window.matchMedia("(min-width: 1025px)").matches;
   button.hidden = !isDesktop || enviosComparisonState.indices.length < 2;
+  document.getElementById("compare-slider-btn").hidden = button.hidden;
   if (!isDesktop && enviosComparisonState.active) {
     exitEnviosComparison(true);
   }
@@ -3756,7 +3758,7 @@ function setEnviosComparisonData(grouped, indices) {
   updateEnviosComparisonAvailability();
 }
 
-function enterEnviosComparison() {
+function enterEnviosComparison(mode = "side") {
   if (
     enviosComparisonState.active ||
     enviosComparisonState.indices.length < 2 ||
@@ -3773,6 +3775,7 @@ function enterEnviosComparison() {
     pdfPage: pdfViewerState.page,
   };
   enviosComparisonState.active = true;
+  setComparisonMode(mode);
   closeCommentPopup();
 
   const layout = document.querySelector(".imagens");
@@ -3786,14 +3789,19 @@ function enterEnviosComparison() {
   if (comparison) comparison.hidden = false;
   if (button) {
     button.querySelector("span").textContent = "Sair da comparação";
-    button.title = "Sair da comparação";
   }
 
   const [first, second] = enviosComparisonState.indices;
   enviosComparisonState.viewers.forEach((viewer, index) => {
     viewer.setOptions(
       enviosComparisonState.indices,
-      index === 0 ? first : second,
+      mode === "slider"
+        ? index === 0
+          ? second
+          : first
+        : index === 0
+          ? first
+          : second,
     );
     viewer.loadSelectedEnvio();
   });
@@ -3802,6 +3810,7 @@ function enterEnviosComparison() {
 function exitEnviosComparison(restoreNormalViewer = true) {
   if (!enviosComparisonState.active) return;
   enviosComparisonState.active = false;
+  setComparisonMode("side");
   activeComparisonCommentViewer = null;
   commentPreviewContainer = null;
   closeCommentPopup();
@@ -3819,7 +3828,6 @@ function exitEnviosComparison(restoreNormalViewer = true) {
   if (comparison) comparison.hidden = true;
   if (button) {
     button.querySelector("span").textContent = "Comparar envios";
-    button.title = "Comparar envios";
   }
 
   const normalMedia = enviosComparisonState.normalMedia;
@@ -3852,6 +3860,52 @@ function refreshCurrentCommentTarget() {
   return renderComments(ap_imagem_id);
 }
 
+function setComparisonMode(mode) {
+  enviosComparisonState.mode = mode;
+  const slider = enviosComparisonState.active && mode === "slider";
+  document
+    .getElementById("envios-comparison")
+    .classList.toggle("is-slider", slider);
+  document.getElementById("comparison-slider-stage").hidden = !slider;
+  const description = document.querySelector(".envios-comparison-toolbar span");
+  if (description)
+    description.textContent = slider
+      ? "Selecione os envios e arraste a divisória para comparar antes e depois."
+      : "Selecione um envio em cada lado. Zoom e movimento são independentes.";
+  ["compare-envios-btn", "compare-slider-btn"].forEach((id, index) => {
+    const button = document.getElementById(id);
+    const selected =
+      enviosComparisonState.active && (index === 1 ? slider : !slider);
+    button.setAttribute("aria-pressed", String(selected));
+    button.dataset.tooltip = selected
+      ? "Sair da comparação"
+      : index === 1
+        ? "Comparar antes e depois"
+        : "Comparar envios";
+    button.setAttribute("aria-label", button.dataset.tooltip);
+  });
+  updateComparisonSlider();
+}
+
+function updateComparisonSlider() {
+  if (!enviosComparisonState.active || enviosComparisonState.mode !== "slider")
+    return;
+  enviosComparisonState.viewers.forEach((viewer) => {
+    const layer = document.querySelector(
+      '[data-slider-layer="' + viewer.side + '"]',
+    );
+    layer.replaceChildren();
+    const image = viewer.content.querySelector("img");
+    if (image) layer.appendChild(image.cloneNode());
+    else {
+      const empty = document.createElement("span");
+      empty.className = "envios-comparison-empty";
+      empty.textContent = viewer.content.textContent || "Envio sem imagem.";
+      layer.appendChild(empty);
+    }
+  });
+}
+
 function initializeEnviosComparison() {
   const button = document.getElementById("compare-envios-btn");
   if (!button) return;
@@ -3860,14 +3914,97 @@ function initializeEnviosComparison() {
     new EnvioCompareViewer("b"),
   ];
   button.addEventListener("click", () => {
-    if (enviosComparisonState.active) exitEnviosComparison(true);
+    if (enviosComparisonState.active && enviosComparisonState.mode === "side")
+      exitEnviosComparison(true);
+    else if (enviosComparisonState.active) setComparisonMode("side");
     else enterEnviosComparison();
   });
+  document
+    .getElementById("compare-slider-btn")
+    .addEventListener("click", () => {
+      if (
+        enviosComparisonState.active &&
+        enviosComparisonState.mode === "slider"
+      )
+        exitEnviosComparison(true);
+      else if (enviosComparisonState.active) setComparisonMode("slider");
+      else enterEnviosComparison("slider");
+    });
+  document
+    .getElementById("comparison-slider-range")
+    .addEventListener("input", (event) => {
+      document
+        .getElementById("comparison-slider-stage")
+        .style.setProperty("--split", event.target.value + "%");
+    });
   window.addEventListener("resize", updateEnviosComparisonAvailability);
   updateEnviosComparisonAvailability();
 }
 
 initializeEnviosComparison();
+
+// A single floating tooltip avoids clipping inside the review panels.
+function initializeReviewTooltips() {
+  const labels = {
+    "reset-zoom": "Restaurar zoom",
+    "btn-menos-zoom": "Diminuir zoom",
+    "btn-mais-zoom": "Aumentar zoom",
+    "btn-download-imagem": "Baixar arquivo",
+  };
+  const selector = ".nav-select button, .envios-comparison-zoom button";
+  document.querySelectorAll(selector).forEach((button) => {
+    const label = button.dataset.tooltip || labels[button.id] || button.title;
+    if (!label) return;
+    button.dataset.tooltip = label;
+    button.setAttribute("aria-label", label);
+    button.removeAttribute("title");
+  });
+  const tooltip = document.createElement("div");
+  tooltip.className = "fr-toolbar-tooltip";
+  tooltip.id = "fr-toolbar-tooltip";
+  tooltip.role = "tooltip";
+  tooltip.hidden = true;
+  document.body.appendChild(tooltip);
+  let activeButton = null;
+  const hide = () => {
+    activeButton?.removeAttribute("aria-describedby");
+    activeButton = null;
+    tooltip.hidden = true;
+  };
+  const show = (button) => {
+    if (!button?.matches(selector) || !button.dataset.tooltip) return;
+    hide();
+    activeButton = button;
+    tooltip.textContent = button.dataset.tooltip;
+    tooltip.hidden = false;
+    button.setAttribute("aria-describedby", tooltip.id);
+    const rect = button.getBoundingClientRect();
+    const width = tooltip.offsetWidth;
+    tooltip.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, rect.left + rect.width / 2 - width / 2))}px`;
+    tooltip.style.top = `${Math.max(8, rect.top - tooltip.offsetHeight - 9)}px`;
+  };
+  document.addEventListener("pointerover", (event) =>
+    show(event.target.closest("button")),
+  );
+  document.addEventListener("pointerout", (event) => {
+    if (
+      activeButton?.contains(event.target) &&
+      !activeButton.contains(event.relatedTarget)
+    )
+      hide();
+  });
+  document.addEventListener("focusin", (event) =>
+    show(event.target.closest("button")),
+  );
+  document.addEventListener("focusout", hide);
+  document.addEventListener("click", hide);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hide();
+  });
+  window.addEventListener("resize", hide);
+  document.addEventListener("scroll", hide, true);
+}
+initializeReviewTooltips();
 
 function captureFlowReviewViewState() {
   const comentarioModal = document.getElementById("comentarioModal");
@@ -3918,6 +4055,8 @@ function captureFlowReviewViewState() {
     translateY: currentTranslateY,
     videoTime: video ? video.currentTime : null,
     comparisonActive: enviosComparisonState.active,
+    comparisonMode: enviosComparisonState.mode,
+    comparisonSplit: document.getElementById("comparison-slider-range")?.value,
     comparison,
     filters,
     navScrollTop: document.querySelector(".imagens > nav")?.scrollTop || 0,
@@ -4007,7 +4146,12 @@ async function restoreFlowReviewViewState(state) {
   }
 
   if (state.comparisonActive && enviosComparisonState.indices.length >= 2) {
-    enterEnviosComparison();
+    enterEnviosComparison(state.comparisonMode || "side");
+    const sliderRange = document.getElementById("comparison-slider-range");
+    sliderRange.value = state.comparisonSplit || "50";
+    document
+      .getElementById("comparison-slider-stage")
+      .style.setProperty("--split", sliderRange.value + "%");
     await Promise.all(
       enviosComparisonState.viewers.map(async (viewer) => {
         const saved = state.comparison.find(
@@ -4210,9 +4354,13 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
     .then((response) => {
       if (requestSequence !== historyRequestSequence) return;
       if (!Array.isArray(response.historico) || !response.historico.length) {
-        document.querySelector('.main')?.classList.remove('hidden');
-        document.querySelector('.container-aprovacao')?.classList.add('hidden');
-        Swal.fire({icon: 'info', title: 'Esta função ainda não possui envios para revisão', text: 'Consulte o andamento pelo card da tarefa no Flow.'});
+        document.querySelector(".main")?.classList.remove("hidden");
+        document.querySelector(".container-aprovacao")?.classList.add("hidden");
+        Swal.fire({
+          icon: "info",
+          title: "Esta função ainda não possui envios para revisão",
+          text: "Consulte o andamento pelo card da tarefa no Flow.",
+        });
         return;
       }
       // console.log("Funcao Imagem:", idfuncao_imagem);
@@ -5950,6 +6098,7 @@ function mostrarPdfCompleto(
 
     imageWrapper.appendChild(toolbar);
     imageWrapper.appendChild(wrap);
+    applyTransforms();
 
     // Clique no PDF para criar comentário (ponto)
     pageLayer.addEventListener("click", function (event) {
@@ -8414,7 +8563,13 @@ let dragMoved = false;
 
 // Function to apply transforms (zoom and pan)
 function applyTransforms() {
-  imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+  const pdfPage = imageWrapper.querySelector(".pdf-page-layer");
+  const isPdf = imageWrapper.classList.contains("pdf-mode");
+  imageWrapper.style.transform = isPdf
+    ? "none"
+    : `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+  if (pdfPage)
+    pdfPage.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
 
   // Adjust comment bubble scaling based on the new currentZoom
   document.querySelectorAll("#image_wrapper .comment").forEach((comment) => {
@@ -8479,6 +8634,7 @@ document.getElementById("reset-zoom").addEventListener("click", function () {
 });
 
 imageWrapper.addEventListener("mousedown", (e) => {
+  if (e.target.closest(".pdf-toolbar")) return;
   if (drawingTool !== "ponto") return; // deixa o handler de forma assumir o controle
   if (e.button === 0 && !e.ctrlKey) {
     isDragging = true;

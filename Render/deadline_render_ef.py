@@ -8,15 +8,80 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import ntpath
 import os
 import re
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 
 from deadline_client import parse_output
 from deadline_domain import state_from_deadline, valid_job_id
+
+
+def ensure_smb_destination_ready(destination: str, logger=None) -> None:
+    """Create the UNC destination and verify write, rename, and delete access."""
+    log = logger or logging.getLogger(__name__)
+    probe_id = uuid.uuid4().hex
+    probe_path = os.path.join(destination, f".flow-ef-write-{probe_id}.tmp")
+    renamed_path = os.path.join(destination, f".flow-ef-write-{probe_id}.renamed")
+    operation = "criar a pasta"
+    failed_with: OSError | None = None
+
+    log.info("EF SMB directory creation started", extra={"destination": destination})
+    try:
+        # exist_ok handles a concurrent creator without a check-then-create race.
+        os.makedirs(destination, exist_ok=True)
+        log.info(
+            "EF SMB directory created or found",
+            extra={"destination": destination},
+        )
+
+        operation = "criar e gravar o arquivo temporário de validação"
+        with open(probe_path, "xb") as probe:
+            probe.write(b"Flow EF SMB write check\n")
+
+        operation = "renomear o arquivo temporário de validação"
+        os.rename(probe_path, renamed_path)
+
+        operation = "excluir o arquivo temporário de validação"
+        os.unlink(renamed_path)
+        log.info(
+            "EF SMB write validation completed",
+            extra={"destination": destination},
+        )
+    except OSError as exc:
+        failed_with = exc
+        log.exception(
+            "EF SMB destination operation failed",
+            extra={"destination": destination, "operation": operation},
+        )
+        legacy_hint = (
+            " A pasta EF existente pode ter uma ACL legada criada via SFTP."
+            if isinstance(exc, PermissionError)
+            else ""
+        )
+        raise RuntimeError(
+            f"Falha ao {operation} no destino SMB '{destination}'.{legacy_hint} "
+            "O Job não será submetido."
+        ) from exc
+    finally:
+        # If creation, writing, or rename failed, remove whichever UUID probe
+        # path exists. Never mask the original failure with a cleanup failure.
+        for path in (probe_path, renamed_path):
+            try:
+                os.unlink(path)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                log.exception(
+                    "EF SMB validation file cleanup failed",
+                    extra={"destination": destination, "probe_path": path},
+                )
+                if failed_with is None:
+                    raise
 
 
 def plugin_info(data: dict) -> dict[str, str]:
@@ -373,11 +438,14 @@ class RenderEF:
         self.update(
             request, "CRIANDO_PASTA", "Criando a pasta EF e a subpasta desta imagem."
         )
-        if (
-            self.storage(context, plan["source_folder"], "create")["destination"]
-            != plan["destination"]
-        ):
+        storage_result = self.storage(context, plan["source_folder"], "inspect")
+        if storage_result["destination"] != plan["destination"]:
             raise RuntimeError("O destino do armazenamento mudou desde a inspeção.")
+        self.worker.logger.info(
+            "EF SFTP storage inspection completed",
+            extra={"destination": plan["destination"]},
+        )
+        ensure_smb_destination_ready(plan["destination"], self.worker.logger)
         self.update(
             request,
             "CONFIGURACOES",
@@ -418,6 +486,13 @@ class RenderEF:
                 request,
                 "SUBMETENDO",
                 "Criando um novo Job suspenso com o .max auxiliar original.",
+            )
+            self.worker.logger.info(
+                "EF Deadline submission started",
+                extra={
+                    "request_id": request["id"],
+                    "destination": plan["destination"],
+                },
             )
             result = self.client.run([str(job_path), str(plugin_path), *files])
             found = re.search(r"\bJobID=([a-fA-F0-9]{24})\b", result.output)

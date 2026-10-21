@@ -1,13 +1,152 @@
 import sys
+import os
 import unittest
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from deadline_client import CommandResult, DeadlineClient
-from deadline_render_ef import RenderEF, ef_resolution, plugin_info, read_info, snapshot
+from deadline_render_ef import (
+    RenderEF,
+    ef_resolution,
+    ensure_smb_destination_ready,
+    plugin_info,
+    read_info,
+    snapshot,
+)
+
+
+class SmbDestinationReadinessTests(unittest.TestCase):
+    def test_new_destination_is_created_and_probe_is_removed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = str(Path(temp) / "Obra" / "EF" / "Imagem_EF")
+
+            ensure_smb_destination_ready(destination, Mock())
+
+            self.assertTrue(Path(destination).is_dir())
+            self.assertEqual(list(Path(destination).iterdir()), [])
+
+    def test_existing_ef_and_existing_destination_are_validated(self):
+        with tempfile.TemporaryDirectory() as temp:
+            existing_ef = Path(temp) / "Obra" / "EF"
+            existing_ef.mkdir(parents=True)
+            destination = existing_ef / "Imagem_EF"
+
+            ensure_smb_destination_ready(str(destination), Mock())
+            self.assertTrue(destination.is_dir())
+            self.assertEqual(list(destination.iterdir()), [])
+
+            ensure_smb_destination_ready(str(destination), Mock())
+            self.assertEqual(list(destination.iterdir()), [])
+
+    def test_concurrent_creator_is_tolerated_by_exist_ok(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = str(Path(temp) / "Obra" / "EF" / "Imagem_EF")
+            real_makedirs = os.makedirs
+
+            def create_before_call(path, exist_ok=False):
+                real_makedirs(path, exist_ok=True)
+                return real_makedirs(path, exist_ok=exist_ok)
+
+            with patch(
+                "deadline_render_ef.os.makedirs", side_effect=create_before_call
+            ) as makedirs:
+                ensure_smb_destination_ready(destination, Mock())
+
+            self.assertTrue(
+                any(call.args[0] == destination for call in makedirs.call_args_list)
+            )
+            self.assertTrue(
+                all(call.kwargs.get("exist_ok") for call in makedirs.call_args_list)
+            )
+            self.assertEqual(list(Path(destination).iterdir()), [])
+
+    def test_directory_creation_failure_preserves_original_exception(self):
+        destination = r"\\server\renders2\Obra\EF\Imagem_EF"
+        denied = PermissionError("access denied")
+        with patch("deadline_render_ef.os.makedirs", side_effect=denied):
+            with self.assertRaisesRegex(RuntimeError, "criar a pasta") as raised:
+                ensure_smb_destination_ready(destination, Mock())
+
+        self.assertIn(destination, str(raised.exception))
+        self.assertIs(raised.exception.__cause__, denied)
+
+    def test_write_probe_creation_failure_is_reported_and_cleaned(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = str(Path(temp) / "dest")
+            denied = PermissionError("create denied")
+            with patch("builtins.open", side_effect=denied):
+                with self.assertRaisesRegex(RuntimeError, "arquivo temporário") as raised:
+                    ensure_smb_destination_ready(destination, Mock())
+
+            self.assertIs(raised.exception.__cause__, denied)
+            self.assertEqual(list(Path(destination).iterdir()), [])
+
+    def test_rename_failure_is_reported_and_probe_is_cleaned(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = str(Path(temp) / "dest")
+            denied = PermissionError("rename denied")
+            with patch("deadline_render_ef.os.rename", side_effect=denied):
+                with self.assertRaisesRegex(RuntimeError, "renomear") as raised:
+                    ensure_smb_destination_ready(destination, Mock())
+
+            self.assertIs(raised.exception.__cause__, denied)
+            self.assertEqual(list(Path(destination).iterdir()), [])
+
+    def test_delete_failure_is_reported_and_cleanup_retries(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = str(Path(temp) / "dest")
+            real_unlink = os.unlink
+            denied = PermissionError("delete denied")
+            failed_once = False
+
+            def fail_first_delete(path):
+                nonlocal failed_once
+                if str(path).endswith(".renamed") and not failed_once:
+                    failed_once = True
+                    raise denied
+                return real_unlink(path)
+
+            with patch("deadline_render_ef.os.unlink", side_effect=fail_first_delete):
+                with self.assertRaisesRegex(RuntimeError, "excluir") as raised:
+                    ensure_smb_destination_ready(destination, Mock())
+
+            self.assertIs(raised.exception.__cause__, denied)
+            self.assertEqual(list(Path(destination).iterdir()), [])
+
+    def test_cleanup_failure_is_logged_without_masking_primary_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = Path(temp) / "dest"
+            destination.mkdir()
+            primary = PermissionError("write validation failed")
+            cleanup_error = PermissionError("cleanup denied")
+            real_open = open
+
+            class FailingProbe:
+                def __init__(self, path, mode):
+                    self.path = path
+
+                def __enter__(self):
+                    self.handle = real_open(self.path, "xb")
+                    return self.handle
+
+                def __exit__(self, exc_type, exc, traceback):
+                    self.handle.close()
+                    raise primary
+
+            logger = Mock()
+            with patch("builtins.open", side_effect=FailingProbe), patch(
+                "deadline_render_ef.os.unlink", side_effect=cleanup_error
+            ):
+                with self.assertRaisesRegex(RuntimeError, "gravar") as raised:
+                    ensure_smb_destination_ready(str(destination), logger)
+
+            self.assertIs(raised.exception.__cause__, primary)
+            self.assertGreaterEqual(logger.exception.call_count, 3)
+            for leftover in destination.iterdir():
+                leftover.unlink()
 
 
 class RenderEFTests(unittest.TestCase):
@@ -100,17 +239,21 @@ class RenderEFTests(unittest.TestCase):
             seen.append((read_info(Path(args[0])), read_info(Path(args[1])), args[2:]))
             return CommandResult(True, "JobID=" + "b" * 24, 0)
 
+        client = SimpleNamespace(run=run)
+        logger = Mock()
         service = RenderEF(
-            SimpleNamespace(database=None, client=SimpleNamespace(run=run))
+            SimpleNamespace(database=None, client=client, logger=logger)
         )
         service.context = lambda request: {}
-        service.storage = lambda *args: {"destination": destination}
+        service.storage = Mock(return_value={"destination": destination})
 
         def update(request, stage, message, status="PROCESSANDO", **fields):
             request.update(etapa=stage, status=status, **fields)
 
         service.update = update
-        with tempfile.TemporaryDirectory() as temp:
+        with tempfile.TemporaryDirectory() as temp, patch(
+            "deadline_render_ef.ensure_smb_destination_ready"
+        ) as readiness:
             scene = Path(temp) / "original.max"
             scene.write_bytes(b"unchanged original scene")
             files = [str(scene)]
@@ -135,6 +278,9 @@ class RenderEFTests(unittest.TestCase):
             request = {"id": 7, "origem_job_id": "a" * 24}
             self.assertEqual(service.submit(request, plan, {}), "b" * 24)
             self.assertEqual(scene.read_bytes(), b"unchanged original scene")
+        service.storage.assert_called_once_with({}, plan["source_folder"], "inspect")
+        readiness.assert_called_once_with(destination, logger)
+        self.assertEqual(len(seen), 1)
         job, plugin, auxiliaries = seen[0]
         self.assertEqual(job["InitialStatus"], "Suspended")
         self.assertEqual(job["Frames"], "5")
@@ -153,6 +299,42 @@ class RenderEFTests(unittest.TestCase):
         )
         self.assertEqual(original["RenderHeight"], "2500")
         self.assertEqual(len(seen), 1)
+
+    def test_smb_readiness_failure_prevents_deadline_submission(self):
+        destination = r"\\192.168.0.250\renders2\Obra\EF\Imagem_EF"
+        client = SimpleNamespace(run=Mock())
+        service = RenderEF(
+            SimpleNamespace(database=None, client=client, logger=Mock())
+        )
+        service.context = lambda request: {}
+        service.storage = Mock(return_value={"destination": destination})
+        service.update = Mock()
+        with tempfile.TemporaryDirectory() as temp:
+            scene = Path(temp) / "original.max"
+            scene.write_bytes(b"unchanged original scene")
+            files = [str(scene)]
+            service.source = Mock(
+                return_value=(
+                    {"_job_info": {"Name": "Imagem"}},
+                    {"RenderWidth": "2500", "RenderHeight": "1250"},
+                    files,
+                )
+            )
+            plan = {
+                "snapshot": snapshot({"RenderWidth": "2500", "RenderHeight": "1250"}),
+                "job_snapshot": snapshot({"Name": "Imagem"}),
+                "files": files,
+                "source_folder": r"\\192.168.0.250\renders2\Obra\R00\Imagem",
+                "destination": destination,
+            }
+            with patch(
+                "deadline_render_ef.ensure_smb_destination_ready",
+                side_effect=RuntimeError("sem permissao"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "sem permissao"):
+                    service.submit({"id": 7, "origem_job_id": "a" * 24}, plan, {})
+
+        client.run.assert_not_called()
 
 
 if __name__ == "__main__":

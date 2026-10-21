@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     http_response_code(401);
@@ -9,8 +9,8 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-$idObra = isset($_GET['idobra']) ? intval($_GET['idobra']) : 0;
-$category = isset($_GET['category']) ? strtolower(trim((string) $_GET['category'])) : 'todos';
+$idObra = intval($_POST['idobra'] ?? $_GET['idobra'] ?? 0);
+$category = strtolower(trim((string) ($_POST['category'] ?? $_GET['category'] ?? 'todos')));
 
 if ($idObra <= 0) {
     http_response_code(400);
@@ -21,6 +21,12 @@ if ($idObra <= 0) {
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/historico_data.php';
+if (!improov_usuario_pode_acessar_obra($conn, $idObra)) {
+    http_response_code(403);
+    exit('Obra indisponível.');
+}
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -43,10 +49,7 @@ function formatarDataPtBr($dateStr)
 
 function mapTipoToCategoria($tipo)
 {
-    $t = strtolower(trim((string) $tipo));
-    if ($t === 'entrega') return 'entregas';
-    if ($t === 'arquivo' || $t === 'arquivos' || $t === 'upload' || $t === 'anexo') return 'arquivos';
-    return 'manuais';
+    return historicoCategoria(['tipo' => $tipo]);
 }
 
 // Buscar nomenclatura da obra
@@ -81,6 +84,20 @@ while ($row = $result->fetch_assoc()) {
     $acompanhamentos[] = $row;
 }
 $stmt->close();
+
+// Interseção com a consulta por obra: exporta todos os eventos filtrados,
+// inclusive os fora do lote de DOM, sem permitir IDs de outras obras.
+if (isset($_POST['registro_ids'])) {
+    $selected = json_decode((string) $_POST['registro_ids'], true);
+    if (!is_array($selected)) {
+        http_response_code(400);
+        exit('Seleção de registros inválida.');
+    }
+    $selected = array_fill_keys(array_map('intval', $selected), true);
+    $acompanhamentos = array_values(array_filter($acompanhamentos, static function ($row) use ($selected) {
+        return isset($selected[(int) $row['id']]);
+    }));
+}
 
 if ($category !== 'todos') {
     $acompanhamentos = array_values(array_filter($acompanhamentos, function ($a) use ($category) {

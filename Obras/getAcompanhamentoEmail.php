@@ -1,18 +1,27 @@
 <?php
-header('Content-Type: application/json');
+require_once __DIR__ . '/../config/session_bootstrap.php';
+if (empty($_SESSION['logado'])) {
+    http_response_code(401);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'Não autenticado.']);
+    exit;
+}
+header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/historico_data.php';
 
 $idObra = isset($_GET['idobra']) ? intval($_GET['idobra']) : 0;
 
-$sql = "SELECT idacompanhamento_email as id,assunto, data, ordem, tipo FROM acompanhamento_email WHERE obra_id = ? order by data desc, idacompanhamento_email desc";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $idObra);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$acompanhamentos = [];
-while ($row = $result->fetch_assoc()) {
-    $acompanhamentos[] = $row;
+if ($idObra <= 0 || !improov_usuario_pode_acessar_obra($conn, $idObra)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Obra indisponível.']);
+    exit;
 }
-
-echo json_encode($acompanhamentos);
+try {
+    echo json_encode(historicoRegistros($conn, $idObra), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+} catch (Throwable $e) {
+    error_log('[historico] ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'Não foi possível carregar o histórico.']);
+}

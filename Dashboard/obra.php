@@ -161,18 +161,34 @@ $conn->close();
             if (!/^\d+$/.test(id)) return null;
             const controller = new AbortController();
             const url = new URL('../MapaPavimento/api.php', location.href);
-            url.search = new URLSearchParams({ action: 'modelos_3d', obra_id: id });
-            const result = fetch(url, { credentials: 'same-origin', signal: controller.signal })
+            url.search = new URLSearchParams({
+                action: 'modelos_3d',
+                obra_id: id
+            });
+            const result = fetch(url, {
+                    credentials: 'same-origin',
+                    signal: controller.signal
+                })
                 .then(async response => {
                     const data = await response.json();
                     if (!response.ok || !data.sucesso) throw new Error(data.erro || `HTTP ${response.status}`);
-                    return { data };
-                }).catch(error => ({ error }));
-            return { id, controller, result, used: false };
+                    return {
+                        data
+                    };
+                }).catch(error => ({
+                    error
+                }));
+            return {
+                id,
+                controller,
+                result,
+                used: false
+            };
         })();
     </script>
     <script defer src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset_url('styleObra.css') . '&t=' . filemtime(__DIR__ . '/styleObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../assets/css/components/obra-history.css') . '&t=' . filemtime(__DIR__ . '/../assets/css/components/obra-history.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('onboardingObra.css') . '&t=' . filemtime(__DIR__ . '/onboardingObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('obra-3d.css') . '&t=' . filemtime(__DIR__ . '/obra-3d.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('popoverAcomp.css'); ?>">
@@ -228,7 +244,7 @@ $conn->close();
 
     include '../sidebar.php';
 
-?>
+    ?>
     <div class="container animate__animated animate__fadeIn">
 
         <header>
@@ -241,27 +257,30 @@ $conn->close();
 
             <nav id="quickAccess" class="quick-access obra-menu" aria-label="Navega&ccedil;&atilde;o da obra" style="display:none">
                 <a id="quick_predio_3d" class="quick-link" href="#obra3dHero" hidden><i class="fa-solid fa-cube" aria-hidden="true"></i><span class="qa-label">Pr&eacute;dio 3D</span></a>
-                <a  class="quick-link" href="#tabela-obra" ><i class="fa-solid fa-table-cells" aria-hidden="true"></i><span class="qa-label">Tabela</span></a>
+                <a class="quick-link" href="#tabela-obra"><i class="fa-solid fa-table-cells" aria-hidden="true"></i><span class="qa-label">Tabela</span></a>
                 <a id="quick_mapa_pavimento" class="quick-link" href="#" hidden><i class="fa-solid fa-map" aria-hidden="true"></i><span class="qa-label">Mapa de pavimentos</span></a>
-                <a  class="quick-link" href="#list_acomp" ><i class="fa-solid fa-list" aria-hidden="true"></i><span class="qa-label">Hist&oacute;rico</span></a>
+                <a class="quick-link" href="#list_acomp"><i class="fa-solid fa-list" aria-hidden="true"></i><span class="qa-label">Hist&oacute;rico</span></a>
                 <details id="obraMore" class="obra-more">
                     <summary>Mais <i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
                     <div class="obra-more-panel">
-                        <div class="obra-menu-group"><h2>Obra</h2>
-                            <a  class="quick-link" href="#secao-infos-obra" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span class="qa-label">Informa&ccedil;&otilde;es da obra</span></a>
-                            <a  class="quick-link" href="#secao-arquivos" ><i class="fa-solid fa-file" aria-hidden="true"></i><span class="qa-label">Arquivos</span></a>
-                            <a id="quick_briefing_arquivos" class="quick-link" href="#" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span class="qa-label">Briefing</span></a>
+                        <div class="obra-menu-group">
+                            <h2>Obra</h2>
+                            <a class="quick-link" href="#secao-infos-obra"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span class="qa-label">Informa&ccedil;&otilde;es da obra</span></a>
+                            <a class="quick-link" href="#secao-arquivos"><i class="fa-solid fa-file" aria-hidden="true"></i><span class="qa-label">Arquivos</span></a>
+                            <a id="quick_briefing_arquivos" class="quick-link" href="#"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span class="qa-label">Briefing</span></a>
                             <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-brands fa-google-drive" aria-hidden="true"></i><span class="qa-label">Drive</span></a>
                         </div>
-                        <div class="obra-menu-group"><h2>Produ&ccedil;&atilde;o</h2>
+                        <div class="obra-menu-group">
+                            <h2>Produ&ccedil;&atilde;o</h2>
                             <a class="quick-link alma-obra" href="#"><i class="fa-solid fa-compass" aria-hidden="true"></i><span class="qa-label">ALMA</span></a>
                             <?php if ($pode_ver_plano_r00): ?>
-                            <a id="quick_production_plan" class="quick-link" href="#" aria-hidden="true" style="display:none"><i class="fa-solid fa-chart-gantt" aria-hidden="true"></i><span class="qa-label">Plano R00</span></a>
+                                <a id="quick_production_plan" class="quick-link" href="#" aria-hidden="true" style="display:none"><i class="fa-solid fa-chart-gantt" aria-hidden="true"></i><span class="qa-label">Plano R00</span></a>
                             <?php endif; ?>
-                            <a id="quick_handoff" class="quick-link" href="#" ><i class="fa-solid fa-handshake" aria-hidden="true"></i><span class="qa-label">Handoff</span></a>
-                            <a id="quick_eventos_obra" class="quick-link" href="#secao-eventos-obra" ><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span class="qa-label">Eventos</span></a>
+                            <a id="quick_handoff" class="quick-link" href="#"><i class="fa-solid fa-handshake" aria-hidden="true"></i><span class="qa-label">Handoff</span></a>
+                            <a id="quick_eventos_obra" class="quick-link" href="#secao-eventos-obra"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span class="qa-label">Eventos</span></a>
                         </div>
-                        <div class="obra-menu-group"><h2>Links</h2>
+                        <div class="obra-menu-group">
+                            <h2>Links</h2>
                             <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span class="qa-label">Review</span></a>
                             <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-solid fa-camera" aria-hidden="true"></i><span class="qa-label">Fotogr&aacute;fico</span></a>
                             <a id="quick_google_earth" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style="display:none"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="qa-label">Google Earth</span></a>
@@ -283,21 +302,21 @@ $conn->close();
                             class="fa-solid fa-times"></i></button>
                     <nav id="quickMobileNav" class="quick-mobile-nav" aria-label="Navega&ccedil;&atilde;o compacta da obra">
                         <a class="mobile-link" id="mobile_predio_3d" href="#obra3dHero" hidden><i class="fa-solid fa-cube" aria-hidden="true"></i><span>Pr&eacute;dio 3D</span></a>
-                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra" ><i class="fa-solid fa-table-cells" aria-hidden="true"></i><span>Tabela</span></a>
+                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i class="fa-solid fa-table-cells" aria-hidden="true"></i><span>Tabela</span></a>
                         <a class="mobile-link" id="mobile_mapa_pavimento" href="#" hidden><i class="fa-solid fa-map" aria-hidden="true"></i><span>Mapa de pavimentos</span></a>
-                        <a class="mobile-link" id="mobile_hist" href="#list_acomp" ><i class="fa-solid fa-list" aria-hidden="true"></i><span>Hist&oacute;rico</span></a>
+                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list" aria-hidden="true"></i><span>Hist&oacute;rico</span></a>
                         <h2 class="obra-mobile-group">Obra</h2>
-                        <a class="mobile-link" id="mobile_obs" href="#secao-infos-obra" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Informa&ccedil;&otilde;es da obra</span></a>
-                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos" ><i class="fa-solid fa-file" aria-hidden="true"></i><span>Arquivos</span></a>
-                        <a class="mobile-link" id="mobile_briefing_arquivos" href="#" ><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Briefing</span></a>
+                        <a class="mobile-link" id="mobile_obs" href="#secao-infos-obra"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Informa&ccedil;&otilde;es da obra</span></a>
+                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i class="fa-solid fa-file" aria-hidden="true"></i><span>Arquivos</span></a>
+                        <a class="mobile-link" id="mobile_briefing_arquivos" href="#"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Briefing</span></a>
                         <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-google-drive" aria-hidden="true"></i><span>Drive</span></a>
                         <h2 class="obra-mobile-group">Produ&ccedil;&atilde;o</h2>
                         <a class="mobile-link alma-obra" id="mobile_alma" href="#"><i class="fa-solid fa-compass" aria-hidden="true"></i><span>ALMA</span></a>
                         <?php if ($pode_ver_plano_r00): ?>
-                        <a class="mobile-link" id="mobile_production_plan" href="#" aria-hidden="true" style="display:none"><i class="fa-solid fa-chart-gantt" aria-hidden="true"></i><span>Plano R00</span></a>
+                            <a class="mobile-link" id="mobile_production_plan" href="#" aria-hidden="true" style="display:none"><i class="fa-solid fa-chart-gantt" aria-hidden="true"></i><span>Plano R00</span></a>
                         <?php endif; ?>
-                        <a class="mobile-link" id="mobile_handoff" href="#" ><i class="fa-solid fa-handshake" aria-hidden="true"></i><span>Handoff</span></a>
-                        <a class="mobile-link" id="mobile_eventos_obra" href="#secao-eventos-obra" ><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span>Eventos</span></a>
+                        <a class="mobile-link" id="mobile_handoff" href="#"><i class="fa-solid fa-handshake" aria-hidden="true"></i><span>Handoff</span></a>
+                        <a class="mobile-link" id="mobile_eventos_obra" href="#secao-eventos-obra"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span>Eventos</span></a>
                         <h2 class="obra-mobile-group">Links</h2>
                         <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>Review</span></a>
                         <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-camera" aria-hidden="true"></i><span>Fotogr&aacute;fico</span></a>
@@ -318,10 +337,10 @@ $conn->close();
                 </div>
             </div>
             <div class="obra-3d-slot" id="obra3dSlot"></div>
-                <div id="obra3dInitialLoading" class="obra-3d-loading" role="status">
-                    <canvas data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Preparando a obra"></canvas>
-                    <span>Preparando a obra</span>
-                </div>
+            <div id="obra3dInitialLoading" class="obra-3d-loading" role="status">
+                <canvas data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Preparando a obra"></canvas>
+                <span>Preparando a obra</span>
+            </div>
         </section>
         <div id="obraPendenciasDialog" class="obra-pendencias-dialog" role="dialog" aria-modal="true" aria-label="Pendências da obra" hidden>
             <div class="obra-pendencias-dialog-head">
@@ -372,9 +391,14 @@ $conn->close();
             <div class="filtro">
                 <div class="filtros-select obra-filter-bar" role="search" aria-label="Filtros das imagens">
                     <label class="obra-filter-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="imagem_busca_filtro" class="imagem-busca-filtro" aria-label="Buscar imagem" placeholder="Buscar imagem..."></label>
-                    <div class="obra-filter-field"><label for="tipo_imagem">Tipo de imagem</label><select name="tipo_imagem" id="tipo_imagem" multiple><option value="0">Todos</option></select></div>
+                    <div class="obra-filter-field"><label for="tipo_imagem">Tipo de imagem</label><select name="tipo_imagem" id="tipo_imagem" multiple>
+                            <option value="0">Todos</option>
+                        </select></div>
                     <div class="obra-filter-field"><label for="subtipo_filtro">Subtipo</label><select id="subtipo_filtro" multiple></select></div>
-                    <div class="obra-filter-field"><label for="antecipada_obra">Antecipada</label><select id="antecipada_obra" multiple size="2"><option value="">Todas as imagens</option><option value="1">Antecipada</option></select></div>
+                    <div class="obra-filter-field"><label for="antecipada_obra">Antecipada</label><select id="antecipada_obra" multiple size="2">
+                            <option value="">Todas as imagens</option>
+                            <option value="1">Antecipada</option>
+                        </select></div>
                     <div class="obra-filter-field"><label for="imagem_status_etapa_filtro">Status etapa</label><select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro" multiple></select></div>
                     <div class="obra-filter-field"><label for="imagem_status_filtro">Status imagem</label><select name="imagem_status_filtro" id="imagem_status_filtro" multiple></select></div>
                     <button id="clearFilters" class="obra-filter-clear" type="button">Limpar filtros</button>
@@ -822,8 +846,12 @@ $conn->close();
                         </div>
                         <div class="edit-images-toolbar" aria-label="Buscar e filtrar imagens">
                             <label class="edit-images-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="editImagesSearch" type="search" placeholder="Buscar imagem..." autocomplete="off"></label>
-                            <select id="editImagesTypeFilter" class="edit-images-filter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option></select>
-                            <select id="editImagesSubtypeFilter" class="edit-images-filter" aria-label="Filtrar por subtipo"><option value="">Todos os subtipos</option></select>
+                            <select id="editImagesTypeFilter" class="edit-images-filter" aria-label="Filtrar por tipo">
+                                <option value="">Todos os tipos</option>
+                            </select>
+                            <select id="editImagesSubtypeFilter" class="edit-images-filter" aria-label="Filtrar por subtipo">
+                                <option value="">Todos os subtipos</option>
+                            </select>
                             <button type="button" id="editImagesAnticipatedFilter" class="edit-images-filter-chip" aria-pressed="false"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Antecipadas</button>
                             <button type="button" id="clearEditImagesFilters" class="edit-images-clear-filters" hidden>Limpar filtros</button>
                         </div>
@@ -1070,31 +1098,67 @@ $conn->close();
             </div>
         </div>
 
-        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+        <div id="infos-obra" class="history-section">
             <div class="acompanhamentos">
                 <div class="infos-obra-header">
                     <h1>Histórico</h1>
-                    <div class="buttons-acomp" style="display: flex;">
+                    <div class="buttons-acomp">
                         <button id="acomp" class="btnAcompObs">+ Novo</button>
-                        <button id="configAcomp" class="animate__animated"
-                            style="background-color: transparent; color: black;"><i
-                                class="fa-solid fa-gear"></i></button>
-                        <button id="btnHistoricoPdf" type="button" class="btnAcompObs" style="margin-left: 8px;">
+                        <button id="btnHistoricoPdf" type="button" class="btnAcompObs">
                             <i class="fa-solid fa-file-pdf"></i> PDF
                         </button>
+                        <button id="configAcomp" type="button" title="Configurações do histórico" aria-label="Configurações do histórico"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
                     </div>
                 </div>
 
                 <!-- Acompanhamentos: filtros por categoria -->
-                <div class="acomp-filters" aria-label="Filtrar acompanhamentos">
-                    <button id="btn_acomp_todos" class="acomp-filter-btn active" data-category="todos">Todos</button>
-                    <button id="btn_acomp_manuais" class="acomp-filter-btn" data-category="manuais">Manuais</button>
-                    <button id="btn_acomp_entregas" class="acomp-filter-btn" data-category="entregas">Entregas</button>
-                    <button id="btn_acomp_arquivos" class="acomp-filter-btn" data-category="arquivos">Arquivos</button>
+                <div class="history-toolbar">
+                    <div class="acomp-filters" role="group" aria-label="Filtrar histórico">
+                        <button id="btn_acomp_todos" type="button" class="acomp-filter-btn active" data-category="todos" aria-pressed="true">Todos <span class="history-count">0</span></button>
+                        <button id="btn_acomp_manuais" type="button" class="acomp-filter-btn" data-category="manuais" aria-pressed="false">Manuais <span class="history-count">0</span></button>
+                        <button id="btn_acomp_entregas" type="button" class="acomp-filter-btn" data-category="entregas" aria-pressed="false">Entregas <span class="history-count">0</span></button>
+                        <button id="btn_acomp_arquivos" type="button" class="acomp-filter-btn" data-category="arquivos" aria-pressed="false">Arquivos <span class="history-count">0</span></button>
+                    </div>
+                    <div class="history-tools">
+                        <label class="history-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="history-search" type="search" placeholder="Buscar no histórico..." aria-label="Buscar no histórico"></label>
+                        <label class="history-period-control"><i class="fa-regular fa-calendar" aria-hidden="true"></i><select id="history-period" aria-label="Período do histórico">
+                                <option value="all">Todo o período</option>
+                                <option value="7">Últimos 7 dias</option>
+                                <option value="30">Últimos 30 dias</option>
+                                <option value="90">Últimos 3 meses</option>
+                            </select></label>
+                    </div>
                 </div>
-
-                <div id="list_acomp" class="list-acomp" aria-live="polite"></div>
-                <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
+                <div class="history-layout">
+                    <div class="history-main" tabindex="0" role="region" aria-label="Timeline do histórico">
+                        <div id="list_acomp" class="list-acomp" aria-live="polite">
+                            <div class="history-empty">Carregando histórico...</div>
+                        </div>
+                        <button id="btnMostrarAcomps" type="button" hidden>Mostrar mais eventos</button>
+                    </div>
+                    <aside class="history-sidebar" aria-label="Resumo do histórico">
+                        <section class="history-side-card">
+                            <h2>Resumo do histórico</h2>
+                            <div class="history-summary-row"><i class="fa-regular fa-clipboard" aria-hidden="true"></i>
+                                <div><strong data-history-total>—</strong><span>total de eventos</span></div>
+                            </div>
+                            <div class="history-summary-row"><i class="fa-regular fa-calendar" aria-hidden="true"></i>
+                                <div><strong data-history-first>—</strong><span>primeiro registro</span></div>
+                            </div>
+                            <div class="history-summary-row"><i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                <div><strong data-history-last>—</strong><span>última atualização</span></div>
+                            </div>
+                        </section>
+                        <section class="history-side-card">
+                            <h2>Tipos de evento</h2>
+                            <div data-history-types></div>
+                        </section>
+                        <section class="history-side-card">
+                            <h2>Período</h2>
+                            <div data-history-periods></div>
+                        </section>
+                    </aside>
+                </div>
             </div>
         </div>
 
@@ -3066,6 +3130,8 @@ $conn->close();
     <script src="<?php echo asset_url('../assets/js/upload-ws.js'); ?>"></script>
     <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
     <script type="module" src="<?php echo asset_url('obra-3d.js') . '&t=' . filemtime(__DIR__ . '/obra-3d.js'); ?>"></script>
+    <script src="<?php echo asset_url('../assets/js/components/obra-history.js') . '&t=' . filemtime(__DIR__ . '/../assets/js/components/obra-history.js'); ?>"></script>
+    <script src="<?php echo asset_url('obra-history-controller.js') . '&t=' . filemtime(__DIR__ . '/obra-history-controller.js'); ?>"></script>
     <script src="<?php echo asset_url('scriptObra.js') . '&t=' . filemtime(__DIR__ . '/scriptObra.js'); ?>"></script>
     <script src="<?php echo asset_url('obra-navigation.js') . '&t=' . filemtime(__DIR__ . '/obra-navigation.js'); ?>"></script>
     <script src="<?php echo asset_url('onboardingObra.js') . '&t=' . filemtime(__DIR__ . '/onboardingObra.js'); ?>"></script>
@@ -3080,15 +3146,15 @@ $conn->close();
 
     <script>
         window.STATUS_IMAGENS = <?php
-                            $statusArr = [];
-foreach ($status_imagens as $s) {
-    $statusArr[] = [
-        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
-        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
-    ];
-}
-echo json_encode($statusArr);
-?>;
+                                $statusArr = [];
+                                foreach ($status_imagens as $s) {
+                                    $statusArr[] = [
+                                        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
+                                        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
+                                    ];
+                                }
+                                echo json_encode($statusArr);
+                                ?>;
         // Auto-filter Entregas view to current obra (if available in localStorage)
         document.addEventListener('DOMContentLoaded', () => {
             const currentObra = localStorage.getItem('obraId') || null;

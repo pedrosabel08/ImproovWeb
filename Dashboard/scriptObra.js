@@ -9107,24 +9107,7 @@ window.__acompFetched = [];
 
 // Helper: categorize an acompanhamento into one of: todos, manuais, entregas, arquivos
 function categorizeAcomp(acomp) {
-  // Prefer explicit tipo from server
-  const tipo = (acomp.tipo || "").toString().toLowerCase();
-  if (tipo === "entrega" || tipo === "entregas") return "entregas";
-  if (tipo === "arquivo" || tipo === "arquivos" || tipo === "file")
-    return "arquivos";
-
-  // Heuristics on assunto to detect manuais (manual actions) - fallback
-  const assunto = (acomp.assunto || "").toString().toLowerCase();
-  if (
-    assunto.includes("manual") ||
-    assunto.includes("obs") ||
-    assunto.includes("observa") ||
-    assunto.includes("nota")
-  )
-    return "manuais";
-
-  // Default: place in 'manuais' if not entrega/arquivos
-  return "manuais";
+  return FlowObraHistory.category(acomp);
 }
 
 // ==== Arquivos da Obra =====================================================
@@ -9778,205 +9761,14 @@ if (uploadFormImagem) {
 }
 
 // Reusable renderer that applies optional category filter
-function renderAcompanhamentosList(acompList, category = "todos") {
-  const container = document.getElementById("list_acomp");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const filtered =
-    category === "todos"
-      ? acompList
-      : acompList.filter((a) => categorizeAcomp(a) === category);
-
-  if (!filtered || filtered.length === 0) {
-    container.innerHTML =
-      "<p>Nenhum acompanhamento encontrado para essa categoria.</p>";
-    return;
-  }
-
-  filtered.forEach((acomp) => {
-    const div = document.createElement("div");
-    div.className = "acomp-conteudo";
-    div.style.position = "relative";
-
-    const pAssunto = document.createElement("p");
-    pAssunto.className = "acomp-assunto";
-    pAssunto.innerHTML = `<strong>📝</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
-
-    if ((acomp.tipo || "").toLowerCase() === "entrega") {
-      const btnVer = document.createElement("button");
-      btnVer.type = "button";
-      btnVer.title = "Ver imagens desta entrega";
-      btnVer.textContent = "📷";
-      btnVer.className = "btn-ver-entrega";
-      pAssunto.appendChild(btnVer);
-
-      btnVer.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const popState = window.__acompPopover;
-        const popEl = popState.el;
-        if (popState.openAcomp === acomp.id) {
-          popEl.classList.add("hidden");
-          popEl.setAttribute("aria-hidden", "true");
-          popState.openAcomp = null;
-          popState.anchor = null;
-          return;
-        }
-        popState.openAcomp = acomp.id;
-        popState.anchor = btnVer;
-        const itensDiv = popEl.querySelector(".itens");
-        itensDiv.innerHTML = '<div class="pop-message">Carregando...</div>';
-        popEl.classList.remove("hidden");
-        popEl.setAttribute("aria-hidden", "false");
-        positionPopover(popEl, btnVer);
-
-        if (popState.cache[acomp.id]) {
-          renderItensList(popEl, popState.cache[acomp.id]);
-          return;
-        }
-
-        fetch(
-          `../Obras/getItensEntregaPorAcompanhamento.php?acomp_id=${encodeURIComponent(acomp.id)}`,
-        )
-          .then((r) => r.json())
-          .then((data) => {
-            if (!data.success) {
-              itensDiv.innerHTML = `<div class="pop-message error">Erro: ${data.message || "Falha ao carregar."}</div>`;
-              return;
-            }
-            popState.cache[acomp.id] = data.itens || [];
-            renderItensList(popEl, popState.cache[acomp.id]);
-          })
-          .catch((err) => {
-            console.error("Erro ao buscar itens da entrega:", err);
-            itensDiv.innerHTML =
-              '<div class="pop-message error">Erro ao carregar itens.</div>';
-          });
-      });
-    }
-
-    const pData = document.createElement("p");
-    pData.className = "acomp-data";
-    pData.innerHTML = `<strong>↳ 📅</strong> ${formatarData(acomp.data)}`;
-
-    // edição inline (same behavior as before)
-    pAssunto.addEventListener("click", (ev) => {
-      if (ev.target.closest && ev.target.closest(".btn-ver-entrega")) return;
-      const spanTexto = pAssunto.querySelector(".acomp-texto");
-      const textoAtual = spanTexto ? spanTexto.textContent : "";
-      const input = document.createElement("input");
-      input.type = "text";
-      input.value = textoAtual;
-      input.className = "input-edicao";
-      spanTexto.replaceWith(input);
-      input.focus();
-      input.addEventListener("blur", () => {
-        const novoTexto = input.value;
-        salvarAcompanhamento(acomp.id, idObra, novoTexto);
-        const novoSpan = document.createElement("span");
-        novoSpan.className = "acomp-texto";
-        novoSpan.textContent = novoTexto;
-        input.replaceWith(novoSpan);
-      });
-    });
-
-    div.appendChild(pAssunto);
-    div.appendChild(pData);
-
-    // context menu (right-click) to delete acompanhamento
-    div.addEventListener("contextmenu", async (ev) => {
-      ev.preventDefault();
-      if (!acomp || !acomp.id) return;
-      const ok = await FlowAlert.confirm({
-        title: "Excluir acompanhamento?",
-        confirmText: "Excluir",
-      });
-      if (!ok.isConfirmed) return;
-
-      fetch("../deleteAcompanhamento.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ id: acomp.id, action: "delete" }),
-      })
-        .then((r) => r.json())
-        .then((res) => {
-          if (res && (res.success || res.deleted)) {
-            Toastify({
-              text: "Acompanhamento excluído",
-              duration: 2500,
-              gravity: "top",
-              position: "left",
-              backgroundColor: "green",
-            }).showToast();
-            if (window.__acompFetched) {
-              window.__acompFetched = window.__acompFetched.filter(
-                (a) => String(a.id) !== String(acomp.id),
-              );
-              renderAcompanhamentosList(window.__acompFetched, category);
-            } else {
-              div.remove();
-            }
-          } else {
-            Toastify({
-              text: "Falha ao excluir: " + (res.message || "erro"),
-              duration: 4000,
-              gravity: "top",
-              position: "left",
-              backgroundColor: "red",
-            }).showToast();
-          }
-        })
-        .catch((err) => {
-          console.error("Erro excluir acompanhamento:", err);
-          Toastify({
-            text: "Erro ao excluir acompanhamento.",
-            duration: 4000,
-            gravity: "top",
-            position: "left",
-            backgroundColor: "red",
-          }).showToast();
-        });
-    });
-
-    container.appendChild(div);
-  });
+function renderAcompanhamentosList(rows) {
+  renderObraHistory(rows);
 }
-
-// Wire up filter buttons
-document.addEventListener("DOMContentLoaded", () => {
-  const btns = document.querySelectorAll(".acomp-filter-btn");
-  btns.forEach((btn) =>
-    btn.addEventListener("click", (ev) => {
-      btns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const cat = btn.getAttribute("data-category") || "todos";
-      renderAcompanhamentosList(window.__acompFetched || [], cat);
-    }),
-  );
-});
-
-// If script runs after DOMContentLoaded (common because script tag is at page end), wire immediately
-const __init_acomp_btns = () => {
-  const btns = document.querySelectorAll(".acomp-filter-btn");
-  if (!btns || btns.length === 0) return false;
-  btns.forEach((btn) =>
-    btn.addEventListener("click", (ev) => {
-      btns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const cat = btn.getAttribute("data-category") || "todos";
-      renderAcompanhamentosList(window.__acompFetched || [], cat);
-    }),
-  );
-  return true;
-};
-__init_acomp_btns();
 
 const OBRA_ACOMP_CACHE = new Map();
 const OBRA_ACOMP_IN_FLIGHT = new Map();
 
 function renderAcompanhamentos(acompanhamentos) {
-  acompanhamentoConteudo.innerHTML = "";
-
   // Create a single global popover appended to body (so it's not clipped by parent overflow)
   if (!window.__acompPopover) {
     const pop = document.createElement("div");
@@ -10019,6 +9811,7 @@ function renderAcompanhamentos(acompanhamentos) {
     };
   }
 
+  window.__acompFetched = acompanhamentos;
   if (acompanhamentos.length > 0) {
     // store globally for client-side filtering
     window.__acompFetched = acompanhamentos;
@@ -10053,6 +9846,22 @@ function abrirModalAcompanhamento(obraId, force = false) {
       return data;
     })
     .catch((error) => {
+      const list = document.getElementById("list_acomp");
+      if (list) {
+        list.replaceChildren();
+        const message = document.createElement("div");
+        message.className = "history-empty";
+        message.textContent = "Não foi possível carregar o histórico. ";
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "history-link";
+        retry.textContent = "Tentar novamente";
+        retry.addEventListener("click", () =>
+          abrirModalAcompanhamento(obraId, true).catch(() => {}),
+        );
+        message.append(retry);
+        list.append(message);
+      }
       console.error("Erro:", error);
       throw error;
     })
@@ -10106,11 +9915,16 @@ function renderItensList(popEl, itens) {
   itensDiv.appendChild(ul);
 }
 
-function salvarAcompanhamento(id, obraId, novoAssunto) {
-  fetch("addAcompanhamento.php", {
+function salvarAcompanhamento(id, obraId, novoAssunto, tipo = "manual") {
+  return fetch("addAcompanhamento.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `id=${id}&idobra=${obraId}&assunto=${encodeURIComponent(novoAssunto)}`,
+    body: new URLSearchParams({
+      id,
+      idobra: obraId,
+      assunto: novoAssunto,
+      tipo,
+    }),
   })
     .then((res) => res.json())
     .then((res) => {
@@ -10131,9 +9945,15 @@ function salvarAcompanhamento(id, obraId, novoAssunto) {
           backgroundColor: "#f44336", // Cor de erro
         }).showToast();
       }
+      return !!res.success;
     })
     .catch((err) => {
       console.error("Erro na requisição:", err);
+      Toastify({
+        text: "Erro ao salvar acompanhamento.",
+        duration: 3500,
+      }).showToast();
+      return false;
     });
 }
 
@@ -10169,8 +9989,7 @@ if (btnHistoricoPdf) {
       activeBtn && activeBtn.getAttribute("data-category")
         ? activeBtn.getAttribute("data-category")
         : "todos";
-    const url = `../Obras/historico_pdf.php?idobra=${encodeURIComponent(idObra)}&category=${encodeURIComponent(cat)}`;
-    window.open(url, "_blank");
+    exportObraHistory(idObra, cat);
   });
 }
 
@@ -10283,7 +10102,7 @@ document.getElementById("configAcomp").addEventListener("click", function () {
                   backgroundColor: "green",
                 }).showToast();
                 try {
-                  abrirModalAcompanhamento(idObra);
+                  abrirModalAcompanhamento(idObra, true);
                 } catch (e) {}
                 row.remove();
                 // hide modal when no groups left
@@ -10467,7 +10286,7 @@ document
           }).showToast();
           document.getElementById("adicionar_acomp").reset(); // Reseta o formulário
           modal.style.display = "none";
-          abrirModalAcompanhamento(obraId);
+          abrirModalAcompanhamento(obraId, true);
         } else {
           Toastify({
             text: data.message,
@@ -12645,25 +12464,6 @@ function salvarNoBanco(campo, valor, obraId) {
 }
 
 // Adiciona o botão de mostrar todos
-const btnMostrarAcomps = document.getElementById("btnMostrarAcomps");
-const acompanhamentoConteudo = document.getElementById("list_acomp");
-// Ao clicar no botão "Mostrar Todos"
-btnMostrarAcomps.addEventListener("click", () => {
-  if (!window.__acompFetched.length && idObra) {
-    abrirModalAcompanhamento(idObra).catch(() => {});
-  }
-  acompanhamentoConteudo.classList.toggle("expanded");
-  const isExpanded = acompanhamentoConteudo.classList.contains("expanded");
-  btnMostrarAcomps.innerHTML = isExpanded
-    ? '<i class="fas fa-chevron-up"></i>'
-    : '<i class="fas fa-chevron-down"></i>';
-
-  if (!isExpanded) {
-    // Rola para o topo da seção de acompanhamentos ao recolher
-    acompanhamentoConteudo.scrollIntoView({ behavior: "smooth" });
-  }
-});
-
 document.querySelectorAll('input[name="acompanhamento"]').forEach((radio) => {
   radio.addEventListener("change", async function () {
     if (this.value === "Prazo de alteração") {
@@ -13588,7 +13388,14 @@ async function gerarFollowUpPDF() {
 
         const listAcompDiv = document.getElementById("list_acomp");
         if (listAcompDiv) {
-          const acompBlocks = listAcompDiv.querySelectorAll(".acomp-conteudo");
+          const acompBlocks = FlowObraHistory.filter(
+            window.__acompFetched || [],
+            obraHistoryView?.state() || {
+              category: "todos",
+              period: "all",
+              query: "",
+            },
+          );
           const pageHeight = doc.internal.pageSize.getHeight();
           const margin = 14;
           let y = doc.lastAutoTable.finalY + 30;
@@ -13602,11 +13409,8 @@ async function gerarFollowUpPDF() {
             doc.setTextColor(0, 0, 0);
 
             acompBlocks.forEach((block) => {
-              const assuntoEl = block.querySelector(".acomp-assunto");
-              const dataEl = block.querySelector(".acomp-data");
-
-              const assunto = assuntoEl ? assuntoEl.innerText.trim() : "";
-              const data = dataEl ? dataEl.innerText.trim() : "";
+              const assunto = String(block.assunto || "");
+              const data = formatarData(block.data);
 
               const assuntoLines = doc.splitTextToSize(assunto, usableWidth);
               const dataLines = doc.splitTextToSize(data, 260);

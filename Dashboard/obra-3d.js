@@ -304,7 +304,7 @@ window.addEventListener("pagehide", dispose);
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) location.reload();
 });
-const initialId = metadata?.obraId || localStorage.getItem("obraId");
+const initialId = metadata?.obraId || window.FlowProjectContext.obraId;
 if (/^\d+$/.test(String(initialId || ""))) void start(initialId);
 else {
   finishInitialLoading();

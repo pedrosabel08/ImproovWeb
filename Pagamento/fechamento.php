@@ -15,7 +15,7 @@ if (!function_exists('asset_url')) {
     }
 }
 if (($_SESSION['logado'] ?? false) !== true || !pagamento_is_gestor()) {
-    header('Location: ../index.html');
+    flow_auth_redirect_to_login();
     exit;
 }
 $unavailable = null;
@@ -120,4 +120,5 @@ if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
 <script src="<?= asset_url('../assets/pdfjs/pdf.min.js') ?>"></script>
 <script type="module" src="<?= asset_url('mensal.js') ?>&m=<?= filemtime(__DIR__.'/mensal.js') ?>"></script>
 <?php endif ?>
+    <?= flow_auth_navigation_script() ?>
 </body></html>

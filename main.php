@@ -1,4 +1,12 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -9,14 +17,9 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 header('Content-Type: text/html; charset=utf-8');
-require_once __DIR__ . '/config/session_bootstrap.php';
 
 // Verificar se o usuário está logado
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    // Se não estiver logado, redirecionar para a página de login
-    header("Location: index.html");
-    exit();
-}
+
 
 $idusuario = $_SESSION['idusuario'];
 
@@ -25,6 +28,7 @@ $idusuario = $_SESSION['idusuario'];
 <html lang="en">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./css/styleMain.css" rel="stylesheet">
@@ -1070,7 +1074,7 @@ include 'sidebar.php';
 <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
 <script src="<?php echo asset_url('./script/script.js'); ?>"></script>
 <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
-<script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
+<script src="<?php echo asset_url('./script/controleSessao.js'); ?>&authReturn=1"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/page_metadata.php';
+require_once __DIR__ . '/auth_navigation.php';
 
 // Session bootstrap for ImproovWeb
 // Supports idle timeout (inactivity) and/or absolute timeout (fixed since login).
@@ -62,6 +64,12 @@ if (!function_exists('improov_is_json_request')) {
         if (str_contains($contentType, 'application/json')) {
             return true;
         }
+        // Fetch/XHR must never receive the login document as a successful response.
+        if (($_SERVER['HTTP_X_FLOW_AUTH_REQUIRED'] ?? '') === '1'
+            || (($_SERVER['HTTP_SEC_FETCH_DEST'] ?? null) === 'empty'
+                && ($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '') !== 'navigate')) {
+            return true;
+        }
         return false;
     }
 }
@@ -95,17 +103,26 @@ if (!function_exists('improov_handle_expired_session')) {
     {
         improov_end_session();
 
+        // A login POST still has to verify credentials; an expired previous cookie
+        // must not prevent this public endpoint from processing the new login.
+        if (realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) === realpath(__DIR__ . '/../login.php')) {
+            session_id('');
+            session_start();
+            return;
+        }
+
         if (improov_is_json_request()) {
-            http_response_code(401);
-            header('Content-Type: application/json; charset=utf-8');
-            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-            header('Pragma: no-cache');
-            echo json_encode(['ok' => false, 'message' => $message]);
-            exit;
+            flow_auth_unauthorized($message);
         }
 
         $base = improov_app_base_path();
-        header('Location: ' . $base . '/' . ltrim(IMPROOV_LOGIN_PATH, '/'));
+        if (flow_auth_current_page() && IMPROOV_LOGIN_PATH === 'index.html') {
+            flow_auth_redirect_to_login();
+        } else {
+            $isExternal = str_contains(str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? '')), '/FlowReviewExt/');
+            if (!$isExternal && IMPROOV_LOGIN_PATH === 'index.html') flow_auth_unauthorized($message);
+            header('Location: ' . $base . '/' . ltrim(IMPROOV_LOGIN_PATH, '/'));
+        }
         exit;
     }
 }
@@ -165,6 +182,7 @@ if (isset($_SESSION['logado']) && $_SESSION['logado'] === true) {
         $last = (int)$_SESSION['last_activity_ts'];
         if (($now - $last) > $idleSeconds) {
             improov_handle_expired_session('Sessão expirada por inatividade.');
+            return;
         }
     }
 
@@ -173,6 +191,7 @@ if (isset($_SESSION['logado']) && $_SESSION['logado'] === true) {
         $loginTs = (int)$_SESSION['login_ts'];
         if (($now - $loginTs) > $absoluteSeconds) {
             improov_handle_expired_session('Sessão expirada.');
+            return;
         }
     }
 
@@ -209,4 +228,13 @@ if (isset($_SESSION['logado']) && $_SESSION['logado'] === true) {
             ]);
         }
     }
+}
+
+// Opt-in from the existing global authenticated UI script. No business action
+// is executed when its session cookie has disappeared between requests.
+if (($_SESSION['logado'] ?? false) !== true
+    && ($_SERVER['HTTP_X_FLOW_AUTH_REQUIRED'] ?? '') === '1'
+    && basename((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) !== 'login.php'
+    && !str_contains(str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? '')), '/FlowReviewExt/')) {
+    flow_auth_unauthorized();
 }

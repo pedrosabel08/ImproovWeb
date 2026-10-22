@@ -1421,7 +1421,7 @@ function install(gltf, sourceName) {
   viewport.dataset.contextCount = "0";
   const project = sourceName.replace(/\.(glb|gltf)$/i, "");
   $("projectName").textContent = project;
-  document.title = `${project} · Visualizador espacial`;
+  // Keep the page title defined by the server/template.
   renderTree();
   renderFloorSwitcher();
   updateStats(modelRoot);

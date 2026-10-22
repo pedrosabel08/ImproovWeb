@@ -96,17 +96,11 @@
   }
 
   function resolveObraId() {
-    return (
-      localStorage.getItem("obraId") ||
-      localStorage.getItem("idObra") ||
-      new URLSearchParams(window.location.search).get("obra_id") ||
-      new URLSearchParams(window.location.search).get("obraId") ||
-      ""
-    );
+    return window.FlowProjectContext.obraId;
   }
 
   function canManageRegistration() {
-    const collaboratorId = Number(localStorage.getItem("idcolaborador") || 0);
+    const collaboratorId = Number(window.FlowProjectContext.colaboradorId || 0);
     return [1, 9, 21].includes(collaboratorId);
   }
 

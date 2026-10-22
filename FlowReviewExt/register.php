@@ -20,7 +20,7 @@ if (!empty($flow_user_id)) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Registrar - Flow Review</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
 </head>
 <body class="auth-page">

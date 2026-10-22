@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 require_once __DIR__ . '/sire_helpers.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
@@ -10,10 +16,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: ../index.html");
-    exit();
-}
+
 
 include_once __DIR__ . '/../conexao.php';
 include '../conexaoMain.php';
@@ -93,11 +96,11 @@ $sireAssetVersion = max(
 <html lang="pt-br">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIRE — Biblioteca Visual</title>
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
+
 
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -547,7 +550,7 @@ $sireAssetVersion = max(
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="../script/sidebar.js"></script>
-    <script src="../script/controleSessao.js"></script>
+    <script src="../script/controleSessao.js?authReturn=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- GSAP -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>

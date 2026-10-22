@@ -1,15 +1,18 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 require_once __DIR__ . '/../config/version.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header('Location: ../index.html');
-    exit();
-}
+
 
 if (!isset($_SESSION['nivel_acesso']) || !in_array((int) $_SESSION['nivel_acesso'], [1, 5], true)) {
     http_response_code(403);
@@ -50,17 +53,17 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('./style.css'); ?>&contracts=<?php echo filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
-    <title>Contratos</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
 </head>
 
 <body>
@@ -151,7 +154,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="<?php echo asset_url('./contratos.js'); ?>&contracts=<?php echo filemtime(__DIR__ . '/contratos.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
 </body>
 
 </html>

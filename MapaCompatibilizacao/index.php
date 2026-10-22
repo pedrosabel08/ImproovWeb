@@ -1,12 +1,15 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 require_once __DIR__ . '/../conexaoMain.php';
 
 // --- Auth ---
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header('Location: ../index.html');
-    exit();
-}
+
 
 $nivelAcesso = (int) ($_SESSION['nivel_acesso'] ?? 0);
 $idColaborador = (int) ($_SESSION['idcolaborador'] ?? 0);
@@ -22,9 +25,10 @@ $conn->close();
 <html lang="pt-br">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Compatibilização</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -279,7 +283,7 @@ $conn->close();
     </script>
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
-    <script src="../script/controleSessao.js"></script>
+    <script src="../script/controleSessao.js?authReturn=1"></script>
     <script src="../script/notificacoes.js"></script>
 </body>
 

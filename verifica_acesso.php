@@ -9,7 +9,7 @@ function verificaNivelAcesso($nivelExato)
     // Verifica se o usuário está logado e se possui um nível de acesso
     if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso'])) {
         $base = improov_app_base_path();
-        header('Location: ' . $base . '/index.html');
+        flow_auth_redirect_to_login();
         exit;
     }
 

@@ -19,15 +19,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-include_once __DIR__ . '/../conexao.php';
-
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     if (notificacaoIsActionRequest()) {
         notificacaoJsonResponse(false, 'Sessão expirada. Faça login novamente.', 401);
     }
-    header('Location: ../index.html');
+    flow_auth_redirect_to_login();
     exit();
 }
+
+include_once __DIR__ . '/../conexao.php';
 
 $nivel_acesso = $_SESSION['nivel_acesso'] ?? null;
 if ((int)$nivel_acesso !== 1) {

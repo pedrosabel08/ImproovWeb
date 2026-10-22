@@ -1,0 +1,66 @@
+{
+  "base": "http://localhost:8066/ImproovWeb/",
+  "results": [
+    {
+      "test": "Opening a legacy sidebar link persists the project ID in the URL",
+      "ok": true
+    },
+    {
+      "test": "Project ID is stored in the session, absent from the login URL",
+      "ok": true
+    },
+    {
+      "test": "Expired AJAX session restores exact project URL, query and fragment",
+      "ok": true
+    },
+    {
+      "test": "Project loads and rebuilds its compatibility cache after localStorage was cleared",
+      "ok": true
+    },
+    {
+      "test": "User context comes from the authenticated session without passing through Home",
+      "ok": true
+    },
+    {
+      "test": "Public Open Graph canonical remains institutional",
+      "ok": true
+    },
+    {
+      "test": "Opening project B does not change project A in the first tab",
+      "ok": true
+    },
+    {
+      "test": "Refreshing project information works even after the shared cache is removed",
+      "ok": true
+    },
+    {
+      "test": "The second tab retains project B after the first tab refreshes",
+      "ok": true
+    },
+    {
+      "test": "Anonymous response contains no private project bootstrap",
+      "ok": true
+    },
+    {
+      "test": "Direct project link in a fresh browser loads project data after login without prior localStorage",
+      "ok": true
+    },
+    {
+      "test": "Existing idobra alias initializes the correct project",
+      "ok": true
+    },
+    {
+      "test": "Invalid explicit project ID never falls back to a cached unrelated project",
+      "ok": true
+    },
+    {
+      "test": "Nonexistent project returns to the project list instead of an empty document",
+      "ok": true
+    },
+    {
+      "test": "Legacy link without ID or cache opens the project list",
+      "ok": true
+    }
+  ],
+  "failures": []
+}

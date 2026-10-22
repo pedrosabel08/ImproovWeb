@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] != 1) {
+    flow_auth_redirect_to_login(); // Redireciona para a página de login
+    exit;
+}
+
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -9,12 +15,9 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
-if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] != 1) {
-    header("Location: ../index.html"); // Redireciona para a página de login
-    exit;
-}
+
 
 ?>
 
@@ -22,6 +25,7 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
 <html lang="en">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleComercial.css'); ?>">
@@ -141,7 +145,7 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
 </body>
 
 </html>

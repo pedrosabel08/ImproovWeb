@@ -1519,11 +1519,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (modoArquivadas) {
         url = BASE + "listar_arquivadas.php";
       } else {
-        // If running inside Dashboard we may have an obraId in localStorage.
+        // The project page owns its context; other tabs may change the legacy cache.
         const storedObra =
-          typeof localStorage !== "undefined"
+          window.FlowProjectContext?.obraId || (typeof localStorage !== "undefined"
             ? localStorage.getItem("obraId")
-            : null;
+            : null);
         const isEntregasPage = window.location.pathname
           .toLowerCase()
           .includes("/entregas");
@@ -4514,9 +4514,9 @@ if (btnAdicionarImagem) {
     if (filterObra && filterObra.value) {
       obraSelect.value = filterObra.value;
     }
-    // 2. Fall back to localStorage (obra.php context)
+    // 2. Use this project document before the standalone page's legacy cache.
     if (!obraSelect.value) {
-      const storedId = localStorage.getItem("obraId");
+      const storedId = window.FlowProjectContext?.obraId || localStorage.getItem("obraId");
       if (storedId) obraSelect.value = storedId;
     }
     // 3. If we now have an obra and content is empty, auto-load

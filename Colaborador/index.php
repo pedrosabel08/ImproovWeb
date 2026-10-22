@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 require_once __DIR__ . '/../Pagamento/pagamento_auth.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
@@ -11,15 +18,11 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 // session_start();
-$nome_usuario = $_SESSION['nome_usuario'];
+$nome_usuario = $_SESSION['nome_usuario'] ?? '';
 
 include '../conexaoMain.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    // Se não estiver logado, redirecionar para a página de login
-    header("Location: ../index.html");
-    exit();
-}
+
 
 $conn = conectarBanco();
 
@@ -41,11 +44,12 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(),ENT_QUOTES,'UTF-8') ?>">
-    <title>Colaboradores</title>
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <!-- Font Awesome 6.6 -->
@@ -277,7 +281,7 @@ echo '</optgroup>';
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="<?php echo asset_url('script.js') . '&h=' . substr(md5_file(__DIR__ . '/script.js'), 0, 12); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
 </body>
 
 </html>

@@ -1,5 +1,29 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    flow_auth_redirect_to_login();
+    exit();
+}
+
+require_once __DIR__ . '/obra-context.php';
+$obraSolicitadaUrl = flow_obra_id_from_query($_GET);
+if ($obraSolicitadaUrl === 0) {
+    header('Location: ' . flow_metadata_base_path() . '/Projetos/');
+    exit;
+}
+if ($obraSolicitadaUrl === null) {
+    // Resolve legacy storage-only links before rendering or querying a project.
+    header('Cache-Control: no-store');
+    echo '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8">'
+        . '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        . flow_metadata_html('projeto') . flow_obra_context_scripts(null)
+        . '</head><body><noscript><a href="' . flow_metadata_base_path()
+        . '/Projetos/">Escolher projeto</a></noscript></body></html>';
+    exit;
+}
+
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -10,7 +34,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 // session_start();
-$nome_usuario = $_SESSION['nome_usuario'];
+$nome_usuario = $_SESSION['nome_usuario'] ?? '';
 
 include '../conexaoMain.php';
 require_once __DIR__ . '/../conexao.php';
@@ -18,24 +42,23 @@ require_once __DIR__ . '/../conexao.php';
 // conectar ao banco (função em conexaoMain.php)
 $conn = conectarBanco();
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    // Se não estiver logado, redirecionar para a página de login
-    header("Location: ../index.html");
-    exit();
-}
 
-$obraSolicitadaUrl = 0;
-foreach (['obra_id', 'idobra', 'id'] as $paramObraUrl) {
-    if (isset($_GET[$paramObraUrl]) && is_numeric($_GET[$paramObraUrl])) {
-        $obraSolicitadaUrl = (int) $_GET[$paramObraUrl];
-        break;
-    }
-}
 
 if ($obraSolicitadaUrl > 0 && !improov_usuario_pode_acessar_obra($conn, $obraSolicitadaUrl)) {
     $conn->close();
     header("Location: ../acesso_negado.php");
     exit();
+}
+
+$obraExistente = $conn->prepare('SELECT 1 FROM obra WHERE idobra = ? LIMIT 1');
+$obraExistente->bind_param('i', $obraSolicitadaUrl);
+$obraExistente->execute();
+$existeObra = $obraExistente->get_result()->num_rows > 0;
+$obraExistente->close();
+if (!$existeObra) {
+    $conn->close();
+    header('Location: ' . flow_metadata_base_path() . '/Projetos/');
+    exit;
 }
 
 $colaboradores = obterColaboradores($conn);
@@ -151,13 +174,15 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
+    <?= flow_obra_context_scripts($obraSolicitadaUrl) ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalhes da Obra</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <script>
         // Decide a entrada antes dos scripts e consultas da área operacional.
         window.__obra3dEntry = (() => {
-            const id = String(localStorage.getItem('obraId') || '');
+            const id = window.FlowProjectContext.obraId;
             if (!/^\d+$/.test(id)) return null;
             const controller = new AbortController();
             const url = new URL('../MapaPavimento/api.php', location.href);
@@ -196,8 +221,7 @@ $conn->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalNotificacoes.css'); ?>">
@@ -3140,7 +3164,7 @@ $conn->close();
     <script src="<?php echo asset_url('../Entregas/script.js') . '&t=' . filemtime(__DIR__ . '/../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
     <script src="<?php echo asset_url('/ImproovWeb/assets/pdfjs/pdf.min.js'); ?>"></script>
 
 
@@ -3155,9 +3179,9 @@ $conn->close();
                                 }
                                 echo json_encode($statusArr);
                                 ?>;
-        // Auto-filter Entregas view to current obra (if available in localStorage)
+        // Auto-filter Entregas using this document's project, independent of other tabs.
         document.addEventListener('DOMContentLoaded', () => {
-            const currentObra = localStorage.getItem('obraId') || null;
+            const currentObra = window.FlowProjectContext.obraId;
             if (!currentObra) return;
             // Delay a bit so Entregas script can populate selects
             setTimeout(() => {

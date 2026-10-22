@@ -6,7 +6,7 @@ require_once __DIR__ . '/../conexao.php'; // Conexão com o banco de dados
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: ../index.html");
+    flow_auth_redirect_to_login();
     exit();
 }
 

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 if (empty($_SESSION['logado'])) {
-    header('Location: ../index.html');
+    flow_auth_redirect_to_login();
     exit;
 }
 require_once __DIR__ . '/../config/version.php';
@@ -40,16 +40,16 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Flow Block</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="<?= asset_url('../css/styleSidebar.css') ?>">
     <link rel="stylesheet" href="<?= asset_url('style.css') ?>&fb=<?= filemtime(__DIR__ . '/style.css') ?>">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+
 </head>
 
 <body class="flow-block-page">
@@ -171,7 +171,7 @@ $conn->close();
     <script src="<?= asset_url('app.js') ?>&fb=<?= filemtime(__DIR__ . '/app.js') ?>"></script>
     <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?= asset_url('../script/sidebar.js') ?>"></script>
-    <script src="<?= asset_url('../script/controleSessao.js') ?>"></script>
+    <script src="<?= asset_url('../script/controleSessao.js') ?>&authReturn=1"></script>
 </body>
 
 </html>

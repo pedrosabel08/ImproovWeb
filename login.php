@@ -37,7 +37,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $row = $result->fetch_assoc();
 
         // Sempre iniciar uma sessão nova no login, mesmo se já existir sessão ativa.
+        $pendingReturns = flow_auth_pending_returns();
         $_SESSION = [];
+        if ($pendingReturns) $_SESSION['_flow_login_returns'] = $pendingReturns;
         session_regenerate_id(true);
 
         // Iniciar sessão e armazenar dados do usuário
@@ -77,9 +79,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $logStmt->close();
 
         if ($updateStmt->affected_rows > 0) {
+            $returnUrl = flow_auth_consume_return($_POST['login_context'] ?? null);
             echo json_encode([
                 "status" => "success",
                 "message" => "Login bem-sucedido!",
+                "redirect_url" => $returnUrl ?? (improov_app_base_path() . '/inicio.php'),
+                "return_restored" => $returnUrl !== null,
                 "user" => [
                     "id" => $row['idusuario'],
                     "name" => $row['nome_usuario'],

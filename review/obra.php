@@ -16,7 +16,7 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
 
 <head>
     <meta charset="UTF-8">
-    <title>Flow Review</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="<?php echo asset_url('styleImagens.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">

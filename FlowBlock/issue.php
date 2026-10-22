@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 if (empty($_SESSION['logado'])) {
-    header('Location: ../index.html');
+    flow_auth_redirect_to_login();
     exit;
 }
 require_once __DIR__ . '/../config/version.php';
@@ -22,6 +22,7 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Flow Block</title>
@@ -97,7 +98,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="<?= asset_url('app.js') ?>&fb=<?= filemtime(__DIR__ . '/app.js') ?>"></script>
     <script src="<?= asset_url('../script/sidebar.js') ?>"></script>
-    <script src="<?= asset_url('../script/controleSessao.js') ?>"></script>
+    <script src="<?= asset_url('../script/controleSessao.js') ?>&authReturn=1"></script>
 </body>
 
 </html>

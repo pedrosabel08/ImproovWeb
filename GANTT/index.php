@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -9,17 +16,13 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
-$nome_usuario = $_SESSION['nome_usuario'];
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+$nome_usuario = $_SESSION['nome_usuario'] ?? '';
 
 include '../conexaoMain.php';
 require_once __DIR__ . '/../conexao.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    // Se não estiver logado, redirecionar para a página de login
-    header("Location: ../index.html");
-    exit();
-}
+
 
 
 $conn = conectarBanco();
@@ -39,6 +42,7 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8" />
     <title>Gantt por Obra</title>
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
@@ -151,7 +155,7 @@ $conn->close();
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
 </body>
 
 </html>

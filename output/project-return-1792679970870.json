@@ -1,0 +1,7 @@
+{
+  "base": "http://localhost:8066/ImproovWeb/",
+  "results": [],
+  "failures": [
+    "locator.click: Timeout 30000ms exceeded."
+  ]
+}

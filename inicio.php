@@ -1,8 +1,14 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 require_once 'config/version.php';
 // require_once __DIR__ . '/Contratos/access_gate.php';
 
-require_once __DIR__ . '/config/session_bootstrap.php';
 require_once __DIR__ . '/includes/flow-motion-assets.php';
 
 // Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
@@ -13,10 +19,7 @@ header('Vary: Cookie');
 
 include 'conexao.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: index.html");
-    exit();
-}
+
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
@@ -128,6 +131,7 @@ $conn->close();
 <html lang="en">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('css/master.css'); ?>">
@@ -138,8 +142,7 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('css/modalSessao.css'); ?>">
 
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
@@ -149,7 +152,7 @@ $conn->close();
     <!-- Tabulator (List view table) -->
     <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
 
-    <title>Improov+Flow</title>
+    <?php require __DIR__ . '/includes/page-head.php'; ?>
 <?php if (($_GET['embed_task'] ?? '') === '1'): ?>
     <style>
       body { overflow:hidden; }
@@ -956,7 +959,7 @@ if ($foto_colab !== ''):
     <script defer src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>&kanban=<?php echo filemtime(__DIR__ . '/PaginaPrincipal/scriptIndex.js'); ?>"></script>
     <script>document.addEventListener('DOMContentLoaded', () => window.FlowMotion && window.FlowMotion.init());</script>
     <script defer src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
-    <script defer src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
+    <script defer src="<?php echo asset_url('./script/controleSessao.js'); ?>&authReturn=1"></script>
 
 
 </body>

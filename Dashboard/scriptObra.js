@@ -196,9 +196,9 @@
     document.addEventListener("keydown", onKeyDown);
   });
 })();
-// Obtém o 'obra_id' do localStorage
-var obraId = localStorage.getItem("obraId");
-var usuarioId = Number(localStorage.getItem("idusuario"));
+// Contexto validado para esta aba, inicializado pelo servidor.
+var obraId = window.FlowProjectContext.obraId;
+var usuarioId = Number(window.FlowProjectContext.usuarioId);
 
 // A tela da obra reutiliza a mesma consolidação usada pelo Kanban. URLs e
 // permissões vêm do backend; o front só renderiza o resumo já filtrado.
@@ -1913,7 +1913,7 @@ function closeModernFuncoesModal() {
   const modal = document.getElementById("form-edicao");
   if (modal) modal.style.display = "none";
   try {
-    const id = localStorage.getItem("obraId");
+    const id = window.FlowProjectContext.obraId;
     if (id) infosObra(id);
   } catch (e) {
     console.warn("Erro ao atualizar obra ao fechar modal:", e);
@@ -3749,7 +3749,7 @@ const OBRA_LOAD = (() => {
         body
           .querySelector("[data-obra-retry]")
           ?.addEventListener("click", () => {
-            const currentObraId = localStorage.getItem("obraId");
+            const currentObraId = window.FlowProjectContext.obraId;
             if (currentObraId) infosObra(currentObraId);
           });
       }
@@ -3771,7 +3771,7 @@ const OBRA_LOAD = (() => {
   return { begin, isCurrent, finish, fail };
 })();
 
-// Verifica se obraId está presente no localStorage
+// Inicia a carga da obra identificada pela URL desta aba.
 if (obraId) {
   infosObra(obraId);
 }
@@ -4244,7 +4244,7 @@ const BRIEFING_ARQUIVOS = (function () {
     const idObra =
       typeof obraId !== "undefined" && obraId
         ? obraId
-        : localStorage.getItem("obraId");
+        : window.FlowProjectContext.obraId;
     if (!idObra) return null;
     const res = await fetch(
       `briefing_arquivos_get.php?obra_id=${encodeURIComponent(idObra)}`,
@@ -4420,7 +4420,7 @@ const BRIEFING_ARQUIVOS = (function () {
             file.dataset.obraId = String(
               typeof obraId !== "undefined" && obraId
                 ? obraId
-                : localStorage.getItem("obraId") || "",
+                : window.FlowProjectContext.obraId || "",
             );
             file.dataset.tipoImagem = nodeTipo.tipo_imagem;
             file.dataset.categoria = nodeCat.categoria;
@@ -4852,7 +4852,7 @@ const BRIEFING_ARQUIVOS = (function () {
               const obraIdNow =
                 typeof obraId !== "undefined" && obraId
                   ? obraId
-                  : localStorage.getItem("obraId") || "";
+                  : window.FlowProjectContext.obraId || "";
               if (!obraIdNow) return;
 
               const confirm = await Swal.fire({
@@ -4983,7 +4983,7 @@ const BRIEFING_ARQUIVOS = (function () {
       obraIdInput.value =
         typeof obraId !== "undefined" && obraId
           ? obraId
-          : localStorage.getItem("obraId") || "";
+          : window.FlowProjectContext.obraId || "";
     }
 
     // Estado inicial: se não respondeu, começa em edição; se respondeu, começa travado
@@ -5977,7 +5977,7 @@ function infosObra(obraId) {
       };
       document.getElementById("nomenclatura").textContent =
         obra.nome_real || "Nome não disponível";
-      document.title = obra.nome_real || "Nome não disponível";
+      // Keep the institutional title rendered by the shared page head.
 
       // Atualiza estado do botão de liberar modelagem
       atualizarBtnLiberarModelagem(intval(obra.liberar_modelagem));
@@ -6050,7 +6050,7 @@ function infosObra(obraId) {
       }
 
       // Admin check: enable edit buttons for admins
-      const _uid = Number(localStorage.getItem("usuarioId"));
+      const _uid = Number(window.FlowProjectContext.usuarioId);
       const secInfosObra = document.getElementById("secao-infos-obra");
       if (secInfosObra) {
         if ([1, 2, 9].includes(_uid)) {
@@ -6098,8 +6098,7 @@ function infosObra(obraId) {
           const getPlanningObraId = () =>
             String(
               (typeof obraId !== "undefined" && obraId) ||
-                localStorage.getItem("obraId") ||
-                localStorage.getItem("idObra") ||
+                window.FlowProjectContext.obraId ||
                 "",
             ).trim();
           const currentObraId = getPlanningObraId();
@@ -6229,8 +6228,7 @@ function infosObra(obraId) {
           if (mobileProductionPlan) {
             const currentObraId = String(
               (typeof obraId !== "undefined" && obraId) ||
-                localStorage.getItem("obraId") ||
-                localStorage.getItem("idObra") ||
+                window.FlowProjectContext.obraId ||
                 "",
             ).trim();
             const canOpenPlan =
@@ -6360,7 +6358,7 @@ function infosObra(obraId) {
         }
 
         const isAdmin = [1, 2, 9].includes(
-          Number(localStorage.getItem("usuarioId")),
+          Number(window.FlowProjectContext.usuarioId),
         );
 
         infos.forEach((info) => {
@@ -8784,7 +8782,7 @@ document
       (option) => option.value,
     );
 
-    const obraId = localStorage.getItem("obraId");
+    const obraId = window.FlowProjectContext.obraId;
 
     if (selectedOptions.length > 0) {
       // Dados a serem enviados para o backend
@@ -8899,7 +8897,7 @@ if (importTxtForm) {
       return;
     }
 
-    const currentObraId = (localStorage.getItem("obraId") || "")
+    const currentObraId = (window.FlowProjectContext.obraId || "")
       .toString()
       .trim();
     const opcaoClienteEl = document.getElementById("opcao_cliente");
@@ -8980,7 +8978,7 @@ const editArquivos = document.getElementById("editArquivos");
 const editImagesBtn = document.getElementById("editImagesBtn");
 const addFollowup = document.getElementById("addFollowup");
 const labelSwitch = document.querySelectorAll(".switch");
-const iduser = parseInt(localStorage.getItem("idusuario"));
+const iduser = parseInt(window.FlowProjectContext.usuarioId);
 
 if (![1, 2, 9].includes(iduser)) {
   editArquivos.style.display = "none";
@@ -9002,7 +9000,7 @@ editArquivos.addEventListener("click", function () {
 });
 
 document.getElementById("salvarArquivo").addEventListener("click", function () {
-  const obraId = localStorage.getItem("obraId");
+  const obraId = window.FlowProjectContext.obraId;
   const dataArquivos = document.getElementById("data_arquivos").value;
   const tiposSelecionados = [];
 
@@ -9088,7 +9086,7 @@ const modalImages = document.getElementById("editImagesModal");
 // const infosModal = document.getElementById('infosModal');
 const form_edicao = document.getElementById("form-edicao");
 
-const idObra = localStorage.getItem("obraId");
+const idObra = window.FlowProjectContext.obraId;
 
 if (idObra) {
   // Conteúdo secundário precisa estar disponível já na abertura da obra. As
@@ -9099,7 +9097,7 @@ if (idObra) {
     Promise.resolve(carregarArquivosObra(idObra)).catch(() => {});
   }, 0);
 } else {
-  console.warn("ID da obra não encontrado no localStorage.");
+  console.warn("ID da obra não encontrado no contexto da página.");
 }
 
 // Store latest fetched acompanhamentos for client-side filtering
@@ -9633,7 +9631,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!modal) return;
 
       // preenche campos ocultos
-      const obraVal = localStorage.getItem("obraId") || idObra || "";
+      const obraVal = window.FlowProjectContext.obraId || idObra || "";
       document.getElementById("obra_id_img").value = obraVal;
       document.getElementById("imagem_id_img").value = imagemId;
 
@@ -9690,7 +9688,7 @@ if (uploadFormImagem) {
     const form = e.target;
     // garantia: preenche obra_id/imagem_id caso não estejam setados
     if (!form.obra_id.value)
-      form.obra_id.value = localStorage.getItem("obraId") || idObra || "";
+      form.obra_id.value = window.FlowProjectContext.obraId || idObra || "";
     if (!form.imagem_id.value)
       form.imagem_id.value = document.getElementById("imagem_id")?.value || "";
 
@@ -9731,7 +9729,7 @@ if (uploadFormImagem) {
         form.reset();
         document.getElementById("uploadModalImagem").style.display = "none";
         const obraVal =
-          form.obra_id.value || localStorage.getItem("obraId") || idObra || "";
+          form.obra_id.value || window.FlowProjectContext.obraId || idObra || "";
         if (obraVal) carregarArquivosObra(obraVal, true);
       }
       if (result.errors && result.errors.length > 0) {
@@ -9973,7 +9971,7 @@ if (btnHistoricoPdf) {
     const idObra =
       typeof obraId !== "undefined" && obraId
         ? obraId
-        : localStorage.getItem("obraId") || null;
+        : window.FlowProjectContext.obraId || null;
     if (!idObra) {
       Toastify({
         text: "Não foi possível identificar a obra.",
@@ -11235,7 +11233,7 @@ const EDIT_IMAGES_MODAL = (() => {
   }
 
   async function open() {
-    const obraId = localStorage.getItem("obraId");
+    const obraId = window.FlowProjectContext.obraId;
 
     if (!obraId) {
       alert("ID da obra não encontrado!");
@@ -11411,7 +11409,7 @@ const PLANNED_QUEUE = (() => {
   }
 
   function getCurrentObraId() {
-    return String(localStorage.getItem("obraId") || "").trim();
+    return String(window.FlowProjectContext.obraId || "").trim();
   }
 
   function buildFunctionMap() {
@@ -12616,13 +12614,13 @@ document
 
               // Preenche opcao_finalizador: prefere o responsável retornado pelo servidor (funcao_id 6/4)
               const finalizador =
-                response.finalizador || localStorage.getItem("idcolaborador");
+                response.finalizador || window.FlowProjectContext.colaboradorId;
               if (finalizador) {
                 document.getElementById("opcao_finalizador").value =
                   finalizador;
               }
 
-              const obra = localStorage.getItem("obraId");
+              const obra = window.FlowProjectContext.obraId;
               if (obra) {
                 document.getElementById("opcao_obra_pos").value = obra;
               }
@@ -12775,7 +12773,7 @@ document
     const imagemId = document.getElementById("imagem_id").value;
     const selectStatus = document.getElementById("opcao_status").value;
     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
-    const obraId = localStorage.getItem("obraId");
+    const obraId = window.FlowProjectContext.obraId;
     const nomenclatura = document.getElementById("nomenclatura").textContent;
 
     solicitarDadosRevisaoModal(opcaoAlteracao || "").then((dadosModal) => {
@@ -12917,7 +12915,7 @@ function carregarEventos(obraId) {
       }
 
       // 👇 Notificar se for colaborador 1 ou 2
-      const colaboradorId = localStorage.getItem("idcolaborador"); // implemente essa função ou defina a variável
+      const colaboradorId = window.FlowProjectContext.colaboradorId; // implemente essa função ou defina a variável
 
       if (
         colaboradorId === "1" ||
@@ -13199,7 +13197,7 @@ function closeModal() {
 
 function closeEventModal() {
   document.getElementById("eventModal").style.display = "none";
-  const obraId = localStorage.getItem("obraId");
+  const obraId = window.FlowProjectContext.obraId;
   carregarEventos(obraId); // Recarrega os eventos após fechar o modal
 }
 
@@ -13238,7 +13236,7 @@ document.getElementById("eventForm").addEventListener("submit", function (e) {
   const title = document.getElementById("eventTitle").value;
   const start = document.getElementById("eventDate").value;
   const type = document.getElementById("eventType").value;
-  const obraId = localStorage.getItem("obraId");
+  const obraId = window.FlowProjectContext.obraId;
 
   if (id) {
     fetch("./Calendario/eventoController.php", {
@@ -13874,7 +13872,7 @@ function atualizarBtnLiberarModelagem(liberado) {
   const btn = document.getElementById("btnLiberarModelagem");
   if (!btn) return;
   btn.addEventListener("click", function () {
-    const id = localStorage.getItem("obraId");
+    const id = window.FlowProjectContext.obraId;
     if (!id) return;
     const novoValor = btn.dataset.liberado === "1" ? 0 : 1;
     fetch("liberar_modelagem_obra.php", {
@@ -14406,7 +14404,7 @@ document
 
           // Auto-insert into Entregas — group images by novo_status
           if (res.status_por_imagem && res.novo_prazo) {
-            const currentObraId = localStorage.getItem("obraId");
+            const currentObraId = window.FlowProjectContext.obraId;
             const grouped = {};
             res.status_por_imagem.forEach((item) => {
               const key = item.novo_status;
@@ -14492,7 +14490,7 @@ document
 
           // Auto-insert into Entregas — status_id = 6 (EF) para todas as imagens
           if (res.novo_prazo) {
-            const currentObraId = localStorage.getItem("obraId");
+            const currentObraId = window.FlowProjectContext.obraId;
             await inserirImagemNaEntrega(
               currentObraId,
               6,
@@ -14774,12 +14772,12 @@ document
             }).then(() => {
               const modal = document.getElementById("modal_pos");
               modal.classList.remove("hidden");
-              const obra = localStorage.getItem("obraId");
+              const obra = window.FlowProjectContext.obraId;
               if (obra) document.getElementById("opcao_obra_pos").value = obra;
 
               // Preenche opcao_finalizador: prefere o responsável retornado pelo servidor (funcao_id 6/4)
               const finalizadorMs =
-                response.finalizador || localStorage.getItem("idcolaborador");
+                response.finalizador || window.FlowProjectContext.colaboradorId;
               if (finalizadorMs) {
                 document.getElementById("opcao_finalizador").value =
                   finalizadorMs;
@@ -14861,7 +14859,7 @@ document
       return;
     }
 
-    const currentObraId = localStorage.getItem("obraId");
+    const currentObraId = window.FlowProjectContext.obraId;
     const nomenclatura =
       document.getElementById("nomenclatura")?.textContent || "";
 
@@ -14956,7 +14954,7 @@ document
       return;
     }
 
-    const currentObraId = localStorage.getItem("obraId");
+    const currentObraId = window.FlowProjectContext.obraId;
     const dadosModal = await solicitarDadosRevisaoModal("");
     if (!dadosModal) return;
 
@@ -15317,8 +15315,7 @@ function initComplexidadeModelagemAction() {
         '#uploadForm select[name="obra_id"]',
       );
       const stored = (
-        localStorage.getItem("obraId") ||
-        localStorage.getItem("idObra") ||
+        window.FlowProjectContext.obraId ||
         ""
       )
         .toString()
@@ -15371,8 +15368,7 @@ if (concludePackageBtn) {
   function getCurrentObraId() {
     return typeof obraId !== "undefined" && obraId
       ? obraId
-      : localStorage.getItem("obraId") ||
-          localStorage.getItem("idObra") ||
+      : window.FlowProjectContext.obraId ||
           null;
   }
 
@@ -15722,8 +15718,7 @@ if (markInactiveBtn) {
     const currentObraId =
       typeof obraId !== "undefined" && obraId
         ? obraId
-        : localStorage.getItem("obraId") ||
-          localStorage.getItem("idObra") ||
+        : window.FlowProjectContext.obraId ||
           null;
     if (!currentObraId) {
       alert("ID da obra não encontrado na página.");
@@ -16269,7 +16264,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
     const idObra =
       typeof obraId !== "undefined" && obraId
         ? obraId
-        : localStorage.getItem("obraId");
+        : window.FlowProjectContext.obraId;
     if (!idObra) return { success: false, error: "Obra não identificada" };
     const res = await fetch(
       `handoff_comercial_get.php?obra_id=${encodeURIComponent(idObra)}`,
@@ -16299,7 +16294,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
     const idObra =
       typeof obraId !== "undefined" && obraId
         ? obraId
-        : localStorage.getItem("obraId");
+        : window.FlowProjectContext.obraId;
     const obraInput = document.getElementById("handoff_obra_id");
     if (obraInput) obraInput.value = idObra || "";
 
@@ -16465,10 +16460,10 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   //     const idObra =
   //       typeof obraId !== "undefined" && obraId
   //         ? obraId
-  //         : localStorage.getItem("obraId");
+  //         : window.FlowProjectContext.obraId;
   //     if (!idObra) return;
   //     // show this alert only for specific collaborators (1,9,21)
-  //     const colaboradorId = localStorage.getItem("idcolaborador"); // implemente essa função ou defina a variável
+  //     const colaboradorId = window.FlowProjectContext.colaboradorId; // implemente essa função ou defina a variável
 
   //     if (
   //       !(
@@ -16532,7 +16527,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   function currentObraId() {
     return typeof obraId !== "undefined" && obraId
       ? obraId
-      : localStorage.getItem("obraId") || localStorage.getItem("idObra") || "";
+      : window.FlowProjectContext.obraId || "";
   }
 
   function todayDate() {
@@ -16947,7 +16942,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
 
   function openModal() {
     modal.style.display = "flex";
-    const curObraId = localStorage.getItem("obraId");
+    const curObraId = window.FlowProjectContext.obraId;
     if (!curObraId) return;
 
     // Inicializa Quill se ainda não foi
@@ -17058,7 +17053,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
   }
 
   async function enviar() {
-    const curObraId = localStorage.getItem("obraId");
+    const curObraId = window.FlowProjectContext.obraId;
     const titulo = tituloInput.value.trim();
     const mensagemHtml = quillNotificar
       ? quillNotificar.root.innerHTML.trim()
@@ -17168,7 +17163,7 @@ window.addEventListener("improov:funcaoAtualizada", (event) => {
     return;
   }
 
-  const id = localStorage.getItem("obraId");
+  const id = window.FlowProjectContext.obraId;
   if (!id) return;
   if (detail?.obra_id && Number(detail.obra_id) !== Number(id)) return;
 
@@ -17433,7 +17428,7 @@ if (document.readyState === "loading") {
             }).showToast();
           }
           fecharModalAdicionarAnimacao();
-          const obraIdAtual = obraId || localStorage.getItem("obraId");
+          const obraIdAtual = obraId || window.FlowProjectContext.obraId;
           if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
         } else {
           if (typeof Toastify !== "undefined") {
@@ -17533,7 +17528,7 @@ function salvarFuncoesAnimacao() {
         stopOnFocus: true,
       }).showToast();
 
-      const obraIdAtual = localStorage.getItem("obraId");
+      const obraIdAtual = window.FlowProjectContext.obraId;
       if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
     },
     error: function (jqXHR, textStatus, errorThrown) {
@@ -17595,7 +17590,7 @@ async function excluirFuncaoAnimacao(funcaoId, cfg) {
       true,
     );
 
-    const obraIdAtual = localStorage.getItem("obraId");
+    const obraIdAtual = window.FlowProjectContext.obraId;
     if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
     return true;
   } catch (error) {
@@ -17768,7 +17763,7 @@ document
 
     document.getElementById("anim_imagem_id").value = idImagemSelecionada;
     document.getElementById("anim_obra_id").value =
-      obraId || localStorage.getItem("obraId") || "";
+      obraId || window.FlowProjectContext.obraId || "";
     document.getElementById("anim_cliente_id").value =
       window.__obraClienteId || "";
 

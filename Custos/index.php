@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/custos_auth.php';
+// Only the HTML entry point gets a contextual login; API/JSON responses stay intact.
+if (($_SESSION['logado'] ?? false) !== true
+    && in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)
+    && !improov_is_json_request()) {
+    flow_auth_redirect_to_login();
+    exit;
+}
 custos_auth();
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../conexaoMain.php';
@@ -16,7 +23,7 @@ $conn->close();
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Custos do Projeto · Flow</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <script src="theme.js"></script>
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="style.css?v=3">
@@ -28,7 +35,8 @@ $conn->close();
     <?php include __DIR__ . '/view.php'; ?>
     <script src="script.js?v=4" defer></script>
     <script src="../script/sidebar.js" defer></script>
-    <script src="../script/controleSessao.js" defer></script>
+    <script src="../script/controleSessao.js?authReturn=1" defer></script>
+    <?= flow_auth_navigation_script() ?>
 </body>
 
 </html>

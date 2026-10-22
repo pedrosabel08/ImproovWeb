@@ -2,8 +2,7 @@
   const frame = document.getElementById("obraAlmaFrame");
   const almaLinks = document.querySelectorAll(".alma-obra");
 
-  const urlId = new URLSearchParams(window.location.search).get("obra_id");
-  const obraId = Number(urlId || localStorage.getItem("obraId") || 0);
+  const obraId = Number(window.FlowProjectContext.obraId);
 
   if (!obraId) {
     if (frame) {

@@ -1,0 +1,962 @@
+{
+  "base": "http://localhost:8066/ImproovWeb/",
+  "anonymous": [
+    {
+      "route": "inicio.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow | Improov"
+    },
+    {
+      "route": "PaginaPrincipal/Home/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow | Improov"
+    },
+    {
+      "route": "PaginaPrincipal/Overview/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow | Improov"
+    },
+    {
+      "route": "FlowReview/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "FlowReview/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "review/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "review/obra.php",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "FlowReviewExt/",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "FlowReviewExt/index.php",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "FlowReviewExt/login.php",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "FlowReviewExt/register.php",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "Flow Review | Improov"
+    },
+    {
+      "route": "FlowBlock/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Block | Improov"
+    },
+    {
+      "route": "FlowBlock/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Block | Improov"
+    },
+    {
+      "route": "Render/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Render | Improov"
+    },
+    {
+      "route": "Render/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Render | Improov"
+    },
+    {
+      "route": "Pos-Producao/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Pós-Produção | Flow"
+    },
+    {
+      "route": "Pos-Producao/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Pós-Produção | Flow"
+    },
+    {
+      "route": "Fotografico/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Fotográfico | Flow"
+    },
+    {
+      "route": "Fotografico/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Fotográfico | Flow"
+    },
+    {
+      "route": "FlowDrive/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Drive | Improov"
+    },
+    {
+      "route": "FlowDrive/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Drive | Improov"
+    },
+    {
+      "route": "PreAlteracao/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Pré-Alteração | Flow"
+    },
+    {
+      "route": "PreAlteracao/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Pré-Alteração | Flow"
+    },
+    {
+      "route": "Alteracao/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Alterações | Flow"
+    },
+    {
+      "route": "Alteracao/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Alterações | Flow"
+    },
+    {
+      "route": "TvDashboard/",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "TV Dashboard | Flow"
+    },
+    {
+      "route": "TvDashboard/index.php",
+      "firstStatus": 200,
+      "chain": [
+        200
+      ],
+      "title": "TV Dashboard | Flow"
+    },
+    {
+      "route": "Entregas/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Entregas | Flow"
+    },
+    {
+      "route": "Entregas/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Entregas | Flow"
+    },
+    {
+      "route": "Gestao/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Gestão de Projetos | Flow"
+    },
+    {
+      "route": "Gestao/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Gestão de Projetos | Flow"
+    },
+    {
+      "route": "TelaGerencial/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Tela Gerencial | Flow"
+    },
+    {
+      "route": "TelaGerencial/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Tela Gerencial | Flow"
+    },
+    {
+      "route": "AdminMetas/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Metas TV | Flow"
+    },
+    {
+      "route": "AdminMetas/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Metas TV | Flow"
+    },
+    {
+      "route": "FlowTrack/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Track | Improov"
+    },
+    {
+      "route": "FlowTrack/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Track | Improov"
+    },
+    {
+      "route": "Colaborador/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Colaboradores | Flow"
+    },
+    {
+      "route": "Colaborador/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Colaboradores | Flow"
+    },
+    {
+      "route": "Atividade/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Atividade do Sistema | Flow"
+    },
+    {
+      "route": "Atividade/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Atividade do Sistema | Flow"
+    },
+    {
+      "route": "Dashboard/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Dashboard | Flow"
+    },
+    {
+      "route": "Dashboard/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Dashboard | Flow"
+    },
+    {
+      "route": "Dashboard/Operacional/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Dashboard Operacional | Flow"
+    },
+    {
+      "route": "Dashboard/Operacional/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Dashboard Operacional | Flow"
+    },
+    {
+      "route": "PlanejamentoCapacidade/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Capacidade da Produção | Flow"
+    },
+    {
+      "route": "PlanejamentoCapacidade/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Capacidade da Produção | Flow"
+    },
+    {
+      "route": "Projetos/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Projetos | Flow"
+    },
+    {
+      "route": "Projetos/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Projetos | Flow"
+    },
+    {
+      "route": "Quadro/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Quadro de Produção | Flow"
+    },
+    {
+      "route": "Quadro/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Quadro de Produção | Flow"
+    },
+    {
+      "route": "ALMA/admin.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Biblioteca ALMA | Flow"
+    },
+    {
+      "route": "ALMA/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "ALMA — Direção Visual | Flow"
+    },
+    {
+      "route": "ALMA/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "ALMA — Direção Visual | Flow"
+    },
+    {
+      "route": "Pagamento/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Pagamentos | Flow"
+    },
+    {
+      "route": "Pagamento/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Pagamentos | Flow"
+    },
+    {
+      "route": "Contratos/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Contratos | Flow"
+    },
+    {
+      "route": "Contratos/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Contratos | Flow"
+    },
+    {
+      "route": "Custos/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Custos | Flow"
+    },
+    {
+      "route": "Custos/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Custos | Flow"
+    },
+    {
+      "route": "MapaPavimento/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Mapa de Pavimento | Flow"
+    },
+    {
+      "route": "MapaPavimento/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Mapa de Pavimento | Flow"
+    },
+    {
+      "route": "SIRE/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "SIRE — Biblioteca Visual | Flow"
+    },
+    {
+      "route": "SIRE/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "SIRE — Biblioteca Visual | Flow"
+    },
+    {
+      "route": "MapaCompatibilizacao/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Mapa de Compatibilização | Flow"
+    },
+    {
+      "route": "MapaCompatibilizacao/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Mapa de Compatibilização | Flow"
+    },
+    {
+      "route": "notificacoes/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Notificações | Flow"
+    },
+    {
+      "route": "notificacoes/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Notificações | Flow"
+    },
+    {
+      "route": "FlowReferencias/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Referências | Improov"
+    },
+    {
+      "route": "FlowReferencias/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Flow Referências | Improov"
+    },
+    {
+      "route": "infos.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Informações do Usuário | Flow"
+    },
+    {
+      "route": "Dashboard/obra",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Projeto | Flow"
+    },
+    {
+      "route": "Dashboard/obra.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Projeto | Flow"
+    },
+    {
+      "route": "PlanejamentoProducao/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Planejamento de Produção | Flow"
+    },
+    {
+      "route": "PlanejamentoProducao/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Planejamento de Produção | Flow"
+    },
+    {
+      "route": "Briefing/",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Briefings | Flow"
+    },
+    {
+      "route": "Briefing/index.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Briefings | Flow"
+    },
+    {
+      "route": "MapaPavimento/predio-3d/visualizador-glb-navegacao.php",
+      "firstStatus": 302,
+      "chain": [
+        302,
+        200
+      ],
+      "title": "Visualizador 3D | Flow"
+    }
+  ],
+  "authenticated": [
+    {
+      "route": "inicio.php",
+      "title": "Flow | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "infos.php",
+      "title": "Informações do Usuário | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "FlowReview",
+      "title": "Flow Review | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "FlowBlock",
+      "title": "Flow Block | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Render",
+      "title": "Flow Render | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Pos-Producao",
+      "title": "Pós-Produção | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Fotografico",
+      "title": "Fotográfico | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "FlowDrive",
+      "title": "Flow Drive | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "PreAlteracao",
+      "title": "Pré-Alteração | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Alteracao",
+      "title": "Alterações | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "TvDashboard",
+      "title": "TV Dashboard | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Entregas",
+      "title": "Entregas | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Gestao",
+      "title": "Gestão de Projetos | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "TelaGerencial",
+      "title": "Tela Gerencial | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "AdminMetas",
+      "title": "Metas TV | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "FlowTrack",
+      "title": "Flow Track | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Colaborador",
+      "title": "Colaboradores | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Atividade",
+      "title": "Atividade do Sistema | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Dashboard",
+      "title": "Dashboard | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Dashboard/Operacional",
+      "title": "Dashboard Operacional | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "PlanejamentoCapacidade",
+      "title": "Capacidade da Produção | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Projetos",
+      "title": "Projetos | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Quadro",
+      "title": "Quadro de Produção | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "ALMA/admin.php",
+      "title": "Biblioteca ALMA | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Pagamento",
+      "title": "Pagamentos | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Contratos",
+      "title": "Contratos | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Custos",
+      "title": "Custos | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "MapaPavimento",
+      "title": "Mapa de Pavimento | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "SIRE",
+      "title": "SIRE — Biblioteca Visual | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "MapaCompatibilizacao",
+      "title": "Mapa de Compatibilização | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "notificacoes",
+      "title": "Notificações | Flow",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "FlowReferencias",
+      "title": "Flow Referências | Improov",
+      "via": "URL observed in active sidebar"
+    },
+    {
+      "route": "Dashboard/obra",
+      "title": "Projeto | Flow",
+      "via": "dynamic sidebar project click"
+    },
+    {
+      "route": "Briefing/index.php",
+      "title": "Briefings | Flow",
+      "via": "authenticated HTTP"
+    }
+  ],
+  "responsive": [
+    {
+      "name": "desktop",
+      "width": 1920,
+      "height": 1080,
+      "formFits": true
+    },
+    {
+      "name": "notebook",
+      "width": 1366,
+      "height": 768,
+      "formFits": true
+    },
+    {
+      "name": "ipad-landscape",
+      "width": 1024,
+      "height": 768,
+      "formFits": true
+    },
+    {
+      "name": "ipad-portrait",
+      "width": 768,
+      "height": 1024,
+      "formFits": true
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "formFits": true
+    }
+  ],
+  "security": [
+    {
+      "test": "User-Agent public login only",
+      "userAgent": "Mozilla/5.0",
+      "status": 302
+    },
+    {
+      "test": "User-Agent public login only",
+      "userAgent": "facebookexternalhit/1.1",
+      "status": 302
+    },
+    {
+      "test": "User-Agent public login only",
+      "userAgent": "WhatsApp/2.0",
+      "status": 302
+    },
+    {
+      "test": "User-Agent public login only",
+      "userAgent": "Slackbot-LinkExpanding 1.0",
+      "status": 302
+    },
+    {
+      "test": "User-Agent public login only",
+      "userAgent": "Discordbot/2.0",
+      "status": 302
+    },
+    {
+      "test": "public asset",
+      "asset": "assets/og/flow-default.png",
+      "status": 200
+    },
+    {
+      "test": "public asset",
+      "asset": "assets/icons/flow-favicon.png",
+      "status": 200
+    },
+    {
+      "test": "API access denied",
+      "route": "Custos/index.php",
+      "status": 401
+    },
+    {
+      "test": "API access denied",
+      "route": "Custos/getCustosObra.php",
+      "status": 401
+    },
+    {
+      "test": "API access denied",
+      "route": "MapaPavimento/api.php",
+      "status": 401
+    },
+    {
+      "test": "API access denied",
+      "route": "notificacoes/actions/preview.php",
+      "status": 401
+    }
+  ],
+  "failures": []
+}

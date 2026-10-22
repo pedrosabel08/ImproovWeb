@@ -1,13 +1,16 @@
 <?php
-require_once __DIR__ . '/../config/version.php';
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (empty($_SESSION['logado'])) {
+    flow_auth_redirect_to_login();
+    exit;
+}
+
+require_once __DIR__ . '/../config/version.php';
 require_once __DIR__ . '/alma_helpers.php';
 require_once __DIR__ . '/../conexaoMain.php';
 
-if (empty($_SESSION['logado'])) {
-    header('Location: ../index.html');
-    exit;
-}
+
 
 $imageId = (int) ($_GET['imagem_id'] ?? 0);
 $obraId = (int) ($_GET['obra_id'] ?? 0);
@@ -26,15 +29,16 @@ $assetVersion = max(
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ALMA - Direção Visual</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="alma.css?v=<?php echo $assetVersion; ?>">
     <link rel="stylesheet" href="alma-loader.css?v=<?php echo $assetVersion; ?>">
-    <link rel="shortcut icon" href="../assets/logo.jpg" type="image/x-icon">
+
 </head>
 
 <body class="alma-page<?php echo $embedded ? ' alma-embedded' : ''; ?>">

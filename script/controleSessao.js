@@ -1,4 +1,11 @@
 // controleSessao.js
+(function () {
+if (window.FlowSessionController) return;
+window.FlowSessionController = true;
+function resumeAuthentication() {
+    if (window.FlowAuthNavigation) window.FlowAuthNavigation.reauthenticate();
+    else window.location.replace(window.location.pathname + window.location.search + window.location.hash);
+}
 
 // Regras (final):
 // - Inatividade: expira sem modal de renovação
@@ -63,7 +70,7 @@ function abrirModalSessao(state, reason) {
         if (primaryBtn) {
             primaryBtn.style.display = '';
             primaryBtn.textContent = 'Fazer login';
-            primaryBtn.onclick = () => sair();
+            primaryBtn.onclick = resumeAuthentication;
         }
         if (secondaryBtn) {
             secondaryBtn.style.display = 'none';
@@ -233,4 +240,11 @@ function maybeKeepalive() {
 ['mousemove', 'mousedown', 'click', 'scroll', 'keydown', 'touchstart'].forEach((evt) => {
     document.addEventListener(evt, noteInteraction, { passive: true });
 });
+
+// Compatibility with the existing modal's inline handlers.
+window.sair = sair;
+window.renovarSessao = renovarSessaoAbsoluta;
+window.renovarSessaoAbsoluta = renovarSessaoAbsoluta;
+window.fecharModalSessao = fecharModalSessao;
+})();
 

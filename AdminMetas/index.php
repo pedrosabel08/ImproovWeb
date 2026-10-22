@@ -1,11 +1,17 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 
 /**
  * AdminMetas/index.php
  * Painel de administração de metas por colaborador/função.
  */
 
-require_once __DIR__ . '/../config/session_bootstrap.php';
 
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
@@ -19,10 +25,7 @@ unset($__root, $__p);
 include '../conexaoMain.php';
 require_once __DIR__ . '/../conexao.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: ../index.html");
-    exit();
-}
+
 
 $conn = conectarBanco();
 
@@ -66,11 +69,11 @@ $anoAtual = (int) date('Y');
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin — Metas por Colaborador</title>
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
+
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -252,7 +255,7 @@ $anoAtual = (int) date('Y');
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Sidebar & Controle de sessão -->
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
 
     <!-- Passa dados do PHP para o JS -->
     <script>

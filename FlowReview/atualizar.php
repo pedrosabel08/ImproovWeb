@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
@@ -11,7 +11,7 @@ require_once __DIR__ . '/../helpers/flow_review_prioridade_helper.php';
 
 // Verifique se o usuário está autenticado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: ../index.html");
+    flow_auth_redirect_to_login();
     exit();
 }
 

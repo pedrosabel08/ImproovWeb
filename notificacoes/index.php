@@ -140,11 +140,10 @@ if ($resVer === false) {
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>" />
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <title>Notificações</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
 </head>
 
 <body>
@@ -575,7 +574,8 @@ if ($resVer === false) {
     <script src="<?php echo asset_url('render.js'); ?>"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
+    <?= flow_auth_navigation_script() ?>
 </body>
 
 </html>

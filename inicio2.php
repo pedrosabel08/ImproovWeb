@@ -1,4 +1,11 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -8,7 +15,6 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-require_once __DIR__ . '/config/session_bootstrap.php';
 
 // Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -18,10 +24,7 @@ header('Vary: Cookie');
 
 include 'conexao.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: index.html");
-    exit();
-}
+
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
@@ -85,6 +88,7 @@ $conn->close();
 <html lang="en">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleIndex.css'); ?>">

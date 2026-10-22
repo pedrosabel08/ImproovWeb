@@ -7,7 +7,7 @@ include_once '../conexao.php'; // Inclui a conexão com o banco de dados (centra
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     // Se não estiver logado, redirecionar para a página de login
-    header("Location: ../index.html");
+    flow_auth_redirect_to_login();
     exit();
 }
 

@@ -310,7 +310,7 @@ export class EmpreendimentoMapBridge {
       void this.spatial.load();
       document.getElementById("projectName").textContent =
         this.workSelect.selectedOptions[0]?.textContent || data.modelo.nome;
-      document.title = `${data.modelo.nome} · Mapa do empreendimento`;
+      // Keep the institutional page title; model names belong in the workspace.
       this.updateUrl();
       this.hooks.refreshTree();
       this.showIntro();

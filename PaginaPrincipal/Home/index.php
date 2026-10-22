@@ -1,13 +1,16 @@
 <?php
 require_once dirname(__DIR__, 2) . '/config/session_bootstrap.php';
+
+if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit;
+}
+
 require_once dirname(__DIR__, 2) . '/config/version.php';
 require_once dirname(__DIR__, 2) . '/includes/flow-motion-assets.php';
 include '../../conexaoMain.php';
 
-if (empty($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header('Location: ../../index.html');
-    exit;
-}
+
 
 $backgrounds = static function (string $theme): array {
     $directory = dirname(__DIR__, 2) . '/assets/bg/' . $theme;
@@ -39,6 +42,7 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#101114">
@@ -46,9 +50,8 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../css/master.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../css/styleSidebar.css') . '&build=' . filemtime(dirname(__DIR__, 2) . '/css/styleSidebar.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="stylesheet" href="<?php echo htmlspecialchars(asset_url('../../PaginaPrincipal/Home/home.css'), ENT_QUOTES, 'UTF-8'); ?>">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
-    <title>Home · Improov Flow</title>
+
+    <?php require __DIR__ . '/../../includes/page-head.php'; ?>
 </head>
 
 <body class="flow-home" data-user-name="<?php echo htmlspecialchars($userName, ENT_QUOTES, 'UTF-8'); ?>" data-backgrounds="<?php echo htmlspecialchars((string) $backgroundPayload, ENT_QUOTES, 'UTF-8'); ?>">

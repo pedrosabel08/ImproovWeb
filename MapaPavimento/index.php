@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-require_once __DIR__ . '/../conexaoMain.php';
-require_once __DIR__ . '/../helpers/mapa_permissoes_helper.php';
+
 if (($_SESSION['logado'] ?? false) !== true) {
-    header('Location: ../index.html');
+    flow_auth_redirect_to_login();
     exit;
 }
+
+require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/../helpers/mapa_permissoes_helper.php';
+
 $_SESSION['mapa_pavimento_csrf'] ??= bin2hex(random_bytes(32));
 $canEdit = mp_can_edit($_SESSION);
 $embedded = ($_GET['embed'] ?? '') === '3d';
@@ -18,9 +21,10 @@ $version = max(filemtime(__DIR__ . '/script.js'), filemtime(__DIR__ . '/style.cs
 <!doctype html>
 <html lang="pt-BR">
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mapa arquitetônico · Flow</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../assets/css/components/planta-viewer.css?v=<?= $version ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
@@ -28,7 +32,7 @@ $version = max(filemtime(__DIR__ . '/script.js'), filemtime(__DIR__ . '/style.cs
     <link rel="stylesheet" href="../assets/css/components/spatial-workspace.css?v=<?= $version ?>">
     <link rel="stylesheet" href="workspace-layout.css?v=<?= filemtime(__DIR__ . '/workspace-layout.css') ?>">
     <?php if ($embedded): ?><link rel="stylesheet" href="embedded.css?v=<?= filemtime(__DIR__ . '/embedded.css') ?>"><link rel="stylesheet" href="../assets/css/components/flow-alert.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"><?php endif; ?>
-    <link rel="icon" href="../assets/logo.jpg">
+
     <link rel="stylesheet" href="spatial-controls.css?v=<?= filemtime(__DIR__ . '/spatial-controls.css') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css">
     <link rel="stylesheet" href="../assets/css/components/imagem-etapas.css?v=<?= filemtime(__DIR__ . '/../assets/css/components/imagem-etapas.css') ?>">
@@ -140,6 +144,6 @@ $version = max(filemtime(__DIR__ . '/script.js'), filemtime(__DIR__ . '/style.cs
 <script src="../assets/js/components/ambiente-operacional-panel.js?v=<?= filemtime(__DIR__ . '/../assets/js/components/ambiente-operacional-panel.js') ?>"></script>
 <script src="script.js?v=<?= $version ?>"></script>
 <?php if (!$embedded): ?><script src="../script/sidebar.js"></script><?php endif; ?>
-<script src="../script/controleSessao.js"></script>
+<script src="../script/controleSessao.js?authReturn=1"></script>
 </body>
 </html>

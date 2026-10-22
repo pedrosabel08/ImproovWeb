@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
 require_once __DIR__ . '/../includes/flow-motion-assets.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
@@ -11,15 +17,12 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 // session_start();
-$nome_usuario = $_SESSION['nome_usuario'];
+$nome_usuario = $_SESSION['nome_usuario'] ?? '';
 
 include '../conexaoMain.php';
 require_once __DIR__ . '/../conexao.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: ../index.html");
-    exit();
-}
+
 
 $conn = conectarBanco();
 
@@ -37,6 +40,7 @@ $conn->close();
 <html lang="pt-br">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
@@ -46,9 +50,8 @@ $conn->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
-    <title>Tela de Alterações</title>
+
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
 </head>
 
 <body>
@@ -325,7 +328,7 @@ $conn->close();
     <script src="<?php echo asset_url('script.js') . '&altconf=20260807-pendencias-entrega'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

@@ -247,13 +247,7 @@
   }
 
   function resolveObraId() {
-    return (
-      localStorage.getItem("obraId") ||
-      localStorage.getItem("idObra") ||
-      new URLSearchParams(window.location.search).get("obra_id") ||
-      new URLSearchParams(window.location.search).get("obraId") ||
-      ""
-    );
+    return window.FlowProjectContext.obraId;
   }
 
   function renderCompletedState() {

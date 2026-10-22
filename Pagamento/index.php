@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true || !pagamento_is_gestor()) {
+	// Se não estiver logado, redirecionar para a página de login
+	flow_auth_redirect_to_login();
+	exit();
+}
+
 require_once __DIR__ . '/pagamento_auth.php';
 require_once __DIR__ . '/../config/pagamento_fechamento.php';
 require_once __DIR__.'/../helpers/pagamento_competencia_helper.php';
@@ -16,11 +23,7 @@ unset($__root, $__p);
 // session_start();
 
 // Verificar se o usuário está logado
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true || !pagamento_is_gestor()) {
-	// Se não estiver logado, redirecionar para a página de login
-	header("Location: ../index.html");
-	exit();
-}
+
 
 
 require_once __DIR__ . '/../conexao.php';
@@ -76,6 +79,7 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>" />
@@ -88,11 +92,10 @@ $conn->close();
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-	<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-		type="image/x-icon">
+
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-	<title>Tela de pagamento</title>
+	<?php require __DIR__ . '/../includes/page-head.php'; ?>
 	<link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
@@ -465,7 +468,7 @@ $conn->close();
 	<?php if (pagamento_fechamento_enabled()): ?><script src="<?= asset_url('fechamento-link.js') ?>&v1d=<?= filemtime(__DIR__.'/fechamento-link.js') ?>"></script><?php endif; ?>
 	<script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
-	<script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+	<script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
 </body>
 
 </html>

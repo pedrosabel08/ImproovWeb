@@ -1,0 +1,698 @@
+{
+  "base": "http://localhost:8066/ImproovWeb/",
+  "results": [
+    {
+      "test": "document anonymous guard: inicio.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: inicio2.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: inicio2.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: main.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: main.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: infos.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: infos.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: PaginaPrincipal/Home/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: PaginaPrincipal/Home/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: PaginaPrincipal/Overview/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: PaginaPrincipal/Overview/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: ALMA/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: ALMA/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: ALMA/admin.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: ALMA/admin.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: AdminMetas/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: AdminMetas/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Alteracao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Alteracao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Atividade/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Atividade/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Animacao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Animacao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Arquitetura/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Arquitetura/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Briefing/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Briefing/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Colaborador/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Colaborador/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Contratos/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Contratos/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: ControleComercial/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: ControleComercial/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Custos/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Custos/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Dashboard/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Dashboard/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Dashboard/obra.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Dashboard/obra.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Dashboard/obra2.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Dashboard/obra2.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Dashboard/projetos.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Dashboard/projetos.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Dashboard/Operacional/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Dashboard/Operacional/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Entregas/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Entregas/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowBlock/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowBlock/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowBlock/issue.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowBlock/issue.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowDrive/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowDrive/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowReferencias/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowReferencias/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowReview/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowReview/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowTrack/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowTrack/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowTrack/Radar/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowTrack/Radar/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: FlowTrack/Report/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: FlowTrack/Report/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Fotografico/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Fotografico/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: GANTT/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: GANTT/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: GANTT/gantt.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: GANTT/gantt.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: GANTT/teste.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: GANTT/teste.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Gestao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Gestao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Imagens/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Imagens/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: MapaCompatibilizacao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: MapaCompatibilizacao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: MapaPavimento/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: MapaPavimento/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: MapaPavimento/predio-3d/visualizador-glb-navegacao.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: MapaPavimento/predio-3d/visualizador-glb-navegacao.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Metas/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Metas/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: notificacoes/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: notificacoes/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Obras/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Obras/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Pagamento/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Pagamento/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Pagamento/fechamento.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Pagamento/fechamento.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: PlanejamentoCapacidade/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: PlanejamentoCapacidade/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: PlanejamentoProducao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: PlanejamentoProducao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Planner/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Planner/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Pos-Producao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Pos-Producao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Pos-Producao/index2.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Pos-Producao/index2.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: PreAlteracao/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: PreAlteracao/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: PreAlteracao/planejamento.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: PreAlteracao/planejamento.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Prioridade/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Prioridade/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Projetos/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Projetos/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Quadro/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Quadro/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Relatorio/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Relatorio/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: Render/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: Render/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: review/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: review/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: ScriptArquivos/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: ScriptArquivos/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: SIRE/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: SIRE/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: TelaGerencial/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: TelaGerencial/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: TimelineObraTeste/index.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: TimelineObraTeste/index.php",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard: TvDashboard/admin.php (HTTP 302)",
+      "ok": true
+    },
+    {
+      "test": "document anonymous guard has no PHP diagnostics: TvDashboard/admin.php",
+      "ok": true
+    },
+    {
+      "test": "anonymous document stores an opaque context",
+      "ok": true
+    },
+    {
+      "test": "private query absent from login URL",
+      "ok": true
+    },
+    {
+      "test": "Open Graph login title preserved",
+      "ok": true
+    },
+    {
+      "test": "Open Graph canonical excludes return context",
+      "ok": true
+    },
+    {
+      "test": "failed credentials do not consume context",
+      "ok": true
+    },
+    {
+      "test": "login success: FlowReview/",
+      "ok": true
+    },
+    {
+      "test": "direct link restores exact query and fragment",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "consumed context falls back to inicio.php",
+      "ok": true
+    },
+    {
+      "test": "expired document session redirects to login",
+      "ok": true
+    },
+    {
+      "test": "login success: FlowTrack/",
+      "ok": true
+    },
+    {
+      "test": "expired navigation restores the attempted document",
+      "ok": true
+    },
+    {
+      "test": "expired AJAX business POST returns 401 once (requests=1, 401=true)",
+      "ok": true
+    },
+    {
+      "test": "login success: FlowReview/",
+      "ok": true
+    },
+    {
+      "test": "business POST is not replayed after authentication (requests=1)",
+      "ok": true
+    },
+    {
+      "test": "XHR missing session navigates to contextual login",
+      "ok": true
+    },
+    {
+      "test": "login success: FlowReview/",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "direct login with expired previous cookie uses the standard destination",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "unsafe or unavailable stored destination rejected: https://example.com",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "unsafe or unavailable stored destination rejected: //example.com",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "unsafe or unavailable stored destination rejected: /ImproovWeb/%252e%252e/evil.php",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "unsafe or unavailable stored destination rejected: /ImproovWeb/missing-auth-return.php",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "context cannot be used by another session",
+      "ok": true
+    },
+    {
+      "test": "login success: inicio.php",
+      "ok": true
+    },
+    {
+      "test": "logout clears pending destinations",
+      "ok": true
+    },
+    {
+      "test": "two tabs have distinct contexts",
+      "ok": true
+    },
+    {
+      "test": "login success: FlowReview/",
+      "ok": true
+    },
+    {
+      "test": "login success: FlowTrack/",
+      "ok": true
+    },
+    {
+      "test": "both tabs restore their own destination across session rotation",
+      "ok": true
+    },
+    {
+      "test": "login success: Custos/",
+      "ok": true
+    },
+    {
+      "test": "restored destination still enforces its existing authorization",
+      "ok": true
+    },
+    {
+      "test": "API returns 401 JSON without redirecting to HTML",
+      "ok": true
+    },
+    {
+      "test": "API response has no document redirect",
+      "ok": true
+    },
+    {
+      "test": "CLI test fixture is inaccessible through HTTP",
+      "ok": true
+    },
+    {
+      "test": "login form fits viewport: desktop",
+      "ok": true
+    },
+    {
+      "test": "login form fits viewport: notebook",
+      "ok": true
+    },
+    {
+      "test": "login form fits viewport: ipad-landscape",
+      "ok": true
+    },
+    {
+      "test": "login form fits viewport: ipad-portrait",
+      "ok": true
+    },
+    {
+      "test": "login form fits viewport: mobile",
+      "ok": true
+    }
+  ],
+  "failures": []
+}

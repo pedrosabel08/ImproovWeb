@@ -1,12 +1,15 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (empty($_SESSION['logado'])) {
+    flow_auth_redirect_to_login();
+    exit;
+}
+
 require_once __DIR__ . '/alma_helpers.php';
 require_once __DIR__ . '/../conexaoMain.php';
 
-if (empty($_SESSION['logado'])) {
-    header('Location: ../index.html');
-    exit;
-}
+
 
 $conn = conectarBanco();
 if (!alma_can($conn, ALMA_CAP_LIBRARY_ADMIN)) {
@@ -22,9 +25,10 @@ $assetVersion = max((int) @filemtime(__DIR__ . '/alma.css'), (int) @filemtime(__
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ALMA - Biblioteca Oficial</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">

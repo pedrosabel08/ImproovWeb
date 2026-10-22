@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header('Location: ../index.html');
+    flow_auth_redirect_to_login();
     exit;
 }
 $root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
@@ -18,14 +18,14 @@ $asset = static fn(string $file): string => rawurlencode((string) (@filemtime(__
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Fotográfico</title>
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=<?= $asset('style.css') ?>">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
+
 </head>
 
 <body><?php include __DIR__ . '/../sidebar.php'; ?><main class="foto-app" data-initial-plan="<?= $initialPlanId ?>">

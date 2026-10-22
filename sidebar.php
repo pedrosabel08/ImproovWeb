@@ -147,7 +147,6 @@ if ($__isProd) {
     <link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/upload-badge.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/components/flow-alert.css'); ?>&flowalert=<?php echo filemtime(__DIR__ . '/assets/css/components/flow-alert.css'); ?>" />
 
-    <title>Sidebar</title>
     <!-- Sidebar badge styles moved to css/styleSidebar.css -->
 </head>
 

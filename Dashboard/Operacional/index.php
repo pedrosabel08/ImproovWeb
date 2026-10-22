@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/../../config/session_bootstrap.php';
-require_once __DIR__ . '/../../config/version.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header('Location: ../../index.html');
+    flow_auth_redirect_to_login();
     exit();
 }
+
+require_once __DIR__ . '/../../config/version.php';
+
+
 
 if ((int) ($_SESSION['nivel_acesso'] ?? 0) !== 1) {
     http_response_code(403);
@@ -90,14 +93,15 @@ $conn->close();
 <html lang="pt-br">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Operacional</title>
+    <?php require __DIR__ . '/../../includes/page-head.php'; ?>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="<?php echo asset_url('../../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
+
 </head>
 
 <body>

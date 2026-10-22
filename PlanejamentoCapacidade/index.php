@@ -1,6 +1,12 @@
 <?php
-
 require_once __DIR__ . '/../config/session_bootstrap.php';
+
+if (empty($_SESSION['logado'])) {
+    flow_auth_redirect_to_login();
+    exit();
+}
+
+
 require_once __DIR__ . '/../conexaoMain.php';
 include_once __DIR__ . '/../conexao.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
@@ -12,10 +18,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-if (empty($_SESSION['logado'])) {
-    header('Location: ../index.html');
-    exit();
-}
+
 
 $podeAcessar = improov_usuario_eh_gestor_sidebar($conn);
 if (!$podeAcessar) {
@@ -43,10 +46,11 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
+    <?= flow_auth_navigation_script() ?>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
-  <title>Planejamento Global de Capacidade · Flow</title>
+  <?php require __DIR__ . '/../includes/page-head.php'; ?>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=5">
   <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
@@ -54,8 +58,7 @@ $conn->close();
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
     integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-    type="image/x-icon">
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
   <link href="https://unpkg.com/tabulator-tables@6.2.0/dist/css/tabulator.min.css" rel="stylesheet">

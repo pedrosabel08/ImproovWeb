@@ -18,7 +18,7 @@ unset($__root, $__p);
 
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Verificar se o usuário está logado
 

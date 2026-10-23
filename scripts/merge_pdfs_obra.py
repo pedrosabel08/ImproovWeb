@@ -16,8 +16,8 @@ Ordenar por nome original:
 Dependências (pip):
     pip install pypdf paramiko mysql-connector-python python-dotenv
 
-Variáveis de ambiente (.env no mesmo diretório):
-    IMPORT_DB_HOST, IMPORT_DB_PORT, IMPORT_DB_USER, IMPORT_DB_PASSWORD, IMPORT_DB_NAME
+Variaveis de ambiente (.env na raiz do projeto):
+    DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE
     IMPROOV_SFTP_HOST, IMPROOV_SFTP_PORT, IMPROOV_SFTP_USER, IMPROOV_SFTP_PASS
 """
 
@@ -29,13 +29,8 @@ import re
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-# ── Carrega .env do mesmo diretório do script ────────────────────────────────
-try:
-    from dotenv import load_dotenv
-    # .env está na raiz do projeto (um nível acima de scripts/)
-    load_dotenv(Path(__file__).parent.parent / ".env")
-except ImportError:
-    print("⚠  python-dotenv não instalado — lendo apenas variáveis de ambiente do sistema.")
+# Carrega a configuracao do .env da raiz do projeto.
+from database_config import database_config
 
 # ── Dependências obrigatórias ────────────────────────────────────────────────
 try:
@@ -62,13 +57,8 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────────────────
 
 DB_CONFIG = {
-    "host":     os.getenv("DB_HOST",     "72.60.137.192"),
-    "port":     int(os.getenv("DB_PORT", "3306")),
-    "user":     os.getenv("DB_USERNAME",  "improov"),
-    "password": os.getenv("DB_PASSWORD",  "Impr00v@"),
-    "database": os.getenv("DB_DATABASE",  "flowdb"),
-    "charset":  "utf8mb4",
-    "use_pure":  True,
+    **database_config(),
+    "use_pure": True,
     "connection_timeout": 10,
 }
 

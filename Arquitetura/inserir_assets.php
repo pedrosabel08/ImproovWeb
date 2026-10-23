@@ -1,5 +1,5 @@
 <?php
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

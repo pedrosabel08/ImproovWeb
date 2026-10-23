@@ -73,11 +73,11 @@ try {
 $nasStorageBase = rtrim(improov_env('SIRE_STORAGE_BASE', '/mnt/exchange/_SIRE/storage/imagens'), '/');
 
 // Banco de dados
-$dbHost = improov_env('DB_HOST',     '72.60.137.192');
+$dbHost = improov_env('DB_HOST');
 $dbPort = (int) improov_env('DB_PORT', '3306');
-$dbUser = improov_env('DB_USERNAME', 'improov');
-$dbPass = improov_env('DB_PASSWORD', '');
-$dbName = improov_env('DB_DATABASE', 'flowdb');
+$dbUser = improov_env('DB_USERNAME');
+$dbPass = improov_env('DB_PASSWORD');
+$dbName = improov_env('DB_DATABASE');
 
 // Log
 $logFile = '/var/log/importador_referencias.log';

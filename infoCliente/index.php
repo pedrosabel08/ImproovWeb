@@ -12,7 +12,7 @@ unset($__root, $__p);
 session_start();
 
 
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 include '../conexaoMain.php';
 
 $sql_clientes = "SELECT idcliente, nome_cliente FROM cliente";

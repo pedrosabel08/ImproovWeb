@@ -1,15 +1,16 @@
 #!/bin/bash
 # Slack connectivity monitor
-# Upload to VPS and run with: bash /tmp/slack_monitor.sh &
+# Run from the repository: bash scripts/slack_monitor.sh &
+# When copied elsewhere, set ENV_FILE to the project root .env path.
 # Log output: /tmp/slack_monitor.log
 
 LOG=/tmp/slack_monitor.log
-WEBHOOK_URL="https://hooks.slack.com/services/T0884Q7MPCL/B0884Q7MTE3/$(grep SLACK_WEBHOOK_MAIN_URL /home/improov/web/improov.com.br/public_html/flow/ImproovWeb/.env 2>/dev/null | cut -d'/' -f8)"
 ITERATIONS=40
 INTERVAL=30
 
 # Lê token e webhook direto do .env do projeto
-ENV_FILE="/home/improov/web/improov.com.br/public_html/flow/ImproovWeb/.env"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+ENV_FILE=${ENV_FILE:-"$SCRIPT_DIR/../.env"}
 
 get_env() {
     grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2- | tr -d "'\""
@@ -17,11 +18,12 @@ get_env() {
 
 SLACK_TOKEN=$(get_env SLACK_TOKEN)
 SLACK_WEBHOOK=$(get_env SLACK_WEBHOOK_MAIN_URL)
+[ -n "$SLACK_WEBHOOK" ] || SLACK_WEBHOOK=$(get_env SLACK_WEBHOOK_URL)
 
 echo "=== Slack Monitor iniciado $(date) ===" > "$LOG"
 echo "ENV_FILE=$ENV_FILE" >> "$LOG"
-echo "TOKEN_SET=$([ -n "$SLACK_TOKEN" ] && echo YES || echo NO)" >> "$LOG"
-echo "WEBHOOK_SET=$([ -n "$SLACK_WEBHOOK" ] && echo YES || echo NO)" >> "$LOG"
+echo "SLACK_TOKEN configured: $([ -n "$SLACK_TOKEN" ] && echo yes || echo no)" >> "$LOG"
+echo "SLACK_WEBHOOK configured: $([ -n "$SLACK_WEBHOOK" ] && echo yes || echo no)" >> "$LOG"
 echo "" >> "$LOG"
 
 for i in $(seq 1 $ITERATIONS); do

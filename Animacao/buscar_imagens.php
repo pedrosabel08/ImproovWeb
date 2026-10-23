@@ -1,6 +1,6 @@
 <?php
 // Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+require __DIR__ . '/../conexao.php';
 
 // Verifica a conexão
 if ($conn->connect_error) {

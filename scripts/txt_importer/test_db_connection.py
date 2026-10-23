@@ -10,9 +10,11 @@ with short timeouts. Prints exceptions and timing to help diagnose hangs.
 import time
 import socket
 import traceback
-import os
-from dotenv import load_dotenv
-load_dotenv()
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from database_config import database_config
 
 try:
     import mysql.connector
@@ -23,11 +25,12 @@ except Exception as e:
 
 
 def main():
-    host = os.getenv('IMPORT_DB_HOST', 'mysql.improov.com.br')
-    port = int(os.getenv('IMPORT_DB_PORT', '3306'))
-    user = os.getenv('IMPORT_DB_USER', 'improov')
-    password = os.getenv('IMPORT_DB_PASSWORD', 'Impr00v')
-    database = os.getenv('IMPORT_DB_NAME', 'improov')
+    config = database_config()
+    host = config['host']
+    port = config['port']
+    user = config['user']
+    password = config['password']
+    database = config['database']
 
     print(f"Target: {user}@{host}:{port} (database={database})")
 

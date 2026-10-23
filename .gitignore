@@ -165,3 +165,12 @@ ALMA/scripts/reports
 /uploads/model-3d/obra-*/
 
 *.glb
+
+# Configuracao central sem credenciais pode ser versionada
+!/conexao.php
+!/conexaoMain.php
+
+# Segredos locais e backups de dados
+.env.*
+!.env.example
+/Backup/**/*.sql*

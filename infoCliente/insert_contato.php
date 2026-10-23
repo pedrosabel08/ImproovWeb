@@ -7,7 +7,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 require_once __DIR__ . '/../contact_architecture.php';
 
 // Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+require __DIR__ . '/../conexao.php';
 
 if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);

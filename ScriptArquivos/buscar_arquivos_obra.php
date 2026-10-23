@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include 'conexao.php'; // conexão MySQL
+require_once __DIR__ . '/../conexao.php'; // conexão MySQL
 
 $obra_id = $_GET['obra_id'] ?? null;
 $categoria = $_GET['categoria'] ?? null;

@@ -2,7 +2,7 @@
 header("Content-Type: application/json");
 
 // Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+require __DIR__ . '/../conexao.php';
 
 if ($conn->connect_error) {
     echo json_encode(['success' => false, 'message' => 'Falha na conexão com o banco de dados']);

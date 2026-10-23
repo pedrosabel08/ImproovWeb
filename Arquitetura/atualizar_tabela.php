@@ -1,6 +1,6 @@
 <?php
 
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $sql = "SELECT f.idfuncao_imagem, col.nome_colaborador, cli.nome_cliente, o.nome_obra, o.idobra,
         i.imagem_nome, f.status, f.prazo

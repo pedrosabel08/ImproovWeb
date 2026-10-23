@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $arquivo_id  = $_POST['arquivo_id'] ?? null;
 $completo    = $_POST['completo'] ?? null;

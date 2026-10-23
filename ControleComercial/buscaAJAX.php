@@ -4,7 +4,7 @@ header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+require __DIR__ . '/../conexao.php';
 
 $conn->set_charset('utf8mb4');
 

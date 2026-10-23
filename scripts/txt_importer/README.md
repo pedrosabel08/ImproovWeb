@@ -18,14 +18,15 @@ Run:
 python process_txt.py images_input.txt
 ```
 
-Configuration: edit the DB connection in `process_txt.py` (DB_CONFIG) if needed.
+Configuration: set the database variables in the project root `.env`; do not put credentials in Python files.
 
 Environment / .env
 -------------------
-The script reads database connection defaults from environment variables:
-- IMPORT_DB_HOST
-- IMPORT_DB_USER
-- IMPORT_DB_PASSWORD
-- IMPORT_DB_NAME
+The script loads the project root `.env` regardless of the current working directory:
+- DB_HOST
+- DB_PORT (defaults to 3306)
+- DB_USERNAME
+- DB_PASSWORD
+- DB_DATABASE
 
 You can copy `.env.example` to `.env` and load it into your shell (or set the variables manually). The script also supports a `--dry-run` flag to preview SQL and params without writing to the database.

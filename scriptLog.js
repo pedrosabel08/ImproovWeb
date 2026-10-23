@@ -1,12 +1,7 @@
 const mysql = require('mysql2');
+const { databaseConfig } = require('./config/database');
 
-// Configuração da conexão com o banco de dados
-const connection = mysql.createConnection({
-    host: 'mysql.improov.com.br',
-    user: 'improov',
-    password: 'Impr00v',
-    database: 'improov'
-});
+const connection = mysql.createConnection(databaseConfig());
 
 // Função para verificar uma obra específica e registrar logs
 const verificarObra = async (obraId) => {

@@ -24,11 +24,7 @@ from io import BytesIO
 from pathlib import Path
 
 # ── Carrega .env ─────────────────────────────────────────────────────────────
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent.parent / ".env")
-except ImportError:
-    pass
+from database_config import database_config
 
 try:
     import mysql.connector
@@ -53,13 +49,8 @@ except ImportError:
 
 # ── Config DB / SFTP ─────────────────────────────────────────────────────────
 DB_CONFIG = {
-    "host":               os.getenv("DB_HOST",     "72.60.137.192"),
-    "port":               int(os.getenv("DB_PORT", "3306")),
-    "user":               os.getenv("DB_USERNAME", "improov"),
-    "password":           os.getenv("DB_PASSWORD", "Impr00v@"),
-    "database":           os.getenv("DB_DATABASE", "flowdb"),
-    "charset":            "utf8mb4",
-    "use_pure":           True,
+    **database_config(),
+    "use_pure": True,
     "connection_timeout": 10,
 }
 

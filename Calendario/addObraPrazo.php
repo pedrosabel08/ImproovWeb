@@ -1,5 +1,5 @@
 <?php
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (isset($_POST['obra_id'], $_POST['prazo'], $_POST['tipo_entrega'], $_POST['assuntoEntrega'], $_POST['usuarios_ids'])) {
     $obra_id = intval($_POST['obra_id']);

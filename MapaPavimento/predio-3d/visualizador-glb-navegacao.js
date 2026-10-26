@@ -130,7 +130,7 @@ $("grid").setAttribute("aria-pressed", "false");
 const { loader } = createModelLoader();
 const raycaster = new THREE.Raycaster(),
   pointer = new THREE.Vector2();
-const floorObjectPattern = /^(PAVTO_.+_[0-9]+)_([0-9]+)$/i;
+const floorObjectPattern = /^(PAV(?:TO)?_.+_[0-9]+)_([0-9]+)$/i;
 // Only meshes with a recognized floor identifier use the picking layer.
 const PICKING_LAYER = 1;
 raycaster.layers.set(PICKING_LAYER);
@@ -235,15 +235,18 @@ function parseFloorObjectName(name) {
 function buildIndex(root, sourceName = "") {
   const byFloor = new Map(),
     records = [],
-    floorIds = new Set();
+    floorByObject = new Map();
   let hasObjectNames = false;
   root.traverse((object) => {
     const parsed = parseFloorObjectName(object.name);
-    if (parsed && object.isMesh) {
-      floorIds.add(parsed.floor);
-      hasObjectNames = true;
-    } else if (/^PAVTO_.+_[0-9]{1,3}$/i.test(object.name || ""))
-      floorIds.add(object.name.trim().toUpperCase());
+    if (parsed) {
+      floorByObject.set(object, parsed);
+      if (object.isMesh) hasObjectNames = true;
+    } else if (/^PAV(?:TO)?_.+_[0-9]{1,3}$/i.test(object.name || ""))
+      floorByObject.set(object, {
+        floor: object.name.trim().toUpperCase(),
+        objectNumber: "",
+      });
   });
   const addRecord = (object, floorId, objectNumber = "") => {
     if (!byFloor.has(floorId))
@@ -261,27 +264,28 @@ function buildIndex(root, sourceName = "") {
   };
   root.traverse((object) => {
     if (!object.isMesh) return;
-    const parsed = parseFloorObjectName(object.name);
-    if (parsed) {
-      addRecord(object, parsed.floor, parsed.objectNumber);
-      return;
-    }
-    const ownName = (object.name || "").trim().toUpperCase();
-    if (floorIds.has(ownName)) {
-      addRecord(object, ownName);
-      return;
-    }
+    const ownFloor = floorByObject.get(object);
+    // O GLTFLoader transforma peças com várias primitives em grupos e cria
+    // nomes para suas malhas internas. O grupo original define o pavimento;
+    // o sufixo gerado para cada primitive não identifica outro pavimento.
     for (
       let ancestor = object.parent;
       ancestor && ancestor !== root;
       ancestor = ancestor.parent
     ) {
-      const ancestorName = (ancestor.name || "").trim().toUpperCase();
-      if (floorIds.has(ancestorName)) {
-        addRecord(object, ancestorName);
-        break;
+      const ancestorFloor = floorByObject.get(ancestor);
+      if (ancestorFloor) {
+        addRecord(
+          object,
+          ancestorFloor.floor,
+          ownFloor?.floor === ancestorFloor.floor
+            ? ownFloor.objectNumber
+            : ancestorFloor.objectNumber,
+        );
+        return;
       }
     }
+    if (ownFloor) addRecord(object, ownFloor.floor, ownFloor.objectNumber);
   });
   // A standalone floor file can use its filename as the identifier while its meshes
   // are being renamed to the shared-prefix convention for a whole-building GLB.
@@ -295,7 +299,7 @@ function buildIndex(root, sourceName = "") {
         ?.replace(/\.(glb|gltf)$/i, "")
         .trim()
         .toUpperCase() || "";
-    if (/^PAVTO_[A-Z0-9_]+$/.test(fileName)) {
+    if (/^PAV(?:TO)?_[A-Z0-9_]+$/.test(fileName)) {
       byFloor.clear();
       records.length = 0;
       root.traverse((object) => {
@@ -309,8 +313,9 @@ function buildIndex(root, sourceName = "") {
       a.id.localeCompare(b.id, "pt-BR", { numeric: true }),
   );
   const groundFloor =
-    floors.find((floor) => /(^|_)(TERREO|TÉRREO|GROUND)(_|$)/i.test(floor.id)) ||
-    floors[0];
+    floors.find((floor) =>
+      /(^|_)(TERREO|TÉRREO|GROUND)(_|$)/i.test(floor.id),
+    ) || floors[0];
   const groundElevation = groundFloor?.bounds.min.y;
   floors.forEach((floor) => {
     floor.groundElevation = groundElevation;
@@ -1569,9 +1574,8 @@ function raycastModel(event, measuring = false) {
     .filter((hit) => !hit.object.userData.isShadowCatcher);
 }
 function pickMeasurement(event) {
-  const floorId = viewerState.mode === "floor"
-    ? viewerState.selectedFloor?.id
-    : null;
+  const floorId =
+    viewerState.mode === "floor" ? viewerState.selectedFloor?.id : null;
   return (
     raycastModel(event, true).find((hit) => {
       const record = recordByObject.get(hit.object);

@@ -310,6 +310,27 @@
     grid-row: 1;
   }
 }
+@media (min-width: 601px) and (max-width: 900px) {
+  /* A lista acompanha a coluna lateral também no iPad em portrait. */
+  .app.spatial-workspace .side.left:not(.is-collapsed) {
+    display: block;
+    max-height: none;
+    overflow: auto;
+  }
+  .app.spatial-workspace .side.left:not(.is-collapsed) .head {
+    height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .app.spatial-workspace .side.left:not(.is-collapsed) .tree {
+    display: block;
+  }
+  .app.spatial-workspace .side.left:not(.is-collapsed) .row.floor {
+    min-width: 0;
+    max-width: none;
+  }
+}
 @media (max-width: 600px) {
   .app.spatial-workspace .viewport .viewtools {
     top: 52px;

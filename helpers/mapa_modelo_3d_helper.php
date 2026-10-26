@@ -32,11 +32,11 @@ function mp3d_file(string $file): string
 function mp3d_floor_name(string $name): ?string
 {
     $name = mb_strtoupper(trim($name), 'UTF-8');
-    if (preg_match('/^(PAVTO_.+_[0-9]+)_([0-9]+)$/D', $name, $match)) {
+    if (preg_match('/^(PAV(?:TO)?_.+_[0-9]+)_([0-9]+)$/D', $name, $match)) {
         return $match[1];
     }
     // Nó único/grupo: o último número identifica o pavimento, não uma peça.
-    if (preg_match('/^PAVTO_.+_[0-9]{1,3}$/D', $name)) {
+    if (preg_match('/^PAV(?:TO)?_.+_[0-9]{1,3}$/D', $name)) {
         return $name;
     }
     return null;

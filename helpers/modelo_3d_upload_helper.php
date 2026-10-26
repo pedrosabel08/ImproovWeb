@@ -99,7 +99,7 @@ function mp3d_validate_upload(string $path, string $original): array
         }
         $floors = mp3d_floor_names_from_data($data);
         if (!$floors) {
-            throw new InvalidArgumentException('Nenhum pavimento identificado. Nomeie os grupos como PAVTO_LAZER_01, PAVTO_TIPO_01 etc.');
+            throw new InvalidArgumentException('Nenhum pavimento identificado. Nomeie os grupos como PAVTO_LAZER1_001, PAVTO_TIPO1_003 ou PAV_TERREO_001. O formato PAVTO_LAZER_01 também é aceito.');
         }
         foreach ($floors as $floor) {
             if (mb_strlen($floor) > 160) {

@@ -268,7 +268,7 @@ $conn->close();
 
     include '../sidebar.php';
 
-    ?>
+?>
     <div class="container animate__animated animate__fadeIn">
 
         <header>
@@ -3170,15 +3170,15 @@ $conn->close();
 
     <script>
         window.STATUS_IMAGENS = <?php
-                                $statusArr = [];
-                                foreach ($status_imagens as $s) {
-                                    $statusArr[] = [
-                                        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
-                                        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
-                                    ];
-                                }
-                                echo json_encode($statusArr);
-                                ?>;
+                            $statusArr = [];
+foreach ($status_imagens as $s) {
+    $statusArr[] = [
+        'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
+        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
+    ];
+}
+echo json_encode($statusArr);
+?>;
         // Auto-filter Entregas using this document's project, independent of other tabs.
         document.addEventListener('DOMContentLoaded', () => {
             const currentObra = window.FlowProjectContext.obraId;
@@ -3191,78 +3191,6 @@ $conn->close();
                     sel.dispatchEvent(new Event('change'));
                 }
             }, 450);
-        });
-
-        // Fix `.filtros-select` below the header only while the table is visible.
-        document.addEventListener('DOMContentLoaded', () => {
-            const filtros = document.querySelector('.filtros-select');
-            const table = document.querySelector('#tabela-obra');
-            const header = document.querySelector('header');
-            const scrollRoot = document.querySelector('.container') || window;
-            if (!filtros || !table) return;
-
-            const parent = filtros.parentElement;
-            let placeholder = parent.querySelector('.filtros-placeholder');
-            if (!placeholder) {
-                placeholder = document.createElement('div');
-                placeholder.className = 'filtros-placeholder';
-                parent.insertBefore(placeholder, filtros);
-            }
-
-            let cachedHeight = 0;
-
-            function updateFixed() {
-                const headerHeight = header ? header.getBoundingClientRect().height : 80;
-                const topOffset = headerHeight + 10;
-
-                const tableRect = table.getBoundingClientRect();
-                const filtrosRect = filtros.getBoundingClientRect();
-
-                // cache size while in normal flow
-                if (!filtros.classList.contains('fixed')) {
-                    cachedHeight = filtrosRect.height;
-                }
-
-                const startGap = 200;
-                const bottomGap = 50;
-                const shouldFix = tableRect.top <= topOffset + startGap && tableRect.bottom > topOffset + filtrosRect.height + bottomGap;
-
-                if (shouldFix) {
-                    placeholder.style.display = 'block';
-                    placeholder.style.width = '100%';
-                    placeholder.style.height = (cachedHeight || filtrosRect.height) + 'px';
-                    placeholder.style.flex = '0 0 auto';
-
-                    const placeholderRect = placeholder.getBoundingClientRect();
-                    filtros.classList.add('fixed');
-                    filtros.style.top = topOffset + 'px';
-                    filtros.style.left = placeholderRect.left + 'px';
-                    filtros.style.width = placeholderRect.width + 'px';
-                    placeholder.style.height = filtros.getBoundingClientRect().height + 'px';
-                } else {
-                    filtros.classList.remove('fixed');
-                    filtros.style.top = '';
-                    filtros.style.left = '';
-                    filtros.style.width = '';
-                    placeholder.style.display = 'none';
-                }
-            }
-
-            if (scrollRoot === window) {
-                window.addEventListener('scroll', updateFixed, {
-                    passive: true
-                });
-            } else {
-                scrollRoot.addEventListener('scroll', updateFixed, {
-                    passive: true
-                });
-            }
-            window.addEventListener('resize', updateFixed);
-
-            const ro = new ResizeObserver(updateFixed);
-            ro.observe(document.body);
-            ro.observe(table);
-            updateFixed();
         });
     </script>
 

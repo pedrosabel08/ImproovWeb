@@ -75,7 +75,7 @@ function loadDependencies() {
     );
     return Promise.all([
       import("./obra-3d-viewer.js"),
-      import("./obra-3d-scroll.js"),
+      import("./obra-3d-scroll.js?v=20261023"),
     ]);
   })().catch((error) => {
     dependencies = null;

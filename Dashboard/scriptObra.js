@@ -6956,9 +6956,7 @@ function renderTableColumnFilterMenu(field) {
   clearBtn.textContent = "Limpar";
   clearBtn.addEventListener("click", () => {
     delete tableColumnFilters[field];
-    __centerTableAfterFilter = true;
     filtrarTabela();
-    __centerTableAfterFilter = false;
     renderTableColumnFilterMenu(field);
     updateFunctionHeaderIndicators();
     positionFunctionFilterMenu();
@@ -6985,9 +6983,7 @@ function renderTableColumnFilterMenu(field) {
         }
       }
 
-      __centerTableAfterFilter = true;
       filtrarTabela();
-      __centerTableAfterFilter = false;
       renderTableColumnFilterMenu(field);
       updateFunctionHeaderIndicators();
       positionFunctionFilterMenu();
@@ -7092,9 +7088,7 @@ function renderFunctionFilterMenu(funcao) {
   clearBtn.addEventListener("click", () => {
     delete colaboradorFilters[funcao];
     delete statusFilters[funcao];
-    __centerTableAfterFilter = true;
     filtrarTabela();
-    __centerTableAfterFilter = false;
     renderFunctionFilterMenu(funcao);
     updateFunctionHeaderIndicators();
     positionFunctionFilterMenu();
@@ -7110,9 +7104,7 @@ function renderFunctionFilterMenu(funcao) {
         if (!value) delete colaboradorFilters[funcao];
         else colaboradorFilters[funcao] = value;
 
-        __centerTableAfterFilter = true;
         filtrarTabela();
-        __centerTableAfterFilter = false;
         renderFunctionFilterMenu(funcao);
         updateFunctionHeaderIndicators();
         positionFunctionFilterMenu();
@@ -7133,9 +7125,7 @@ function renderFunctionFilterMenu(funcao) {
         else delete statusFilters[funcao];
       }
 
-      __centerTableAfterFilter = true;
       filtrarTabela();
-      __centerTableAfterFilter = false;
       renderFunctionFilterMenu(funcao);
       updateFunctionHeaderIndicators();
       positionFunctionFilterMenu();
@@ -7277,9 +7267,7 @@ function filtrarPorColaborador(funcao, colaborador) {
     colaboradorFilters[funcao] = colaborador;
   }
   try {
-    __centerTableAfterFilter = true;
     filtrarTabela();
-    __centerTableAfterFilter = false;
     updateFunctionHeaderIndicators();
     if (
       __funcFilterUI.activeFunc === funcao &&
@@ -7713,13 +7701,10 @@ function aplicarFiltroTipoImagem(tipo) {
     Array.from(select.options).forEach((option) => {
       option.selected = option.value === value;
     });
-    __centerTableAfterFilter = true;
     filtrarTabela();
-    __centerTableAfterFilter = false;
   }
 }
 
-let __centerTableAfterFilter = false;
 function agruparImagensPorTipo(imagens) {
   const totaisPorTipo = new Map();
 
@@ -7911,6 +7896,15 @@ function inicializarResumoImagens() {
 }
 
 function filtrarTabela() {
+  const filterBar = document.querySelector(".obra-filter-bar");
+  const filterRect = filterBar?.getBoundingClientRect();
+  const headerBottom =
+    document.querySelector(".container > header")?.getBoundingClientRect()
+      .bottom || 0;
+  const keepFiltersVisible =
+    filterRect &&
+    filterRect.bottom > headerBottom &&
+    filterRect.top < window.innerHeight;
   var tabela = document.getElementById("tabela-obra");
   if (!tabela) return;
   var tbody = tabela.getElementsByTagName("tbody")[0];
@@ -7961,46 +7955,29 @@ function filtrarTabela() {
     positionFunctionFilterMenu();
   }
 
-  // Centraliza a tabela na tela após aplicar o filtro (somente quando usuário muda filtro)
-  if (!__centerTableAfterFilter) return;
-
-  requestAnimationFrame(() => {
-    const tabelaEl = document.getElementById("tabela-obra");
-    if (!tabelaEl) return;
-
-    const scrollRoot = document.querySelector(".container");
-    if (scrollRoot) {
-      const containerRect = scrollRoot.getBoundingClientRect();
-      const tableRect = tabelaEl.getBoundingClientRect();
-
-      const containerCenter = containerRect.top + containerRect.height / 2;
-      const tableCenter = tableRect.top + tableRect.height / 2;
-      const delta = tableCenter - containerCenter;
-
-      if (Math.abs(delta) > 1) {
-        scrollRoot.scrollTop += delta;
+  // Se os resultados encolherem acima da barra, mantém a busca e as linhas acessíveis.
+  // Não reposiciona a página durante o scroll nem centraliza a tabela a cada alteração.
+  if (keepFiltersVisible) {
+    requestAnimationFrame(() => {
+      const scroller = document.querySelector(".container");
+      if (!scroller) return;
+      const tableRect = tabela.getBoundingClientRect();
+      const contentTop = headerBottom + 10 + filterBar.offsetHeight + 16;
+      if (tableRect.bottom < contentTop + tabela.tHead.offsetHeight) {
+        scroller.scrollBy({
+          top: tableRect.top - contentTop,
+          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "instant"
+            : "smooth",
+        });
       }
-    } else {
-      const tableRect = tabelaEl.getBoundingClientRect();
-      const viewportCenter = window.innerHeight / 2;
-      const tableCenter = tableRect.top + tableRect.height / 2;
-      const delta = tableCenter - viewportCenter;
-      if (Math.abs(delta) > 1) {
-        window.scrollBy({ top: delta, left: 0 });
-      }
-    }
-  });
+    });
+  }
 }
 
 // Adiciona evento para filtrar sempre que o filtro mudar
-function handleFilterChange(e) {
-  const isUser = !!(
-    e &&
-    (e.isTrusted || (e.originalEvent && e.originalEvent.isTrusted))
-  );
-  __centerTableAfterFilter = isUser;
+function handleFilterChange() {
   filtrarTabela();
-  __centerTableAfterFilter = false;
 }
 
 [
@@ -9729,7 +9706,10 @@ if (uploadFormImagem) {
         form.reset();
         document.getElementById("uploadModalImagem").style.display = "none";
         const obraVal =
-          form.obra_id.value || window.FlowProjectContext.obraId || idObra || "";
+          form.obra_id.value ||
+          window.FlowProjectContext.obraId ||
+          idObra ||
+          "";
         if (obraVal) carregarArquivosObra(obraVal, true);
       }
       if (result.errors && result.errors.length > 0) {
@@ -15314,12 +15294,7 @@ function initComplexidadeModelagemAction() {
       const uploadSelect = document.querySelector(
         '#uploadForm select[name="obra_id"]',
       );
-      const stored = (
-        window.FlowProjectContext.obraId ||
-        ""
-      )
-        .toString()
-        .trim();
+      const stored = (window.FlowProjectContext.obraId || "").toString().trim();
       if (!uploadSelect || !stored) return;
 
       // Se já existir a option correspondente, apenas seleciona
@@ -15368,8 +15343,7 @@ if (concludePackageBtn) {
   function getCurrentObraId() {
     return typeof obraId !== "undefined" && obraId
       ? obraId
-      : window.FlowProjectContext.obraId ||
-          null;
+      : window.FlowProjectContext.obraId || null;
   }
 
   function getPackage(packages, tipo) {
@@ -15718,8 +15692,7 @@ if (markInactiveBtn) {
     const currentObraId =
       typeof obraId !== "undefined" && obraId
         ? obraId
-        : window.FlowProjectContext.obraId ||
-          null;
+        : window.FlowProjectContext.obraId || null;
     if (!currentObraId) {
       alert("ID da obra não encontrado na página.");
       return;

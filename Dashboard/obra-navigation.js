@@ -5,6 +5,14 @@
   const more = document.getElementById("obraMore");
   const hero = document.getElementById("obra3dHero");
   if (!header || !scroller) return;
+  // Apenas mudanças de tamanho atualizam o offset; o sticky não usa scroll handlers.
+  const syncHeaderHeight = () =>
+    scroller.style.setProperty(
+      "--obra-header-height",
+      `${header.offsetHeight}px`,
+    );
+  new ResizeObserver(syncHeaderHeight).observe(header);
+  syncHeaderHeight();
   let metadata = window.__obra3dData;
   let liveEarth;
   let liveReview;

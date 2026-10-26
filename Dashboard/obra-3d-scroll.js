@@ -15,15 +15,6 @@ export class Obra3DScroll {
     this.returnButton.addEventListener("click", () => this.returnToHero(), {
       signal: this.abort.signal,
     });
-    this.scroller.addEventListener("wheel", () => this.returnTween?.kill(), {
-      passive: true,
-      signal: this.abort.signal,
-    });
-    this.scroller.addEventListener(
-      "touchstart",
-      () => this.returnTween?.kill(),
-      { passive: true, signal: this.abort.signal },
-    );
     window.gsap.registerPlugin(window.ScrollTrigger);
     this.media = window.gsap.matchMedia();
     this.media.add(
@@ -37,7 +28,6 @@ export class Obra3DScroll {
         this.desktop = context.conditions.desktop;
         this.build();
         return () => {
-          this.returnTween?.kill();
           this.reset();
         };
       },
@@ -202,20 +192,15 @@ export class Obra3DScroll {
   }
 
   returnToHero() {
-    this.returnTween?.kill();
-    this.returnTween = window.gsap.to(this.scroller, {
-      scrollTop: 0,
-      duration: this.reduced ? 0 : 0.85,
-      ease: "power2.inOut",
-      overwrite: "auto",
-      onComplete: () =>
-        this.viewer.renderer.domElement.focus({ preventScroll: true }),
+    this.scroller.scrollTo({
+      top: 0,
+      behavior: this.reduced ? "instant" : "smooth",
     });
+    this.viewer.renderer.domElement.focus({ preventScroll: true });
   }
 
   destroy() {
     clearTimeout(this.cameraTimer);
-    this.returnTween?.kill();
     this.viewer.controls.removeEventListener("change", this.cameraChanged);
     this.abort.abort();
     this.observer.disconnect();

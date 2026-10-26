@@ -1,4 +1,15 @@
 /* Menu e filtros: mesmos tokens de cor do Flow, sem regras da tabela. */
+.container {
+  --obra-header-height: 80px;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--obra-header-height) + 10px);
+}
+@media (prefers-reduced-motion: reduce) {
+  html,
+  .container {
+    scroll-behavior: auto;
+  }
+}
 .container > header {
   gap: 24px;
   padding-inline: 32px;
@@ -206,10 +217,17 @@ body #quickAccess.obra-menu {
 }
 
 .filtro-tabela > .filtro {
-  display: block;
-  padding: 0;
+  /* A barra usa a seção da tabela como limite do sticky. */
+  display: contents;
 }
 .obra-filter-bar {
+  position: sticky;
+  top: calc(var(--obra-header-height) + 10px);
+  z-index: 75;
+  border: 1px solid var(--border);
+  padding: 10px;
+  background: var(--card-bg);
+  border-radius: 10px;
   width: 100%;
   display: grid;
   align-items: stretch;
@@ -375,14 +393,8 @@ body #quickAccess.obra-menu {
 .quick-mobile-nav [hidden] {
   display: none !important;
 }
-.obra-filter-bar.fixed {
-  z-index: 75;
-  border: 1px solid var(--border);
-  padding: 10px;
-  background: var(--card-bg);
-  border-radius: 10px;
-}
-body:has(.obra-3d-layer.is-minimap) .obra-filter-bar {
+/* Reserva estável para o minimapa, sem mudar a altura durante o scroll. */
+body:has(.obra-3d-hero:not([hidden])) .obra-filter-bar {
   padding-right: 180px;
 }
 .obra-3d-layer.is-minimap {
@@ -400,7 +412,7 @@ body:has(.obra-3d-layer.is-minimap) .obra-filter-bar {
   }
 }
 @media (max-width: 900px) {
-  body:has(.obra-3d-layer.is-minimap) .obra-filter-bar {
+  body:has(.obra-3d-hero:not([hidden])) .obra-filter-bar {
     padding-right: 140px;
   }
 }
@@ -414,15 +426,11 @@ body:has(.obra-3d-layer.is-minimap) .obra-filter-bar {
   .obra-filter-field:last-of-type {
     grid-column: 1 / -1;
   }
-  body:has(.obra-3d-layer.is-minimap) .obra-filter-bar.fixed {
+  body:has(.obra-3d-hero:not([hidden])) .obra-filter-bar {
     padding: 10px;
   }
-  .obra-filter-bar.fixed {
+  .obra-filter-bar {
     position: static;
-    width: 100% !important;
-  }
-  .filtros-placeholder {
-    display: none !important;
   }
   .container > header {
     padding-inline: 16px;

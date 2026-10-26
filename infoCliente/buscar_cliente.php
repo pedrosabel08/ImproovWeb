@@ -1,7 +1,7 @@
 <?php
 // Arquivo: buscar_cliente.php
 
-include 'conexao.php'; // Inclua seu arquivo de conexão
+require_once __DIR__ . '/../conexao.php'; // Inclua seu arquivo de conexão
 require_once __DIR__ . '/../contact_architecture.php';
 
 if (isset($_POST['id'])) {

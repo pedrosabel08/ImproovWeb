@@ -243,11 +243,11 @@ $storageBase = rtrim(improov_env(
 ), '/');
 $nasConfig = improov_sftp_config('IMPROOV_SFTP');
 
-$dbHost = improov_env('DB_HOST', '72.60.137.192');
+$dbHost = improov_env('DB_HOST');
 $dbPort = (int) improov_env('DB_PORT', '3306');
-$dbUser = improov_env('DB_USERNAME', 'improov');
-$dbPass = improov_env('DB_PASSWORD', '');
-$dbName = improov_env('DB_DATABASE', 'flowdb');
+$dbUser = improov_env('DB_USERNAME');
+$dbPass = improov_env('DB_PASSWORD');
+$dbName = improov_env('DB_DATABASE');
 
 restore_log('SIRE — Restauração NAS -> VPS');
 restore_log('Modo: ' . ($execute ? 'EXECUÇÃO' : 'SIMULAÇÃO (use --execute para copiar)'));

@@ -6,18 +6,10 @@ require_once __DIR__ . '/ws_notify.php';
 
 header('Content-Type: application/json');
 
-// OBS: este arquivo também usa PDO diretamente. Mantive a criação PDO
-// para preservar o funcionamento atual. Se quiser, posso migrar
-// a lógica para usar o `$conn` do `conexao.php` posteriormente.
-
-$host = 'mysql.improov.com.br';
-$db = 'improov';
-$user = 'improov';
-$pass = 'Impr00v';
+// A conexao PDO usa a mesma configuracao central carregada pelo conexao.php da raiz.
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = improov_db_pdo();
 } catch (PDOException $e) {
     echo json_encode(["error" => "Erro na conexão com o banco de dados: " . $e->getMessage()]);
     exit;

@@ -1,5 +1,5 @@
 <?php
-require 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require 'vendor/autoload.php';
 require_once __DIR__ . '/../config/secure_env.php';
 

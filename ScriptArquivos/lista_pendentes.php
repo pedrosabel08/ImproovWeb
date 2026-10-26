@@ -1,5 +1,5 @@
 <?php
-require 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Cabeçalho para retorno JSON
 header('Content-Type: application/json; charset=utf-8');

@@ -21,7 +21,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // Verificar se o usuário está logado
 
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+require __DIR__ . '/../conexao.php';
 
 if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);

@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Inclua a conexão com o banco de dados
-include('conexao.php');
+require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';

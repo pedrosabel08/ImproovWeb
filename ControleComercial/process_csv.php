@@ -4,7 +4,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csvFile'])) {
     $csvFile = $_FILES['csvFile']['tmp_name'];
 
     if (($handle = fopen($csvFile, "r")) !== FALSE) {
-        $conn = new mysqli("mysql.improov.com.br", "improov", "Impr00v", "improov");
+        require __DIR__ . '/../conexao.php';
 
         // Verificar conexão
         if ($conn->connect_error) {

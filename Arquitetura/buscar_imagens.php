@@ -1,6 +1,6 @@
 <?php
 // Conectar ao banco de dados
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 
 // Verifica se o ID da obra foi passado

@@ -1,7 +1,14 @@
 <?php
 // Arquivo temporário para diagnóstico - REMOVER APÓS USO
-$secret = $_GET['s'] ?? '';
-if ($secret !== 'diag2026') { http_response_code(403); exit; }
+require_once dirname(__DIR__) . '/config/secure_env.php';
+improov_load_env_once();
+
+$secret = $_GET["s"] ?? '';
+$expectedSecret = getenv('SLACK_LOG_ACCESS_SECRET');
+if (!is_string($secret) || !is_string($expectedSecret) || $expectedSecret === '' || !hash_equals($expectedSecret, $secret)) {
+    http_response_code(403);
+    exit;
+}
 $candidates = [
     __DIR__ . '/../logs/slack_debug.log',
     __DIR__ . '/slack_debug.log',

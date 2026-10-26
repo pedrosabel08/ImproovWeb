@@ -1,6 +1,6 @@
 <?php
 // Inclui o arquivo de conexão
-include 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 header('Content-Type: application/json');
 

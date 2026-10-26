@@ -21,18 +21,13 @@ import re
 import argparse
 import mysql.connector
 from mysql.connector import errorcode
-from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
 
-# Configuration - prefer environment variables for safety in different environments
-DB_CONFIG = {
-    'host': os.getenv('IMPORT_DB_HOST', '72.60.137.192'),
-    'port': int(os.getenv('IMPORT_DB_PORT', '3306')),
-    'user': os.getenv('IMPORT_DB_USER', 'improov'),
-    'password': os.getenv('IMPORT_DB_PASSWORD', 'Impr00v@'),
-    'database': os.getenv('IMPORT_DB_NAME', 'flowdb'),
-    'charset': 'utf8mb4'
-}
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from database_config import database_config
+
+# Use the same database settings as the PHP application.
+DB_CONFIG = database_config()
 
 INPUT_ENCODING = os.getenv('IMPORT_INPUT_ENCODING', 'utf-8')
 

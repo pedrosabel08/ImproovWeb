@@ -1,5 +1,5 @@
 <?php
-require 'conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $obra_id = isset($_GET['obra_id']) ? (int)$_GET['obra_id'] : 0;
 $tipos = isset($_GET['tipos']) ? json_decode($_GET['tipos'], true) : [];

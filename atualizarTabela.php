@@ -1,5 +1,5 @@
 <?php
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+require __DIR__ . '/conexao.php';
 
 if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);

@@ -1,7 +1,8 @@
 <?php
-// Configuração do token do Slack
-define('SLACK_TOKEN', '?');
-define('SLACK_API_URL', 'https://slack.com/api/chat.postMessage');
+require_once __DIR__ . '/config/database.php';
+
+define('SLACK_TOKEN', improov_env('SLACK_TOKEN'));
+define('SLACK_API_URL', improov_env('SLACK_API_URL', 'https://slack.com/api/chat.postMessage'));
 
 // Função para enviar mensagem ao Slack
 function enviarMensagemSlack($canal, $mensagem)
@@ -40,15 +41,9 @@ function enviarMensagemSlack($canal, $mensagem)
     }
 }
 
-// Configurações do banco de dados
-$host = 'mysql.improov.com.br';
-$dbname = 'improov';
-$user = 'improov';
-$password = 'Impr00v';
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = improov_db_pdo();
 
     // Definição das consultas e canais
     $consultas = [

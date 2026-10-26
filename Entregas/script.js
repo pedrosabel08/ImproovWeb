@@ -619,6 +619,283 @@ document.addEventListener("DOMContentLoaded", () => {
   let entregaAtualId = null;
   let entregaDados = null; // guarda dados retornados por get_entrega_item.php para uso posterior
   let reviewActionBusy = false;
+  let deliveryDetailsRequest = 0;
+  let deliveryPathRequest = null;
+  let destroyDeliveryPathOrb = null;
+  const deliveryStageIcons = {
+    CADERNO_FILTRO: "fa-filter",
+    MODELAGEM: "fa-cube",
+    COMPOSICAO: "fa-layer-group",
+    FINALIZACAO: "fa-wand-magic-sparkles",
+    RENDER: "fa-server",
+    POS_PRODUCAO: "fa-paintbrush",
+    INDEFINIDA: "fa-circle-question",
+  };
+
+  const detailFilters = document.createElement("div");
+  detailFilters.className = "delivery-detail-controls";
+  detailFilters.innerHTML = `
+    <div class="delivery-image-filters" role="group" aria-label="Filtros das imagens da entrega">
+      <label class="delivery-filter-search">Buscar imagem<span class="delivery-search-field"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" data-image-filter="busca" placeholder="Nome ou número" autocomplete="off"></span></label>
+      <label>Tipo de imagem<select data-image-filter="tipo"><option value="">Todos os tipos</option></select></label>
+      <label>Etapa de produção<select data-image-filter="etapa"><option value="">Todas as etapas</option></select></label>
+    </div>
+    <div class="delivery-image-filters delivery-extra-filters" id="deliveryExtraFilters" hidden>
+      <label>Situação da produção<select data-image-filter="situacao"><option value="">Todas as situações</option></select></label>
+      <label>Status da imagem<select data-image-filter="status"><option value="">Todos os status</option></select></label>
+      <label>Responsável atual<select data-image-filter="responsavel"><option value="">Todos os responsáveis</option></select></label>
+    </div>
+    <div class="delivery-filter-summary"><span data-image-count role="status" aria-live="polite"></span>
+      <div class="delivery-filter-actions"><button type="button" class="btn-action btn-secondary" data-more-image-filters aria-expanded="false" aria-controls="deliveryExtraFilters"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Mais filtros<span data-extra-filter-count></span></button>
+      <button type="button" class="btn-action btn-secondary" data-clear-image-filters>Limpar filtros</button></div></div>`;
+  const imagesScroll = modalImagens.closest(".delivery-images-scroll");
+  (imagesScroll || modalImagens).before(detailFilters);
+  const detailEmpty = document.createElement("p");
+  detailEmpty.className = "delivery-filter-empty";
+  detailEmpty.textContent = "Nenhuma imagem encontrada com estes filtros.";
+  detailEmpty.hidden = true;
+  modalImagens.after(detailEmpty);
+  const normalizeImageSearch = (value) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  const detailRows = () =>
+    Array.from(
+      modalImagens.querySelectorAll(".modal-imagem-item:not(.select-all-item)"),
+    );
+  const visibleSelectableImages = () =>
+    detailRows()
+      .filter((row) => !row.hidden)
+      .map((row) => row.querySelector(".entrega-item-checkbox"))
+      .filter((cb) => cb && !cb.disabled);
+
+  function syncDeliveryMaster() {
+    const master = document.getElementById("selectAllImagens");
+    if (!master) return;
+    const selectable = visibleSelectableImages();
+    const checked = selectable.filter((cb) => cb.checked).length;
+    master.disabled = !selectable.length;
+    master.checked = selectable.length > 0 && checked === selectable.length;
+    master.indeterminate = checked > 0 && checked < selectable.length;
+  }
+
+  function applyDeliveryImageFilters(clearSelection = true) {
+    const values = Object.fromEntries(
+      Array.from(detailFilters.querySelectorAll("[data-image-filter]")).map(
+        (el) => [el.dataset.imageFilter, el.value],
+      ),
+    );
+    const rows = detailRows();
+    rows.forEach((row) => {
+      const img = entregaDados?.itens?.find(
+        (i) => String(i.id) === row.dataset.itemId,
+      );
+      if (!img) return;
+      const stages = img.producao?.simultaneas || [];
+      const matchStage =
+        (!values.etapa && !values.situacao && !values.responsavel) ||
+        stages.some(
+          (stage) =>
+            (!values.etapa || stage.codigo === values.etapa) &&
+            (!values.situacao || stage.situacao === values.situacao) &&
+            (!values.responsavel ||
+              (stage.responsaveis || [{ id: stage.responsavel_id }]).some(
+                (r) => String(r.id || "sem") === values.responsavel,
+              )),
+        );
+      const status =
+        row.dataset.substatusNome === "rvw_done"
+          ? "RVW_DONE"
+          : row.dataset.deliveryStatus;
+      row.hidden = !(
+        normalizeImageSearch(`${img.nome} ${img.imagem_nome || ""}`).includes(
+          normalizeImageSearch(values.busca),
+        ) &&
+        (!values.tipo || (img.tipo_imagem || "Sem tipo") === values.tipo) &&
+        (!values.status || status === values.status) &&
+        matchStage
+      );
+      const cb = row.querySelector(".entrega-item-checkbox");
+      if (clearSelection && cb && !cb.disabled) cb.checked = false;
+    });
+    const visible = rows.filter((row) => !row.hidden).length;
+    detailFilters.querySelector("[data-image-count]").textContent =
+      `Mostrando ${visible} de ${rows.length} imagens`;
+    const extraCount = ["situacao", "status", "responsavel"].filter(
+      (name) => values[name],
+    ).length;
+    detailFilters.querySelector("[data-extra-filter-count]").textContent =
+      extraCount ? ` (${extraCount})` : "";
+    detailEmpty.hidden = visible !== 0;
+    syncDeliveryMaster();
+    updateRvwBatchBar();
+  }
+
+  function initDeliveryImageFilters(reset = true) {
+    const previous = Object.fromEntries(
+      Array.from(detailFilters.querySelectorAll("[data-image-filter]")).map(
+        (el) => [el.dataset.imageFilter, el.value],
+      ),
+    );
+    const options = {
+      tipo: new Map(),
+      etapa: new Map(),
+      situacao: new Map(),
+      status: new Map(),
+      responsavel: new Map(),
+    };
+    detailRows().forEach((row) => {
+      const img = entregaDados.itens.find(
+        (i) => String(i.id) === row.dataset.itemId,
+      );
+      if (!img) return;
+      options.tipo.set(
+        img.tipo_imagem || "Sem tipo",
+        img.tipo_imagem || "Sem tipo",
+      );
+      const status =
+        row.dataset.substatusNome === "rvw_done"
+          ? "RVW_DONE"
+          : row.dataset.deliveryStatus;
+      options.status.set(status, status);
+      (img.producao?.simultaneas || []).forEach((e) => {
+        options.etapa.set(e.codigo, e.nome);
+        options.situacao.set(e.situacao, e.situacao_nome);
+        (
+          e.responsaveis || [{ id: e.responsavel_id, nome: e.responsavel_nome }]
+        ).forEach((r) =>
+          options.responsavel.set(
+            String(r.id || "sem"),
+            r.nome || "Sem responsável",
+          ),
+        );
+      });
+    });
+    detailFilters.querySelector('[data-image-filter="busca"]').value = "";
+    Object.entries(options).forEach(([name, entries]) => {
+      const select = detailFilters.querySelector(
+        `[data-image-filter="${name}"]`,
+      );
+      const placeholder = select.options[0].text;
+      select.replaceChildren(new Option(placeholder, ""));
+      [...entries]
+        .sort((a, b) => a[1].localeCompare(b[1], "pt-BR"))
+        .forEach(([value, label]) => select.add(new Option(label, value)));
+      if (!reset && entries.has(previous[name])) select.value = previous[name];
+    });
+    if (!reset)
+      detailFilters.querySelector('[data-image-filter="busca"]').value =
+        previous.busca;
+    if (reset) {
+      detailFilters.querySelector(".delivery-extra-filters").hidden = true;
+      detailFilters
+        .querySelector("[data-more-image-filters]")
+        .setAttribute("aria-expanded", "false");
+    }
+    applyDeliveryImageFilters();
+  }
+  detailFilters
+    .querySelector("[data-more-image-filters]")
+    .addEventListener("click", (event) => {
+      const extra = detailFilters.querySelector(".delivery-extra-filters");
+      extra.hidden = !extra.hidden;
+      event.currentTarget.setAttribute("aria-expanded", String(!extra.hidden));
+    });
+  detailFilters.addEventListener("input", () => applyDeliveryImageFilters());
+  detailFilters
+    .querySelector("[data-clear-image-filters]")
+    .addEventListener("click", () => {
+      detailFilters.querySelectorAll("[data-image-filter]").forEach((el) => {
+        el.value = "";
+      });
+      applyDeliveryImageFilters();
+    });
+
+  async function loadDeliveryPath(id) {
+    if (!modalCaminhoTexto) return;
+    deliveryPathRequest?.abort();
+    destroyDeliveryPathOrb?.();
+    const controller = new AbortController();
+    deliveryPathRequest = controller;
+    const copy = document.getElementById("btnCopiarCaminho");
+    if (copy) copy.disabled = true;
+    modalCaminhoTexto.dataset.path = "";
+    modalCaminhoTexto.textContent = "Buscando pasta da obra";
+    let orb = document.getElementById("deliveryPathOrb");
+    if (!orb) {
+      orb = document.createElement("canvas");
+      orb.id = "deliveryPathOrb";
+      orb.className = "delivery-path-orb";
+      orb.setAttribute("data-thinking-orb", "");
+      orb.setAttribute("data-orb-state", "composing");
+      orb.setAttribute("aria-label", "Buscando pasta da obra");
+      orb.setAttribute("role", "img");
+      modalCaminhoTexto.before(orb);
+    }
+    orb.hidden = false;
+    const destroy = window.thinkingOrbs?.(orb);
+    destroyDeliveryPathOrb = destroy;
+    try {
+      const res = await fetch(
+        BASE + `get_caminho_entrega.php?id=${encodeURIComponent(id)}`,
+        { signal: controller.signal },
+      );
+      const data = await res.json();
+      if (
+        controller !== deliveryPathRequest ||
+        String(entregaAtualId) !== String(id)
+      )
+        return;
+      const path = res.ok ? data.caminho_entrega : null;
+      modalCaminhoTexto.dataset.path = path || "";
+      modalCaminhoTexto.textContent =
+        path || data.mensagem || "Caminho não identificado";
+      modalCaminhoTexto.title = modalCaminhoTexto.textContent;
+      if (copy) copy.disabled = !path;
+    } catch (error) {
+      if (error.name !== "AbortError" && controller === deliveryPathRequest)
+        modalCaminhoTexto.textContent = "Caminho não identificado";
+    } finally {
+      if (controller === deliveryPathRequest) {
+        destroy?.();
+        orb.hidden = true;
+      }
+    }
+  }
+
+  modalImagens.addEventListener("click", (event) => {
+    const label = event.target.closest("label.imagem_nome");
+    if (!label) return;
+    const img = entregaDados?.itens?.find(
+      (i) =>
+        String(i.id) === label.closest(".modal-imagem-item")?.dataset.itemId,
+    );
+    const e = img?.producao?.atual;
+    showMiniImagePanel(
+      e
+        ? {
+            nome_funcao: e.nome,
+            status: e.situacao_nome,
+            nome_colaborador: e.responsavel_nome,
+            prazo: e.prazo,
+            producao: img.producao,
+          }
+        : null,
+      label.dataset.imagemId,
+      label,
+    );
+  });
+  modalImagens.addEventListener("keydown", (event) => {
+    if (
+      event.target.matches("label.imagem_nome") &&
+      ["Enter", " "].includes(event.key)
+    ) {
+      event.preventDefault();
+      event.target.click();
+    }
+  });
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => {
@@ -1306,6 +1583,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (modalToClose) {
         modalToClose.classList.remove("is-open");
+        if (modalToClose === modalEntrega) {
+          deliveryPathRequest?.abort();
+          destroyDeliveryPathOrb?.();
+          document
+            .getElementById("deliveryPathOrb")
+            ?.setAttribute("hidden", "");
+          document.getElementById("miniImagePanel")?.remove();
+        }
       } else {
         // fallback: hide any open known modal
         const selecionarModal = document.getElementById(
@@ -1456,12 +1741,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const colaborador = data.nome_colaborador || "—";
     const prazo = data.prazo ? formatarData(data.prazo) : "-";
 
-    content.innerHTML = `
-            <p><strong>Função:</strong> ${funcao}</p>
-            <p><strong>Status:</strong> ${status}</p>
-            <p><strong>Colaborador:</strong> ${colaborador}</p>
-            <p><strong>Prazo:</strong> ${prazo}</p>
-        `;
+    content.innerHTML =
+      (
+        data.producao?.simultaneas || [
+          {
+            nome: funcao,
+            situacao_nome: status,
+            responsavel_nome: colaborador,
+            prazo: data.prazo,
+          },
+        ]
+      )
+        .map(
+          (e) => `
+      <div class="mini-stage"><p><strong>Etapa:</strong> ${escapeHtml(e.nome)}</p>
+      <p><strong>Situação:</strong> ${escapeHtml(e.situacao_nome)}</p>
+      <p><strong>Responsável:</strong> ${escapeHtml(e.responsaveis ? [...new Set(e.responsaveis.map((r) => r.nome || "Sem responsável"))].join(", ") : e.responsavel_nome || "Sem responsável")}</p>
+      <p><strong>Prazo:</strong> ${escapeHtml(formatarData(e.prazo))}</p></div>`,
+        )
+        .join("") + `<p>${escapeHtml(data.producao?.motivo || "")}</p>`;
 
     // After filling content, position panel near the clicked label
     positionPanelNearAnchor(panel, anchorEl);
@@ -1521,7 +1819,8 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         // The project page owns its context; other tabs may change the legacy cache.
         const storedObra =
-          window.FlowProjectContext?.obraId || (typeof localStorage !== "undefined"
+          window.FlowProjectContext?.obraId ||
+          (typeof localStorage !== "undefined"
             ? localStorage.getItem("obraId")
             : null);
         const isEntregasPage = window.location.pathname
@@ -1588,12 +1887,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     entregaAtualId = card.dataset.id;
+    const request = ++deliveryDetailsRequest;
+    document.getElementById("miniImagePanel")?.remove();
 
     try {
       const res = await fetch(
         BASE + `get_entrega_item.php?id=${entregaAtualId}`,
       );
       const data = await res.json();
+      if (request !== deliveryDetailsRequest) return;
+      if (!res.ok || !Array.isArray(data.itens))
+        throw new Error(data.error || "Detalhes indisponíveis");
 
       modalTitle.textContent = `${data.nomenclatura || "Entrega"} - ${data.nome_etapa || data.id}`;
       // salvar dados para uso por outros handlers (ex: adicionar imagem por id)
@@ -1614,12 +1918,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return isEntregue;
       }).length;
       modalProgresso.textContent = `${finalizedCount} / ${data.itens.length} finalizadas`;
-      if (modalCaminhoTexto) {
-        const caminho =
-          data.caminho_entrega ||
-          `Z:\\2025\\${data.nomenclatura || ""}\\04.Finalizacao\\${data.nome_etapa || ""}`;
-        modalCaminhoTexto.textContent = caminho;
-      }
+      loadDeliveryPath(data.id);
       renderReviewBatchPanel(data);
 
       modalImagens.innerHTML = "";
@@ -1636,6 +1935,9 @@ document.addEventListener("DOMContentLoaded", () => {
       data.itens.forEach((img) => {
         const div = document.createElement("div");
         div.classList.add("modal-imagem-item");
+        div.dataset.itemId = String(img.id);
+        const stageCode = img.producao?.atual?.codigo || "INDEFINIDA";
+        div.dataset.productionStage = stageCode;
 
         const statusStr = (img.status || "").toString().trim();
         const substatusStr = (img.nome_substatus || "").toString().trim();
@@ -1671,56 +1973,42 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (isPendente) {
           statusLabel = '<span class="entregue">✅ Pendente</span>';
         } else {
-          statusLabel = '<span class="entregue">⏳ Em andamento</span>';
+          statusLabel = `<span class="entregue production-stage-badge"><i class="fa-solid ${deliveryStageIcons[stageCode] || deliveryStageIcons.INDEFINIDA}" aria-hidden="true"></i>${escapeHtml(img.producao?.atual?.nome || "Etapa a confirmar")}</span>`;
         }
+        div.dataset.deliveryStatus =
+          nsub === "rvw_done"
+            ? "RVW_DONE"
+            : nsub === "pre_alt"
+              ? "PRE_ALT"
+              : nsub === "ready_for_planning"
+                ? "READY"
+                : isRvw
+                  ? "RVW"
+                  : isEntregue
+                    ? "Entregue"
+                    : isPendente
+                      ? "Pendente de entrega"
+                      : "Em produção";
 
         if (isRvw) div.classList.add("rvw-selectable");
         div.dataset.substatusId = img.substatus_id || "";
         div.dataset.substatusNome = nsub;
 
         div.innerHTML = `
-            <input type="checkbox" class="entrega-item-checkbox" id="img-item-${img.id}" value="${img.id}" ${checked} ${disabled} data-imagem-id="${img.imagem_id}">
-                <label class="imagem_nome" data-imagem-id="${img.imagem_id}">${img.nome}</label>
+            <input type="checkbox" class="entrega-item-checkbox" aria-label="Selecionar ${escapeHtml(img.nome)}" id="img-item-${img.id}" value="${img.id}" ${checked} ${disabled} data-imagem-id="${img.imagem_id}">
+                <div class="delivery-image-description">
+                  <label class="imagem_nome" role="button" tabindex="0" data-imagem-id="${img.imagem_id}">${escapeHtml(img.nome)}</label>
+                  <span class="delivery-image-production">${(img.producao?.simultaneas || []).map((e) => `<strong class="delivery-stage-name" data-production-stage="${escapeHtml(e.codigo)}">${escapeHtml(e.nome)}</strong>: ${escapeHtml(e.situacao_nome)}`).join(" / ")}${img.tipo_imagem ? ` · ${escapeHtml(img.tipo_imagem)}` : ""}</span>
+                </div>
                 ${statusLabel}
             `;
         modalImagens.appendChild(div);
       });
 
-      // Click on image name to open mini info panel (last função / status / colaborador)
-      modalImagens.addEventListener("click", async (e) => {
-        const label = e.target.closest("label.imagem_nome");
-        if (!label) return;
-        // get imagem_id from the label's data attribute (set from server data)
-        const imagemId =
-          label.dataset && label.dataset.imagemId
-            ? label.dataset.imagemId
-            : null;
-        if (!imagemId) return;
-
-        try {
-          const resp = await fetch(
-            BASE + `get_imagem_funcao.php?imagem_id=${imagemId}`,
-          );
-          const json = await resp.json();
-          if (json && json.success && json.data) {
-            showMiniImagePanel(json.data, imagemId, label);
-          } else {
-            showMiniImagePanel(null, imagemId, label);
-          }
-        } catch (err) {
-          console.error("Erro ao buscar função da imagem:", err);
-          showMiniImagePanel(null, imagemId, label);
-        }
-      });
-
       // configurar comportamento do checkbox mestre e sincronização
       const master = document.getElementById("selectAllImagens");
       if (master) {
-        const selectableSelector = 'input[type="checkbox"]:not([disabled])';
-        const getSelectable = () =>
-          Array.from(modalImagens.querySelectorAll(selectableSelector)).filter(
-            (cb) => cb.id !== "selectAllImagens",
-          );
+        const getSelectable = visibleSelectableImages;
 
         const updateMasterState = () => {
           const selectable = getSelectable();
@@ -1754,9 +2042,20 @@ document.addEventListener("DOMContentLoaded", () => {
         updateRvwBatchBar();
       }
 
+      initDeliveryImageFilters();
+      const workspaceBody = modalEntrega.querySelector(
+        ".delivery-workspace-body",
+      );
+      if (workspaceBody) workspaceBody.scrollTop = 0;
+      if (imagesScroll) imagesScroll.scrollTop = 0;
+      const reviewScroll = modalReviewBatches?.querySelector(
+        ".review-batches-list",
+      );
+      if (reviewScroll) reviewScroll.scrollTop = 0;
       modalEntrega.classList.add("is-open");
     } catch (err) {
       console.error("Erro ao carregar detalhes da entrega:", err);
+      alert(err.message || "Não foi possível carregar a entrega.");
     }
   });
 
@@ -1768,7 +2067,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const checkedRvw = Array.from(
       modalImagens.querySelectorAll(
-        ".rvw-selectable input[type='checkbox']:checked",
+        ".rvw-selectable:not([hidden]) input[type='checkbox']:checked",
       ),
     );
 
@@ -1795,13 +2094,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     bar.querySelector(".rvw-batch-info").textContent =
-      `${checkedRvw.length} imagem${checkedRvw.length > 1 ? "ns" : ""} selecionada${checkedRvw.length > 1 ? "s" : ""}`;
+      `${checkedRvw.length} ${checkedRvw.length === 1 ? "imagem selecionada" : "imagens selecionadas"}`;
   }
 
   async function confirmarRvwDoneBatch(bar) {
     const checkedRvw = Array.from(
       modalImagens.querySelectorAll(
-        ".rvw-selectable input[type='checkbox']:checked",
+        ".rvw-selectable:not([hidden]) input[type='checkbox']:checked",
       ),
     );
     if (checkedRvw.length === 0) return;
@@ -1849,6 +2148,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
         }
+        initDeliveryImageFilters(false);
         Toastify({
           text: "RVW_DONE aplicado com sucesso!",
           duration: 3000,
@@ -1882,6 +2182,12 @@ document.addEventListener("DOMContentLoaded", () => {
       m.innerHTML = `
         <div class="ctx-header"><span class="ctx-title">Ações da imagem</span></div>
         <div class="ctx-body">
+          <a class="ctx-item ctx-flow-review" target="_blank" rel="noopener">
+            <i class="fa-solid fa-comments" aria-hidden="true"></i> Flow Review
+          </a>
+          <a class="ctx-item ctx-image-card">
+            <i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver card da Imagem
+          </a>
           <button class="ctx-item ctx-rvw-done" style="display:none">
             <i class="fa-solid fa-check-double"></i> Marcar como RVW_DONE
           </button>
@@ -1899,9 +2205,48 @@ document.addEventListener("DOMContentLoaded", () => {
     const isRvw = item.classList.contains("rvw-selectable");
     m.querySelector(".ctx-rvw-done").style.display = isRvw ? "" : "none";
 
-    m.style.left = x + "px";
-    m.style.top = y + "px";
+    const imageId = Number(
+      item.querySelector("input[data-imagem-id]")?.dataset.imagemId,
+    );
+    const image = entregaDados?.itens?.find(
+      (img) => Number(img.imagem_id) === imageId,
+    );
+    const task = image?.producao?.tarefa_atalho;
+    const review = m.querySelector(".ctx-flow-review");
+    const card = m.querySelector(".ctx-image-card");
+    for (const link of [review, card]) {
+      link.removeAttribute("href");
+      link.setAttribute("aria-disabled", task ? "false" : "true");
+      link.title = task
+        ? "Abrir em nova aba"
+        : "Não há função registrada para esta etapa neste ciclo.";
+      link.onclick = (event) => {
+        event.preventDefault();
+        if (!task) return;
+        hideModalCtxMenu();
+        if (link === card) {
+          const stage = {
+            ...task,
+            funcao_imagem_id: task.funcao_imagem_id,
+            imagem_id: imageId,
+            funcao_nome:
+              task.funcao_nome || image?.producao?.atual?.nome || "Função",
+          };
+          window.FlowTaskOverlay?.open(stage, link);
+        }
+      };
+    }
+    if (task) {
+      const reviewUrl = new URL("../FlowReview/index.php", BASE);
+      reviewUrl.searchParams.set("funcao_imagem_id", task.funcao_imagem_id);
+      review.href = reviewUrl.href;
+      card.href = "#card-imagem";
+    }
     m.style.display = "block";
+    m.style.left =
+      Math.max(8, Math.min(x, window.innerWidth - m.offsetWidth - 8)) + "px";
+    m.style.top =
+      Math.max(8, Math.min(y, window.innerHeight - m.offsetHeight - 8)) + "px";
 
     // handler RVW_DONE (single item)
     const btnRvwDone = m.querySelector(".ctx-rvw-done");
@@ -1940,7 +2285,7 @@ document.addEventListener("DOMContentLoaded", () => {
               found.nome_substatus = "RVW_DONE";
             }
           }
-          updateRvwBatchBar();
+          initDeliveryImageFilters(false);
           Toastify({
             text: "RVW_DONE aplicado!",
             duration: 2500,
@@ -1973,6 +2318,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.closest(`#${MODAL_CTX_ID}`)) return;
     hideModalCtxMenu();
   });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideModalCtxMenu();
+  });
+  window.addEventListener("resize", hideModalCtxMenu);
+  document.addEventListener(
+    "scroll",
+    (e) => {
+      if (!document.getElementById(MODAL_CTX_ID)?.contains(e.target))
+        hideModalCtxMenu();
+    },
+    true,
+  );
 
   // --- REMOVER IMAGEM COM CLIQUE DIREITO (rich context menu) ---
   async function handleRemoveImagemFromEntrega(item) {
@@ -2014,20 +2371,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ),
         ).length;
         modalProgresso.textContent = `${entregues} / ${total} finalizadas`;
-        const master = document.getElementById("selectAllImagens");
-        if (master) {
-          const selectable = Array.from(
-            modalImagens.querySelectorAll(
-              'input[type="checkbox"]:not([disabled])',
-            ),
-          ).filter((cb) => cb.id !== "selectAllImagens");
-          const checkedCount = selectable.filter((cb) => cb.checked).length;
-          master.checked =
-            selectable.length > 0 && checkedCount === selectable.length;
-          master.indeterminate =
-            checkedCount > 0 && checkedCount < selectable.length;
-        }
-        updateRvwBatchBar();
+        initDeliveryImageFilters(false);
       } else {
         alert(
           "Não foi possível remover: " + (json.error || "erro desconhecido"),
@@ -2045,16 +2389,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!item || item.classList.contains("select-all-item")) return;
     if (!entregaAtualId) return;
     e.preventDefault();
-    // Position menu near cursor, keep within viewport
-    const menuWidth = 230;
-    const menuHeight = 100;
-    let x = e.clientX + window.scrollX;
-    let y = e.clientY + window.scrollY;
-    if (e.clientX + menuWidth > window.innerWidth)
-      x = e.clientX - menuWidth + window.scrollX;
-    if (e.clientY + menuHeight > window.innerHeight)
-      y = e.clientY - menuHeight + window.scrollY;
-    showModalCtxMenu(item, x, y);
+    showModalCtxMenu(item, e.clientX, e.clientY);
   });
 
   // --- REGISTRAR ENTREGA ---
@@ -2062,7 +2397,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!entregaAtualId) return;
 
     const checkboxes = modalImagens.querySelectorAll(
-      "input.entrega-item-checkbox:checked:not([disabled])",
+      ".modal-imagem-item:not([hidden]) input.entrega-item-checkbox:checked:not([disabled])",
     );
     if (checkboxes.length === 0) {
       alert("Nenhuma imagem selecionada para entrega.");
@@ -2133,7 +2468,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnCopiarCaminho = document.getElementById("btnCopiarCaminho");
   if (btnCopiarCaminho) {
     btnCopiarCaminho.addEventListener("click", () => {
-      const txt = modalCaminhoTexto ? modalCaminhoTexto.textContent : "";
+      const txt = modalCaminhoTexto ? modalCaminhoTexto.dataset.path : "";
       if (!txt || txt === "—") return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(txt).then(() => {
@@ -4516,7 +4851,8 @@ if (btnAdicionarImagem) {
     }
     // 2. Use this project document before the standalone page's legacy cache.
     if (!obraSelect.value) {
-      const storedId = window.FlowProjectContext?.obraId || localStorage.getItem("obraId");
+      const storedId =
+        window.FlowProjectContext?.obraId || localStorage.getItem("obraId");
       if (storedId) obraSelect.value = storedId;
     }
     // 3. If we now have an obra and content is empty, auto-load

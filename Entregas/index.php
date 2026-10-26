@@ -58,6 +58,8 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('styleCard.css') . '&t=' . filemtime(__DIR__ . '/styleCard.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&t=' . filemtime(__DIR__ . '/style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('detalhes.css') . '&t=' . filemtime(__DIR__ . '/detalhes.css'); ?>">
+    <script defer src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
 
 </head>
 
@@ -298,60 +300,7 @@ $conn->close();
     </div>
 
     <!-- ====== Modal: Detalhe da Entrega ====== -->
-    <div class="modal" id="entregaModal">
-        <div class="modal-content modal-wide">
-            <div class="modal-header">
-                <h2 class="modal-title" id="modalTitulo">Entrega</h2>
-                <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <div style="display:flex;gap:24px;flex-wrap:wrap;">
-                    <div>
-                        <span
-                            style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Recebimento</span>
-                        <span id="modalRecebimento" style="font-size:13px;font-weight:500;">—</span>
-                    </div>
-                    <div>
-                        <span
-                            style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
-                        <span id="modalPrazo" style="font-size:13px;font-weight:500;">—</span>
-                    </div>
-                    <div>
-                        <span
-                            style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Conclusão
-                            geral</span>
-                        <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
-                    </div>
-                </div>
-                <div id="modalCaminhoRow" class="modal-caminho-row">
-                    <span class="caminho-label"><i class="fa-solid fa-folder"></i>&ensp;Caminho</span>
-                    <div class="caminho-field">
-                        <code id="modalCaminhoTexto" class="caminho-text">—</code>
-                        <button id="btnCopiarCaminho" class="btn-copiar-caminho" title="Copiar caminho">
-                            <i class="fa-regular fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-                <div id="modalReviewBatches" class="review-batches-panel" style="display:none;"></div>
-                <div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                        <span
-                            style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
-                            <i class="fa-solid fa-images" style="margin-right:5px;"></i>Imagens
-                        </span>
-                        <button class="btn-action btn-primary" id="btnAdicionarImagem"
-                            style="height:30px;font-size:12px;padding:0 12px;">
-                            <i class="fa-solid fa-plus"></i> Adicionar
-                        </button>
-                    </div>
-                    <div id="modalImagens"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
-            </div>
-        </div>
-    </div>
+    <?php require __DIR__ . '/../includes/entrega-detalhe-modal.php'; ?>
 
     <!-- ====== Modal: Selecionar Imagens ====== -->
     <div id="modalSelecionarImagens" class="modal">
@@ -536,6 +485,7 @@ echo json_encode($statusArr);
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <?php flow_motion_assets('../'); ?>
+    <script src="<?php echo asset_url('../assets/js/components/flow-task-overlay.js') . '&t=' . filemtime(__DIR__ . '/../assets/js/components/flow-task-overlay.js'); ?>"></script>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>

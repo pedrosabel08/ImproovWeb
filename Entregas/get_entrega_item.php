@@ -1,7 +1,16 @@
 <?php
 // get_entrega_item.php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+if (($_SESSION['logado'] ?? false) !== true) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Não autenticado.']);
+    exit;
+}
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/../helpers/entrega_imagem_etapa_helper.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/prazo_entrega_helper.php';
@@ -33,6 +42,11 @@ try {
         exit;
     }
     $entrega = $res->fetch_assoc();
+    if (!improov_usuario_pode_acessar_obra($conn, (int) $entrega['obra_id'])) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Sem acesso a esta obra.']);
+        exit;
+    }
 
     $itens = [];
     if (($entrega['tipo_entrega'] ?? 'PADRAO') === 'P00') {
@@ -40,11 +54,15 @@ try {
                     v.id,
                     v.imagem_id,
                     v.versao_label AS nome,
+                    i.imagem_nome,
+                    i.tipo_imagem,
+                    i.status_id AS ciclo_atual,
                     v.status,
                     NULL AS nome_substatus,
                     NULL AS substatus_id,
                     v.versao_label
                  FROM entregas_p00_versoes v
+                 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = v.imagem_id
                  WHERE v.entrega_id = ?
                  ORDER BY
                     CASE
@@ -63,26 +81,21 @@ try {
             $itens[] = $row;
         }
         $stmt2->close();
-        $latestVersion = improov_p00_fetch_latest_version($conn, $entrega_id);
-        $nasPath = trim((string) ($latestVersion['nas_path'] ?? ''));
-        if ($nasPath !== '') {
-            $entrega['caminho_entrega'] = 'Z:\\2025\\' . ($entrega['nomenclatura'] ?? '') . '\\' . str_replace('/', '\\', ltrim($nasPath, '/'));
-        } else {
-            $entrega['caminho_entrega'] = 'Z:\\2025\\' . ($entrega['nomenclatura'] ?? '') . '\\03.Models\\Modelagem_Fachada\\Toons\\' . ($latestVersion['versao_label'] ?? 'V1');
-        }
     } else {
         // buscar itens da entrega
         $sql2 = "SELECT
                     ei.id,
                     ei.imagem_id,
                     i.imagem_nome AS nome,
+                    i.tipo_imagem,
+                    i.status_id AS ciclo_atual,
                     ei.status,
                     ss.nome_substatus,
                     i.substatus_id
                 FROM entregas_itens ei
                 INNER JOIN imagens_cliente_obra i
                     ON ei.imagem_id = i.idimagens_cliente_obra
-                INNER JOIN substatus_imagem ss
+                LEFT JOIN substatus_imagem ss
                     ON ss.id = i.substatus_id
                 WHERE ei.entrega_id = ?
                 ORDER BY
@@ -106,6 +119,10 @@ try {
         $stmt2->close();
     }
 
+    $etapas = flow_entrega_etapas_lote($conn, $entrega, $itens);
+    foreach ($itens as &$item) $item['producao'] = $etapas[(int) $item['imagem_id']] ?? null;
+    unset($item);
+    $entrega['caminho_entrega'] = null; // Resolved asynchronously from the actual NAS folder.
     $entrega['itens'] = $itens;
     $reviewBatches = entregas_review_fetch_batches_for_entrega($conn, $entrega_id);
     $entrega['review_batches_enabled'] = entregas_review_schema_ready($conn);
@@ -124,7 +141,8 @@ try {
     ];
 
     echo json_encode($entrega);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log('Entregas/get_entrega_item: ' . $e->getMessage());
+    echo json_encode(['error' => 'Não foi possível carregar os detalhes da entrega.']);
 }

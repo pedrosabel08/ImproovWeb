@@ -88,7 +88,7 @@ function flow_planejamento_dias_uteis_entre(string $inicio, string $fim): int
 
 function flow_planejamento_mediana(array $valores): ?float
 {
-    $valores = array_values(array_filter($valores, static fn ($valor) => is_numeric($valor)));
+    $valores = array_values(array_filter($valores, static fn($valor) => is_numeric($valor)));
     if (!$valores) {
         return null;
     }
@@ -105,14 +105,14 @@ function flow_planejamento_remover_outliers(array $duracoes): array
     }
 
     $mediana = flow_planejamento_mediana($duracoes);
-    $desvios = array_map(static fn ($valor) => abs((float) $valor - $mediana), $duracoes);
+    $desvios = array_map(static fn($valor) => abs((float) $valor - $mediana), $duracoes);
     $mad = flow_planejamento_mediana($desvios);
     if ($mad === null || $mad == 0.0) {
-        return array_values(array_filter($duracoes, static fn ($valor) => $valor <= max(1, $mediana * 3)));
+        return array_values(array_filter($duracoes, static fn($valor) => $valor <= max(1, $mediana * 3)));
     }
 
     $limite = 3.5 * $mad;
-    return array_values(array_filter($duracoes, static fn ($valor) => abs((float) $valor - $mediana) <= $limite));
+    return array_values(array_filter($duracoes, static fn($valor) => abs((float) $valor - $mediana) <= $limite));
 }
 
 /**
@@ -193,7 +193,7 @@ function flow_planejamento_definicoes_etapas(): array
 
 function flow_planejamento_dependencias(string $codigo, array $ativos): array
 {
-    $tem = static fn (string $etapa): bool => !empty($ativos[$etapa]);
+    $tem = static fn(string $etapa): bool => !empty($ativos[$etapa]);
     $finalizacoes = array_values(array_filter(['FINALIZACAO_EXTERNA', 'FINALIZACAO_INTERNA', 'FINALIZACAO_PLANTA'], $tem));
 
     switch ($codigo) {
@@ -222,7 +222,7 @@ function flow_planejamento_dependencias(string $codigo, array $ativos): array
  */
 function flow_planejamento_ciclos_validos(array $logs, ?string $corte = null): array
 {
-    usort($logs, static fn (array $a, array $b) => strcmp((string) $a['data'], (string) $b['data']));
+    usort($logs, static fn(array $a, array $b) => strcmp((string) $a['data'], (string) $b['data']));
     $resultado = ['duracoes' => [], 'descartados_hold' => 0, 'descartados_duracao' => 0, 'reaberturas' => 0];
     $inicio = null;
     $contaminado = false;
@@ -594,7 +594,7 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
             continue;
         }
         $volume = count($grupo);
-        $concluidas = count(array_filter($grupo, static fn (array $item) => flow_planejamento_status_finalizado((string) ($item['status'] ?? ''))));
+        $concluidas = count(array_filter($grupo, static fn(array $item) => flow_planejamento_status_finalizado((string) ($item['status'] ?? ''))));
         $editavel = ($definicao['estrategia'] ?? '') !== 'JANELA_FIXA';
         $pessoas = flow_planejamento_pessoas_alocadas($opcoes, $codigo, $editavel);
         $metrica = $volume && ($definicao['estrategia'] ?? '') === 'HISTORICO_POR_PESSOA' ? $resolverProdutividade($codigo, $definicao, $grupo) : null;
@@ -645,10 +645,10 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
             continue;
         }
         if (!empty($etapa['virtual'])) {
-            $etapa['inicio'] = min(array_map(static fn (string $dep) => $etapas[$dep]['inicio'], $dependencias));
+            $etapa['inicio'] = min(array_map(static fn(string $dep) => $etapas[$dep]['inicio'], $dependencias));
             $etapa['limite'] = max($limites);
-            $etapa['duracao_dias_uteis'] = max(array_map(static fn (string $dep) => $etapas[$dep]['duracao_dias_uteis'], $dependencias));
-            $etapa['volume'] = array_sum(array_map(static fn (string $dep) => $etapas[$dep]['volume'], $dependencias));
+            $etapa['duracao_dias_uteis'] = max(array_map(static fn(string $dep) => $etapas[$dep]['duracao_dias_uteis'], $dependencias));
+            $etapa['volume'] = array_sum(array_map(static fn(string $dep) => $etapas[$dep]['volume'], $dependencias));
             unset($etapa);
             continue;
         }
@@ -690,7 +690,7 @@ function flow_planejamento_calcular(array $itens, array $opcoes, callable $resol
         if (!$dependencias) {
             break;
         }
-        usort($dependencias, static fn (string $a, string $b) => strcmp((string) ($etapas[$b]['limite'] ?? ''), (string) ($etapas[$a]['limite'] ?? '')));
+        usort($dependencias, static fn(string $a, string $b) => strcmp((string) ($etapas[$b]['limite'] ?? ''), (string) ($etapas[$a]['limite'] ?? '')));
         $atual = $dependencias[0] ?? null;
     }
     foreach ($etapas as $codigo => &$etapa) {
@@ -823,7 +823,7 @@ function flow_planejamento_estrutura_entrega(mysqli $conn, int $entregaId): arra
             'status' => $status === 'cancelado' ? 'CANCELADO' : 'ATIVO',
         ];
     }
-    usort($linhas, static fn (array $a, array $b): int => strcmp(flow_planejamento_json($a), flow_planejamento_json($b)));
+    usort($linhas, static fn(array $a, array $b): int => strcmp(flow_planejamento_json($a), flow_planejamento_json($b)));
 
     $volumes = [];
     $cadernoPorImagem = [];
@@ -851,7 +851,7 @@ function flow_planejamento_estrutura_entrega(mysqli $conn, int $entregaId): arra
         'obra_id' => (int) $entrega['obra_id'],
         'data_inicio' => (string) $entrega['data_recebimento'],
         'prazo_r00' => (string) $entrega['data_prevista'],
-        'imagens' => array_map(static fn (int $id, string $tipo): array => ['imagem_id' => $id, 'tipo_imagem' => flow_planejamento_tipo_imagem($tipo)], array_keys($imagens), array_values($imagens)),
+        'imagens' => array_map(static fn(int $id, string $tipo): array => ['imagem_id' => $id, 'tipo_imagem' => flow_planejamento_tipo_imagem($tipo)], array_keys($imagens), array_values($imagens)),
         'funcoes' => $linhas,
         'volumes_por_etapa' => $volumes,
     ];
@@ -987,6 +987,10 @@ function flow_planejamento_marcar_desatualizado(mysqli $conn, int $entregaId, ?i
     if (!flow_planejamento_tabelas_persistencia_disponiveis($conn)) {
         return ['alterado' => false, 'motivos' => []];
     }
+    require_once __DIR__ . '/planejamento_entrega_real_helper.php';
+    if (flow_planejamento_carregar_entrega_real($conn, $entregaId)['estado'] === 'CONCLUIDO') {
+        return ['alterado' => false, 'motivos' => []];
+    }
     $raiz = flow_planejamento_carregar_raiz($conn, $entregaId);
     if (!$raiz || empty($raiz['versao_atual_id']) || !in_array($raiz['estado'], ['CONFIRMADO', 'REPLANEJAMENTO', 'DESATUALIZADO'], true)) {
         return ['alterado' => false, 'motivos' => []];
@@ -1061,6 +1065,9 @@ function flow_planejamento_historico(mysqli $conn, int $entregaId): array
 
 function flow_planejamento_carregar_para_interface(mysqli $conn, int $entregaId, array $opcoes = []): array
 {
+    require_once __DIR__ . '/planejamento_entrega_real_helper.php';
+    $ciclo = flow_planejamento_carregar_entrega_real($conn, $entregaId);
+    $encerrado = $ciclo['estado'] === 'CONCLUIDO';
     $fingerprint = flow_planejamento_fingerprint_entrega($conn, $entregaId);
     $persistenciaDisponivel = flow_planejamento_tabelas_persistencia_disponiveis($conn);
     $meta = ['estado' => 'RASCUNHO', 'lock_version' => 0, 'historico' => []];
@@ -1068,7 +1075,7 @@ function flow_planejamento_carregar_para_interface(mysqli $conn, int $entregaId,
         $raiz = flow_planejamento_carregar_raiz($conn, $entregaId);
         if ($raiz) {
             $estado = (string) $raiz['estado'];
-            $desatualizacao = flow_planejamento_marcar_desatualizado($conn, $entregaId);
+            $desatualizacao = $encerrado ? ['alterado' => false, 'motivos' => []] : flow_planejamento_marcar_desatualizado($conn, $entregaId);
             if ($desatualizacao['alterado']) {
                 $raiz = flow_planejamento_carregar_raiz($conn, $entregaId) ?: $raiz;
                 $estado = 'DESATUALIZADO';
@@ -1084,7 +1091,7 @@ function flow_planejamento_carregar_para_interface(mysqli $conn, int $entregaId,
             ];
             // Consulta do plano confirmado lê somente o snapshot persistido;
             // o motor/histórico fica reservado para rascunho e replanejamento.
-            if (!empty($raiz['versao_atual_id']) && empty($opcoes['replanejar'])) {
+            if (!empty($raiz['versao_atual_id']) && (empty($opcoes['replanejar']) || $encerrado)) {
                 $versao = flow_planejamento_carregar_versao($conn, (int) $raiz['versao_atual_id']);
                 $oficial = $versao ? json_decode((string) $versao['snapshot_json'], true) : null;
                 if (is_array($oficial)) {
@@ -1092,6 +1099,7 @@ function flow_planejamento_carregar_para_interface(mysqli $conn, int $entregaId,
                     $oficial['fonte'] = 'VERSAO_CONFIRMADA';
                     $oficial['persistencia_disponivel'] = true;
                     $oficial['planejamento'] = $meta;
+                    $oficial['ciclo_vida'] = flow_planejamento_comparar_entrega_real($ciclo, $oficial);
                     if ($estado === 'DESATUALIZADO') {
                         $oficial['status_plano'] = 'DESATUALIZADO';
                     }
@@ -1106,6 +1114,7 @@ function flow_planejamento_carregar_para_interface(mysqli $conn, int $entregaId,
     $simulacao['fonte'] = 'SIMULACAO';
     $simulacao['persistencia_disponivel'] = $persistenciaDisponivel;
     $simulacao['planejamento'] = $meta;
+    $simulacao['ciclo_vida'] = flow_planejamento_comparar_entrega_real($ciclo, $simulacao);
     return $simulacao;
 }
 
@@ -1131,6 +1140,8 @@ function flow_planejamento_persistir_confirmacao(mysqli $conn, int $entregaId, a
         $conn->begin_transaction();
     }
     try {
+        require_once __DIR__ . '/planejamento_entrega_real_helper.php';
+        flow_planejamento_exigir_entrega_aberta(flow_planejamento_carregar_entrega_real($conn, $entregaId, true));
         $raiz = flow_planejamento_carregar_raiz($conn, $entregaId, true);
         $raizCriadaAgora = false;
         if (!$raiz) {

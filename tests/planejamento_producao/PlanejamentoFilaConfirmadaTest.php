@@ -20,7 +20,8 @@ fila_confirmada_assert(
 );
 
 $linha = [[
-    'chave' => '293:CADERNO_FILTRO', 'prioridade' => 3,
+    'chave' => '293:CADERNO_FILTRO',
+    'prioridade' => 3,
     'tarefas_contexto' => [['id' => 100, 'funcao_id' => 1, 'colaborador_id' => 36, 'status' => 'Pendente']],
 ]];
 $fingerprint = flow_fila_confirmada_fingerprint_linha($linha);
@@ -31,15 +32,36 @@ $linhaResponsavel = $linha;
 $linhaResponsavel[0]['tarefas_contexto'][0]['colaborador_id'] = 99;
 fila_confirmada_assert($fingerprint !== flow_fila_confirmada_fingerprint_linha($linhaResponsavel), 'Troca de responsável deve invalidar a ordem confirmada.');
 
+$projecaoBase = [['entrega_id' => 10, 'fim_operacional_projetado' => '2026-10-20', 'etapas' => [['codigo' => 'FINALIZACAO_PLANTA', 'fim_operacional_projetado' => '2026-10-20', 'status_operacional' => 'NO_PLANO', 'confianca' => 'MEDIA']]]];
+$projecaoSemAvisos = $projecaoBase;
+$projecaoSemAvisos[0]['etapas'][0]['tarefas_em_hold'] = [];
+$projecaoSemAvisos[0]['etapas'][0]['impedimentos_ativos'] = [];
+fila_confirmada_assert(flow_fila_confirmada_fingerprint_projecao($projecaoBase) === flow_fila_confirmada_fingerprint_projecao($projecaoSemAvisos), 'Campos vazios não devem invalidar snapshots antigos sem HOLD ou impedimentos.');
+$projecaoComHold = $projecaoSemAvisos;
+$projecaoComHold[0]['etapas'][0]['tarefas_em_hold'] = [50];
+fila_confirmada_assert(flow_fila_confirmada_fingerprint_projecao($projecaoSemAvisos) !== flow_fila_confirmada_fingerprint_projecao($projecaoComHold), 'Alteração de HOLD deve atualizar a projeção histórica mesmo quando a data permanece igual.');
+
 $antes = [[
-    'entrega_id' => 293, 'fim_operacional_projetado' => '2026-10-20', 'margem_operacional_dias_uteis' => -2, 'status_operacional' => 'ATRASO_PROJETADO',
+    'entrega_id' => 293,
+    'fim_operacional_projetado' => '2026-10-20',
+    'margem_operacional_dias_uteis' => -2,
+    'status_operacional' => 'ATRASO_PROJETADO',
 ], [
-    'entrega_id' => 294, 'fim_operacional_projetado' => '2026-09-10', 'margem_operacional_dias_uteis' => 3, 'status_operacional' => 'NO_PLANO',
+    'entrega_id' => 294,
+    'fim_operacional_projetado' => '2026-09-10',
+    'margem_operacional_dias_uteis' => 3,
+    'status_operacional' => 'NO_PLANO',
 ]];
 $resolve = [[
-    'entrega_id' => 293, 'fim_operacional_projetado' => '2026-10-16', 'margem_operacional_dias_uteis' => 0, 'status_operacional' => 'NO_PLANO',
+    'entrega_id' => 293,
+    'fim_operacional_projetado' => '2026-10-16',
+    'margem_operacional_dias_uteis' => 0,
+    'status_operacional' => 'NO_PLANO',
 ], [
-    'entrega_id' => 294, 'fim_operacional_projetado' => '2026-09-11', 'margem_operacional_dias_uteis' => 2, 'status_operacional' => 'NO_PLANO',
+    'entrega_id' => 294,
+    'fim_operacional_projetado' => '2026-09-11',
+    'margem_operacional_dias_uteis' => 2,
+    'status_operacional' => 'NO_PLANO',
 ]];
 fila_confirmada_assert(flow_fila_confirmada_classificar($antes, $resolve, 293) === 'RESOLVE', 'Cenário que elimina o atraso sem criar outro deve ser RESOLVE.');
 $transfere = $resolve;

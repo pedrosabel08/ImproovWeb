@@ -29,7 +29,8 @@ if ($entrega_id <= 0 || empty($imagens_entregues)) {
 }
 
 try {
-    $stmtEntrega = $conn->prepare('SELECT obra_id, data_prevista, status_id, COALESCE(tipo_entrega, \'PADRAO\') AS tipo_entrega FROM entregas WHERE id = ? LIMIT 1');
+    $conn->begin_transaction();
+    $stmtEntrega = $conn->prepare('SELECT obra_id, data_prevista, status_id, COALESCE(tipo_entrega, \'PADRAO\') AS tipo_entrega FROM entregas WHERE id = ? LIMIT 1 FOR UPDATE');
     $stmtEntrega->bind_param('i', $entrega_id);
     $stmtEntrega->execute();
     $entregaInfo = $stmtEntrega->get_result()->fetch_assoc();
@@ -40,7 +41,6 @@ try {
     }
 
     $isP00Entrega = (($entregaInfo['tipo_entrega'] ?? 'PADRAO') === 'P00');
-    $conn->begin_transaction();
 
     $hoje = date('Y-m-d');
 
@@ -75,7 +75,8 @@ try {
                                       FROM entregas_itens ei 
                                       JOIN entregas e ON ei.entrega_id = e.id 
                                       WHERE ei.id = ? AND ei.entrega_id = ?");
-        $stmtUpdate = $conn->prepare("UPDATE entregas_itens SET status=?, data_entregue=NOW() WHERE id=?");
+        // Repetir o registro não pode reescrever o instante real já registrado.
+        $stmtUpdate = $conn->prepare("UPDATE entregas_itens SET status=CASE WHEN data_entregue IS NULL THEN ? ELSE status END, data_entregue=COALESCE(data_entregue, NOW()) WHERE id=?");
 
         foreach ($imagens_entregues as $item_id) {
             $item_id = intval($item_id);
@@ -113,6 +114,7 @@ try {
     } else {
         $stmt = $conn->prepare("SELECT COUNT(*) AS total, 
                         SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues,
+                        MAX(ei.data_entregue) AS ultima_entrega_real,
                         MAX(e.data_prevista) AS data_prevista,
                         MAX(e.obra_id) AS obra_id
                     FROM entregas_itens ei
@@ -127,17 +129,18 @@ try {
     $entregues = intval($res['entregues']);
     $data_prevista = $res['data_prevista'];
     $obra_id = isset($res['obra_id']) ? intval($res['obra_id']) : null;
+    $dataEntregaStatus = !$isP00Entrega && !empty($res['ultima_entrega_real']) ? substr((string) $res['ultima_entrega_real'], 0, 10) : $hoje;
 
     // Determinar novo status da entrega
     if ($entregues === 0) {
         $novo_status = 'Pendente';
     } elseif ($entregues < $total) {
         $novo_status = 'Parcial';
-    } elseif ($entregues === $total && $hoje < $data_prevista) {
+    } elseif ($entregues === $total && $dataEntregaStatus < $data_prevista) {
         $novo_status = 'Entrega antecipada';
-    } elseif ($entregues === $total && $hoje > $data_prevista) {
+    } elseif ($entregues === $total && $dataEntregaStatus > $data_prevista) {
         $novo_status = 'Entregue com atraso';
-    } elseif ($entregues === $total && $hoje == $data_prevista) {
+    } elseif ($entregues === $total && $dataEntregaStatus == $data_prevista) {
         $novo_status = 'Entregue no prazo';
     } else {
         $novo_status = 'Concluída';
@@ -243,10 +246,10 @@ try {
 
     // Atualizar status da entrega (inclui status_id quando disponível)
     if ($novo_status_id !== null) {
-        $stmt = $conn->prepare("UPDATE entregas SET status=?, status_id=?, data_conclusao=NOW() WHERE id=?");
+        $stmt = $conn->prepare("UPDATE entregas SET data_conclusao=CASE WHEN status IN ('Entregue no prazo','Entregue com atraso','Entrega antecipada') AND data_conclusao IS NOT NULL THEN data_conclusao ELSE NOW() END, status=?, status_id=? WHERE id=?");
         $stmt->bind_param('sii', $novo_status, $novo_status_id, $entrega_id);
     } else {
-        $stmt = $conn->prepare("UPDATE entregas SET status=?, data_conclusao=NOW() WHERE id=?");
+        $stmt = $conn->prepare("UPDATE entregas SET data_conclusao=CASE WHEN status IN ('Entregue no prazo','Entregue com atraso','Entrega antecipada') AND data_conclusao IS NOT NULL THEN data_conclusao ELSE NOW() END, status=? WHERE id=?");
         $stmt->bind_param('si', $novo_status, $entrega_id);
     }
     $stmt->execute();

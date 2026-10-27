@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
 if (empty($_SESSION['logado'])) {
-    flow_auth_redirect_to_login();
-    exit();
+  flow_auth_redirect_to_login();
+  exit();
 }
 
 
@@ -11,10 +11,10 @@ require_once __DIR__ . '/../conexaoMain.php';
 include_once __DIR__ . '/../conexao.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
-    if ($__p && is_file($__p)) {
-        require_once $__p;
-        break;
-    }
+  if ($__p && is_file($__p)) {
+    require_once $__p;
+    break;
+  }
 }
 unset($__root, $__p);
 
@@ -22,8 +22,8 @@ unset($__root, $__p);
 
 $podeAcessar = improov_usuario_eh_gestor_sidebar($conn);
 if (!$podeAcessar) {
-    header('Location: ../acesso_negado.php');
-    exit();
+  header('Location: ../acesso_negado.php');
+  exit();
 }
 
 $tema = ($_GET['tema'] ?? '') === 'light' ? 'light' : '';
@@ -46,7 +46,7 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
-    <?= flow_auth_navigation_script() ?>
+  <?= flow_auth_navigation_script() ?>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
@@ -100,60 +100,60 @@ $conn->close();
     </nav>
 
     <div id="capacity-workspace">
-    <section class="capacity-overview" aria-label="Resumo executivo">
-      <div class="capacity-kpis">
-        <article><strong id="kpi-plans">—</strong><span>Projetos planejados</span></article>
-        <article class="is-healthy"><strong id="kpi-healthy">—</strong><span>Funções saudáveis</span></article>
-        <article class="is-support"><strong id="kpi-support">—</strong><span>Necessitam apoio</span></article>
-        <article class="is-conflict"><strong id="kpi-conflict">—</strong><span>Conflitos críticos</span></article>
-      </div>
-      <aside class="capacity-priority" id="priority-card" hidden>
-        <span><i class="fa-solid fa-triangle-exclamation"></i> Atenção prioritária</span>
-        <strong id="priority-title">—</strong>
-        <p id="priority-detail">—</p>
-        <button type="button" id="priority-open">Ver detalhe <i class="fa-solid fa-arrow-right"></i></button>
-      </aside>
-    </section>
-
-    <section class="capacity-toolbar" aria-label="Filtros de capacidade">
-      <div class="capacity-view-switch" role="group" aria-label="Visualização">
-        <button type="button" class="is-active" data-view="heatmap"><i class="fa-solid fa-table-cells-large"></i> Heatmap</button>
-        <button type="button" data-view="timeline"><i class="fa-solid fa-bars-staggered"></i> Timeline</button>
-      </div>
-      <div class="capacity-filters">
-        <label class="capacity-select"><span>Função</span><select id="filter-stage">
-            <option value="">Todas as funções</option>
-          </select></label>
-        <label class="capacity-select"><span>Status</span><select id="filter-status">
-            <option value="">Todos os status</option>
-            <option value="PROBLEMAS">Somente problemas</option>
-            <option value="SAUDAVEL">Saudáveis</option>
-            <option value="NECESSITA_APOIO">Necessitam apoio</option>
-            <option value="CONFLITO">Conflitos</option>
-            <option value="SEM_PRINCIPAIS_CONFIGURADOS">Sem principais</option>
-          </select></label>
-      </div>
-    </section>
-
-    <section class="capacity-panel" id="capacity-panel" aria-label="Mapa semanal de capacidade">
-      <div class="capacity-panel-heading">
-        <div>
-          <p>Diagnóstico semanal</p>
-          <h2>Demanda × capacidade principal</h2>
+      <section class="capacity-overview" aria-label="Resumo executivo">
+        <div class="capacity-kpis">
+          <article><strong id="kpi-plans">—</strong><span>Projetos planejados</span></article>
+          <article class="is-healthy"><strong id="kpi-healthy">—</strong><span>Funções saudáveis</span></article>
+          <article class="is-support"><strong id="kpi-support">—</strong><span>Necessitam apoio</span></article>
+          <article class="is-conflict"><strong id="kpi-conflict">—</strong><span>Conflitos críticos</span></article>
         </div>
-        <span class="capacity-key"><i class="key-healthy"></i> Carga principal <b class="key-limit"></b> No limite <em class="key-support">+ Apoio</em><em class="key-conflict">! Conflito</em></span>
-      </div>
-      <div class="capacity-loading" id="capacity-loading" aria-label="Carregando capacidade">
-        <span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div class="capacity-heatmap-wrap" id="heatmap-view" hidden>
-        <div class="capacity-heatmap" id="capacity-heatmap"></div>
-      </div>
-      <div class="capacity-timeline" id="timeline-view" hidden></div>
-      <div class="capacity-empty" id="capacity-empty" hidden></div>
-    </section>
+        <aside class="capacity-priority" id="priority-card" hidden>
+          <span><i class="fa-solid fa-triangle-exclamation"></i> Atenção prioritária</span>
+          <strong id="priority-title">—</strong>
+          <p id="priority-detail">—</p>
+          <button type="button" id="priority-open">Ver detalhe <i class="fa-solid fa-arrow-right"></i></button>
+        </aside>
+      </section>
 
-    <p class="capacity-footnote"><i class="fa-solid fa-circle-info"></i> Secundários representam apoio potencial e exigem alocação gerencial; não são disponibilidade garantida.</p>
+      <section class="capacity-toolbar" aria-label="Filtros de capacidade">
+        <div class="capacity-view-switch" role="group" aria-label="Visualização">
+          <button type="button" class="is-active" data-view="heatmap"><i class="fa-solid fa-table-cells-large"></i> Heatmap</button>
+          <button type="button" data-view="timeline"><i class="fa-solid fa-bars-staggered"></i> Timeline</button>
+        </div>
+        <div class="capacity-filters">
+          <label class="capacity-select"><span>Função</span><select id="filter-stage">
+              <option value="">Todas as funções</option>
+            </select></label>
+          <label class="capacity-select"><span>Status</span><select id="filter-status">
+              <option value="">Todos os status</option>
+              <option value="PROBLEMAS">Somente problemas</option>
+              <option value="SAUDAVEL">Saudáveis</option>
+              <option value="NECESSITA_APOIO">Necessitam apoio</option>
+              <option value="CONFLITO">Conflitos</option>
+              <option value="SEM_PRINCIPAIS_CONFIGURADOS">Sem principais</option>
+            </select></label>
+        </div>
+      </section>
+
+      <section class="capacity-panel" id="capacity-panel" aria-label="Mapa semanal de capacidade">
+        <div class="capacity-panel-heading">
+          <div>
+            <p>Diagnóstico semanal</p>
+            <h2>Demanda × capacidade principal</h2>
+          </div>
+          <span class="capacity-key"><i class="key-healthy"></i> Carga principal <b class="key-limit"></b> No limite <em class="key-support">+ Apoio</em><em class="key-conflict">! Conflito</em></span>
+        </div>
+        <div class="capacity-loading" id="capacity-loading" aria-label="Carregando capacidade">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="capacity-heatmap-wrap" id="heatmap-view" hidden>
+          <div class="capacity-heatmap" id="capacity-heatmap"></div>
+        </div>
+        <div class="capacity-timeline" id="timeline-view" hidden></div>
+        <div class="capacity-empty" id="capacity-empty" hidden></div>
+      </section>
+
+      <p class="capacity-footnote"><i class="fa-solid fa-circle-info"></i> Secundários representam apoio potencial e exigem alocação gerencial; não são disponibilidade garantida.</p>
     </div>
 
     <section class="allocation-workspace" id="allocation-workspace" aria-label="Central de Alocação" hidden>
@@ -177,7 +177,10 @@ $conn->close();
 
       <section class="allocation-panel" aria-live="polite">
         <div class="allocation-panel-heading">
-          <div><p>Visão por função</p><h3>Demanda, operação e alocação nominal</h3></div>
+          <div>
+            <p>Visão por função</p>
+            <h3>Demanda, operação e alocação nominal</h3>
+          </div>
           <span id="allocation-period-label">—</span>
         </div>
         <div class="allocation-loading" id="allocation-loading" hidden><span></span><span></span><span></span></div>
@@ -185,7 +188,12 @@ $conn->close();
         <div class="allocation-stage-list" id="allocation-stage-list"></div>
         <div class="allocation-action-status" id="allocation-action-status" aria-live="polite" hidden></div>
         <section class="allocation-simulation-panel" id="allocation-simulation-panel" hidden aria-live="polite">
-          <header><div><p>Simulação de redistribuição</p><h3>Atual → simulado</h3></div><button type="button" id="allocation-simulation-close" aria-label="Fechar simulação"><i class="fa-solid fa-xmark"></i></button></header>
+          <header>
+            <div>
+              <p>Simulação de redistribuição</p>
+              <h3>Atual → simulado</h3>
+            </div><button type="button" id="allocation-simulation-close" aria-label="Fechar simulação"><i class="fa-solid fa-xmark"></i></button>
+          </header>
           <div id="allocation-simulation-content"></div>
           <footer><button type="button" class="capacity-button-secondary" id="allocation-simulation-cancel">Cancelar</button><button type="button" class="capacity-button-primary" id="allocation-simulation-apply">Aplicar redistribuição</button></footer>
         </section>
@@ -212,14 +220,19 @@ $conn->close();
   </dialog>
   <dialog class="queue-dialog" id="queue-dialog" aria-labelledby="queue-dialog-title">
     <section>
-      <header class="queue-dialog-header"><div><p>Fila operacional · simulação antes da confirmação</p><h2 id="queue-dialog-title">Organizar fila</h2></div><button type="button" id="queue-dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></header>
+      <header class="queue-dialog-header">
+        <div>
+          <p>Fila operacional · simulação antes da confirmação</p>
+          <h2 id="queue-dialog-title">Organizar fila</h2>
+        </div><button type="button" id="queue-dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+      </header>
       <div id="queue-dialog-content"></div>
       <footer class="queue-dialog-actions"><button type="button" class="capacity-button-secondary" id="queue-dialog-suggest"><i class="fa-solid fa-wand-magic-sparkles"></i> Encontrar melhor ordem</button><span></span><button type="button" class="capacity-button-secondary" id="queue-dialog-cancel">Cancelar</button><button type="button" class="capacity-button-primary" id="queue-dialog-confirm">Confirmar nova fila</button></footer>
     </section>
   </dialog>
 
   <script src="script.js?v=6" defer></script>
-  <script src="alocacao.js?v=6" defer></script>
+  <script src="alocacao.js?v=7" defer></script>
   <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

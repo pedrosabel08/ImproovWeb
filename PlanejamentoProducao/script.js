@@ -90,8 +90,50 @@
     );
   const executionStage = (plan, code) => executionMap(plan).get(code) || null;
   const operationalData = (plan) => plan?.projecao_operacional || null;
+  const isCompleted = (plan) => plan?.ciclo_vida?.estado === "CONCLUIDO";
+  const deviationLabel = (days) =>
+    days == null ? "—" : `${days > 0 ? "+" : ""}${days}d`;
+  const deviationClass = (days) =>
+    days == null || days === 0
+      ? "is-on-time"
+      : days > 0
+        ? "is-late"
+        : "is-early";
+  const observedStage = (plan, stage) => {
+    const execution = executionStage(plan, stage.codigo);
+    const closed = execution?.execucao === "CONCLUIDA";
+    const actual = closed ? execution.conclusao_real : null;
+    const projection =
+      !closed && !isCompleted(plan)
+        ? operationalStage(plan, stage.codigo)
+        : null;
+    return {
+      actual: Boolean(actual),
+      closed,
+      date: actual || projection?.fim_operacional_projetado || null,
+      deviation: actual
+        ? execution.desvio_real_dias_uteis
+        : projection?.desvio_plano_vigente_dias_uteis,
+      label: actual
+        ? "Concluída"
+        : isCompleted(plan) || closed
+          ? "Sem registro"
+          : projection?.fim_operacional_projetado
+            ? "Projeção"
+            : "Não calculável",
+    };
+  };
+  const deliveryResultText = (plan) => {
+    const days = plan.ciclo_vida?.antecedencia_prazo_dias_corridos;
+    if (days == null) return "Prazo da R00 não informado";
+    return days === 0
+      ? "Entregue na data do prazo"
+      : `Entregue ${Math.abs(days)} dia${Math.abs(days) === 1 ? "" : "s"} corrido${Math.abs(days) === 1 ? "" : "s"} ${days > 0 ? "antes" : "após"} o prazo`;
+  };
   const operationalStage = (plan, code) =>
-    (operationalData(plan)?.etapas || []).find((stage) => stage.codigo === code) || null;
+    (operationalData(plan)?.etapas || []).find(
+      (stage) => stage.codigo === code,
+    ) || null;
   const operationalLabel = (value) =>
     ({
       NO_PLANO: "No plano",
@@ -99,7 +141,9 @@
       ATRASO_PROJETADO: "Atraso projetado",
       FILA_NAO_CALCULAVEL: "Não calculável",
       BLOQUEADO: "Bloqueada",
-    })[value] || value || "—";
+    })[value] ||
+    value ||
+    "—";
   const executionLabel = (value) =>
     ({
       NO_PRAZO: "No prazo",
@@ -291,11 +335,16 @@
     dates.push(
       plan.data_inicio,
       plan.data_entrega || plan.fim_previsto,
-      plan.data_hoje,
-      operationalData(plan)?.fim_operacional_projetado,
+      isCompleted(plan) ? plan.ciclo_vida.data_entrega_real : plan.data_hoje,
+      isCompleted(plan)
+        ? null
+        : operationalData(plan)?.fim_operacional_projetado,
     );
-    (operationalData(plan)?.etapas || []).forEach((stage) =>
-      dates.push(stage.fim_operacional_projetado),
+    (isCompleted(plan) ? [] : operationalData(plan)?.etapas || []).forEach(
+      (stage) => dates.push(stage.fim_operacional_projetado),
+    );
+    (plan.execucao?.etapas || []).forEach((stage) =>
+      dates.push(stage.conclusao_real),
     );
     const validDates = dates.filter(Boolean).sort();
     const ultimoMarco = new Date(`${validDates.at(-1)}T12:00:00Z`);
@@ -303,7 +352,7 @@
     return {
       start: validDates[0],
       end: ultimoMarco.toISOString().slice(0, 10),
-      days: daysBetween(dates[0], ultimoMarco.toISOString().slice(0, 10)),
+      days: daysBetween(validDates[0], ultimoMarco.toISOString().slice(0, 10)),
     };
   }
   function position(date, timeline) {
@@ -356,14 +405,20 @@
     $("#summary-today").textContent = formatDate(plan.data_hoje);
     $("#summary-due").textContent = formatDate(plan.data_entrega);
     $("#summary-finish").textContent = formatDate(plan.fim_previsto);
-    $("#summary-operational").textContent = formatDate(operationalData(plan)?.fim_operacional_projetado);
-    $("#summary-operational-status").textContent = operationalLabel(operationalData(plan)?.status_operacional);
+    $("#summary-operational").textContent = formatDate(
+      operationalData(plan)?.fim_operacional_projetado,
+    );
+    $("#summary-operational-status").textContent = operationalLabel(
+      operationalData(plan)?.status_operacional,
+    );
     const margin = $("#summary-margin");
     margin.classList.toggle("negative", Number(plan.margem_dias_uteis) < 0);
     margin.querySelector("strong").textContent = formatMargin(
       plan.margem_dias_uteis,
     );
-    if ($("#summary-margin-operational")) $("#summary-margin-operational").textContent = `Operacional: ${formatMargin(operationalData(plan)?.margem_operacional_dias_uteis ?? null)}`;
+    if ($("#summary-margin-operational"))
+      $("#summary-margin-operational").textContent =
+        `Operacional: ${formatMargin(operationalData(plan)?.margem_operacional_dias_uteis ?? null)}`;
     const card = $("#plan-status-card");
     const labels = {
       VIAVEL: "Viável",
@@ -379,6 +434,13 @@
     plan,
     motion = planMotion(null, plan, "initial"),
   ) {
+    if (isCompleted(plan)) {
+      renderCompletedSummary(plan);
+      return;
+    }
+    $("#summary-observed-label").textContent = "Projeção operacional";
+    $("#summary-result-label").textContent = "Margens";
+    $("#summary-reference-label").textContent = "Hoje";
     const intro = motion.initial;
     const values = [
       [
@@ -390,8 +452,16 @@
       [$("#summary-today"), formatDate(plan.data_hoje), plan.data_hoje],
       [$("#summary-due"), formatDate(plan.data_entrega), plan.data_entrega],
       [$("#summary-finish"), formatDate(plan.fim_previsto), plan.fim_previsto],
-      [$("#summary-operational"), formatDate(operationalData(plan)?.fim_operacional_projetado), operationalData(plan)?.fim_operacional_projetado],
-      [$("#summary-margin-planned"), formatMargin(plan.margem_dias_uteis), null],
+      [
+        $("#summary-operational"),
+        formatDate(operationalData(plan)?.fim_operacional_projetado),
+        operationalData(plan)?.fim_operacional_projetado,
+      ],
+      [
+        $("#summary-margin-planned"),
+        formatMargin(plan.margem_dias_uteis),
+        null,
+      ],
     ];
     values.forEach(([element, value, date]) => {
       if (!element) return;
@@ -423,20 +493,28 @@
     }
 
     const margin = $("#summary-margin");
+    margin.querySelector("strong").className = "";
     margin.classList.toggle("negative", Number(plan.margem_dias_uteis) < 0);
     const operational = operationalData(plan);
     const operationalCard = $("#summary-operational-card");
     const operationalStatus = $("#summary-operational-status");
     if (operationalCard) {
       operationalCard.className = `planning-operational-card is-${String(operational?.status_operacional || "fila-nao-calculavel").toLowerCase()}`;
-      operationalStatus.textContent = operational?.erro ? "Indisponível" : operationalLabel(operational?.status_operacional);
+      operationalStatus.textContent = operational?.erro
+        ? "Indisponível"
+        : operationalLabel(operational?.status_operacional);
+      if (operational?.projecao_condicional)
+        operationalStatus.textContent += " · depende de impedimento";
     }
     const operationalMargin = $("#summary-margin-operational");
     if (operationalMargin) {
       operationalMargin.textContent = operational?.erro
         ? "Operacional: não calculável"
         : `Operacional: ${formatMargin(operational?.margem_operacional_dias_uteis ?? null)}`;
-      operationalMargin.classList.toggle("negative", Number(operational?.margem_operacional_dias_uteis) < 0);
+      operationalMargin.classList.toggle(
+        "negative",
+        Number(operational?.margem_operacional_dias_uteis) < 0,
+      );
     }
     const labels = {
       VIAVEL: "Viável",
@@ -467,6 +545,42 @@
     }
   }
 
+  function renderCompletedSummary(plan) {
+    const cycle = plan.ciclo_vida;
+    $("[data-plan-title]").textContent =
+      plan.obra?.nomenclatura || `Obra #${plan.obra_id}`;
+    $("#summary-start").textContent = formatDate(plan.data_inicio);
+    $("#summary-finish").textContent = formatDate(plan.fim_previsto);
+    $("#summary-due").textContent = formatDate(plan.data_entrega);
+    $("#summary-observed-label").textContent = "Entrega real R00";
+    $("#summary-operational").textContent = formatDate(cycle.data_entrega_real);
+    $("#summary-operational-card").className =
+      "planning-operational-card is-delivered";
+    $("#summary-operational-status").textContent = "Entrega registrada";
+    $("#summary-result-label").textContent = "Resultado";
+    const result = $("#summary-margin-planned");
+    result.textContent =
+      cycle.desvio_plano_dias_uteis == null
+        ? "Sem fim planejado"
+        : `${cycle.desvio_plano_dias_uteis > 0 ? "+" : ""}${cycle.desvio_plano_dias_uteis} dias úteis vs. plano`;
+    result.className = deviationClass(cycle.desvio_plano_dias_uteis);
+    const deadlineResult = $("#summary-margin-operational");
+    deadlineResult.textContent = deliveryResultText(plan);
+    deadlineResult.className =
+      cycle.antecedencia_prazo_dias_corridos == null
+        ? "is-on-time"
+        : cycle.antecedencia_prazo_dias_corridos >= 0
+          ? "is-early"
+          : "is-late";
+    $("#summary-margin").classList.remove("negative");
+    $("#summary-reference-label").textContent = "Concluído em";
+    $("#summary-today").textContent = formatDate(cycle.data_entrega_real);
+    $("#plan-status-card").className = "planning-hero-status is-concluido";
+    $("#plan-status-card").innerHTML =
+      '<span>Status do plano</span><strong>Concluído</strong><small id="plan-exception-count" hidden></small>';
+    $("#planning-diagnosis").className = "planning-diagnosis is-concluido";
+  }
+
   function detailMarkup(stage) {
     const metric = stage.metrica || {};
     const hasHistory =
@@ -475,16 +589,26 @@
       ? `<div><span>Amostra</span><strong>${metric.amostra_ciclos_validos} ciclos</strong></div><div><span>Confiança</span><strong>${metric.confianca}</strong></div><div><span>Produtividade</span><strong>${metric.tarefas_por_dia_util_pessoa} tarefa/dia/pessoa</strong></div>`
       : `<div><span>Origem</span><strong>${metric.origem || "Marco calculado"}</strong></div>`;
     const execution = executionStage(state.plan, stage.codigo);
-    const operational = operationalStage(state.plan, stage.codigo);
+    const observation = observedStage(state.plan, stage);
+    const operational =
+      !isCompleted(state.plan) && !observation.actual
+        ? operationalStage(state.plan, stage.codigo)
+        : null;
     const pendingApprovals = operational?.tarefas_aguardando_aprovacao || [];
+    const holdCount = (operational?.tarefas_em_hold || []).length;
+    const blockCount = (operational?.impedimentos_ativos || []).length;
+    const holdInfo =
+      holdCount || blockCount
+        ? `<p class="planning-formula planning-operational-warning">${holdCount ? `${holdCount} tarefa(s) em HOLD incluída(s) na projeção, conforme a fila. ` : ""}${blockCount ? `${blockCount} impedimento(s) ativo(s) no Flow Block: a data considera sua resolução antes da retomada.` : ""}</p>`
+        : "";
     const effortInfo = operational
       ? `<p class="planning-formula">Esforço produtivo restante: ${Number(operational.esforco_pendente_pessoa_dias || 0).toLocaleString("pt-BR")} pessoa-dia(s). ${pendingApprovals.length ? `${pendingApprovals.length} tarefa(s) aguardando aprovação/direção; essa espera não consome capacidade e não tem prazo externo estimado.` : "Tempo decorrido desde o início não é descontado como trabalho sem apontamento de esforço."}</p>`
       : "";
     const operationalInfo = operational
-      ? `<p class="planning-eyebrow planning-detail-section">Projeção operacional</p><div class="planning-detail-grid planning-operational-detail"><div><span>Janela operacional</span><strong>${formatDate(operational.inicio_operacional_projetado)} → ${formatDate(operational.fim_operacional_projetado)}</strong></div><div><span>Status</span><strong>${operationalLabel(operational.status_operacional)}</strong></div><div><span>Desvio vs plano</span><strong class="${Number(operational.desvio_plano_vigente_dias_uteis) > 0 ? "is-negative" : ""}">${operational.desvio_plano_vigente_dias_uteis == null ? "—" : `${operational.desvio_plano_vigente_dias_uteis >= 0 ? "+" : ""}${operational.desvio_plano_vigente_dias_uteis} dias úteis`}</strong></div><div><span>Confiança</span><strong>${operational.confianca || "—"}</strong></div></div><p class="planning-formula">${operational.dependencias?.length ? `Depende de: ${operational.dependencias.join(", ")}.` : "Frente operacional calculada pela fila atual, execução e calendário do Flow."}</p>${effortInfo}<a class="planning-detail-link" href="../PlanejamentoCapacidade/index.php">Ver fila operacional na Central</a>`
+      ? `<p class="planning-eyebrow planning-detail-section">Projeção operacional</p><div class="planning-detail-grid planning-operational-detail"><div><span>Janela operacional</span><strong>${formatDate(operational.inicio_operacional_projetado)} → ${formatDate(operational.fim_operacional_projetado)}</strong></div><div><span>Status</span><strong>${operationalLabel(operational.status_operacional)}</strong></div><div><span>Desvio vs plano</span><strong class="${Number(operational.desvio_plano_vigente_dias_uteis) > 0 ? "is-negative" : ""}">${operational.desvio_plano_vigente_dias_uteis == null ? "—" : `${operational.desvio_plano_vigente_dias_uteis >= 0 ? "+" : ""}${operational.desvio_plano_vigente_dias_uteis} dias úteis`}</strong></div><div><span>Confiança</span><strong>${operational.confianca || "—"}</strong></div></div><p class="planning-formula">${operational.dependencias?.length ? `Depende de: ${operational.dependencias.join(", ")}.` : "Frente operacional calculada pela fila atual, execução e calendário do Flow."}</p>${holdInfo}${effortInfo}<a class="planning-detail-link" href="../PlanejamentoCapacidade/index.php">Ver fila operacional na Central</a>`
       : "";
     const executionInfo = execution
-      ? `<p class="planning-eyebrow planning-detail-section">Execução realizada</p><div class="planning-detail-grid planning-execution-grid"><div><span>Progresso</span><strong>${execution.percentual_concluido === null ? "Marco global" : `${execution.concluidas}/${execution.volume_atual} · ${Math.round(execution.percentual_concluido)}%`}</strong></div><div><span>Estado</span><strong>${stageExecutionLabel(execution.execucao)}</strong></div><div><span>Início real</span><strong>${formatDate(execution.inicio_real)}</strong></div><div><span>Conclusão real</span><strong>${formatDate(execution.conclusao_real)}</strong></div></div><p class="planning-formula">Os dados acima representam o realizado observado; a previsão oficial está na Projeção operacional.</p>`
+      ? `<p class="planning-eyebrow planning-detail-section">Execução realizada</p><div class="planning-detail-grid planning-execution-grid"><div><span>Progresso</span><strong>${execution.percentual_concluido === null ? "Marco global" : `${execution.concluidas}/${execution.volume_atual} · ${Math.round(execution.percentual_concluido)}%`}</strong></div><div><span>Estado</span><strong>${stageExecutionLabel(execution.execucao)}</strong></div><div><span>Início real</span><strong>${formatDate(execution.inicio_real)}</strong></div><div><span>Conclusão real</span><strong>${formatDate(execution.conclusao_real)}</strong></div><div><span>Desvio real</span><strong class="${deviationClass(execution.desvio_real_dias_uteis)}">${deviationLabel(execution.desvio_real_dias_uteis)} úteis</strong></div></div>`
       : "";
     return `<div class="planning-detail-grid"><div><span>Volume</span><strong>${stage.volume} tarefas</strong></div><div><span>Pessoas</span><strong>${stage.pessoas_alocadas || "—"}</strong></div><div><span>Duração</span><strong>${stage.duracao_dias_uteis} dias úteis</strong></div><div><span>Limite</span><strong>${formatDate(stage.limite)}</strong></div>${history}</div><p class="planning-formula">${stage.formula || "Marco global: maior data-limite entre os pools de Finalização."}</p>${operationalInfo}${executionInfo}`;
   }
@@ -498,6 +622,7 @@
 
   function capacityControlsLocked() {
     return (
+      isCompleted(state.plan) ||
       (state.plan?.fonte === "VERSAO_CONFIRMADA" && !state.replanning) ||
       state.plan?.fonte === "VERSAO_HISTORICA"
     );
@@ -719,6 +844,13 @@
   }
   async function renderScenarioSuggestions(plan) {
     const target = $("#scenario-list");
+    if (isCompleted(plan)) {
+      state.scenarioRequest = null;
+      state.scenarios = [];
+      target.innerHTML =
+        '<span class="planning-scenario-empty">Registro histórico da entrega R00.</span>';
+      return;
+    }
     if (!target) return;
     if (plan.status_plano === "VIAVEL") {
       state.scenarios = [];
@@ -801,6 +933,17 @@
     renderScenarioSuggestions(plan);
   }
   function renderDiagnosisAnimated(plan, motion) {
+    if (isCompleted(plan)) {
+      $("#diagnosis-summary").textContent =
+        `Entrega realizada em ${formatDate(plan.ciclo_vida.data_entrega_real)}`;
+      $("#diagnosis-bottleneck").textContent =
+        `Fim planejado: ${formatDate(plan.fim_previsto)} · Entrega R00 (prazo): ${formatDate(plan.data_entrega)}. ${deliveryResultText(plan)}.`;
+      $("#diagnosis-bottleneck").title = "";
+      $(".planning-diagnosis-main > i").className = "fa-regular fa-flag";
+      renderScenarioSuggestions(plan);
+      return;
+    }
+    $(".planning-diagnosis-main > i").className = "fa-solid fa-tower-broadcast";
     const diagnosis = $("#diagnosis-summary");
     const detail = $("#diagnosis-bottleneck");
     const goal = $("#diagnosis-goal");
@@ -815,27 +958,39 @@
       ? executionStages.get(execution.gargalo)
       : null;
     const gate = bottleneck(plan);
-    const operationalCritical = operationalStages.find((stage) => ["ATRASO_PROJETADO", "BLOQUEADO", "FILA_NAO_CALCULAVEL", "MARGEM_CONSUMIDA"].includes(stage.status_operacional)) || operationalStages.find((stage) => stage.inicio_operacional_projetado && stage.fim_operacional_projetado);
+    const operationalCritical =
+      operationalStages.find((stage) =>
+        [
+          "ATRASO_PROJETADO",
+          "BLOQUEADO",
+          "FILA_NAO_CALCULAVEL",
+          "MARGEM_CONSUMIDA",
+        ].includes(stage.status_operacional),
+      ) ||
+      operationalStages.find(
+        (stage) =>
+          stage.inicio_operacional_projetado && stage.fim_operacional_projetado,
+      );
     const summary = operational
-      ? `<b>Projeção operacional:</b> ${operationalLabel(operational.status_operacional)}`
+      ? `<b>Projeção operacional:</b> ${operationalLabel(operational.status_operacional)}${operational.projecao_condicional ? " · depende de impedimento" : operational.tarefas_em_hold ? ` · ${Number(operational.tarefas_em_hold)} em HOLD` : ""}`
       : execution
         ? `<b>Execução:</b> ${executionLabel(execution.saude)}`
-      : gate
-        ? "<b>Gargalo atual:</b> " + gate.nome
-        : "<b>Gargalo atual:</b> nenhum identificado";
+        : gate
+          ? "<b>Gargalo atual:</b> " + gate.nome
+          : "<b>Gargalo atual:</b> nenhum identificado";
     const bottleneckText = operational
       ? operationalCritical
         ? `Próximo marco crítico: ${operationalCritical.nome || operationalCritical.codigo} · ${formatDate(operationalCritical.fim_operacional_projetado)} · ${operationalLabel(operationalCritical.status_operacional)}`
         : "Nenhum desvio operacional identificado."
       : execution
-      ? next
-        ? `Próximo marco: ${plan.etapas.find((stage) => stage.codigo === next.codigo)?.nome || next.codigo} · ${next.concluidas}/${next.volume_atual} concluídas · limite ${formatDate(next.limite_planejado)}`
-        : execution.excecoes?.length
-          ? `${execution.excecoes.length} exceção${execution.excecoes.length === 1 ? "" : "ões"} requer${execution.excecoes.length === 1 ? "" : "em"} revisão.`
-          : "Nenhuma intervenção necessária."
-      : gate?.limite
-        ? "Próximo marco crítico: " + formatDate(gate.limite)
-        : "O caminho crítico será definido quando houver previsão confiável.";
+        ? next
+          ? `Próximo marco: ${plan.etapas.find((stage) => stage.codigo === next.codigo)?.nome || next.codigo} · ${next.concluidas}/${next.volume_atual} concluídas · limite ${formatDate(next.limite_planejado)}`
+          : execution.excecoes?.length
+            ? `${execution.excecoes.length} exceção${execution.excecoes.length === 1 ? "" : "ões"} requer${execution.excecoes.length === 1 ? "" : "em"} revisão.`
+            : "Nenhuma intervenção necessária."
+        : gate?.limite
+          ? "Próximo marco crítico: " + formatDate(gate.limite)
+          : "O caminho crítico será definido quando houver previsão confiável.";
     const changed = !motion.initial && motion.summaryChanged;
     if (motion.initial) {
       [
@@ -872,8 +1027,11 @@
       CONCLUIDO: "Plano concluído",
     };
     $("#planning-lifecycle-label").textContent = "Estado do plano";
-    $("#planning-lifecycle-title").textContent =
-      labels[stateName] || "Plano de produção";
+    $("#planning-lifecycle-title").textContent = isCompleted(plan)
+      ? "Plano concluído"
+      : state.replanning
+        ? "Replanejamento em análise"
+        : "Em andamento";
     const current = (meta.historico || []).find(
       (version) => Number(version.id) === Number(meta.versao_atual_id),
     );
@@ -893,11 +1051,12 @@
         : "Use +/− para ajustar a capacidade da proposta antes de confirmar.";
 
     const confirm = $("#confirm-plan");
+    confirm.hidden = isCompleted(plan);
     const history = $("#show-plan-history");
     const reason = $("#planning-replan-reason");
     const note = $("#planning-replan-note");
     const requiresReplan = isOfficial && !state.replanning;
-    confirm.disabled = state.saving || !canPersist;
+    confirm.disabled = isCompleted(plan) || state.saving || !canPersist;
     confirm.innerHTML = state.saving
       ? '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…'
       : requiresReplan
@@ -905,13 +1064,21 @@
         : state.replanning
           ? '<i class="fa-solid fa-check"></i> Confirmar replanejamento'
           : '<i class="fa-solid fa-check"></i> Confirmar plano';
-    reason.hidden = !state.replanning;
-    note.hidden = !state.replanning || reason.value !== "OUTRO";
+    reason.hidden = isCompleted(plan) || !state.replanning;
+    note.hidden =
+      isCompleted(plan) || !state.replanning || reason.value !== "OUTRO";
+    if (isCompleted(plan))
+      $("#planning-toolbar-hint").textContent =
+        "Planejado × realizado · registro histórico da R00 entregue.";
+    $("#reset-simulation").hidden = isCompleted(plan);
     const allVersions = meta.historico || [];
     const versions = allVersions.filter(
       (version) => version.tipo !== "BASELINE",
     );
-    history.hidden = !allVersions.length;
+    history.hidden =
+      !allVersions.length &&
+      !isCompleted(plan) &&
+      !plan.historico_projecoes?.length;
     history.innerHTML =
       '<i class="fa-solid fa-clock-rotate-left"></i> Histórico';
   }
@@ -919,6 +1086,12 @@
   function renderPlan(plan, before, reason = "recalculate") {
     const motion = planMotion(before, plan, before ? reason : "initial");
     state.plan = plan;
+    body.classList.toggle("is-completed", isCompleted(plan));
+    body.classList.toggle("is-in-progress", !isCompleted(plan));
+    if (isCompleted(plan)) state.replanning = false;
+    $("#stage-observed-label").textContent = isCompleted(plan)
+      ? "Conclusão"
+      : "Conclusão / Projeção";
     state.entregaId = Number(plan.entrega_id || state.entregaId || 0);
     renderSummaryAnimated(plan, motion);
     renderStageRowsAnimated(plan, motion, before);
@@ -1011,6 +1184,7 @@
     }
   });
   $("#reset-simulation").addEventListener("click", () => {
+    if (isCompleted(state.plan)) return;
     state.people = {};
     load();
   });
@@ -1018,7 +1192,7 @@
     renderLifecycle(state.plan),
   );
   $("#confirm-plan").addEventListener("click", async () => {
-    if (!state.plan || state.saving) return;
+    if (!state.plan || state.saving || isCompleted(state.plan)) return;
     if (state.plan.fonte === "VERSAO_CONFIRMADA" && !state.replanning) {
       state.replanning = true;
       state.people = Object.fromEntries(
@@ -1067,6 +1241,7 @@
       state.replanning = false;
       state.saving = false;
       renderPlan(result.plano, before, "confirmation");
+      await load();
       $("#planning-lifecycle-detail").textContent =
         "Plano confirmado com sucesso. O histórico foi preservado.";
     } catch (error) {
@@ -1076,17 +1251,24 @@
     }
   });
   function openHistoryModal() {
-    const versions = (state.plan?.planejamento?.historico || []).filter(
-      (version) => version.tipo !== "BASELINE",
-    );
+    const versions = state.plan?.planejamento?.historico || [];
     const entries = versions
       .map(
         (version) =>
-          `<article class="planning-history-entry"><div><span>Replanejamento #${Math.max(1, Number(version.numero) - 1)}</span><strong>${version.vigente ? "Vigente" : "Substituído"}</strong></div><p>${formatDate(String(version.confirmado_em || "").slice(0, 10))}${version.confirmado_por ? ` · ${escapeHtml(version.confirmado_por)}` : ""}</p><div class="planning-history-metrics"><span>Fim planejado <b>${formatDate(version.fim_previsto)}</b></span><span>Margem <b>${formatMargin(version.margem_dias_uteis)}</b></span><span>Status <b>${escapeHtml(version.status_plano || "—")}</b></span></div></article>`,
+          `<article class="planning-history-entry"><div><span>${version.tipo === "BASELINE" ? "Baseline" : `Replanejamento #${Math.max(1, Number(version.numero) - 1)}`}</span><strong>${version.vigente ? "Vigente" : "Substituído"}</strong></div><p>${formatDate(String(version.confirmado_em || "").slice(0, 10))}${version.confirmado_por ? ` · ${escapeHtml(version.confirmado_por)}` : ""}</p><div class="planning-history-metrics"><span>Fim planejado <b>${formatDate(version.fim_previsto)}</b></span><span>Margem <b>${formatMargin(version.margem_dias_uteis)}</b></span><span>Status <b>${escapeHtml(version.status_plano || "—")}</b></span></div></article>`,
       )
       .join("");
+    const projections = (state.plan.historico_projecoes || [])
+      .map(
+        (item) =>
+          `<article class="planning-history-entry"><div><span>Projeção registrada em ${formatDate(item.data_referencia)}</span><strong>${formatDate(item.fim_operacional_projetado)}</strong></div><p>${escapeHtml(operationalLabel(item.status_operacional))} · ${formatMargin(item.margem_operacional_dias_uteis)}</p></article>`,
+      )
+      .join("");
+    const delivered = isCompleted(state.plan)
+      ? `<article class="planning-history-entry"><div><span>Entrega real R00</span><strong>${formatDate(state.plan.ciclo_vida.data_entrega_real)}</strong></div><p>${escapeHtml(deliveryResultText(state.plan))}. Fonte: registro de entrega.</p></article>`
+      : "";
     $("#detail-content").innerHTML =
-      `<p class="planning-eyebrow">Registro de versões</p><h2 id="detail-title">Histórico do plano</h2><p>Versões confirmadas desta R00.</p>${entries ? `<div class="planning-history-list">${entries}</div>` : "<p>Ainda não há replanejamentos registrados.</p>"}`;
+      `<p class="planning-eyebrow">Registro de versões e entregas</p><h2 id="detail-title">Histórico do plano</h2>${delivered}<p>Versões confirmadas desta R00.</p>${entries ? `<div class="planning-history-list">${entries}</div>` : "<p>Nenhuma versão confirmada registrada.</p>"}<h3>Projeções registradas</h3>${projections || "<p>Ainda não há snapshots de projeção registrados para esta R00.</p>"}`;
     $("#planning-detail").classList.add("is-open");
     $("#planning-detail").setAttribute("aria-hidden", "false");
     $("#planning-scrim").hidden = false;
@@ -1099,12 +1281,34 @@
   };
   $("#detail-close").addEventListener("click", closeDetail);
   $("#planning-scrim").addEventListener("click", closeDetail);
-  // $("#theme-toggle").addEventListener("click", () => {
-  //   body.classList.toggle("light");
-  //   $("#theme-toggle").innerHTML = body.classList.contains("light")
-  //     ? '<i class="fa-solid fa-moon"></i>'
-  //     : '<i class="fa-solid fa-sun"></i>';
-  // });
+  const themeRoot = document.documentElement;
+  const themeButton = $("#theme-toggle");
+  const syncTheme = () => {
+    const light = themeRoot.dataset.theme === "light";
+    body.classList.toggle("light", light);
+    const action = light ? "Ativar tema escuro" : "Ativar tema claro";
+    themeButton.setAttribute("aria-label", action);
+    themeButton.title = action;
+    themeButton.innerHTML = `<i class="fa-solid fa-${light ? "moon" : "sun"}" aria-hidden="true"></i>`;
+  };
+  themeButton.addEventListener("click", () => {
+    const next = themeRoot.dataset.theme === "light" ? "dark" : "light";
+    themeRoot.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (_) {}
+    syncTheme();
+  });
+  new MutationObserver(syncTheme).observe(themeRoot, { attributes: true, attributeFilter: ["data-theme"] });
+  window.addEventListener("storage", (event) => {
+    if (event.key === "theme" && (event.newValue === "light" || event.newValue === "dark")) themeRoot.dataset.theme = event.newValue;
+  });
+  const colorPreference = window.matchMedia?.("(prefers-color-scheme: light)");
+  colorPreference?.addEventListener?.("change", (event) => {
+    let saved = null;
+    try { saved = localStorage.getItem("theme"); } catch (_) {}
+    const requested = new URLSearchParams(location.search).get("tema");
+    if (!saved && requested !== "light" && requested !== "dark") themeRoot.dataset.theme = event.matches ? "light" : "dark";
+  });
+  syncTheme();
   // $("#show-scenarios").addEventListener("click", () => {
   //   if (!state.scenarios.length) return;
   //   const lines = state.scenarios
@@ -1228,7 +1432,7 @@
         .join(", ") +
       '">' +
       dependencyLabel +
-      "</button></article>"
+      '</button><span class="planning-cell planning-observed-cell" data-field="observed"></span><span class="planning-cell planning-deviation" data-field="deviation"></span></article>'
     );
   }
 
@@ -1303,6 +1507,15 @@
       );
     }
     const execution = executionStage(motion.next, stage.codigo);
+    const observation = observedStage(motion.next, stage);
+    const observed = row.querySelector('[data-field="observed"]');
+    observed.className = `planning-cell planning-observed-cell ${observation.actual ? "is-actual" : observation.closed || isCompleted(motion.next) ? "is-missing" : "is-projected"}`;
+    observed.innerHTML = `<small>${observation.actual ? "✓" : observation.date ? "◇" : "—"} ${escapeHtml(observation.label)}</small><strong>${formatDate(observation.date).slice(0, 5)}</strong>`;
+    const deviation = row.querySelector('[data-field="deviation"]');
+    deviation.className = `planning-cell planning-deviation ${deviationClass(observation.deviation)}`;
+    deviation.textContent = deviationLabel(observation.deviation);
+    deviation.title = `${observation.actual ? "Desvio real" : "Desvio projetado"} em dias úteis`;
+    name.title = stageTooltip(motion.next, stage);
     let progress = row.querySelector(".planning-progress-pill");
     if (execution && execution.percentual_concluido !== null) {
       if (!progress) {
@@ -1416,7 +1629,10 @@
       0,
       Math.min(100, Number(execution?.percentual_concluido || 0)),
     );
-    const projection = operationalStage(state.plan, stage.codigo)?.fim_operacional_projetado;
+    const projection = operationalStage(
+      state.plan,
+      stage.codigo,
+    )?.fim_operacional_projetado;
     const projectLeft =
       projection && stage.limite
         ? position(stage.limite, range(state.plan))
@@ -1468,6 +1684,187 @@
     );
   }
 
+  function stageTooltip(plan, stage) {
+    const observation = observedStage(plan, stage);
+    const execution = executionStage(plan, stage.codigo);
+    return [
+      stage.nome,
+      `Início planejado: ${formatDate(stage.inicio)}`,
+      `Fim planejado: ${formatDate(stage.limite)}`,
+      `${observation.actual || observation.closed || isCompleted(plan) ? "Conclusão real" : "Projeção operacional"}: ${formatDate(observation.date)}`,
+      `${observation.actual ? "Desvio real" : "Desvio projetado"}: ${deviationLabel(observation.deviation)} úteis`,
+      `Progresso: ${execution?.percentual_concluido == null ? "Marco global" : `${Math.round(execution.percentual_concluido)}%`}`,
+      `Pessoas previstas: ${stage.pessoas_alocadas || "—"}`,
+    ].join("\n");
+  }
+
+  const planningTooltip = document.createElement("div");
+  planningTooltip.id = "planning-tooltip";
+  planningTooltip.className = "planning-tooltip";
+  planningTooltip.setAttribute("role", "tooltip");
+  planningTooltip.hidden = true;
+  document.body.appendChild(planningTooltip);
+  let tooltipTrigger = null;
+
+  function hidePlanningTooltip() {
+    if (
+      tooltipTrigger?.getAttribute("aria-describedby") === planningTooltip.id
+    ) {
+      tooltipTrigger.removeAttribute("aria-describedby");
+    }
+    tooltipTrigger = null;
+    planningTooltip.hidden = true;
+  }
+
+  function showPlanningTooltip(trigger) {
+    if (!state.plan) return;
+    const plan = state.plan;
+    const code = trigger.dataset.tooltipStage;
+    const stage = code ? stageMap(plan).get(code) : null;
+    let content = "";
+    if (stage) {
+      const observation = observedStage(plan, stage);
+      const execution = executionStage(plan, code);
+      const isLimit = trigger.dataset.tooltipKind === "limit";
+      const actual = observation.actual;
+      const variant = isLimit ? "limit" : actual ? "actual" : "projected";
+      const title = isLimit
+        ? "Fim planejado"
+        : actual
+          ? "Conclusão real"
+          : "Projeção operacional";
+      const date = isLimit ? stage.limite : observation.date;
+      const delta = observation.deviation;
+      const deltaText =
+        delta == null
+          ? "Sem desvio"
+          : delta === 0
+            ? "No prazo"
+            : `${delta > 0 ? "+" : ""}${delta} ${Math.abs(delta) === 1 ? "dia útil" : "dias úteis"}`;
+      const operational = operationalStage(plan, code);
+      const holdCount =
+        !actual && !isCompleted(plan)
+          ? operational?.tarefas_em_hold?.length || 0
+          : 0;
+      const blocks =
+        !actual && !isCompleted(plan)
+          ? operational?.impedimentos_ativos?.length || 0
+          : 0;
+      const counterpartLabel =
+        observation.actual || observation.closed || isCompleted(plan)
+          ? "Conclusão real"
+          : "Projeção operacional";
+      const info = [
+        ["Início planejado", formatDate(stage.inicio)],
+        [
+          isLimit ? counterpartLabel : "Fim planejado",
+          formatDate(isLimit ? observation.date : stage.limite),
+        ],
+        [
+          "Progresso",
+          execution?.percentual_concluido == null
+            ? "—"
+            : `${Math.round(execution.percentual_concluido)}%`,
+        ],
+        [
+          "Pessoas previstas",
+          stage.pessoas_alocadas == null ? "—" : stage.pessoas_alocadas,
+        ],
+      ];
+      content = `<div class="planning-tooltip-header"><span class="planning-tooltip-symbol is-${variant}" aria-hidden="true">${isLimit ? "│" : actual ? "✓" : "◆"}</span><div><span class="planning-tooltip-kicker">Marco da etapa</span><strong>${escapeHtml(stage.nome)}</strong></div></div><div class="planning-tooltip-highlight"><div><span>${title}</span><strong>${formatDate(date)}</strong></div>${!isLimit && delta != null ? `<b class="planning-tooltip-deviation ${deviationClass(delta)}">${escapeHtml(deltaText)}</b>` : ""}</div><dl class="planning-tooltip-grid">${info.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>${holdCount || blocks ? `<p class="planning-tooltip-note">${holdCount ? `${holdCount} ${holdCount === 1 ? "tarefa" : "tarefas"} em HOLD na projeção.` : ""}${blocks ? ` ${blocks} ${blocks === 1 ? "impedimento ativo" : "impedimentos ativos"}: prazo condicionado à resolução.` : ""}</p>` : ""}<div class="planning-tooltip-footer">${isLimit ? "Limite previsto no plano vigente" : "Clique no marco para ver os detalhes"}</div>`;
+    } else if (trigger.dataset.tooltipGlobal) {
+      const marker = trigger.closest(".timeline-marker");
+      const kind = trigger.dataset.tooltipGlobal;
+      const descriptions = {
+        today: "Data de referência da tela.",
+        finish: "Término previsto na versão vigente do plano.",
+        operational: plan.projecao_operacional?.projecao_condicional
+          ? "Data projetada condicionada à resolução de impedimentos registrados."
+          : "Término estimado a partir da fila e das tarefas atuais.",
+        due: "Prazo previsto para a entrega R00.",
+        actual: "Data em que a entrega R00 foi registrada.",
+      };
+      content = `<div class="planning-tooltip-header"><span class="planning-tooltip-symbol is-${kind}" aria-hidden="true">│</span><div><span class="planning-tooltip-kicker">Marco do projeto</span><strong>${escapeHtml(marker.dataset.label)}</strong></div></div><div class="planning-tooltip-highlight"><div><span>Data</span><strong>${escapeHtml(marker.dataset.date)}</strong></div></div><p class="planning-tooltip-description">${escapeHtml(descriptions[kind] || "")}</p>`;
+    }
+    if (!content) return;
+    hidePlanningTooltip();
+    planningTooltip.innerHTML = content;
+    planningTooltip.hidden = false;
+    tooltipTrigger = trigger;
+    trigger.setAttribute("aria-describedby", planningTooltip.id);
+    const anchor = trigger.getBoundingClientRect();
+    const tip = planningTooltip.getBoundingClientRect();
+    const padding = 10;
+    const left = Math.max(
+      padding,
+      Math.min(
+        window.innerWidth - tip.width - padding,
+        anchor.left + anchor.width / 2 - tip.width / 2,
+      ),
+    );
+    const top =
+      anchor.top - tip.height - 12 >= padding
+        ? anchor.top - tip.height - 12
+        : Math.min(
+            window.innerHeight - tip.height - padding,
+            anchor.bottom + 12,
+          );
+    planningTooltip.style.left = `${left}px`;
+    planningTooltip.style.top = `${Math.max(padding, top)}px`;
+  }
+
+  const tooltipTarget = (target) =>
+    target instanceof Element
+      ? target.closest("[data-tooltip-stage], [data-tooltip-global]")
+      : null;
+  document.addEventListener("pointerover", (event) => {
+    const trigger = tooltipTarget(event.target);
+    if (
+      trigger &&
+      event.pointerType !== "touch" &&
+      !trigger.contains(event.relatedTarget)
+    )
+      showPlanningTooltip(trigger);
+  });
+  document.addEventListener("pointerout", (event) => {
+    const trigger = tooltipTarget(event.target);
+    if (
+      trigger &&
+      !trigger.contains(event.relatedTarget) &&
+      !trigger.matches(":focus-visible")
+    )
+      hidePlanningTooltip();
+  });
+  document.addEventListener("focusin", (event) => {
+    const trigger = tooltipTarget(event.target);
+    if (trigger) showPlanningTooltip(trigger);
+  });
+  document.addEventListener("focusout", (event) => {
+    if (tooltipTarget(event.target)) hidePlanningTooltip();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hidePlanningTooltip();
+  });
+  document.addEventListener("click", (event) => {
+    if (tooltipTarget(event.target)) hidePlanningTooltip();
+  });
+  document.addEventListener("scroll", hidePlanningTooltip, true);
+  window.addEventListener("resize", hidePlanningTooltip);
+
+  function stageMilestoneMarkup(plan, stage, timeline) {
+    const observation = observedStage(plan, stage);
+    const limit = position(stage.limite, timeline);
+    let markup = `<span data-stage-observation data-tooltip-stage="${stage.codigo}" data-tooltip-kind="limit" class="planning-limit-tick" style="left:${limit}%" tabindex="0" role="img" aria-label="${escapeHtml(`${stage.nome}: fim planejado ${formatDate(stage.limite)}`)}"></span>`;
+    if (!observation.date) return markup;
+    const end = position(observation.date, timeline);
+    const kind = observation.actual ? "actual" : "projected";
+    const status = deviationClass(observation.deviation);
+    markup += `<span data-stage-observation class="planning-observed-link is-${kind} ${status}" style="left:${Math.min(limit, end)}%;width:${Math.abs(end - limit)}%"></span>`;
+    markup += `<button type="button" data-stage-observation data-detail="${stage.codigo}" data-tooltip-stage="${stage.codigo}" data-tooltip-kind="${kind}" class="planning-milestone is-${kind}" style="left:${end}%" aria-label="${escapeHtml(`${stage.nome}: ${observation.label} ${formatDate(observation.date)}, ${deviationLabel(observation.deviation)} úteis`)}"><span>${observation.actual ? "✓" : ""}</span></button>`;
+    markup += `<span data-stage-observation class="planning-milestone-date is-${kind}" style="left:${end}%">${formatDate(observation.date).slice(0, 5)}</span>`;
+    return markup;
+  }
+
   function updateTimelineMarker(target, kind, label, date, timeline, motion) {
     if (!date) {
       target.querySelector(".marker-" + kind)?.remove();
@@ -1478,10 +1875,16 @@
     if (!marker) {
       marker = document.createElement("div");
       marker.className = "timeline-marker marker-" + kind;
+      marker.innerHTML =
+        '<button type="button" class="timeline-marker-trigger"></button>';
       target.prepend(marker);
     }
     marker.dataset.label = label;
     marker.dataset.date = formatDate(date);
+    const trigger = marker.querySelector(".timeline-marker-trigger");
+    trigger.dataset.tooltipGlobal = kind;
+    trigger.textContent = label;
+    trigger.setAttribute("aria-label", `${label}: ${formatDate(date)}`);
     marker.style.left = position(date, timeline) + "%";
     if (!motion.initial && oldLeft && oldLeft !== marker.style.left) {
       markMotion(marker, "planning-marker-reposition", 0, 360);
@@ -1499,12 +1902,17 @@
     plan,
     motion = planMotion(null, plan, "initial"),
   ) {
+    hidePlanningTooltip();
     motion.next = plan;
     const target = $("#timeline");
     const timeline = range(plan);
     const active = activeStages(plan).filter(
       (stage) => stage.inicio && stage.limite,
     );
+    target.style.minHeight = `${48 + active.length * 72 + 34}px`;
+    $("#planning-legend").innerHTML = isCompleted(plan)
+      ? '<b class="legend-finish"></b>Fim planejado <b class="legend-actual"></b>Entrega real <b class="legend-deadline"></b>Entrega R00 (prazo) <b class="legend-check">✓</b>Conclusão'
+      : '<b class="legend-today"></b>Hoje <b class="legend-finish"></b>Fim planejado <b class="legend-due"></b>Entrega R00 <b class="legend-projection"></b>Projeção <b class="legend-check">✓</b>Conclusão';
     timelineScale(plan, timeline);
     if (motion.initial) {
       $(".planning-stage-head")?.classList.add("planning-intro-item");
@@ -1527,14 +1935,14 @@
       target,
       "today",
       "Hoje",
-      plan.data_hoje,
+      isCompleted(plan) ? null : plan.data_hoje,
       timeline,
       motion,
     );
     updateTimelineMarker(
       target,
       "due",
-      "Entrega",
+      "Entrega R00 (prazo)",
       plan.data_entrega,
       timeline,
       motion,
@@ -1551,10 +1959,36 @@
       target,
       "operational",
       "Projeção operacional",
-      operationalData(plan)?.fim_operacional_projetado || null,
+      isCompleted(plan)
+        ? null
+        : operationalData(plan)?.fim_operacional_projetado || null,
       timeline,
       motion,
     );
+    updateTimelineMarker(
+      target,
+      "actual",
+      "Entrega real",
+      isCompleted(plan) ? plan.ciclo_vida.data_entrega_real : null,
+      timeline,
+      motion,
+    );
+    // Datas coincidentes mantêm linhas na posição correta e rótulos escalonados.
+    const markers = [...target.querySelectorAll(".timeline-marker")].sort(
+      (a, b) => parseFloat(a.style.left) - parseFloat(b.style.left),
+    );
+    let previousMarker = null;
+    let level = 0;
+    markers.forEach((marker) => {
+      level =
+        previousMarker &&
+        parseFloat(marker.style.left) - parseFloat(previousMarker.style.left) <
+          12
+          ? (level + 1) % 3
+          : 0;
+      marker.style.setProperty("--marker-level", level);
+      previousMarker = marker;
+    });
 
     const related = state.selected ? relationship(plan, state.selected) : null;
     const existing = new Map(
@@ -1592,7 +2026,7 @@
       animateLayout(
         row,
         () => {
-          row.style.top = index * 58 + "px";
+          row.style.top = 48 + index * 72 + "px";
         },
         360,
       );
@@ -1613,6 +2047,7 @@
           formatDate(stage.limite),
       );
       bar.querySelector("span").textContent = stage.nome;
+      bar.title = stageTooltip(plan, stage);
       const execution = executionStage(plan, stage.codigo);
       let fill = bar.querySelector(".planning-bar-progress");
       if (!fill) {
@@ -1624,26 +2059,14 @@
       }
       fill.style.width = `${Math.max(0, Math.min(100, Number(execution?.percentual_concluido || 0)))}%`;
       row
-        .querySelectorAll(".planning-bar-projection, .planning-bar-real")
+        .querySelectorAll(
+          ".planning-bar-projection, .planning-bar-real, [data-stage-observation]",
+        )
         .forEach((element) => element.remove());
-      const operationalFinish = operationalStage(plan, stage.codigo)?.fim_operacional_projetado;
-      if (operationalFinish && operationalFinish > stage.limite) {
-        const projectedLeft = position(stage.limite, timeline);
-        const projectedWidth = Math.max(
-          0.8,
-          position(operationalFinish, timeline) - projectedLeft,
-        );
-        row.insertAdjacentHTML(
-          "beforeend",
-          `<i class="planning-bar-projection" style="left:${projectedLeft}%;width:${projectedWidth}%" title="Projeção operacional: ${formatDate(operationalFinish)}"></i>`,
-        );
-      }
-      if (execution?.conclusao_real) {
-        row.insertAdjacentHTML(
-          "beforeend",
-          `<i class="planning-bar-real" style="left:${position(execution.conclusao_real, timeline)}%" title="Concluída em ${formatDate(execution.conclusao_real)}"></i>`,
-        );
-      }
+      row.insertAdjacentHTML(
+        "beforeend",
+        stageMilestoneMarkup(plan, stage, timeline),
+      );
       animateLayout(
         bar,
         () => {
@@ -1709,8 +2132,8 @@
             (position(from.stage.limite, timeline) / 100) * target.clientWidth;
           const x2 =
             (position(stage.inicio, timeline) / 100) * target.clientWidth;
-          const y1 = from.index * 58 + 29;
-          const y2 = index * 58 + 29;
+          const y1 = 48 + from.index * 72 + 36;
+          const y2 = 48 + index * 72 + 36;
           const mid = Math.max(x1 + 10, (x1 + x2) / 2);
           desired.set(
             dependency + "->" + stage.codigo,

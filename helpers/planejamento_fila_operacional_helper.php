@@ -48,6 +48,25 @@ function flow_fila_estimativa_sem_esforco(array $estimativa): bool
         && empty($estimativa['bloqueada']);
 }
 
+/** Impedimentos reais são registrados no Flow Block, separadamente do HOLD. */
+function flow_fila_carregar_impedimentos(mysqli $conn, array $tarefas): array
+{
+    $ids = array_values(array_unique(array_filter(array_map(static fn(array $t): int => (int) ($t['tarefa_id'] ?? 0), $tarefas))));
+    if (!$ids) return [];
+    $tabela = $conn->query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'flow_issue' LIMIT 1");
+    $existe = $tabela && $tabela->num_rows > 0;
+    if ($tabela) $tabela->free();
+    if (!$existe) return [];
+    $lista = implode(',', $ids);
+    $resultado = $conn->query("SELECT id, funcao_imagem_id, status FROM flow_issue WHERE funcao_imagem_id IN ($lista) AND bloqueante = 1 AND (status IN ('ABERTA', 'AGUARDANDO_ACAO', 'PAUSADA') OR (status = 'RESOLVIDA' AND confirmada_em IS NULL)) ORDER BY id");
+    $impedimentos = [];
+    while ($issue = $resultado->fetch_assoc()) {
+        $impedimentos[(int) $issue['funcao_imagem_id']][] = ['id' => (int) $issue['id'], 'status' => $issue['status']];
+    }
+    $resultado->free();
+    return $impedimentos;
+}
+
 /** Carrega snapshots sem chamar a rotina que pode marcar plano desatualizado. */
 function flow_fila_carregar_planos_confirmados(mysqli $conn, array $filtros = []): array
 {
@@ -195,16 +214,16 @@ function flow_fila_unidades_logicas(array $tarefas, bool $incluirFechadas = fals
         }
     }
     foreach ($grupos as &$unidade) {
-        $responsaveis = array_values(array_unique(array_filter(array_map(static fn (array $t): int => (int) ($t['colaborador_id'] ?? 0), $unidade['tarefas']))));
+        $responsaveis = array_values(array_unique(array_filter(array_map(static fn(array $t): int => (int) ($t['colaborador_id'] ?? 0), $unidade['tarefas']))));
         sort($responsaveis);
         $unidade['responsaveis'] = $responsaveis;
         $unidade['responsabilidade_divergente'] = $unidade['codigo_etapa'] === 'CADERNO_FILTRO' && count($responsaveis) > 1;
-        $unidade['prioridade'] = min(array_map(static fn (array $t): int => (int) ($t['prioridade'] ?? 3), $unidade['tarefas']));
-        $prazos = array_values(array_filter(array_map(static fn (array $t): ?string => ($t['prazo'] ?? null) ?: null, $unidade['tarefas'])));
+        $unidade['prioridade'] = min(array_map(static fn(array $t): int => (int) ($t['prioridade'] ?? 3), $unidade['tarefas']));
+        $prazos = array_values(array_filter(array_map(static fn(array $t): ?string => ($t['prazo'] ?? null) ?: null, $unidade['tarefas'])));
         $unidade['prazo_operacional'] = $prazos ? min($prazos) : null;
-        $entregas = array_values(array_filter(array_map(static fn (array $t): int => (int) ($t['entrega_id'] ?? 0), $unidade['tarefas'])));
+        $entregas = array_values(array_filter(array_map(static fn(array $t): int => (int) ($t['entrega_id'] ?? 0), $unidade['tarefas'])));
         $unidade['entrega_id'] = $entregas ? min($entregas) : null;
-        $prazoEntregas = array_values(array_filter(array_map(static fn (array $t): ?string => ($t['prazo_entrega'] ?? null) ?: null, $unidade['tarefas'])));
+        $prazoEntregas = array_values(array_filter(array_map(static fn(array $t): ?string => ($t['prazo_entrega'] ?? null) ?: null, $unidade['tarefas'])));
         $unidade['prazo_entrega'] = $prazoEntregas ? min($prazoEntregas) : null;
     }
     unset($unidade);
@@ -220,13 +239,22 @@ function flow_fila_estimativa_unidade(mysqli $conn, array $unidade, array $plano
     foreach ($unidade['tarefas'] as $tarefa) {
         $resumos[] = flow_execucao_resumir_tarefa($tarefa, $logsPorTarefa[(int) $tarefa['tarefa_id']] ?? []);
     }
-    $tarefasAbertas = array_values(array_filter($unidade['tarefas'], static fn (array $t): bool => flow_fila_status_aberto((string) ($t['status'] ?? ''))));
-    $tarefasProdutivas = array_values(array_filter($tarefasAbertas, static fn (array $t): bool => !flow_fila_status_aguardando_aprovacao((string) ($t['status'] ?? ''))));
-    $tarefasEmAprovacao = array_values(array_filter($tarefasAbertas, static fn (array $t): bool => flow_fila_status_aguardando_aprovacao((string) ($t['status'] ?? ''))));
-    $esperaExterna = array_map(static fn (array $t): array => [
+    $tarefasAbertas = array_values(array_filter($unidade['tarefas'], static fn(array $t): bool => flow_fila_status_aberto((string) ($t['status'] ?? ''))));
+    $tarefasProdutivas = array_values(array_filter($tarefasAbertas, static fn(array $t): bool => !flow_fila_status_aguardando_aprovacao((string) ($t['status'] ?? ''))));
+    $tarefasEmAprovacao = array_values(array_filter($tarefasAbertas, static fn(array $t): bool => flow_fila_status_aguardando_aprovacao((string) ($t['status'] ?? ''))));
+    $esperaExterna = array_map(static fn(array $t): array => [
         'tarefa_id' => (int) ($t['tarefa_id'] ?? 0),
         'status' => (string) ($t['status'] ?? ''),
     ], $tarefasEmAprovacao);
+    $holds = [];
+    $impedimentos = [];
+    foreach ($tarefasProdutivas as $tarefa) {
+        $id = (int) ($tarefa['tarefa_id'] ?? 0);
+        if (flow_planejamento_status_hold((string) ($tarefa['status'] ?? ''))) $holds[] = $id;
+        foreach ((array) ($tarefa['impedimentos_flow_block'] ?? []) as $issue) {
+            $impedimentos[(int) $issue['id']] = ['id' => (int) $issue['id'], 'tarefa_id' => $id, 'status' => (string) $issue['status']];
+        }
+    }
     if (!$tarefasProdutivas) {
         $somenteConcluidas = $tarefasAbertas === [];
         return [
@@ -235,13 +263,11 @@ function flow_fila_estimativa_unidade(mysqli $conn, array $unidade, array $plano
             'confianca' => $somenteConcluidas ? 'ALTA' : 'MEDIA',
             'bloqueada' => false,
             'espera_externa' => $esperaExterna,
+            'tarefas_em_hold' => [],
+            'impedimentos' => [],
             'resumos' => $resumos,
         ];
     }
-    if (array_filter($tarefasProdutivas, static fn (array $t): bool => flow_planejamento_status_hold((string) ($t['status'] ?? '')))) {
-        return ['pessoa_dias' => null, 'origem' => 'HOLD', 'confianca' => 'INSUFICIENTE', 'bloqueada' => true, 'espera_externa' => $esperaExterna, 'resumos' => $resumos];
-    }
-
     $estrategia = (string) ($planoEtapa['estrategia_duracao'] ?? $definicao['estrategia'] ?? '');
     $volume = max(1, (int) ($planoEtapa['volume'] ?? 1));
     $pessoas = max(1, (int) ($planoEtapa['pessoas_alocadas'] ?? 1));
@@ -266,13 +292,13 @@ function flow_fila_estimativa_unidade(mysqli $conn, array $unidade, array $plano
         }
     }
     if ($estimativa === null) {
-        return ['pessoa_dias' => null, 'origem' => 'SEM_ESTIMATIVA', 'confianca' => 'INSUFICIENTE', 'bloqueada' => false, 'espera_externa' => $esperaExterna, 'resumos' => $resumos];
+        return ['pessoa_dias' => null, 'origem' => 'SEM_ESTIMATIVA', 'confianca' => 'INSUFICIENTE', 'bloqueada' => false, 'espera_externa' => $esperaExterna, 'tarefas_em_hold' => $holds, 'impedimentos' => array_values($impedimentos), 'resumos' => $resumos];
     }
 
     // A data de início não mede horas/dias efetivamente trabalhados: o ciclo
     // pode ter sido encerrado para aprovação ou pausado. Sem apontamento real
     // de esforço, mantemos a estimativa produtiva integral da unidade aberta.
-    return ['pessoa_dias' => round($estimativa, 4), 'origem' => $origem . '_ESFORCO_ABERTO', 'confianca' => $confianca, 'bloqueada' => false, 'espera_externa' => $esperaExterna, 'resumos' => $resumos];
+    return ['pessoa_dias' => round($estimativa, 4), 'origem' => $origem . '_ESFORCO_ABERTO', 'confianca' => $impedimentos ? flow_fila_confianca_minima($confianca, 'BAIXA') : $confianca, 'bloqueada' => false, 'espera_externa' => $esperaExterna, 'tarefas_em_hold' => $holds, 'impedimentos' => array_values($impedimentos), 'resumos' => $resumos];
 }
 
 function flow_fila_ordenar_unidades(array &$unidades, array $etapasPorEntrega): void
@@ -284,7 +310,7 @@ function flow_fila_ordenar_unidades(array &$unidades, array $etapasPorEntrega): 
     }
     unset($unidade);
     usort($unidades, static function (array $a, array $b): int {
-        $nuloDepois = static fn (?string $data): string => $data ?: '9999-12-31';
+        $nuloDepois = static fn(?string $data): string => $data ?: '9999-12-31';
         return ((int) $a['prioridade'] <=> (int) $b['prioridade'])
             ?: strcmp($nuloDepois($a['prazo_operacional']), $nuloDepois($b['prazo_operacional']))
             ?: strcmp($nuloDepois($a['prazo_entrega']), $nuloDepois($b['prazo_entrega']))
@@ -369,7 +395,7 @@ function flow_fila_resumir_blocos_responsavel(array $fila, array $estimativas, i
         }
     }
     foreach ($blocos as &$bloco) {
-        usort($bloco['tarefas_contexto'], static fn (array $a, array $b): int => $a['id'] <=> $b['id']);
+        usort($bloco['tarefas_contexto'], static fn(array $a, array $b): int => $a['id'] <=> $b['id']);
         $bloco['esforco_pessoa_dia'] = round($bloco['esforco_pessoa_dia'], 2);
     }
     unset($bloco);
@@ -419,6 +445,12 @@ function flow_fila_disponibilidade_por_responsavel(array $unidades, array $estim
             // Tarefas concluídas e tarefas em aprovação não consomem a fila
             // produtiva do responsável. Esperas não podem bloquear terceiros.
             if (flow_fila_estimativa_sem_esforco($estimativa)) {
+                continue;
+            }
+            // Uma issue bloqueante impede essa tarefa, não a agenda inteira.
+            // Trabalho de outras entregas pode avançar enquanto ela aguarda.
+            if (!empty($estimativa['impedimentos'])) {
+                $antes[] = ['unidade' => flow_fila_resumo_unidade($unidade), 'esforco_pessoa_dia' => null, 'origem' => 'IMPEDIMENTO_FLOW_BLOCK', 'impedimentos' => $estimativa['impedimentos']];
                 continue;
             }
             if (!empty($estimativa['bloqueada']) || ($estimativa['confianca'] ?? '') === 'INSUFICIENTE') {
@@ -484,15 +516,20 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
         }
         $dependencias = (array) ($planejada['dependencias'] ?? []);
         if ($codigo === 'FINALIZACAO_GLOBAL') {
-            $fins = array_values(array_filter(array_map(static fn (string $d): ?string => $resultado[$d]['fim_operacional_projetado'] ?? null, $dependencias)));
+            $fins = array_values(array_filter(array_map(static fn(string $d): ?string => $resultado[$d]['fim_operacional_projetado'] ?? null, $dependencias)));
             $resultado[$codigo] = [
-                'codigo' => $codigo, 'nome' => (string) ($planejada['nome'] ?? 'Finalização (marco global)'),
+                'codigo' => $codigo,
+                'nome' => (string) ($planejada['nome'] ?? 'Finalização (marco global)'),
                 'baseline_limite' => $etapasBaseline[$codigo]['limite'] ?? null,
-                'plano_vigente_inicio' => $planejada['inicio'] ?? null, 'plano_vigente_limite' => $planejada['limite'] ?? null,
+                'plano_vigente_inicio' => $planejada['inicio'] ?? null,
+                'plano_vigente_limite' => $planejada['limite'] ?? null,
                 'inicio_operacional_projetado' => $fins ? min($fins) : null,
                 'fim_operacional_projetado' => $fins ? max($fins) : null,
                 'status_operacional' => $fins ? 'NO_PLANO' : 'FILA_NAO_CALCULAVEL',
-                'confianca' => 'MEDIA', 'dependencias' => $dependencias, 'frentes' => [], 'tipo' => 'MARCO_VIRTUAL',
+                'confianca' => 'MEDIA',
+                'dependencias' => $dependencias,
+                'frentes' => [],
+                'tipo' => 'MARCO_VIRTUAL',
             ];
             continue;
         }
@@ -510,10 +547,14 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
         $cargasFrente = [];
         $conclusoesReais = [];
         $aguardandoAprovacao = [];
+        $holds = [];
+        $impedimentos = [];
         $bloqueada = $dependenciaFim === null;
         $insuficiente = false;
         foreach ($unidades as $unidade) {
             $estimativa = $estimativas[$unidade['chave']] ?? [];
+            foreach ((array) ($estimativa['tarefas_em_hold'] ?? []) as $idHold) $holds[(int) $idHold] = (int) $idHold;
+            foreach ((array) ($estimativa['impedimentos'] ?? []) as $issue) $impedimentos[(int) $issue['id']] = $issue;
             foreach ((array) ($estimativa['espera_externa'] ?? []) as $espera) {
                 $aguardandoAprovacao[$espera['tarefa_id'] ?? count($aguardandoAprovacao)] = $espera;
             }
@@ -578,8 +619,10 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
         $inicios = $inicios ?: ($fim ? [$conclusoesReais ? min($conclusoesReais) : $fim] : []);
         $limite = $planejada['limite'] ?? $planejada['data_limite'] ?? null;
         $etapa = [
-            'codigo' => $codigo, 'nome' => (string) ($planejada['nome'] ?? $codigo),
-            'volume_planejado' => (int) ($planejada['volume'] ?? 0), 'volume_materializado' => count($unidades),
+            'codigo' => $codigo,
+            'nome' => (string) ($planejada['nome'] ?? $codigo),
+            'volume_planejado' => (int) ($planejada['volume'] ?? 0),
+            'volume_materializado' => count($unidades),
             'baseline_limite' => $etapasBaseline[$codigo]['limite'] ?? null,
             'plano_vigente_inicio' => $planejada['inicio'] ?? $planejada['data_inicio'] ?? null,
             'plano_vigente_limite' => $limite,
@@ -589,8 +632,12 @@ function flow_fila_projetar_etapas(array $planoVigente, array $baseline, array $
             'desvio_plano_vigente_dias_uteis' => $fim && $limite ? flow_execucao_desvio($limite, $fim) : null,
             'status_operacional' => flow_fila_status_etapa($fim, $limite, $planoVigente['data_entrega'] ?? null, $bloqueada, $insuficiente),
             'confianca' => $insuficiente ? 'INSUFICIENTE' : ($bloqueada ? 'BAIXA' : $confiancaGeral),
-            'dependencias' => $dependencias, 'frentes' => array_values($frentes),
+            'dependencias' => $dependencias,
+            'frentes' => array_values($frentes),
             'tarefas_aguardando_aprovacao' => array_values($aguardandoAprovacao),
+            'tarefas_em_hold' => array_values($holds),
+            'impedimentos_ativos' => array_values($impedimentos),
+            'projecao_condicional' => !empty($impedimentos),
             'esforco_pendente_pessoa_dias' => round(array_sum(array_column($frentes, 'esforco_pessoa_dia')), 2),
             'atrasada_contra_plano' => $limite && $limite < $hoje && !$fim,
         ];
@@ -634,6 +681,11 @@ function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosG
         }
     }
     $tarefasFila = flow_fila_carregar_tarefas_responsaveis($conn, $responsaveis);
+    $impedimentosPorTarefa = flow_fila_carregar_impedimentos($conn, array_merge($tarefasEntrega, $tarefasFila));
+    foreach ($tarefasEntrega as &$tarefa) $tarefa['impedimentos_flow_block'] = $impedimentosPorTarefa[(int) $tarefa['tarefa_id']] ?? [];
+    unset($tarefa);
+    foreach ($tarefasFila as &$tarefa) $tarefa['impedimentos_flow_block'] = $impedimentosPorTarefa[(int) $tarefa['tarefa_id']] ?? [];
+    unset($tarefa);
     $unidadesFila = flow_fila_unidades_logicas($tarefasFila);
     $prioridadesFila = [];
     foreach ($tarefasFila as $tarefaFila) {
@@ -674,19 +726,33 @@ function flow_fila_projetar_entrega(mysqli $conn, int $entregaId, array $planosG
     }
     $entrega = (string) ($plano['vigente']['data_entrega'] ?? $plano['vigente']['prazo_r00'] ?? '');
     $margem = flow_fila_margem_operacional($fim, $entrega);
+    $quantidadeHold = array_sum(array_map(static fn(array $etapa): int => count($etapa['tarefas_em_hold'] ?? []), $etapas));
+    $quantidadeImpedimentos = array_sum(array_map(static fn(array $etapa): int => count($etapa['impedimentos_ativos'] ?? []), $etapas));
     $status = $fim === null ? 'FILA_NAO_CALCULAVEL' : ($entrega && $fim > $entrega ? 'ATRASO_PROJETADO' : (($plano['vigente']['fim_previsto'] ?? null) && $fim > $plano['vigente']['fim_previsto'] ? 'MARGEM_CONSUMIDA' : 'NO_PLANO'));
     return [
-        'tipo_fila' => !empty($opcoes['overrides']) ? 'CONFIRMADA' : FLOW_FILA_TIPO_DERIVADA, 'confianca_fila' => 'BAIXA', 'data_referencia' => $hoje,
-        'entrega_id' => $entregaId, 'obra_id' => $plano['obra_id'], 'obra' => $plano['obra'],
-        'planejamento_id' => $plano['planejamento_id'], 'versao_vigente_id' => $plano['versao_id'], 'baseline_versao_id' => $plano['baseline_versao_id'],
-        'data_entrega' => $entrega, 'fim_planejado_vigente' => $plano['vigente']['fim_previsto'] ?? null,
+        'tipo_fila' => !empty($opcoes['overrides']) ? 'CONFIRMADA' : FLOW_FILA_TIPO_DERIVADA,
+        'confianca_fila' => 'BAIXA',
+        'data_referencia' => $hoje,
+        'entrega_id' => $entregaId,
+        'obra_id' => $plano['obra_id'],
+        'obra' => $plano['obra'],
+        'planejamento_id' => $plano['planejamento_id'],
+        'versao_vigente_id' => $plano['versao_id'],
+        'baseline_versao_id' => $plano['baseline_versao_id'],
+        'data_entrega' => $entrega,
+        'fim_planejado_vigente' => $plano['vigente']['fim_previsto'] ?? null,
         'margem_planejada_dias_uteis' => $plano['vigente']['margem_dias_uteis'] ?? null,
-        'fim_operacional_projetado' => $fim, 'margem_operacional_dias_uteis' => $margem,
+        'fim_operacional_projetado' => $fim,
+        'margem_operacional_dias_uteis' => $margem,
         'margem_consumida_dias_uteis' => $margem === null ? null : max(0, (int) ($plano['vigente']['margem_dias_uteis'] ?? 0) - $margem),
-        'status_operacional' => $status, 'etapas' => array_values($etapas),
+        'status_operacional' => $status,
+        'etapas' => array_values($etapas),
+        'tarefas_em_hold' => $quantidadeHold,
+        'impedimentos_ativos' => $quantidadeImpedimentos,
+        'projecao_condicional' => $quantidadeImpedimentos > 0,
         'filas_responsaveis' => array_values($disponibilidades),
-        'estimativas_etapas' => array_intersect_key($estimativas, array_flip(array_map(static fn (array $u): string => $u['chave'], $mapeadas))),
-        'explicacao' => 'Fila derivada por prioridade, prazos, início planejado e imagem. Esforço produtivo aberto é projetado separadamente de tarefas aguardando aprovação; tempo decorrido sem apontamento não é tratado como trabalho consumido. Nenhuma ordem ou tarefa foi alterada.',
+        'estimativas_etapas' => array_intersect_key($estimativas, array_flip(array_map(static fn(array $u): string => $u['chave'], $mapeadas))),
+        'explicacao' => 'Tarefas em HOLD entram na fila conforme prioridade e disponibilidade. Impedimentos ativos do Flow Block são sinalizados: a projeção da tarefa considera sua resolução até a retomada, sem prazo de solução presumido. Esperas de aprovação não consomem capacidade; tempo decorrido sem apontamento não é tratado como trabalho consumido.',
     ];
 }
 

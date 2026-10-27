@@ -71,11 +71,14 @@ try {
     $plano['execucao'] = flow_planejamento_monitorar_execucao($conn, $entregaId, $plano, [
         'data_hoje' => $opcoes['data_hoje'],
     ]);
+    foreach ($plano['execucao']['etapas'] ?? [] as $indice => $etapaReal) {
+        $plano['execucao']['etapas'][$indice]['desvio_real_dias_uteis'] = flow_execucao_desvio($etapaReal['limite_planejado'] ?? null, $etapaReal['conclusao_real'] ?? null);
+    }
     // A projeção oficial de execução vem da V1.5. O monitor legado acima é
     // mantido para detalhes de progresso por tarefa, mas não é mais usado
     // como “Projeção” no header ou no Gantt.
     $plano['projecao_operacional'] = null;
-    if (flow_fila_confirmada_tabelas_disponiveis($conn)) {
+    if (($plano['ciclo_vida']['estado'] ?? '') !== 'CONCLUIDO' && flow_fila_confirmada_tabelas_disponiveis($conn)) {
         try {
             $operacional = flow_fila_confirmada_projetar($conn, ['entrega_id' => $entregaId], [
                 'data_hoje' => $opcoes['data_hoje'],
@@ -85,6 +88,7 @@ try {
             $plano['projecao_operacional'] = ['erro' => $projecaoErro->getMessage()];
         }
     }
+    $plano['historico_projecoes'] = flow_planejamento_historico_projecoes($conn, $entregaId);
     $plano['entrega_id'] = $entregaId;
     $conn->close();
 

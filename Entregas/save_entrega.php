@@ -6,6 +6,7 @@ require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/prazo_entrega_helper.php';
 require_once __DIR__ . '/pendencias_entrega_helper.php';
 require_once __DIR__ . '/../helpers/planejamento_producao_helper.php';
+require_once __DIR__ . '/../helpers/alteracoes_helper.php';
 
 $obra_id = $_POST['obra_id'] ?? null;
 $status_id = $_POST['status_id'] ?? null;
@@ -89,6 +90,11 @@ if (!$is_p00_delivery && !empty($imagem_ids)) {
 }
 
 entregas_pendencias_ensure_schema($conn);
+$registrarAlteracoes = in_array($status_id, [3, 4, 5, 6, 14, 15], true);
+if ($registrarAlteracoes) {
+    // A migracao de esquema pode executar DDL, portanto deve ocorrer antes da transacao.
+    alteracoes_ensure_schema($conn);
+}
 $conn->begin_transaction();
 
 try {
@@ -117,6 +123,29 @@ try {
             $entrega_item_id = (int) $stmtItem->insert_id;
             if ($entrega_item_id > 0) {
                 $pendenciasResolvidas += resolver_pendencias_entrega($conn, $entrega_id, $imagem_id, $entrega_item_id, $resolvidaPor);
+            }
+            if ($registrarAlteracoes) {
+                $funcaoId = alteracoes_get_funcao_alteracao_id($conn, $imagem_id);
+                if (!$funcaoId) {
+                    $stmtFuncao = $conn->prepare("INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, status) VALUES (?, NULL, 6, 'Não iniciado')");
+                    $stmtFuncao->bind_param('i', $imagem_id);
+                    $stmtFuncao->execute();
+                    $funcaoId = (int) $stmtFuncao->insert_id;
+                    $stmtFuncao->close();
+                }
+
+                $stmtExistente = $conn->prepare('SELECT 1 FROM alteracoes WHERE funcao_id = ? AND status_id = ? LIMIT 1');
+                $stmtExistente->bind_param('ii', $funcaoId, $status_id);
+                $stmtExistente->execute();
+                $jaRegistrada = $stmtExistente->get_result()->num_rows > 0;
+                $stmtExistente->close();
+                if (!$jaRegistrada) {
+                    alteracoes_upsert_registro($conn, $funcaoId, $status_id, $data_recebimento);
+                    $stmtReabrir = $conn->prepare("UPDATE funcao_imagem SET status = 'Não iniciado' WHERE idfuncao_imagem = ? AND status IN ('Finalizado', 'Aprovado')");
+                    $stmtReabrir->bind_param('i', $funcaoId);
+                    $stmtReabrir->execute();
+                    $stmtReabrir->close();
+                }
             }
         }
         $stmtItem->close();
@@ -167,7 +196,7 @@ try {
         }
     }
     echo json_encode(['success' => true, 'entrega_id' => $entrega_id, 'pendencias_resolvidas' => $pendenciasResolvidas ?? 0, 'planejamento_rascunho_disponivel' => $planejamentoDisponivel]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $conn->rollback();
     echo json_encode(['success' => false, 'msg' => 'Erro: ' . $e->getMessage()]);
 }

@@ -196,7 +196,8 @@
               )
               .join("<br>");
             const queueBlocks = (queue.fila_completa || []).filter(
-              (block) => String(block.codigo_etapa || "") === String(stage.codigo || ""),
+              (block) =>
+                String(block.codigo_etapa || "") === String(stage.codigo || ""),
             );
             const organizer = queueBlocks.length
               ? `<button type="button" class="queue-organize-button" data-open-queue data-queue-entrega="${Number(project.entrega_id)}" data-queue-stage="${esc(stage.codigo)}" data-queue-person="${Number(front.colaborador_id)}"><i class="fa-solid fa-list-ol"></i> Organizar fila</button>`
@@ -209,10 +210,14 @@
       .join("");
     const confirmed = (projection.confirmacoes_fila || []).length > 0;
     const snapshot = projection.projecao_confirmada;
+    const holdWarning =
+      projection.tarefas_em_hold || projection.impedimentos_ativos
+        ? `<p class="queue-projection-stale">${projection.tarefas_em_hold ? `${num(projection.tarefas_em_hold)} tarefa(s) em HOLD incluída(s) na fila. ` : ""}${projection.impedimentos_ativos ? `${num(projection.impedimentos_ativos)} impedimento(s) ativo(s) no Flow Block; a data depende de sua resolução.` : ""}</p>`
+        : "";
     const queueInfo = confirmed
       ? `Fila confirmada${snapshot?.desatualizada ? " · projeção desatualizada" : ""}`
       : "Fila derivada";
-    return `<section class="allocation-operational is-${statusClass(projection.status_operacional)}"><header><div><span>Projeção operacional · ${queueInfo}</span><strong>${date(projection.fim_operacional_projetado)}</strong></div>${statusBadge(projection.status_operacional)}</header><div class="allocation-operational-metrics"><div><span>Plano vigente</span><b>${date(project.inicio)} → ${date(project.limite)}</b></div><div><span>Margem restante</span><b>${projection.margem_operacional_dias_uteis == null ? "—" : `${num(projection.margem_operacional_dias_uteis)} dias úteis`}</b></div><div><span>Confiança da fila</span><b>${esc(projection.confianca_fila || "BAIXA")}</b></div></div>${snapshot?.desatualizada ? `<p class="queue-projection-stale"><i class="fa-solid fa-clock-rotate-left"></i> A ordem continua confirmada, mas a execução mudou desde a projeção de ${date(snapshot.confirmado_em?.slice(0, 10))}. Reavalie a data operacional.</p>` : ""}<details><summary>Por que essa data?</summary><p>${esc(projection.explicacao || "")}</p><div class="allocation-operational-explanation">${explanation || "Sem etapas operacionais materializadas."}</div></details></section>`;
+    return `<section class="allocation-operational is-${statusClass(projection.status_operacional)}"><header><div><span>Projeção operacional · ${queueInfo}</span><strong>${date(projection.fim_operacional_projetado)}</strong></div>${statusBadge(projection.status_operacional)}</header><div class="allocation-operational-metrics"><div><span>Plano vigente</span><b>${date(project.inicio)} → ${date(project.limite)}</b></div><div><span>Margem restante</span><b>${projection.margem_operacional_dias_uteis == null ? "—" : `${num(projection.margem_operacional_dias_uteis)} dias úteis`}</b></div><div><span>Confiança da fila</span><b>${esc(projection.confianca_fila || "BAIXA")}</b></div></div>${holdWarning}${snapshot?.desatualizada ? `<p class="queue-projection-stale"><i class="fa-solid fa-clock-rotate-left"></i> A ordem continua confirmada, mas a execução mudou desde a projeção de ${date(snapshot.confirmado_em?.slice(0, 10))}. Reavalie a data operacional.</p>` : ""}<details><summary>Por que essa data?</summary><p>${esc(projection.explicacao || "")}</p><div class="allocation-operational-explanation">${explanation || "Sem etapas operacionais materializadas."}</div></details></section>`;
   }
 
   function projectMarkup(project) {
@@ -341,7 +346,12 @@
     const before = impact.antes || {};
     const after = impact.depois || {};
     const delta = Number(impact.variacao_fim_dias_uteis || 0);
-    const change = delta === 0 ? "sem alteração" : delta < 0 ? `${Math.abs(delta)} dia(s) antes` : `${delta} dia(s) depois`;
+    const change =
+      delta === 0
+        ? "sem alteração"
+        : delta < 0
+          ? `${Math.abs(delta)} dia(s) antes`
+          : `${delta} dia(s) depois`;
     return `<article class="queue-impact ${delta > 0 ? "is-negative" : delta < 0 ? "is-positive" : ""}"><strong>${esc(impact.obra || "Obra")}</strong><span>${date(before.inicio_operacional_projetado)} → ${date(before.fim_operacional_projetado)} <i class="fa-solid fa-arrow-right"></i> ${date(after.inicio_operacional_projetado)} → ${date(after.fim_operacional_projetado)}</span><b>${esc(change)} · margem ${num(before.margem_operacional_dias_uteis)} → ${num(after.margem_operacional_dias_uteis)} dias úteis</b>${statusBadge(after.status_operacional)}</article>`;
   }
 
@@ -351,10 +361,23 @@
     if (!queue || !content) return;
     const simulation = queue.simulation;
     const items = queue.order || [];
-    const hasChanges = JSON.stringify(queue.initial) !== JSON.stringify(queueOrder());
+    const hasChanges =
+      JSON.stringify(queue.initial) !== JSON.stringify(queueOrder());
     const classification = simulation?.classificacao;
     const current = simulation?.fila_atual || queue.blocks;
-    content.innerHTML = `<div class="queue-dialog-summary"><div><span>Responsável</span><strong>${esc(queue.personName)}</strong></div><div><span>Etapa</span><strong>${esc(String(queue.stage).replaceAll("_", " "))}</strong></div><div><span>Origem</span><strong>${esc(queue.type || "DERIVADA")}</strong></div></div><p class="queue-dialog-intro">A ordem organiza blocos de trabalho da mesma função. Não altera tarefas, responsáveis, baseline ou prazo individual.</p><section class="queue-list"><h3>Ordem proposta</h3>${items.map((item, index) => { const source = current.find((block) => String(block.fila_chave || "") === String(item.referencia_fila || "")) || item; return `<div class="queue-item ${Number(item.entrega_id) === Number(queue.entregaId) ? "is-focus" : ""}"><b>${index + 1}</b><div><strong>${esc(source.obra || `Entrega #${item.entrega_id}`)}</strong><span>${num(source.unidades)} unidade(s) · ${num(source.esforco_pessoa_dia, 1)} pessoa-dia(s) · prioridade ${num(source.prioridade)}</span></div><div class="queue-item-actions"><button type="button" data-queue-move="up" data-queue-index="${index}" ${index === 0 ? "disabled" : ""} aria-label="Subir ${esc(source.obra || "bloco")}"><i class="fa-solid fa-arrow-up"></i></button><button type="button" data-queue-move="down" data-queue-index="${index}" ${index === items.length - 1 ? "disabled" : ""} aria-label="Descer ${esc(source.obra || "bloco")}"><i class="fa-solid fa-arrow-down"></i></button></div></div>`; }).join("")}</section>${simulation ? `<section class="queue-comparison"><header><div><p>Atual → simulado</p><h3>${esc(statusLabel(classification))}</h3></div>${statusBadge(classification)}</header><p>${classification === "TRANSFERE_PROBLEMA" ? "A mudança melhora a obra foco, mas cria atraso projetado em outra obra." : classification === "SEM_GANHO" ? "A ordem proposta não altera o fim operacional da obra foco." : "Veja todos os impactos antes de confirmar."}</p><div class="queue-impact-list">${(simulation.impactos || []).map(queueImpactMarkup).join("")}</div>${simulation.heuristica ? `<small>${esc(simulation.heuristica)}</small>` : ""}</section>` : `<p class="queue-dialog-hint">Use as setas para simular outra ordem. Nada foi salvo.</p>`}`;
+    content.innerHTML = `<div class="queue-dialog-summary"><div><span>Responsável</span><strong>${esc(queue.personName)}</strong></div><div><span>Etapa</span><strong>${esc(String(queue.stage).replaceAll("_", " "))}</strong></div><div><span>Origem</span><strong>${esc(queue.type || "DERIVADA")}</strong></div></div><p class="queue-dialog-intro">A ordem organiza blocos de trabalho da mesma função. Não altera tarefas, responsáveis, baseline ou prazo individual.</p><section class="queue-list"><h3>Ordem proposta</h3>${items
+      .map((item, index) => {
+        const source =
+          current.find(
+            (block) =>
+              String(block.fila_chave || "") ===
+              String(item.referencia_fila || ""),
+          ) || item;
+        return `<div class="queue-item ${Number(item.entrega_id) === Number(queue.entregaId) ? "is-focus" : ""}"><b>${index + 1}</b><div><strong>${esc(source.obra || `Entrega #${item.entrega_id}`)}</strong><span>${num(source.unidades)} unidade(s) · ${num(source.esforco_pessoa_dia, 1)} pessoa-dia(s) · prioridade ${num(source.prioridade)}</span></div><div class="queue-item-actions"><button type="button" data-queue-move="up" data-queue-index="${index}" ${index === 0 ? "disabled" : ""} aria-label="Subir ${esc(source.obra || "bloco")}"><i class="fa-solid fa-arrow-up"></i></button><button type="button" data-queue-move="down" data-queue-index="${index}" ${index === items.length - 1 ? "disabled" : ""} aria-label="Descer ${esc(source.obra || "bloco")}"><i class="fa-solid fa-arrow-down"></i></button></div></div>`;
+      })
+      .join(
+        "",
+      )}</section>${simulation ? `<section class="queue-comparison"><header><div><p>Atual → simulado</p><h3>${esc(statusLabel(classification))}</h3></div>${statusBadge(classification)}</header><p>${classification === "TRANSFERE_PROBLEMA" ? "A mudança melhora a obra foco, mas cria atraso projetado em outra obra." : classification === "SEM_GANHO" ? "A ordem proposta não altera o fim operacional da obra foco." : "Veja todos os impactos antes de confirmar."}</p><div class="queue-impact-list">${(simulation.impactos || []).map(queueImpactMarkup).join("")}</div>${simulation.heuristica ? `<small>${esc(simulation.heuristica)}</small>` : ""}</section>` : `<p class="queue-dialog-hint">Use as setas para simular outra ordem. Nada foi salvo.</p>`}`;
     $("#queue-dialog-confirm").disabled = !simulation || !hasChanges;
   }
 
@@ -372,17 +395,26 @@
       (block) => String(block.codigo_etapa || "") === String(stage || ""),
     );
     if (!projection || !person || !blocks.length)
-      return setAction("Não foi possível carregar a fila deste responsável.", "warning");
+      return setAction(
+        "Não foi possível carregar a fila deste responsável.",
+        "warning",
+      );
     const order = blocks.map((block) => ({
       entrega_id: Number(block.entrega_id),
       codigo_etapa: String(block.codigo_etapa),
       referencia_fila: String(block.fila_chave || ""),
     }));
     state.queue = {
-      entregaId: Number(entregaId), stage: String(stage), personId: Number(personId),
-      personName: person.nome || `Colaborador #${personId}`, type: person.tipo_fila,
-      blocks, order, initial: order.map((item) => ({ ...item })),
-      fingerprint: person.fingerprints_etapas?.[stage] || "", simulation: null,
+      entregaId: Number(entregaId),
+      stage: String(stage),
+      personId: Number(personId),
+      personName: person.nome || `Colaborador #${personId}`,
+      type: person.tipo_fila,
+      blocks,
+      order,
+      initial: order.map((item) => ({ ...item })),
+      fingerprint: person.fingerprints_etapas?.[stage] || "",
+      simulation: null,
     };
     renderQueueDialog();
     const dialog = $("#queue-dialog");
@@ -396,11 +428,19 @@
     setAction("Recalculando impacto da fila…");
     try {
       const response = await fetch(allocationUrls().queueSimulate, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ colaborador_id: queue.personId, entrega_id: queue.entregaId, codigo_etapa: queue.stage, ordem: queueOrder(), fingerprint_atual: queue.fingerprint }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          colaborador_id: queue.personId,
+          entrega_id: queue.entregaId,
+          codigo_etapa: queue.stage,
+          ordem: queueOrder(),
+          fingerprint_atual: queue.fingerprint,
+        }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.message || "Não foi possível simular a fila.");
+      if (!response.ok || !payload.success)
+        throw new Error(payload.message || "Não foi possível simular a fila.");
       queue.simulation = payload.simulacao;
       renderQueueDialog();
       setAction("Simulação pronta. Nenhuma alteração foi salva.", "success");
@@ -415,36 +455,77 @@
     setAction("Testando posições possíveis da obra foco…");
     try {
       const response = await fetch(allocationUrls().queueSuggest, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ colaborador_id: queue.personId, entrega_id: queue.entregaId, codigo_etapa: queue.stage, fingerprint_atual: queue.fingerprint }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          colaborador_id: queue.personId,
+          entrega_id: queue.entregaId,
+          codigo_etapa: queue.stage,
+          fingerprint_atual: queue.fingerprint,
+        }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.message || "Não foi possível encontrar outra ordem.");
+      if (!response.ok || !payload.success)
+        throw new Error(
+          payload.message || "Não foi possível encontrar outra ordem.",
+        );
       queue.order = payload.simulacao?.ordem_proposta || queue.order;
       queue.simulation = payload.simulacao;
       renderQueueDialog();
-      setAction("Melhor ordem limitada encontrada. Revise o impacto antes de confirmar.", "success");
-    } catch (error) { setAction(error.message, "danger"); }
+      setAction(
+        "Melhor ordem limitada encontrada. Revise o impacto antes de confirmar.",
+        "success",
+      );
+    } catch (error) {
+      setAction(error.message, "danger");
+    }
   }
 
   async function confirmQueue() {
     const queue = state.queue;
     if (!queue?.simulation) return;
-    const requiresReason = queue.simulation.classificacao === "TRANSFERE_PROBLEMA";
-    const reason = window.prompt(requiresReason ? "Esta ordem transfere problema. Informe o motivo obrigatório:" : "Motivo da decisão (opcional):", "");
-    if (reason === null || (requiresReason && !reason.trim())) return setAction("A confirmação foi cancelada: informe o motivo para uma transferência de problema.", "warning");
+    const requiresReason =
+      queue.simulation.classificacao === "TRANSFERE_PROBLEMA";
+    const reason = window.prompt(
+      requiresReason
+        ? "Esta ordem transfere problema. Informe o motivo obrigatório:"
+        : "Motivo da decisão (opcional):",
+      "",
+    );
+    if (reason === null || (requiresReason && !reason.trim()))
+      return setAction(
+        "A confirmação foi cancelada: informe o motivo para uma transferência de problema.",
+        "warning",
+      );
     setAction("Revalidando, registrando fila e gravando projeções…");
     try {
       const response = await fetch(allocationUrls().queueConfirm, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmado: true, colaborador_id: queue.personId, entrega_id: queue.entregaId, codigo_etapa: queue.stage, ordem: queueOrder(), fingerprint_atual: queue.fingerprint, motivo: reason.trim() }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmado: true,
+          colaborador_id: queue.personId,
+          entrega_id: queue.entregaId,
+          codigo_etapa: queue.stage,
+          ordem: queueOrder(),
+          fingerprint_atual: queue.fingerprint,
+          motivo: reason.trim(),
+        }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.message || "Não foi possível confirmar a fila.");
+      if (!response.ok || !payload.success)
+        throw new Error(
+          payload.message || "Não foi possível confirmar a fila.",
+        );
       closeQueueDialog();
-      setAction("Fila confirmada, projeção registrada e histórico preservado.", "success");
+      setAction(
+        "Fila confirmada, projeção registrada e histórico preservado.",
+        "success",
+      );
       await load();
-    } catch (error) { setAction(error.message, "danger"); }
+    } catch (error) {
+      setAction(error.message, "danger");
+    }
   }
 
   function selectedMovements(targetId) {
@@ -785,7 +866,8 @@
       const control = event.target.closest("[data-queue-move]");
       if (!control || !state.queue) return;
       const index = Number(control.dataset.queueIndex);
-      const destination = control.dataset.queueMove === "up" ? index - 1 : index + 1;
+      const destination =
+        control.dataset.queueMove === "up" ? index - 1 : index + 1;
       if (destination < 0 || destination >= state.queue.order.length) return;
       const [item] = state.queue.order.splice(index, 1);
       state.queue.order.splice(destination, 0, item);

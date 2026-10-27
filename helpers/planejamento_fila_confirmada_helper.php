@@ -38,18 +38,20 @@ function flow_fila_confirmada_fingerprint_fila(array $projecoes): string
     $contexto = [];
     foreach ($projecoes as $p) {
         $contexto[] = [
-            'entrega' => (int) $p['entrega_id'], 'versao' => (int) $p['versao_vigente_id'],
-            'fila' => array_map(static fn (array $f) => [
+            'entrega' => (int) $p['entrega_id'],
+            'versao' => (int) $p['versao_vigente_id'],
+            'fila' => array_map(static fn(array $f) => [
                 'colaborador' => (int) $f['colaborador_id'],
-                'blocos' => array_map(static fn (array $b) => [
-                    'chave' => $b['fila_chave'] ?? '', 'prioridade' => (int) ($b['prioridade'] ?? 0),
+                'blocos' => array_map(static fn(array $b) => [
+                    'chave' => $b['fila_chave'] ?? '',
+                    'prioridade' => (int) ($b['prioridade'] ?? 0),
                     // status propositalmente não faz parte da fila confirmada.
-                    'tarefas' => array_map(static fn (array $t) => [(int) ($t['id'] ?? 0), (int) ($t['funcao_id'] ?? 0), (int) ($t['colaborador_id'] ?? 0)], $b['tarefas_contexto'] ?? []),
+                    'tarefas' => array_map(static fn(array $t) => [(int) ($t['id'] ?? 0), (int) ($t['funcao_id'] ?? 0), (int) ($t['colaborador_id'] ?? 0)], $b['tarefas_contexto'] ?? []),
                 ], $f['fila_completa'] ?? []),
             ], $p['filas_responsaveis'] ?? []),
         ];
     }
-    usort($contexto, static fn ($a, $b) => $a['entrega'] <=> $b['entrega']);
+    usort($contexto, static fn($a, $b) => $a['entrega'] <=> $b['entrega']);
     return hash('sha256', flow_planejamento_json($contexto));
 }
 
@@ -58,14 +60,18 @@ function flow_fila_confirmada_fingerprint_projecao(array $projecoes): string
     $contexto = [];
     foreach ($projecoes as $p) {
         $contexto[] = [
-            'entrega' => (int) $p['entrega_id'], 'fim' => $p['fim_operacional_projetado'] ?? null,
-            'etapas' => array_map(static fn (array $e) => [
-                $e['codigo'] ?? '', $e['inicio_operacional_projetado'] ?? null, $e['fim_operacional_projetado'] ?? null,
-                $e['status_operacional'] ?? '', $e['confianca'] ?? '',
-            ], $p['etapas'] ?? []),
+            'entrega' => (int) $p['entrega_id'],
+            'fim' => $p['fim_operacional_projetado'] ?? null,
+            'etapas' => array_map(static fn(array $e) => array_merge([
+                $e['codigo'] ?? '',
+                $e['inicio_operacional_projetado'] ?? null,
+                $e['fim_operacional_projetado'] ?? null,
+                $e['status_operacional'] ?? '',
+                $e['confianca'] ?? '',
+            ], !empty($e['tarefas_em_hold']) || !empty($e['impedimentos_ativos']) ? [$e['tarefas_em_hold'] ?? [], $e['impedimentos_ativos'] ?? []] : []), $p['etapas'] ?? []),
         ];
     }
-    usort($contexto, static fn ($a, $b) => $a['entrega'] <=> $b['entrega']);
+    usort($contexto, static fn($a, $b) => $a['entrega'] <=> $b['entrega']);
     return hash('sha256', flow_planejamento_json($contexto));
 }
 
@@ -206,7 +212,8 @@ function flow_fila_confirmada_projetar(mysqli $conn, array $filtros = [], array 
     }
     unset($projecao);
     return [
-        'projecoes' => $valores, 'overrides' => $overrides,
+        'projecoes' => $valores,
+        'overrides' => $overrides,
         'fingerprint' => flow_fila_confirmada_fingerprint_fila($valores),
         'fingerprint_fila' => flow_fila_confirmada_fingerprint_fila($valores),
         'fingerprint_projecao' => flow_fila_confirmada_fingerprint_projecao($valores),
@@ -276,7 +283,7 @@ function flow_fila_confirmada_linha_colaborador(array $projecoes, int $colaborad
             if ((int) ($fila['colaborador_id'] ?? 0) !== $colaboradorId) {
                 continue;
             }
-            $itens = array_values(array_filter((array) ($fila['fila_completa'] ?? []), static fn (array $b): bool => ($b['codigo_etapa'] ?? '') === $codigoEtapa));
+            $itens = array_values(array_filter((array) ($fila['fila_completa'] ?? []), static fn(array $b): bool => ($b['codigo_etapa'] ?? '') === $codigoEtapa));
             if ($itens) {
                 return $itens;
             }
@@ -287,10 +294,10 @@ function flow_fila_confirmada_linha_colaborador(array $projecoes, int $colaborad
 
 function flow_fila_confirmada_fingerprint_linha(array $blocos): string
 {
-    $contexto = array_map(static fn (array $b): array => [
+    $contexto = array_map(static fn(array $b): array => [
         'chave' => $b['fila_chave'] ?? '',
         'prioridade' => (int) ($b['prioridade'] ?? 0),
-        'tarefas' => array_map(static fn (array $t): array => [(int) ($t['id'] ?? 0), (int) ($t['funcao_id'] ?? 0), (int) ($t['colaborador_id'] ?? 0)], $b['tarefas_contexto'] ?? []),
+        'tarefas' => array_map(static fn(array $t): array => [(int) ($t['id'] ?? 0), (int) ($t['funcao_id'] ?? 0), (int) ($t['colaborador_id'] ?? 0)], $b['tarefas_contexto'] ?? []),
     ], $blocos);
     return hash('sha256', flow_planejamento_json($contexto));
 }
@@ -319,7 +326,7 @@ function flow_fila_confirmada_simular(mysqli $conn, int $colaboradorId, array $o
         throw new InvalidArgumentException('Informe colaborador e uma ordem operacional válida.');
     }
     $codigoEtapa = (string) ($opcoes['codigo_etapa'] ?? $ordem[0]['codigo_etapa']);
-    if (array_filter($ordem, static fn (array $item): bool => $item['codigo_etapa'] !== $codigoEtapa)) {
+    if (array_filter($ordem, static fn(array $item): bool => $item['codigo_etapa'] !== $codigoEtapa)) {
         throw new InvalidArgumentException('Organize uma etapa por vez para preservar a granularidade da fila.');
     }
     $entregaFoco = (int) ($opcoes['entrega_id'] ?? $ordem[0]['entrega_id']);
@@ -352,15 +359,28 @@ function flow_fila_confirmada_simular(mysqli $conn, int $colaboradorId, array $o
     $impactos = [];
     foreach ($depois['projecoes'] as $p) {
         $a = $antesPorId[(int) $p['entrega_id']] ?? [];
-        $impactos[] = ['entrega_id' => (int) $p['entrega_id'], 'obra' => $p['obra'], 'antes' => $a, 'depois' => $p,
-            'variacao_fim_dias_uteis' => (!empty($a['fim_operacional_projetado']) && !empty($p['fim_operacional_projetado'])) ? flow_execucao_desvio($a['fim_operacional_projetado'], $p['fim_operacional_projetado']) : null];
+        $impactos[] = [
+            'entrega_id' => (int) $p['entrega_id'],
+            'obra' => $p['obra'],
+            'antes' => $a,
+            'depois' => $p,
+            'variacao_fim_dias_uteis' => (!empty($a['fim_operacional_projetado']) && !empty($p['fim_operacional_projetado'])) ? flow_execucao_desvio($a['fim_operacional_projetado'], $p['fim_operacional_projetado']) : null
+        ];
     }
-    return ['fila_antes' => $antes, 'fila_depois' => $depois, 'ordem_proposta' => $ordem,
+    return [
+        'fila_antes' => $antes,
+        'fila_depois' => $depois,
+        'ordem_proposta' => $ordem,
         'fila_atual' => $linhaAtual,
-        'classificacao' => flow_fila_confirmada_classificar($antes['projecoes'], $depois['projecoes'], $entregaFoco), 'impactos' => $impactos,
-        'fingerprint_atual' => $fingerprintLinha, 'fingerprint_simulado' => $fingerprintLinha,
-        'fingerprint_projecao_atual' => $antes['fingerprint_projecao'], 'fingerprint_projecao_simulada' => $depois['fingerprint_projecao'],
-        'codigo_etapa' => $codigoEtapa, 'entrega_ids_afetadas' => $ids];
+        'classificacao' => flow_fila_confirmada_classificar($antes['projecoes'], $depois['projecoes'], $entregaFoco),
+        'impactos' => $impactos,
+        'fingerprint_atual' => $fingerprintLinha,
+        'fingerprint_simulado' => $fingerprintLinha,
+        'fingerprint_projecao_atual' => $antes['fingerprint_projecao'],
+        'fingerprint_projecao_simulada' => $depois['fingerprint_projecao'],
+        'codigo_etapa' => $codigoEtapa,
+        'entrega_ids_afetadas' => $ids
+    ];
 }
 
 /** Busca limitada: testa apenas a posição do bloco foco na mesma fila/etapa. */
@@ -372,7 +392,7 @@ function flow_fila_confirmada_encontrar_melhor_ordem(mysqli $conn, int $colabora
         throw new RuntimeException('FILA_DESATUALIZADA: a fila mudou antes da sugestão.');
     }
     $chaveFoco = 'ENTREGA:' . $entregaId . ':' . $codigoEtapa;
-    $original = array_map(static fn (array $b): array => ['entrega_id' => (int) $b['entrega_id'], 'codigo_etapa' => (string) $b['codigo_etapa'], 'referencia_fila' => (string) $b['fila_chave']], $atual);
+    $original = array_map(static fn(array $b): array => ['entrega_id' => (int) $b['entrega_id'], 'codigo_etapa' => (string) $b['codigo_etapa'], 'referencia_fila' => (string) $b['fila_chave']], $atual);
     if (count($atual) < 2) {
         return ['fila_atual' => $atual, 'ordem_proposta' => $original, 'mensagem' => 'Não há outra obra nesta fila para reorganizar.'];
     }
@@ -387,7 +407,7 @@ function flow_fila_confirmada_encontrar_melhor_ordem(mysqli $conn, int $colabora
         array_splice($tentativa, $posicao, 0, [$item]);
         $sim = flow_fila_confirmada_simular($conn, $colaboradorId, $tentativa, $fingerprintEsperado, ['entrega_id' => $entregaId, 'codigo_etapa' => $codigoEtapa]);
         $peso = ['RESOLVE' => 0, 'RESOLVE_PARCIALMENTE' => 1, 'SEM_GANHO' => 2, 'TRANSFERE_PROBLEMA' => 3][$sim['classificacao']] ?? 4;
-        $foco = array_values(array_filter((array) ($sim['fila_depois']['projecoes'] ?? []), static fn (array $p): bool => (int) ($p['entrega_id'] ?? 0) === $entregaId));
+        $foco = array_values(array_filter((array) ($sim['fila_depois']['projecoes'] ?? []), static fn(array $p): bool => (int) ($p['entrega_id'] ?? 0) === $entregaId));
         $margem = (int) (($foco[0]['margem_operacional_dias_uteis'] ?? -999));
         $chave = [$peso, -$margem, $posicao];
         if ($melhor === null || $chave < $melhor['chave']) {

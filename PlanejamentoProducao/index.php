@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
 if (empty($_SESSION['logado'])) {
-    flow_auth_redirect_to_login();
-    exit();
+  flow_auth_redirect_to_login();
+  exit();
 }
 
 
@@ -11,10 +11,10 @@ require_once __DIR__ . '/../conexaoMain.php';
 include_once __DIR__ . '/../conexao.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
-    if ($__p && is_file($__p)) {
-        require_once $__p;
-        break;
-    }
+  if ($__p && is_file($__p)) {
+    require_once $__p;
+    break;
+  }
 }
 unset($__root, $__p);
 
@@ -25,18 +25,18 @@ $entregaId = (int) ($_GET['entrega_id'] ?? 0);
 $tema = ($_GET['tema'] ?? '') === 'light' ? 'light' : '';
 $conn = conectarBanco();
 if ($obraId <= 0 && $entregaId > 0) {
-    $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
-    if ($stmtEntrega) {
-        $stmtEntrega->bind_param('i', $entregaId);
-        $stmtEntrega->execute();
-        $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
-        $stmtEntrega->close();
-    }
+  $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
+  if ($stmtEntrega) {
+    $stmtEntrega->bind_param('i', $entregaId);
+    $stmtEntrega->execute();
+    $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
+    $stmtEntrega->close();
+  }
 }
 if ($obraId <= 0 || !improov_usuario_pode_acessar_obra($conn, $obraId)) {
-    $conn->close();
-    header('Location: ../acesso_negado.php');
-    exit();
+  $conn->close();
+  header('Location: ../acesso_negado.php');
+  exit();
 }
 
 $conn = conectarBanco();
@@ -56,14 +56,26 @@ $conn->close();
 <html lang="pt-BR">
 
 <head>
-    <?= flow_auth_navigation_script() ?>
+  <?= flow_auth_navigation_script() ?>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (() => {
+      const requested = new URLSearchParams(location.search).get('tema');
+      let saved = null;
+      try { saved = localStorage.getItem('theme'); } catch (_) {}
+      const explicit = requested === 'light' || requested === 'dark' ? requested : null;
+      const current = document.documentElement.dataset.theme;
+      const theme = explicit || (current === 'light' || current === 'dark' ? current : null) || (saved === 'light' || saved === 'dark' ? saved : null) || (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <?php require __DIR__ . '/../includes/page-head.php'; ?>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=18">
 
   <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+  <link rel="stylesheet" href="<?php echo asset_url('../css/master.css'); ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
     integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
@@ -76,6 +88,7 @@ $conn->close();
 </head>
 
 <body class="planning-page <?= $tema ?>" data-obra-id="<?= $obraId ?>" data-entrega-id="<?= $entregaId ?>">
+  <script>document.body.classList.toggle('light', document.documentElement.dataset.theme === 'light');</script>
 
   <?php include '../sidebar.php'; ?>
 
@@ -90,7 +103,7 @@ $conn->close();
         <div class="planning-topbar-actions">
           <a class="planning-back" href="../Dashboard/obra.php?obra_id=<?= $obraId ?>" aria-label="Voltar para a obra"><i class="fa-solid fa-arrow-left"></i><span>Obra</span></a>
           <span class="planning-prototype-label" id="planning-mode-label"><i class="fa-solid fa-flask"></i> Simulação</span>
-          <!-- <button class="planning-icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema"><i class="fa-solid fa-gear"></i></button> -->
+          <button class="planning-icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema"><i class="fa-solid fa-sun" aria-hidden="true"></i></button>
         </div>
       </section>
 
@@ -98,10 +111,10 @@ $conn->close();
         <article class="planning-work-name"><span>Obra</span><strong data-plan-title>Carregando…</strong></article>
         <article><span>Início da produção</span><strong id="summary-start">—</strong></article>
         <article class="planning-result-card"><span>Fim planejado</span><strong id="summary-finish">—</strong></article>
-        <article class="planning-operational-card" id="summary-operational-card"><span>Projeção operacional</span><strong id="summary-operational">—</strong><small id="summary-operational-status">—</small></article>
-        <article><span>Entrega R00</span><strong id="summary-due">—</strong></article>
-        <article class="planning-margin-card planning-result-card" id="summary-margin"><span>Margens</span><strong id="summary-margin-planned">—</strong><small id="summary-margin-operational">—</small></article>
-        <article class="planning-summary-today"><span>Hoje</span><strong id="summary-today">—</strong></article>
+        <article class="planning-operational-card" id="summary-operational-card"><span id="summary-observed-label">Projeção operacional</span><strong id="summary-operational">—</strong><small id="summary-operational-status">—</small></article>
+        <article><span>Entrega R00 (prazo)</span><strong id="summary-due">—</strong></article>
+        <article class="planning-margin-card planning-result-card" id="summary-margin"><span id="summary-result-label">Margens</span><strong id="summary-margin-planned">—</strong><small id="summary-margin-operational">—</small></article>
+        <article class="planning-summary-today"><span id="summary-reference-label">Hoje</span><strong id="summary-today">—</strong></article>
       </section>
     </header>
 
@@ -138,9 +151,9 @@ $conn->close();
         <button type="button" class="planning-text-button" id="reset-simulation"><i class="fa-solid fa-rotate-left"></i> Restaurar cenário</button>
       </div>
       <div class="planning-board" id="planning-board">
-        <div class="planning-stage-head"><span>#</span><span>Etapa</span><span>Volume</span><span>Duração</span><span>Início</span><span>Limite</span><span>Pessoas</span><span>Dependências</span></div>
+        <div class="planning-stage-head"><span>#</span><span>Etapa</span><span>Volume</span><span>Duração</span><span>Início</span><span>Limite</span><span class="planning-column-capacity">Pessoas</span><span class="planning-column-dependencies">Dep.</span><span id="stage-observed-label">Conclusão / Projeção</span><span>Desvio</span></div>
         <div class="planning-timeline-head" aria-label="Escala de datas">
-          <div class="planning-timeline-controls"><button type="button" aria-label="Visualização mensal" data-scale="month">Mês</button><button type="button" aria-label="Visualização semanal" data-scale="week" class="is-active">Semana</button><button type="button" aria-label="Visualização diária" data-scale="day">Dia</button><span class="planning-legend"><b class="legend-today"></b>Hoje <b class="legend-finish"></b>Fim planejado <b class="legend-operational"></b>Projeção operacional <b class="legend-due"></b>Entrega R00 <i class="legend-progress"></i>Realizado</span></div>
+          <div class="planning-timeline-controls"><button type="button" aria-label="Visualização mensal" data-scale="month">Mês</button><button type="button" aria-label="Visualização semanal" data-scale="week" class="is-active">Semana</button><button type="button" aria-label="Visualização diária" data-scale="day">Dia</button><span class="planning-legend" id="planning-legend"></span></div>
           <div id="timeline-head"></div>
         </div>
         <div class="planning-stage-list" id="stage-list"></div>
@@ -156,7 +169,7 @@ $conn->close();
   </aside>
   <div class="planning-scrim" id="planning-scrim" hidden></div>
 
-  <script src="script.js?v=14" defer></script>
+  <script src="script.js?v=20" defer></script>
   <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

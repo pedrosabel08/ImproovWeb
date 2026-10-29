@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__.'/FechamentoFinanceiroRules.php';
+require_once __DIR__.'/FechamentoComposicaoSupport.php';
 
 /** Decisões da competência; não modifica atribuições, produção ou pagamentos. */
 final class FechamentoRetiradaRules
@@ -26,13 +27,14 @@ final class FechamentoRetiradaRules
 
     public static function decidir(array $antes, array $input, array $servicos, int $usuario, string $iso): array
     {
+        $input = FechamentoPlantaRules::normalizarInput($input);
         $acao = $input['estado'] ?? null;
         $alvo = $input['alvo'] ?? null;
         $motivo = trim($input['motivo'] ?? '');
-        if (!in_array($acao, ['RETIRAR','RESTAURAR'], true) || !in_array($alvo, ['ITEM','FUNCAO'], true) || $motivo === '' || strlen($motivo) > 1000) {
+        if (!in_array($acao, ['RETIRAR','RESTAURAR','ALTERAR_VALOR','RESTAURAR_VALOR','APLICAR_TARIFA'], true) || !in_array($alvo, ['ITEM','FUNCAO'], true) || $motivo === '' || strlen($motivo) > 1000) {
             throw new InvalidArgumentException('Retirada/restauração exige alvo e motivo válidos.');
         }
-        $out = ['itens' => $antes['itens'] ?? [], 'funcoes' => $antes['funcoes'] ?? []];
+        $out = ['itens' => $antes['itens'] ?? [], 'funcoes' => $antes['funcoes'] ?? [], 'valores' => $antes['valores'] ?? [], 'plantas' => $antes['plantas'] ?? []];
         $registro = ['retirado' => $acao === 'RETIRAR','motivo' => $motivo,'autor_id' => $usuario,'registrado_em' => $iso];
         $matches = [];
         foreach ($servicos['itens_analisados'] as $s) {
@@ -48,6 +50,39 @@ final class FechamentoRetiradaRules
         }
         if (!$matches) {
             throw new DomainException('Tarefa/função não pertence ao fechamento deste colaborador e competência.');
+        }
+        if (in_array($acao, ['ALTERAR_VALOR','RESTAURAR_VALOR','APLICAR_TARIFA'], true)) {
+            if ($alvo !== 'ITEM' || count($matches) !== 1) {
+                throw new InvalidArgumentException('A alteração de valor exige uma tarefa.');
+            }
+            $s = $matches[0];
+            $key = self::chave($s['identidade']);
+            if ($acao === 'RESTAURAR_VALOR') {
+                unset($out['valores'][$key]);
+                unset($out['plantas'][$key]);
+                return $out;
+            }
+            $atual = self::aplicar($servicos, $antes);
+            $item = array_values(array_filter($atual['itens_analisados'], fn ($i) => self::chave($i['identidade']) === $key))[0];
+            if ($s['saldo_centavos'] === null || $s['divergencias'] || $s['situacao'] === 'QUITADO' || $item['situacao'] === 'RETIRADO') {
+                throw new DomainException('Somente tarefas pendentes, sem divergências e presentes no fechamento podem ter o valor alterado.');
+            }
+            $padrao = $acao === 'APLICAR_TARIFA';
+            if ($padrao && empty($s['planta_humanizada'])) {
+                throw new InvalidArgumentException('Tarifa de planta não se aplica a esta tarefa.');
+            }
+            $categoria = !empty($s['planta_humanizada']) ? FechamentoPlantaRules::categoria($input['categoria_planta'] ?? null) : null;
+            $valor = $padrao ? $categoria['valor_centavos'] : FechamentoComposicaoSupport::valor($input);
+            if ($valor < 0 || $valor < $s['pago_ledger_centavos']) {
+                throw new InvalidArgumentException('O valor total não pode ser negativo nem inferior ao já pago.');
+            }
+            $out['valores'][$key] = ['identidade' => $s['identidade'],'base_original_centavos' => $s['base_centavos'],
+                'base_centavos' => $valor,'pago_observado_centavos' => $s['pago_ledger_centavos'],'motivo' => $motivo,'autor_id' => $usuario,'registrado_em' => $iso];
+            if ($categoria) {
+                $out['plantas'][$key] = ['categoria' => $input['categoria_planta'],'modo' => $padrao ? 'PADRAO' : 'EXCECAO',
+                    'valor_centavos' => $valor,'motivo' => $motivo,'autor_id' => $usuario,'registrado_em' => $iso,'tabela_version' => FechamentoPlantaRules::VERSION];
+            }
+            return $out;
         }
         if ($alvo === 'ITEM') {
             $s = $matches[0];
@@ -79,18 +114,44 @@ final class FechamentoRetiradaRules
         $retirados = [];
         foreach ($servicos['itens_analisados'] as &$s) {
             $key = self::chave($s['identidade']);
+            $ajuste = $decisao['valores'][$key] ?? null;
+            if ($ajuste && $s['elegibilidade']['elegivel']) {
+                $s['ajuste_valor'] = $ajuste;
+                $s['base_original_centavos'] = $s['base_centavos'];
+                // Uma nova origem ou pagamento exige rever o ajuste, sem reaplicar um valor obsoleto.
+                if ($ajuste['base_original_centavos'] !== $s['base_centavos'] || $ajuste['pago_observado_centavos'] !== $s['pago_ledger_centavos']
+                    || $s['saldo_centavos'] === null || $s['divergencias'] || $s['situacao'] === 'QUITADO') {
+                    $p = ['codigo' => 'AJUSTE_TAREFA_DESATUALIZADO','mensagem' => 'O valor ou pagamento da tarefa mudou. Restaure o valor e confira novamente.',
+                        'severidade' => 'BLOQUEANTE','bloqueante' => true,'identidade' => $s['identidade']];
+                    $servicos['pendencias'][] = $p;
+                    $s['divergencias'][] = $p;
+                    $s['saldo_centavos'] = null;
+                    $s['situacao'] = 'PENDENCIA';
+                } else {
+                    $s['base_centavos'] = $ajuste['base_centavos'];
+                    $saldo = FechamentoFinanceiroRules::saldo($s['base_centavos'], $s['pago_ledger_centavos']);
+                    $s = array_replace($s, $saldo);
+                    $s['situacao'] = $s['saldo_centavos'] > 0 ? 'DEVIDO' : ($s['pago_ledger_centavos'] > 0 ? 'QUITADO' : 'SEM_VALOR_DEVIDO');
+                    $s['motivo_exclusao'] = $s['situacao'] === 'DEVIDO' ? null : ($s['situacao'] === 'QUITADO' ? 'R06_SALDO_ZERO' : 'SEM_VALOR_POSITIVO');
+                }
+            }
             $ato = $decisao['itens'][$key] ?? ($decisao['funcoes'][(string)($s['descricao']['funcao_id'] ?? 0)] ?? null);
             // Pagamentos históricos nunca são apagados por uma retirada em lote.
-            if (!$ato || !$ato['retirado'] || !$s['elegibilidade']['elegivel'] || !self::semPagamentoMonetario($s) || $s['situacao'] === 'QUITADO') {
-                continue;
+            if ($ato && $ato['retirado'] && $s['elegibilidade']['elegivel'] && self::semPagamentoMonetario($s) && $s['situacao'] !== 'QUITADO') {
+                $s['retirada'] = $ato;
+                $s['situacao_original'] = $s['situacao'];
+                $s['elegibilidade_original'] = $s['elegibilidade'];
+                $s['elegibilidade']['elegivel'] = false;
+                $s['situacao'] = 'RETIRADO';
+                $s['motivo_exclusao'] = 'RETIRADA_MANUAL_COMPETENCIA';
+                $retirados[$key] = true;
             }
-            $s['retirada'] = $ato;
-            $s['situacao_original'] = $s['situacao'];
-            $s['elegibilidade_original'] = $s['elegibilidade'];
-            $s['elegibilidade']['elegivel'] = false;
-            $s['situacao'] = 'RETIRADO';
-            $s['motivo_exclusao'] = 'RETIRADA_MANUAL_COMPETENCIA';
-            $retirados[$key] = true;
+            $s = FechamentoPlantaRules::avaliar($s, $decisao['plantas'][$key] ?? null);
+            foreach ($s['divergencias'] as $p) {
+                if (in_array($p['codigo'], ['PLANTA_TARIFA_DIVERGENTE','PLANTA_TIPO_PENDENTE'], true)) {
+                    $servicos['pendencias'][] = $p;
+                }
+            }
         }
         unset($s);
         $servicos['servicos_devidos'] = array_values(array_filter($servicos['itens_analisados'], fn ($s) => $s['situacao'] === 'DEVIDO'));

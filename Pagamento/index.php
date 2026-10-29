@@ -1,11 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true || !pagamento_is_gestor()) {
-	// Se não estiver logado, redirecionar para a página de login
-	flow_auth_redirect_to_login();
-	exit();
-}
+
 
 require_once __DIR__ . '/pagamento_auth.php';
 require_once __DIR__ . '/../config/pagamento_fechamento.php';
@@ -19,7 +15,11 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true || !pagamento_is_gestor()) {
+	// Se não estiver logado, redirecionar para a página de login
+	flow_auth_redirect_to_login();
+	exit();
+}
 // session_start();
 
 // Verificar se o usuário está logado

@@ -403,6 +403,11 @@ $conn->close();
                     <div id="comparison-slider-stage" hidden style="--split:50%">
                         <div data-slider-layer="b"></div>
                         <div data-slider-layer="a"></div>
+                        <div class="comparison-slider-zoom" role="group" aria-label="Zoom da comparação">
+                            <button type="button" data-slider-zoom="out" aria-label="Diminuir zoom" title="Diminuir zoom"><i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i></button>
+                            <button type="button" data-slider-zoom="reset" aria-label="Restaurar zoom" title="Restaurar zoom"><i class="fa-solid fa-compress" aria-hidden="true"></i></button>
+                            <button type="button" data-slider-zoom="in" aria-label="Aumentar zoom" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
+                        </div>
                         <span class="slider-label before">Antes</span>
                         <span class="slider-label after">Depois</span>
                         <div class="slider-divider" aria-hidden="true"><span>‹ ›</span></div>

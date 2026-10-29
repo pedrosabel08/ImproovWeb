@@ -37,6 +37,7 @@ function flow_metadata_catalog(): array
         'alma-biblioteca' => ['Biblioteca ALMA | Flow', 'Biblioteca institucional de referências e direção visual.', 'ALMA/admin.php', ['ALMA/admin.php']],
         'alma' => ['ALMA — Direção Visual | Flow', 'Referências e ferramentas para direção visual de projetos.', 'ALMA/', ['ALMA/index.php']],
         'pagamento' => ['Pagamentos | Flow', 'Organização e acompanhamento de pagamentos.', 'Pagamento/', ['Pagamento/index.php']],
+        'pagamento-fechamento' => ['Fechamento mensal | Flow', 'Organização e revisão do fechamento mensal de pagamentos.', 'Pagamento/fechamento.php', ['Pagamento/fechamento.php']],
         'contratos' => ['Contratos | Flow', 'Organização e acompanhamento dos contratos de projetos.', 'Contratos/', ['Contratos/index.php']],
         'custos' => ['Custos | Flow', 'Planejamento e acompanhamento dos custos de projetos.', 'Custos/', ['Custos/index.php']],
         'mapa-pavimento' => ['Mapa de Pavimento | Flow', 'Visualização e gestão de ambientes do projeto.', 'MapaPavimento/', ['MapaPavimento/index.php']],

@@ -27,21 +27,28 @@ $ref = (string)($_GET['competencia'] ?? '');
 if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
     $ref = (new DateTimeImmutable('first day of last month', new DateTimeZone('America/Sao_Paulo')))->format('Y-m');
 }
+
+include __DIR__ . '/../conexaoMain.php';
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
 ?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
-<title>Fechamento mensal — Pagamento</title>
+<?php require __DIR__.'/../includes/page-head.php'; ?>
 <link rel="stylesheet" href="<?= asset_url('style.css') ?>">
 <link rel="stylesheet" href="<?= asset_url('../css/styleSidebar.css') ?>">
 <link rel="stylesheet" href="<?= asset_url('visao-geral.css') ?>&ui=<?= filemtime(__DIR__.'/visao-geral.css') ?>">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <link rel="stylesheet" href="<?= asset_url('fechamento.css') ?>">
 <link rel="stylesheet" href="<?= asset_url('mensal.css') ?>&m=<?= filemtime(__DIR__.'/mensal.css') ?>">
-<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-		type="image/x-icon">
 </head>
 <body>
 <?php include __DIR__.'/../sidebar.php'; ?>
@@ -87,7 +94,7 @@ if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
 <header class="fm-review-header"><span class="fm-avatar" id="fm-avatar" aria-hidden="true"></span><div class="fm-person-name"><h2 id="fm-name"></h2><span id="fm-type" class="fm-badge"></span></div><div class="fm-person-status"><small>Status do adendo</small><span id="fm-person-status" class="fm-badge"></span></div></header>
 <div class="fm-financial-scroll">
 <div id="fm-attention"></div><dl class="fm-breakdown" id="fm-breakdown"></dl>
-<details id="fm-service-details"><summary>Ver detalhes dos serviços</summary><p class="fm-service-help">Retiradas valem apenas para este colaborador nesta competência. Tarefas pagas permanecem no histórico.</p><div class="fm-service-batch"><label for="fm-service-function">Função</label><select id="fm-service-function"></select><button type="button" class="btn btn-secondary" id="fm-withdraw-function">Retirar função</button><button type="button" class="btn btn-secondary" id="fm-restore-function">Restaurar função</button></div><div class="fc-table-wrap"><table class="fc-table"><thead><tr><th>Imagem / função</th><th>Valor devido</th><th>Situação</th><th>Ação</th></tr></thead><tbody id="fm-services"></tbody></table></div></details>
+<button type="button" class="btn btn-secondary fm-services-open" id="fm-service-details" aria-haspopup="dialog" aria-controls="fm-services-dialog"><i class="fa-solid fa-list-check" aria-hidden="true"></i>Ver detalhes dos serviços</button>
 <div id="fm-extras"></div>
 <div class="fc-actions"><button class="btn btn-secondary" id="fm-discount" type="button">Desconto</button><button class="btn btn-secondary" id="fm-extra" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i>Adicionar extra</button><a class="btn btn-secondary" id="fm-edit" href="../Colaborador/" target="_blank" rel="noopener"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i>Editar cadastro</a><button class="btn btn-secondary" id="fm-recalculate" type="button"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>Atualizar valores</button></div>
 </div></article>
@@ -98,7 +105,19 @@ if (!preg_match('/^20\d\d-(0[1-9]|1[0-2])$/D', $ref)) {
 <div class="fm-pdf-area"><div id="fm-pdf" class="fc-pdf-pages" aria-label="PDF do adendo" tabindex="0"></div><div id="fm-pdf-placeholder" class="fm-pdf-placeholder" role="status" aria-live="polite" aria-busy="false"><canvas id="fm-pdf-orb" class="fm-pdf-orb" data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Preparando PDF do adendo" hidden></canvas><i id="fm-pdf-placeholder-icon" class="fa-regular fa-file-lines" aria-hidden="true"></i><strong id="fm-pdf-placeholder-title">Adendo para conferência</strong><p id="fm-pdf-placeholder-text">Os documentos desta competência aparecerão aqui.</p></div></div>
 </aside></div>
 </section>
-<dialog id="fm-service-dialog" class="fc-dialog" aria-labelledby="fm-service-title"><form id="fm-service-form"><header><h2 id="fm-service-title">Retirar tarefa</h2><button type="button" class="btn btn-secondary" id="fm-service-close">Fechar</button></header><p id="fm-service-target"></p><label>Motivo<textarea name="motivo" required maxlength="1000" rows="3"></textarea></label><p>A lista e o total serão atualizados. Será necessário conferir e confirmar o novo PDF.</p><button type="submit" class="btn btn-primary" id="fm-service-submit">Confirmar retirada</button></form></dialog>
+<dialog id="fm-services-dialog" class="fc-dialog fm-services-dialog" aria-labelledby="fm-services-title">
+<header class="fm-services-header"><div><h2 id="fm-services-title">Detalhes dos serviços</h2><p id="fm-services-scope"></p></div><button type="button" class="btn btn-secondary" id="fm-services-close" autofocus>Fechar</button></header>
+<p class="fm-service-help">Confira o valor total, os pagamentos registrados e o saldo de cada tarefa. Alterações valem para este fechamento e exigem uma nova conferência do adendo.</p>
+<div id="fm-services-message" role="status" aria-live="polite" hidden></div>
+<button type="button" class="btn btn-secondary" id="fm-services-retry" hidden>Tentar novamente</button>
+<div class="fm-services-tabs" role="group" aria-label="Situação dos serviços"><button type="button" class="btn btn-secondary" data-service-tab="pending" aria-pressed="true">Pendentes <span id="fm-services-pending-count"></span></button><button type="button" class="btn btn-secondary" data-service-tab="paid" aria-pressed="false">Já pagos <span id="fm-services-paid-count"></span></button><button type="button" class="btn btn-secondary" data-service-tab="removed" aria-pressed="false">Retirados <span id="fm-services-removed-count"></span></button></div>
+<p id="fm-services-summary" class="fm-service-help"></p>
+<div class="fm-service-batch"><label for="fm-service-function">Função</label><select id="fm-service-function"></select><button type="button" class="btn btn-secondary" id="fm-withdraw-function">Retirar função</button><button type="button" class="btn btn-secondary" id="fm-restore-function">Restaurar função</button></div>
+<section id="fm-service-draft" class="fm-service-draft" hidden aria-labelledby="fm-service-draft-title"><h3 id="fm-service-draft-title">Alterações pendentes</h3><p>Confira as alterações antes de salvar. Os valores e o PDF serão atualizados juntos.</p><ol id="fm-service-draft-list"></ol><div class="fm-service-row-actions"><button type="button" class="btn btn-primary" id="fm-service-draft-save">Salvar alterações</button><button type="button" class="btn btn-secondary" id="fm-service-draft-discard">Descartar alterações</button></div></section>
+<div class="fc-table-wrap fm-services-table"><table class="fc-table"><thead><tr><th>Tarefa</th><th>Valor total</th><th>Já pago</th><th>A pagar agora</th><th>Situação / ações</th></tr></thead><tbody id="fm-services"></tbody></table></div>
+
+</dialog>
+<dialog id="fm-service-dialog" class="fc-dialog" aria-labelledby="fm-service-title"><form id="fm-service-form"><header><h2 id="fm-service-title">Retirar tarefa</h2><button type="button" class="btn btn-secondary" id="fm-service-close">Fechar</button></header><p id="fm-service-target"></p><label id="fm-service-plant-label" hidden>Tipo da planta<select name="categoria_planta"></select></label><p id="fm-service-standard-note" class="fm-service-help" hidden>O valor da tabela será aplicado ao tipo selecionado. A correção ficará registrada automaticamente no histórico.</p><label id="fm-service-value-label" hidden>Valor total da tarefa (R$)<input name="valor" inputmode="decimal" placeholder="0,00"></label><p id="fm-service-paid" class="fm-service-help" hidden></p><label id="fm-service-reason-label">Motivo<textarea name="motivo" required maxlength="1000" rows="3"></textarea></label><p>A alteração ficará pendente até você salvar o conjunto. Depois, confira o novo PDF.</p><p id="fm-service-error" role="alert" hidden></p><button type="submit" class="btn btn-primary" id="fm-service-submit">Confirmar retirada</button></form></dialog>
 <dialog id="fm-extra-dialog" class="fc-dialog" aria-labelledby="fm-extra-title"><form id="fm-extra-form">
 <header><h2 id="fm-extra-title">Extra manual</h2><button class="btn btn-secondary" type="button" id="fm-extra-close">Fechar</button></header>
 <p id="fm-extra-scope"></p><label id="fm-extra-description">Descrição<input name="categoria" required maxlength="160" placeholder="Bônus qualidade"></label>

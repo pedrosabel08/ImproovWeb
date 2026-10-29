@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../helpers/custos_helper.php';
 require_once __DIR__ . '/../PagamentoService.php';
+require_once __DIR__ . '/FechamentoPlantaRules.php';
 
 /** FASE 1A: domínio puro. Recebe dados do repositório, nunca payload financeiro da UI. */
 final class FechamentoFinanceiroRules
@@ -181,6 +182,10 @@ final class FechamentoFinanceiroRules
             if ($dono !== $beneficiario && !$comissao) {
                 continue;
             }
+            // A etapa parcial não integra a lista nem os valores do fechamento mensal.
+            if ($mensal && $tipo === 'funcao_imagem' && (int)($origem['funcao_id'] ?? 0) === 4 && !empty($origem['finalizacao_parcial'])) {
+                continue;
+            }
             $classe = $comissao ? self::COMISSAO : match ($tipo) {
                 'funcao_imagem' => self::TAREFA, 'funcao_animacao' => self::ANIMACAO,
                 'acompanhamento' => self::ACOMPANHAMENTO,
@@ -240,7 +245,7 @@ final class FechamentoFinanceiroRules
             }
             $flag = (int)($origem['pagamento'] ?? 0);
             if ($elegivel['elegivel']) {
-                if (!$comissao && $flag === 1 && !$pagamentos) {
+                if (!$comissao && $flag === 1 && !$pagamentos && !($mensal && $base === 0)) {
                     $problemas[] = self::pendencia(
                         'PAGAMENTO_SEM_LEDGER',
                         $id,
@@ -291,6 +296,7 @@ final class FechamentoFinanceiroRules
                 'regra_base' => $comissao ? 'R07_COMISSAO_100_80' : 'R05_VALOR_PERSISTIDO_DA_ORIGEM',
                 'situacao' => $situacao, 'motivo_exclusao' => $exclusao, 'divergencias' => $problemas];
             if ($mensal) {
+                $item['planta_humanizada'] = FechamentoPlantaRules::metadados($origem, $comissao);
                 if ($tipo === 'funcao_imagem' && (int)($origem['funcao_id'] ?? 0) === 4) {
                     $item['descricao']['funcao'] = !empty($origem['finalizacao_parcial']) ? 'Finalização parcial'
                         : ($parcelaAnterior ? 'Finalização completa com pagamento final' : 'Finalização completa');

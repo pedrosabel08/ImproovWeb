@@ -25,12 +25,17 @@ same($r['itens_analisados'][0]['descricao']['funcao'],'Finalização completa co
 $o=$origem;$o['pagamento']=0;
 same($run($o,[])['itens_analisados'][0]['descricao']['funcao'],'Finalização completa','Nome sem parcela');
 $o['finalizacao_parcial']=1;
-same($run($o,[])['itens_analisados'][0]['descricao']['funcao'],'Finalização parcial','Nome na etapa parcial');
+same($run($o,[])['itens_analisados'],[],'Etapa parcial fora da lista e da soma mensal');
 $o['finalizacao_parcial']=0;$o['pago_parcial_count']=1;
 same($run($o,[])['itens_analisados'][0]['descricao']['funcao'],'Finalização completa com pagamento final','Parcela de executor anterior preserva o conceito');
 $foreign=$pago;$foreign['beneficiario_id']=20;
 same($run($origem,[$foreign])['itens_analisados'][0]['situacao'],'PENDENCIA','Pagamento de outro beneficiário não quita');
 same($run($origem,[])['itens_analisados'][0]['situacao'],'PENDENCIA','Flag sem ledger continua exigindo conferência');
+$zero=$origem;$zero['valor']='0';$zero['funcao_id']=6;$zero['nome_funcao']='Alteração';
+same($run($zero,[])['pendencias'],[],'Tarefa zero com flag legada não bloqueia fechamento mensal');
+same($run($zero,[])['itens_analisados'][0]['situacao'],'SEM_VALOR_DEVIDO','Zero não fabrica quitação');
+same($run($zero,[])['itens_analisados'][0]['pagamentos'],[],'Não fabrica lançamentos');
+same($run($zero,[],false)['pendencias'][0]['codigo'],'PAGAMENTO_SEM_LEDGER','Regra legada preservada');
 $wrong=$pago;$wrong['origem_id']=1;
 same($run($origem,[$wrong])['itens_analisados'][0]['situacao'],'PENDENCIA','Outra origem não quita');
 $excess=$pago;$excess['valor']='500';

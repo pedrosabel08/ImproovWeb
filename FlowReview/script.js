@@ -3870,7 +3870,7 @@ function setComparisonMode(mode) {
   const description = document.querySelector(".envios-comparison-toolbar span");
   if (description)
     description.textContent = slider
-      ? "Selecione os envios e arraste a divisória para comparar antes e depois."
+      ? "Arraste a divisória para comparar. Use o zoom e arraste a imagem para examinar os detalhes."
       : "Selecione um envio em cada lado. Zoom e movimento são independentes.";
   ["compare-envios-btn", "compare-slider-btn"].forEach((id, index) => {
     const button = document.getElementById(id);
@@ -3937,8 +3937,105 @@ function initializeEnviosComparison() {
         .getElementById("comparison-slider-stage")
         .style.setProperty("--split", event.target.value + "%");
     });
+  initializeComparisonSliderZoom();
   window.addEventListener("resize", updateEnviosComparisonAvailability);
   updateEnviosComparisonAvailability();
+}
+
+function initializeComparisonSliderZoom() {
+  const stage = document.getElementById("comparison-slider-stage");
+  const range = document.getElementById("comparison-slider-range");
+  let scale = 1,
+    x = 0,
+    y = 0,
+    drag = null;
+  const render = () => {
+    const bounds = stage.getBoundingClientRect();
+    x = Math.max(
+      (-bounds.width * (scale - 1)) / 2,
+      Math.min((bounds.width * (scale - 1)) / 2, x),
+    );
+    y = Math.max(
+      (-bounds.height * (scale - 1)) / 2,
+      Math.min((bounds.height * (scale - 1)) / 2, y),
+    );
+    stage.style.setProperty("--zoom-scale", scale);
+    stage.style.setProperty("--zoom-x", x + "px");
+    stage.style.setProperty("--zoom-y", y + "px");
+    stage.classList.toggle("is-zoomed", scale > 1);
+  };
+  const zoom = (next, clientX, clientY) => {
+    const bounds = stage.getBoundingClientRect();
+    const newScale = Math.max(1, Math.min(5, next));
+    const px = clientX == null ? 0 : clientX - bounds.left - bounds.width / 2;
+    const py = clientY == null ? 0 : clientY - bounds.top - bounds.height / 2;
+    x = px - ((px - x) * newScale) / scale;
+    y = py - ((py - y) * newScale) / scale;
+    scale = newScale;
+    render();
+  };
+  stage.querySelectorAll("[data-slider-zoom]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.sliderZoom;
+      zoom(
+        action === "reset" ? 1 : scale * (action === "in" ? 1.25 : 1 / 1.25),
+      );
+    });
+  });
+  stage.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      zoom(
+        scale * (event.deltaY < 0 ? 1.15 : 1 / 1.15),
+        event.clientX,
+        event.clientY,
+      );
+    },
+    { passive: false },
+  );
+  range.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    range.focus();
+    range.setPointerCapture(event.pointerId);
+    const move = (e) => {
+      const bounds = stage.getBoundingClientRect();
+      range.value = Math.max(
+        0,
+        Math.min(100, ((e.clientX - bounds.left) / bounds.width) * 100),
+      );
+      range.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    move(event);
+    const end = () => {
+      range.removeEventListener("pointermove", move);
+      range.removeEventListener("pointerup", end);
+      range.removeEventListener("pointercancel", end);
+    };
+    range.addEventListener("pointermove", move);
+    range.addEventListener("pointerup", end);
+    range.addEventListener("pointercancel", end);
+  });
+  stage.addEventListener("pointerdown", (event) => {
+    if (scale <= 1 || event.target.closest("button, input")) return;
+    drag = { x: event.clientX, y: event.clientY, startX: x, startY: y };
+    stage.setPointerCapture(event.pointerId);
+    stage.classList.add("is-panning");
+  });
+  stage.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    x = drag.startX + event.clientX - drag.x;
+    y = drag.startY + event.clientY - drag.y;
+    render();
+  });
+  const stop = () => {
+    drag = null;
+    stage.classList.remove("is-panning");
+  };
+  stage.addEventListener("pointerup", stop);
+  stage.addEventListener("pointercancel", stop);
+  window.addEventListener("resize", render);
 }
 
 initializeEnviosComparison();

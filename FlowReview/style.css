@@ -1838,6 +1838,7 @@ p.imagem_nome {
   border-radius: 8px;
   background: #121212;
   isolation: isolate;
+  touch-action: none;
 }
 [data-slider-layer] {
   position: absolute;
@@ -1854,7 +1855,10 @@ p.imagem_nome {
   max-height: 100%;
   margin: 0;
   object-fit: contain;
-  transform: none;
+  transform: translate(var(--zoom-x, 0px), var(--zoom-y, 0px))
+    scale(var(--zoom-scale, 1)) !important;
+  transform-origin: center;
+  pointer-events: none;
   user-select: none;
 }
 [data-slider-layer="a"] {
@@ -1900,13 +1904,45 @@ p.imagem_nome {
 }
 #comparison-slider-range {
   position: absolute;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  left: var(--split);
+  transform: translateX(-50%);
+  width: 44px;
   height: 100%;
   margin: 0;
   opacity: 0;
   cursor: ew-resize;
   touch-action: none;
+}
+.comparison-slider-zoom {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+}
+.comparison-slider-zoom button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #ffffff55;
+  border-radius: 5px;
+  background: #161616e6;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+}
+.comparison-slider-zoom button:focus-visible,
+#comparison-slider-range:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+#comparison-slider-stage.is-zoomed {
+  cursor: grab;
+}
+#comparison-slider-stage.is-panning {
+  cursor: grabbing;
 }
 #comparison-slider-stage:focus-within {
   outline: 2px solid #2563eb;

@@ -74,7 +74,7 @@ function loadDependencies() {
       () => !!window.ScrollTrigger,
     );
     return Promise.all([
-      import("./obra-3d-viewer.js"),
+      import("./obra-3d-viewer.js?v=20261029"),
       import("./obra-3d-scroll.js?v=20261023"),
     ]);
   })().catch((error) => {

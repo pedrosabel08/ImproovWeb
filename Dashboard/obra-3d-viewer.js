@@ -165,7 +165,7 @@ export class Obra3DViewer {
     const adjustedGlass = new Map();
     // A apresentação destaca a arquitetura. O entorno continua no viewer completo.
     this.model.traverse((object) => {
-      if (/^(terreno|terrain|ground|entorno)(?:_|\b)/i.test(object.name))
+      if (/^(terreno|terrain|ground|entorno|rua)(?:_|\b)/i.test(object.name))
         object.visible = false;
       if (!object.isMesh) return;
       const materials = Array.isArray(object.material)

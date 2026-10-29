@@ -91,6 +91,7 @@ function fixture() {
       entrega_item_id: i + 1,
       imagem_id: i + 100,
       imagem_nome: `Imagem ${String(i + 1).padStart(2, "0")}`,
+      tipo_imagem: i < 5 ? "Unidade" : "Fachada",
       nivel_complexidade_snapshot: (i % 5) + 1,
       pontos_snapshot: ((i % 5) + 1) * 5,
       responsavel_planejado_id: null,
@@ -138,7 +139,10 @@ function fixture() {
           },
         });
       if (body.acao === "sugerir") {
-        if (holdSuggestion) await new Promise((resolve) => { releaseSuggestion = resolve; });
+        if (holdSuggestion)
+          await new Promise((resolve) => {
+            releaseSuggestion = resolve;
+          });
         const dates = [
           "2026-10-30",
           "2026-11-04",
@@ -230,7 +234,12 @@ function fixture() {
     await page.setContent(
       `<html data-theme="dark"><head><base href="${base}"><style>${styles}</style></head><body class="planning-page" data-entrega-id="900001">${template}</body></html>`,
     );
-    await page.addScriptTag({content: fs.readFileSync(path.join(root, 'assets/js/thinking-orbs.js'), 'utf8')});
+    await page.addScriptTag({
+      content: fs.readFileSync(
+        path.join(root, "assets/js/thinking-orbs.js"),
+        "utf8",
+      ),
+    });
     const boot = async () => {
       await page.addScriptTag({
         content: fs.readFileSync(
@@ -433,14 +442,37 @@ function fixture() {
       "Candidatos exibem qualificação e disponibilidade diária",
     );
     await page.locator("#ap-close-people").click();
+    await page
+      .getByText("Distribuir por tipo de imagem", { exact: true })
+      .click();
+    await page.locator('[data-type-rule="Unidade"]').selectOption("11");
+    await page.getByText("Priorizar tipos de imagem", { exact: true }).click();
+    await page.locator("#ap-type-priority-enabled").check();
+    await page.getByRole("button", { name: "Subir Unidade" }).click();
     await page.locator("#ap-suggest").click();
-    await page.locator('#ap-suggestion-loading #ap-loading').waitFor({state:'visible'});
-    check(await page.locator('#ap-suggestion-loading canvas[data-thinking-orb][aria-label="Gerando sugestão"]').isVisible() && await page.locator('#ap-suggest-order').isDisabled(), 'Thinking Orbs visível durante geração; ordem bloqueada');
+    await page
+      .locator("#ap-suggestion-loading #ap-loading")
+      .waitFor({ state: "visible" });
+    check(
+      (await page
+        .locator(
+          '#ap-suggestion-loading canvas[data-thinking-orb][aria-label="Gerando sugestão"]',
+        )
+        .isVisible()) && (await page.locator("#ap-suggest-order").isDisabled()),
+      "Thinking Orbs visível durante geração; ordem bloqueada",
+    );
     await page.waitForFunction(() => {
-      const c=document.querySelector('#ap-suggestion-loading canvas');
-      return c.width > 0 && c.height > 0 && c.getContext('2d').getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3 && v>0);
+      const c = document.querySelector("#ap-suggestion-loading canvas");
+      return (
+        c.width > 0 &&
+        c.height > 0 &&
+        c
+          .getContext("2d")
+          .getImageData(0, 0, c.width, c.height)
+          .data.some((v, i) => i % 4 === 3 && v > 0)
+      );
     });
-    check(true, 'Thinking Orbs global desenha no canvas durante a sugestão');
+    check(true, "Thinking Orbs global desenha no canvas durante a sugestão");
     holdSuggestion = false;
     releaseSuggestion();
     await page.waitForFunction(() =>
@@ -453,11 +485,28 @@ function fixture() {
         posts.at(-1).acao === "sugerir",
       "Sugestão agregada sem sobrecarga, sem confirmar",
     );
-    check(posts.at(-1).ordem_complexidade === 'MAIOR' && await page.locator('#ap-loading').isHidden(), 'Padrão maior complexidade e loading encerra');
-    await page.locator('#ap-suggest-order').selectOption('MENOR');
-    await page.locator('#ap-suggest').click();
-    await page.waitForFunction(() => !document.getElementById('ap-suggest').disabled);
-    check(posts.at(-1).ordem_complexidade === 'MENOR', 'Geração envia a ordem menor complexidade');
+    check(
+      posts.at(-1).ordem_complexidade === "MAIOR" &&
+        (await page.locator("#ap-loading").isHidden()),
+      "Padrão maior complexidade e loading encerra",
+    );
+    check(
+      posts.at(-1).responsaveis_por_tipo.Unidade === 11,
+      "Regra de responsável por tipo enviada à sugestão",
+    );
+    check(
+      posts.at(-1).prioridade_tipos.join(",") === "Unidade,Fachada",
+      "Prioridade alterada enviada na ordem escolhida",
+    );
+    await page.locator("#ap-suggest-order").selectOption("MENOR");
+    await page.locator("#ap-suggest").click();
+    await page.waitForFunction(
+      () => !document.getElementById("ap-suggest").disabled,
+    );
+    check(
+      posts.at(-1).ordem_complexidade === "MENOR",
+      "Geração envia a ordem menor complexidade",
+    );
     await page.locator('#ap-rows tr[data-id="1"] [data-pin]').click();
     await page.locator("#ap-suggest").click();
     await page.waitForFunction(
@@ -527,6 +576,11 @@ function fixture() {
       ["mobile", 390, 844],
     ]) {
       await page.setViewportSize({ width, height });
+      await page.waitForFunction(
+        (expected) =>
+          document.querySelectorAll(".ap-grid-day").length === expected,
+        width <= 600 ? 1 : 3,
+      );
       check(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -603,23 +657,70 @@ function fixture() {
       "Novo replanejamento exige responsável ativo",
     );
     await page.locator('#ap-rows tr[data-id="1"] [data-pin]').click();
-    check((await page.locator('#ap-rows tr[data-id="1"] [data-pin]').getAttribute('aria-pressed')) === 'false', 'Decisão fixada de responsável inelegível pode ser liberada para redistribuição');
-    plan.itens.forEach((i) => { i.pontos_replanejamento = plan.configuracao.niveis[i.nivel_complexidade_snapshot]; i.pontos_snapshot = null; });
-    await page.locator('#ap-reload').evaluate((el) => { el.hidden = false; });
-    await page.locator('#ap-reload').click();
-    await page.waitForFunction(() => document.getElementById('ap-reload').hidden);
-    check((await page.locator('#ap-complete').textContent()) === '10/10 completos' && (await page.locator('#ap-demand').textContent()).includes('Pontos não registrados'), 'Plano anterior aos pontos não vira demanda zero nem perde decisões');
-    check((await page.locator('#ap-grid').textContent()).includes('Responsável histórico'), 'Grade exibe responsável histórico fora da lista de candidatos');
-    await page.locator('#ap-replan').click();
-    check((await page.locator('#ap-demand').textContent()).includes('150 pontos') && (await page.locator('#ap-rows tr[data-id="1"] select').inputValue()) === '99', 'Replanejar calcula pesos atuais sem substituir responsável automaticamente');
-    await page.locator('#ap-cancel-replan').click();
-    check((await page.locator('#ap-demand').textContent()).includes('Pontos não registrados'), 'Cancelar replanejamento restaura ausência de snapshot de pontos');
-    plan.capacidade.agenda[11]['2026-10-28'].avisos = ['Compromisso R00 sem ocupação diária confiável'];
-    await page.locator('#ap-reload').evaluate((el) => { el.hidden = false; });
-    await page.locator('#ap-reload').click();
-    await page.waitForFunction(() => document.getElementById('ap-reload').hidden);
-    const unknownCell = await page.locator('[data-drop-person="11"][data-drop-day="2026-10-28"]').textContent();
-    check(unknownCell.includes('disponibilidade não estimada') && !unknownCell.includes('pts disponíveis'), 'Compromisso desconhecido não é apresentado como capacidade livre');
+    check(
+      (await page
+        .locator('#ap-rows tr[data-id="1"] [data-pin]')
+        .getAttribute("aria-pressed")) === "false",
+      "Decisão fixada de responsável inelegível pode ser liberada para redistribuição",
+    );
+    plan.itens.forEach((i) => {
+      i.pontos_replanejamento =
+        plan.configuracao.niveis[i.nivel_complexidade_snapshot];
+      i.pontos_snapshot = null;
+    });
+    await page.locator("#ap-reload").evaluate((el) => {
+      el.hidden = false;
+    });
+    await page.locator("#ap-reload").click();
+    await page.waitForFunction(
+      () => document.getElementById("ap-reload").hidden,
+    );
+    check(
+      (await page.locator("#ap-complete").textContent()) ===
+        "10/10 completos" &&
+        (await page.locator("#ap-demand").textContent()).includes(
+          "Pontos não registrados",
+        ),
+      "Plano anterior aos pontos não vira demanda zero nem perde decisões",
+    );
+    check(
+      (await page.locator("#ap-grid").textContent()).includes(
+        "Responsável histórico",
+      ),
+      "Grade exibe responsável histórico fora da lista de candidatos",
+    );
+    await page.locator("#ap-replan").click();
+    check(
+      (await page.locator("#ap-demand").textContent()).includes("150 pontos") &&
+        (await page.locator('#ap-rows tr[data-id="1"] select').inputValue()) ===
+          "99",
+      "Replanejar calcula pesos atuais sem substituir responsável automaticamente",
+    );
+    await page.locator("#ap-cancel-replan").click();
+    check(
+      (await page.locator("#ap-demand").textContent()).includes(
+        "Pontos não registrados",
+      ),
+      "Cancelar replanejamento restaura ausência de snapshot de pontos",
+    );
+    plan.capacidade.agenda[11]["2026-10-28"].avisos = [
+      "Compromisso R00 sem ocupação diária confiável",
+    ];
+    await page.locator("#ap-reload").evaluate((el) => {
+      el.hidden = false;
+    });
+    await page.locator("#ap-reload").click();
+    await page.waitForFunction(
+      () => document.getElementById("ap-reload").hidden,
+    );
+    const unknownCell = await page
+      .locator('[data-drop-person="11"][data-drop-day="2026-10-28"]')
+      .textContent();
+    check(
+      unknownCell.includes("disponibilidade não estimada") &&
+        !unknownCell.includes("pts disponíveis"),
+      "Compromisso desconhecido não é apresentado como capacidade livre",
+    );
     plan.pode_editar = false;
     await page.locator("#ap-reload").evaluate((element) => {
       element.hidden = false;

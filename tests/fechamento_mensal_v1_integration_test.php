@@ -72,8 +72,8 @@ $fixedModel = json_decode($c->query('SELECT modelo_json FROM pagamento_fechament
 check((bool)array_filter($fixedModel['rubricas'], fn ($e) => $e['categoria'] === 'Extra manual fixo' && $e['valor_centavos'] === 50000), 'Extra de FIXO aparece no PDF');
 check(!array_filter($fixedModel['rubricas'], fn ($e) => $e['categoria'] === 'Valor fixo'), 'Fixo não aparece como categoria no mensal');
 check(count(array_filter($fixedModel['rubricas'], fn ($e) => $e['categoria'] === 'Acompanhamento' && $e['valor_centavos'] === 150000)) === 1, 'Acompanhamento da Nicolle aparece uma vez');
-check(count($fixedModel['servicos']) === 2 && !array_filter($fixedModel['servicos'], fn ($i) => $i['valor_centavos'] !== 0), 'Tarefas de FIXO aparecem sem remuneração duplicada');
-check((bool)array_filter($fixedModel['servicos'], fn ($i) => $i['identidade']['origem_id'] === 901 && $i['funcao'] === 'Finalização parcial'), 'Etapa P0 preserva nome da Finalização parcial no PDF');
+check(count($fixedModel['servicos']) === 1 && !array_filter($fixedModel['servicos'], fn ($i) => $i['valor_centavos'] !== 0), 'Tarefas de FIXO aparecem sem remuneração duplicada');
+check(!array_filter($fixedModel['servicos'], fn ($i) => $i['identidade']['origem_id'] === 901), 'Etapa P0 não aparece no PDF');
 check((int)$c->query("SELECT COUNT(*) n FROM pagamento_fechamento_decisao d JOIN pagamento_fechamento f ON f.id=d.fechamento_id WHERE f.colaborador_id=1 AND d.tipo='BONUS'")->fetch_assoc()['n'] === 1, 'Extra de FIXO mantém auditoria');
 $service->visualizar(1, '2026-09', $fixedDoc['document_id'], 'fixed-extra-view');
 $c->query('UPDATE colaborador SET participa_fechamento_mensal=0 WHERE idcolaborador=1');

@@ -180,9 +180,10 @@ final class FechamentoCompetenciaService
         });
     }
 
-    private function membros(int $c, bool $lock = false): array
+    private function membros(int $c, bool $lock = false, bool $porNome = false): array
     {
-        return $this->db->sql('SELECT m.*,f.colaborador_id,f.numero_revisao,f.competencia FROM pagamento_competencia_colaborador m JOIN pagamento_fechamento f ON f.id=m.fechamento_id WHERE m.competencia_id=? ORDER BY f.id'.($lock ? ' FOR UPDATE' : ''), [$c]);
+        $order = $porNome ? 'm.nome,f.colaborador_id,f.id' : 'f.id';
+        return $this->db->sql('SELECT m.*,f.colaborador_id,f.numero_revisao,f.competencia FROM pagamento_competencia_colaborador m JOIN pagamento_fechamento f ON f.id=m.fechamento_id WHERE m.competencia_id=? ORDER BY '.$order.($lock ? ' FOR UPDATE' : ''), [$c]);
     }
     private function revisao(array $m, bool $fechado): ?array
     {
@@ -488,7 +489,7 @@ final class FechamentoCompetenciaService
         $parcial = 0;
         $pagos = 0;
         $pago = 0;
-        foreach ($c ? $this->membros((int)$c['id']) : [] as $m) {
+        foreach ($c ? $this->membros((int)$c['id'], false, true) : [] as $m) {
             $r = $this->revisao($m, $fechado);
             $comp = $r['snapshot']['composicao'] ?? [];
             $monthly = ($comp['monthly_rule_version'] ?? null) === 'fechamento_mensal_v1';
@@ -516,7 +517,7 @@ final class FechamentoCompetenciaService
                 'pago_em' => $m['pago_em'],'pagamento_status' => $quitado ? 'PAGO' : ($fechado ? 'PENDENTE' : 'AGUARDANDO_FECHAMENTO'),
                 'funcoes' => array_values(array_map(fn ($s) => ['identidade' => $s['identidade'],'descricao' => $s['descricao'],'valor_centavos' => $s['saldo_centavos'] ?? 0,'valor_reconhecido_centavos' => $s['valor_reconhecido_centavos'] ?? $s['saldo_centavos'] ?? 0,'situacao_financeira' => $quitado ? 'PAGO' : ($fechado ? 'PENDENTE' : 'AGUARDANDO_FECHAMENTO')], array_filter($comp['producao_consulta']['itens_analisados'] ?? [], fn ($s) => $s['elegibilidade']['elegivel']))),
                 'resumo' => $comp['componentes'] ?? [],'reconciliacao' => $fechado ? json_decode($m['reconciliacao_json'], true) : $rec,
-                'pendencias' => array_merge(array_column($comp['pendencias'] ?? [],'mensagem'),$reconciliacaoPendente ? ['Atualize a revisão para incluir os pagamentos históricos no PDF.'] : [])];
+                'pendencias' => array_merge(array_column($comp['pendencias'] ?? [], 'mensagem'), $reconciliacaoPendente ? ['Atualize a revisão para incluir os pagamentos históricos no PDF.'] : [])];
         }
         $q = count($items);
         $total = $fechado ? (int)$c['total_fechado_centavos'] : null;
@@ -526,7 +527,9 @@ final class FechamentoCompetenciaService
             $guard = $this->db->sql("SELECT ACTION_STATEMENT FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME='pcc_roster_guard'")[0] ?? null;
             $inclusaoDisponivel = $guard && stripos($guard['ACTION_STATEMENT'], 'PARTICIPANTE_INCLUIDO') !== false;
             $disponiveis = $this->db->sql('SELECT p.idcolaborador AS colaborador_id,p.nome_colaborador AS nome FROM colaborador p WHERE p.ativo=1 AND p.participa_fechamento_mensal=1 AND NOT EXISTS (SELECT 1 FROM pagamento_competencia_colaborador m JOIN pagamento_fechamento f ON f.id=m.fechamento_id WHERE m.competencia_id=? AND f.colaborador_id=p.idcolaborador) ORDER BY p.nome_colaborador,p.idcolaborador', [$c['id']]);
-            foreach ($disponiveis as &$p) $p['colaborador_id'] = (int)$p['colaborador_id'];
+            foreach ($disponiveis as &$p) {
+                $p['colaborador_id'] = (int)$p['colaborador_id'];
+            }
             unset($p);
         }
         return ['competencia' => $ref,'ciclo_id' => $c ? (int)$c['id'] : null,'estado' => $fechado ? 'CONCLUIDO' : 'EM_ANDAMENTO','quantidade' => $q,'colaboradores' => $items,'contagens' => $counts,

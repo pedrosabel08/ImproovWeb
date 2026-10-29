@@ -72,36 +72,78 @@ final class FechamentoHttp
             }
             $input = $data['input'];
             $type = $data['tipo'];
+            if ($type === 'SERVICOS' && ($input['estado'] ?? null) === 'LOTE') {
+                self::campos($input, ['estado','operacoes'], ['estado','operacoes']);
+                if (!is_array($input['operacoes']) || !array_is_list($input['operacoes']) || count($input['operacoes']) < 1 || count($input['operacoes']) > 100) {
+                    throw new InvalidArgumentException('Lista de alterações inválida.');
+                }
+                $operations = [];
+                foreach ($input['operacoes'] as $operation) {
+                    if (!is_array($operation) || ($operation['estado'] ?? null) === 'LOTE') {
+                        throw new InvalidArgumentException('Alteração inválida.');
+                    }
+                    $validated = self::validar('decidir', array_replace($data, ['input' => $operation]));
+                    $operations[] = $validated['input'];
+                }
+                $data['input'] = ['estado' => 'LOTE','operacoes' => $operations];
+                return $data;
+            }
             $allowed = match($type) {
                 'FIXO' => ['estado','motivo','valor'],
                 'DESCONTO' => ['estado','motivo','valor'],
-                'SERVICOS' => ['estado','motivo','alvo','identidade','funcao_id'],
+                'SERVICOS' => ['estado','motivo','alvo','identidade','funcao_id','valor','categoria_planta'],
                 'BONUS' => ['estado','motivo','itens'],
                 'LIQUIDACAO' => ['estado','motivo','evidencias'],
                 default => throw new InvalidArgumentException('Decisão não suportada.'),
             };
-            self::campos($input, $allowed, ['estado','motivo']);
-            if (!is_string($input['motivo']) || trim($input['motivo']) === '' || strlen($input['motivo']) > 1000) {
+            $padrao = $type === 'SERVICOS' && ($input['estado'] ?? '') === 'APLICAR_TARIFA';
+            self::campos($input, $allowed, $padrao ? ['estado'] : ['estado','motivo']);
+            if (!$padrao && (!is_string($input['motivo']) || trim($input['motivo']) === '' || strlen($input['motivo']) > 1000)) {
                 throw new InvalidArgumentException('Informe o motivo da decisão.');
             }
             if (!is_string($input['estado'])) {
                 throw new InvalidArgumentException('Estado inválido.');
             }
             if ($type === 'SERVICOS') {
-                if (!in_array($input['estado'],['RETIRAR','RESTAURAR'],true) || !in_array($input['alvo']??null,['ITEM','FUNCAO'],true)) throw new InvalidArgumentException('Ação/alvo de serviços inválidos.');
-                if ($input['alvo']==='ITEM') {
-                    self::campos($input,['estado','motivo','alvo','identidade'],['estado','motivo','alvo','identidade']);
-                    if (!is_array($input['identidade'])) throw new InvalidArgumentException('Identidade inválida.');
-                    self::campos($input['identidade'],['beneficiario_id','origem','origem_id','classe'],['beneficiario_id','origem','origem_id','classe']);
-                    $id=$input['identidade'];
-                    if (!is_int($id['beneficiario_id']) || !is_int($id['origem_id']) || !is_string($id['origem']) || !is_string($id['classe'])) throw new InvalidArgumentException('Identidade inválida.');
+                if (!in_array($input['estado'], ['RETIRAR','RESTAURAR','ALTERAR_VALOR','RESTAURAR_VALOR','APLICAR_TARIFA'], true) || !in_array($input['alvo'] ?? null, ['ITEM','FUNCAO'], true)) {
+                    throw new InvalidArgumentException('Ação/alvo de serviços inválidos.');
+                }
+                $alterar = $input['estado'] === 'ALTERAR_VALOR';
+                if (in_array($input['estado'], ['ALTERAR_VALOR','RESTAURAR_VALOR','APLICAR_TARIFA'], true) && $input['alvo'] !== 'ITEM') {
+                    throw new InvalidArgumentException('Alteração de valor exige uma tarefa.');
+                }
+                if ($input['alvo'] === 'ITEM') {
+                    $fields = $padrao ? ['estado','alvo','identidade','categoria_planta'] : ['estado','motivo','alvo','identidade'];
+                    if ($alterar) {
+                        $fields[] = 'valor';
+                    }
+                    $allowedFields = $fields;
+                    if ($alterar) {
+                        $allowedFields[] = 'categoria_planta';
+                    }
+                    self::campos($input, $allowedFields, $fields);
+                    if (isset($input['categoria_planta'])) {
+                        FechamentoPlantaRules::categoria($input['categoria_planta']);
+                    }
+                    if (!is_array($input['identidade'])) {
+                        throw new InvalidArgumentException('Identidade inválida.');
+                    }
+                    self::campos($input['identidade'], ['beneficiario_id','origem','origem_id','classe'], ['beneficiario_id','origem','origem_id','classe']);
+                    $id = $input['identidade'];
+                    if (!is_int($id['beneficiario_id']) || !is_int($id['origem_id']) || !is_string($id['origem']) || !is_string($id['classe'])) {
+                        throw new InvalidArgumentException('Identidade inválida.');
+                    }
                 } else {
-                    self::campos($input,['estado','motivo','alvo','funcao_id'],['estado','motivo','alvo','funcao_id']);
-                    if (!is_int($input['funcao_id']) || $input['funcao_id']<=0) throw new InvalidArgumentException('Função inválida.');
+                    self::campos($input, ['estado','motivo','alvo','funcao_id'], ['estado','motivo','alvo','funcao_id']);
+                    if (!is_int($input['funcao_id']) || $input['funcao_id'] <= 0) {
+                        throw new InvalidArgumentException('Função inválida.');
+                    }
                 }
             } elseif ($type === 'DESCONTO') {
-                self::campos($input,['estado','motivo','valor'],['estado','motivo','valor']);
-                if ($input['estado']!=='DEFINIDO' || !is_string($input['valor'])) throw new InvalidArgumentException('Desconto inválido.');
+                self::campos($input, ['estado','motivo','valor'], ['estado','motivo','valor']);
+                if ($input['estado'] !== 'DEFINIDO' || !is_string($input['valor'])) {
+                    throw new InvalidArgumentException('Desconto inválido.');
+                }
             } elseif ($type === 'FIXO') {
                 if (!in_array($input['estado'], ['CADASTRO','SEM_VALOR_FIXO','OVERRIDE'], true)) {
                     throw new InvalidArgumentException('Estado de fixo inválido.');
@@ -129,6 +171,9 @@ final class FechamentoHttp
             }
             if (isset($input['valor']) && !is_string($input['valor'])) {
                 throw new InvalidArgumentException('Informe o valor como texto monetário.');
+            }
+            if ($padrao) {
+                $data['input'] = FechamentoPlantaRules::normalizarInput($input);
             }
         }
         return $data;
@@ -171,10 +216,15 @@ final class FechamentoHttp
             return [404,'NOT_FOUND','O registro solicitado não foi encontrado.'];
         }
         if ($e instanceof InvalidArgumentException) {
+            if ($message === 'O valor total não pode ser negativo nem inferior ao já pago.') {
+                return [422,'INVALID_TASK_VALUE','O valor total da tarefa não pode ser negativo nem inferior ao já pago.'];
+            }
             return [422,'INVALID_PAYLOAD','Os dados da ação são inválidos. Confira os campos, valores e a competência.'];
         }
         if ($e instanceof DomainException) {
-            if (preg_match('/^Fechamento conclu?do|^Colaborador fora do snapshot|^Pagamentos existentes divergem/',$message)) return [409,'OPERATION_BLOCKED',$message];
+            if (preg_match('/^Fechamento conclu?do|^Colaborador fora do snapshot|^Pagamentos existentes divergem/', $message)) {
+                return [409,'OPERATION_BLOCKED',$message];
+            }
             return [409,'OPERATION_BLOCKED','A ação está bloqueada. Confira os itens com atenção e atualize os valores.'];
         }
         return [500,'OPERATION_FAILED','Não foi possível concluir a ação. Use Tentar novamente para continuar com segurança.'];
@@ -265,7 +315,7 @@ final class FechamentoHttp
             }
             // Somente IDs/código; não registrar mensagem SQL, dinheiro, snapshot, CPF ou PDF.
             error_log('pagamento_fechamento '.json_encode(['request_id' => $request,'action' => $action,'code' => $code,'context' => $context,'exception' => get_class($e)]));
-            pagamento_json(['success' => false,'code' => $code,'error' => $message,'request_id' => $request],$status);
+            pagamento_json(['success' => false,'code' => $code,'error' => $message,'request_id' => $request], $status);
         } finally {
             if ($conn instanceof mysqli) {
                 $conn->close();

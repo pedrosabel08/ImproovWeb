@@ -60,6 +60,7 @@ $c->query('DELETE FROM pagamentos WHERE idpagamento=3');
 $c->query('ALTER TABLE pagamentos MODIFY idpagamento INT NOT NULL AUTO_INCREMENT, ADD criado_por INT NULL, ADD data_pagamento DATE NULL, ADD UNIQUE KEY uq_colab_mes(colaborador_id,mes_ref)');
 $c->query('ALTER TABLE pagamento_itens MODIFY idpagamento_item INT NOT NULL AUTO_INCREMENT, ADD criado_em DATETIME DEFAULT CURRENT_TIMESTAMP');
 $c->query('CREATE TABLE pagamento_eventos (idpagamento_evento INT AUTO_INCREMENT PRIMARY KEY,pagamento_id INT,tipo VARCHAR(50),descricao TEXT,usuario_id INT,criado_em DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB');
+$c->query('CREATE TABLE funcao_colaborador (colaborador_id INT,funcao_id INT,valor DECIMAL(12,2)) ENGINE=InnoDB');
 $c->query("CREATE TABLE checklist_operacional (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,module_key VARCHAR(40),entity_type VARCHAR(40),entity_id INT,requirements_version VARCHAR(40),sla_start_at DATETIME,due_at DATETIME,status VARCHAR(20) DEFAULT 'aberto',UNIQUE KEY uq(module_key,entity_type,entity_id)) ENGINE=InnoDB");
 $c->query("CREATE TABLE checklist_operacional_item (id INT AUTO_INCREMENT PRIMARY KEY,checklist_id INT,item_key VARCHAR(60),label VARCHAR(120),required INT,update_mode VARCHAR(20),done INT,done_at DATETIME,UNIQUE KEY uq(checklist_id,item_key)) ENGINE=InnoDB");
 $c->query("INSERT INTO colaborador (idcolaborador,nome_colaborador,valor_fixo,ativo,participa_fechamento_mensal,tipo_remuneracao) VALUES (21,'Pedro responsável',0,1,0,NULL),(9,'André L. responsável',0,1,0,NULL),(43,'Giovana responsável',0,1,0,NULL),(17,'Só FIXO sem tarefas',3000,1,1,'FIXO')");
@@ -87,6 +88,7 @@ ok((int)$c->query("SELECT COUNT(*) n FROM pagamento_competencia_evento WHERE tip
 ok((int)$c->query("SELECT COUNT(*) n FROM checklist_operacional WHERE due_at='2026-10-06 23:59:59'")->fetch_assoc()['n'] === 2, 'Prazos das pendências acompanham previsão auditada');
 ok($first['quantidade'] === 7, 'Snapshot inclui FIXO sem tarefas, FIXO_VARIAVEL e zero');
 ok($first['quantidade'] === 7 && $s->resumo('2026-09')['colaboradores'][6]['preparado'], 'Job consolida novos indivíduos automaticamente');
+ok(array_column($s->resumo('2026-09')['colaboradores'],'nome') === ['Adriana — sintético','Anderson — sintético','Bruna — sintético','Divergência — sintético','Marcio — sintético','Nicolle — sintético','Só FIXO sem tarefas'], 'Resumo ordena participantes por nome, independentemente da ordem de criação');
 ok($a->executar(new DateTimeImmutable('2026-10-01 09:00:00', new DateTimeZone('America/Sao_Paulo')))['ciclo_id'] === $first['ciclo_id'], 'Repetição não duplica ciclo');
 ok((int)$c->query('SELECT COUNT(*) n FROM checklist_operacional')->fetch_assoc()['n'] === 2, 'Duas pendências únicas');
 ok((int)$c->query('SELECT COUNT(*) n FROM pagamento_competencia_responsavel')->fetch_assoc()['n'] === 3, 'Três responsáveis por IDs');
@@ -135,13 +137,13 @@ foreach ($ui->mensal('2026-09')['colaboradores'] as $p) {
     }
 }
 // Quitados pagos com a própria competência ficam visíveis no adendo sem alterar o total documental.
-$c->query("UPDATE pagamentos SET mes_ref='2026-09' WHERE idpagamento=900");
-$sameMonth = $ui->preparar(8, '2026-09', 2, 'paid-same-competence')['revisao'];
+$c->query("UPDATE pagamento_itens SET pagamento_id=2 WHERE pagamento_id=900"); // Reutiliza o cabeçalho único do colaborador na competência.
+$sameMonth = $ui->preparar(8, '2026-09', $ui->obter(8, '2026-09')['latest_version'], 'paid-same-competence')['revisao'];
 $sameMonthDoc = $ui->gerar(8, '2026-09', $sameMonth['fechamento_id'], $sameMonth['id'], 'paid-same-competence-preview');
 $sameMonthModel = json_decode($c->query('SELECT modelo_json FROM pagamento_fechamento_documento WHERE id='.$sameMonthDoc['document_id'])->fetch_assoc()['modelo_json'], true);
 $paidRow = array_values(array_filter($sameMonthModel['servicos'], fn ($row) => (int)$row['identidade']['origem_id'] === 903))[0] ?? null;
 ok($paidRow !== null && $paidRow['situacao'] === 'PAGO_NA_COMPETENCIA' && $paidRow['valor_centavos'] === 19000 && str_contains($sameMonthModel['placeholders']['tabela_servicos'], 'Pago nesta competência'), 'PDF mostra o serviço quitado, o valor pago e identifica o pagamento da competência');
-$syntheticReview = $sameMonth;
+$syntheticReview = (new FechamentoRevisaoRepository($c))->revisao($sameMonth['id']);
 $syntheticReview['snapshot']['composicao']['producao_consulta']['itens_analisados'][] = ['identidade' => ['beneficiario_id' => 8,'origem' => 'funcao_animacao','origem_id' => 8801,'classe' => 'FUNCAO_ANIMACAO'],
     'elegibilidade' => ['elegivel' => true],'situacao' => 'DEVIDO','saldo_centavos' => 500,'descricao' => ['obra_id' => 4,'obra_nome' => 'Projeto B','imagem' => 'Logo Principal','funcao' => 'Animação','tipo_animacao' => 'logo ia']];
 $syntheticReview['snapshot']['composicao']['producao_consulta']['itens_analisados'][] = ['identidade' => ['beneficiario_id' => 8,'origem' => 'funcao_animacao','origem_id' => 8802,'classe' => 'FUNCAO_ANIMACAO'],
@@ -278,7 +280,9 @@ ok((int)$c->query("SELECT COUNT(*) n FROM checklist_operacional WHERE status='co
 ok($s->concluirPagamento('2026-09', 'quit-final')['situacao'] === 'QUITADO', 'Conclusão pagamento validada');
 $payload = pagamento_resumo_geral($c, 9, 2026);
 ok($payload['resumo']['total'] === $total && $payload['resumo']['pago'] === $total && $payload['resumo']['pendente'] === 0, 'KPI e gráfico usam mesma fonte');
-ok(array_sum(array_column($payload['funcoes'],'total')) === $total,'Componentes do gráfico reconciliam total');
+$serviceTotal=0;
+foreach($done['colaboradores'] as $person) $serviceTotal+=(int)$ui->obter($person['colaborador_id'],'2026-09')['revisao']['resumo']['SERVICOS'];
+ok(array_sum(array_column($payload['funcoes'],'total')) === $serviceTotal,'Gráfico de funções reconcilia serviços; fixo, extras e descontos ficam no total financeiro');
 blocked(fn () => $c->query("UPDATE pagamento_competencia SET estado='EM_ANDAMENTO',concluido_em=NULL,total_fechado_centavos=NULL WHERE id=".$done['ciclo_id']),'Trigger impede reabertura');
 blocked(fn () => $c->query('UPDATE pagamento_competencia_colaborador SET total_centavos=0 WHERE competencia_id='.$done['ciclo_id']),'Trigger protege snapshot');
 blocked(fn () => $c->query('UPDATE pagamento_itens SET valor=0 WHERE idpagamento_item=(SELECT pagamento_item_id FROM pagamento_competencia_lancamento LIMIT 1)'),'Ledger vinculado imutável');

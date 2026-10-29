@@ -89,6 +89,7 @@ let pending = null,
   blobURL = null;
 let queue = [],
   queuePosition = -1;
+let serviceDraft = [];
 let statsSignature = null;
 const icon = (name) =>
   '<i class="fa-solid ' + name + '" aria-hidden="true"></i>';
@@ -164,7 +165,14 @@ const endpoint = (a) =>
     : ["concluir", "quitar", "pagar"].includes(a)
       ? "api/fechamento/competencia.php"
       : "api/" +
-        (["mensal", "iniciar", "incluir", "obter", "preparar", "decidir"].includes(a)
+        ([
+          "mensal",
+          "iniciar",
+          "incluir",
+          "obter",
+          "preparar",
+          "decidir",
+        ].includes(a)
           ? "fechamento/"
           : "documento/") +
         a +
@@ -172,6 +180,10 @@ const endpoint = (a) =>
 const message = (t) => {
   $("fm-message").textContent = t;
   $("fm-message").hidden = !t;
+  for (const id of ["fm-services-message", "fm-service-error"]) {
+    $(id).textContent = t;
+    $(id).hidden = !t;
+  }
 };
 const save = (p) => {
   pending = p;
@@ -196,7 +208,7 @@ function update() {
     "fm-refresh",
     "fm-include",
   ])
-    $(id).disabled = locked;
+    $(id).disabled = locked || serviceDraft.length > 0;
   const closed = monthly?.estado === "CONCLUIDO";
   const includeAvailable =
     !closed &&
@@ -210,16 +222,25 @@ function update() {
     monthly.inclusao_disponivel !== false ||
     !(monthly.participantes_disponiveis || []).length;
   document
-    .querySelectorAll("[data-service-index]")
+    .querySelectorAll(
+      "[data-service-index],[data-service-edit],[data-service-reset],[data-service-tariff]",
+    )
     .forEach((button) => (button.disabled = locked || closed));
   for (const id of ["fm-withdraw-function", "fm-restore-function"])
     $(id).disabled =
       locked || closed || !$("fm-service-function").options.length;
   $("fm-service-submit").disabled = locked || closed;
-  $("fm-start").disabled = locked || (!monthly?.estado && !monthly?.quantidade);
+  $("fm-service-draft-save").disabled = locked || closed;
+  $("fm-service-draft-discard").disabled = locked;
+  $("fm-service-details").disabled = busy || !financial?.revisao;
+  $("fm-start").disabled =
+    locked ||
+    !!serviceDraft.length ||
+    (!monthly?.estado && !monthly?.quantidade);
   if ($("fm-conclude"))
     $("fm-conclude").disabled =
       locked ||
+      !!serviceDraft.length ||
       closed ||
       !monthly?.quantidade ||
       monthly.contagens.CONFIRMADO !== monthly.quantidade;
@@ -228,22 +249,34 @@ function update() {
     $("fm-discount").disabled = locked || closed || !financial?.revisao;
   $("fm-review").disabled =
     locked ||
+    !!serviceDraft.length ||
     !monthly?.colaboradores.some(
       (c) => c.preparado && c.status !== "CONFIRMADO",
     );
   $("fm-confirm").disabled =
-    locked || !viewed || documentMeta?.estado !== "PREVIEW";
-  $("fm-extra").disabled = locked || closed || !financial?.revisao;
+    locked ||
+    !!serviceDraft.length ||
+    !viewed ||
+    documentMeta?.estado !== "PREVIEW";
+  $("fm-extra").disabled =
+    locked || !!serviceDraft.length || closed || !financial?.revisao;
+  $("fm-discount").disabled ||= !!serviceDraft.length;
   $("fm-extra-form").querySelector("[type=submit]").disabled = locked;
   document
     .querySelectorAll("[data-person],[data-remove-extra]")
-    .forEach((b) => (b.disabled = locked));
+    .forEach((b) => (b.disabled = locked || !!serviceDraft.length));
   $("fm-busy").hidden = !busy || !globalBusy;
   $("fm-retry").hidden = !pending;
   $("fm-retry-button").disabled = busy;
-  $("fm-person-previous").disabled = locked || index <= 0;
+  $("fm-services-retry").hidden = !pending;
+  $("fm-services-retry").disabled = busy;
+  $("fm-person-previous").disabled =
+    locked || !!serviceDraft.length || index <= 0;
   $("fm-person-next").disabled =
-    locked || index < 0 || index >= (monthly?.quantidade || 0) - 1;
+    locked ||
+    !!serviceDraft.length ||
+    index < 0 ||
+    index >= (monthly?.quantidade || 0) - 1;
   $("fm-step").setAttribute("aria-busy", String(busy));
   $("fm-page-root").setAttribute("aria-busy", String(busy));
   $("fm-confirm").innerHTML =
@@ -342,7 +375,10 @@ function summary() {
   $("fm-include").hidden =
     isClosed || !m.ciclo_id || !m.inclusao_disponivel || !disponiveis.length;
   $("fm-roster-note").hidden =
-    isClosed || !m.ciclo_id || m.inclusao_disponivel !== false || !disponiveis.length;
+    isClosed ||
+    !m.ciclo_id ||
+    m.inclusao_disponivel !== false ||
+    !disponiveis.length;
   $("fm-include-person").innerHTML =
     '<option value="">Selecione um colaborador</option>' +
     disponiveis
@@ -568,62 +604,7 @@ function breakdown(r) {
   $("fm-attention").innerHTML = r.pendencias
     .map((p) => '<div class="fm-notice"><p>' + esc(p.mensagem) + "</p></div>")
     .join("");
-  const compareText = (left, right) =>
-    String(left || "").localeCompare(String(right || ""), "pt-BR", {
-      numeric: true,
-      sensitivity: "base",
-    });
-  const serviceItems = [...r.financeiro_servicos.itens_analisados].sort(
-    (a, b) =>
-      compareText(
-        a.descricao.obra_nome || a.descricao.obra_id,
-        b.descricao.obra_nome || b.descricao.obra_id,
-      ) ||
-      compareText(a.descricao.imagem, b.descricao.imagem) ||
-      compareText(a.descricao.animacao_id, b.descricao.animacao_id) ||
-      compareText(a.descricao.funcao, b.descricao.funcao),
-  );
-  const serviceFunctions = new Map();
-  serviceItems.forEach((s) => {
-    const id = Number(s.descricao.funcao_id);
-    if (id > 0)
-      serviceFunctions.set(id, id === 4 ? "Finalização" : s.descricao.funcao);
-  });
-  $("fm-service-function").innerHTML = [...serviceFunctions]
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), "pt-BR"))
-    .map(([id, name]) => `<option value="${id}">${esc(name)}</option>`)
-    .join("");
-  for (const id of ["fm-withdraw-function", "fm-restore-function"])
-    $(id).disabled =
-      busy ||
-      !!pending ||
-      monthly.estado === "CONCLUIDO" ||
-      !serviceFunctions.size;
-  $("fm-services").innerHTML =
-    serviceItems
-      .map(
-        (s) =>
-          "<tr><td>" +
-          esc(s.descricao.imagem || "Serviço") +
-          "<small>" +
-          esc(s.descricao.funcao) +
-          "</small></td><td>" +
-          money(s.saldo_centavos) +
-          "</td><td>" +
-          esc(serviceStates[s.situacao] || "Conferir") +
-          (s.retirada ? "<small>" + esc(s.retirada.motivo) + "</small>" : "") +
-          "</td><td>" +
-          (monthly.estado !== "CONCLUIDO" &&
-          (s.situacao === "RETIRADO" ||
-            (s.elegibilidade.elegivel &&
-              !s.pagamentos.length &&
-              s.situacao !== "QUITADO"))
-            ? `<button type="button" class="btn btn-secondary" data-service-index="${r.financeiro_servicos.itens_analisados.indexOf(s)}" ${busy || pending ? "disabled" : ""}>${s.situacao === "RETIRADO" ? "Restaurar" : "Retirar"}</button>`
-            : "—") +
-          "</td></tr>",
-      )
-      .join("") ||
-    '<tr><td colspan="4">Nenhum serviço nesta competência.</td></tr>';
+  renderServices(r);
   $("fm-extras").innerHTML = r.extras.itens
     .map(
       (e, i) =>
@@ -639,6 +620,152 @@ function breakdown(r) {
     )
     .join("");
 }
+let serviceTab = "pending";
+function renderServices(r = financial?.revisao) {
+  if (!r) return;
+  $("fm-service-draft").hidden = !serviceDraft.length;
+  $("fm-service-draft-list").innerHTML = serviceDraft
+    .map(
+      (d, i) =>
+        `<li><span>${esc(d.label)}</span> <button type="button" class="btn btn-secondary" data-draft-remove="${i}">Remover</button></li>`,
+    )
+    .join("");
+  const all = r.financeiro_servicos.itens_analisados;
+  // Também protege a consulta de revisões antigas; o cálculo novo já exclui a etapa parcial.
+  const items = all.filter(
+    (s) =>
+      s.descricao.funcao !== "Finalização parcial" &&
+      (s.elegibilidade.elegivel || s.situacao === "RETIRADO"),
+  );
+  const hasPayment = (s) =>
+    s.situacao === "QUITADO" ||
+    s.pagamentos.some((p) => BigInt(p.valor_centavos) > 0n);
+  const groups = {
+    pending: items.filter(
+      (s) => s.situacao !== "QUITADO" && s.situacao !== "RETIRADO",
+    ),
+    paid: items.filter(hasPayment),
+    removed: items.filter((s) => s.situacao === "RETIRADO"),
+  };
+  for (const [key, list] of Object.entries(groups))
+    $("fm-services-" + key + "-count").textContent = list.length;
+  document
+    .querySelectorAll("[data-service-tab]")
+    .forEach((b) =>
+      b.setAttribute(
+        "aria-pressed",
+        String(b.dataset.serviceTab === serviceTab),
+      ),
+    );
+  $("fm-services-scope").textContent =
+    `${monthly.colaboradores[index].nome} · ${monthly.competencia}`;
+  const fixed = r.tipo_remuneracao === "FIXO";
+  $("fm-services-summary").textContent =
+    serviceTab === "paid"
+      ? "Pagamentos registrados para este colaborador. Tarefas com pagamento parcial também aparecem em Pendentes, com o saldo restante."
+      : serviceTab === "removed"
+        ? "Tarefas retiradas deste fechamento. Você pode restaurá-las enquanto o fechamento estiver aberto."
+        : fixed
+          ? "Produção coberta pela remuneração fixa. Estes serviços não acrescentam valor ao fixo."
+          : "O saldo da coluna A pagar agora será incluído no fechamento. Tarefas sem valor não acrescentam cobrança.";
+  const functions = new Map();
+  items.forEach((s) => {
+    const id = Number(s.descricao.funcao_id);
+    if (id > 0)
+      functions.set(id, id === 4 ? "Finalização" : s.descricao.funcao);
+  });
+  const selected = $("fm-service-function").value;
+  $("fm-service-function").innerHTML = [...functions]
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), "pt-BR"))
+    .map(([id, name]) => `<option value="${id}">${esc(name)}</option>`)
+    .join("");
+  if (functions.has(Number(selected)))
+    $("fm-service-function").value = selected;
+  $("fm-service-function").closest(".fm-service-batch").hidden =
+    monthly.estado === "CONCLUIDO" || serviceTab === "paid";
+  const compare = (a, b) =>
+    String(a || "").localeCompare(String(b || ""), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  $("fm-services").innerHTML =
+    groups[serviceTab]
+      .sort(
+        (a, b) =>
+          compare(a.descricao.obra_nome, b.descricao.obra_nome) ||
+          compare(a.descricao.imagem, b.descricao.imagem) ||
+          compare(a.descricao.funcao, b.descricao.funcao),
+      )
+      .map((s) => {
+        const n = all.indexOf(s),
+          locked = busy || !!pending,
+          open = monthly.estado !== "CONCLUIDO";
+        const ph = s.planta_humanizada;
+        const onlyTariff = s.divergencias.every((p) =>
+          ["PLANTA_TARIFA_DIVERGENTE", "PLANTA_TIPO_PENDENTE"].includes(
+            p.codigo,
+          ),
+        );
+        const canEdit =
+          open &&
+          serviceTab !== "paid" &&
+          s.situacao !== "RETIRADO" &&
+          s.situacao !== "QUITADO" &&
+          (s.saldo_centavos !== null || (ph && onlyTariff)) &&
+          onlyTariff &&
+          !fixed;
+        const canRemove =
+          open &&
+          serviceTab !== "paid" &&
+          (s.situacao === "RETIRADO" ||
+            (!s.pagamentos.length &&
+              s.flag_legada_pagamento !== 1 &&
+              s.situacao !== "QUITADO"));
+        const btn = (attr, text) =>
+          `<button type="button" class="btn btn-secondary" ${attr}="${n}" ${locked ? "disabled" : ""}>${text}</button>`;
+        const history = s.pagamentos.length
+          ? `<details class="fm-service-history"><summary>Ver lançamentos (${s.pagamentos.length})</summary><ul>${s.pagamentos.map((p) => `<li><strong>${money(p.valor_centavos)}</strong> · ${esc(p.competencia_pagamento || "Competência não informada")}<small>${esc(p.observacao || "Pagamento registrado")}</small></li>`).join("")}</ul></details>`
+          : "";
+        const note = s.ajuste_valor
+          ? `<small>Valor ajustado: ${esc(s.ajuste_valor.motivo)}</small>`
+          : s.retirada
+            ? `<small>${esc(s.retirada.motivo)}</small>`
+            : "";
+        const errors = s.divergencias
+          .map(
+            (p) =>
+              `<small class="fm-service-warning">${esc(p.mensagem)}</small>`,
+          )
+          .join("");
+        const tariff = ph
+          ? `<div class="fm-plant-tariff"><small>${ph.categoria_confirmada ? "Tipo" : "Tipo sugerido"}: ${esc(ph.categoria_nome || "Selecione o tipo da planta")}</small><small>Tarifa padrão: <strong>${money(ph.esperado_centavos)}</strong></small>${ph.divergente ? `<strong class="fm-service-warning">${ph.historico ? "Divergência no histórico" : "Divergente"}</strong>` : ph.excecao ? "<small>Exceção justificada</small>" : "<small>Conforme a tabela</small>"}</div>`
+          : "";
+        return `<tr><td data-label="Tarefa"><small>${esc(s.descricao.obra_nome || "")}</small><strong>${esc(s.descricao.imagem || "Serviço")}</strong><small>${esc(s.descricao.funcao)}${s.descricao.tipo_animacao ? " · " + esc(s.descricao.tipo_animacao) : ""}</small>${tariff}${history}</td><td data-label="Valor total">${money(s.base_centavos)}${s.ajuste_valor ? `<small>Original: ${money(s.base_original_centavos)}</small>` : ""}</td><td data-label="Já pago">${money(s.pago_centavos)}</td><td data-label="A pagar agora">${money(fixed || s.situacao === "RETIRADO" ? "0" : s.saldo_centavos)}</td><td data-label="Situação / ações"><span class="fm-badge">${esc(serviceStates[s.situacao] || "Conferir")}</span>${note}${errors}<div class="fm-service-row-actions">${canEdit && ph ? btn("data-service-tariff", "Aplicar tarifa padrão") : ""}${canEdit ? btn("data-service-edit", ph ? "Usar valor excepcional" : "Alterar valor") : ""}${open && s.ajuste_valor ? btn("data-service-reset", "Restaurar valor") : ""}${canRemove ? btn("data-service-index", s.situacao === "RETIRADO" ? "Restaurar tarefa" : "Retirar") : ""}</div></td></tr>`;
+      })
+      .join("") ||
+    '<tr><td colspan="5">Nenhum serviço nesta situação.</td></tr>';
+}
+$("fm-service-details").onclick = () => {
+  serviceTab = "pending";
+  if (!pending) message("");
+  renderServices();
+  $("fm-services-dialog").showModal();
+};
+$("fm-services-close").onclick = () => $("fm-services-dialog").close();
+$("fm-services-dialog").addEventListener("close", () => {
+  if (serviceDraft.length)
+    message(
+      "Há alterações de serviços pendentes. Abra os detalhes para salvar ou descartar.",
+    );
+});
+document.querySelectorAll("[data-service-tab]").forEach(
+  (b) =>
+    (b.onclick = () => {
+      serviceTab = b.dataset.serviceTab;
+      renderServices();
+    }),
+);
+
 async function showDocument(doc) {
   documentMeta = doc;
   viewed = false;
@@ -832,7 +959,8 @@ $("fm-include-form").onsubmit = (e) => {
   const collaborator = Number($("fm-include-person").value);
   if (!Number.isSafeInteger(collaborator) || collaborator < 1) return;
   run("Incluindo colaborador no fechamento", async () => {
-    const name = $("fm-include-person").selectedOptions[0]?.textContent || "Colaborador";
+    const name =
+      $("fm-include-person").selectedOptions[0]?.textContent || "Colaborador";
     monthly = await mutate("incluir", {
       competencia: ref(),
       colaborador_id: collaborator,
@@ -961,7 +1089,8 @@ $("fm-extra").onclick = () => {
   $("fm-extra-dialog").showModal();
 };
 $("fm-extra-close").onclick = () => $("fm-extra-dialog").close();
-let serviceDecision = null;
+let serviceDecision = null,
+  servicePlant = null;
 function serviceDialog(estado, alvo, s = null) {
   if (busy || pending || monthly.estado === "CONCLUIDO") return;
   serviceDecision = { estado, alvo };
@@ -972,22 +1101,74 @@ function serviceDialog(estado, alvo, s = null) {
       ? `${s.descricao.imagem} · ${s.descricao.funcao}`
       : $("fm-service-function").selectedOptions[0]?.textContent;
   $("fm-service-form").reset();
-  $("fm-service-title").textContent =
-    `${estado === "RETIRAR" ? "Retirar" : "Restaurar"} ${alvo === "ITEM" ? "tarefa" : "função"}`;
+  const edit = estado === "ALTERAR_VALOR",
+    reset = estado === "RESTAURAR_VALOR",
+    standard = estado === "APLICAR_TARIFA";
+  servicePlant = edit || standard ? s?.planta_humanizada : null;
+  $("fm-service-plant-label").hidden = !servicePlant;
+  $("fm-service-form").elements.categoria_planta.required = !!servicePlant;
+  $("fm-service-form").elements.categoria_planta.innerHTML =
+    '<option value="">Selecione o tipo da planta</option>' +
+    Object.entries(servicePlant?.categorias || {})
+      .map(
+        ([code, c]) =>
+          `<option value="${esc(code)}">${esc(c.nome)} — ${money(c.valor_centavos)}</option>`,
+      )
+      .join("");
+  $("fm-service-form").elements.categoria_planta.value =
+    servicePlant?.categoria || servicePlant?.categoria_sugerida || "";
+  $("fm-service-reason-label").hidden = standard;
+  $("fm-service-form").elements.motivo.required = !standard;
+  $("fm-service-standard-note").hidden = !standard;
+  $("fm-service-value-label").hidden = !edit;
+  $("fm-service-form").elements.valor.required = edit;
+  $("fm-service-form").elements.valor.value = s ? decimal(s.base_centavos) : "";
+  $("fm-service-paid").hidden = !edit;
+  $("fm-service-paid").textContent = s
+    ? `Já pago: ${money(s.pago_centavos)}. O novo valor total não pode ser inferior ao já pago.`
+    : "";
+  $("fm-service-error").hidden = true;
+  $("fm-service-title").textContent = standard
+    ? "Aplicar tarifa padrão"
+    : edit
+      ? servicePlant
+        ? "Valor excepcional da planta"
+        : "Alterar valor da tarefa"
+      : reset
+        ? "Restaurar valor original"
+        : `${estado === "RETIRAR" ? "Retirar" : "Restaurar"} ${alvo === "ITEM" ? "tarefa" : "função"}`;
   $("fm-service-target").textContent =
     `${monthly.colaboradores[index].nome} · ${monthly.competencia} · ${target}`;
-  $("fm-service-submit").textContent =
-    estado === "RETIRAR" ? "Confirmar retirada" : "Confirmar restauração";
+  $("fm-service-submit").textContent = "Adicionar alteração";
   $("fm-service-dialog").showModal();
 }
 $("fm-services").onclick = (e) => {
-  const button = e.target.closest("[data-service-index]");
+  const button = e.target.closest(
+    "[data-service-index],[data-service-edit],[data-service-reset],[data-service-tariff]",
+  );
   if (!button) return;
   const s =
     financial.revisao.financeiro_servicos.itens_analisados[
-      Number(button.dataset.serviceIndex)
+      Number(
+        button.dataset.serviceIndex ??
+          button.dataset.serviceEdit ??
+          button.dataset.serviceReset ??
+          button.dataset.serviceTariff,
+      )
     ];
-  serviceDialog(s.situacao === "RETIRADO" ? "RESTAURAR" : "RETIRAR", "ITEM", s);
+  serviceDialog(
+    button.hasAttribute("data-service-tariff")
+      ? "APLICAR_TARIFA"
+      : button.hasAttribute("data-service-edit")
+        ? "ALTERAR_VALOR"
+        : button.hasAttribute("data-service-reset")
+          ? "RESTAURAR_VALOR"
+          : s.situacao === "RETIRADO"
+            ? "RESTAURAR"
+            : "RETIRAR",
+    "ITEM",
+    s,
+  );
 };
 $("fm-withdraw-function").onclick = () => serviceDialog("RETIRAR", "FUNCAO");
 $("fm-restore-function").onclick = () => serviceDialog("RESTAURAR", "FUNCAO");
@@ -998,23 +1179,62 @@ $("fm-service-form").onsubmit = (e) => {
     ...serviceDecision,
     motivo: new FormData(e.target).get("motivo"),
   };
+  if (serviceDecision.estado === "ALTERAR_VALOR")
+    input.valor = new FormData(e.target).get("valor");
+  if (servicePlant)
+    input.categoria_planta = new FormData(e.target).get("categoria_planta");
+  if (serviceDecision.estado === "APLICAR_TARIFA") delete input.motivo;
+  if (serviceDraft.length >= 100) {
+    message("O limite é de 100 alterações por vez. Salve antes de continuar.");
+    return;
+  }
+  const category = servicePlant?.categorias?.[input.categoria_planta];
+  const label = `${$("fm-service-target").textContent} — ${$("fm-service-title").textContent}${category ? `: ${category.nome}` : ""}${input.valor ? ` · R$ ${input.valor}` : category && input.estado === "APLICAR_TARIFA" ? ` · ${money(category.valor_centavos)}` : ""}${input.motivo ? ` · ${input.motivo}` : ""}`;
+  serviceDraft.push({ input, label });
+  $("fm-service-dialog").close();
+  $("fm-services-close").focus({ preventScroll: true });
+  $("fm-services-dialog").scrollTop = 0;
+  renderServices();
+  update();
+};
+$("fm-service-draft-list").onclick = (e) => {
+  const button = e.target.closest("[data-draft-remove]");
+  if (!button || busy || pending) return;
+  serviceDraft.splice(Number(button.dataset.draftRemove), 1);
+  renderServices();
+  update();
+};
+$("fm-service-draft-discard").onclick = () => {
+  if (busy || pending) return;
+  serviceDraft = [];
+  message("");
+  renderServices();
+  update();
+};
+$("fm-service-draft-save").onclick = () =>
   run(
-    "Atualizando tarefas do fechamento",
+    "Salvando alterações",
     async () => {
+      if (!serviceDraft.length) return;
       await mutate("decidir", {
         ...context(),
         expected_version: financial.latest_version,
         tipo: "SERVICOS",
-        input,
+        input: { estado: "LOTE", operacoes: serviceDraft.map((d) => d.input) },
       });
-      $("fm-service-dialog").close();
+      serviceDraft = [];
       monthly = await read("mensal", { competencia: monthly.competencia });
       await enter(index);
-      $("fm-service-details").open = true;
+      renderServices();
     },
     { global: false },
   );
-};
+window.addEventListener("beforeunload", (e) => {
+  if (serviceDraft.length) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
 
 function extraItems() {
   return financial.revisao.extras.itens.map((e) => ({
@@ -1085,6 +1305,8 @@ $("fm-retry-button").onclick = () =>
   run("Concluindo ação anterior", async () => {
     const request = pending;
     await mutate(request.action, request.data, true);
+    if (request.action === "decidir" && request.data.input?.estado === "LOTE")
+      serviceDraft = [];
     $("fm-month").value = request.data.competencia;
     monthly = await read("mensal", { competencia: request.data.competencia });
     if (request.action === "incluir") $("fm-include-dialog").close();
@@ -1098,6 +1320,7 @@ $("fm-retry-button").onclick = () =>
       await loadStep();
     else overview();
   });
+$("fm-services-retry").onclick = () => $("fm-retry-button").click();
 const documentCard = $("fm-document"),
   fullButton = $("fm-fullscreen");
 // Em telas menores, o resumo vem antes do PDF e todas as ações ficam depois dele.

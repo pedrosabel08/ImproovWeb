@@ -39,15 +39,21 @@ if ($obraId <= 0 || !improov_usuario_pode_acessar_obra($conn, $obraId)) {
   exit();
 }
 
-$conn = conectarBanco();
+$planejamentoPorImagem = false;
+if ($entregaId > 0) {
+  require_once __DIR__ . '/../helpers/planejamento_alteracao_helper.php';
+  $planejamentoPorImagem = flow_planejamento_modelo($conn, $entregaId) === 'IMAGENS_ALTERACAO';
+}
 
-$clientes = obterClientes($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
-$colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
-$imagens = obterImagens($conn);
+if (!$planejamentoPorImagem) {
+  $clientes = obterClientes($conn);
+  $colaboradores = obterColaboradores($conn);
+  $status_imagens = obterStatusImagens($conn);
+  $funcoes = obterFuncoes($conn);
+  $imagens = obterImagens($conn);
+}
 
 $conn->close();
 
@@ -73,6 +79,9 @@ $conn->close();
   <?php require __DIR__ . '/../includes/page-head.php'; ?>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=18">
+  <?php if ($planejamentoPorImagem): ?>
+  <link rel="stylesheet" href="alteracao.css?v=<?= filemtime(__DIR__ . '/alteracao.css') ?>">
+  <?php endif; ?>
 
   <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
   <link rel="stylesheet" href="<?php echo asset_url('../css/master.css'); ?>">
@@ -92,6 +101,9 @@ $conn->close();
 
   <?php include '../sidebar.php'; ?>
 
+  <?php if ($planejamentoPorImagem): ?>
+  <?php require __DIR__ . '/alteracao-page.php'; ?>
+  <?php else: ?>
   <main class="planning-shell" aria-live="polite">
     <header class="planning-header" aria-labelledby="planning-title">
       <section class="planning-title-block">
@@ -170,6 +182,7 @@ $conn->close();
   <div class="planning-scrim" id="planning-scrim" hidden></div>
 
   <script src="script.js?v=20" defer></script>
+  <?php endif; ?>
   <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

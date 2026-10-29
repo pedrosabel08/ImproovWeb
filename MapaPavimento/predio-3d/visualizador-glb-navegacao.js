@@ -1,4 +1,5 @@
 import { createViewerGlass } from "./viewer-glass.js";
+import { setupPersonCamera } from "./person-camera.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
@@ -1804,6 +1805,7 @@ layout.addEventListener("transitionend", (event) => {
 new ResizeObserver(scheduleResizeViewport).observe(viewport);
 window.addEventListener("resize", scheduleResizeViewport);
 resizeViewport();
+setupPersonCamera({ THREE, renderer, scene, camera, controls, viewport, getMeshes: () => modelMeshes, available: () => !!modelRoot && !mapVisible && !transitioning && !northDefining && !measurements.active });
 (function animate() {
   requestAnimationFrame(animate);
   $("backToProject").disabled =

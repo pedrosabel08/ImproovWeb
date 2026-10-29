@@ -1,0 +1,199 @@
+{
+  "origins": [
+    {
+      "url": "https://improov/ImproovWeb/",
+      "status": 200
+    },
+    {
+      "url": "http://localhost:8066/ImproovWeb/",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "ok": true,
+      "description": "Acesso anônimo recusado: PlanejamentoCapacidade/alteracao_config.php"
+    },
+    {
+      "ok": true,
+      "description": "Acesso anônimo recusado: PlanejamentoCapacidade/alteracao_agenda.php"
+    },
+    {
+      "ok": true,
+      "description": "Acesso anônimo recusado: PlanejamentoProducao/alteracao.php"
+    },
+    {
+      "ok": true,
+      "description": "Acesso anônimo recusado: PlanejamentoProducao/thumbnail.php"
+    },
+    {
+      "ok": true,
+      "description": "Acesso anônimo recusado: PlanejamentoProducao/history.php"
+    },
+    {
+      "ok": true,
+      "description": "Login com usuário de desenvolvimento"
+    },
+    {
+      "ok": true,
+      "description": "Configuração real lista os cinco vínculos elegíveis de Alteração"
+    },
+    {
+      "ok": true,
+      "description": "API real distingue dois principais e três secundários"
+    },
+    {
+      "ok": true,
+      "description": "Agenda global R01+ agrega dez dias úteis e compromissos R00"
+    },
+    {
+      "ok": true,
+      "description": "Configuração administrativa real carrega pesos e cinco overrides"
+    },
+    {
+      "ok": true,
+      "description": "Agenda real apresenta todos os colaboradores elegíveis"
+    },
+    {
+      "ok": true,
+      "description": "Configuração sem corte: desktop"
+    },
+    {
+      "ok": true,
+      "description": "Configuração sem corte: notebook"
+    },
+    {
+      "ok": true,
+      "description": "Configuração sem corte: ipad-landscape"
+    },
+    {
+      "ok": true,
+      "description": "Configuração sem corte: ipad-portrait"
+    },
+    {
+      "ok": true,
+      "description": "Configuração sem corte: mobile"
+    },
+    {
+      "ok": true,
+      "description": "Menu Produção → Entregas carrega cards reais"
+    },
+    {
+      "ok": true,
+      "description": "Detalhe abre com imagens reais da entrega"
+    },
+    {
+      "ok": true,
+      "description": "Entrega legada não recebe entrada de planejamento obrigatório R01+"
+    },
+    {
+      "ok": true,
+      "description": "API R01+ preserva entrega legada sem criar planejamento"
+    },
+    {
+      "ok": true,
+      "description": "API de confirmação recusa CSRF inválido sem mutação"
+    },
+    {
+      "ok": true,
+      "description": "Planner R01+ real abre pelo detalhe de Entregas"
+    },
+    {
+      "ok": true,
+      "description": "Planner real diferencia principal e secundária na escolha"
+    },
+    {
+      "ok": true,
+      "description": "Plano anterior ao modelo de pontos mantém suas oito decisões históricas"
+    },
+    {
+      "ok": true,
+      "description": "Grade mantém responsável histórico fora da elegibilidade atual"
+    },
+    {
+      "ok": true,
+      "description": "Replanejamento real calcula 75 pontos sem alterar o histórico"
+    },
+    {
+      "ok": true,
+      "description": "Sugestão real envia ordem MAIOR"
+    },
+    {
+      "ok": true,
+      "description": "Sugestão real distribui as oito imagens e 75 pontos"
+    },
+    {
+      "ok": true,
+      "description": "Sugestão real não excede capacidade disponível"
+    },
+    {
+      "ok": true,
+      "description": "Sugestão real envia ordem MENOR"
+    },
+    {
+      "ok": true,
+      "description": "Sugestão real por menor complexidade retorna oito imagens"
+    },
+    {
+      "ok": true,
+      "description": "Orb exibido ao gerar sugestão real"
+    },
+    {
+      "ok": true,
+      "description": "Planner real sem overflow: desktop"
+    },
+    {
+      "ok": true,
+      "description": "Seletor de ordem visível: desktop"
+    },
+    {
+      "ok": true,
+      "description": "Planner real sem overflow: notebook"
+    },
+    {
+      "ok": true,
+      "description": "Seletor de ordem visível: notebook"
+    },
+    {
+      "ok": true,
+      "description": "Planner real sem overflow: ipad-landscape"
+    },
+    {
+      "ok": true,
+      "description": "Seletor de ordem visível: ipad-landscape"
+    },
+    {
+      "ok": true,
+      "description": "Planner real sem overflow: ipad-portrait"
+    },
+    {
+      "ok": true,
+      "description": "Seletor de ordem visível: ipad-portrait"
+    },
+    {
+      "ok": true,
+      "description": "Planner real sem overflow: mobile"
+    },
+    {
+      "ok": true,
+      "description": "Seletor de ordem visível: mobile"
+    },
+    {
+      "ok": true,
+      "description": "Descartar alterações locais restaura o snapshot sem gravar no banco"
+    }
+  ],
+  "limitations": [
+    "R01+ real validada em leitura; nenhuma entrega foi confirmada ou alterada pela auditoria."
+  ],
+  "urls": [
+    "http://localhost:8066/ImproovWeb/inicio.php",
+    "http://localhost:8066/ImproovWeb/PlanejamentoCapacidade/",
+    "http://localhost:8066/ImproovWeb/Entregas/",
+    "http://localhost:8066/ImproovWeb/PlanejamentoProducao/index.php?entrega_id=355"
+  ],
+  "browser_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}

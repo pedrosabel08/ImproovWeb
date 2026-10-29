@@ -1,0 +1,16 @@
+﻿{
+    "migration": "2026-10-28_planejamento_alteracao_manual.sql",
+    "mode": "apply",
+    "already_applied": true,
+    "parent_types_verified": 5,
+    "statements_executed": 0,
+    "foreign_keys_verified": 6,
+    "unique_item_per_version_verified": true,
+    "models": [
+        {
+            "modelo": "FUNCOES_R00",
+            "total": "14"
+        }
+    ],
+    "confirmed_image_items": 0
+}

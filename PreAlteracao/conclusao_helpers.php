@@ -58,6 +58,18 @@ function pre_alt_normalizar_data(?string $date, ?string $fallback = null): strin
     return date('Y-m-d');
 }
 
+/** Recebimento pertence ao retorno do cliente; a triagem e uma acao interna posterior. */
+function pre_alt_data_recebimento_retorno(array $lote): string
+{
+    foreach (['data_finalizacao_cliente', 'lote_resolvido_em'] as $campo) {
+        $data = substr(trim((string) ($lote[$campo] ?? '')), 0, 10);
+        if (entregas_valid_date($data)) {
+            return $data;
+        }
+    }
+    throw new DomainException('O lote nao possui uma data de recebimento do retorno do cliente valida.');
+}
+
 function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dataTriagem = null): array
 {
     pre_alt_ensure_schema($conn);
@@ -239,14 +251,15 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
         }
     }
 
+    $dataRecebimento = pre_alt_data_recebimento_retorno($lote);
     $prazoEf = !empty($aprovadas)
-        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], 6, $dataTriagem)
+        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], 6, $dataRecebimento)
         : null;
     $prazoAlteracao = (!empty($alteracoes) && $statusAlteracao !== null)
-        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], $statusAlteracao, $dataTriagem)
+        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], $statusAlteracao, $dataRecebimento)
         : null;
     $prazoRetornoEf = !empty($retornosEf)
-        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], 6, $dataTriagem)
+        ? pre_alt_default_prazo($conn, (int) $lote['obra_id'], 6, $dataRecebimento)
         : null;
 
     return [
@@ -255,6 +268,7 @@ function pre_alt_fetch_conclusao_summary(mysqli $conn, int $loteId, ?string $dat
         'pendencias' => array_values(array_unique($pendencias)),
         'remanescentes' => array_values(array_unique($remanescentes)),
         'data_triagem' => $dataTriagem,
+        'data_recebimento' => $dataRecebimento,
         'lote' => [
             'id' => (int) $lote['id'],
             'obra_id' => (int) $lote['obra_id'],
@@ -398,22 +412,38 @@ function pre_alt_criar_entrega_conclusao(
     return $entregaId;
 }
 
-function pre_alt_upsert_funcao_alteracao(mysqli $conn, int $imagemId, string $prazo): int
+function pre_alt_upsert_funcao_alteracao(mysqli $conn, int $imagemId, string $prazo, bool $planejamentoObrigatorio = false): int
 {
     $funcaoId = 0;
-    $stmt = $conn->prepare('SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 6 LIMIT 1');
+    $stmt = $conn->prepare('SELECT idfuncao_imagem, status FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 6 LIMIT 1 FOR UPDATE');
     if (!$stmt) {
         throw new RuntimeException('Nao foi possivel consultar a funcao de alteracao.');
     }
     $stmt->bind_param('i', $imagemId);
     $stmt->execute();
-    $stmt->bind_result($funcaoIdExistente);
+    $stmt->bind_result($funcaoIdExistente, $statusExistente);
     if ($stmt->fetch()) {
         $funcaoId = (int) $funcaoIdExistente;
     }
     $stmt->close();
 
     if ($funcaoId > 0) {
+        if ($planejamentoObrigatorio) {
+            require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
+            if (!flow_janela_schema_disponivel($conn)) {
+                throw new RuntimeException('A migration da Janela Operacional precisa estar aplicada antes de liberar a alteracao.');
+            }
+            if (flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoId, true)) {
+                throw new DomainException('A imagem possui um ciclo operacional anterior ainda ativo. Encerre-o antes de liberar a nova rodada.');
+            }
+            if (flow_wip_status_ativo($statusExistente) || strcasecmp((string) $statusExistente, 'HOLD') === 0) {
+                throw new DomainException('A imagem ainda esta em execucao na rodada anterior. Encerre-a antes de liberar a nova rodada.');
+            }
+            $stmtLimpar = $conn->prepare('UPDATE funcao_imagem SET colaborador_id = NULL WHERE idfuncao_imagem = ?');
+            $stmtLimpar->bind_param('i', $funcaoId);
+            $stmtLimpar->execute();
+            $stmtLimpar->close();
+        }
         $status = 'Não iniciado';
         $prazoResult = funcao_imagem_prazo_atualizar(
             $conn,

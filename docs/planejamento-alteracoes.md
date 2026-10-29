@@ -1,5 +1,7 @@
 # Planejamento de entregas de alteração no Flow
 
+> **Nota de atualização — 29/10/2026:** este documento preserva o diagnóstico anterior à implementação. Expressões como “ainda não implementadas” e propostas no futuro descrevem o estado daquela análise. Para o que foi efetivamente entregue, consultar [fundação e atualização do Planejamento R01+](planejamento-alteracoes-r01-implementacao.md) e [evolução por pontos e dia](planejamento-alteracoes-pontos.md).
+
 Data do diagnóstico: 28/10/2026. Código de referência: commit `a35aa14b`.
 
 Este documento consolida o diagnóstico e a proposta de arquitetura definidos para o planejamento de R01, R02, R03 e demais etapas de alteração, com possibilidade de extensão para EF e Render em Alta. É um plano técnico; as mudanças propostas ainda não estão implementadas.
@@ -34,16 +36,16 @@ A primeira entrega funcional deve incluir planejamento manual, confirmação e a
 
 O fluxo principal usa lotes de Review e itens de triagem. As estruturas estão em [pre_alt_helpers.php](../PreAlteracao/pre_alt_helpers.php) e [migration_lotes.sql](../PreAlteracao/migration_lotes.sql).
 
-| Tabela | Responsabilidade |
-| --- | --- |
-| `pre_alt_lote` | Agrupa triagem por obra, etapa de origem e data de finalização do cliente. |
-| `pre_alt_lote_batches` | Relaciona o lote aos `review_batch`. |
-| `pre_alt_itens` | Resultado e classificação de cada imagem daquele retorno. |
-| `pre_alt_lote_historico` | Auditoria de alterações da triagem. |
-| `pre_alt_cliente_interacoes` | Solicitações e retornos do cliente. |
-| `pre_alt_cliente_interacao_itens` | Imagens envolvidas em cada interação. |
-| `pre_alt_liberacoes` | Cada liberação das imagens prontas. |
-| `pre_alt_liberacao_itens` | Vínculo entre o item da triagem e a entrega de destino. |
+| Tabela                            | Responsabilidade                                                           |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `pre_alt_lote`                    | Agrupa triagem por obra, etapa de origem e data de finalização do cliente. |
+| `pre_alt_lote_batches`            | Relaciona o lote aos `review_batch`.                                       |
+| `pre_alt_itens`                   | Resultado e classificação de cada imagem daquele retorno.                  |
+| `pre_alt_lote_historico`          | Auditoria de alterações da triagem.                                        |
+| `pre_alt_cliente_interacoes`      | Solicitações e retornos do cliente.                                        |
+| `pre_alt_cliente_interacao_itens` | Imagens envolvidas em cada interação.                                      |
+| `pre_alt_liberacoes`              | Cada liberação das imagens prontas.                                        |
+| `pre_alt_liberacao_itens`         | Vínculo entre o item da triagem e a entrega de destino.                    |
 
 `pre_alt_criar_de_review_batch()` é chamada pela resolução de Review em [review_batch_action.php](../Entregas/review_batch_action.php). Existe também uma entrada específica para retorno de EF em [adicionar_lote_pre_alteracao.php](../Entregas/adicionar_lote_pre_alteracao.php).
 
@@ -100,13 +102,13 @@ A fonte principal é `pre_alt_itens.nivel_complexidade`. Na liberação, o níve
 
 `pre_alt_nivel_label()` define:
 
-| Nível | Significado atual |
-| --- | --- |
-| N1 | Muito baixa: ajustes superficiais. |
-| N2 | Baixa: ajustes de acabamento. |
-| N3 | Média: revisão de composição. |
-| N4 | Alta: revisão estrutural. |
-| N5 | Muito alta: alteração de projeto. |
+| Nível | Significado atual                  |
+| ----- | ---------------------------------- |
+| N1    | Muito baixa: ajustes superficiais. |
+| N2    | Baixa: ajustes de acabamento.      |
+| N3    | Média: revisão de composição.      |
+| N4    | Alta: revisão estrutural.          |
+| N5    | Muito alta: alteração de projeto.  |
 
 Não foram encontrados pesos ou durações N1–N5 nos motores investigados. O nível é adequado para evidenciar complexidade e apoiar a decisão manual, sem conversão automática em esforço neste momento.
 
@@ -170,13 +172,13 @@ POS_PRODUCAO
 
 O motor não representa automaticamente todas as funções do Flow. Alteração não é classificada; Planta Humanizada operacional recebe tratamento específico; Animação não integra esse grafo.
 
-| Estratégia | Uso atual |
-| --- | --- |
-| Histórico | Caderno/Filtro, Modelagem Interna e Composição. |
-| Janela fixa | Modelagem da Fachada: sete dias úteis. |
-| Regra operacional | Finalizações: uma tarefa/dia/pessoa. |
-| Regra operacional | Pós-produção: cinco tarefas/dia/pessoa. |
-| Marco virtual | Finalização Global. |
+| Estratégia        | Uso atual                                       |
+| ----------------- | ----------------------------------------------- |
+| Histórico         | Caderno/Filtro, Modelagem Interna e Composição. |
+| Janela fixa       | Modelagem da Fachada: sete dias úteis.          |
+| Regra operacional | Finalizações: uma tarefa/dia/pessoa.            |
+| Regra operacional | Pós-produção: cinco tarefas/dia/pessoa.         |
+| Marco virtual     | Finalização Global.                             |
 
 Essas taxas pertencem ao modelo R00 e não devem ser transferidas para Alteração.
 
@@ -184,16 +186,16 @@ O histórico usa `log_alteracoes`, reconstrução de ciclos, mediana, remoção 
 
 ### A.7. Persistência, baseline e replanejamento
 
-| Tabela | Papel |
-| --- | --- |
-| `entrega_planejamento_producao` | Cabeçalho único por entrega, estado, referências às versões e concorrência. |
-| `entrega_planejamento_versao` | Baseline e replanejamentos confirmados. |
-| `entrega_planejamento_funcao` | Etapas de cada versão. |
-| `entrega_planejamento_evento` | Auditoria do plano. |
-| `entrega_planejamento_capacidade_validacao` | Validação excepcional de sobrecarga. |
-| `entrega_planejamento_fila_operacional` | Ordem operacional confirmada. |
-| `entrega_planejamento_projecao_operacional` | Snapshot de projeção. |
-| `entrega_planejamento_projecao_etapa` | Detalhamento da projeção por etapa. |
+| Tabela                                      | Papel                                                                       |
+| ------------------------------------------- | --------------------------------------------------------------------------- |
+| `entrega_planejamento_producao`             | Cabeçalho único por entrega, estado, referências às versões e concorrência. |
+| `entrega_planejamento_versao`               | Baseline e replanejamentos confirmados.                                     |
+| `entrega_planejamento_funcao`               | Etapas de cada versão.                                                      |
+| `entrega_planejamento_evento`               | Auditoria do plano.                                                         |
+| `entrega_planejamento_capacidade_validacao` | Validação excepcional de sobrecarga.                                        |
+| `entrega_planejamento_fila_operacional`     | Ordem operacional confirmada.                                               |
+| `entrega_planejamento_projecao_operacional` | Snapshot de projeção.                                                       |
+| `entrega_planejamento_projecao_etapa`       | Detalhamento da projeção por etapa.                                         |
 
 Referências: [planejamento versionado](../sql/2026-08-20_planejamento_producao_versionado.sql), [alocação](../sql/2026-08-26_planejamento_alocacao_v14.sql) e [fila operacional](../sql/2026-08-26_planejamento_fila_operacional_v15.sql).
 
@@ -247,11 +249,11 @@ Já existem acompanhamento por tarefa/log, comparação de datas, baseline e pla
 
 `funcao_imagem_previsao_conclusao` e `funcao_imagem_previsao_historico` guardam previsão declarada e eventos de conclusão. O resolvedor do contexto de planejamento ainda busca R00.
 
-| Fato | Fonte |
-| --- | --- |
+| Fato                               | Fonte                                                     |
+| ---------------------------------- | --------------------------------------------------------- |
 | Trabalho humano iniciado/encerrado | Ciclos e eventos operacionais; logs como apoio histórico. |
-| Função aprovada/finalizada | Status e histórico da tarefa. |
-| Imagem entregue ao cliente | `entregas_itens.data_entregue`. |
+| Função aprovada/finalizada         | Status e histórico da tarefa.                             |
+| Imagem entregue ao cliente         | `entregas_itens.data_entregue`.                           |
 
 [registrar_entrega.php](../Entregas/registrar_entrega.php) preserva o primeiro timestamp dos itens no fluxo padrão. `entregas.data_conclusao` isoladamente não comprova entrega completa, pois também pode ser preenchida em entrega parcial. O helper de entrega real do planejamento ainda limita sua interpretação a R00.
 
@@ -311,15 +313,15 @@ Imagens prontas na Pré-alteração
   → registro efetivo da entrega
 ```
 
-| Módulo | Responsabilidade |
-| --- | --- |
-| Pré-alteração | Classificar, registrar retorno e liberar imagens para a entrega de destino. |
-| Entregas | Escopo, prazo comercial, itens e entrega efetiva. |
-| Planejamento | Compromissos por imagem, confirmação, versões e comparação. |
-| Alterações | Exibição e execução do trabalho atribuído. |
-| Serviço operacional | Início, WIP, requisitos, HOLD, transferência e ciclos. |
-| Capacidade | Consolidar compromissos conforme a qualidade das estimativas. |
-| Flow Connect | Notificar decisões confirmadas e mudanças relevantes. |
+| Módulo              | Responsabilidade                                                            |
+| ------------------- | --------------------------------------------------------------------------- |
+| Pré-alteração       | Classificar, registrar retorno e liberar imagens para a entrega de destino. |
+| Entregas            | Escopo, prazo comercial, itens e entrega efetiva.                           |
+| Planejamento        | Compromissos por imagem, confirmação, versões e comparação.                 |
+| Alterações          | Exibição e execução do trabalho atribuído.                                  |
+| Serviço operacional | Início, WIP, requisitos, HOLD, transferência e ciclos.                      |
+| Capacidade          | Consolidar compromissos conforme a qualidade das estimativas.               |
+| Flow Connect        | Notificar decisões confirmadas e mudanças relevantes.                       |
 
 ### C.3. Datas por imagem
 
@@ -331,47 +333,47 @@ Responsável e fim planejado serão obrigatórios para confirmar. Início planej
 
 Os elementos de frontend são, em geral, funções de renderização nos scripts de página, não componentes independentes prontos para importar. Adaptar inclui extrair somente o necessário.
 
-| Recurso atual | Local | Uso atual | Novo uso | Ação |
-| --- | --- | --- | --- | --- |
-| Calendário e prazo | [prazo_entrega_helper.php](../Entregas/prazo_entrega_helper.php) | Dias úteis e regra comercial | Mesmo calendário e sete dias úteis | REUTILIZAR DIRETAMENTE |
-| Cabeçalho, versões e eventos | [planejamento_producao_helper.php](../helpers/planejamento_producao_helper.php) | Ciclo do plano R00 | Ciclo compartilhado por entrega | ADAPTAR |
-| Locks e fingerprint | Mesmo helper | Confirmação concorrente | Confirmação das alocações | ADAPTAR |
-| Grafo e taxas R00 | Mesmo helper | Cálculo por função | Sem aplicação no fluxo básico R01 | NÃO UTILIZAR |
-| Funções não materializadas | [imagem_funcao_planejada](../sql/2026-05-26_imagem_funcao_planejada.sql) | Declaração de funções futuras | R01 já possui tarefa de alteração | NÃO UTILIZAR como novo cadastro |
-| Triagem e destino | [conclusao_helpers.php](../PreAlteracao/conclusao_helpers.php) | Rastreio de liberação | Origem da classificação por rodada | REUTILIZAR DIRETAMENTE |
-| Histórico da triagem | [pre_alt_helpers.php](../PreAlteracao/pre_alt_helpers.php) | Auditoria de classificação | Evidência de origem | REUTILIZAR DIRETAMENTE |
-| Responsável da tarefa | `funcao_imagem.colaborador_id` | Responsabilidade operacional | Receber a decisão confirmada | REUTILIZAR DIRETAMENTE |
-| Início e transferência | [inicio_operacional_helper.php](../helpers/inicio_operacional_helper.php) | Execução canônica | Operação com contexto da entrega | ADAPTAR |
-| Ciclos e pausas | [janela_operacional_helper.php](../helpers/janela_operacional_helper.php) | Histórico operacional | Realizado da rodada correta | ADAPTAR |
-| Elegibilidade | [capacidade_colaborador_helper.php](../helpers/capacidade_colaborador_helper.php) | Ativo/elegível | Seleção de candidatos | REUTILIZAR DIRETAMENTE |
-| Pools e disponibilidade | [capacidade global](../helpers/planejamento_capacidade_global_helper.php) | Capacidade R00 | Incluir Alteração | ADAPTAR |
-| Distribuição e simulação | [alocação helper](../helpers/planejamento_alocacao_helper.php) | Distribuir tarefas R00 | Distribuir imagens e sugerir quando houver esforço confiável | ADAPTAR |
-| Fila e snapshots | [fila confirmada](../helpers/planejamento_fila_confirmada_helper.php) | Ordem/projeção R00 | Identificação da rodada | ADAPTAR |
-| Entrega efetiva | [entrega real helper](../helpers/planejamento_entrega_real_helper.php) | Encerramento R00 | Encerramento R01+ | ADAPTAR |
-| Cronograma simplificado | [get_cronograma.php](../Entregas/get_cronograma.php) | Simulação em dias corridos | Não usar como motor oficial | NÃO UTILIZAR |
-| Cabeçalho, margens e histórico | [página R00](../PlanejamentoProducao/index.php) e [script](../PlanejamentoProducao/script.js) | Resumo e versões | Resumo R01 | ADAPTAR |
-| Gantt e dependências R00 | Mesmos arquivos | Navegação por etapas | Desnecessários inicialmente | NÃO UTILIZAR inicialmente |
-| Cards e seleção múltipla | [alocacao.js](../PlanejamentoCapacidade/alocacao.js), `personMarkup()`, `taskMarkup()`, `projectMarkup()` | Realocação de tarefas | Distribuição de imagens e ações em massa | ADAPTAR |
-| Heatmap e timeline | [capacidade/script.js](../PlanejamentoCapacidade/script.js) | Etapas/semanas | Consolidado futuro | ADAPTAR |
-| Filtros, badges e conferência | [Alteração/script.js](../Alteracao/script.js) | Fila e contexto da imagem | Nível, responsável e conferência | ADAPTAR |
-| Inputs de data | [Pré-alteração/script.js](../PreAlteracao/script.js) | Datas de triagem e prazos | Datas individuais/em massa | ADAPTAR |
-| Loading, erro e vazio | Scripts de planejamento/alocação | Feedback das páginas | Mesmo padrão visual | ADAPTAR |
-| Plano nominal por imagem | Ainda inexistente | — | Compromisso por rodada | NOVO NECESSÁRIO |
-| Completude do plano | Ainda inexistente nesse modelo | — | Contadores de pendências | NOVO NECESSÁRIO |
+| Recurso atual                  | Local                                                                                                     | Uso atual                     | Novo uso                                                     | Ação                            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------ | ------------------------------- |
+| Calendário e prazo             | [prazo_entrega_helper.php](../Entregas/prazo_entrega_helper.php)                                          | Dias úteis e regra comercial  | Mesmo calendário e sete dias úteis                           | REUTILIZAR DIRETAMENTE          |
+| Cabeçalho, versões e eventos   | [planejamento_producao_helper.php](../helpers/planejamento_producao_helper.php)                           | Ciclo do plano R00            | Ciclo compartilhado por entrega                              | ADAPTAR                         |
+| Locks e fingerprint            | Mesmo helper                                                                                              | Confirmação concorrente       | Confirmação das alocações                                    | ADAPTAR                         |
+| Grafo e taxas R00              | Mesmo helper                                                                                              | Cálculo por função            | Sem aplicação no fluxo básico R01                            | NÃO UTILIZAR                    |
+| Funções não materializadas     | [imagem_funcao_planejada](../sql/2026-05-26_imagem_funcao_planejada.sql)                                  | Declaração de funções futuras | R01 já possui tarefa de alteração                            | NÃO UTILIZAR como novo cadastro |
+| Triagem e destino              | [conclusao_helpers.php](../PreAlteracao/conclusao_helpers.php)                                            | Rastreio de liberação         | Origem da classificação por rodada                           | REUTILIZAR DIRETAMENTE          |
+| Histórico da triagem           | [pre_alt_helpers.php](../PreAlteracao/pre_alt_helpers.php)                                                | Auditoria de classificação    | Evidência de origem                                          | REUTILIZAR DIRETAMENTE          |
+| Responsável da tarefa          | `funcao_imagem.colaborador_id`                                                                            | Responsabilidade operacional  | Receber a decisão confirmada                                 | REUTILIZAR DIRETAMENTE          |
+| Início e transferência         | [inicio_operacional_helper.php](../helpers/inicio_operacional_helper.php)                                 | Execução canônica             | Operação com contexto da entrega                             | ADAPTAR                         |
+| Ciclos e pausas                | [janela_operacional_helper.php](../helpers/janela_operacional_helper.php)                                 | Histórico operacional         | Realizado da rodada correta                                  | ADAPTAR                         |
+| Elegibilidade                  | [capacidade_colaborador_helper.php](../helpers/capacidade_colaborador_helper.php)                         | Ativo/elegível                | Seleção de candidatos                                        | REUTILIZAR DIRETAMENTE          |
+| Pools e disponibilidade        | [capacidade global](../helpers/planejamento_capacidade_global_helper.php)                                 | Capacidade R00                | Incluir Alteração                                            | ADAPTAR                         |
+| Distribuição e simulação       | [alocação helper](../helpers/planejamento_alocacao_helper.php)                                            | Distribuir tarefas R00        | Distribuir imagens e sugerir quando houver esforço confiável | ADAPTAR                         |
+| Fila e snapshots               | [fila confirmada](../helpers/planejamento_fila_confirmada_helper.php)                                     | Ordem/projeção R00            | Identificação da rodada                                      | ADAPTAR                         |
+| Entrega efetiva                | [entrega real helper](../helpers/planejamento_entrega_real_helper.php)                                    | Encerramento R00              | Encerramento R01+                                            | ADAPTAR                         |
+| Cronograma simplificado        | [get_cronograma.php](../Entregas/get_cronograma.php)                                                      | Simulação em dias corridos    | Não usar como motor oficial                                  | NÃO UTILIZAR                    |
+| Cabeçalho, margens e histórico | [página R00](../PlanejamentoProducao/index.php) e [script](../PlanejamentoProducao/script.js)             | Resumo e versões              | Resumo R01                                                   | ADAPTAR                         |
+| Gantt e dependências R00       | Mesmos arquivos                                                                                           | Navegação por etapas          | Desnecessários inicialmente                                  | NÃO UTILIZAR inicialmente       |
+| Cards e seleção múltipla       | [alocacao.js](../PlanejamentoCapacidade/alocacao.js), `personMarkup()`, `taskMarkup()`, `projectMarkup()` | Realocação de tarefas         | Distribuição de imagens e ações em massa                     | ADAPTAR                         |
+| Heatmap e timeline             | [capacidade/script.js](../PlanejamentoCapacidade/script.js)                                               | Etapas/semanas                | Consolidado futuro                                           | ADAPTAR                         |
+| Filtros, badges e conferência  | [Alteração/script.js](../Alteracao/script.js)                                                             | Fila e contexto da imagem     | Nível, responsável e conferência                             | ADAPTAR                         |
+| Inputs de data                 | [Pré-alteração/script.js](../PreAlteracao/script.js)                                                      | Datas de triagem e prazos     | Datas individuais/em massa                                   | ADAPTAR                         |
+| Loading, erro e vazio          | Scripts de planejamento/alocação                                                                          | Feedback das páginas          | Mesmo padrão visual                                          | ADAPTAR                         |
+| Plano nominal por imagem       | Ainda inexistente                                                                                         | —                             | Compromisso por rodada                                       | NOVO NECESSÁRIO                 |
+| Completude do plano            | Ainda inexistente nesse modelo                                                                            | —                             | Contadores de pendências                                     | NOVO NECESSÁRIO                 |
 
 ### D.1. APIs existentes relevantes
 
 Os caminhos abaixo são endpoints atuais relativos à raiz do repositório.
 
-| Área | Endpoints |
-| --- | --- |
-| Triagem | `PreAlteracao/get_conclusao_lote.php`, `save_pre_analise.php`, `save_pre_analise_batch.php`, `concluir_triagem.php`, `registrar_interacao_cliente.php`. |
-| Alterações | `Alteracao/getAlteracao.php`, `getConferenciaAlteracao.php`, `updateStatusLote.php` e `insereFuncao.php` na raiz. |
-| Plano R00 | `PlanejamentoProducao/preview.php`, `confirm.php`, `history.php`. |
-| Alocação | `PlanejamentoCapacidade/alocacao_consultar.php`, `alocacao_simular.php`, `alocacao_sugerir.php`, `alocacao_aplicar.php`, `alocacao_validar_capacidade.php`. |
-| Capacidade | `PlanejamentoCapacidade/consultar.php`, `simular.php`, `aplicar_cenario.php`. |
-| Fila/projeção | `PlanejamentoCapacidade/projecao_operacional.php`, `fila_operacional_simular.php`, `fila_operacional_sugerir.php`, `fila_operacional_confirmar.php`. |
-| Entregas | `Entregas/save_entrega.php`, `update_entrega.php`, `add_imagem_entrega_id.php`, `remove_imagem_entrega.php`, `registrar_entrega.php`. |
+| Área          | Endpoints                                                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Triagem       | `PreAlteracao/get_conclusao_lote.php`, `save_pre_analise.php`, `save_pre_analise_batch.php`, `concluir_triagem.php`, `registrar_interacao_cliente.php`.     |
+| Alterações    | `Alteracao/getAlteracao.php`, `getConferenciaAlteracao.php`, `updateStatusLote.php` e `insereFuncao.php` na raiz.                                           |
+| Plano R00     | `PlanejamentoProducao/preview.php`, `confirm.php`, `history.php`.                                                                                           |
+| Alocação      | `PlanejamentoCapacidade/alocacao_consultar.php`, `alocacao_simular.php`, `alocacao_sugerir.php`, `alocacao_aplicar.php`, `alocacao_validar_capacidade.php`. |
+| Capacidade    | `PlanejamentoCapacidade/consultar.php`, `simular.php`, `aplicar_cenario.php`.                                                                               |
+| Fila/projeção | `PlanejamentoCapacidade/projecao_operacional.php`, `fila_operacional_simular.php`, `fila_operacional_sugerir.php`, `fila_operacional_confirmar.php`.        |
+| Entregas      | `Entregas/save_entrega.php`, `update_entrega.php`, `add_imagem_entrega_id.php`, `remove_imagem_entrega.php`, `registrar_entrega.php`.                       |
 
 O módulo `PlanejamentoProducao` deve ser mantido, carregando o modelo apropriado. Salvar rascunho por imagem será uma nova operação; confirmação e histórico compartilharão a infraestrutura existente.
 
@@ -379,19 +381,19 @@ O módulo `PlanejamentoProducao` deve ser mantido, carregando o modelo apropriad
 
 ### E.1. Estruturas e campos a preservar
 
-| Estrutura | Campos e relações relevantes |
-| --- | --- |
-| `entregas` | `id`, `obra_id`, `status_id`, `data_recebimento`, `data_prevista`, `status`, `data_conclusao`. |
-| `entregas_itens` | `id`, `entrega_id`, `imagem_id`, `data_prevista`, `status`, `data_entregue`. |
-| `pre_alt_itens` | Classificação e vínculo com Review/entrega anterior. |
-| `pre_alt_liberacao_itens` | `pre_alt_item_id`, `entrega_destino_id`, `status_destino_id`, `prazo`. |
-| `funcao_imagem` | Tarefa, responsável atual, status e prazo operacional legado. |
-| `alteracoes` | Registro operacional por tarefa/etapa. |
-| `entrega_planejamento_producao` | Entrega única, estado, versões de referência, `lock_version`, fingerprint. |
-| `entrega_planejamento_versao` | Baseline, vigência, datas, motivo, autor e snapshot. |
-| `entrega_planejamento_evento` | Auditoria do planejamento. |
-| `janela_operacional_*` | Ciclos, pausas e eventos de execução. |
-| `funcao_imagem_previsao_*` | Previsão declarada e eventos associados. |
+| Estrutura                       | Campos e relações relevantes                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `entregas`                      | `id`, `obra_id`, `status_id`, `data_recebimento`, `data_prevista`, `status`, `data_conclusao`. |
+| `entregas_itens`                | `id`, `entrega_id`, `imagem_id`, `data_prevista`, `status`, `data_entregue`.                   |
+| `pre_alt_itens`                 | Classificação e vínculo com Review/entrega anterior.                                           |
+| `pre_alt_liberacao_itens`       | `pre_alt_item_id`, `entrega_destino_id`, `status_destino_id`, `prazo`.                         |
+| `funcao_imagem`                 | Tarefa, responsável atual, status e prazo operacional legado.                                  |
+| `alteracoes`                    | Registro operacional por tarefa/etapa.                                                         |
+| `entrega_planejamento_producao` | Entrega única, estado, versões de referência, `lock_version`, fingerprint.                     |
+| `entrega_planejamento_versao`   | Baseline, vigência, datas, motivo, autor e snapshot.                                           |
+| `entrega_planejamento_evento`   | Auditoria do planejamento.                                                                     |
+| `janela_operacional_*`          | Ciclos, pausas e eventos de execução.                                                          |
+| `funcao_imagem_previsao_*`      | Previsão declarada e eventos associados.                                                       |
 
 ### E.2. Mudanças mínimas propostas
 
@@ -462,16 +464,16 @@ A identidade histórica é o item da entrega, não somente `imagem_id`, `status_
 
 Reutilizar os estados do cabeçalho: `RASCUNHO`, `CONFIRMADO`, `DESATUALIZADO`, `REPLANEJAMENTO` e `CONCLUIDO`. Não criar outro enum para pendência, parcialidade e execução.
 
-| Condição | Apresentação derivada |
-| --- | --- |
-| Rascunho sem itens completos | Planejamento pendente. |
-| Rascunho com parte completa | Planejamento parcial — 8/10. |
-| Todos completos, sem confirmação | Pronto para confirmar. |
-| Versão confirmada válida | Planejada. |
-| Mudança de escopo/prazo ou perda de alocação | Revisão necessária. |
-| Ciclos iniciados | Em execução, como indicador operacional. |
-| Todos os trabalhos humanos encerrados | Alterações concluídas. |
-| Todos os itens efetivamente entregues | Entrega concluída. |
+| Condição                                     | Apresentação derivada                    |
+| -------------------------------------------- | ---------------------------------------- |
+| Rascunho sem itens completos                 | Planejamento pendente.                   |
+| Rascunho com parte completa                  | Planejamento parcial — 8/10.             |
+| Todos completos, sem confirmação             | Pronto para confirmar.                   |
+| Versão confirmada válida                     | Planejada.                               |
+| Mudança de escopo/prazo ou perda de alocação | Revisão necessária.                      |
+| Ciclos iniciados                             | Em execução, como indicador operacional. |
+| Todos os trabalhos humanos encerrados        | Alterações concluídas.                   |
+| Todos os itens efetivamente entregues        | Entrega concluída.                       |
 
 Um item completo para confirmação tem responsável válido e fim planejado; início é opcional. Ter 10/10 responsáveis não comprova confirmação. Finalizar tarefas humanas também não conclui a entrega se render, pós-produção ou envio continuarem pendentes.
 
@@ -485,12 +487,12 @@ O rascunho não altera o responsável da tarefa. Em novas entregas sujeitas à r
 
 ### H.2. Fontes de responsabilidade
 
-| Informação | Fonte |
-| --- | --- |
-| Responsável operacional atual | `funcao_imagem.colaborador_id`. |
-| Responsável comprometido no plano | Item da versão confirmada. |
-| Participantes reais | Ciclos e eventos de execução. |
-| Autor da decisão | Evento de planejamento/transferência. |
+| Informação                        | Fonte                                 |
+| --------------------------------- | ------------------------------------- |
+| Responsável operacional atual     | `funcao_imagem.colaborador_id`.       |
+| Responsável comprometido no plano | Item da versão confirmada.            |
+| Participantes reais               | Ciclos e eventos de execução.         |
+| Autor da decisão                  | Evento de planejamento/transferência. |
 
 O responsável do plano é um fato histórico necessário à comparação, não outra fonte concorrente para o responsável operacional atual.
 
@@ -581,24 +583,24 @@ Combinar cabeçalho/margens/histórico R00, cards/seleção da Central de Aloca�
 
 ## K. Impactos, riscos e EF
 
-| Área | Impacto ou risco | Tratamento |
-| --- | --- | --- |
-| Pré-alteração | Liberação parcial não coincide com conclusão do lote. | Planejar cada entrega de destino. |
-| Classificação | Upsert pode apagar nível e alterar recebimento. | Preservar classificação e separar atualização operacional. |
-| Alterações | Arraste substitui responsável. | Validar alocação confirmada no servidor. |
-| Execução | Atualização direta diverge dos ciclos. | Unificar transições críticas no serviço operacional. |
-| Rodadas | Tarefa e responsável são reutilizados. | Contexto por item e snapshots históricos. |
-| Prazos | Triagem é usada como recebimento. | Usar retorno do cliente com origem rastreável. |
-| R00 | Generalização muda cálculos existentes. | Despacho explícito e testes de compatibilidade. |
-| Banco | Exclusão de item/entrega apaga histórico. | Proteger referências confirmadas e privilegiar arquivamento. |
-| Capacidade | Falta de esforço gera falsa viabilidade. | Mostrar compromissos sem inventar carga. |
-| Histórico | Último ciclo pode ser de outra revisão. | Vincular ao item da entrega. |
-| Concorrência | Gestores e colaboradores agem simultaneamente. | Locks, versão, fingerprint e comparação do responsável anterior, inclusive `NULL`. |
-| Escopo | Novas imagens tornam plano incompleto. | Marcar revisão e exigir planejamento adicional. |
-| Mudança de prazo | Compromisso pode ficar inválido. | Desatualização e replanejamento. |
-| HOLD | Pausa confundida com novo prazo cliente. | Não alterar prazo comercial automaticamente. |
-| Notificações | Rascunhos geram avisos prematuros/duplicados. | Notificar decisões efetivadas com deduplicação. |
-| Legado em execução | Bloqueio retroativo interrompe trabalho. | Manter legado até adoção explícita. |
+| Área               | Impacto ou risco                                      | Tratamento                                                                         |
+| ------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Pré-alteração      | Liberação parcial não coincide com conclusão do lote. | Planejar cada entrega de destino.                                                  |
+| Classificação      | Upsert pode apagar nível e alterar recebimento.       | Preservar classificação e separar atualização operacional.                         |
+| Alterações         | Arraste substitui responsável.                        | Validar alocação confirmada no servidor.                                           |
+| Execução           | Atualização direta diverge dos ciclos.                | Unificar transições críticas no serviço operacional.                               |
+| Rodadas            | Tarefa e responsável são reutilizados.                | Contexto por item e snapshots históricos.                                          |
+| Prazos             | Triagem é usada como recebimento.                     | Usar retorno do cliente com origem rastreável.                                     |
+| R00                | Generalização muda cálculos existentes.               | Despacho explícito e testes de compatibilidade.                                    |
+| Banco              | Exclusão de item/entrega apaga histórico.             | Proteger referências confirmadas e privilegiar arquivamento.                       |
+| Capacidade         | Falta de esforço gera falsa viabilidade.              | Mostrar compromissos sem inventar carga.                                           |
+| Histórico          | Último ciclo pode ser de outra revisão.               | Vincular ao item da entrega.                                                       |
+| Concorrência       | Gestores e colaboradores agem simultaneamente.        | Locks, versão, fingerprint e comparação do responsável anterior, inclusive `NULL`. |
+| Escopo             | Novas imagens tornam plano incompleto.                | Marcar revisão e exigir planejamento adicional.                                    |
+| Mudança de prazo   | Compromisso pode ficar inválido.                      | Desatualização e replanejamento.                                                   |
+| HOLD               | Pausa confundida com novo prazo cliente.              | Não alterar prazo comercial automaticamente.                                       |
+| Notificações       | Rascunhos geram avisos prematuros/duplicados.         | Notificar decisões efetivadas com deduplicação.                                    |
+| Legado em execução | Bloqueio retroativo interrompe trabalho.              | Manter legado até adoção explícita.                                                |
 
 ### K.1. Flow Connect
 

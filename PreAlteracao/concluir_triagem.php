@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/conclusao_helpers.php';
+require_once __DIR__ . '/../helpers/planejamento_alteracao_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -55,6 +56,9 @@ if ($loteId <= 0 || !entregas_valid_date($dataTriagem)) {
 
 try {
     pre_alt_ensure_schema($conn);
+    // Legacy schema preparation must precede the atomic release (DDL commits).
+    entregas_ensure_data_recebimento_schema($conn);
+    alteracoes_ensure_schema($conn);
     $conn->begin_transaction();
 
     $stmtLock = $conn->prepare('SELECT status, status_id FROM pre_alt_lote WHERE id = ? FOR UPDATE');
@@ -103,6 +107,7 @@ try {
     }
 
     $obraId = (int) $summary['lote']['obra_id'];
+    $dataRecebimento = (string) $summary['data_recebimento'];
     $statusEf = (int) $summary['grupos']['ef']['status_id'];
     $statusAlteracao = (int) $summary['grupos']['alteracao']['status_id'];
     $observacaoEntrega = $observacao !== '' ? $observacao : 'Entrega gerada pela conclusao da triagem de Pre-Alteracao.';
@@ -116,16 +121,16 @@ try {
     $idsRetornoEf = array_map(static fn(array $item): int => (int) $item['imagem_id'], $itensRetornoEf);
 
     $entregaEfId = $totalEf > 0
-        ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusEf, $dataTriagem, $prazoEf, $idsEf, $observacaoEntrega)
+        ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusEf, $dataRecebimento, $prazoEf, $idsEf, $observacaoEntrega)
         : null;
     $entregaAlteracaoId = $totalAlteracao > 0
-        ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusAlteracao, $dataTriagem, $prazoAlteracao, $idsAlteracao, $observacaoEntrega)
+        ? pre_alt_criar_entrega_conclusao($conn, $obraId, $statusAlteracao, $dataRecebimento, $prazoAlteracao, $idsAlteracao, $observacaoEntrega)
         : null;
     $observacaoRetornoEf = $totalRetornoEf > 0
         ? pre_alt_observacao_retorno_ef($itensRetornoEf, $observacao)
         : null;
     $entregaRetornoEfId = $totalRetornoEf > 0
-        ? pre_alt_criar_entrega_conclusao($conn, $obraId, 6, $dataTriagem, $prazoRetornoEf, $idsRetornoEf, $observacaoRetornoEf)
+        ? pre_alt_criar_entrega_conclusao($conn, $obraId, 6, $dataRecebimento, $prazoRetornoEf, $idsRetornoEf, $observacaoRetornoEf)
         : null;
 
     $responsavelId = (int) $_SESSION['idcolaborador'];
@@ -192,7 +197,7 @@ try {
         $stmtUpdateImagem->bind_param('isi', $statusEf, $prazoEf, $imagemId);
         $stmtUpdateImagem->execute();
 
-        alteracoes_upsert_registro($conn, $funcaoId, $statusEf, $dataTriagem);
+        alteracoes_upsert_registro($conn, $funcaoId, $statusEf, $dataRecebimento, null, true);
 
         if ($stmtEvento) {
             $descricao = trim((string) $item['imagem_nome']) . ' - Entrega EF';
@@ -204,10 +209,10 @@ try {
     foreach ($itensAlteracao as $item) {
         $imagemId = (int) $item['imagem_id'];
         $nivel = (int) $item['nivel_complexidade'];
-        $funcaoId = pre_alt_upsert_funcao_alteracao($conn, $imagemId, $prazoAlteracao);
+        $funcaoId = pre_alt_upsert_funcao_alteracao($conn, $imagemId, $prazoAlteracao, true);
         $stmtUpdateImagem->bind_param('isi', $statusAlteracao, $prazoAlteracao, $imagemId);
         $stmtUpdateImagem->execute();
-        alteracoes_upsert_registro($conn, $funcaoId, $statusAlteracao, $dataTriagem, $nivel);
+        alteracoes_upsert_registro($conn, $funcaoId, $statusAlteracao, $dataRecebimento, $nivel, true);
 
         if ($stmtEvento) {
             $descricao = trim((string) $item['imagem_nome']) . ' - Alteracao N' . $nivel;
@@ -223,7 +228,7 @@ try {
         // TO-DO (2) devolve a imagem para producao sem entrar em RVW (6).
         $stmtUpdateImagemRetornoEf->bind_param('isi', $statusEf, $prazoRetornoEf, $imagemId);
         $stmtUpdateImagemRetornoEf->execute();
-        alteracoes_upsert_registro($conn, $funcaoId, $statusEf, $dataTriagem, $nivel);
+        alteracoes_upsert_registro($conn, $funcaoId, $statusEf, $dataRecebimento, $nivel, true);
 
         if ($stmtEvento) {
             $descricao = trim((string) $item['imagem_nome']) . ' - Retorno à EF - alteração solicitada N' . $nivel;
@@ -236,6 +241,12 @@ try {
     $stmtUpdateImagemRetornoEf->close();
     if ($stmtEvento) {
         $stmtEvento->close();
+    }
+
+    // The pending plan is part of this release, not a best-effort follow-up.
+    // Any schema/context failure rolls back deliveries, links and task resets.
+    if ($entregaAlteracaoId) {
+        flow_planejamento_alteracao_criar($conn, $entregaAlteracaoId, $responsavelId);
     }
 
     $stmtTotais = $conn->prepare(
@@ -295,6 +306,7 @@ try {
         [
             'liberacao_id' => $liberacaoId,
             'data_triagem' => $dataTriagem,
+            'data_recebimento' => $dataRecebimento,
             'entrega_ef_id' => $entregaEfLiberacaoId,
             'entrega_alteracao_id' => $entregaAlteracaoId,
             'entrega_retorno_ef_id' => $entregaRetornoEfId,

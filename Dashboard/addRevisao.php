@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/alteracoes_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_alteracao_operacional_helper.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -85,6 +86,9 @@ if ($data && isset($data['imagem_id']) && !empty($data['data_recebimento'])) {
             $stmtFuncao->close();
         }
 
+        if (flow_planejamento_alteracao_contexto_operacional($conn, (int) $funcao_id, true)) {
+            throw new DomainException('Esta imagem possui planejamento por rodada. Libere a proxima entrega pela Pre-alteracao.');
+        }
         if ($colaborador_id !== null) {
             $stmtColab = $conn->prepare("UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ?");
             $stmtColab->bind_param("ii", $colaborador_id, $funcao_id);

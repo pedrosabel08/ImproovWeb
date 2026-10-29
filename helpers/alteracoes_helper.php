@@ -131,7 +131,8 @@ if (!function_exists('alteracoes_upsert_registro')) {
         int $funcaoImagemId,
         int $statusId,
         ?string $dataRecebimento = null,
-        ?int $nivelComplexidade = null
+        ?int $nivelComplexidade = null,
+        bool $recebimentoCanonicoNovaRodada = false
     ): void {
         alteracoes_ensure_schema($conn);
 
@@ -143,14 +144,17 @@ if (!function_exists('alteracoes_upsert_registro')) {
             'INSERT INTO alteracoes (funcao_id, data_recebimento, status_id, nivel_complexidade)
              VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
-                data_recebimento = VALUES(data_recebimento),
-                nivel_complexidade = VALUES(nivel_complexidade)'
+                data_recebimento = IF(?, VALUES(data_recebimento), COALESCE(data_recebimento, VALUES(data_recebimento))),
+                nivel_complexidade = COALESCE(VALUES(nivel_complexidade), nivel_complexidade)'
         );
         if (!$stmt) {
             throw new RuntimeException('Nao foi possivel preparar o registro de alteracao.');
         }
 
-        $stmt->bind_param('isii', $funcaoImagemId, $dataRecebimento, $statusId, $nivelComplexidade);
+        // Only the authoritative release may replace the operational copy when
+        // a registered stage repeats (e.g. R05). History belongs to delivery items.
+        $recebimentoCanonico = $recebimentoCanonicoNovaRodada ? 1 : 0;
+        $stmt->bind_param('isiii', $funcaoImagemId, $dataRecebimento, $statusId, $nivelComplexidade, $recebimentoCanonico);
         if (!$stmt->execute()) {
             $message = $stmt->error ?: 'Erro desconhecido ao registrar alteracao.';
             $stmt->close();

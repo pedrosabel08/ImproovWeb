@@ -430,8 +430,8 @@ function dashboard_upsert_planned_function(
         return ['success' => false, 'message' => 'Imagem não encontrada.'];
     }
 
-    if (!empty($image['imagem_principal_id']) && $functionId !== 4) {
-        return ['success' => false, 'message' => 'Imagens secundarias aceitam somente a funcao Finalizacao.'];
+    if (!empty($image['imagem_principal_id']) && !in_array($functionId, [4, 5], true)) {
+        return ['success' => false, 'message' => 'Imagens secundarias aceitam somente as funcoes Finalizacao e Pos-Producao.'];
     }
 
     $existing = dashboard_fetch_planned_function_row($conn, $imageId, $functionId);

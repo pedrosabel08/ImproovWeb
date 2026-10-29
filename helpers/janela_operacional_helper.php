@@ -3,6 +3,7 @@
 require_once __DIR__ . '/planejamento_producao_helper.php';
 require_once __DIR__ . '/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/unidade_trabalho_helper.php';
+require_once __DIR__ . '/planejamento_alteracao_operacional_helper.php';
 
 if (!defined('FLOW_JANELA_ESTADO_NORMAL')) {
     define('FLOW_JANELA_ESTADO_NORMAL', 'NORMAL');
@@ -279,6 +280,13 @@ function flow_janela_perfil_vigente(mysqli $conn, ?string $codigo): ?array
 
 function flow_janela_prazo_necessario(mysqli $conn, array $unidade): array
 {
+    foreach ($unidade['membros'] as $membro) {
+        if ((int) $membro['funcao_id'] !== 6) continue;
+        $contexto = flow_planejamento_alteracao_contexto_operacional($conn, (int) $membro['idfuncao_imagem']);
+        if ($contexto) {
+            return ['data' => $contexto['fim_planejado'], 'versao_id' => $contexto['versao_atual_id'], 'contexto' => $contexto];
+        }
+    }
     $contextos = flow_tarefa_contextos_planejamento_lote($conn, $unidade['membros']);
     $preferidos = $unidade['tipo_unidade'] === FLOW_UNIDADE_TIPO_MODELAGEM_COMPOSICAO ? [3, 2] : [8, 1];
     foreach ($preferidos as $funcaoId) {
@@ -572,6 +580,8 @@ function flow_janela_criar_ciclo(
     $cicloId = (int) $conn->insert_id;
     $stmt->close();
 
+    flow_planejamento_alteracao_vincular_ciclo($conn, (int) $unidade['tarefa_principal']['idfuncao_imagem'], $cicloId);
+
     $stmtItem = $conn->prepare('INSERT INTO janela_operacional_ciclo_item (ciclo_id, funcao_imagem_id, ordem) VALUES (?, ?, ?)');
     foreach (array_values($unidade['membros']) as $ordem => $membro) {
         $taskId = (int) $membro['idfuncao_imagem'];
@@ -641,6 +651,7 @@ function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImag
     $stmt->execute();
     $cicloId = (int) $conn->insert_id;
     $stmt->close();
+    flow_planejamento_alteracao_vincular_ciclo($conn, $funcaoImagemId, $cicloId);
     $item = $conn->prepare('INSERT INTO janela_operacional_ciclo_item (ciclo_id, funcao_imagem_id, ordem) VALUES (?, ?, ?)');
     foreach (array_values($unidade['membros']) as $ordem => $membro) {
         $tarefaId = (int) $membro['idfuncao_imagem'];
@@ -847,6 +858,9 @@ function flow_janela_avaliar_retomada(mysqli $conn, int $funcaoImagemId, string 
         'estado_anterior' => $ciclo['estado_atual'],
         'exige_justificativa' => $estado !== FLOW_JANELA_ESTADO_NORMAL,
         'dias_uteis_hold' => $diasHold,
+        'entrega_item_id' => $ciclo['entrega_item_id'] ?? null,
+        'prazo_necessario_snapshot' => $ciclo['prazo_necessario_snapshot'],
+        'planejamento_versao_id_snapshot' => $ciclo['planejamento_versao_id_snapshot'],
         'pausa_id' => $pausa ? (int) $pausa['id'] : null,
         'limite_anterior' => $ciclo['limite_data_atual'],
     ];
@@ -891,6 +905,10 @@ function flow_janela_retomar(mysqli $conn, int $funcaoImagemId, ?int $atorColabo
                              WHERE id = ?");
     $prazoNecessario = $avaliacao['prazo_necessario'];
     $versaoPlanejamento = $avaliacao['planejamento_versao_id'];
+    if (!empty($avaliacao['entrega_item_id'])) {
+        $prazoNecessario = $avaliacao['prazo_necessario_snapshot'] ?: $prazoNecessario;
+        $versaoPlanejamento = $avaliacao['planejamento_versao_id_snapshot'] ?: $versaoPlanejamento;
+    }
     $estadoNovo = $avaliacao['estado'];
     $limiteNovo = $avaliacao['limite_data'];
     $previsaoNova = $avaliacao['previsao'];
@@ -1035,6 +1053,8 @@ function flow_janela_transferir_responsavel(
     ?string $motivoOperacionalCodigo = null,
     ?string $motivoOperacionalTexto = null
 ): array {
+    $contextoPlanejamento = flow_planejamento_alteracao_contexto_operacional($conn, $funcaoImagemId, true);
+    flow_planejamento_alteracao_validar_operacao($contextoPlanejamento, $atorColaboradorId, $novoResponsavelId);
     $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
     if (!$ciclo) {
         return ['aplicada' => false, 'motivo' => 'SEM_CICLO_ATIVO'];

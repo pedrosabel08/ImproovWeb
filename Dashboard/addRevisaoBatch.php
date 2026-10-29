@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/alteracoes_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_alteracao_operacional_helper.php';
 
 header('Content-Type: application/json');
 
@@ -116,6 +117,9 @@ try {
             $funcaoId = (int)$conn->insert_id;
         }
 
+        if (flow_planejamento_alteracao_contexto_operacional($conn, $funcaoId, true)) {
+            throw new DomainException('Esta imagem possui planejamento por rodada. Libere a proxima entrega pela Pre-alteracao.');
+        }
         if ($colaboradorId !== null) {
             $stmtUpdateColab->bind_param('ii', $colaboradorId, $funcaoId);
             $stmtUpdateColab->execute();

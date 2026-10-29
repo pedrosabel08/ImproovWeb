@@ -133,6 +133,8 @@ function flow_inicio_operacional_iniciar(mysqli $conn, array $entrada): array
         }
     }
     $unidade = flow_janela_resolver_unidade($conn, $tarefaId, true, $iniciarConjunto);
+    $contextoPlanejamento = flow_planejamento_alteracao_contexto_operacional($conn, $tarefaId, true);
+    flow_planejamento_alteracao_validar_operacao($contextoPlanejamento, $atorColaboradorId, null, true);
     $origemAcionamento = (string) ($entrada['origem_acionamento'] ?? 'KANBAN');
     if (
         $origemAcionamento === 'FLOW_REVIEW_PLAY'

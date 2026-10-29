@@ -101,6 +101,14 @@ $funcao_parametros = [
 $conn->begin_transaction();
 
 try {
+    $contextoAlteracao = null;
+    $funcaoAlteracaoId = alteracoes_get_funcao_alteracao_id($conn, (int) $imagem_id);
+    if ($funcaoAlteracaoId) {
+        $contextoAlteracao = flow_planejamento_alteracao_contexto_operacional($conn, $funcaoAlteracaoId, true);
+        if ($contextoAlteracao && ($changedFunctions === null || $statusChanged) && (int) $status_id !== (int) $contextoAlteracao['etapa_id']) {
+            throw new DomainException('Esta rodada possui planejamento por imagem. Libere a proxima rodada pela Pre-alteracao.');
+        }
+    }
     if ($changedFunctions === null || $statusChanged) {
         // Evita UPDATE/trigger desnecessário quando o status não mudou.
         $update_image_status = $conn->prepare(
@@ -162,6 +170,15 @@ try {
             $obs = emptyToNull($changedFunctions !== null ? ($delta['observacao'] ?? null) : ($data['obs_' . $parametro] ?? null));
             $funcaoCriadaEmAndamento = false;
             $inicioAtomicoPendente = false;
+
+            if ($funcao_id === 6 && $contextoAlteracao) {
+                flow_planejamento_alteracao_validar_operacao(
+                    $contextoAlteracao,
+                    (int) ($_SESSION['idcolaborador'] ?? 0),
+                    $colaborador_id,
+                    strcasecmp((string) $status, 'Em andamento') === 0
+                );
+            }
 
             if (strcasecmp((string) $status, 'Em andamento') === 0) {
                 $stmtCurrent = $conn->prepare(

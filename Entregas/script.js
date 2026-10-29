@@ -1902,6 +1902,15 @@ document.addEventListener("DOMContentLoaded", () => {
       modalTitle.textContent = `${data.nomenclatura || "Entrega"} - ${data.nome_etapa || data.id}`;
       // salvar dados para uso por outros handlers (ex: adicionar imagem por id)
       entregaDados = data;
+      const planLink = document.getElementById("deliveryPlanLink");
+      if (planLink) {
+        const usesImagePlanning = data.planejamento_modelo === "IMAGENS_ALTERACAO";
+        planLink.hidden = !usesImagePlanning;
+        planLink.style.display = usesImagePlanning ? "" : "none";
+        planLink.href = usesImagePlanning
+          ? new URL(`../PlanejamentoProducao/index.php?entrega_id=${Number(data.id)}`, BASE).href
+          : "#";
+      }
       modalRecebimento.textContent = formatarData(data.data_recebimento) || "-";
       modalPrazo.textContent = formatarData(data.data_prevista) || "-";
       // Contabiliza somente itens realmente entregues conforme regras solicitadas

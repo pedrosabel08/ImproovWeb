@@ -14,6 +14,7 @@ require_once __DIR__ . '/../helpers/entrega_imagem_etapa_helper.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/prazo_entrega_helper.php';
+require_once __DIR__ . '/../helpers/planejamento_alteracao_helper.php';
 
 improov_p00_ensure_schema($conn);
 entregas_ensure_data_recebimento_schema($conn);
@@ -124,6 +125,7 @@ try {
     unset($item);
     $entrega['caminho_entrega'] = null; // Resolved asynchronously from the actual NAS folder.
     $entrega['itens'] = $itens;
+    $entrega['planejamento_modelo'] = flow_planejamento_modelo($conn, $entrega_id);
     $reviewBatches = entregas_review_fetch_batches_for_entrega($conn, $entrega_id);
     $entrega['review_batches_enabled'] = entregas_review_schema_ready($conn);
     $entrega['review_batches'] = $reviewBatches;

@@ -53,6 +53,20 @@ $conn->close();
   <?php require __DIR__ . '/../includes/page-head.php'; ?>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=5">
+  <style>
+    #alteracao-config,#alteracao-agenda { border:1px solid var(--border-card,#334155); border-radius:8px; padding:18px; margin-bottom:20px; min-width:0; }
+    #alteracao-agenda summary { cursor:pointer; font-weight:600; }
+    #alteracao-agenda p { font-size:12px; line-height:1.6; }
+    #alteracao-agenda-content { max-width:100%; margin-top:14px; }
+    .capacity-shell { padding-bottom:80px; }
+    #alteracao-config summary { cursor:pointer; font-weight:600; }
+    #alteracao-config p { font-size:12px; line-height:1.6; }
+    .alteracao-config-fields { display:flex; flex-wrap:wrap; gap:16px; margin:18px 0; }
+    #alteracao-config label { display:grid; gap:7px; font-size:12px; flex:1 1 160px; }
+    #alteracao-config input { color:inherit; background:transparent; border:1px solid var(--border-card,#64748b); border-radius:5px; padding:10px; width:100%; max-width:260px; }
+    #alteracao-config button { border:1px solid #8b5cf6; border-radius:5px; color:inherit; background:transparent; padding:10px 14px; cursor:pointer; margin:0 8px 10px 0; }
+  </style>
+  <script src="alteracao-config.js?v=<?= filemtime(__DIR__.'/alteracao-config.js') ?>" defer></script>
   <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -94,6 +108,11 @@ $conn->close();
       </section>
     </header>
 
+    <details id="alteracao-config"><summary>Configurar planejamento de Alterações</summary>
+      <p>Pesos N1–N5 e capacidade nominal diária em pontos. Os pesos de versões confirmadas são preservados. Um override zero indica indisponibilidade do colaborador; vazio usa o padrão.</p>
+      <form id="alteracao-config-form"><label>Capacidade padrão · pts/dia<input type="number" id="alteracao-config-default" min="0.01" max="10000" step="0.01" required></label><div id="alteracao-config-levels" class="alteracao-config-fields"></div><h3>Capacidade por colaborador</h3><div id="alteracao-config-people" class="alteracao-config-fields"></div><button type="submit" id="alteracao-config-save" disabled>Salvar configuração</button><button type="button" id="alteracao-config-reload">Recarregar configuração</button><p id="alteracao-config-status" role="status">Abra para carregar a configuração.</p></form>
+    </details>
+    <details id="alteracao-agenda"><summary>Agenda diária de Alterações · R01–R05</summary><p>Compromissos das versões confirmadas, oferta restante após R00 e alertas de capacidade desconhecida. Rascunhos não consomem agenda.</p><button type="button" id="alteracao-agenda-reload">Atualizar agenda</button><div id="alteracao-agenda-content" role="status">Abra para consultar os próximos dez dias úteis.</div></details>
     <nav class="capacity-product-tabs" aria-label="Área do planejamento global">
       <button type="button" class="is-active" data-capacity-workspace="capacity"><i class="fa-solid fa-chart-column"></i> Capacidade</button>
       <button type="button" data-capacity-workspace="allocation"><i class="fa-solid fa-people-group"></i> Alocação <span>V1.4</span></button>

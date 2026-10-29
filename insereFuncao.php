@@ -132,6 +132,23 @@ try {
         }
     }
 
+    if ($status_id !== null) {
+        $funcaoAlteracaoId = alteracoes_get_funcao_alteracao_id($conn, (int) $imagem_id);
+        $contextoRodada = $funcaoAlteracaoId ? flow_planejamento_alteracao_contexto_operacional($conn, $funcaoAlteracaoId, true) : null;
+        if ($contextoRodada && (int) $status_id !== (int) $contextoRodada['etapa_id']) {
+            throw new DomainException('Esta rodada possui planejamento por imagem. Libere a proxima rodada pela Pre-alteracao.');
+        }
+    }
+    if ($existingFuncaoImagemId && ($colaborador_id !== null || $status !== null)) {
+        $contextoPlanejamento = flow_planejamento_alteracao_contexto_operacional($conn, $existingFuncaoImagemId, true);
+        flow_planejamento_alteracao_validar_operacao(
+            $contextoPlanejamento,
+            $actorColaboradorId,
+            $colaborador_id,
+            strcasecmp((string) $status, 'Em andamento') === 0
+        );
+    }
+
     // Depois da migration, qualquer primeiro inicio que ainda alcance o
     // endpoint legado e redirecionado ao mesmo servico atomico do Kanban.
     // Assim nao existe caminho "status iniciado sem snapshot".

@@ -51,6 +51,7 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
             </section>
         </div>
         <div class="modal-footer">
+            <a id="deliveryPlanLink" class="btn-action btn-primary" href="#" hidden><i class="fa-regular fa-calendar-check" aria-hidden="true"></i> Planejar entrega</a>
             <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
         </div>
     </div>

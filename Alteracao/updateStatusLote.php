@@ -1,9 +1,17 @@
 <?php
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/../helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/../helpers/inicio_operacional_helper.php';
 header('Content-Type: application/json');
+
+if (empty($_SESSION['idcolaborador'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sessao expirada. Faca login novamente.']);
+    exit;
+}
 
 $payload = json_decode(file_get_contents('php://input'), true);
 
@@ -31,6 +39,48 @@ try {
     $stmtAtualizarComColab = $conn->prepare('UPDATE funcao_imagem SET status = ?, colaborador_id = ? WHERE idfuncao_imagem = ?');
 
     foreach ($funcaoIds as $funcaoId) {
+        $contextoPlanejamento = flow_planejamento_alteracao_contexto_operacional($conn, $funcaoId, true);
+        if ($contextoPlanejamento) {
+            $iniciar = mb_strtolower($statusDestino, 'UTF-8') === 'em andamento';
+            flow_planejamento_alteracao_validar_operacao(
+                $contextoPlanejamento,
+                (int) $usuarioLogadoId,
+                $atribuirLogado && $iniciar ? (int) $usuarioLogadoId : null,
+                $iniciar
+            );
+            $atorUsuarioId = !empty($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null;
+            if ($iniciar) {
+                if (strcasecmp((string) $contextoPlanejamento['tarefa_status'], 'Em andamento') !== 0) {
+                    $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoId, true);
+                    if ($ciclo && $ciclo['situacao'] === 'PAUSADO') {
+                        flow_janela_retomar($conn, $funcaoId, (int) $usuarioLogadoId, $atorUsuarioId, $contextoPlanejamento['fim_planejado']);
+                        $stmtAtualizar->bind_param('si', $statusDestino, $funcaoId);
+                        $stmtAtualizar->execute();
+                    } else {
+                        flow_inicio_operacional_iniciar($conn, [
+                            'funcao_imagem_id' => $funcaoId,
+                            'previsao' => $contextoPlanejamento['fim_planejado'],
+                            'ator_colaborador_id' => (int) $usuarioLogadoId,
+                            'ator_usuario_id' => $atorUsuarioId,
+                            'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+                            'confirmar_pendencias' => $confirmarPendencias,
+                            'origem_acionamento' => 'ALTERACOES_LOTE',
+                        ]);
+                    }
+                }
+                continue; // Never execute the legacy self-assignment below.
+            }
+            if ($statusDestino === 'Em aprovação') {
+                flow_inicio_operacional_enviar_aprovacao($conn, [
+                    'funcao_imagem_id' => $funcaoId,
+                    'previsao' => $contextoPlanejamento['fim_planejado'],
+                    'ator_colaborador_id' => (int) $usuarioLogadoId,
+                    'ator_usuario_id' => $atorUsuarioId,
+                    'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
+                ]);
+                continue;
+            }
+        }
         if (mb_strtolower($statusDestino, 'UTF-8') === 'em andamento') {
             $stmtAtual = $conn->prepare('SELECT idfuncao_imagem, imagem_id, funcao_id, colaborador_id, status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1 FOR UPDATE');
             $stmtAtual->bind_param('i', $funcaoId);
@@ -58,6 +108,13 @@ try {
         } else {
             $stmtAtualizar->bind_param('si', $statusDestino, $funcaoId);
             $stmtAtualizar->execute();
+        }
+        if ($contextoPlanejamento) {
+            if ($statusDestino === 'HOLD') {
+                flow_janela_pausar($conn, $funcaoId, (int) $usuarioLogadoId, $atorUsuarioId);
+            } else {
+                flow_janela_encerrar_se_unidade_finalizada($conn, $funcaoId, (int) $usuarioLogadoId, $atorUsuarioId);
+            }
         }
     }
 

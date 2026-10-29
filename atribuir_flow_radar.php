@@ -1,10 +1,12 @@
 <?php
+
 header('Content-Type: application/json');
 // Flow Radar - Atribuir tarefa a colaborador
 require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
 require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
+require_once __DIR__ . '/helpers/planejamento_alteracao_operacional_helper.php';
 
 $conn = conectarBanco();
 
@@ -35,6 +37,9 @@ try {
     $res = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
+    $contextoPlanejamento = flow_planejamento_alteracao_contexto_operacional($conn, $funcao_imagem_id, true);
+    flow_planejamento_alteracao_validar_operacao($contextoPlanejamento, (int) ($_SESSION['idcolaborador'] ?? 0), $colaborador_id);
+
     if ($res && !empty($res['colaborador_id']) && $res['colaborador_id'] != 0) {
         throw new DomainException('Tarefa já está atribuída a outro colaborador.');
     }
@@ -64,7 +69,10 @@ try {
     $stmt->close();
     $conn->close();
 } catch (Throwable $e) {
-    try { $conn->rollback(); } catch (Throwable $ignored) {}
+    try {
+        $conn->rollback();
+    } catch (Throwable $ignored) {
+    }
     if ($e instanceof FlowWipException) {
         http_response_code(409);
         echo json_encode(flow_wip_exception_payload($e), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

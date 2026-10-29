@@ -12,7 +12,9 @@ try {
         throw new RuntimeException('Sessão inválida.');
     }
     $payload = json_decode((string) file_get_contents('php://input'), true);
-    if (!is_array($payload)) throw new InvalidArgumentException('Dados de confirmação inválidos.');
+    if (!is_array($payload)) {
+        throw new InvalidArgumentException('Dados de confirmação inválidos.');
+    }
     $entregaId = (int) ($payload['entrega_id'] ?? 0);
     $fingerprint = trim((string) ($payload['fingerprint'] ?? ''));
     $lockVersion = (int) ($payload['lock_version'] ?? 0);
@@ -22,7 +24,9 @@ try {
     $pessoas = is_array($payload['pessoas'] ?? null) ? $payload['pessoas'] : [];
     $pessoasValidas = [];
     foreach ($pessoas as $etapa => $quantidade) {
-        if (!is_string($etapa) || !preg_match('/^[A-Z_]+$/', $etapa)) continue;
+        if (!is_string($etapa) || !preg_match('/^[A-Z_]+$/', $etapa)) {
+            continue;
+        }
         $pessoasValidas[$etapa] = max(1, min(20, (int) $quantidade));
     }
     $conn = conectarBanco();

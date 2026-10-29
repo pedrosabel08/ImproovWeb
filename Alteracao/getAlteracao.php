@@ -1,218 +1,31 @@
 <?php
-header('Content-Type: application/json');
-require_once __DIR__ . '/../conexao.php';
-require_once __DIR__ . '/../helpers/alteracoes_helper.php';
-
-function alteracao_column_exists(mysqli $conn, string $tableName, string $columnName): bool
-{
-    $stmt = $conn->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1");
-    if (!$stmt) {
-        return false;
-    }
-    $stmt->bind_param('ss', $tableName, $columnName);
-    $stmt->execute();
-    $stmt->store_result();
-    $exists = $stmt->num_rows > 0;
-    $stmt->close();
-    return $exists;
-}
-
-alteracoes_ensure_schema($conn);
-
-$obraId = isset($_GET['obra_id']) && $_GET['obra_id'] !== '' ? (int)$_GET['obra_id'] : null;
-$status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
-$statusImagem = isset($_GET['status_imagem']) ? trim((string)$_GET['status_imagem']) : '';
-$colaboradorId = isset($_GET['colaborador_id']) && $_GET['colaborador_id'] !== '' ? (int)$_GET['colaborador_id'] : null;
-$busca = isset($_GET['busca']) ? trim((string)$_GET['busca']) : '';
-
-$sql = "SELECT
-    f.idfuncao_imagem,
-    f.imagem_id,
-    f.colaborador_id,
-    COALESCE(NULLIF(TRIM(f.status), ''), 'Não iniciado') AS status_funcao,
-    i.prazo,
-    i.imagem_nome,
-    i.obra_id,
-    o.nomenclatura,
-    o.nome_obra,
-    c.nome_colaborador,
-    s.nome_status,
-    a.status_id AS imagem_status_id,
-    a.nivel_complexidade
-FROM alteracoes a
-JOIN funcao_imagem f ON f.idfuncao_imagem = a.funcao_id
-JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-JOIN obra o ON o.idobra = i.obra_id
-JOIN status_imagem s ON s.idstatus = a.status_id
-LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id
-AND (
-    f.status NOT IN ('Finalizado', 'Aprovado')
-    OR (
-        f.status IN ('Finalizado', 'Aprovado')
-        AND i.prazo = CURDATE()
-    )
-)";
-$params = [];
-$types = '';
-
-if ($obraId !== null) {
-    $sql .= " AND i.obra_id = ?";
-    $params[] = $obraId;
-    $types .= 'i';
-}
-
-if ($status !== '') {
-    $sql .= " AND COALESCE(NULLIF(TRIM(f.status), ''), 'Não iniciado') = ?";
-    $params[] = $status;
-    $types .= 's';
-}
-
-if ($statusImagem !== '') {
-    $sql .= " AND s.nome_status = ?";
-    $params[] = $statusImagem;
-    $types .= 's';
-}
-
-if ($colaboradorId !== null) {
-    $sql .= " AND f.colaborador_id = ?";
-    $params[] = $colaboradorId;
-    $types .= 'i';
-}
-
-if ($busca !== '') {
-    $sql .= " AND (i.imagem_nome LIKE ? OR o.nomenclatura LIKE ? OR COALESCE(c.nome_colaborador, '') LIKE ?)";
-    $like = '%' . $busca . '%';
-    $params[] = $like;
-    $params[] = $like;
-    $params[] = $like;
-    $types .= 'sss';
-}
-
-$sql .= " ORDER BY i.prazo IS NULL, i.prazo ASC, CASE WHEN i.status_id = 6 THEN 0 ELSE 1 END, i.idimagens_cliente_obra ASC";
-
-$stmt = $conn->prepare($sql);
-if (!$stmt) {
-    echo json_encode(['success' => false, 'message' => 'Erro ao preparar consulta.']);
+require_once __DIR__ . '/../config/session_bootstrap.php';
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: private, no-store');
+if (empty($_SESSION['logado']) || empty($_SESSION['idcolaborador'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sessão expirada. Faça login novamente.']);
     exit;
 }
-
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405); header('Allow: GET');
+    echo json_encode(['success' => false, 'message' => 'Método inválido.']);
+    exit;
 }
-
-$stmt->execute();
-$result = $stmt->get_result();
-
-$items = [];
-$obrasMap = [];
-$colabMap = [];
-$statusImagemMap = [];
-
-while ($row = $result->fetch_assoc()) {
-    $statusNormalizado = mb_strtolower(trim((string)$row['status_funcao']), 'UTF-8');
-    if ($statusNormalizado === '') {
-        $statusNormalizado = 'não iniciado';
-    }
-
-    $item = [
-        'funcao_id' => (int)$row['idfuncao_imagem'],
-        'imagem_id' => (int)$row['imagem_id'],
-        'imagem_nome' => (string)$row['imagem_nome'],
-        'obra_id' => (int)$row['obra_id'],
-        'obra_nome' => (string)$row['nomenclatura'],
-        'obra_nome_comercial' => $row['nome_obra'] !== null ? (string)$row['nome_obra'] : null,
-        'colaborador_id' => $row['colaborador_id'] !== null ? (int)$row['colaborador_id'] : null,
-        'colaborador_nome' => $row['nome_colaborador'] !== null ? (string)$row['nome_colaborador'] : null,
-        'status_funcao' => (string)$row['status_funcao'],
-        'status_key' => $statusNormalizado,
-        'status_nome' => (string)$row['nome_status'],
-        'prazo' => $row['prazo'] ? date('d/m/Y', strtotime($row['prazo'])) : null,
-        'is_ef' => ((int)$row['imagem_status_id'] === 6),
-        'idstatus' => (int)$row['imagem_status_id'],
-        'nivel_complexidade' => $row['nivel_complexidade'] !== null ? (int)$row['nivel_complexidade'] : null,
-    ];
-
-    $items[] = $item;
-    $obrasMap[$item['obra_id']] = $item['obra_nome'];
-
-    if ($item['colaborador_id'] !== null) {
-        $colabMap[$item['colaborador_id']] = $item['colaborador_nome'];
-    }
-
-    if ($item['idstatus'] !== null) {
-        $statusImagemMap[$item['idstatus']] = $item['status_nome'];
-    }
+require_once __DIR__ . '/../conexaoMain.php';
+require_once __DIR__ . '/../helpers/alteracao_planner_helper.php';
+try {
+    $valor = $_GET['semana'] ?? null;
+    if ($valor !== null && !is_string($valor)) throw new InvalidArgumentException('Semana inválida.');
+    $semana = flow_alt_semana($valor);
+    $conn = conectarBanco();
+    echo json_encode(flow_alt_planner_carregar($conn, $semana, improov_sidebar_contexto_usuario($conn)), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    $conn->close();
+} catch (InvalidArgumentException $error) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => $error->getMessage()], JSON_UNESCAPED_UNICODE);
+} catch (Throwable $error) {
+    error_log('Alterações planner: ' . $error->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Não foi possível carregar as alterações. Tente novamente.'], JSON_UNESCAPED_UNICODE);
 }
-
-$filterSql = "SELECT DISTINCT
-    i.obra_id,
-    o.nomenclatura,
-    f.colaborador_id,
-    c.nome_colaborador,
-    s.idstatus,
-    s.nome_status
-FROM alteracoes a
-JOIN funcao_imagem f ON f.idfuncao_imagem = a.funcao_id
-JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-JOIN obra o ON o.idobra = i.obra_id
-JOIN status_imagem s ON s.idstatus = a.status_id
-LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id
-AND (f.status != 'Finalizado' OR (f.status = 'Finalizado' AND i.prazo = CURDATE()))
-ORDER BY o.nomenclatura ASC, c.nome_colaborador ASC, s.idstatus ASC";
-
-$filterStmt = $conn->prepare($filterSql);
-if ($filterStmt) {
-    $obrasMap = [];
-    $colabMap = [];
-    $statusImagemMap = [];
-
-    $filterStmt->execute();
-    $filterResult = $filterStmt->get_result();
-
-    while ($filterRow = $filterResult->fetch_assoc()) {
-        $obraIdFiltro = (int)$filterRow['obra_id'];
-        $obrasMap[$obraIdFiltro] = (string)$filterRow['nomenclatura'];
-
-        if ($filterRow['colaborador_id'] !== null) {
-            $colabMap[(int)$filterRow['colaborador_id']] = (string)$filterRow['nome_colaborador'];
-        }
-
-        if ($filterRow['idstatus'] !== null) {
-            $statusImagemMap[(int)$filterRow['idstatus']] = (string)$filterRow['nome_status'];
-        }
-    }
-
-    $filterStmt->close();
-}
-
-asort($obrasMap, SORT_NATURAL | SORT_FLAG_CASE);
-asort($colabMap, SORT_NATURAL | SORT_FLAG_CASE);
-ksort($statusImagemMap, SORT_NUMERIC);
-
-$obras = [];
-foreach ($obrasMap as $id => $nome) {
-    $obras[] = ['id' => (int)$id, 'nome' => $nome];
-}
-
-$colaboradores = [];
-foreach ($colabMap as $id => $nome) {
-    $colaboradores[] = ['id' => (int)$id, 'nome' => $nome];
-}
-
-$statusImagem = [];
-foreach ($statusImagemMap as $id => $nome) {
-    $statusImagem[] = ['id' => (int)$id, 'nome' => $nome];
-}
-
-echo json_encode([
-    'success' => true,
-    'items' => $items,
-    'filtros' => [
-        'obras' => $obras,
-        'colaboradores' => $colaboradores,
-        'status_imagens' => $statusImagem
-    ]
-]);
-exit;

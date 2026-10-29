@@ -2431,10 +2431,10 @@ body.planning-page.light {
   --pp-success: #087c5a;
   --success: #087c5a;
   --danger: #c8324b;
-  --pp-grid: rgba(115, 135, 160, .2);
+  --pp-grid: rgba(115, 135, 160, 0.2);
   --text-muted: #66768d;
   --accent: var(--pp-violet);
-  --accent-subtle: rgba(112, 69, 201, .1);
+  --accent-subtle: rgba(112, 69, 201, 0.1);
 }
 body.planning-page.light .planning-icon-button {
   border-color: #cfd9e7;
@@ -2454,7 +2454,10 @@ body.planning-page.light .planning-diagnosis {
   background: #fff4f5;
   border-color: var(--status-border);
 }
-body.planning-page.light .planning-hero-status { --status-color: #a52c42; --status-muted: #795764; }
+body.planning-page.light .planning-hero-status {
+  --status-color: #a52c42;
+  --status-muted: #795764;
+}
 body.planning-page.light .planning-hero-status.is-viavel,
 body.planning-page.light .planning-diagnosis.is-viavel,
 body.planning-page.light .planning-hero-status.is-concluido,
@@ -2464,70 +2467,212 @@ body.planning-page.light .planning-diagnosis.is-concluido {
   --status-border: #a3d7c2;
 }
 body.planning-page.light .planning-diagnosis.is-viavel,
-body.planning-page.light .planning-diagnosis.is-concluido { background: #edf9f3; border-color: #a3d7c2; }
+body.planning-page.light .planning-diagnosis.is-concluido {
+  background: #edf9f3;
+  border-color: #a3d7c2;
+}
 body.planning-page.light .planning-hero-status.is-atencao,
-body.planning-page.light .planning-diagnosis.is-atencao { --status-color: #8b5700; --status-muted: #765d35; --status-border: #e8c990; }
-body.planning-page.light .planning-diagnosis.is-atencao { background: #fff8e9; border-color: #e8c990; }
+body.planning-page.light .planning-diagnosis.is-atencao {
+  --status-color: #8b5700;
+  --status-muted: #765d35;
+  --status-border: #e8c990;
+}
+body.planning-page.light .planning-diagnosis.is-atencao {
+  background: #fff8e9;
+  border-color: #e8c990;
+}
 body.planning-page.light .planning-hero-status.is-desatualizado,
-body.planning-page.light .planning-diagnosis.is-desatualizado { --status-color: #285fae; --status-muted: #506a8d; --status-border: #b0c8ed; }
-body.planning-page.light .planning-diagnosis.is-desatualizado { background: #f0f6ff; border-color: #b0c8ed; }
+body.planning-page.light .planning-diagnosis.is-desatualizado {
+  --status-color: #285fae;
+  --status-muted: #506a8d;
+  --status-border: #b0c8ed;
+}
+body.planning-page.light .planning-diagnosis.is-desatualizado {
+  background: #f0f6ff;
+  border-color: #b0c8ed;
+}
 body.planning-page.light .planning-hero-status.is-sem_previsao_confiavel,
-body.planning-page.light .planning-diagnosis.is-sem_previsao_confiavel { --status-color: #7045c9; --status-muted: #6b5d88; --status-border: #cbb9ec; }
-body.planning-page.light .planning-diagnosis.is-sem_previsao_confiavel { background: #f7f3ff; border-color: #cbb9ec; }
+body.planning-page.light .planning-diagnosis.is-sem_previsao_confiavel {
+  --status-color: #7045c9;
+  --status-muted: #6b5d88;
+  --status-border: #cbb9ec;
+}
+body.planning-page.light .planning-diagnosis.is-sem_previsao_confiavel {
+  background: #f7f3ff;
+  border-color: #cbb9ec;
+}
 body.planning-page.light .planning-diagnosis > #plan-status-card,
-body.planning-page.light .planning-diagnosis > .planning-lifecycle { border-color: rgba(89, 107, 132, .2); }
+body.planning-page.light .planning-diagnosis > .planning-lifecycle {
+  border-color: rgba(89, 107, 132, 0.2);
+}
 body.planning-page.light .planning-hero-status.is-concluido strong,
 body.planning-page.light .is-concluido .planning-diagnosis-main > i,
-body.planning-page.light .is-concluido #diagnosis-summary { color: #087c5a; }
-body.planning-page.light .planning-scenario { border-color: #dfd9cf; background: rgba(255,255,255,.7); }
-body.planning-page.light .planning-scenario b { color: #b33146; }
-body.planning-page.light .planning-scenario b.is-good { color: #087c5a; }
+body.planning-page.light .is-concluido #diagnosis-summary {
+  color: #087c5a;
+}
+body.planning-page.light .planning-scenario {
+  border-color: #dfd9cf;
+  background: rgba(255, 255, 255, 0.7);
+}
+body.planning-page.light .planning-scenario b {
+  color: #b33146;
+}
+body.planning-page.light .planning-scenario b.is-good {
+  color: #087c5a;
+}
 body.planning-page.light .planning-operational-card.is-no_plano strong,
-body.planning-page.light .planning-summary .planning-operational-card.is-delivered strong { color: #087c5a; }
-body.planning-page.light .planning-operational-card.is-margem_consumida strong { color: #976000; }
-body.planning-page.light .planning-summary article small.negative { color: #b72d43; }
+body.planning-page.light
+  .planning-summary
+  .planning-operational-card.is-delivered
+  strong {
+  color: #087c5a;
+}
+body.planning-page.light .planning-operational-card.is-margem_consumida strong {
+  color: #976000;
+}
+body.planning-page.light .planning-summary article small.negative {
+  color: #b72d43;
+}
 body.planning-page.light .planning-summary #summary-margin-planned.is-early,
-body.planning-page.light .planning-summary article small.is-early { color: #087c5a; }
+body.planning-page.light .planning-summary article small.is-early {
+  color: #087c5a;
+}
 body.planning-page.light .planning-summary #summary-margin-planned.is-late,
-body.planning-page.light .planning-summary article small.is-late { color: #b72d43; }
-body.planning-page.light .planning-timeline-head { background: #f6f9fd; border-color: #dbe3ee; }
-body.planning-page.light .planning-timeline-controls button { color: #586b83; }
-body.planning-page.light .planning-timeline-controls button.is-active { background: #ebe4fa; color: #5732ad; }
-body.planning-page.light .planning-legend { color: #42546c; }
-body.planning-page.light .timeline-month { color: #33465f; }
-body.planning-page.light .timeline-tick { color: #61738b; }
-body.planning-page.light .planning-timeline { background-color: #f8fafd; border-color: #dbe3ee; }
-body.planning-page.light .planning-stage-list::after { background: #f4f7fb; }
-body.planning-page.light .planning-stage-row.is-selected { background: #f0eaff; box-shadow: inset 3px 0 0 var(--pp-violet); }
-body.planning-page.light .planning-dependencies { color: #5a39a8; background: #e9e0f8; }
-body.planning-page.light .planning-dependencies:hover { background: #d9c9f3; }
-body.planning-page.light .planning-progress-pill { background: #e9eef5; color: #4a5b72; }
-body.planning-page.light .planning-progress-pill.is-concluida { background: #dff4e9; color: #087c5a; }
-body.planning-page.light .planning-progress-pill.is-em_andamento { background: #fff0d2; color: #8b5700; }
+body.planning-page.light .planning-summary article small.is-late {
+  color: #b72d43;
+}
+body.planning-page.light .planning-timeline-head {
+  background: #f6f9fd;
+  border-color: #dbe3ee;
+}
+body.planning-page.light .planning-timeline-controls button {
+  color: #586b83;
+}
+body.planning-page.light .planning-timeline-controls button.is-active {
+  background: #ebe4fa;
+  color: #5732ad;
+}
+body.planning-page.light .planning-legend {
+  color: #42546c;
+}
+body.planning-page.light .timeline-month {
+  color: #33465f;
+}
+body.planning-page.light .timeline-tick {
+  color: #61738b;
+}
+body.planning-page.light .planning-timeline {
+  background-color: #f8fafd;
+  border-color: #dbe3ee;
+}
+body.planning-page.light .planning-stage-list::after {
+  background: #f4f7fb;
+}
+body.planning-page.light .planning-stage-row.is-selected {
+  background: #f0eaff;
+  box-shadow: inset 3px 0 0 var(--pp-violet);
+}
+body.planning-page.light .planning-dependencies {
+  color: #5a39a8;
+  background: #e9e0f8;
+}
+body.planning-page.light .planning-dependencies:hover {
+  background: #d9c9f3;
+}
+body.planning-page.light .planning-progress-pill {
+  background: #e9eef5;
+  color: #4a5b72;
+}
+body.planning-page.light .planning-progress-pill.is-concluida {
+  background: #dff4e9;
+  color: #087c5a;
+}
+body.planning-page.light .planning-progress-pill.is-em_andamento {
+  background: #fff0d2;
+  color: #8b5700;
+}
 body.planning-page.light .planning-observed-cell.is-actual small,
-body.planning-page.light.is-completed .planning-observed-cell.is-actual strong { color: #087c5a; }
-body.planning-page.light .planning-deviation.is-late { color: #b72d43; background: #fdebee; }
-body.planning-page.light .planning-deviation.is-early { color: #087c5a; background: #e0f4e9; }
-body.planning-page.light .planning-deviation.is-on-time { color: #596b82; }
-body.planning-page.light .planning-connector { stroke: #7f91a8; }
-body.planning-page.light .planning-bar { box-shadow: 0 2px 5px rgba(31, 49, 74, .2); }
-body.planning-page.light .planning-limit-tick { border-left-color: #4d5e73; }
-body.planning-page.light .planning-limit-tick:focus-visible { outline-color: #283e59; }
-body.planning-page.light .planning-milestone.is-actual { background: #087c5a; border-color: #fff; }
-body.planning-page.light .planning-milestone.is-projected { border-color: #fff; }
-body.planning-page.light .planning-milestone:focus-visible { outline-color: #352359; }
-body.planning-page.light .planning-milestone-date.is-actual { color: #087c5a; }
-body.planning-page.light .planning-observed-link.is-actual { border-color: #087c5a; }
-body.planning-page.light .planning-observed-link.is-actual.is-late { border-color: #c8324b; }
-body.planning-page.light .marker-today { border-color: #a36100; background: #a36100; color: #854f00; }
-body.planning-page.light .marker-finish { border-color: #c8324b; background: #c8324b; color: #b72d43; }
+body.planning-page.light.is-completed .planning-observed-cell.is-actual strong {
+  color: #087c5a;
+}
+body.planning-page.light .planning-deviation.is-late {
+  color: #b72d43;
+  background: #fdebee;
+}
+body.planning-page.light .planning-deviation.is-early {
+  color: #087c5a;
+  background: #e0f4e9;
+}
+body.planning-page.light .planning-deviation.is-on-time {
+  color: #596b82;
+}
+body.planning-page.light .planning-connector {
+  stroke: #7f91a8;
+}
+body.planning-page.light .planning-bar {
+  box-shadow: 0 2px 5px rgba(31, 49, 74, 0.2);
+}
+body.planning-page.light .planning-limit-tick {
+  border-left-color: #4d5e73;
+}
+body.planning-page.light .planning-limit-tick:focus-visible {
+  outline-color: #283e59;
+}
+body.planning-page.light .planning-milestone.is-actual {
+  background: #087c5a;
+  border-color: #fff;
+}
+body.planning-page.light .planning-milestone.is-projected {
+  border-color: #fff;
+}
+body.planning-page.light .planning-milestone:focus-visible {
+  outline-color: #352359;
+}
+body.planning-page.light .planning-milestone-date.is-actual {
+  color: #087c5a;
+}
+body.planning-page.light .planning-observed-link.is-actual {
+  border-color: #087c5a;
+}
+body.planning-page.light .planning-observed-link.is-actual.is-late {
+  border-color: #c8324b;
+}
+body.planning-page.light .marker-today {
+  border-color: #a36100;
+  background: #a36100;
+  color: #854f00;
+}
+body.planning-page.light .marker-finish {
+  border-color: #c8324b;
+  background: #c8324b;
+  color: #b72d43;
+}
 body.planning-page.light .marker-due,
-body.planning-page.light .marker-actual { border-color: #087c5a; background: #087c5a; color: #087c5a; }
-body.planning-page.light.is-completed .marker-due { border-color: #596b82; background: #596b82; color: #42546c; }
-body.planning-page.light .planning-legend .legend-today { background: #a36100; }
-body.planning-page.light .planning-legend .legend-finish { background: #c8324b; }
+body.planning-page.light .marker-actual {
+  border-color: #087c5a;
+  background: #087c5a;
+  color: #087c5a;
+}
+body.planning-page.light.is-completed .marker-due {
+  border-color: #596b82;
+  background: #596b82;
+  color: #42546c;
+}
+body.planning-page.light .planning-legend .legend-today {
+  background: #a36100;
+}
+body.planning-page.light .planning-legend .legend-finish {
+  background: #c8324b;
+}
 body.planning-page.light .planning-legend .legend-due,
 body.planning-page.light .planning-legend .legend-actual,
-body.planning-page.light .planning-legend .legend-check { background: #087c5a; }
-body.planning-page.light .planning-legend .legend-deadline { background: #596b82; }
-body.planning-page.light .planning-detail .planning-operational-warning { color: #654700; background: #fff5df; }
+body.planning-page.light .planning-legend .legend-check {
+  background: #087c5a;
+}
+body.planning-page.light .planning-legend .legend-deadline {
+  background: #596b82;
+}
+body.planning-page.light .planning-detail .planning-operational-warning {
+  color: #654700;
+  background: #fff5df;
+}

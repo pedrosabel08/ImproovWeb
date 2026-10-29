@@ -20,7 +20,7 @@ function flow_metadata_catalog(): array
         'fotografico' => ['Fotográfico | Flow', 'Planejamento e acompanhamento da produção fotográfica.', 'Fotografico/', ['Fotografico/index.php']],
         'flow-drive' => ['Flow Drive | Improov', 'Organização e compartilhamento de arquivos de projetos.', 'FlowDrive/', ['FlowDrive/index.php']],
         'pre-alteracao' => ['Pré-Alteração | Flow', 'Análise e planejamento de solicitações de alteração.', 'PreAlteracao/', ['PreAlteracao/index.php']],
-        'alteracao' => ['Alterações | Flow', 'Organização e acompanhamento de alterações de imagens.', 'Alteracao/', ['Alteracao/index.php']],
+        'alteracao' => ['Alterações | Flow', 'Agenda semanal para execução e acompanhamento de alterações de imagens.', 'Alteracao/', ['Alteracao/index.php']],
         'tv-dashboard' => ['TV Dashboard | Flow', 'Visão da produção e acompanhamento de metas da equipe.', 'TvDashboard/', ['TvDashboard/index.php']],
         'entregas' => ['Entregas | Flow', 'Planejamento e acompanhamento das entregas de projetos.', 'Entregas/', ['Entregas/index.php']],
         'gestao' => ['Gestão de Projetos | Flow', 'Visão integrada do planejamento e da gestão de projetos.', 'Gestao/', ['Gestao/index.php']],

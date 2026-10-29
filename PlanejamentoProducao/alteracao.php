@@ -75,5 +75,5 @@ try {
     echo json_encode($method === 'GET' ? $plano : ['success' => true,'plano' => $plano], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     http_response_code(in_array($e->getCode(), [401,403,405,409], true) ? $e->getCode() : 422);
-    echo json_encode(['success' => false,'erro' => $e->getMessage(),'message' => $e->getMessage()],JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false,'erro' => $e->getMessage(),'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

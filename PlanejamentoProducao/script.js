@@ -1294,19 +1294,31 @@
   themeButton.addEventListener("click", () => {
     const next = themeRoot.dataset.theme === "light" ? "dark" : "light";
     themeRoot.dataset.theme = next;
-    try { localStorage.setItem("theme", next); } catch (_) {}
+    try {
+      localStorage.setItem("theme", next);
+    } catch (_) {}
     syncTheme();
   });
-  new MutationObserver(syncTheme).observe(themeRoot, { attributes: true, attributeFilter: ["data-theme"] });
+  new MutationObserver(syncTheme).observe(themeRoot, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
   window.addEventListener("storage", (event) => {
-    if (event.key === "theme" && (event.newValue === "light" || event.newValue === "dark")) themeRoot.dataset.theme = event.newValue;
+    if (
+      event.key === "theme" &&
+      (event.newValue === "light" || event.newValue === "dark")
+    )
+      themeRoot.dataset.theme = event.newValue;
   });
   const colorPreference = window.matchMedia?.("(prefers-color-scheme: light)");
   colorPreference?.addEventListener?.("change", (event) => {
     let saved = null;
-    try { saved = localStorage.getItem("theme"); } catch (_) {}
+    try {
+      saved = localStorage.getItem("theme");
+    } catch (_) {}
     const requested = new URLSearchParams(location.search).get("tema");
-    if (!saved && requested !== "light" && requested !== "dark") themeRoot.dataset.theme = event.matches ? "light" : "dark";
+    if (!saved && requested !== "light" && requested !== "dark")
+      themeRoot.dataset.theme = event.matches ? "light" : "dark";
   });
   syncTheme();
   // $("#show-scenarios").addEventListener("click", () => {

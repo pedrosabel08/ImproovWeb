@@ -19,19 +19,12 @@ unset($__root, $__p);
 // session_start();
 $nome_usuario = $_SESSION['nome_usuario'] ?? '';
 
-include '../conexaoMain.php';
-require_once __DIR__ . '/../conexao.php';
-
-
+require_once __DIR__ . '/../conexaoMain.php';
 
 $conn = conectarBanco();
 
-$clientes = obterClientes($conn);
-$obras = obterObras($conn);
+$obras = obterObras($conn); // Also supplies the existing sidebar's permitted projects/context.
 $colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
-$imagens = obterImagens($conn);
 
 $conn->close();
 ?>
@@ -43,9 +36,17 @@ $conn->close();
     <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Share the preference already used by Planejamento; otherwise follow the OS.
+        try {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
+        } catch (_) {}
+    </script>
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&altconf=20260629-approval-upload'; ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('planner.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -59,169 +60,56 @@ $conn->close();
 
     <div class="container">
 
-        <!-- Page Header -->
-        <div class="page-header" data-motion="header">
+        <header class="page-header">
             <div class="page-header-left">
-                <img src="../gif/assinatura_preto.gif" alt="Improov" class="page-header-logo" id="gif">
-                <h1 class="page-title">Alterações</h1>
+                <span class="planner-title-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
+                <div><h1 class="page-title">Alterações</h1><p class="planner-subtitle" id="planner-subtitle">Agenda operacional da semana</p></div>
             </div>
-            <div class="results-summary">
-                <span class="results-badge" id="resultsBadge">
-                    <i class="fa-solid fa-layer-group"></i>
-                    <span id="resultsCount">0</span> itens
-                </span>
+            <span class="results-badge"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span id="resultsCount">0</span> itens</span>
+        </header>
+
+        <section class="filters planner-filters" id="filtros-alteracao" aria-label="Filtros das alterações">
+            <div class="planner-filter-fields">
+                <div class="filter-group"><label class="filter-label" for="filtro-obra">Obra</label><select class="filter-select" id="filtro-obra"><option value="">Todas as obras</option></select></div>
+                <div class="filter-group"><label class="filter-label" for="filtro-colaborador">Colaborador</label><select class="filter-select" id="filtro-colaborador"><option value="">Todos</option><option value="sem">Sem responsável</option></select></div>
+                <div class="filter-group"><label class="filter-label" for="filtro-status-imagem">Etapa</label><select class="filter-select" id="filtro-status-imagem"><option value="">Todas</option></select></div>
+                <div class="filter-group"><label class="filter-label" for="filtro-nivel">Nível</label><select class="filter-select" id="filtro-nivel"><option value="">Todos</option><option value="1">N1</option><option value="2">N2</option><option value="3">N3</option><option value="4">N4</option><option value="5">N5</option><option value="sem">Sem nível</option></select></div>
+                <div class="filter-group"><label class="filter-label" for="filtro-status">Status</label><select class="filter-select" id="filtro-status"><option value="">Todos</option><option>Não iniciado</option><option>HOLD</option><option>Em andamento</option><option>Em aprovação</option><option>Ajuste</option><option>Aprovado com ajustes</option><option value="concluidas">Concluídas</option><option>Finalizado</option><option>Aprovado</option></select></div>
+                <div class="filter-search"><label class="filter-label" for="filtro-busca">Buscar</label><div class="input-wrap"><i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i><input type="search" class="filter-input" id="filtro-busca" placeholder="Imagem, obra, etapa ou colaborador..."></div></div>
             </div>
+            <div class="planner-filter-footer">
+                <div class="planner-week-nav" aria-label="Navegação por semana">
+                    <button type="button" class="planner-icon-btn" id="semana-anterior" aria-label="Semana anterior"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+                    <label class="planner-week-picker"><i class="fa-regular fa-calendar" aria-hidden="true"></i><span id="semana-label">Semana atual</span><input type="date" id="filtro-semana" aria-label="Escolher semana"></label>
+                    <button type="button" class="planner-icon-btn" id="semana-proxima" aria-label="Próxima semana"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+                    <button type="button" class="planner-text-btn" id="semana-atual">Semana atual</button>
+                </div>
+                <div class="planner-filter-actions"><label class="planner-check"><input type="checkbox" id="ocultar-concluidas"> Ocultar concluídas</label><button type="button" class="planner-text-btn" id="btn-limpar-filtros">Limpar filtros</button><a class="planner-edit" id="editar-planejamento" href="../Entregas/"><i class="fa-solid fa-pen" aria-hidden="true"></i> Editar planejamento</a></div>
+            </div>
+        </section>
+
+        <div class="planner-view-bar">
+            <div class="planner-tabs" role="tablist" aria-label="Fila operacional">
+                <button type="button" role="tab" id="tab-alteracoes" aria-selected="true" aria-controls="planner-content">Alterações <span id="planned-count">0</span></button>
+                <button type="button" role="tab" id="tab-render" aria-selected="false" aria-controls="render-content">Render em Alta <span id="render-count">0</span></button>
+            </div>
+            <button type="button" class="planner-backlog-toggle" id="toggle-unplanned" aria-expanded="false" aria-controls="unplanned-panel"><i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i> Sem planejamento <span id="unplanned-count">0</span></button>
         </div>
-
-        <!-- Filter Bar -->
-        <div class="filters" id="filtros-alteracao" data-motion="toolbar">
-
-            <div class="filter-group">
-                <label class="filter-label">Status Kanban</label>
-                <select class="filter-select" id="filtro-status">
-                    <option value="">Todos</option>
-                    <option value="Não iniciado">Não iniciado</option>
-                    <option value="Em andamento">Em andamento</option>
-                    <option value="Em aprovação">Em aprovação</option>
-                    <option value="Finalizado">Finalizado</option>
-                </select>
+        <div id="planner-feedback" role="status" aria-live="polite" hidden></div>
+        <div id="planner-loading" role="status" hidden><canvas data-thinking-orb data-orb-state="composing" data-orb-size="42" data-orb-theme="auto" aria-label="Carregando alterações"></canvas><span>Carregando alterações…</span></div>
+        <section id="planner-content" class="planner-content" role="tabpanel" aria-labelledby="tab-alteracoes">
+            <aside id="unplanned-panel" class="planner-unplanned" aria-labelledby="unplanned-title" hidden>
+                <div class="planner-panel-heading"><h2 id="unplanned-title">Sem planejamento</h2><button type="button" class="planner-icon-btn" id="close-unplanned" aria-label="Fechar sem planejamento">×</button></div>
+                <p class="planner-panel-help">Itens sem dia confirmado. O prazo legado não define o dia de execução.</p>
+                <div id="unplanned-cards" class="planner-card-list"></div>
+            </aside>
+            <div class="planner-week-space">
+                <div class="planner-mobile-nav"><button type="button" class="planner-icon-btn" id="dia-anterior" aria-label="Dia anterior">‹</button><span id="dia-label"></span><button type="button" class="planner-icon-btn" id="dia-proximo" aria-label="Próximo dia">›</button></div>
+                <div class="planner-board" id="planner-board" aria-label="Agenda semanal de alterações" tabindex="0"></div>
+                <div id="planner-exceptional" hidden></div>
             </div>
-
-            <div class="filter-group">
-                <label class="filter-label"><i class="fa-solid fa-image"></i> Status Imagem</label>
-                <select class="filter-select" id="filtro-status-imagem">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Obra</label>
-                <select class="filter-select" id="filtro-obra">
-                    <option value="">Todas</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Colaborador</label>
-                <select class="filter-select" id="filtro-colaborador">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-
-            <div class="filter-search">
-                <label class="filter-label"><i class="fa-solid fa-magnifying-glass"></i> Buscar</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                    <input type="text" class="filter-input" id="filtro-busca" placeholder="Imagem, obra ou colaborador...">
-                </div>
-            </div>
-
-            <div class="filter-actions">
-                <button type="button" id="btn-toggle-compact" class="btn-toggle-compact">
-                    <i class="fa-solid fa-compress"></i> Compactar
-                </button>
-                <button type="button" class="btn-apply" id="btn-aplicar-filtros">
-                    <i class="fa-solid fa-magnifying-glass"></i> Aplicar
-                </button>
-                <button type="button" class="btn-clear" id="btn-limpar-filtros">Limpar</button>
-            </div>
-
-        </div>
-
-        <!-- Board Area: EF Panel + Kanban -->
-        <div class="board-area" data-motion="section">
-
-            <!-- EF Side Panel -->
-            <div class="ef-panel" id="ef-panel">
-                <div class="ef-panel-header">
-                    <i class="fa-solid fa-bolt"></i>
-                    <span>Render em Alta</span>
-                    <span class="ef-panel-count" id="ef-panel-count">0</span>
-                </div>
-                <div class="ef-panel-body" id="ef-panel-body">
-                    <div class="ef-panel-empty">
-                        <i class="fa-solid fa-check"></i>
-                        <span>Nenhum EF</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Kanban Board -->
-            <div class="kanban-board" id="kanban-board" data-motion-group="cards">
-                <div class="kanban-column" data-status="Não iniciado">
-                    <div class="kanban-title">
-                        Não iniciado
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-nao-iniciado"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-nao-iniciado">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-nao-iniciado"></div>
-                </div>
-                <div class="kanban-column" data-status="HOLD">
-                    <div class="kanban-title">
-                        HOLD
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-hold"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-hold">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-hold"></div>
-                </div>
-                <div class="kanban-column" data-status="Em andamento">
-                    <div class="kanban-title">
-                        Em andamento
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-em-andamento"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-em-andamento">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-em-andamento"></div>
-                </div>
-                <div class="kanban-column" data-status="Em aprovação">
-                    <div class="kanban-title">
-                        Em aprovação
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-em-aprovacao"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-em-aprovacao">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-em-aprovacao"></div>
-                </div>
-                <div class="kanban-column" data-status="Ajuste">
-                    <div class="kanban-title">
-                        Ajuste
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-ajuste"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-ajuste">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-ajuste"></div>
-                </div>
-                <div class="kanban-column" data-status="Aprovado com ajustes">
-                    <div class="kanban-title">
-                        Aprovado com ajustes
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-aprovado-ajustes"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-aprovado-ajustes">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-aprovado-ajustes"></div>
-                </div>
-                <!-- <div class="kanban-column" data-status="Finalizado">
-                    <div class="kanban-title">
-                        Finalizado
-                        <div class="kanban-title-right">
-                            <span class="ef-count" id="ef-count-finalizado"><i class="fa-solid fa-bolt"></i><span>0</span></span>
-                            <span class="count" id="count-finalizado">0</span>
-                        </div>
-                    </div>
-                    <div class="kanban-cards" id="kanban-finalizado"></div>
-                </div> -->
-            </div>
-
-        </div><!-- /.board-area -->
-
+        </section>
+        <section id="render-content" class="planner-render" role="tabpanel" aria-labelledby="tab-render" hidden><p class="planner-panel-help">Render em Alta mantém seu fluxo operacional e não utiliza os dias do planner de alterações.</p><div id="render-cards" class="planner-render-grid"></div></section>
     </div><!-- /.container -->
 
     <!-- ===== EDIT MODAL ===== -->
@@ -325,11 +213,12 @@ $conn->close();
     </div>
 
     <?php flow_motion_assets('../'); ?>
-    <script src="<?php echo asset_url('script.js') . '&altconf=20260807-pendencias-entrega'; ?>"></script>
+    <script src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
+    <script src="<?php echo asset_url('planner.js'); ?>"></script>
+    <script src="<?php echo asset_url('script.js') . '&altconf=20261029-planner'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script>window.FlowMotion && window.FlowMotion.init();</script>

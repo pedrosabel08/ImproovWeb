@@ -397,7 +397,7 @@ export class EmpreendimentoMapBridge {
       panel.append(
         el(
           "p",
-          `Altura em relação ao térreo: ${floorHeightFormat.format(heightFromGround)} m`,
+          `Altura em relação ao chão: ${floorHeightFormat.format(heightFromGround)} m`,
           "floor-height",
         ),
       );

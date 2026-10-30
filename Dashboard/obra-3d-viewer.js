@@ -6,6 +6,7 @@ import {
 } from "../MapaPavimento/predio-3d/solar-position.mjs?v=2";
 import { createTechnicalStage, createSolarIndicator } from "./obra-3d-stage.js";
 import { createModelLoader } from "../MapaPavimento/predio-3d/model-loader.js";
+import { hideExcludedObjects } from "../MapaPavimento/predio-3d/model-scene.js?v=20261030";
 import { setupEnvironment } from "../MapaPavimento/predio-3d/viewer-environment.js";
 import { northDirection } from "../MapaPavimento/predio-3d/north-direction.js";
 import { visibleModelBounds } from "../MapaPavimento/predio-3d/floor-visibility.js";
@@ -162,6 +163,7 @@ export class Obra3DViewer {
       return;
     }
     this.model = gltf.scene;
+    hideExcludedObjects(this.model);
     const adjustedGlass = new Map();
     // A apresentação destaca a arquitetura. O entorno continua no viewer completo.
     this.model.traverse((object) => {

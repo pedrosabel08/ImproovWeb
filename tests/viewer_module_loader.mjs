@@ -10,14 +10,14 @@ export async function loadViewerModule(filename, threeURL) {
     if (cache.has(url.href)) return cache.get(url.href);
     const pending = (async () => {
       let source = await readFile(url, "utf8");
-      const imports = [...source.matchAll(/from\s+(["'])([^"']+)\1/g)];
+      const imports = [...source.matchAll(/^import\b[\s\S]*?from\s+(["'])([^"']+)\1\s*;/gm)];
       for (const match of imports) {
         const specifier = match[2];
         let resolved;
         if (specifier === "three") resolved = threeURL;
         else if (specifier.startsWith(".")) resolved = await moduleURL(new URL(specifier, url));
         else throw new Error("Import não suportado pelo teste: " + specifier);
-        source = source.replace(match[0], "from " + JSON.stringify(resolved));
+        source = source.replace(match[0], match[0].replace(match[1] + specifier + match[1], JSON.stringify(resolved)));
       }
       return "data:text/javascript;base64," + Buffer.from(source).toString("base64");
     })();

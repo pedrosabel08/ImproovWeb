@@ -1,11 +1,12 @@
-import { createViewerGlass } from "./viewer-glass.js";
+import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
 import { setupPersonCamera } from "./person-camera.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
-import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261021-floor-elevation";
+import { hideExcludedObjects } from "./model-scene.js?v=20261030";
+import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261030-ground";
 import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
-import { SolarLighting } from "./solar-lighting.js?v=20261016-projection-off";
+import { SolarLighting } from "./solar-lighting.js?v=20261030-night-neutral-v1";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { ModelMeasurement } from "./model-measurement.js";
 import { visibleSurface } from "./measurement-geometry.js";
@@ -14,7 +15,8 @@ import {
   FloorVisibility,
   visibleModelBounds,
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
-import { setupEnvironment } from "./viewer-environment.js?v=20261016-orthographic-background";
+import { setupEnvironment } from "./viewer-environment.js?v=20261030-night-neutral-v1";
+import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
 import { fitSolarShadow } from "./solar-shadow.js";
 
 const themeStyle = getComputedStyle(document.documentElement);
@@ -101,7 +103,10 @@ renderer.domElement.className = "gl";
 viewport.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = null;
-const viewerEnvironment = setupEnvironment(renderer, scene);
+const viewerEnvironment = setupEnvironment(renderer, scene, { solar: true });
+window.addEventListener("pagehide", (event) => {
+  if (!event.persisted) viewerEnvironment.dispose();
+});
 const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.01, 100000);
 camera.position.set(10, 9, 12);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -179,6 +184,7 @@ const solarLighting = new SolarLighting({
   scene,
   light,
   ambient,
+  environment: viewerEnvironment,
   viewport,
   getModel: () => modelRoot,
   onRestore: updateNavigationLight,
@@ -313,11 +319,26 @@ function buildIndex(root, sourceName = "") {
       a.bounds.min.y - b.bounds.min.y ||
       a.id.localeCompare(b.id, "pt-BR", { numeric: true }),
   );
-  const groundFloor =
-    floors.find((floor) =>
-      /(^|_)(TERREO|TÉRREO|GROUND)(_|$)/i.test(floor.id),
-    ) || floors[0];
-  const groundElevation = groundFloor?.bounds.min.y;
+  // A superfície do entorno é a referência do chão; o térreo pode estar
+  // elevado ou rebaixado em relação a ela. Na ausência de terreno identificado
+  // não é possível inferir essa altura com segurança.
+  let groundElevation,
+    groundArea = 0;
+  root.traverse((object) => {
+    if (
+      !object.isMesh ||
+      !/^(terreno|terrain|ground|rua)(?:_|\b)/i.test(object.name || "")
+    )
+      return;
+    for (let node = object; node; node = node.parent) if (!node.visible) return;
+    const bounds = new THREE.Box3().setFromObject(object, true);
+    const size = bounds.getSize(new THREE.Vector3());
+    const area = size.x * size.z;
+    if (!bounds.isEmpty() && area > groundArea) {
+      groundArea = area;
+      groundElevation = bounds.max.y;
+    }
+  });
   floors.forEach((floor) => {
     floor.groundElevation = groundElevation;
   });
@@ -429,6 +450,7 @@ function clipFloorContext(floor) {
     contextMaterials.set(mesh, original);
     const clones = materials.map((material) => {
       const clone = material.clone();
+      viewerEnvironment.registerMaterial(clone, material);
       if (
         material.userData?.viewerGlass ||
         (material.isMeshPhysicalMaterial && material.transmission > 0)
@@ -564,6 +586,7 @@ function refreshHighlights() {
     const materials = Array.isArray(original) ? original : [original];
     const clones = materials.map((material) => {
       const clone = material.clone();
+      viewerEnvironment.registerMaterial(clone, material);
       if (
         material.userData?.viewerGlass ||
         (material.isMeshPhysicalMaterial && material.transmission > 0)
@@ -979,7 +1002,7 @@ function setCamera(bounds, top = false, animate = false) {
 }
 function fitFull() {
   if (!modelRoot) return;
-  const box = new THREE.Box3().setFromObject(modelRoot, true);
+  const box = visibleModelBounds(modelRoot);
   if (!box.isEmpty()) {
     setCamera(box, false, false);
     fullCameraPose = captureCameraPose();
@@ -1155,7 +1178,7 @@ async function resetBuildingView() {
   // Recalcula o enquadramento para o espaço atual, inclusive após recolher painéis.
   await settleSidebarLayout();
   if (viewerState.mode !== "building") return;
-  const box = new THREE.Box3().setFromObject(modelRoot, true);
+  const box = visibleModelBounds(modelRoot);
   const pose = fullCameraPose || cameraPoseFor(box);
   await transitionCamera(pose, 850);
 }
@@ -1173,6 +1196,7 @@ async function fadeOtherObjects(floor, from = 1, to = 0) {
     const faded = materials.map((material) => {
       if (!clones.has(material)) {
         const clone = material.clone();
+        viewerEnvironment.registerMaterial(clone, material);
         clone.transparent = true;
         clone.depthWrite = false;
         clones.set(material, clone);
@@ -1267,7 +1291,7 @@ async function leaveFloor() {
   delete viewport.dataset.activeFloor;
   viewport.dataset.pickableCount = String(allFloorMeshes.length);
   viewport.dataset.contextCount = "0";
-  const box = new THREE.Box3().setFromObject(modelRoot, true);
+  const box = visibleModelBounds(modelRoot);
   updateSun();
   grid.position.y = box.min.y - 0.015;
   $("backToProject").hidden = true;
@@ -1308,6 +1332,7 @@ function clearModel() {
   clearSelection();
   restoreContextMaterials();
   if (modelRoot) {
+    viewerEnvironment.clearModel();
     scene.remove(modelRoot);
     const materials = new Set(),
       geometries = new Set(),
@@ -1358,6 +1383,7 @@ function install(gltf, sourceName) {
   hideTooltip();
   clearModel();
   modelRoot = gltf.scene;
+  hideExcludedObjects(modelRoot);
   // The viewer has no real world behind the model. Physical transmission samples
   // the environment cubemap in that case and can turn balcony panes into bright
   // white cards. Alpha blending lets the actual scene background (and geometry
@@ -1376,7 +1402,10 @@ function install(gltf, sourceName) {
       )
         return material;
       if (!adjustedGlass.has(material)) {
-        const glass = createViewerGlass(material);
+        const glass = createViewerGlass(material, {
+          environmentIntensity: ENVIRONMENT_SETTINGS.glassIntensity,
+          ior: ENVIRONMENT_SETTINGS.glassIor,
+        });
         adjustedGlass.set(material, glass);
       }
       changed = true;
@@ -1387,6 +1416,7 @@ function install(gltf, sourceName) {
         ? viewerMaterials
         : viewerMaterials[0];
   });
+  viewerEnvironment.registerModel(modelRoot);
   scene.add(modelRoot);
   modelRoot.updateMatrixWorld(true);
   originalVisibility = new Map();
@@ -1413,7 +1443,7 @@ function install(gltf, sourceName) {
   });
   contextIndex(modelRoot);
   floorVisibility = new FloorVisibility(modelRoot, floors, recordByObject);
-  const modelBounds = new THREE.Box3().setFromObject(modelRoot, true);
+  const modelBounds = visibleModelBounds(modelRoot);
   minimumCameraY = modelBounds.isEmpty()
     ? null
     : modelBounds.min.y +
@@ -1805,7 +1835,21 @@ layout.addEventListener("transitionend", (event) => {
 new ResizeObserver(scheduleResizeViewport).observe(viewport);
 window.addEventListener("resize", scheduleResizeViewport);
 resizeViewport();
-setupPersonCamera({ THREE, renderer, scene, camera, controls, viewport, getMeshes: () => modelMeshes, available: () => !!modelRoot && !mapVisible && !transitioning && !northDefining && !measurements.active });
+setupPersonCamera({
+  THREE,
+  renderer,
+  scene,
+  camera,
+  controls,
+  viewport,
+  getMeshes: () => modelMeshes,
+  available: () =>
+    !!modelRoot &&
+    !mapVisible &&
+    !transitioning &&
+    !northDefining &&
+    !measurements.active,
+});
 (function animate() {
   requestAnimationFrame(animate);
   $("backToProject").disabled =
@@ -1823,6 +1867,7 @@ setupPersonCamera({ THREE, renderer, scene, camera, controls, viewport, getMeshe
     if (!transitioning && !northDefining) controls.update();
     northIndicator.update();
     solarLighting.update(camera);
+    viewerEnvironment.tick();
     measurements.update();
     renderer.render(scene, camera);
   }
@@ -1909,7 +1954,7 @@ for (const [label, direction, up = [0, 1, 0]] of cubeViews) {
     const focusedFloor = activeFloor || viewerState.selectedFloor;
     const bounds = focusedFloor
       ? floorBounds(focusedFloor)
-      : new THREE.Box3().setFromObject(modelRoot, true);
+      : visibleModelBounds(modelRoot);
     if (bounds.isEmpty()) return;
     const pose = cameraPoseFor(
       bounds,

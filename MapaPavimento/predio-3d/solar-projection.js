@@ -321,6 +321,12 @@ export class SolarProjection {
       const y = ((1 - this.projected.y) / 2) * this.viewport.clientHeight;
       if (x > this.viewport.clientWidth - 260 && y < 90)
         label.element.hidden = true;
+      // Em viewports estreitos, os horários não devem cobrir toolbar/ViewCube.
+      if (
+        this.viewport.clientWidth < 360 &&
+        (y < 134 || (x > this.viewport.clientWidth - 164 && y < 294))
+      )
+        label.element.hidden = true;
       if (
         !label.element.hidden &&
         occupied.some(

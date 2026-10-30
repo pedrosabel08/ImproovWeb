@@ -1,10 +1,11 @@
 import * as THREE from "three";
+import { SolarEnvironment } from "./solar-environment.js?v=20261030-night-neutral-v1";
 
-/** Cubemap apenas para iluminação/reflexos. O fundo é o CSS do viewport.
+/** Fallback de navegação apenas para iluminação/reflexos. O fundo é o CSS do viewport.
  * O BackgroundCubeMaterial de r180 usa um cubo unitário: numa câmera ortográfica
  * ele vira um quadrado central e deixa o clear branco do shadow pass descoberto.
  * background=null faz o renderer restaurar o clear transparente em cada frame. */
-export function setupEnvironment(renderer, scene) {
+export function setupEnvironment(renderer, scene, { solar = false } = {}) {
   const skyScene = new THREE.Scene();
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -35,10 +36,13 @@ export function setupEnvironment(renderer, scene) {
   renderer.setClearColor(0x000000, 0);
   scene.environment = environment.texture;
   scene.environmentIntensity = 1;
-  return {
+  const fallback = {
     dispose() {
       background.dispose();
       environment.dispose();
     },
   };
+  return solar
+    ? new SolarEnvironment(renderer, scene, environment.texture, fallback)
+    : fallback;
 }

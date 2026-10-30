@@ -91,8 +91,21 @@ export function solarIntensity(altitudeRadians) {
 function positionAtInstant(config, date) {
   const position = SunCalc.getPosition(date, config.latitude, config.longitude);
   const azimuth = trueAzimuth(position.azimuth);
+  // Derivada astronômica: independe de fuso, relógio civil e rotação do Norte.
+  // Também funciona onde o Sol não nasce/se põe em determinadas estações.
+  const before = SunCalc.getPosition(
+    new Date(date.getTime() - 60000),
+    config.latitude,
+    config.longitude,
+  );
+  const after = SunCalc.getPosition(
+    new Date(date.getTime() + 60000),
+    config.latitude,
+    config.longitude,
+  );
   return {
     azimuth,
+    rising: after.altitude >= before.altitude,
     altitude: (position.altitude * 180) / Math.PI,
     direction: solarDirection(azimuth, position.altitude, config.norte_graus),
     intensity: solarIntensity(position.altitude),

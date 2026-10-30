@@ -1,6 +1,21 @@
 import * as THREE from "three";
 import { boxCorners } from "./solar-shadow.js";
 
+// O catcher só cobre modelos sem solo. Com terreno real, sua parte externa
+// aparecia como sombra flutuando sobre o novo panorama claro.
+export function hasVisibleGroundReceiver(root) {
+  let found = false;
+  root?.traverseVisible((object) => {
+    if (
+      object.isMesh &&
+      object.receiveShadow &&
+      /^(terreno|terrain|ground|rua)(?:_|\b)/i.test(object.name || "")
+    )
+      found = true;
+  });
+  return found;
+}
+
 /** Um quad técnico fora do GLB. O alpha desaparece antes das bordas do receptor. */
 export function createShadowCatcher() {
   const fade = {

@@ -1,9 +1,22 @@
 import * as THREE from "three";
-import { solarAt, solarNow, solarConfigError } from "./solar-position.mjs";
+import {
+  solarAt,
+  solarNow,
+  solarConfigError,
+} from "./solar-position.mjs?v=20261030-environment";
 import { fitSolarShadow } from "./solar-shadow.js";
-import { createShadowCatcher, fitShadowCatcher } from "./shadow-catcher.js";
-import { SolarProjection } from "./solar-projection.js?v=20261016-visible-bounds";
+import {
+  createShadowCatcher,
+  fitShadowCatcher,
+  hasVisibleGroundReceiver,
+} from "./shadow-catcher.js?v=20261030-spherical";
+import { SolarProjection } from "./solar-projection.js?v=20261030-mobile-labels";
 import { solarGlowTexture, SOLAR_ORBIT_SCALE } from "./solar-visuals.js";
+import {
+  ENVIRONMENTS,
+  ENVIRONMENT_SETTINGS,
+  atmosphereInterval,
+} from "./environment-config.mjs?v=20261030-night-neutral-v1";
 
 /** Uma única DirectionalLight: navegação quando desativado, Sol astronômico quando ativado. */
 export class SolarLighting {
@@ -11,6 +24,7 @@ export class SolarLighting {
     scene,
     light,
     ambient,
+    environment,
     viewport,
     onRestore,
     onConfigure,
@@ -21,6 +35,7 @@ export class SolarLighting {
       scene,
       light,
       ambient,
+      environment,
       viewport,
       onRestore,
       onConfigure,
@@ -30,6 +45,7 @@ export class SolarLighting {
     this.enabled = false;
     this.preferredEnabled = true;
     this.navigationColor = light.color.clone();
+    this.solarColor = new THREE.Color();
     this.panel = document.createElement("section");
     this.panel.id = "solarPanel";
     this.panel.className = "solar-panel";
@@ -48,6 +64,62 @@ export class SolarLighting {
         <div class="solar-moment"><p id="solarLocalDate" class="solar-date"></p><button type="button" class="btn" id="solarNow">Agora</button></div>
         <dl class="solar-readings"><div><dt>Azimute</dt><dd id="solarAzimuth">—</dd></div><div><dt>Elevação</dt><dd id="solarAltitude">—</dd></div></dl>
         <p id="solarZone" class="solar-meta"></p><p id="solarNorth" class="solar-meta"></p>
+        <details class="solar-technical solar-environment-debug">
+          <summary>Ambiente · diagnóstico</summary>
+          <label class="solar-environment-control" for="solarEnvironment">HDRI para comparação
+            <select id="solarEnvironment"><option value="auto">Automático</option>${Object.entries(
+              ENVIRONMENTS,
+            )
+              .map(
+                ([key, preset]) =>
+                  `<option value="${key}">${preset.label}</option>`,
+              )
+              .join("")}</select>
+          </label>
+          <label class="solar-horizon-debug"><input id="solarHorizonEnabled" type="checkbox"> Mostrar horizonte geométrico</label>
+          <dl class="solar-environment-readings">
+            <div><dt>HDRI atual</dt><dd id="solarEnvironmentCurrent">—</dd></div>
+            <div><dt>Horizon offset</dt><dd id="solarHorizonOffset">0°</dd></div>
+            <div><dt>HDRI rotation</dt><dd id="solarHdriRotation">0°</dd></div>
+            <div><dt>Horizon visible</dt><dd id="solarHorizonVisible">—</dd></div>
+            <div><dt>Elevação da câmera</dt><dd id="solarCameraPitch">—</dd></div>
+            <div><dt>Intensidade do Sol</dt><dd id="solarSunIntensity">—</dd></div>
+            <div><dt>Override</dt><dd id="solarEnvironmentOverride">Automático</dd></div>
+            <div><dt>GI global por HDRI</dt><dd id="solarGlobalEnvironment">Desativada</dd></div>
+            <div><dt>Reflexos (escala)</dt><dd id="solarEnvironmentIntensity">—</dd></div>
+            <div><dt>Período solar</dt><dd id="solarPeriod">—</dd></div>
+            <div><dt>HDRIs processados</dt><dd id="solarEnvironmentCached">0</dd></div>
+            <div><dt>LightProbe</dt><dd id="solarProbeState">Inativa</dd></div>
+            <div><dt>Probe · intensidade</dt><dd id="solarProbeIntensity">—</dd></div>
+            <div><dt>Probe · última atualização</dt><dd id="solarProbeUpdated">—</dd></div>
+            <div><dt>Probe · elevação usada</dt><dd id="solarProbeAltitude">—</dd></div>
+            <div><dt>Probe · azimute usado</dt><dd id="solarProbeAzimuth">—</dd></div>
+            <div><dt>Capturas da Probe</dt><dd id="solarProbeCount">0</dd></div>
+            <div><dt>Hemisphere · céu</dt><dd id="solarHemisphereSky">—</dd></div>
+            <div><dt>Hemisphere · solo</dt><dd id="solarHemisphereGround">—</dd></div>
+            <div><dt>Hemisphere · intensidade</dt><dd id="solarHemisphereIntensity">—</dd></div>
+            <div><dt>Céu visual</dt><dd id="solarSkyState">—</dd></div>
+            <div><dt>Materiais com reflexos</dt><dd id="solarReflectionMaterials">0</dd></div>
+          </dl>
+          <fieldset class="solar-environment-tuning"><legend>Ajustes temporários</legend>
+            ${[
+              ["probe", "LightProbe intensity"],
+              ["hemisphere", "Hemisphere intensity"],
+              ["glass", "Glass reflection intensity"],
+            ]
+              .map(([key, label]) => {
+                const range = ENVIRONMENT_SETTINGS.tuning[key];
+                return `<label for="solarTune-${key}">${label}<output id="solarTuneValue-${key}"></output></label><input id="solarTune-${key}" type="range" min="${range.min}" max="${range.max}" step="${range.step}" aria-label="${label}">`;
+              })
+              .join("")}
+            <p class="solar-meta">Valores base; as contribuições variam com a elevação solar. Ajustes somente nesta sessão.</p>
+            <button type="button" class="btn" id="solarResetEnvironmentTuning">Restaurar ajustes</button>
+          </fieldset>
+          <p id="solarEnvironmentStatus" class="solar-meta" role="status"></p>
+          <p id="solarProbeError" class="solar-meta" role="status"></p>
+          <p class="solar-meta">Comparação manual altera somente céu HDRI e reflexos. Sol, atmosfera, LightProbe e Hemisphere permanecem iguais. A linha marca o equador mundial Y = 0 da esfera ambiental e pode sair da viewport.</p>
+          <p id="solarDomeWarning" class="solar-meta" hidden>Câmera fora da esfera ambiental: usando direção mundial no céu. Horizonte esférico indisponível nesta posição.</p>
+        </details>
       </div>
       <p id="solarStatus" class="solar-status" role="status" aria-live="polite">Carregando configurações espaciais…</p>
       <fieldset id="solarVisualOptions" class="solar-projection-options" hidden>
@@ -64,6 +136,95 @@ export class SolarLighting {
       <button type="button" class="btn" id="solarConfigure" hidden>Configurar localização e Norte</button>`;
     document.querySelector(".right .head").after(this.panel);
     const select = (id) => this.panel.querySelector("#" + id);
+    select("solarEnvironment").addEventListener("change", (event) =>
+      environment?.setOverride(event.target.value),
+    );
+    select("solarHorizonEnabled").addEventListener("change", (event) =>
+      environment?.showHorizon(event.target.checked),
+    );
+    for (const key of ["probe", "hemisphere", "glass"])
+      select("solarTune-" + key).addEventListener("input", (event) =>
+        environment?.setTuning(key, event.target.value),
+      );
+    select("solarResetEnvironmentTuning").addEventListener("click", () =>
+      environment?.resetTuning(),
+    );
+    environment?.subscribe((state) => {
+      select("solarEnvironmentCurrent").textContent = state.current
+        ? ENVIRONMENTS[state.current].file
+        : "Ambiente de navegação";
+      select("solarEnvironmentIntensity").textContent =
+        state.intensity.toFixed(2);
+      select("solarEnvironmentCached").textContent = String(state.processed);
+      select("solarEnvironmentOverride").textContent =
+        state.override === "auto"
+          ? "Automático"
+          : ENVIRONMENTS[state.override].label;
+      select("solarHorizonOffset").textContent =
+        (state.horizon?.horizonOffset ?? 0).toFixed(1) + "°";
+      select("solarHdriRotation").textContent =
+        (state.horizon?.rotation ?? 0).toFixed(1) + "°";
+      select("solarHorizonVisible").textContent = state.horizon?.visible
+        ? "Sim"
+        : "Não";
+      select("solarCameraPitch").textContent =
+        state.horizon?.pitch != null
+          ? state.horizon.pitch.toFixed(1) + "°"
+          : "—";
+      select("solarDomeWarning").hidden = state.horizon?.insideDome !== false;
+      select("solarGlobalEnvironment").textContent = state.globalEnvironment
+        ? "Fallback de navegação"
+        : "Desativada";
+      select("solarProbeState").textContent =
+        (state.probe?.active ? "Ativa" : "Inativa") +
+        (state.probe?.state === "scheduled"
+          ? " · aguardando pausa"
+          : state.probe?.state === "generating"
+            ? " · atualizando"
+            : "");
+      select("solarProbeIntensity").textContent =
+        state.probe?.intensity?.toFixed(3) || "0.000";
+      select("solarProbeUpdated").textContent = state.probe?.updatedAt
+        ? new Date(state.probe.updatedAt).toLocaleTimeString("pt-BR")
+        : "—";
+      select("solarProbeAltitude").textContent =
+        state.probe?.altitude != null
+          ? state.probe.altitude.toFixed(1) + "°"
+          : "—";
+      select("solarProbeAzimuth").textContent =
+        state.probe?.azimuth != null
+          ? state.probe.azimuth.toFixed(1) + "°"
+          : "—";
+      select("solarProbeCount").textContent = String(state.probe?.updates || 0);
+      select("solarHemisphereSky").textContent =
+        state.hemisphere?.skyColor || "—";
+      select("solarHemisphereGround").textContent =
+        state.hemisphere?.groundColor || "—";
+      select("solarHemisphereIntensity").textContent =
+        state.hemisphere?.intensity.toFixed(3) || "0.000";
+      select("solarSkyState").textContent = state.sky || "Inativo";
+      select("solarReflectionMaterials").textContent = String(
+        state.reflectionMaterials,
+      );
+      select("solarProbeError").textContent = state.probe?.error
+        ? "LightProbe: " + state.probe.error
+        : "";
+      for (const key of ["probe", "hemisphere", "glass"]) {
+        select("solarTune-" + key).value = String(state.runtime[key]);
+        select("solarTuneValue-" + key).value = state.runtime[key].toFixed(3);
+      }
+      select("solarEnvironmentStatus").textContent =
+        state.state === "loading"
+          ? "Preparando " + ENVIRONMENTS[state.requested].label + "…"
+          : state.state === "error"
+            ? "Não foi possível carregar o HDRI. " +
+              state.error +
+              ". Céu e estudo solar continuam disponíveis."
+            : state.override !== "auto"
+              ? "Comparação manual ativa."
+              : "Seleção automática por elevação e movimento solar.";
+      select("solarSunIntensity").textContent = this.light.intensity.toFixed(2);
+    });
     this.toggle = select("solarEnabled");
     this.body = select("solarControls");
     this.date = select("solarDate");
@@ -159,6 +320,7 @@ export class SolarLighting {
     this.setVisibleBounds(bounds);
   }
   setVisibleBounds(bounds) {
+    this.hasGroundReceiver = hasVisibleGroundReceiver(this.getModel?.());
     this.bounds = bounds && !bounds.isEmpty() ? bounds.clone() : null;
     this.projection.setBounds(this.bounds);
     if (this.bounds) {
@@ -228,6 +390,7 @@ export class SolarLighting {
   }
   navigation() {
     this.result = null;
+    this.environment?.navigation();
     this.projection.hide();
     this.onCompassChange(false);
     this.compassToggle.disabled = true;
@@ -263,6 +426,8 @@ export class SolarLighting {
       this.navigation();
       this.light.intensity = 0;
       this.ambient.intensity = 0.45;
+      this.panel.querySelector("#solarSunIntensity").textContent = "0.00";
+      this.panel.querySelector("#solarPeriod").textContent = "—";
       this.panel.querySelector("#solarAzimuth").textContent = "—";
       this.panel.querySelector("#solarAltitude").textContent = "—";
       this.result = null;
@@ -273,7 +438,11 @@ export class SolarLighting {
       return;
     }
     this.result = result;
-    this.light.color.set(0xffe4b3);
+    // Mesma curva cromática anterior, agora sob responsabilidade exclusiva do Sol.
+    const atmosphere = atmosphereInterval(result.altitude);
+    this.light.color
+      .set(atmosphere.from.sun)
+      .lerp(this.solarColor.set(atmosphere.to.sun), atmosphere.mix);
     const direction = new THREE.Vector3(
       result.direction.x,
       result.direction.y,
@@ -284,9 +453,15 @@ export class SolarLighting {
       .addScaledVector(direction, this.radius * 8);
     this.light.target.position.copy(this.center);
     this.light.intensity = result.intensity;
-    this.ambient.intensity = 0.45;
+    if (!this.environment) this.ambient.intensity = 0.45;
+    this.environment?.update(result, this.light, this.ambient);
+    this.panel.querySelector("#solarSunIntensity").textContent =
+      this.light.intensity.toFixed(2);
+    this.panel.querySelector("#solarPeriod").textContent = result.rising
+      ? "Sol subindo"
+      : "Sol descendo";
     this.fitReceiver(direction);
-    this.receiver.visible = result.altitude > 0;
+    this.receiver.visible = result.altitude > 0 && !this.hasGroundReceiver;
     this.marker.visible = result.altitude > 0;
     this.marker.position
       .copy(this.center)

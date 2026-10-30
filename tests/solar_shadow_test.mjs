@@ -8,7 +8,16 @@ const threeURL = pathToFileURL(resolve(modulePath)).href;
 const THREE = await import(threeURL);
 const { fitSolarShadow, boxCorners } = await loadViewerModule("solar-shadow.js", threeURL);
 const { SolarLighting } = await loadViewerModule("solar-lighting.js", threeURL);
-const { createShadowCatcher } = await loadViewerModule("shadow-catcher.js", threeURL);
+const { createShadowCatcher, hasVisibleGroundReceiver } = await loadViewerModule("shadow-catcher.js", threeURL);
+const groundRoot = new THREE.Group();
+const realGround = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial());
+realGround.name = 'Terreno_1'; realGround.receiveShadow = true; groundRoot.add(realGround);
+assert.equal(hasVisibleGroundReceiver(groundRoot), true, 'Terreno existente deve receber as sombras sem catcher sobre o panorama.');
+realGround.visible = false;
+assert.equal(hasVisibleGroundReceiver(groundRoot), false, 'Sem terreno visível, preserva o catcher técnico.');
+realGround.visible = true; groundRoot.visible = false;
+assert.equal(hasVisibleGroundReceiver(groundRoot), false);
+assert.equal(hasVisibleGroundReceiver(null), false);
 const { solarDirection } = await import("../MapaPavimento/predio-3d/solar-position.mjs");
 let cases=0;
 for (const scale of [.1,1,100]) for (const north of [0,83.9,270]) for (const azimuth of [0,74,277]) for (const altitude of [.01,30,70,90]) {

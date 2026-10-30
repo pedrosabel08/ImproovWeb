@@ -117,6 +117,19 @@ assert.deepEqual(
   buildIndex(flat).floors.map((floor) => floor.id),
   ["PAVTO_TIPO_01"],
 );
+const site = new THREE.Group();
+const road = mesh(site, "RUA_01_001");
+road.position.y = -0.5; // superfície superior em 0
+const raised = mesh(site, "PAVTO_TERREO_01_001");
+raised.position.y = 3.5;
+const upper = mesh(site, "PAVTO_TIPO_01_001");
+upper.position.y = 9.5;
+site.updateMatrixWorld(true);
+const levels = buildIndex(site).floors;
+assert.equal(levels.find((floor) => floor.id === "PAVTO_TERREO_01").bounds.min.y - levels[0].groundElevation, 3);
+assert.equal(levels.find((floor) => floor.id === "PAVTO_TIPO_01").bounds.min.y - levels[0].groundElevation, 9);
+road.visible = false;
+assert.equal(buildIndex(site).floors[0].groundElevation, undefined);
 console.log(
   "OK: quatro pavimentos, submalhas agrupadas, contexto excluído e nomes completos preservados.",
 );

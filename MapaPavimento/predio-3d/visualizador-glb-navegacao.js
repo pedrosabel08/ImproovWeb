@@ -4,9 +4,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
-import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261030-ground";
+import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261103-night-glass-native-v2";
 import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
-import { SolarLighting } from "./solar-lighting.js?v=20261030-night-neutral-v1";
+import { SolarLighting } from "./solar-lighting.js?v=20261103-solar-orbit-v1";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { ModelMeasurement } from "./model-measurement.js";
 import { visibleSurface } from "./measurement-geometry.js";
@@ -15,8 +15,9 @@ import {
   FloorVisibility,
   visibleModelBounds,
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
-import { setupEnvironment } from "./viewer-environment.js?v=20261030-night-neutral-v1";
+import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
 import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261103-osm-cache-v3";
 import { fitSolarShadow } from "./solar-shadow.js";
 
 const themeStyle = getComputedStyle(document.documentElement);
@@ -104,12 +105,35 @@ viewport.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = null;
 const viewerEnvironment = setupEnvironment(renderer, scene, { solar: true });
+viewerEnvironment.subscribe(state => {
+  viewport.dataset.nightGlassMeshes = String(state.nightGlass.meshes);
+  viewport.dataset.nightGlassMaterials = String(state.nightGlass.materials);
+  viewport.dataset.nightGlassFactor = String(state.nightGlass.factor);
+  viewport.dataset.nightGlassEmission = JSON.stringify(state.nightGlass.emission);
+  viewport.dataset.nightGlassSettings = JSON.stringify(state.nightGlass.settings);
+});
+const geoEnvironment = new GeoEnvironment({
+  scene,
+  viewport,
+  sky: viewerEnvironment.sky,
+  onChange: () => {
+    light.shadow.needsUpdate = true;
+    solarLighting.setTerrainDimension(geoEnvironment.group?.userData.terrainDimension || 0);
+    geoEnvironment.fitCameraDepth(camera, controls.target);
+  },
+});
 window.addEventListener("pagehide", (event) => {
-  if (!event.persisted) viewerEnvironment.dispose();
+  if (!event.persisted) {
+    geoEnvironment.dispose();
+    viewerEnvironment.dispose();
+  }
 });
 const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.01, 100000);
 camera.position.set(10, 9, 12);
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.addEventListener("change", () =>
+  geoEnvironment.fitCameraDepth(camera, controls.target),
+);
 controls.enableDamping = true;
 controls.zoomToCursor = false;
 // Mantém a órbita acima do horizonte, sem revelar a face inferior do terreno.
@@ -850,6 +874,7 @@ function applyCameraPose(pose) {
   controls.target.copy(pose.target);
   camera.zoom = pose.zoom ?? 1;
   camera.lookAt(pose.target);
+  geoEnvironment.fitCameraDepth(camera, controls.target);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
 }
@@ -1327,6 +1352,8 @@ function clearModel() {
   delete viewport.dataset.focusedFloor;
   measurements.reset();
   solarLighting.setBounds(null);
+  geoEnvironment.setModel(null, null);
+  delete viewport.dataset.hiddenGlbGround;
   ++transitionToken;
   transitioning = false;
   clearSelection();
@@ -1376,7 +1403,7 @@ function clearModel() {
   renderTree();
   renderFloorSwitcher();
 }
-function install(gltf, sourceName) {
+function install(gltf, sourceName, obraId = null) {
   ++transitionToken;
   transitioning = false;
   controls.enabled = true;
@@ -1416,12 +1443,38 @@ function install(gltf, sourceName) {
         ? viewerMaterials
         : viewerMaterials[0];
   });
-  viewerEnvironment.registerModel(modelRoot);
+  viewerEnvironment.registerModel(modelRoot, obraId);
   scene.add(modelRoot);
   modelRoot.updateMatrixWorld(true);
+  const groundObjects = [];
+  let groundInfo = null,
+    groundArea = 0;
+  modelRoot.traverseVisible((object) => {
+    if (!/^(terreno|terrain|ground|rua)(?:_|\b)/i.test(object.name || ""))
+      return;
+    groundObjects.push(object);
+    const bounds = new THREE.Box3().setFromObject(object, true);
+    const size = bounds.getSize(new THREE.Vector3()),
+      area = size.x * size.z;
+    if (!bounds.isEmpty() && area > groundArea) {
+      groundArea = area;
+      let material;
+      object.traverseVisible((child) => {
+        if (!material && child.isMesh)
+          material = Array.isArray(child.material)
+            ? child.material[0]
+            : child.material;
+      });
+      groundInfo = { elevation: bounds.max.y, color: material?.color?.clone() };
+    }
+  });
+  const indexed = buildIndex(modelRoot, sourceName);
+  groundObjects.forEach((object) => {
+    object.visible = false;
+  });
+  viewport.dataset.hiddenGlbGround = String(groundObjects.length);
   originalVisibility = new Map();
   modelRoot.traverse((o) => originalVisibility.set(o, o.visible));
-  const indexed = buildIndex(modelRoot, sourceName);
   floors = indexed.floors;
   allRecords = indexed.records;
   activeFloor = null;
@@ -1452,6 +1505,14 @@ function install(gltf, sourceName) {
         camera.near * 2,
       );
   solarLighting.setBounds(modelBounds);
+  const geographicAnchorBounds = new THREE.Box3();
+  for (const floor of floors) geographicAnchorBounds.union(floor.bounds);
+  geoEnvironment.setModel(
+    modelRoot,
+    modelBounds,
+    geographicAnchorBounds.isEmpty() ? modelBounds : geographicAnchorBounds,
+    groundInfo,
+  );
   delete viewport.dataset.activeFloor;
   viewport.dataset.pickableCount = String(allFloorMeshes.length);
   viewport.dataset.contextCount = "0";
@@ -1512,12 +1573,14 @@ function install(gltf, sourceName) {
     console.groupEnd();
   }
 }
-async function loadUrl(url) {
+async function loadUrl(url, obraId = null) {
   const src = (url || "").trim();
   if (!src) return;
   status("Carregando empreendimento…");
   const gltf = await loader.loadAsync(src);
-  install(gltf, decodeURIComponent(src.split("/").pop().split("?")[0]) || src);
+  const modelPath = new URL(src, location.href).pathname;
+  obraId ??= modelPath.match(/\/uploads\/model-3d\/obra-(\d+)\//)?.[1];
+  install(gltf, decodeURIComponent(src.split("/").pop().split("?")[0]) || src, obraId);
 }
 function loadFile(file) {
   if (!file || mapBridge) return;
@@ -1867,6 +1930,7 @@ setupPersonCamera({
     if (!transitioning && !northDefining) controls.update();
     northIndicator.update();
     solarLighting.update(camera);
+    geoEnvironment.update();
     viewerEnvironment.tick();
     measurements.update();
     renderer.render(scene, camera);
@@ -1908,7 +1972,10 @@ if (params.has("src") && !params.has("obra_id")) {
       controls.enabled = !value;
     },
     spatial: {
-      setConfig: (config, error) => solarLighting.setConfig(config, error),
+      setConfig: (config, error) => {
+        solarLighting.setConfig(config, error);
+        geoEnvironment.setConfig(config);
+      },
       setNorth: (degrees, defining = false) =>
         northIndicator.set(degrees, defining),
       setDefining: (value) => {

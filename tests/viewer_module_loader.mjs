@@ -15,6 +15,7 @@ export async function loadViewerModule(filename, threeURL) {
         const specifier = match[2];
         let resolved;
         if (specifier === "three") resolved = threeURL;
+        else if (specifier === "flow/environment-config") resolved = new URL('environment-config.mjs', base).href;
         else if (specifier.startsWith(".")) resolved = await moduleURL(new URL(specifier, url));
         else throw new Error("Import não suportado pelo teste: " + specifier);
         source = source.replace(match[0], match[0].replace(match[1] + specifier + match[1], JSON.stringify(resolved)));

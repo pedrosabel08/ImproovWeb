@@ -1,7 +1,11 @@
 import * as THREE from "three";
 
 // Distância apenas dos auxiliares visuais; não altera a luz ou o vetor solar.
-export const SOLAR_ORBIT_SCALE = 1;
+export const SOLAR_VISUAL_RADIUS_MULTIPLIER = 0.5;
+export function solarVisualRadius(modelRadius, terrainDimension = 0) {
+  const reference = terrainDimension > 0 ? terrainDimension : modelRadius * 2;
+  return Math.min(10000, Math.max(50, reference * SOLAR_VISUAL_RADIUS_MULTIPLIER));
+}
 
 /** Textura procedural estática: halo suave, sem pós-processamento ou animação. */
 export function solarGlowTexture(star = false) {

@@ -74,6 +74,13 @@ try {
         case 'espacial_configuracao':
             $result['configuracao'] = mpe_get($conn, $obra);
             break;
+        case 'osm_contexto':
+            require_once __DIR__ . '/../helpers/mapa_osm_helper.php';
+            $osmConfig = mpe_get($conn, $obra);
+            $conn->close();
+            $conn = null;
+            $result['contexto_osm'] = flow_osm_context($osmConfig);
+            break;
         case 'espacial_salvar':
             $result['configuracao'] = mpe_save($conn, $obra, $input, $author);
             break;
@@ -332,7 +339,7 @@ try {
         $message = $status === 409 ? 'Já existe uma configuração neste contexto.' : 'O mapa está temporariamente indisponível.';
         error_log('MapaPavimento: ' . $e->getMessage());
     } else {
-        $status = in_array($e->getCode(), [401, 403, 404, 405, 409, 413], true) ? $e->getCode() : 500;
+        $status = in_array($e->getCode(), [401, 403, 404, 405, 409, 413, 502, 503], true) ? $e->getCode() : 500;
         $message = $status === 500 ? 'Não foi possível concluir a operação. Tente novamente.' : $e->getMessage();
         if ($status === 500) {
             error_log('MapaPavimento: ' . $e->getMessage());

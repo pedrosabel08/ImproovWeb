@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { NightGlass } from "./night-glass.js?v=20261103-native-v2";
 import { ExrDecoder } from "./exr-decoder.js?v=20261030-horizon-final";
 import { createHdriSky } from "./hdri-sky.js?v=20261030-night-neutral-v1";
 import { createProceduralAtmosphere } from "./procedural-atmosphere.js?v=20261030-night-neutral-v1";
@@ -12,7 +13,7 @@ import {
   adjacentEnvironment,
   smoothRange,
   nightFactor,
-} from "./environment-config.mjs?v=20261030-night-neutral-v1";
+} from "./environment-config.mjs?v=20261103-night-glass-native-v2";
 
 /** Coordena o ambiente existente. SolarLighting é o único dono da luz solar. */
 export class SolarEnvironment {
@@ -38,6 +39,7 @@ export class SolarEnvironment {
       () => this.notify(),
     );
     this.reflections = new MaterialReflections();
+    this.nightGlass = new NightGlass();
     this.generator = new THREE.PMREMGenerator(renderer);
     this.decoder = new ExrDecoder();
   }
@@ -72,6 +74,8 @@ export class SolarEnvironment {
         hemisphere: this.runtime.hemisphere ?? SETTINGS.hemisphere.intensity,
       },
       reflectionMaterials: this.reflections?.materials.size || 0,
+      nightGlass: { meshes: this.nightGlass.meshes, materials: this.nightGlass.materials.size, factor: this.nightGlass.factor,
+        emission: [...this.nightGlass.materials.entries()].map(([material, state]) => ({ color: state.uniform.value.toArray(), native: material.emissive.toArray(), intensity: material.emissiveIntensity, compiled: !!state.compiled, opacity: material.opacity, transparent: material.transparent, transmission: material.transmission, ior: material.ior, toneMapped: material.toneMapped, blending: material.blending })), settings: this.nightGlass.settings },
       error: this.error || "",
     };
   }
@@ -79,13 +83,17 @@ export class SolarEnvironment {
     if (!this.disposed)
       for (const listener of this.listeners) listener(this.diagnostics());
   }
-  registerModel(root) {
+  registerModel(root, obraId = null) {
     this.reflections.registerModel(root);
+    this.nightGlass.registerModel(root, obraId);
+    this.nightGlass.setFactor(this.result ? nightFactor(this.result.altitude) : 0);
   }
   registerMaterial(material, source) {
     this.reflections.register(material, source);
+    this.nightGlass.register(material, source);
   }
   clearModel() {
+    this.nightGlass.clear();
     this.reflections.clear();
   }
   showHorizon(value) {
@@ -122,6 +130,7 @@ export class SolarEnvironment {
     this.notify();
   }
   navigation() {
+    this.nightGlass.setFactor(0);
     this.result = null;
     this.requested = this.current = null;
     clearTimeout(this.timer);
@@ -142,6 +151,7 @@ export class SolarEnvironment {
   }
   update(result, light, ambient) {
     if (this.disposed) return;
+    this.nightGlass.setFactor(nightFactor(result.altitude));
     const entering = !this.result;
     this.navigationColors ??= {
       sky: ambient.color.clone(),
@@ -220,6 +230,9 @@ export class SolarEnvironment {
       };
   }
   tick(now = performance.now()) {
+    const glassTransition = this.nightGlass.transition;
+    this.nightGlass.tick(now);
+    if (glassTransition && !this.nightGlass.transition) this.notify();
     if (!this.result || this.disposed) return;
     this.sky.tick(now);
     const transition = this.fillTransition;
@@ -373,6 +386,7 @@ export class SolarEnvironment {
     this.abort.abort();
     this.decoder.dispose();
     this.probe.dispose();
+    this.nightGlass.clear();
     this.reflections.clear();
     this.listeners.clear();
     this.scene.environment = null;

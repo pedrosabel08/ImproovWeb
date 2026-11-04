@@ -10,8 +10,8 @@ import {
   fitShadowCatcher,
   hasVisibleGroundReceiver,
 } from "./shadow-catcher.js?v=20261030-spherical";
-import { SolarProjection } from "./solar-projection.js?v=20261030-mobile-labels";
-import { solarGlowTexture, SOLAR_ORBIT_SCALE } from "./solar-visuals.js";
+import { SolarProjection } from "./solar-projection.js?v=20261103-solar-orbit-v1";
+import { solarGlowTexture, solarVisualRadius } from "./solar-visuals.js?v=20261103-solar-orbit-v1";
 import {
   ENVIRONMENTS,
   ENVIRONMENT_SETTINGS,
@@ -237,7 +237,7 @@ export class SolarLighting {
     this.pathToggle = select("solarPathEnabled");
     this.compassToggle = select("solarCompassEnabled");
     this.projectionToggle.checked = false;
-    this.pathToggle.checked = true;
+    this.pathToggle.checked = false;
     this.projectionHelp = select("solarProjectionHelp");
     this.projectionStatus = select("solarProjectionStatus");
     this.projection = new SolarProjection(scene, viewport, (state) => {
@@ -278,7 +278,8 @@ export class SolarLighting {
       new THREE.MeshBasicMaterial({
         color: 0xfff5cc,
         toneMapped: false,
-        depthWrite: false,
+        // The opaque solar core must contribute depth before transparent roads.
+        depthWrite: true,
       }),
     );
     const halo = new THREE.Sprite(
@@ -312,7 +313,17 @@ export class SolarLighting {
     this.light.shadow.autoUpdate = false;
     this.viewPoint = new THREE.Vector3();
   }
+  setTerrainDimension(dimension) {
+    this.terrainDimension = dimension || 0;
+    this.updateVisualRadius();
+    this.relight();
+  }
+  updateVisualRadius() {
+    this.visualRadius = solarVisualRadius(this.radius || 0.5, this.terrainDimension);
+    this.projection.setVisualRadius(this.visualRadius);
+  }
   setBounds(bounds) {
+    this.pathToggle.checked = false;
     this.projection.setModel(
       bounds && !bounds.isEmpty() ? this.getModel() : null,
       bounds,
@@ -327,6 +338,7 @@ export class SolarLighting {
       this.center = this.bounds.getCenter(new THREE.Vector3());
       const size = this.bounds.getSize(new THREE.Vector3());
       this.radius = Math.max(size.length() / 2, 0.5);
+      this.updateVisualRadius();
       this.fitReceiver(new THREE.Vector3(0, 1, 0));
       this.marker.scale.setScalar(this.radius * 0.032);
       this.enabled =
@@ -364,6 +376,7 @@ export class SolarLighting {
       (!this.config ||
         config.obra_id !== this.config.obra_id ||
         config.timezone !== this.config.timezone);
+    if (changed) this.pathToggle.checked = false;
     this.config = config ? { ...config } : null;
     this.loadError = loadError;
     if (!config || loadError || solarConfigError(config)) {
@@ -465,7 +478,7 @@ export class SolarLighting {
     this.marker.visible = result.altitude > 0;
     this.marker.position
       .copy(this.center)
-      .addScaledVector(direction, this.radius * SOLAR_ORBIT_SCALE);
+      .addScaledVector(direction, this.visualRadius);
     fitSolarShadow(this.light, this.bounds, this.receiverBounds);
     const minutes =
       Number(this.time.value.slice(0, 2)) * 60 +
@@ -570,6 +583,10 @@ export class SolarLighting {
     if (!this.marker.visible) {
       this.markerLabel.hidden = true;
       return;
+    }
+    if (camera.isOrthographicCamera && this.viewport.clientHeight) {
+      const worldPerPixel = (camera.top - camera.bottom) / camera.zoom / this.viewport.clientHeight;
+      this.marker.scale.setScalar(worldPerPixel * 5);
     }
     this.viewPoint.copy(this.marker.position).project(camera);
     const x = ((this.viewPoint.x + 1) / 2) * this.viewport.clientWidth;

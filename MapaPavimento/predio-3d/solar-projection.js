@@ -4,7 +4,7 @@ import {
   SolarRayIndex,
 } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { solarAt, solarDayPositions } from "./solar-position.mjs";
-import { solarGlowTexture, SOLAR_ORBIT_SCALE } from "./solar-visuals.js";
+import { solarGlowTexture } from "./solar-visuals.js?v=20261103-solar-orbit-v1";
 
 const noPicking = (object) => {
   object.raycast = () => {};
@@ -133,6 +133,12 @@ export class SolarProjection {
         bounds.getSize(new THREE.Vector3()).length() / 2,
         0.5,
       );
+    }
+  }
+  setVisualRadius(radius) {
+    if (this.visualRadius !== radius) {
+      this.visualRadius = radius;
+      this.pathKey = null;
     }
   }
   hideRays() {
@@ -264,7 +270,7 @@ export class SolarProjection {
               value.direction.y,
               value.direction.z,
             ),
-            this.radius * SOLAR_ORBIT_SCALE,
+            this.visualRadius || this.radius,
           );
       for (let index = 1; index < samples.length; index++) {
         if (samples[index - 1].altitude <= 0 || samples[index].altitude <= 0)
@@ -276,8 +282,8 @@ export class SolarProjection {
       }
       this.fill(this.path, lines);
       this.path.computeLineDistances();
-      this.path.material.dashSize = this.radius * 0.025;
-      this.path.material.gapSize = this.radius * 0.012;
+      this.path.material.dashSize = (this.visualRadius || this.radius) * 0.025;
+      this.path.material.gapSize = (this.visualRadius || this.radius) * 0.012;
       const hourPoints = [];
       for (const label of this.hourLabels) {
         try {

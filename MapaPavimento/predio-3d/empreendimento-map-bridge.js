@@ -306,7 +306,7 @@ export class EmpreendimentoMapBridge {
           break;
         }
       }
-      await this.hooks.loadModel(data.modelo.src);
+      await this.hooks.loadModel(data.modelo.src, this.obraId);
       void this.spatial.load();
       document.getElementById("projectName").textContent =
         this.workSelect.selectedOptions[0]?.textContent || data.modelo.nome;

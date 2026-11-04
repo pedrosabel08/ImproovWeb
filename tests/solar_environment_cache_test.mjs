@@ -10,6 +10,7 @@ const source = readFileSync(new URL('../MapaPavimento/predio-3d/solar-environmen
 const modulePath = process.argv.find(arg => arg.startsWith('--three-module='))?.slice(15);
 if (!modulePath) throw new Error('Informe --three-module=CAMINHO/three.module.js (r180).');
 const actualThree = await import(pathToFileURL(resolve(modulePath)).href);
+const { NightGlass } = await loadViewerModule('night-glass.js', pathToFileURL(resolve(modulePath)).href);
 const { createProceduralAtmosphere } = await loadViewerModule('procedural-atmosphere.js', pathToFileURL(resolve(modulePath)).href);
 let generated = 0, decoded = 0, released = 0, sourceReleased = 0, fallbackReleased = 0;
 const color = () => new actualThree.Color();
@@ -41,9 +42,9 @@ const ExrDecoder = class {
     hemisphere: { sky: [.1, .2, .4], ground: [.2, .15, .1] }, skyAverage: .2 }; }
   dispose() {}
 };
-const SolarEnvironment = new Function('THREE', 'ExrDecoder', 'createHdriSky', 'createProceduralAtmosphere', 'ProceduralLightProbe', 'MaterialReflections', 'SETTINGS', ...Object.keys(config),
+const SolarEnvironment = new Function('THREE', 'ExrDecoder', 'createHdriSky', 'createProceduralAtmosphere', 'ProceduralLightProbe', 'MaterialReflections', 'NightGlass', 'SETTINGS', ...Object.keys(config),
   source.slice(source.indexOf('class SolarEnvironment')).replace('import.meta.url', JSON.stringify('http://localhost:8066/ImproovWeb/MapaPavimento/predio-3d/viewer-environment.js')) + '\nreturn SolarEnvironment;'
-)(THREE, ExrDecoder, createHdriSky, createProceduralAtmosphere, ProceduralLightProbe, MaterialReflections, config.ENVIRONMENT_SETTINGS, ...Object.values(config));
+)(THREE, ExrDecoder, createHdriSky, createProceduralAtmosphere, ProceduralLightProbe, MaterialReflections, NightGlass, config.ENVIRONMENT_SETTINGS, ...Object.values(config));
 const fetchOriginal = globalThis.fetch;
 const requests = [];
 globalThis.fetch = (url, options) => new Promise((resolve, reject) => {

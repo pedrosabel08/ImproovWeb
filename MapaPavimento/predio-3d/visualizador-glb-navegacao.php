@@ -17,6 +17,8 @@ ob_start();
 include __DIR__ . '/../../sidebar.php';
 $flowSidebar = ob_get_clean();
 $html = file_get_contents(__DIR__ . '/visualizador-glb-navegacao.html');
+$html = str_replace('"flow/environment-config": "./environment-config.mjs"',
+    '"flow/environment-config": "./environment-config.mjs?v=' . substr(hash_file('sha256', __DIR__ . '/environment-config.mjs'), 0, 12) . '"', $html);
 $html = preg_replace_callback('~(href|src)="(\.{1,2}/[^"?]+)(?:\?[^\"]*)?"~', static function ($match) {
     $file = __DIR__ . '/' . $match[2];
     return $match[1] . '="' . $match[2] . (is_file($file) ? '?v=' . filemtime($file) : '') . '"';

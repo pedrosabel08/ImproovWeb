@@ -43,6 +43,16 @@ export const ENVIRONMENT_THRESHOLDS = {
 };
 
 export const ENVIRONMENT_SETTINGS = {
+  nightGlass: {
+    enabled: true,
+    obraId: 102,
+    color: "#FFA34D",
+    maxIntensity: 1,
+    // Cobertura do interior aceso; o vidro diurno continua com o alpha original.
+    nightOpacity: 0.72,
+    factorMultiplier: 1,
+    transitionMs: 600,
+  },
   debounceMs: 180,
   preloadDelayMs: 900,
   retryDelayMs: 30000,

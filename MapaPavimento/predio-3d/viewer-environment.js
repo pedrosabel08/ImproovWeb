@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SolarEnvironment } from "./solar-environment.js?v=20261030-night-neutral-v1";
+import { SolarEnvironment } from "./solar-environment.js?v=20261103-night-glass-native-v2";
 
 /** Fallback de navegação apenas para iluminação/reflexos. O fundo é o CSS do viewport.
  * O BackgroundCubeMaterial de r180 usa um cubo unitário: numa câmera ortográfica

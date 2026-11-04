@@ -76,10 +76,13 @@ try {
             break;
         case 'osm_contexto':
             require_once __DIR__ . '/../helpers/mapa_osm_helper.php';
+            flow_osm_begin();
+            flow_osm_log('api', ['stage'=>'api', 'result'=>'started']);
             $osmConfig = mpe_get($conn, $obra);
             $conn->close();
             $conn = null;
             $result['contexto_osm'] = flow_osm_context($osmConfig);
+            flow_osm_log('api', ['stage'=>'api', 'result'=>'success']);
             break;
         case 'espacial_salvar':
             $result['configuracao'] = mpe_save($conn, $obra, $input, $author);
@@ -346,6 +349,7 @@ try {
         }
     }
     http_response_code($status);
+    if (($action ?? '') === 'osm_contexto' && function_exists('flow_osm_log')) flow_osm_log('api', ['stage'=>'api', 'result'=>'failure', 'status'=>$status, 'reason'=>$e instanceof FlowOsmLocalException ? $e->reason : ($e instanceof FlowOsmUpstreamException ? $e->reason : 'request_failed')]);
     echo json_encode(['sucesso' => false, 'erro' => $message], JSON_UNESCAPED_UNICODE);
 } finally {
     if ($conn instanceof mysqli) {

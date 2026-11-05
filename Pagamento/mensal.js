@@ -162,7 +162,7 @@ const apiRoot = document.querySelector('meta[name="mensal-test-api"]')?.content;
 const endpoint = (a) =>
   apiRoot
     ? apiRoot + encodeURIComponent(a)
-    : ["concluir", "quitar", "pagar"].includes(a)
+    : ["concluir", "quitar", "pagar", "reabrir"].includes(a)
       ? "api/fechamento/competencia.php"
       : "api/" +
         ([
@@ -210,6 +210,17 @@ function update() {
   ])
     $(id).disabled = locked || serviceDraft.length > 0;
   const closed = monthly?.estado === "CONCLUIDO";
+  const person = index >= 0 ? monthly?.colaboradores[index] : null;
+  const otherAdjustment =
+    !!monthly?.ajuste_colaborador_id &&
+    monthly.ajuste_colaborador_id !== person?.colaborador_id;
+  const cannotEdit = closed || otherAdjustment;
+  $("fm-reopen").hidden =
+    !closed ||
+    !person ||
+    !!person.pago_em ||
+    Number(person.pago_centavos) !== 0;
+  $("fm-reopen").disabled = locked;
   const includeAvailable =
     !closed &&
     !!monthly?.ciclo_id &&
@@ -225,12 +236,12 @@ function update() {
     .querySelectorAll(
       "[data-service-index],[data-service-edit],[data-service-reset],[data-service-tariff]",
     )
-    .forEach((button) => (button.disabled = locked || closed));
+    .forEach((button) => (button.disabled = locked || cannotEdit));
   for (const id of ["fm-withdraw-function", "fm-restore-function"])
     $(id).disabled =
-      locked || closed || !$("fm-service-function").options.length;
-  $("fm-service-submit").disabled = locked || closed;
-  $("fm-service-draft-save").disabled = locked || closed;
+      locked || cannotEdit || !$("fm-service-function").options.length;
+  $("fm-service-submit").disabled = locked || cannotEdit;
+  $("fm-service-draft-save").disabled = locked || cannotEdit;
   $("fm-service-draft-discard").disabled = locked;
   $("fm-service-details").disabled = busy || !financial?.revisao;
   $("fm-start").disabled =
@@ -244,9 +255,9 @@ function update() {
       closed ||
       !monthly?.quantidade ||
       monthly.contagens.CONFIRMADO !== monthly.quantidade;
-  $("fm-recalculate").disabled ||= closed;
+  $("fm-recalculate").disabled ||= cannotEdit;
   if ($("fm-discount"))
-    $("fm-discount").disabled = locked || closed || !financial?.revisao;
+    $("fm-discount").disabled = locked || cannotEdit || !financial?.revisao;
   $("fm-review").disabled =
     locked ||
     !!serviceDraft.length ||
@@ -259,7 +270,7 @@ function update() {
     !viewed ||
     documentMeta?.estado !== "PREVIEW";
   $("fm-extra").disabled =
-    locked || !!serviceDraft.length || closed || !financial?.revisao;
+    locked || !!serviceDraft.length || cannotEdit || !financial?.revisao;
   $("fm-discount").disabled ||= !!serviceDraft.length;
   $("fm-extra-form").querySelector("[type=submit]").disabled = locked;
   document
@@ -336,7 +347,7 @@ async function mutate(a, data, repeat = false) {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
     body: JSON.stringify(
-      ["concluir", "quitar", "pagar"].includes(request.action)
+      ["concluir", "quitar", "pagar", "reabrir"].includes(request.action)
         ? { ...request.data, acao: request.action }
         : request.data,
     ),
@@ -569,8 +580,9 @@ function breakdown(r) {
       ? row(
           "Bônus produtividade",
           r.resumo.BONUS_PRODUTIVIDADE,
-          "Finalização R0: " +
-            bonus.quantidade_finalizacao_r0 +
+          "Finalizações no adendo: " +
+            (bonus.quantidade_finalizacoes_adendo ??
+              bonus.quantidade_finalizacao_r0) +
             " imagens · Meta: 20" +
             (bonus.quantidade_bonus
               ? " · +" +
@@ -622,21 +634,36 @@ function breakdown(r) {
 }
 let serviceTab = "pending";
 const selectedServices = new Set();
-const serviceFilters = ["fm-filter-function", "fm-filter-project", "fm-filter-animation"];
+const serviceFilters = [
+  "fm-filter-function",
+  "fm-filter-project",
+  "fm-filter-animation",
+];
 const serviceFilterFields = ["funcao", "obra_nome", "tipo_animacao"];
 function canBatchService(s, r) {
-  return monthly.estado !== "CONCLUIDO" && r.tipo_remuneracao !== "FIXO" &&
-    s.situacao !== "RETIRADO" && s.situacao !== "QUITADO" && s.elegibilidade.elegivel &&
-    s.saldo_centavos !== null && !s.divergencias.length && !s.planta_humanizada;
+  return (
+    monthly.estado !== "CONCLUIDO" &&
+    r.tipo_remuneracao !== "FIXO" &&
+    s.situacao !== "RETIRADO" &&
+    s.situacao !== "QUITADO" &&
+    s.elegibilidade.elegivel &&
+    s.saldo_centavos !== null &&
+    !s.divergencias.length &&
+    !s.planta_humanizada
+  );
 }
 function updateServiceSelection() {
   const boxes = [...document.querySelectorAll("[data-service-select]")];
   const checked = boxes.filter((box) => box.checked).length;
-  $("fm-service-select-all").checked = boxes.length > 0 && checked === boxes.length;
-  $("fm-service-select-all").indeterminate = checked > 0 && checked < boxes.length;
+  $("fm-service-select-all").checked =
+    boxes.length > 0 && checked === boxes.length;
+  $("fm-service-select-all").indeterminate =
+    checked > 0 && checked < boxes.length;
   $("fm-service-select-all").disabled = !boxes.length || busy || !!pending;
-  $("fm-service-selection-count").textContent = `${selectedServices.size} selecionada(s)`;
-  $("fm-service-batch-value").disabled = !selectedServices.size || busy || !!pending;
+  $("fm-service-selection-count").textContent =
+    `${selectedServices.size} selecionada(s)`;
+  $("fm-service-batch-value").disabled =
+    !selectedServices.size || busy || !!pending;
 }
 function renderServices(r = financial?.revisao) {
   if (!r) return;
@@ -701,15 +728,23 @@ function renderServices(r = financial?.revisao) {
   $("fm-service-function").closest(".fm-service-batch").hidden =
     monthly.estado === "CONCLUIDO" || serviceTab === "paid";
   serviceFilters.forEach((id, i) => {
-    const el = $(id), previous = el.value;
-    const values = [...new Set(items.map((s) => s.descricao[serviceFilterFields[i]]).filter(Boolean))]
-      .sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
-    el.innerHTML = `<option value="">${["Todas as funções", "Todas as obras", "Todos os tipos"][i]}</option>` +
-      values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    const el = $(id),
+      previous = el.value;
+    const values = [
+      ...new Set(
+        items.map((s) => s.descricao[serviceFilterFields[i]]).filter(Boolean),
+      ),
+    ].sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
+    el.innerHTML =
+      `<option value="">${["Todas as funções", "Todas as obras", "Todos os tipos"][i]}</option>` +
+      values
+        .map((v) => `<option value="${esc(v)}">${esc(v)}</option>`)
+        .join("");
     if (values.includes(previous)) el.value = previous;
     if (i === 2) $("fm-filter-animation-label").hidden = !values.length;
   });
-  $("fm-service-selection").hidden = serviceTab !== "pending" || monthly.estado === "CONCLUIDO" || fixed;
+  $("fm-service-selection").hidden =
+    serviceTab !== "pending" || monthly.estado === "CONCLUIDO" || fixed;
   const compare = (a, b) =>
     String(a || "").localeCompare(String(b || ""), "pt-BR", {
       numeric: true,
@@ -717,7 +752,13 @@ function renderServices(r = financial?.revisao) {
     });
   $("fm-services").innerHTML =
     groups[serviceTab]
-      .filter((s) => serviceFilters.every((id, i) => !$(id).value || String(s.descricao[serviceFilterFields[i]] || "") === $(id).value))
+      .filter((s) =>
+        serviceFilters.every(
+          (id, i) =>
+            !$(id).value ||
+            String(s.descricao[serviceFilterFields[i]] || "") === $(id).value,
+        ),
+      )
       .sort(
         (a, b) =>
           compare(a.descricao.obra_nome, b.descricao.obra_nome) ||
@@ -798,11 +839,14 @@ document.querySelectorAll("[data-service-tab]").forEach(
     }),
 );
 
-serviceFilters.forEach((id) => $(id).addEventListener("change", () => renderServices()));
+serviceFilters.forEach((id) =>
+  $(id).addEventListener("change", () => renderServices()),
+);
 $("fm-services").addEventListener("change", (e) => {
   if (!e.target.matches("[data-service-select]")) return;
   const n = Number(e.target.dataset.serviceSelect);
-  if (e.target.checked) selectedServices.add(n); else selectedServices.delete(n);
+  if (e.target.checked) selectedServices.add(n);
+  else selectedServices.delete(n);
   updateServiceSelection();
 });
 $("fm-service-select-all").addEventListener("change", (e) => {
@@ -814,7 +858,8 @@ $("fm-service-select-all").addEventListener("change", (e) => {
   updateServiceSelection();
 });
 $("fm-service-batch-value").onclick = () => {
-  if (selectedServices.size && !busy && !pending) serviceDialog("ALTERAR_VALOR", "LOTE");
+  if (selectedServices.size && !busy && !pending)
+    serviceDialog("ALTERAR_VALOR", "LOTE");
 };
 
 async function showDocument(doc) {
@@ -1105,6 +1150,24 @@ $("fm-recalculate").onclick = () =>
     monthly = await read("mensal", { competencia: monthly.competencia });
     await enter(index);
   });
+$("fm-reopen").onclick = () =>
+  run("Abrindo ajuste individual", async () => {
+    const collaborator = monthly.colaboradores[index];
+    if (
+      !window.confirm(
+        `Reabrir o fechamento de ${collaborator.nome}? Será necessário atualizar e confirmar um novo adendo e concluir novamente a competência. Os pagamentos ficam bloqueados durante o ajuste.`,
+      )
+    )
+      return;
+    monthly = await mutate("reabrir", {
+      competencia: monthly.competencia,
+      colaborador_id: collaborator.colaborador_id,
+    });
+    await enter(index);
+    message(
+      "Ajuste aberto. Atualize os valores, confirme o novo adendo e conclua novamente o fechamento.",
+    );
+  });
 let discountMode = false;
 $("fm-discount").onclick = () => {
   discountMode = true;
@@ -1143,14 +1206,24 @@ $("fm-extra-close").onclick = () => $("fm-extra-dialog").close();
 let serviceDecision = null,
   servicePlant = null;
 function serviceDialog(estado, alvo, s = null) {
-  if (busy || pending || monthly.estado === "CONCLUIDO") return;
+  if (
+    busy ||
+    pending ||
+    monthly.estado === "CONCLUIDO" ||
+    (monthly.ajuste_colaborador_id &&
+      monthly.ajuste_colaborador_id !== context().colaborador_id)
+  )
+    return;
   serviceDecision = { estado, alvo };
   if (alvo === "ITEM") serviceDecision.identidade = s.identidade;
-  else if (alvo === "FUNCAO") serviceDecision.funcao_id = Number($("fm-service-function").value);
+  else if (alvo === "FUNCAO")
+    serviceDecision.funcao_id = Number($("fm-service-function").value);
   const target =
     alvo === "ITEM"
       ? `${s.descricao.imagem} · ${s.descricao.funcao}`
-      : alvo === "LOTE" ? `${selectedServices.size} tarefas selecionadas` : $("fm-service-function").selectedOptions[0]?.textContent;
+      : alvo === "LOTE"
+        ? `${selectedServices.size} tarefas selecionadas`
+        : $("fm-service-function").selectedOptions[0]?.textContent;
   $("fm-service-form").reset();
   const edit = estado === "ALTERAR_VALOR",
     reset = estado === "RESTAURAR_VALOR",
@@ -1177,7 +1250,9 @@ function serviceDialog(estado, alvo, s = null) {
   $("fm-service-paid").hidden = !edit;
   $("fm-service-paid").textContent = s
     ? `Já pago: ${money(s.pago_centavos)}. O novo valor total não pode ser inferior ao já pago.`
-    : alvo === "LOTE" ? "O valor será aplicado a cada tarefa e não pode ser inferior ao valor já pago em nenhuma delas." : "";
+    : alvo === "LOTE"
+      ? "O valor será aplicado a cada tarefa e não pode ser inferior ao valor já pago em nenhuma delas."
+      : "";
   $("fm-service-error").hidden = true;
   $("fm-service-title").textContent = standard
     ? "Aplicar tarifa padrão"
@@ -1235,8 +1310,12 @@ $("fm-service-form").onsubmit = (e) => {
   if (servicePlant)
     input.categoria_planta = new FormData(e.target).get("categoria_planta");
   if (serviceDecision.estado === "APLICAR_TARIFA") delete input.motivo;
-  const batchItems = serviceDecision.alvo === "LOTE"
-    ? [...selectedServices].map((n) => financial.revisao.financeiro_servicos.itens_analisados[n]) : [];
+  const batchItems =
+    serviceDecision.alvo === "LOTE"
+      ? [...selectedServices].map(
+          (n) => financial.revisao.financeiro_servicos.itens_analisados[n],
+        )
+      : [];
   if (serviceDraft.length + (batchItems.length || 1) > 100) {
     message("O limite é de 100 alterações por vez. Salve antes de continuar.");
     return;
@@ -1244,10 +1323,12 @@ $("fm-service-form").onsubmit = (e) => {
   const category = servicePlant?.categorias?.[input.categoria_planta];
   const label = `${$("fm-service-target").textContent} — ${$("fm-service-title").textContent}${category ? `: ${category.nome}` : ""}${input.valor ? ` · R$ ${input.valor}` : category && input.estado === "APLICAR_TARIFA" ? ` · ${money(category.valor_centavos)}` : ""}${input.motivo ? ` · ${input.motivo}` : ""}`;
   if (batchItems.length) {
-    batchItems.forEach((item) => serviceDraft.push({
-      input: { ...input, alvo: "ITEM", identidade: item.identidade },
-      label: `${item.descricao.obra_nome || ""} · ${item.descricao.imagem || "Serviço"} · ${item.descricao.funcao} — Alterar valor · R$ ${input.valor} · ${input.motivo}`,
-    }));
+    batchItems.forEach((item) =>
+      serviceDraft.push({
+        input: { ...input, alvo: "ITEM", identidade: item.identidade },
+        label: `${item.descricao.obra_nome || ""} · ${item.descricao.imagem || "Serviço"} · ${item.descricao.funcao} — Alterar valor · R$ ${input.valor} · ${input.motivo}`,
+      }),
+    );
     selectedServices.clear();
   } else serviceDraft.push({ input, label });
   $("fm-service-dialog").close();

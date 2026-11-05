@@ -1,8 +1,8 @@
 <?php
 
-require_once __DIR__.'/FechamentoExtrasRules.php';
-require_once __DIR__.'/FechamentoRubricasEspeciais.php';
-require_once __DIR__.'/FechamentoProdutividadeRules.php';
+require_once __DIR__ . '/FechamentoExtrasRules.php';
+require_once __DIR__ . '/FechamentoRubricasEspeciais.php';
+require_once __DIR__ . '/FechamentoProdutividadeRules.php';
 
 /** Composição mensal sobre os serviços 1A; liquidação não define o fixo do adendo. */
 final class FechamentoMensalRules
@@ -14,12 +14,12 @@ final class FechamentoMensalRules
         $ref = $servicos['competencia'];
         $tipo = $contexto['tipo_remuneracao'] ?? null;
         $pend = [];
-        $variavel = in_array($tipo, ['VARIAVEL','FIXO_VARIAVEL'], true);
-        $usaFixo = in_array($tipo, ['FIXO','FIXO_VARIAVEL'], true);
+        $variavel = in_array($tipo, ['VARIAVEL', 'FIXO_VARIAVEL'], true);
+        $usaFixo = in_array($tipo, ['FIXO', 'FIXO_VARIAVEL'], true);
         $add = function (string $codigo, string $componente, string $mensagem) use (&$pend, $b, $ref) {
             $pend[] = FechamentoComposicaoSupport::pendencia($codigo, $componente, $b, $ref, [], [], $mensagem);
         };
-        if (!in_array($tipo, ['FIXO','VARIAVEL','FIXO_VARIAVEL'], true)) {
+        if (!in_array($tipo, ['FIXO', 'VARIAVEL', 'FIXO_VARIAVEL'], true)) {
             $add('REMUNERACAO_AUSENTE', 'CADASTRO', 'Forma de remuneração não configurada.');
         }
         $snapshot = FechamentoComposicaoSupport::instante($servicos['snapshot_em']);
@@ -52,8 +52,10 @@ final class FechamentoMensalRules
                     }
                     $ato = $fixoOverride ?? $fixoDecisao;
                     FechamentoComposicaoSupport::registro($ato, $b, $ref, $snapshot, 'VALOR_FIXO');
-                    if (!is_string($ato['motivo'] ?? null) || trim($ato['motivo']) === ''
-                        || !array_key_exists('original_centavos', $ato) || $ato['original_centavos'] !== ($fixo === null ? null : $fixo)) {
+                    if (
+                        !is_string($ato['motivo'] ?? null) || trim($ato['motivo']) === ''
+                        || !array_key_exists('original_centavos', $ato) || $ato['original_centavos'] !== ($fixo === null ? null : $fixo)
+                    ) {
                         throw new InvalidArgumentException('A decisão não corresponde ao valor fixo observado.');
                     }
                     if ($fixoOverride !== null) {
@@ -78,18 +80,11 @@ final class FechamentoMensalRules
         $raw = $contexto['extras'] ?? [];
         // Ausência e antigas decisões PENDENTE sem rubricas representam zero; não fabricar um ato humano.
         if (!$raw || (($raw['estado'] ?? 'PENDENTE') === 'PENDENTE' && empty($raw['itens'])) || (($raw['estado'] ?? '') === 'SEM_BONUS' && empty($raw['decisao']))) {
-            $extras = ['estado' => 'SEM_BONUS','decisao' => null,'itens' => [],'subtotal_centavos' => 0,'subtotal_conhecido_centavos' => 0,'determinado' => true,'pendencias' => []];
+            $extras = ['estado' => 'SEM_BONUS', 'decisao' => null, 'itens' => [], 'subtotal_centavos' => 0, 'subtotal_conhecido_centavos' => 0, 'determinado' => true, 'pendencias' => []];
         } else {
             $extras = (new FechamentoExtrasRules())->calcular($raw, $b, $ref, $snapshot);
         }
-        $imagensRetiradas = [];
-        foreach ($servicos['itens_analisados'] as $item) {
-            if ($item['situacao'] === 'RETIRADO' && $item['identidade']['origem'] === 'funcao_imagem' && $item['identidade']['classe'] === FechamentoFinanceiroRules::TAREFA && (int)($item['descricao']['funcao_id'] ?? 0) === 4) {
-                $imagensRetiradas[(int)$item['descricao']['imagem_id']] = true;
-            }
-        }
-        $eventosBonus = array_values(array_filter($contexto['eventos_r0'] ?? [], fn ($e) => !isset($imagensRetiradas[(int)$e['imagem_id']])));
-        $bonus = (new FechamentoProdutividadeRules())->calcular($eventosBonus, $ref, $variavel);
+        $bonus = (new FechamentoProdutividadeRules())->calcularAdendo($servicos['itens_analisados'], $ref, $variavel);
         foreach ($bonus['pendencias'] as $p) {
             $add('BONUS_R0_INDETERMINADO', 'BONUS_PRODUTIVIDADE', $p);
         }
@@ -128,10 +123,12 @@ final class FechamentoMensalRules
             $financeiro['subtotal_servicos_completo'] = true;
         }
         $pend = array_merge($pend, $financeiro['pendencias'], $extras['pendencias']);
-        $mensagens = ['PAGAMENTO_SEM_LEDGER' => 'Existe indicação de pagamento sem lançamento correspondente. Confira o serviço na origem.',
+        $mensagens = [
+            'PAGAMENTO_SEM_LEDGER' => 'Existe indicação de pagamento sem lançamento correspondente. Confira o serviço na origem.',
             'PAGO_ACIMA_DO_DEVIDO' => 'Os pagamentos registrados superam o valor do serviço. Confira os lançamentos.',
             'CLASSE_LEDGER_NAO_RECONHECIDA' => 'Um lançamento precisa de conferência para determinar o valor variável.',
-            'ANIMACAO_LEGADA_AMBIGUA' => 'O pagamento de animação precisa de conferência na origem.'];
+            'ANIMACAO_LEGADA_AMBIGUA' => 'O pagamento de animação precisa de conferência na origem.'
+        ];
         foreach ($pend as &$p) {
             if (isset($mensagens[$p['codigo']])) {
                 $p['mensagem'] = $mensagens[$p['codigo']];
@@ -141,9 +138,13 @@ final class FechamentoMensalRules
         if ($variavel && ($servicos['bloqueado'] || !$servicos['subtotal_servicos_completo']) && !$servicos['pendencias']) {
             $add('SERVICOS_INDETERMINADOS', 'SERVICOS', 'Não foi possível determinar o valor variável. Confira os serviços.');
         }
-        $componentes = ['SERVICOS' => FechamentoFinanceiroRules::somar($financeiro['subtotal_servicos_centavos'], $creditoCompetencia),'VALOR_FIXO' => $acompanhamentoFixo ? 0 : $fixo,
-            'ACOMPANHAMENTO_ESPECIAL' => $especial['valor_centavos'],'BONUS_EXTRAS' => $extras['subtotal_centavos'],
-            'BONUS_PRODUTIVIDADE' => $bonus['valor_centavos']];
+        $componentes = [
+            'SERVICOS' => FechamentoFinanceiroRules::somar($financeiro['subtotal_servicos_centavos'], $creditoCompetencia),
+            'VALOR_FIXO' => $acompanhamentoFixo ? 0 : $fixo,
+            'ACOMPANHAMENTO_ESPECIAL' => $especial['valor_centavos'],
+            'BONUS_EXTRAS' => $extras['subtotal_centavos'],
+            'BONUS_PRODUTIVIDADE' => $bonus['valor_centavos']
+        ];
         $total = 0;
         foreach ($componentes as $v) {
             $total = FechamentoFinanceiroRules::somar($total, $v ?? 0);
@@ -160,16 +161,47 @@ final class FechamentoMensalRules
         }
         $bloqueado = (bool)$pend;
         $determinado = !$bloqueado;
-        return ['colaborador_id' => $b,'competencia' => $ref,'snapshot_em' => $servicos['snapshot_em'],'timezone' => $servicos['timezone'],
-            'rule_version' => FechamentoComposicaoRules::VERSION,'monthly_rule_version' => self::VERSION,'servicos_rule_version' => $servicos['rule_version'],
-            'pagamentos_competencia_incluidos_centavos' => $creditoCompetencia,'competencia_oficial' => (bool)($contexto['competencia_oficial'] ?? false),
-            'tipo_remuneracao' => $tipo,'participa_fechamento_mensal' => $contexto['participa_fechamento_mensal'] ?? null,'financeiro_servicos' => $financeiro,'producao_consulta' => $servicos,
-            'fixo' => ['estado' => $fixo === null ? 'NAO_DEFINIDO' : 'DEFINIDO','configurado_centavos' => $usaFixo ? $fixo : null,
-                'utilizado_centavos' => $fixo,'saldo_centavos' => $fixo,'pago_centavos' => null,'estado_liquidacao' => 'FORA_DO_FECHAMENTO',
-                'origem' => $fixoOrigem,'rubrica_documental' => $acompanhamentoFixo ? 'Acompanhamento' : null,'override' => $fixoOverride,'decisao' => $fixoDecisao,'evidencias_liquidacao' => [],'pendencias' => []],
-            'extras' => $extras,'desconto' => $desconto,'retiradas' => $contexto['retiradas'] ?? [],'bonus_produtividade' => $bonus,'acompanhamento_especial' => $especial,'componentes' => $componentes,
-            'componentes_indeterminados' => array_keys(array_filter($componentes, fn ($v) => $v === null)),
-            'componentes_conhecidos_centavos' => $total,'total_final_centavos' => $determinado ? $total : null,
-            'total_final_determinado' => $determinado,'pendencias' => $pend,'bloqueado' => $bloqueado,'situacao' => $determinado ? 'PRONTO' : 'ATENCAO'];
+        return [
+            'colaborador_id' => $b,
+            'competencia' => $ref,
+            'snapshot_em' => $servicos['snapshot_em'],
+            'timezone' => $servicos['timezone'],
+            'rule_version' => FechamentoComposicaoRules::VERSION,
+            'monthly_rule_version' => self::VERSION,
+            'servicos_rule_version' => $servicos['rule_version'],
+            'pagamentos_competencia_incluidos_centavos' => $creditoCompetencia,
+            'competencia_oficial' => (bool)($contexto['competencia_oficial'] ?? false),
+            'tipo_remuneracao' => $tipo,
+            'participa_fechamento_mensal' => $contexto['participa_fechamento_mensal'] ?? null,
+            'financeiro_servicos' => $financeiro,
+            'producao_consulta' => $servicos,
+            'fixo' => [
+                'estado' => $fixo === null ? 'NAO_DEFINIDO' : 'DEFINIDO',
+                'configurado_centavos' => $usaFixo ? $fixo : null,
+                'utilizado_centavos' => $fixo,
+                'saldo_centavos' => $fixo,
+                'pago_centavos' => null,
+                'estado_liquidacao' => 'FORA_DO_FECHAMENTO',
+                'origem' => $fixoOrigem,
+                'rubrica_documental' => $acompanhamentoFixo ? 'Acompanhamento' : null,
+                'override' => $fixoOverride,
+                'decisao' => $fixoDecisao,
+                'evidencias_liquidacao' => [],
+                'pendencias' => []
+            ],
+            'extras' => $extras,
+            'desconto' => $desconto,
+            'retiradas' => $contexto['retiradas'] ?? [],
+            'bonus_produtividade' => $bonus,
+            'acompanhamento_especial' => $especial,
+            'componentes' => $componentes,
+            'componentes_indeterminados' => array_keys(array_filter($componentes, fn($v) => $v === null)),
+            'componentes_conhecidos_centavos' => $total,
+            'total_final_centavos' => $determinado ? $total : null,
+            'total_final_determinado' => $determinado,
+            'pendencias' => $pend,
+            'bloqueado' => $bloqueado,
+            'situacao' => $determinado ? 'PRONTO' : 'ATENCAO'
+        ];
     }
 }

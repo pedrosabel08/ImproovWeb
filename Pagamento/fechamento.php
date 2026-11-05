@@ -1,15 +1,15 @@
 <?php
 ini_set('display_errors', '0');
-require_once __DIR__.'/pagamento_auth.php';
-require_once __DIR__.'/../config/pagamento_fechamento.php';
+require_once __DIR__ . '/pagamento_auth.php';
+require_once __DIR__ . '/../config/pagamento_fechamento.php';
 if (!function_exists('asset_url')) {
     try {
-        require_once __DIR__.'/../config/version.php';
+        require_once __DIR__ . '/../config/version.php';
     } catch (Throwable $e) {
         if (!function_exists('asset_url')) {
             function asset_url(string $path): string
             {
-                return $path.'?v=dev';
+                return $path . '?v=dev';
             }
         }
     }
@@ -39,107 +39,216 @@ $colaboradores = obterColaboradores($conn);
 ?>
 <!doctype html>
 <html lang="pt-BR">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
-<?php require __DIR__.'/../includes/page-head.php'; ?>
-<link rel="stylesheet" href="<?= asset_url('style.css') ?>">
-<link rel="stylesheet" href="<?= asset_url('../css/styleSidebar.css') ?>">
-<link rel="stylesheet" href="<?= asset_url('visao-geral.css') ?>&ui=<?= filemtime(__DIR__.'/visao-geral.css') ?>">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="<?= asset_url('fechamento.css') ?>">
-<link rel="stylesheet" href="<?= asset_url('mensal.css') ?>&m=<?= filemtime(__DIR__.'/mensal.css') ?>">
-</head>
-<body>
-<?php include __DIR__.'/../sidebar.php'; ?>
-<main class="container fechamento-page fm-page" id="fm-page-root" aria-busy="true">
-<header class="page-header payment-header">
-<div class="payment-heading"><img src="../gif/assinatura_branco.gif" id="gif" alt="ImproovWeb"><div><h1 class="page-title">Pagamento</h1><p class="payment-subtitle">Custos de produção, pagamentos e adendos</p></div></div>
-<nav class="payment-header-actions" aria-label="Pagamento"><div class="payment-view-toggle" role="group" aria-label="Visão de pagamentos"><a data-payment-link="geral" href="./?view=geral">Visão geral</a><a data-payment-link="colaborador" href="./?view=colaborador">Por colaborador</a><a href="fechamento.php" class="is-active" aria-current="page">Fechamento</a></div><a class="btn btn-status-geral" id="fm-status-link" href="./?view=colaborador&amp;adendos=1"><i class="fa-regular fa-file-lines" aria-hidden="true"></i>Status geral dos adendos</a></nav>
-</header>
-<?php if ($unavailable): ?>
-<p role="alert" class="fc-notice"><?= htmlspecialchars($unavailable, ENT_QUOTES, 'UTF-8') ?></p>
-<?php else: ?>
-<section class="fm-context" id="fm-context" aria-label="Competência do fechamento">
-<input id="fm-month" type="hidden" value="<?= htmlspecialchars($ref, ENT_QUOTES, 'UTF-8') ?>">
-<label for="fm-select-month">Mês<select id="fm-select-month"><?php foreach (['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] as $i => $mes): ?><option value="<?= str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT) ?>" <?= (int)substr($ref, 5, 2) === $i + 1 ? 'selected' : '' ?>><?= $mes ?></option><?php endforeach ?></select></label>
-<label for="fm-select-year">Ano<select id="fm-select-year"><?php for ($ano = max((int)date('Y') + 1, (int)substr($ref, 0, 4));$ano >= min((int)date('Y') - 5, (int)substr($ref, 0, 4));$ano--): ?><option <?= $ano === (int)substr($ref, 0, 4) ? 'selected' : '' ?>><?= $ano ?></option><?php endfor ?></select></label>
-<span class="fm-context-count"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span id="fm-context-count">Carregando competência</span></span>
-<span class="fm-started" id="fm-started" hidden><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Fechamento iniciado</span>
-<button type="button" class="btn btn-primary" id="fm-start">Iniciar fechamento</button>
-<button type="button" class="btn btn-secondary" id="fm-refresh">Atualizar cadastros</button>
-</section>
-<div id="fm-message" class="fc-notice" role="status" aria-live="polite" hidden></div>
-<div id="fm-busy" class="fc-busy" role="status" aria-live="polite"><canvas data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Carregando fechamento"></canvas><span id="fm-busy-label">Carregando fechamento</span></div>
-<div id="fm-retry" class="fc-notice" hidden><p>A ação ainda precisa ser concluída. Tente novamente para continuar com segurança.</p><button type="button" class="btn btn-secondary" id="fm-retry-button">Tentar novamente</button></div>
-<aside id="fm-config" class="fm-config" hidden aria-labelledby="fm-config-title">
-<details><summary><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span id="fm-config-title"></span><span class="fm-config-action">Revisar cadastros</span></summary><p>Defina “Participa do fechamento mensal?” no cadastro. Esses colaboradores ficam fora da fila até serem marcados como Sim.</p><ul id="fm-config-list"></ul></details>
-</aside>
-<div class="fm-cycle-strip"><span id="fm-cycle-state" class="fm-badge"></span><p id="fm-cycle-financial" role="status"></p><button type="button" id="fm-conclude" class="btn btn-primary" hidden>Concluir fechamento</button></div>
-<section class="fm-summary" aria-label="Resumo do fechamento"><h2 id="fm-period" class="fm-sr-only"></h2><div class="fm-stats" id="fm-stats"></div>
-<div class="fm-progress"><span id="fm-progress-label"></span><div><progress id="fm-progress" value="0" max="1" aria-label="Colaboradores revisados"></progress><span id="fm-progress-percent">0%</span></div></div></section>
-<section id="fm-overview">
-<div class="fm-list-heading"><h2>Colaboradores da competência</h2>
-<button class="btn btn-secondary" type="button" id="fm-include" hidden><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Incluir colaborador</button>
-<button class="btn btn-primary" type="button" id="fm-review" disabled>Revisar fechamento</button>
-</div>
-<p id="fm-roster-note" class="fm-roster-note" role="status" hidden>Há colaboradores aptos fora deste ciclo. A implantação precisa ser atualizada para habilitar a inclusão auditada.</p>
-<div class="fm-finish" id="fm-finish" hidden aria-live="polite"></div>
-<table class="fm-list"><thead><tr><th>Colaborador</th><th>Remuneração</th><th>Fixo</th><th>Adendos</th><th>Extras / bônus</th><th>Descontos</th><th>Total</th><th>Revisão</th><th>Pagamento</th></tr></thead><tbody id="fm-list"></tbody></table>
-</section>
-<section id="fm-step" hidden>
-<div class="fm-review-layout">
-<article class="fm-financial" aria-label="Revisão do colaborador">
-<div class="fm-person-navigation"><button type="button" class="btn btn-secondary fm-icon-button" id="fm-person-previous" aria-label="Colaborador anterior" title="Colaborador anterior"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><button type="button" class="btn btn-secondary fm-icon-button" id="fm-person-next" aria-label="Próximo colaborador" title="Próximo colaborador"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><span>Colaborador <strong id="fm-position"></strong></span><button type="button" class="btn btn-secondary fm-icon-button" id="fm-back" aria-label="Voltar ao fechamento" title="Ver lista de colaboradores"><i class="fa-solid fa-list" aria-hidden="true"></i></button></div>
-<header class="fm-review-header"><span class="fm-avatar" id="fm-avatar" aria-hidden="true"></span><div class="fm-person-name"><h2 id="fm-name"></h2><span id="fm-type" class="fm-badge"></span></div><div class="fm-person-status"><small>Status do adendo</small><span id="fm-person-status" class="fm-badge"></span></div></header>
-<div class="fm-financial-scroll">
-<div id="fm-attention"></div><dl class="fm-breakdown" id="fm-breakdown"></dl>
-<button type="button" class="btn btn-secondary fm-services-open" id="fm-service-details" aria-haspopup="dialog" aria-controls="fm-services-dialog"><i class="fa-solid fa-list-check" aria-hidden="true"></i>Ver detalhes dos serviços</button>
-<div id="fm-extras"></div>
-<div class="fc-actions"><button class="btn btn-secondary" id="fm-discount" type="button">Desconto</button><button class="btn btn-secondary" id="fm-extra" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i>Adicionar extra</button><a class="btn btn-secondary" id="fm-edit" href="../Colaborador/" target="_blank" rel="noopener"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i>Editar cadastro</a><button class="btn btn-secondary" id="fm-recalculate" type="button"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>Atualizar valores</button></div>
-</div></article>
-<footer class="fm-action-footer"><dl class="fm-breakdown" id="fm-total-summary"></dl><div class="fm-review-actions"><button class="btn btn-primary" id="fm-confirm" type="button" disabled>Confirmar e próximo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button><button class="btn btn-secondary" id="fm-skip" type="button">Pular por enquanto</button></div><p id="fm-document-state" role="status" aria-live="polite"><i class="fa-regular fa-file-lines" aria-hidden="true"></i><span></span></p></footer>
-<aside class="fm-document" id="fm-document" aria-label="Adendo para conferência">
-<div class="fm-document-header"><h3>Adendo para conferência</h3><a id="fm-download" class="btn btn-secondary" hidden><i class="fa-solid fa-download" aria-hidden="true"></i>Baixar PDF</a></div>
-<div class="fm-pdf-toolbar" aria-label="Controles do PDF"><div class="fm-pdf-navigation"><button id="fm-pdf-previous" class="btn btn-secondary fm-icon-button" aria-label="Página anterior" title="Página anterior" disabled><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><span id="fm-pdf-page"></span><button id="fm-pdf-next" class="btn btn-secondary fm-icon-button" aria-label="Próxima página" title="Próxima página" disabled><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div><div class="fm-pdf-tools"><button id="fm-zoom-out" class="btn btn-secondary fm-icon-button" aria-label="Diminuir zoom" title="Diminuir zoom" disabled><i class="fa-solid fa-minus" aria-hidden="true"></i></button><span id="fm-zoom">100%</span><button id="fm-zoom-in" class="btn btn-secondary fm-icon-button" aria-label="Aumentar zoom" title="Aumentar zoom" disabled><i class="fa-solid fa-plus" aria-hidden="true"></i></button><button id="fm-fullscreen" class="btn btn-secondary fm-icon-button" aria-label="Tela cheia" title="Tela cheia" aria-pressed="false"><i class="fa-solid fa-expand" aria-hidden="true"></i></button></div></div>
-<div class="fm-pdf-area"><div id="fm-pdf" class="fc-pdf-pages" aria-label="PDF do adendo" tabindex="0"></div><div id="fm-pdf-placeholder" class="fm-pdf-placeholder" role="status" aria-live="polite" aria-busy="false"><canvas id="fm-pdf-orb" class="fm-pdf-orb" data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Preparando PDF do adendo" hidden></canvas><i id="fm-pdf-placeholder-icon" class="fa-regular fa-file-lines" aria-hidden="true"></i><strong id="fm-pdf-placeholder-title">Adendo para conferência</strong><p id="fm-pdf-placeholder-text">Os documentos desta competência aparecerão aqui.</p></div></div>
-</aside></div>
-</section>
-<dialog id="fm-services-dialog" class="fc-dialog fm-services-dialog" aria-labelledby="fm-services-title">
-<header class="fm-services-header"><div><h2 id="fm-services-title">Detalhes dos serviços</h2><p id="fm-services-scope"></p></div><button type="button" class="btn btn-secondary" id="fm-services-close" autofocus>Fechar</button></header>
-<p class="fm-service-help">Confira o valor total, os pagamentos registrados e o saldo de cada tarefa. Alterações valem para este fechamento e exigem uma nova conferência do adendo.</p>
-<div id="fm-services-message" role="status" aria-live="polite" hidden></div>
-<button type="button" class="btn btn-secondary" id="fm-services-retry" hidden>Tentar novamente</button>
-<div class="fm-services-tabs" role="group" aria-label="Situação dos serviços"><button type="button" class="btn btn-secondary" data-service-tab="pending" aria-pressed="true">Pendentes <span id="fm-services-pending-count"></span></button><button type="button" class="btn btn-secondary" data-service-tab="paid" aria-pressed="false">Já pagos <span id="fm-services-paid-count"></span></button><button type="button" class="btn btn-secondary" data-service-tab="removed" aria-pressed="false">Retirados <span id="fm-services-removed-count"></span></button></div>
-<p id="fm-services-summary" class="fm-service-help"></p>
-<div class="fm-service-filters" aria-label="Filtros de serviços"><label>Função<select id="fm-filter-function"></select></label><label>Obra<select id="fm-filter-project"></select></label><label id="fm-filter-animation-label">Tipo de animação<select id="fm-filter-animation"></select></label></div>
-<div class="fm-service-selection" id="fm-service-selection"><label><input type="checkbox" id="fm-service-select-all"> Selecionar tarefas exibidas</label><span id="fm-service-selection-count" aria-live="polite"></span><button type="button" class="btn btn-secondary" id="fm-service-batch-value" disabled>Alterar valor das selecionadas</button><small>Plantas humanizadas devem ser alteradas individualmente para confirmar seu tipo.</small></div>
-<div class="fm-service-batch"><label for="fm-service-function">Função</label><select id="fm-service-function"></select><button type="button" class="btn btn-secondary" id="fm-withdraw-function">Retirar função</button><button type="button" class="btn btn-secondary" id="fm-restore-function">Restaurar função</button></div>
-<section id="fm-service-draft" class="fm-service-draft" hidden aria-labelledby="fm-service-draft-title"><h3 id="fm-service-draft-title">Alterações pendentes</h3><p>Confira as alterações antes de salvar. Os valores e o PDF serão atualizados juntos.</p><ol id="fm-service-draft-list"></ol><div class="fm-service-row-actions"><button type="button" class="btn btn-primary" id="fm-service-draft-save">Salvar alterações</button><button type="button" class="btn btn-secondary" id="fm-service-draft-discard">Descartar alterações</button></div></section>
-<div class="fc-table-wrap fm-services-table"><table class="fc-table"><thead><tr><th>Tarefa</th><th>Valor total</th><th>Já pago</th><th>A pagar agora</th><th>Situação / ações</th></tr></thead><tbody id="fm-services"></tbody></table></div>
 
-</dialog>
-<dialog id="fm-service-dialog" class="fc-dialog" aria-labelledby="fm-service-title"><form id="fm-service-form"><header><h2 id="fm-service-title">Retirar tarefa</h2><button type="button" class="btn btn-secondary" id="fm-service-close">Fechar</button></header><p id="fm-service-target"></p><label id="fm-service-plant-label" hidden>Tipo da planta<select name="categoria_planta"></select></label><p id="fm-service-standard-note" class="fm-service-help" hidden>O valor da tabela será aplicado ao tipo selecionado. A correção ficará registrada automaticamente no histórico.</p><label id="fm-service-value-label" hidden>Valor total da tarefa (R$)<input name="valor" inputmode="decimal" placeholder="0,00"></label><p id="fm-service-paid" class="fm-service-help" hidden></p><label id="fm-service-reason-label">Motivo<textarea name="motivo" required maxlength="1000" rows="3"></textarea></label><p>A alteração ficará pendente até você salvar o conjunto. Depois, confira o novo PDF.</p><p id="fm-service-error" role="alert" hidden></p><button type="submit" class="btn btn-primary" id="fm-service-submit">Confirmar retirada</button></form></dialog>
-<dialog id="fm-extra-dialog" class="fc-dialog" aria-labelledby="fm-extra-title"><form id="fm-extra-form">
-<header><h2 id="fm-extra-title">Extra manual</h2><button class="btn btn-secondary" type="button" id="fm-extra-close">Fechar</button></header>
-<p id="fm-extra-scope"></p><label id="fm-extra-description">Descrição<input name="categoria" required maxlength="160" placeholder="Bônus qualidade"></label>
-<label>Valor (R$)<input name="valor" inputmode="decimal" required placeholder="500,00"></label>
-<label>Motivo<textarea name="motivo" required maxlength="1000" rows="2"></textarea></label>
-<footer><button type="submit" class="btn btn-primary">Salvar extra</button></footer></form></dialog>
-<dialog id="fm-include-dialog" class="fc-dialog" aria-labelledby="fm-include-title"><form id="fm-include-form">
-<header><h2 id="fm-include-title">Incluir colaborador</h2><button class="btn btn-secondary" type="button" id="fm-include-close">Fechar</button></header>
-<p>A inclusão será registrada no histórico do fechamento. O colaborador precisa estar ativo e marcado para participar.</p>
-<label>Colaborador<select id="fm-include-person" required><option value="">Selecione um colaborador</option></select></label>
-<footer><button type="submit" class="btn btn-primary">Incluir no fechamento</button></footer></form></dialog>
-<?php endif ?>
-</main>
-<script src="<?= asset_url('../script/sidebar.js') ?>"></script>
-<?php if (!$unavailable): ?>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
-<script src="<?= asset_url('animacoes.js') ?>&payment=<?= filemtime(__DIR__.'/animacoes.js') ?>"></script>
-<script src="<?= asset_url('../assets/js/thinking-orbs.js') ?>"></script>
-<script src="<?= asset_url('../assets/pdfjs/pdf.min.js') ?>"></script>
-<script type="module" src="<?= asset_url('mensal.js') ?>&m=<?= filemtime(__DIR__.'/mensal.js') ?>"></script>
-<?php endif ?>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="pagamento-csrf" content="<?= htmlspecialchars(pagamento_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+    <?php require __DIR__ . '/../includes/page-head.php'; ?>
+    <link rel="stylesheet" href="<?= asset_url('style.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('../css/styleSidebar.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('visao-geral.css') ?>&ui=<?= filemtime(__DIR__ . '/visao-geral.css') ?>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= asset_url('fechamento.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('mensal.css') ?>&m=<?= filemtime(__DIR__ . '/mensal.css') ?>">
+</head>
+
+<body>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
+    <main class="container fechamento-page fm-page" id="fm-page-root" aria-busy="true">
+        <header class="page-header payment-header">
+            <div class="payment-heading"><img src="../gif/assinatura_branco.gif" id="gif" alt="ImproovWeb">
+                <div>
+                    <h1 class="page-title">Pagamento</h1>
+                    <p class="payment-subtitle">Custos de produção, pagamentos e adendos</p>
+                </div>
+            </div>
+            <nav class="payment-header-actions" aria-label="Pagamento">
+                <div class="payment-view-toggle" role="group" aria-label="Visão de pagamentos"><a data-payment-link="geral" href="./?view=geral">Visão geral</a><a data-payment-link="colaborador" href="./?view=colaborador">Por colaborador</a><a href="fechamento.php" class="is-active" aria-current="page">Fechamento</a></div><a class="btn btn-status-geral" id="fm-status-link" href="./?view=colaborador&amp;adendos=1"><i class="fa-regular fa-file-lines" aria-hidden="true"></i>Status geral dos adendos</a>
+            </nav>
+        </header>
+        <?php if ($unavailable): ?>
+            <p role="alert" class="fc-notice"><?= htmlspecialchars($unavailable, ENT_QUOTES, 'UTF-8') ?></p>
+        <?php else: ?>
+            <section class="fm-context" id="fm-context" aria-label="Competência do fechamento">
+                <input id="fm-month" type="hidden" value="<?= htmlspecialchars($ref, ENT_QUOTES, 'UTF-8') ?>">
+                <label for="fm-select-month">Mês<select id="fm-select-month"><?php foreach (['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'] as $i => $mes): ?><option value="<?= str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT) ?>" <?= (int)substr($ref, 5, 2) === $i + 1 ? 'selected' : '' ?>><?= $mes ?></option><?php endforeach ?></select></label>
+                <label for="fm-select-year">Ano<select id="fm-select-year"><?php for ($ano = max((int)date('Y') + 1, (int)substr($ref, 0, 4)); $ano >= min((int)date('Y') - 5, (int)substr($ref, 0, 4)); $ano--): ?><option <?= $ano === (int)substr($ref, 0, 4) ? 'selected' : '' ?>><?= $ano ?></option><?php endfor ?></select></label>
+                <span class="fm-context-count"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span id="fm-context-count">Carregando competência</span></span>
+                <span class="fm-started" id="fm-started" hidden><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Fechamento iniciado</span>
+                <button type="button" class="btn btn-primary" id="fm-start">Iniciar fechamento</button>
+                <button type="button" class="btn btn-secondary" id="fm-refresh">Atualizar cadastros</button>
+            </section>
+            <div id="fm-message" class="fc-notice" role="status" aria-live="polite" hidden></div>
+            <div id="fm-busy" class="fc-busy" role="status" aria-live="polite"><canvas data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Carregando fechamento"></canvas><span id="fm-busy-label">Carregando fechamento</span></div>
+            <div id="fm-retry" class="fc-notice" hidden>
+                <p>A ação ainda precisa ser concluída. Tente novamente para continuar com segurança.</p><button type="button" class="btn btn-secondary" id="fm-retry-button">Tentar novamente</button>
+            </div>
+            <aside id="fm-config" class="fm-config" hidden aria-labelledby="fm-config-title">
+                <details>
+                    <summary><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span id="fm-config-title"></span><span class="fm-config-action">Revisar cadastros</span></summary>
+                    <p>Defina “Participa do fechamento mensal?” no cadastro. Esses colaboradores ficam fora da fila até serem marcados como Sim.</p>
+                    <ul id="fm-config-list"></ul>
+                </details>
+            </aside>
+            <div class="fm-cycle-strip"><span id="fm-cycle-state" class="fm-badge"></span>
+                <p id="fm-cycle-financial" role="status"></p><button type="button" id="fm-conclude" class="btn btn-primary" hidden>Concluir fechamento</button>
+            </div>
+            <section class="fm-summary" aria-label="Resumo do fechamento">
+                <h2 id="fm-period" class="fm-sr-only"></h2>
+                <div class="fm-stats" id="fm-stats"></div>
+                <div class="fm-progress"><span id="fm-progress-label"></span>
+                    <div><progress id="fm-progress" value="0" max="1" aria-label="Colaboradores revisados"></progress><span id="fm-progress-percent">0%</span></div>
+                </div>
+            </section>
+            <section id="fm-overview">
+                <div class="fm-list-heading">
+                    <h2>Colaboradores da competência</h2>
+                    <button class="btn btn-secondary" type="button" id="fm-include" hidden><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Incluir colaborador</button>
+                    <button class="btn btn-primary" type="button" id="fm-review" disabled>Revisar fechamento</button>
+                </div>
+                <p id="fm-roster-note" class="fm-roster-note" role="status" hidden>Há colaboradores aptos fora deste ciclo. A implantação precisa ser atualizada para habilitar a inclusão auditada.</p>
+                <div class="fm-finish" id="fm-finish" hidden aria-live="polite"></div>
+                <table class="fm-list">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Remuneração</th>
+                            <th>Fixo</th>
+                            <th>Adendos</th>
+                            <th>Extras / bônus</th>
+                            <th>Descontos</th>
+                            <th>Total</th>
+                            <th>Revisão</th>
+                            <th>Pagamento</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fm-list"></tbody>
+                </table>
+            </section>
+            <section id="fm-step" hidden>
+                <div class="fm-review-layout">
+                    <article class="fm-financial" aria-label="Revisão do colaborador">
+                        <div class="fm-person-navigation"><button type="button" class="btn btn-secondary fm-icon-button" id="fm-person-previous" aria-label="Colaborador anterior" title="Colaborador anterior"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><button type="button" class="btn btn-secondary fm-icon-button" id="fm-person-next" aria-label="Próximo colaborador" title="Próximo colaborador"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><span>Colaborador <strong id="fm-position"></strong></span><button type="button" class="btn btn-secondary fm-icon-button" id="fm-back" aria-label="Voltar ao fechamento" title="Ver lista de colaboradores"><i class="fa-solid fa-list" aria-hidden="true"></i></button></div>
+                        <header class="fm-review-header"><span class="fm-avatar" id="fm-avatar" aria-hidden="true"></span>
+                            <div class="fm-person-name">
+                                <h2 id="fm-name"></h2><span id="fm-type" class="fm-badge"></span>
+                            </div>
+                            <div class="fm-person-status"><small>Status do adendo</small><span id="fm-person-status" class="fm-badge"></span></div>
+                        </header>
+                        <div class="fm-financial-scroll">
+                            <div id="fm-attention"></div>
+                            <dl class="fm-breakdown" id="fm-breakdown"></dl>
+                            <button type="button" class="btn btn-secondary fm-services-open" id="fm-service-details" aria-haspopup="dialog" aria-controls="fm-services-dialog"><i class="fa-solid fa-list-check" aria-hidden="true"></i>Ver detalhes dos serviços</button>
+                            <div id="fm-extras"></div>
+                            <div class="fc-actions"><button class="btn btn-secondary" id="fm-reopen" type="button" hidden>Ajustar fechamento</button><button class="btn btn-secondary" id="fm-discount" type="button">Desconto</button><button class="btn btn-secondary" id="fm-extra" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i>Adicionar extra</button><a class="btn btn-secondary" id="fm-edit" href="../Colaborador/" target="_blank" rel="noopener"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i>Editar cadastro</a><button class="btn btn-secondary" id="fm-recalculate" type="button"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>Atualizar valores</button></div>
+                        </div>
+                    </article>
+                    <footer class="fm-action-footer">
+                        <dl class="fm-breakdown" id="fm-total-summary"></dl>
+                        <div class="fm-review-actions"><button class="btn btn-primary" id="fm-confirm" type="button" disabled>Confirmar e próximo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button><button class="btn btn-secondary" id="fm-skip" type="button">Pular por enquanto</button></div>
+                        <p id="fm-document-state" role="status" aria-live="polite"><i class="fa-regular fa-file-lines" aria-hidden="true"></i><span></span></p>
+                    </footer>
+                    <aside class="fm-document" id="fm-document" aria-label="Adendo para conferência">
+                        <div class="fm-document-header">
+                            <h3>Adendo para conferência</h3><a id="fm-download" class="btn btn-secondary" hidden><i class="fa-solid fa-download" aria-hidden="true"></i>Baixar PDF</a>
+                        </div>
+                        <div class="fm-pdf-toolbar" aria-label="Controles do PDF">
+                            <div class="fm-pdf-navigation"><button id="fm-pdf-previous" class="btn btn-secondary fm-icon-button" aria-label="Página anterior" title="Página anterior" disabled><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><span id="fm-pdf-page"></span><button id="fm-pdf-next" class="btn btn-secondary fm-icon-button" aria-label="Próxima página" title="Próxima página" disabled><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>
+                            <div class="fm-pdf-tools"><button id="fm-zoom-out" class="btn btn-secondary fm-icon-button" aria-label="Diminuir zoom" title="Diminuir zoom" disabled><i class="fa-solid fa-minus" aria-hidden="true"></i></button><span id="fm-zoom">100%</span><button id="fm-zoom-in" class="btn btn-secondary fm-icon-button" aria-label="Aumentar zoom" title="Aumentar zoom" disabled><i class="fa-solid fa-plus" aria-hidden="true"></i></button><button id="fm-fullscreen" class="btn btn-secondary fm-icon-button" aria-label="Tela cheia" title="Tela cheia" aria-pressed="false"><i class="fa-solid fa-expand" aria-hidden="true"></i></button></div>
+                        </div>
+                        <div class="fm-pdf-area">
+                            <div id="fm-pdf" class="fc-pdf-pages" aria-label="PDF do adendo" tabindex="0"></div>
+                            <div id="fm-pdf-placeholder" class="fm-pdf-placeholder" role="status" aria-live="polite" aria-busy="false"><canvas id="fm-pdf-orb" class="fm-pdf-orb" data-thinking-orb data-orb-state="composing" data-orb-size="48" aria-label="Preparando PDF do adendo" hidden></canvas><i id="fm-pdf-placeholder-icon" class="fa-regular fa-file-lines" aria-hidden="true"></i><strong id="fm-pdf-placeholder-title">Adendo para conferência</strong>
+                                <p id="fm-pdf-placeholder-text">Os documentos desta competência aparecerão aqui.</p>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+            <dialog id="fm-services-dialog" class="fc-dialog fm-services-dialog" aria-labelledby="fm-services-title">
+                <header class="fm-services-header">
+                    <div>
+                        <h2 id="fm-services-title">Detalhes dos serviços</h2>
+                        <p id="fm-services-scope"></p>
+                    </div><button type="button" class="btn btn-secondary" id="fm-services-close" autofocus>Fechar</button>
+                </header>
+                <p class="fm-service-help">Confira o valor total, os pagamentos registrados e o saldo de cada tarefa. Alterações valem para este fechamento e exigem uma nova conferência do adendo.</p>
+                <div id="fm-services-message" role="status" aria-live="polite" hidden></div>
+                <button type="button" class="btn btn-secondary" id="fm-services-retry" hidden>Tentar novamente</button>
+                <div class="fm-services-tabs" role="group" aria-label="Situação dos serviços"><button type="button" class="btn btn-secondary" data-service-tab="pending" aria-pressed="true">Pendentes <span id="fm-services-pending-count"></span></button><button type="button" class="btn btn-secondary" data-service-tab="paid" aria-pressed="false">Já pagos <span id="fm-services-paid-count"></span></button><button type="button" class="btn btn-secondary" data-service-tab="removed" aria-pressed="false">Retirados <span id="fm-services-removed-count"></span></button></div>
+                <p id="fm-services-summary" class="fm-service-help"></p>
+                <div class="fm-service-filters" aria-label="Filtros de serviços"><label>Função<select id="fm-filter-function"></select></label><label>Obra<select id="fm-filter-project"></select></label><label id="fm-filter-animation-label">Tipo de animação<select id="fm-filter-animation"></select></label></div>
+                <div class="fm-service-selection" id="fm-service-selection"><label><input type="checkbox" id="fm-service-select-all"> Selecionar tarefas exibidas</label><span id="fm-service-selection-count" aria-live="polite"></span><button type="button" class="btn btn-secondary" id="fm-service-batch-value" disabled>Alterar valor das selecionadas</button><small>Plantas humanizadas devem ser alteradas individualmente para confirmar seu tipo.</small></div>
+                <div class="fm-service-batch"><label for="fm-service-function">Função</label><select id="fm-service-function"></select><button type="button" class="btn btn-secondary" id="fm-withdraw-function">Retirar função</button><button type="button" class="btn btn-secondary" id="fm-restore-function">Restaurar função</button></div>
+                <section id="fm-service-draft" class="fm-service-draft" hidden aria-labelledby="fm-service-draft-title">
+                    <h3 id="fm-service-draft-title">Alterações pendentes</h3>
+                    <p>Confira as alterações antes de salvar. Os valores e o PDF serão atualizados juntos.</p>
+                    <ol id="fm-service-draft-list"></ol>
+                    <div class="fm-service-row-actions"><button type="button" class="btn btn-primary" id="fm-service-draft-save">Salvar alterações</button><button type="button" class="btn btn-secondary" id="fm-service-draft-discard">Descartar alterações</button></div>
+                </section>
+                <div class="fc-table-wrap fm-services-table">
+                    <table class="fc-table">
+                        <thead>
+                            <tr>
+                                <th>Tarefa</th>
+                                <th>Valor total</th>
+                                <th>Já pago</th>
+                                <th>A pagar agora</th>
+                                <th>Situação / ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fm-services"></tbody>
+                    </table>
+                </div>
+
+            </dialog>
+            <dialog id="fm-service-dialog" class="fc-dialog" aria-labelledby="fm-service-title">
+                <form id="fm-service-form">
+                    <header>
+                        <h2 id="fm-service-title">Retirar tarefa</h2><button type="button" class="btn btn-secondary" id="fm-service-close">Fechar</button>
+                    </header>
+                    <p id="fm-service-target"></p><label id="fm-service-plant-label" hidden>Tipo da planta<select name="categoria_planta"></select></label>
+                    <p id="fm-service-standard-note" class="fm-service-help" hidden>O valor da tabela será aplicado ao tipo selecionado. A correção ficará registrada automaticamente no histórico.</p><label id="fm-service-value-label" hidden>Valor total da tarefa (R$)<input name="valor" inputmode="decimal" placeholder="0,00"></label>
+                    <p id="fm-service-paid" class="fm-service-help" hidden></p><label id="fm-service-reason-label">Motivo<textarea name="motivo" required maxlength="1000" rows="3"></textarea></label>
+                    <p>A alteração ficará pendente até você salvar o conjunto. Depois, confira o novo PDF.</p>
+                    <p id="fm-service-error" role="alert" hidden></p><button type="submit" class="btn btn-primary" id="fm-service-submit">Confirmar retirada</button>
+                </form>
+            </dialog>
+            <dialog id="fm-extra-dialog" class="fc-dialog" aria-labelledby="fm-extra-title">
+                <form id="fm-extra-form">
+                    <header>
+                        <h2 id="fm-extra-title">Extra manual</h2><button class="btn btn-secondary" type="button" id="fm-extra-close">Fechar</button>
+                    </header>
+                    <p id="fm-extra-scope"></p><label id="fm-extra-description">Descrição<input name="categoria" required maxlength="160" placeholder="Bônus qualidade"></label>
+                    <label>Valor (R$)<input name="valor" inputmode="decimal" required placeholder="500,00"></label>
+                    <label>Motivo<textarea name="motivo" required maxlength="1000" rows="2"></textarea></label>
+                    <footer><button type="submit" class="btn btn-primary">Salvar extra</button></footer>
+                </form>
+            </dialog>
+            <dialog id="fm-include-dialog" class="fc-dialog" aria-labelledby="fm-include-title">
+                <form id="fm-include-form">
+                    <header>
+                        <h2 id="fm-include-title">Incluir colaborador</h2><button class="btn btn-secondary" type="button" id="fm-include-close">Fechar</button>
+                    </header>
+                    <p>A inclusão será registrada no histórico do fechamento. O colaborador precisa estar ativo e marcado para participar.</p>
+                    <label>Colaborador<select id="fm-include-person" required>
+                            <option value="">Selecione um colaborador</option>
+                        </select></label>
+                    <footer><button type="submit" class="btn btn-primary">Incluir no fechamento</button></footer>
+                </form>
+            </dialog>
+        <?php endif ?>
+    </main>
+    <script src="<?= asset_url('../script/sidebar.js') ?>"></script>
+    <?php if (!$unavailable): ?>
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+        <script src="<?= asset_url('animacoes.js') ?>&payment=<?= filemtime(__DIR__ . '/animacoes.js') ?>"></script>
+        <script src="<?= asset_url('../assets/js/thinking-orbs.js') ?>"></script>
+        <script src="<?= asset_url('../assets/pdfjs/pdf.min.js') ?>"></script>
+        <script type="module" src="<?= asset_url('mensal.js') ?>&m=<?= filemtime(__DIR__ . '/mensal.js') ?>"></script>
+    <?php endif ?>
     <?= flow_auth_navigation_script() ?>
-</body></html>
+</body>
+
+</html>

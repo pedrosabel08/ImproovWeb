@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/secure_env.php';
+improov_load_env_once();
+
 /** Rollout técnico server-side. Ausência de configuração mantém o legado. */
 function pagamento_fechamento_enabled(): bool
 {
@@ -13,9 +16,13 @@ function pagamento_fechamento_connection(): mysqli
         foreach (['HOST', 'NAME', 'USER'] as $field) {
             if (!getenv('PAGAMENTO_FECHAMENTO_DB_' . $field)) throw new RuntimeException('Configuração de fechamento incompleta.');
         }
-        $conn = new mysqli(getenv('PAGAMENTO_FECHAMENTO_DB_HOST'), getenv('PAGAMENTO_FECHAMENTO_DB_USER'),
-            getenv('PAGAMENTO_FECHAMENTO_DB_PASSWORD') ?: '', getenv('PAGAMENTO_FECHAMENTO_DB_NAME'),
-            (int)(getenv('PAGAMENTO_FECHAMENTO_DB_PORT') ?: 3306));
+        $conn = new mysqli(
+            getenv('PAGAMENTO_FECHAMENTO_DB_HOST'),
+            getenv('PAGAMENTO_FECHAMENTO_DB_USER'),
+            getenv('PAGAMENTO_FECHAMENTO_DB_PASSWORD') ?: '',
+            getenv('PAGAMENTO_FECHAMENTO_DB_NAME'),
+            (int)(getenv('PAGAMENTO_FECHAMENTO_DB_PORT') ?: 3306)
+        );
     } else {
         // Conexão própria deste request; não reutilizar uma transação do legado.
         require __DIR__ . '/../conexao.php';

@@ -22,8 +22,23 @@ $extra['imagem_id']=203; $extra['status_novo']='Finalizado'; $extra['data']='202
 eq($rules->calcular($mixed,'2026-09',true)['quantidade_finalizacao_r0'],21,'Deduplicação/ciclo/evento/competência');
 $different=events(21); $different[0]['valor']='450'; eq(count($rules->calcular($different,'2026-09',true)['pendencias']),1,'Tarifa mista exige ação');
 $missing=events(1); $missing[0]['ciclo']=null; eq(count($rules->calcular($missing,'2026-09',true)['pendencias']),1,'Histórico de ciclo ausente exige ação');
+function itensAdendo(int $n):array {
+ $out=[]; for($i=1;$i<=$n;$i++) $out[]=['identidade'=>['origem'=>'funcao_imagem','origem_id'=>$i,'classe'=>FechamentoFinanceiroRules::TAREFA], 'descricao'=>['funcao_id'=>4,'imagem_id'=>$i], 'elegibilidade'=>['elegivel'=>true], 'situacao'=>'DEVIDO','valor_original'=>'380.00','pagamentos'=>[]]; return $out;
+}
+$items=itensAdendo(21); $bonus=$rules->calcularAdendo($items,'2026-09',true);
+eq($bonus['quantidade_finalizacao_r0'],21,'Adendo com 21 finalizações'); eq($bonus['valor_centavos'],38000,'Bônus das 21 finalizações do adendo');
+$extra=$items[0]; $extra['descricao']['imagem_id']=100; $extra['situacao']='RETIRADO'; $items[]=$extra;
+$extra['descricao']['imagem_id']=101; $extra['situacao']='DEVIDO'; $extra['identidade']['classe']=FechamentoFinanceiroRules::COMISSAO; $items[]=$extra;
+$items[]=$items[0]; eq($rules->calcularAdendo($items,'2026-09',true)['quantidade_finalizacao_r0'],21,'Exclui retirado e comissão e não duplica imagem');
+$paidItem=$items[0]; $paidItem['descricao']['imagem_id']=102; $paidItem['situacao']='QUITADO';
+$paidItem['pagamentos']=[['competencia_pagamento'=>'2026-08','valor_centavos'=>38000]]; $items[]=$paidItem;
+eq($rules->calcularAdendo($items,'2026-09',true)['quantidade_finalizacao_r0'],21,'Exclui serviço quitado em outra competência');
+$items[count($items)-1]['pagamentos'][0]['competencia_pagamento']='2026-09';
+eq($rules->calcularAdendo($items,'2026-09',true)['quantidade_finalizacao_r0'],22,'Inclui serviço pago nesta competência, como no adendo');
+$differentItems=itensAdendo(21); $differentItems[0]['valor_original']='450';
+eq(count($rules->calcularAdendo($differentItems,'2026-09',true)['pendencias']),1,'Tarifas diferentes exigem conferência');
 $servicos=['colaborador_id'=>2,'competencia'=>'2026-09','snapshot_em'=>'2026-10-06T10:00:00-03:00','timezone'=>'America/Sao_Paulo','rule_version'=>FechamentoFinanceiroRules::VERSION,
- 'subtotal_servicos_centavos'=>100000,'subtotal_servicos_completo'=>true,'bloqueado'=>false,'pendencias'=>[],'servicos_devidos'=>[],'itens_analisados'=>[]];
+ 'subtotal_servicos_centavos'=>100000,'subtotal_servicos_completo'=>true,'bloqueado'=>false,'pendencias'=>[],'servicos_devidos'=>[],'itens_analisados'=>itensAdendo(21)];
 $context=['colaborador_id'=>2,'competencia'=>'2026-09','fluxo'=>'fechamento_mensal_v1','fixo'=>['configurado'=>'1500.00'],'extras'=>['estado'=>'PENDENTE','itens'=>[]],'eventos_r0'=>events(21)];
 $c=new FechamentoComposicaoRules();
 foreach(['FIXO'=>150000,'VARIAVEL'=>138000,'FIXO_VARIAVEL'=>288000] as $type=>$total) {

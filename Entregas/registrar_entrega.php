@@ -3,6 +3,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/p00_delivery_helpers.php';
 require_once __DIR__ . '/review_cobranca_lib.php';
+require_once __DIR__ . '/registro_item_helper.php';
 require_once __DIR__ . '/../helpers/pendencias_links_obra_helper.php';
 
 improov_p00_ensure_schema($conn);
@@ -75,8 +76,7 @@ try {
                                       FROM entregas_itens ei 
                                       JOIN entregas e ON ei.entrega_id = e.id 
                                       WHERE ei.id = ? AND ei.entrega_id = ?");
-        // Repetir o registro não pode reescrever o instante real já registrado.
-        $stmtUpdate = $conn->prepare("UPDATE entregas_itens SET status=CASE WHEN data_entregue IS NULL THEN ? ELSE status END, data_entregue=COALESCE(data_entregue, NOW()) WHERE id=?");
+        $stmtUpdate = entregas_preparar_registro_item($conn);
 
         foreach ($imagens_entregues as $item_id) {
             $item_id = intval($item_id);
@@ -87,7 +87,7 @@ try {
                 continue;
 
             $status_item = ($hoje <= $res['data_prevista']) ? 'Entregue no prazo' : 'Entregue com atraso';
-            $stmtUpdate->bind_param('si', $status_item, $item_id);
+            $stmtUpdate->bind_param('sii', $status_item, $item_id, $entrega_id);
             $stmtUpdate->execute();
 
             if (isset($res['imagem_id']) && !empty($res['imagem_id'])) {

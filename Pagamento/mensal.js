@@ -621,6 +621,23 @@ function breakdown(r) {
     .join("");
 }
 let serviceTab = "pending";
+const selectedServices = new Set();
+const serviceFilters = ["fm-filter-function", "fm-filter-project", "fm-filter-animation"];
+const serviceFilterFields = ["funcao", "obra_nome", "tipo_animacao"];
+function canBatchService(s, r) {
+  return monthly.estado !== "CONCLUIDO" && r.tipo_remuneracao !== "FIXO" &&
+    s.situacao !== "RETIRADO" && s.situacao !== "QUITADO" && s.elegibilidade.elegivel &&
+    s.saldo_centavos !== null && !s.divergencias.length && !s.planta_humanizada;
+}
+function updateServiceSelection() {
+  const boxes = [...document.querySelectorAll("[data-service-select]")];
+  const checked = boxes.filter((box) => box.checked).length;
+  $("fm-service-select-all").checked = boxes.length > 0 && checked === boxes.length;
+  $("fm-service-select-all").indeterminate = checked > 0 && checked < boxes.length;
+  $("fm-service-select-all").disabled = !boxes.length || busy || !!pending;
+  $("fm-service-selection-count").textContent = `${selectedServices.size} selecionada(s)`;
+  $("fm-service-batch-value").disabled = !selectedServices.size || busy || !!pending;
+}
 function renderServices(r = financial?.revisao) {
   if (!r) return;
   $("fm-service-draft").hidden = !serviceDraft.length;
@@ -683,6 +700,16 @@ function renderServices(r = financial?.revisao) {
     $("fm-service-function").value = selected;
   $("fm-service-function").closest(".fm-service-batch").hidden =
     monthly.estado === "CONCLUIDO" || serviceTab === "paid";
+  serviceFilters.forEach((id, i) => {
+    const el = $(id), previous = el.value;
+    const values = [...new Set(items.map((s) => s.descricao[serviceFilterFields[i]]).filter(Boolean))]
+      .sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
+    el.innerHTML = `<option value="">${["Todas as funções", "Todas as obras", "Todos os tipos"][i]}</option>` +
+      values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    if (values.includes(previous)) el.value = previous;
+    if (i === 2) $("fm-filter-animation-label").hidden = !values.length;
+  });
+  $("fm-service-selection").hidden = serviceTab !== "pending" || monthly.estado === "CONCLUIDO" || fixed;
   const compare = (a, b) =>
     String(a || "").localeCompare(String(b || ""), "pt-BR", {
       numeric: true,
@@ -690,6 +717,7 @@ function renderServices(r = financial?.revisao) {
     });
   $("fm-services").innerHTML =
     groups[serviceTab]
+      .filter((s) => serviceFilters.every((id, i) => !$(id).value || String(s.descricao[serviceFilterFields[i]] || "") === $(id).value))
       .sort(
         (a, b) =>
           compare(a.descricao.obra_nome, b.descricao.obra_nome) ||
@@ -740,13 +768,16 @@ function renderServices(r = financial?.revisao) {
         const tariff = ph
           ? `<div class="fm-plant-tariff"><small>${ph.categoria_confirmada ? "Tipo" : "Tipo sugerido"}: ${esc(ph.categoria_nome || "Selecione o tipo da planta")}</small><small>Tarifa padrão: <strong>${money(ph.esperado_centavos)}</strong></small>${ph.divergente ? `<strong class="fm-service-warning">${ph.historico ? "Divergência no histórico" : "Divergente"}</strong>` : ph.excecao ? "<small>Exceção justificada</small>" : "<small>Conforme a tabela</small>"}</div>`
           : "";
-        return `<tr><td data-label="Tarefa"><small>${esc(s.descricao.obra_nome || "")}</small><strong>${esc(s.descricao.imagem || "Serviço")}</strong><small>${esc(s.descricao.funcao)}${s.descricao.tipo_animacao ? " · " + esc(s.descricao.tipo_animacao) : ""}</small>${tariff}${history}</td><td data-label="Valor total">${money(s.base_centavos)}${s.ajuste_valor ? `<small>Original: ${money(s.base_original_centavos)}</small>` : ""}</td><td data-label="Já pago">${money(s.pago_centavos)}</td><td data-label="A pagar agora">${money(fixed || s.situacao === "RETIRADO" ? "0" : s.saldo_centavos)}</td><td data-label="Situação / ações"><span class="fm-badge">${esc(serviceStates[s.situacao] || "Conferir")}</span>${note}${errors}<div class="fm-service-row-actions">${canEdit && ph ? btn("data-service-tariff", "Aplicar tarifa padrão") : ""}${canEdit ? btn("data-service-edit", ph ? "Usar valor excepcional" : "Alterar valor") : ""}${open && s.ajuste_valor ? btn("data-service-reset", "Restaurar valor") : ""}${canRemove ? btn("data-service-index", s.situacao === "RETIRADO" ? "Restaurar tarefa" : "Retirar") : ""}</div></td></tr>`;
+        return `<tr><td data-label="Tarefa">${serviceTab === "pending" && canBatchService(s, r) ? `<label class="fm-service-checkbox"><input type="checkbox" data-service-select="${n}" ${selectedServices.has(n) ? "checked" : ""} ${locked ? "disabled" : ""}> Selecionar tarefa</label>` : ""}<small>${esc(s.descricao.obra_nome || "")}</small><strong>${esc(s.descricao.imagem || "Serviço")}</strong><small>${esc(s.descricao.funcao)}${s.descricao.tipo_animacao ? " · " + esc(s.descricao.tipo_animacao) : ""}</small>${tariff}${history}</td><td data-label="Valor total">${money(s.base_centavos)}${s.ajuste_valor ? `<small>Original: ${money(s.base_original_centavos)}</small>` : ""}</td><td data-label="Já pago">${money(s.pago_centavos)}</td><td data-label="A pagar agora">${money(fixed || s.situacao === "RETIRADO" ? "0" : s.saldo_centavos)}</td><td data-label="Situação / ações"><span class="fm-badge">${esc(serviceStates[s.situacao] || "Conferir")}</span>${note}${errors}<div class="fm-service-row-actions">${canEdit && ph ? btn("data-service-tariff", "Aplicar tarifa padrão") : ""}${canEdit ? btn("data-service-edit", ph ? "Usar valor excepcional" : "Alterar valor") : ""}${open && s.ajuste_valor ? btn("data-service-reset", "Restaurar valor") : ""}${canRemove ? btn("data-service-index", s.situacao === "RETIRADO" ? "Restaurar tarefa" : "Retirar") : ""}</div></td></tr>`;
       })
       .join("") ||
-    '<tr><td colspan="5">Nenhum serviço nesta situação.</td></tr>';
+    '<tr><td colspan="5">Nenhum serviço encontrado para os filtros selecionados.</td></tr>';
+  updateServiceSelection();
 }
 $("fm-service-details").onclick = () => {
   serviceTab = "pending";
+  selectedServices.clear();
+  serviceFilters.forEach((id) => ($(id).value = ""));
   if (!pending) message("");
   renderServices();
   $("fm-services-dialog").showModal();
@@ -762,9 +793,29 @@ document.querySelectorAll("[data-service-tab]").forEach(
   (b) =>
     (b.onclick = () => {
       serviceTab = b.dataset.serviceTab;
+      selectedServices.clear();
       renderServices();
     }),
 );
+
+serviceFilters.forEach((id) => $(id).addEventListener("change", () => renderServices()));
+$("fm-services").addEventListener("change", (e) => {
+  if (!e.target.matches("[data-service-select]")) return;
+  const n = Number(e.target.dataset.serviceSelect);
+  if (e.target.checked) selectedServices.add(n); else selectedServices.delete(n);
+  updateServiceSelection();
+});
+$("fm-service-select-all").addEventListener("change", (e) => {
+  document.querySelectorAll("[data-service-select]").forEach((box) => {
+    box.checked = e.target.checked;
+    if (box.checked) selectedServices.add(Number(box.dataset.serviceSelect));
+    else selectedServices.delete(Number(box.dataset.serviceSelect));
+  });
+  updateServiceSelection();
+});
+$("fm-service-batch-value").onclick = () => {
+  if (selectedServices.size && !busy && !pending) serviceDialog("ALTERAR_VALOR", "LOTE");
+};
 
 async function showDocument(doc) {
   documentMeta = doc;
@@ -1095,11 +1146,11 @@ function serviceDialog(estado, alvo, s = null) {
   if (busy || pending || monthly.estado === "CONCLUIDO") return;
   serviceDecision = { estado, alvo };
   if (alvo === "ITEM") serviceDecision.identidade = s.identidade;
-  else serviceDecision.funcao_id = Number($("fm-service-function").value);
+  else if (alvo === "FUNCAO") serviceDecision.funcao_id = Number($("fm-service-function").value);
   const target =
     alvo === "ITEM"
       ? `${s.descricao.imagem} · ${s.descricao.funcao}`
-      : $("fm-service-function").selectedOptions[0]?.textContent;
+      : alvo === "LOTE" ? `${selectedServices.size} tarefas selecionadas` : $("fm-service-function").selectedOptions[0]?.textContent;
   $("fm-service-form").reset();
   const edit = estado === "ALTERAR_VALOR",
     reset = estado === "RESTAURAR_VALOR",
@@ -1126,7 +1177,7 @@ function serviceDialog(estado, alvo, s = null) {
   $("fm-service-paid").hidden = !edit;
   $("fm-service-paid").textContent = s
     ? `Já pago: ${money(s.pago_centavos)}. O novo valor total não pode ser inferior ao já pago.`
-    : "";
+    : alvo === "LOTE" ? "O valor será aplicado a cada tarefa e não pode ser inferior ao valor já pago em nenhuma delas." : "";
   $("fm-service-error").hidden = true;
   $("fm-service-title").textContent = standard
     ? "Aplicar tarifa padrão"
@@ -1184,13 +1235,21 @@ $("fm-service-form").onsubmit = (e) => {
   if (servicePlant)
     input.categoria_planta = new FormData(e.target).get("categoria_planta");
   if (serviceDecision.estado === "APLICAR_TARIFA") delete input.motivo;
-  if (serviceDraft.length >= 100) {
+  const batchItems = serviceDecision.alvo === "LOTE"
+    ? [...selectedServices].map((n) => financial.revisao.financeiro_servicos.itens_analisados[n]) : [];
+  if (serviceDraft.length + (batchItems.length || 1) > 100) {
     message("O limite é de 100 alterações por vez. Salve antes de continuar.");
     return;
   }
   const category = servicePlant?.categorias?.[input.categoria_planta];
   const label = `${$("fm-service-target").textContent} — ${$("fm-service-title").textContent}${category ? `: ${category.nome}` : ""}${input.valor ? ` · R$ ${input.valor}` : category && input.estado === "APLICAR_TARIFA" ? ` · ${money(category.valor_centavos)}` : ""}${input.motivo ? ` · ${input.motivo}` : ""}`;
-  serviceDraft.push({ input, label });
+  if (batchItems.length) {
+    batchItems.forEach((item) => serviceDraft.push({
+      input: { ...input, alvo: "ITEM", identidade: item.identidade },
+      label: `${item.descricao.obra_nome || ""} · ${item.descricao.imagem || "Serviço"} · ${item.descricao.funcao} — Alterar valor · R$ ${input.valor} · ${input.motivo}`,
+    }));
+    selectedServices.clear();
+  } else serviceDraft.push({ input, label });
   $("fm-service-dialog").close();
   $("fm-services-close").focus({ preventScroll: true });
   $("fm-services-dialog").scrollTop = 0;

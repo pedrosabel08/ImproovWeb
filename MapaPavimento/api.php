@@ -74,6 +74,18 @@ try {
         case 'espacial_configuracao':
             $result['configuracao'] = mpe_get($conn, $obra);
             break;
+        case 'dem_tile':
+            require_once __DIR__ . '/../helpers/mapa_dem_helper.php';
+            $demConfig = mpe_get($conn, $obra);
+            $conn->close(); $conn = null;
+            foreach (['x', 'y'] as $axis) {
+                if (!is_string($input[$axis] ?? null) || !preg_match('/^[0-9]{1,4}$/D', $input[$axis])) throw new InvalidArgumentException('Tile inválido.');
+            }
+            $tile = flow_dem_tile($demConfig, (int)$input['x'], (int)$input['y']);
+            header('Content-Type: image/webp');
+            header('Cache-Control: private, max-age=86400');
+            echo $tile;
+            exit;
         case 'osm_contexto':
             require_once __DIR__ . '/../helpers/mapa_osm_helper.php';
             flow_osm_begin();

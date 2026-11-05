@@ -10,6 +10,8 @@ export async function loadViewerModule(filename, threeURL) {
     if (cache.has(url.href)) return cache.get(url.href);
     const pending = (async () => {
       let source = await readFile(url, "utf8");
+      // Data URLs have no relative base; preserve each production module's own URL.
+      source = source.replace(/\bimport\.meta\.url\b/g, JSON.stringify(url.href));
       const imports = [...source.matchAll(/^import\b[\s\S]*?from\s+(["'])([^"']+)\1\s*;/gm)];
       for (const match of imports) {
         const specifier = match[2];

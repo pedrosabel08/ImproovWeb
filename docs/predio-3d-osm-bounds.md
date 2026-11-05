@@ -1,5 +1,9 @@
 # Ambiente OSM: recorte e costa sem fog
 
+**Atualização:** o recorte e a costa descritos aqui agora recebem a camada DEM
+documentada em [predio-3d-terrain.md](predio-3d-terrain.md). Os offsets planos
+abaixo continuam sendo o fallback; a fog permanece desligada.
+
 A fog e o fade permanecem desligados (`URBAN_FOG_ENABLED=false`). Não há
 clipping de shader novo, DEM, tiles, satélite ou árvores. Os módulos de seleção,
 GLB, Norte, SunCalc, autorização, metadata e shadow frustum foram preservados.

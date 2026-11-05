@@ -131,7 +131,7 @@ group.children.forEach(m=>m.geometry.dispose()); material.dispose();
 // Real controller lifecycle, with HTTP responses isolated from external availability.
 const previousFetch=globalThis.fetch;
 globalThis.window={localStorage:storage};
-globalThis.document={createElement:()=>({style:{},remove(){this.removed=true;}})};
+globalThis.document={createElement:()=>({style:{},setAttribute(){},remove(){this.removed=true;}})};
 const {GeoEnvironment}=await loadViewerModule("geo/geo-environment.js",url);
 const root=new THREE.Group();
 const ground=new THREE.Mesh(new THREE.BoxGeometry(30,.2,30),new THREE.MeshStandardMaterial({color:0x667755}));
@@ -139,7 +139,7 @@ ground.name="Terreno_1"; root.add(ground); root.position.set(120,10,-80); root.u
 const scene=new THREE.Scene(); scene.add(root);
 const viewport={dataset:{},append(){}};
 const sky={mesh:{visible:false},uniforms:{}};
-const environment=new GeoEnvironment({scene,viewport,sky});
+const environment=new GeoEnvironment({scene,viewport,sky,elevationLoader:async()=>{throw Error("DEM offline fixture");}});
 await environment.setConfig({...config,obra_id:102,latitude:-27.3});
 globalThis.fetch=async()=>({ok:true,json:async()=>({sucesso:true,contexto_osm:{payload:fixture,origin:{latitude:-27.3,longitude:config.longitude},acquired_at:Math.floor(Date.now()/1000),expires_at:Math.floor(Date.now()/1000)+604800,stale:false}})});
 const modelBounds=new THREE.Box3().setFromObject(root);

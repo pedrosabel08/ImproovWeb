@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Public, institutional metadata only. No database, session or request-query data.
  * Add literal page definitions here; see docs/page-standards.md.
@@ -41,6 +42,7 @@ function flow_metadata_catalog(): array
         'contratos' => ['Contratos | Flow', 'Organização e acompanhamento dos contratos de projetos.', 'Contratos/', ['Contratos/index.php']],
         'custos' => ['Custos | Flow', 'Planejamento e acompanhamento dos custos de projetos.', 'Custos/', ['Custos/index.php']],
         'mapa-pavimento' => ['Mapa de Pavimento | Flow', 'Visualização e gestão de ambientes do projeto.', 'MapaPavimento/', ['MapaPavimento/index.php']],
+        'mapa-improov' => ['Mapa Improov | Flow', 'Central geográfica interna de empreendimentos da Improov.', 'MapaImproov/', ['MapaImproov/index.php']],
         'sire' => ['SIRE — Biblioteca Visual | Flow', 'Biblioteca de referências visuais para projetos.', 'SIRE/', ['SIRE/index.php']],
         'mapa-compatibilizacao' => ['Mapa de Compatibilização | Flow', 'Visualização e organização da compatibilização de projetos.', 'MapaCompatibilizacao/', ['MapaCompatibilizacao/index.php']],
         'notificacoes' => ['Notificações | Flow', 'Comunicação e acompanhamento de avisos do sistema.', 'notificacoes/', ['notificacoes/index.php']],

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {
   ENVIRONMENT_SETTINGS as SETTINGS,
   smoothRange,
-} from "flow/environment-config";
+} from "./environment-config.mjs";
 
 /** Emissão linear PBR. A cobertura noturna representa o interior iluminado;
  * no dia restaura exatamente o vidro adaptado pelo viewer. */

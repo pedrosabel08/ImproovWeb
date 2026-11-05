@@ -1,4 +1,5 @@
 <?php
+
 /** Post-login navigation only. This never authenticates or grants permissions. */
 require_once __DIR__ . '/page_metadata.php';
 
@@ -19,7 +20,7 @@ function flow_auth_page_files(): array
         'FlowTrack/index.php', 'FlowTrack/Radar/index.php', 'FlowTrack/Report/index.php',
         'Fotografico/index.php', 'GANTT/index.php', 'GANTT/gantt.php', 'GANTT/teste.php',
         'Gestao/index.php', 'Imagens/index.php', 'MapaCompatibilizacao/index.php',
-        'MapaPavimento/index.php', 'MapaPavimento/predio-3d/visualizador-glb-navegacao.php',
+        'MapaPavimento/index.php', 'MapaPavimento/predio-3d/visualizador-glb-navegacao.php', 'MapaImproov/index.php',
         'Metas/index.php', 'notificacoes/index.php', 'Obras/index.php',
         'Pagamento/index.php', 'Pagamento/fechamento.php', 'PlanejamentoCapacidade/index.php',
         'PlanejamentoProducao/index.php', 'Planner/index.php', 'Pos-Producao/index.php',
@@ -34,7 +35,9 @@ function flow_auth_page_files(): array
 function flow_auth_routes(): array
 {
     static $routes;
-    if ($routes !== null) return $routes;
+    if ($routes !== null) {
+        return $routes;
+    }
     $routes = [];
     foreach (flow_auth_page_files() as $file) {
         $routes[$file] = $file;
@@ -57,33 +60,51 @@ function flow_auth_navigation_script(): string
 
 function flow_auth_validate_return($url): ?string
 {
-    if (!is_string($url) || $url === '' || strlen($url) > 8192 || preg_match('/[\x00-\x20\x7f]/', $url)) return null;
+    if (!is_string($url) || $url === '' || strlen($url) > 8192 || preg_match('/[\x00-\x20\x7f]/', $url)) {
+        return null;
+    }
     // Decode repeatedly to detect encoded control characters without rewriting the query.
     $decoded = $url;
     for ($i = 0; $i < 8; $i++) {
-        if (preg_match('/[\x00-\x1f\x7f]/', $decoded)) return null;
+        if (preg_match('/[\x00-\x1f\x7f]/', $decoded)) {
+            return null;
+        }
         $next = rawurldecode($decoded);
-        if ($next === $decoded) break;
+        if ($next === $decoded) {
+            break;
+        }
         $decoded = $next;
     }
-    if ($i === 8 || preg_match('/[\x00-\x1f\x7f]/', $decoded)) return null;
+    if ($i === 8 || preg_match('/[\x00-\x1f\x7f]/', $decoded)) {
+        return null;
+    }
     // Permit encoded spaces in query values, but no fragments or authority/scheme syntax.
     $parts = parse_url($url);
     if ($parts === false || isset($parts['scheme']) || isset($parts['host'])
         || isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])
-        || isset($parts['fragment'])) return null;
+        || isset($parts['fragment'])) {
+        return null;
+    }
     $path = $parts['path'] ?? '';
     if (!preg_match('~^/[A-Za-z0-9_./-]+$~D', $path)
-        || str_contains($path, '//') || preg_match('~(?:^|/)\.{1,2}(?:/|$)~', $path)) return null;
+        || str_contains($path, '//') || preg_match('~(?:^|/)\.{1,2}(?:/|$)~', $path)) {
+        return null;
+    }
     $prefix = flow_metadata_base_path() . '/';
-    if (!str_starts_with($path, $prefix)) return null;
+    if (!str_starts_with($path, $prefix)) {
+        return null;
+    }
     $relative = substr($path, strlen($prefix));
     $file = flow_auth_routes()[$relative] ?? null;
-    if ($file === null) return null;
+    if ($file === null) {
+        return null;
+    }
     $root = realpath(dirname(__DIR__));
     $resolved = realpath($root . '/' . $file);
     if ($resolved === false || !is_file($resolved)
-        || !str_starts_with(str_replace('\\', '/', $resolved), str_replace('\\', '/', $root) . '/')) return null;
+        || !str_starts_with(str_replace('\\', '/', $resolved), str_replace('\\', '/', $root) . '/')) {
+        return null;
+    }
     return $url;
 }
 
@@ -99,7 +120,9 @@ function flow_auth_request_return_url(): string
 {
     $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
     $parts = explode('?', $uri, 2);
-    if (!isset($parts[1])) return $uri;
+    if (!isset($parts[1])) {
+        return $uri;
+    }
     $query = array_filter(explode('&', $parts[1]), static fn ($part) => !str_starts_with($part, '_flow_auth_resume='));
     $query = implode('&', $query);
     return $parts[0] . ($query !== '' ? '?' . $query : '');
@@ -108,11 +131,15 @@ function flow_auth_request_return_url(): string
 function flow_auth_pending_returns(): array
 {
     $pending = $_SESSION['_flow_login_returns'] ?? [];
-    if (!is_array($pending)) $pending = [];
+    if (!is_array($pending)) {
+        $pending = [];
+    }
     $now = time();
     foreach ($pending as $id => $entry) {
         if (!is_array($entry) || !is_int($entry['expires'] ?? null) || $entry['expires'] < $now
-            || !preg_match('/^[a-f0-9]{32}$/D', (string)$id)) unset($pending[$id]);
+            || !preg_match('/^[a-f0-9]{32}$/D', (string)$id)) {
+            unset($pending[$id]);
+        }
     }
     return $pending;
 }
@@ -120,13 +147,19 @@ function flow_auth_pending_returns(): array
 function flow_auth_store_return(string $url): ?string
 {
     $url = flow_auth_validate_return($url);
-    if ($url === null) return null;
+    if ($url === null) {
+        return null;
+    }
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_id('');
-        if (!session_start()) return null;
+        if (!session_start()) {
+            return null;
+        }
     }
     $pending = flow_auth_pending_returns();
-    while (count($pending) >= 8) array_shift($pending);
+    while (count($pending) >= 8) {
+        array_shift($pending);
+    }
     $id = bin2hex(random_bytes(16));
     $pending[$id] = ['url' => $url, 'expires' => time() + 1800];
     $_SESSION['_flow_login_returns'] = $pending;
@@ -137,7 +170,9 @@ function flow_auth_consume_return($id): ?string
 {
     $pending = flow_auth_pending_returns();
     $entry = is_string($id) && preg_match('/^[a-f0-9]{32}$/D', $id) ? ($pending[$id] ?? null) : null;
-    if (is_string($id)) unset($pending[$id]);
+    if (is_string($id)) {
+        unset($pending[$id]);
+    }
     $_SESSION['_flow_login_returns'] = $pending;
     return $entry ? flow_auth_validate_return($entry['url'] ?? null) : null;
 }
@@ -160,7 +195,9 @@ function flow_auth_redirect_to_login(): void
     }
     $context = flow_auth_store_return(flow_auth_request_return_url());
     $url = flow_metadata_login_url();
-    if ($context !== null) $url .= (str_contains($url, '?') ? '&' : '?') . 'login_context=' . $context;
+    if ($context !== null) {
+        $url .= (str_contains($url, '?') ? '&' : '?') . 'login_context=' . $context;
+    }
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Location: ' . $url, true, 302);
 }

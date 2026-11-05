@@ -474,7 +474,9 @@ export class SolarLighting {
       ? "Sol subindo"
       : "Sol descendo";
     this.fitReceiver(direction);
-    this.receiver.visible = result.altitude > 0 && !this.hasGroundReceiver;
+    // The OSM terrain already receives the same directional shadow map. A flat
+    // technical receiver would intersect hills and leave floating black patches.
+    this.receiver.visible = result.altitude > 0 && !this.hasGroundReceiver && !this.terrainDimension;
     this.marker.visible = result.altitude > 0;
     this.marker.position
       .copy(this.center)

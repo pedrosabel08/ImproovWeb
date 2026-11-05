@@ -102,15 +102,16 @@ if (in_array('--db', $argv ?? [], true)) {
     pa_op_assert(flow_planejamento_alteracao_contexto_operacional($db,101)===null, 'Rodada sem modelo de alteracao deve preservar contrato legado.');
 
     // Reset is part of the caller's release transaction and cannot steal a cycle.
-    $db->query("UPDATE funcao_imagem SET status='Aprovado',prazo='2026-10-30' WHERE idfuncao_imagem=101");
+    $db->query("UPDATE funcao_imagem SET status='Em andamento',prazo='2026-10-30' WHERE idfuncao_imagem=101");
     $db->query("UPDATE janela_operacional_ciclo SET ativo_token='ATIVO' WHERE id=802");
     $db->query('INSERT INTO janela_operacional_ciclo_item VALUES(802,101)');
     $db->begin_transaction();
     pa_op_reject(fn() => pre_alt_upsert_funcao_alteracao($db,10,'2026-11-13',true), 'Ciclo anterior ativo precisa impedir limpar responsavel da R02.');
     $db->rollback();
     $row = $db->query('SELECT colaborador_id,status FROM funcao_imagem WHERE idfuncao_imagem=101')->fetch_assoc();
-    pa_op_assert((int)$row['colaborador_id']===22 && $row['status']==='Aprovado', 'Rejeicao do ciclo ativo deve preservar atribuicao e status anteriores.');
+    pa_op_assert((int)$row['colaborador_id']===22 && $row['status']==='Em andamento', 'Rejeicao do ciclo ativo deve preservar atribuicao e status anteriores.');
     $db->query('UPDATE janela_operacional_ciclo SET ativo_token=NULL WHERE id=802');
+    $db->query("UPDATE funcao_imagem SET status='Aprovado' WHERE idfuncao_imagem=101");
     $db->begin_transaction();
     pre_alt_upsert_funcao_alteracao($db,10,'2026-11-13',true);
     $row = $db->query('SELECT colaborador_id,status,prazo FROM funcao_imagem WHERE idfuncao_imagem=101')->fetch_assoc();

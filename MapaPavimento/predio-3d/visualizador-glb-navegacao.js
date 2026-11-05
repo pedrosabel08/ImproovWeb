@@ -6,7 +6,7 @@ import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
 import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261103-night-glass-native-v2";
 import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
-import { SolarLighting } from "./solar-lighting.js?v=20261103-solar-orbit-v1";
+import { SolarLighting } from "./solar-lighting.js?v=20261104-terrain-v1";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { ModelMeasurement } from "./model-measurement.js";
 import { visibleSurface } from "./measurement-geometry.js";
@@ -17,7 +17,7 @@ import {
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
 import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
 import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
-import { GeoEnvironment } from "./geo/geo-environment.js?v=20261103-osm-cache-v3";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261104-surface-v3";
 import { fitSolarShadow } from "./solar-shadow.js";
 
 const themeStyle = getComputedStyle(document.documentElement);
@@ -1465,7 +1465,7 @@ function install(gltf, sourceName, obraId = null) {
             ? child.material[0]
             : child.material;
       });
-      groundInfo = { elevation: bounds.max.y, color: material?.color?.clone() };
+      groundInfo = { elevation: bounds.max.y, color: material?.color?.clone(), object };
     }
   });
   const indexed = buildIndex(modelRoot, sourceName);

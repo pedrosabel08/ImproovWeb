@@ -1,0 +1,112 @@
+import assert from "node:assert/strict";
+import {pathToFileURL} from "node:url";
+import {resolve} from "node:path";
+import {loadViewerModule} from "./viewer_module_loader.mjs";
+import {loadElevation,demTiles,terrariumHeight,DEM_SIZE} from "../MapaPavimento/predio-3d/geo/elevation-service.js";
+const path=process.argv.find(a=>a.startsWith("--three-module="))?.split("=")[1];
+if(!path)throw Error("Use --three-module=CAMINHO/three.module.js");
+const url=pathToFileURL(resolve(path)).href,THREE=await import(url);
+const {TerrainSurface}=await loadViewerModule("geo/terrain-surface.js",url);
+const {inspectModelGround}=await loadViewerModule("geo/model-ground.js",url);
+const {createEnvironmentBounds,polygonArea}=await loadViewerModule("geo/environment-clip.js",url);
+const {polygonGeometry}=await loadViewerModule("geo/feature-builder.js",url);
+const {ribbonGeometry}=await loadViewerModule("geo/road-builder.js",url);
+let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++;};
+ok(terrariumHeight(128,0,0)===0&&terrariumHeight(128,123,128)===123.5,"Terrarium metres, no vertical exaggeration");
+const config={obra_id:101,latitude:0,longitude:0,norte_graus:0};let requests=0;
+const fetched=[];
+const fetcher=async(url,options)=>{
+  requests++;fetched.push({url,options});
+  return {ok:true,blob:async()=>url};
+};
+const decode=async url=>{
+  const x=Number(url.searchParams.get('x')),y=Number(url.searchParams.get('y'));
+  return Float32Array.from({length:DEM_SIZE**2},(_,i)=>((x*DEM_SIZE+i%DEM_SIZE)-1048576)*.1+((y*DEM_SIZE+Math.floor(i/DEM_SIZE))-1048576)*.2+100);
+};
+const dem=await loadElevation(config,{fetcher,decode});
+ok(requests===4&&demTiles(config).length===4,"Bounded 2 km acquisition including tile-border interpolation");
+ok(Math.abs(dem.reference-99.85)<.01,"Bilinear pixel-centre interpolation across FOUR tiles");
+const samples=Array.from({length:401},(_,i)=>dem.sample(i-200,100));
+ok(samples.every(Number.isFinite)&&requests===4,"No per-vertex HTTP");
+ok(Math.max(...samples.slice(1).map((v,i)=>Math.abs(v-samples[i])))<.1,"No DEM tile seam");
+const rotated=await loadElevation({...config,norte_graus:90},{fetcher,decode});
+ok(requests===4&&rotated.cacheHits===4,"Tile cache reused independently of North/work orientation");
+ok(Math.abs(rotated.sample(100,0)-dem.sample(0,-100))<1e-5,"Inverse projection honours existing North convention");
+ok(fetched.every(r=>r.options.credentials==='same-origin'&&r.url.searchParams.get('action')==='dem_tile'&&!r.url.hostname),"Only authorised same-origin work endpoint");
+await assert.rejects(loadElevation({...config,latitude:40,longitude:60},{fetcher:async()=>({ok:false,status:503}),decode}));checks++;
+const cancelled=new AbortController();cancelled.abort();
+await assert.rejects(loadElevation(config,{signal:cancelled.signal,fetcher,decode}));checks++;
+const bounds=createEnvironmentBounds(1000,37),site={minX:-20,maxX:20,minZ:-20,maxZ:20};
+const source=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial());
+source.geometry.setAttribute('position',new THREE.Float32BufferAttribute([-20,0,-20,-20,4,20,20,10,20, 20,10,20,20,4,-20,-20,0,-20],3));
+source.position.set(120,10,-80);source.updateMatrixWorld();
+const before=Array.from(source.geometry.attributes.position.array),matrix=source.matrixWorld.clone();
+const ground=inspectModelGround(source,new THREE.Vector3(120,0,-80),10);
+ok(ground.triangles===2&&Math.abs(ground.sample(0,0)-5)<1e-6&&ground.max-ground.min===10,"Real transformed nonplanar GLB surface, not bounding-box maximum");
+ok(Math.abs(ground.footprint.reduce((s,p)=>s+polygonArea(p),0)-1600)<.001,"Actual terrain footprint, not building rectangle");
+const hill={reference:120,sample:(x,z)=>120+.04*x+.06*z+80*Math.exp(-((x-450)**2+(z+250)**2)/60000)};
+const surface=new TerrainSurface({dem:hill,bounds,ground,site});
+ok(Math.abs(surface.sample(0,0)-5)<1e-6&&surface.sample(19,19)>9.7,"Nonplanar GLB connection preserves its elevations");
+ok(Math.abs(surface.sample(20.00001,0)-ground.sample(20,0))<.15,"Continuous exterior transition at sloped model edge");
+ok(Math.abs(surface.rawHeight(450,-250)-(hill.sample(450,-250)-120+5))<.01,"Distant hills retain real metres at 1:1");
+ok(surface.axis[1]-surface.axis[0]>surface.axis[(surface.axis.length-1)/2+1]-surface.axis[(surface.axis.length-1)/2],"Adaptive resolution: detailed near site, coarse at edge");
+const polygons=surface.groundPolygons([bounds.polygon]);
+ok(Math.abs(polygons.reduce((s,p)=>s+polygonArea(p),0)-(4000000-1600))<.1,"DEM excludes GLB terrain footprint, preventing overlap");
+let triangles=0;
+for(const polygon of polygons) {
+  const geometry=surface.geometry(polygon),p=geometry.attributes.position;
+  triangles+=p.count/3;
+  ok(p.array.every(Number.isFinite)&&geometry.attributes.normal.array.every(Number.isFinite),"Finite topographic mesh and recomputed normals");
+  for(let i=0;i<p.count;i+=113)assert.ok(Math.abs(p.getY(i)-surface.sample(p.getX(i),p.getZ(i)))<.002,"Common lattice sampling");
+  geometry.dispose();
+}
+ok(triangles>10000&&triangles<130000,"Bounded adaptive mesh budget");
+const stopMesh=new AbortController();stopMesh.abort();
+await assert.rejects(surface.geometryAsync(bounds.polygon,stopMesh.signal),{name:'AbortError'});checks++;
+const road=surface.drape(ribbonGeometry([{x:100,z:0},{x:800,z:-300}],7),.025);
+const p=road.attributes.position;
+ok(p.count>100&&Array.from({length:p.count},(_,i)=>Math.abs(p.getY(i)-surface.sample(p.getX(i),p.getZ(i))-.025)).every(e=>e<.002),"Road ribbon subdivided over the common topographic mesh");road.dispose();
+const creaseRoad=surface.drape(ribbonGeometry([{x:-30,z:0},{x:30,z:0}],7),.025),cp=creaseRoad.attributes.position;
+for(let i=0;i<cp.count;i+=3) {
+  const x=(cp.getX(i)+cp.getX(i+1)+cp.getX(i+2))/3,z=(cp.getZ(i)+cp.getZ(i+1)+cp.getZ(i+2))/3;
+  if(ground.sample(x,z)!=null)assert.ok(Math.abs((cp.getY(i)+cp.getY(i+1)+cp.getY(i+2))/3-ground.sample(x,z)-.025)<.002,"Road faces follow the source GLB grade break exactly");
+}
+checks++;creaseRoad.dispose();
+const coastSurface=new TerrainSurface({dem:hill,bounds,site,coastLines:[[{x:700,z:-1000},{x:700,z:1000}]]});
+ok(Math.abs(coastSurface.sample(700,555)-coastSurface.seaLevel)<1e-8,"Exact shoreline meets constant mean-sea reference");
+const lake={polygons:[{outer:[{x:100,z:200},{x:200,z:200},{x:200,z:300},{x:100,z:300},{x:100,z:200}],holes:[]}]};
+const river={polygons:[],line:[{x:200,z:500},{x:800,z:-500}],waterway:'stream'};
+coastSurface.prepareWater([lake,river]);
+ok(coastSurface.waterHeight(lake,120,220)===coastSurface.waterHeight(lake,180,280),"Lake level is horizontal, estimated separately from raw DEM");
+const controls=coastSurface.water.get(river)[0];
+ok(controls.edges.every(e=>e.ay>=e.by),"River profile has a smoothed non-increasing flow level");
+for(const e of controls.edges) {
+  const x=(e.a.x+e.b.x)/2,z=(e.a.z+e.b.z)/2;
+  assert.ok(coastSurface.sample(x,z)<coastSurface.waterHeight(river,x,z),"Thin channel not buried between coarse DEM nodes");
+}
+checks++;
+ok(coastSurface.waterFootprint.length>0,"Water footprints cut land triangles at channel edges");
+const bpoly={outer:surface.densifyRing([{x:350,z:-350},{x:500,z:-350},{x:500,z:-200},{x:350,z:-200}]),holes:[]};
+const building=surface.building(polygonGeometry(bpoly,12),bpoly,12),bp=building.attributes.position;
+const top=Math.max(...Array.from({length:bp.count},(_,i)=>bp.getY(i)));
+ok(Array.from({length:bp.count},(_,i)=>bp.getY(i)).every(y=>Math.abs(y-top)<.001||y<top-11.9),"Rigid flat roof and sampled foundations, no deformed OSM roof");
+ok(source.matrixWorld.equals(matrix)&&before.every((v,i)=>v===source.geometry.attributes.position.array[i]),"Original GLB buffers and transforms unchanged");
+// Exercise controller installation, fallback and GPU cleanup with independent sources.
+const oldFetch=globalThis.fetch;
+globalThis.window={};globalThis.document={createElement:()=>({style:{},setAttribute(){},remove(){}})};
+const {GeoEnvironment}=await loadViewerModule('geo/geo-environment.js',url);
+const scene=new THREE.Scene();scene.add(source);const viewport={dataset:{},append(){}};
+const sky={mesh:{visible:false},uniforms:{}};let failDEM=false,current={...config};
+globalThis.fetch=async()=>({ok:true,json:async()=>({sucesso:true,contexto_osm:{origin:current,acquired_at:Date.now()/1000,expires_at:Date.now()/1000+604800,payload:{elements:[
+  {type:'way',id:90001,tags:{highway:'residential'},geometry:[{lat:current.latitude,lon:.001},{lat:current.latitude+.001,lon:.001}]}]}}})});
+const controller=new GeoEnvironment({scene,viewport,sky,elevationLoader:async()=>{if(failDEM)throw Error('503 fixture');return hill;}});
+await controller.setConfig(current);
+await controller.setModel(source,new THREE.Box3().setFromObject(source),new THREE.Box3().setFromObject(source),{elevation:20,object:source});
+ok(viewport.dataset.geoState==='ready'&&viewport.dataset.demState==='ready'&&controller.group.parent===scene,"Topographic group installs outside original GLB");
+let released=0;controller.group.children.forEach(mesh=>mesh.geometry.addEventListener('dispose',()=>released++));const meshCount=controller.group.children.length;
+failDEM=true;current={...current,latitude:.01};await controller.setConfig(current);
+ok(viewport.dataset.geoState==='ready'&&viewport.dataset.demState==='fallback'&&!controller.terrain,"DEM outage keeps functioning flat OSM fallback");
+ok(released===meshCount&&source.parent===scene&&source.matrixWorld.equals(matrix),"Work switch frees all old GPU terrain without moving/removing GLB");
+controller.dispose();globalThis.fetch=oldFetch;delete globalThis.window;delete globalThis.document;
+source.geometry.dispose();source.material.dispose();building.dispose();
+console.log(`Geo terrain: ${checks} checks passed; adaptive terrain ${triangles} triangles`);

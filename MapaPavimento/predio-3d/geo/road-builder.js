@@ -67,17 +67,18 @@ export function ribbonGeometry(points, width, elevation = SURFACE_Y.road) {
   return geometry;
 }
 
-export function buildRoad(feature, { project, batches, metrics, radius }) {
+export function buildRoad(feature, { project, batches, metrics, radius, terrain }) {
   const width = WIDTHS[feature.highway];
   if (!width || !feature.line) return;
   const points = feature.line.map(project),
     band = distanceBand(points, radius);
   if (band < 0) return;
-  const geometry = ribbonGeometry(
+  let geometry = ribbonGeometry(
     simplifyPoints(points, [0, 0.6, 1.5][band]),
     width,
   );
   if (geometry) {
+    if (terrain) geometry = terrain.drape(geometry, SURFACE_Y.road);
     batches.add("road", geometry);
     metrics.roads++;
   }

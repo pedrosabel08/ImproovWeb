@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { pointInRing } from "./geo-coordinates.js?v=20261103-boundary-v4";
-import { clipBufferGeometry } from "./geometry-clip.js?v=20261103-boundary-v4";
+import { clipBufferGeometry } from "./geometry-clip.js?v=20261104-surface-v3";
 
 export function localPolygon(polygon, project) {
   return {

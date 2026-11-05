@@ -1,0 +1,41 @@
+.mi-viewer-return {
+  position: fixed;
+  z-index: 100;
+  left: 82px;
+  bottom: 18px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 9px 15px;
+  border: 1px solid #426ba8;
+  border-radius: 7px;
+  background: #172d4d;
+  color: #a9c9ff;
+  text-decoration: none;
+  font:
+    700 13px Nunito,
+    sans-serif;
+  box-shadow: 0 4px 20px #0003;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.mi-viewer-return:focus-visible {
+  outline: 2px solid #80adff;
+  outline-offset: 3px;
+}
+
+.mi-viewer-return:hover {
+  background: #24446e;
+  border-color: #6595dc;
+}
+
+@media (max-width: 640px) {
+  .mi-viewer-return {
+    left: 76px;
+    bottom: 12px;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}

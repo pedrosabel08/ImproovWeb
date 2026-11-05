@@ -1,5 +1,9 @@
 # Entorno urbano OSM — prova de conceito
 
+**Evolução topográfica:** a implementação atual de DEM, alinhamento GLB e
+validação está em [predio-3d-terrain.md](predio-3d-terrain.md). A descrição plana
+abaixo registra a arquitetura anterior e seu fallback.
+
 **Revisão atual:** o limite passou a ser um quadrado geográfico de 2 × 2 km,
 com clipping CPU comum, classificação de vegetação e mar pela coastline.
 O detalhamento e os critérios atuais estão em [predio-3d-osm-bounds.md](predio-3d-osm-bounds.md).

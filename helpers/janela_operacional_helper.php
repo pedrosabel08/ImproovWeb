@@ -281,7 +281,9 @@ function flow_janela_perfil_vigente(mysqli $conn, ?string $codigo): ?array
 function flow_janela_prazo_necessario(mysqli $conn, array $unidade): array
 {
     foreach ($unidade['membros'] as $membro) {
-        if ((int) $membro['funcao_id'] !== 6) continue;
+        if ((int) $membro['funcao_id'] !== 6) {
+            continue;
+        }
         $contexto = flow_planejamento_alteracao_contexto_operacional($conn, (int) $membro['idfuncao_imagem']);
         if ($contexto) {
             return ['data' => $contexto['fim_planejado'], 'versao_id' => $contexto['versao_atual_id'], 'contexto' => $contexto];
@@ -339,7 +341,7 @@ function flow_janela_avaliar(mysqli $conn, array $unidade, string $previsao, ?st
         'unidade' => [
             'chave' => $unidade['chave_referencia'],
             'tipo' => $unidade['tipo_unidade'],
-            'membros' => array_map(static fn(array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
+            'membros' => array_map(static fn (array $m): int => (int) $m['idfuncao_imagem'], $unidade['membros']),
         ],
     ];
 }
@@ -507,8 +509,7 @@ function flow_janela_criar_ciclo(
     ?int $cicloAnteriorId = null,
     string $eventoAbertura = 'PRIMEIRO_INICIO',
     array $detalhesEvento = []
-): array
-{
+): array {
     if (empty($avaliacao['perfil'])) {
         return ['ciclo_id' => null, 'criado' => false];
     }
@@ -722,12 +723,24 @@ function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoIma
     $inicio = date('Y-m-d H:i:s');
     $cicloId = (int) $ciclo['id'];
     $stmt = $conn->prepare('UPDATE janela_operacional_ciclo SET perfil_id=?, perfil_codigo_snapshot=?, perfil_versao_snapshot=?, perfil_nome_snapshot=?, aplica_regra_snapshot=?, limite_dias_uteis_snapshot=?, inicio_em=?, limite_data_original=?, limite_data_atual=?, prazo_necessario_snapshot=?, planejamento_versao_id_snapshot=?, previsao_original=?, previsao_atual=?, estado_original=?, estado_atual=?, motivo_original_id=?, motivo_original_codigo=?, motivo_original_label=?, motivo_original_texto=?, situacao=\'ATIVO\', qualidade_dados=? WHERE id=?');
-    $perfilId = $perfil['id'] ?? null; $codigo = $perfil['codigo'] ?? null; $versao = $perfil['versao'] ?? null; $nome = $perfil['nome'] ?? null;
-    $aplica = !empty($perfil['aplica_regra']) ? 1 : 0; $dias = $perfil['limite_dias_uteis'] ?? null;
-    $limite = $avaliacao['limite_data']; $prazoNecessario = $avaliacao['prazo_necessario']; $versaoPlanejamento = $avaliacao['planejamento_versao_id']; $estado = $avaliacao['estado'];
-    $motivoId = $motivo['id'] ?? null; $motivoCodigo = $motivo['codigo'] ?? null; $motivoLabel = $motivo['label'] ?? null; $motivoTexto = $motivo['texto'] ?? null; $qualidade = $origemAcionamento === 'FALLBACK_ENVIO_APROVACAO' ? 'REGULARIZADO_FALLBACK' : 'CANONICO';
+    $perfilId = $perfil['id'] ?? null;
+    $codigo = $perfil['codigo'] ?? null;
+    $versao = $perfil['versao'] ?? null;
+    $nome = $perfil['nome'] ?? null;
+    $aplica = !empty($perfil['aplica_regra']) ? 1 : 0;
+    $dias = $perfil['limite_dias_uteis'] ?? null;
+    $limite = $avaliacao['limite_data'];
+    $prazoNecessario = $avaliacao['prazo_necessario'];
+    $versaoPlanejamento = $avaliacao['planejamento_versao_id'];
+    $estado = $avaliacao['estado'];
+    $motivoId = $motivo['id'] ?? null;
+    $motivoCodigo = $motivo['codigo'] ?? null;
+    $motivoLabel = $motivo['label'] ?? null;
+    $motivoTexto = $motivo['texto'] ?? null;
+    $qualidade = $origemAcionamento === 'FALLBACK_ENVIO_APROVACAO' ? 'REGULARIZADO_FALLBACK' : 'CANONICO';
     $stmt->bind_param('isisiissssissssissssi', $perfilId, $codigo, $versao, $nome, $aplica, $dias, $inicio, $limite, $limite, $prazoNecessario, $versaoPlanejamento, $previsao, $previsao, $estado, $estado, $motivoId, $motivoCodigo, $motivoLabel, $motivoTexto, $qualidade, $cicloId);
-    $stmt->execute(); $stmt->close();
+    $stmt->execute();
+    $stmt->close();
     flow_janela_registrar_evento($conn, $cicloId, 'EXECUCAO_INICIADA', [
         'status_tarefa_anterior' => $statusAnterior, 'status_tarefa_novo' => 'Em andamento', 'estado_novo' => $estado,
         'previsao_nova' => $previsao, 'prazo_necessario' => $prazoNecessario, 'limite_data' => $limite,
@@ -1004,18 +1017,24 @@ function flow_janela_encerrar_se_unidade_finalizada(mysqli $conn, int $funcaoIma
         return null;
     }
     $cicloId = (int) $ciclo['id'];
-    $stmt = $conn->prepare("SELECT COUNT(*) total
+    $stmt = $conn->prepare("SELECT fi.status
                               FROM janela_operacional_ciclo_item i
                               JOIN funcao_imagem fi ON fi.idfuncao_imagem = i.funcao_imagem_id
                              WHERE i.ciclo_id = ?
-                               AND fi.status NOT IN ('Finalizado', 'Aprovado', 'Aprovado com ajustes')");
+                             FOR UPDATE");
     $stmt->bind_param('i', $cicloId);
     $stmt->execute();
-    $pendentes = (int) ($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $membros = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
-    return $pendentes === 0
-        ? flow_janela_encerrar_ciclo($conn, $funcaoImagemId, 'CONCLUSAO', $atorColaboradorId, $atorUsuarioId)
-        : null;
+    if (!$membros) {
+        return null;
+    }
+    foreach ($membros as $membro) {
+        if (!in_array($membro['status'], ['Finalizado', 'Aprovado', 'Aprovado com ajustes'], true)) {
+            return null;
+        }
+    }
+    return flow_janela_encerrar_ciclo($conn, $funcaoImagemId, 'CONCLUSAO', $atorColaboradorId, $atorUsuarioId);
 }
 
 function flow_janela_dias_consumidos(mysqli $conn, array $ciclo, ?string $ateData = null): int

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { crossXZ, resolvedFace } from "./surface-mesh.js?v=20261104-surface-v3";
 
 /** Final CPU guard for generated ribbons and 3D triangles; never a shader clip.
  * Polygon rings are already intersected before triangulation. This also clips
@@ -51,11 +52,19 @@ export function clipBufferGeometry(geometry, bounds) {
       }
       if (!triangle.length) break;
     }
-    for (let k = 1; k < triangle.length - 1; k++)
-      for (const p of [triangle[0], triangle[k], triangle[k + 1]]) {
+    for (let k = 1; k < triangle.length - 1; k++) {
+      const face=[triangle[0],triangle[k],triangle[k+1]].map(p=>({...p,x:Math.fround(p.x),y:Math.fround(p.y),z:Math.fround(p.z)}));
+      if(!face.every(p=>[p.x,p.y,p.z,p.nx,p.ny,p.nz].every(Number.isFinite)))throw new Error('Coordenada ou normal de recorte inválida.');
+      const [a,b,c]=face;
+      const nx=(b.y-a.y)*(c.z-a.z)-(b.z-a.z)*(c.y-a.y),ny=crossXZ(a,b,c),nz=(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+      // Preserve vertical walls. Top faces must remain resolved and upward
+      // AFTER the final Float32 boundary clip, not only in their CPU builder.
+      if(Math.hypot(nx,ny,nz)<=1e-10||(face.every(p=>p.ny>0)&&(!resolvedFace(face)||ny<=0))) {untouched=false;continue;}
+      for (const p of face) {
         output.push(p.x, p.y, p.z);
         outNormals.push(p.nx, p.ny, p.nz);
       }
+    }
   }
   if (untouched) return geometry;
   geometry.dispose();

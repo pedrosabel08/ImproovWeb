@@ -85,6 +85,10 @@ export function unionPolygons(a, b) {
   if (!b.length) return a;
   return fromMulti(polygonClipping.union(toMulti(a), toMulti(b)));
 }
+export function intersectPolygons(a,b) {
+  if(!a.length||!b.length)return [];
+  return fromMulti(polygonClipping.intersection(toMulti(a),toMulti(b)));
+}
 
 /** Liang–Barsky, preserving direction. EN square only, used for coastline graph. */
 export function clipSegment(a, b, radius) {

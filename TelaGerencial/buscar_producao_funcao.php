@@ -1,7 +1,17 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
+header('Content-Type: application/json; charset=utf-8');
+if (($_SESSION['logado'] ?? false) !== true) {
+  flow_auth_unauthorized();
+}
+if (session_status() === PHP_SESSION_ACTIVE) {
+  session_write_close();
+}
+
 include __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
 require_once __DIR__ . '/helpers/finalizacao_completa.php';
+require_once __DIR__ . '/helpers/animacoes.php';
 
 $conn->query("SET SESSION group_concat_max_len = 1048576");
 
@@ -40,6 +50,11 @@ if ($mes) {
       MIN(fi.funcao_id) AS funcao_order
     FROM funcao_imagem fi
     JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
     LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
   WHERE (
       EXISTS (
@@ -201,7 +216,7 @@ if ($mes) {
   $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order,
       GROUP_CONCAT(DISTINCT CONCAT(t.colaborador_id, ':::', t.imagem_id, ':::', IFNULL(t.imagem_nome, '')) SEPARATOR '|||') AS tarefas_concat
     FROM (
-      SELECT fi.colaborador_id, fi.funcao_id, fi.imagem_id, ico.imagem_nome, fi.pagamento, f.nome_funcao,
+      SELECT fi.colaborador_id, fi.funcao_id, fi.imagem_id, ico.imagem_nome, fi.pagamento,
         CASE
           WHEN fi.funcao_id = 4 AND LOWER(ico.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
           WHEN fi.funcao_id = 4 AND (
@@ -213,6 +228,11 @@ if ($mes) {
         END AS nome_funcao
       FROM funcao_imagem fi
       JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
       LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
       WHERE (
           EXISTS (
@@ -237,7 +257,7 @@ if ($mes) {
   $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order,
       GROUP_CONCAT(DISTINCT CONCAT(t.colaborador_id, ':::', t.imagem_id, ':::', IFNULL(t.imagem_nome, '')) SEPARATOR '|||') AS tarefas_concat
     FROM (
-      SELECT fi.colaborador_id, fi.funcao_id, fi.imagem_id, ico.imagem_nome, fi.pagamento, f.nome_funcao,
+      SELECT fi.colaborador_id, fi.funcao_id, fi.imagem_id, ico.imagem_nome, fi.pagamento,
         CASE
           WHEN fi.funcao_id = 4 AND LOWER(ico.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
           WHEN fi.funcao_id = 4 AND (
@@ -249,6 +269,11 @@ if ($mes) {
         END AS nome_funcao
       FROM funcao_imagem fi
       JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
       LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
       WHERE (
           EXISTS (
@@ -385,6 +410,11 @@ if ($mes) {
       COUNT(DISTINCT fi.idfuncao_imagem) AS mes_anterior
     FROM funcao_imagem fi
     JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
     LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
     WHERE (
         EXISTS (
@@ -542,6 +572,11 @@ if ($mes) {
       COUNT(DISTINCT fi.idfuncao_imagem) AS pagas
     FROM funcao_imagem fi
     JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
     LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
     WHERE (
         EXISTS (
@@ -698,6 +733,11 @@ if ($mes) {
         COUNT(DISTINCT fi.idfuncao_imagem) AS qtd_mes
       FROM funcao_imagem fi
       JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
       LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
       INNER JOIN (
         SELECT funcao_imagem_id, YEAR(data) AS yr, MONTH(data) AS mo
@@ -922,6 +962,15 @@ if ($mes) {
   }
   unset($linha);
 }
+
+if ($mes) {
+  $animacoes = tela_gerencial_animacoes($conn, $mesRef . '-01', $fimMesData);
+} elseif ($data) {
+  $animacoes = tela_gerencial_animacoes($conn, $data, $data, false);
+} else {
+  $animacoes = tela_gerencial_animacoes($conn, $inicio, $fim, false);
+}
+$dados = array_merge($dados, $animacoes['funcoes']);
 
 // Retorna os dados em formato JSON
 echo json_encode($dados);

@@ -1,7 +1,17 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
+header('Content-Type: application/json; charset=utf-8');
+if (($_SESSION['logado'] ?? false) !== true) {
+  flow_auth_unauthorized();
+}
+if (session_status() === PHP_SESSION_ACTIVE) {
+  session_write_close();
+}
+
 include_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/custo_tarefa.php';
 require_once __DIR__ . '/helpers/finalizacao_completa.php';
+require_once __DIR__ . '/helpers/animacoes.php';
 // Ajusta sql_mode para evitar erros com ONLY_FULL_GROUP_BY em consultas complexas
 // (remove temporariamente ONLY_FULL_GROUP_BY para esta sessão)
 $conn->query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
@@ -198,6 +208,11 @@ FROM (
   FROM funcao_imagem fi
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
   LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
   LEFT JOIN (
     SELECT h1.imagem_id, h1.status_id
@@ -409,6 +424,11 @@ $sqlAnterior = "SELECT
 FROM funcao_imagem fi
 JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
 JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
 LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
 WHERE (
     EXISTS (
@@ -533,6 +553,11 @@ FROM (
   FROM funcao_imagem fi
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
+      AND (fi.funcao_id <> 6 OR EXISTS (
+        SELECT 1 FROM funcao_colaborador fc_alteracao
+        WHERE fc_alteracao.colaborador_id = fi.colaborador_id
+          AND fc_alteracao.funcao_id = fi.funcao_id
+      ))
   LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
   INNER JOIN (
     SELECT funcao_imagem_id, YEAR(data) AS yr, MONTH(data) AS mo
@@ -742,5 +767,8 @@ foreach ($dadosMesAtual as $linha) {
 
   $resultado[] = $linha;
 }
+
+$animacoes = tela_gerencial_animacoes($conn, $mesRef . '-01', $fimMesData);
+$resultado = array_merge($resultado, $animacoes['colaboradores']);
 
 echo json_encode($resultado);

@@ -161,7 +161,7 @@ body {
 .tables-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.42fr);
-  grid-template-rows: minmax(220px, 1fr) auto;
+  grid-template-rows: minmax(220px, 1fr) minmax(0, auto);
   gap: 14px;
   flex: 1;
   min-height: 0;
@@ -238,8 +238,12 @@ h3.section-title {
 }
 
 .table-block:not(.full-span) .table-scroll {
-  flex: 0 0 auto;
-  overflow: visible;
+  flex: 1;
+  overflow: auto;
+}
+
+#tabelaFuncao {
+  min-width: 900px;
 }
 
 table {
@@ -269,7 +273,7 @@ td {
 th {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 5;
   height: 31px;
   color: #9fb0c8;
   background: var(--bg-table-head);
@@ -341,9 +345,8 @@ tfoot td:first-child {
 
 #tabelaFuncao td:first-child,
 #tabelaProducao td:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 tfoot td {
@@ -701,7 +704,7 @@ tr.bate-recorde td:last-child {
   } */
 
   .container {
-    grid-column: 1;
+    grid-column: 2;
     padding: 14px;
   }
 
@@ -714,17 +717,20 @@ tr.bate-recorde td:last-child {
   .page-header-left,
   .filtros-linha {
     width: 100%;
+    min-width: 0;
   }
 
   .filtros-linha {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .filtros-linha select {
-    flex: 1 1 130px;
+    width: 100%;
   }
 
   .filtros-linha button {
+    grid-column: 1 / -1;
     width: 100%;
   }
 }

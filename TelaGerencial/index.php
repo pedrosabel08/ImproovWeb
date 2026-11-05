@@ -73,7 +73,7 @@ $conn->close();
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
-    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&mtime=' . filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 
@@ -234,7 +234,7 @@ $conn->close();
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
-    <?php include '../css/modalSessao.php'; ?>
+    <?php if (is_file(__DIR__ . '/../css/modalSessao.php')) include __DIR__ . '/../css/modalSessao.php'; ?>
 </body>
 
 </html>

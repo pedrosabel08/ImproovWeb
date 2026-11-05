@@ -8,6 +8,7 @@ require_once __DIR__ . '/render_ws_notify.php';
 require_once __DIR__ . '/../Pos-Producao/ws_notify.php';
 require_once __DIR__ . '/../FlowReview/ws_notify.php';
 require_once __DIR__ . '/../helpers/funcao_imagem_prazo_helper.php';
+require_once __DIR__ . '/../helpers/janela_operacional_helper.php';
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -368,6 +369,10 @@ function render_mark_finalizacao_file_pending($conn, int $imagemId, int $colabor
         throw new RuntimeException('Nao foi possivel finalizar a funcao da imagem: ' . $error);
     }
     $stmt->close();
+
+    if (flow_janela_schema_disponivel($conn)) {
+        flow_janela_encerrar_se_unidade_finalizada($conn, $funcaoImagemId, $colaboradorId ?: null, !empty($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null);
+    }
 
     return $funcaoImagemId;
 }
@@ -1848,6 +1853,14 @@ if (isset($_POST['action'])) {
                                             throw new RuntimeException('Nao foi possivel atualizar a Finalizacao: ' . $error);
                                         }
                                         $stUpd->close();
+                                        if (flow_janela_schema_disponivel($conn)) {
+                                            flow_janela_encerrar_se_unidade_finalizada(
+                                                $conn,
+                                                $funcaoImagemId,
+                                                !empty($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                                                !empty($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null
+                                            );
+                                        }
                                         $logs[] = 'finalizacao.marked_finalizado.idfuncao_imagem=' . $funcaoImagemId . '.funcao_id=' . $chosenFuncaoId;
                                     } else {
                                         $logs[] = 'finalizacao.not_found_for_imagem_id=' . $imagem_id;

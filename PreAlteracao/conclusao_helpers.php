@@ -433,6 +433,16 @@ function pre_alt_upsert_funcao_alteracao(mysqli $conn, int $imagemId, string $pr
             if (!flow_janela_schema_disponivel($conn)) {
                 throw new RuntimeException('A migration da Janela Operacional precisa estar aplicada antes de liberar a alteracao.');
             }
+            // Regulariza ciclos que ficaram abertos depois da conclusão da unidade.
+            // O helper preserva o bloqueio se qualquer tarefa vinculada não terminou.
+            if (in_array((string) $statusExistente, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'], true)) {
+                flow_janela_encerrar_se_unidade_finalizada(
+                    $conn,
+                    $funcaoId,
+                    !empty($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                    !empty($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null
+                );
+            }
             if (flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoId, true)) {
                 throw new DomainException('A imagem possui um ciclo operacional anterior ainda ativo. Encerre-o antes de liberar a nova rodada.');
             }

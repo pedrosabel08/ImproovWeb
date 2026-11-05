@@ -85,7 +85,7 @@ $conn->close();
 
     include '../sidebar.php';
 
-    ?>
+?>
     <div class="container">
         <div class="page-header">
             <div class="page-header-left">
@@ -114,11 +114,11 @@ $conn->close();
                 <label for="ano">Ano:</label>
                 <select id="ano" onchange="refreshAll()">
                     <?php
-                    $anoAtual = (int) date('Y');
-                    for ($a = $anoAtual; $a >= $anoAtual - 10; $a--) {
-                        echo '<option value="' . $a . '">' . $a . '</option>';
-                    }
-                    ?>
+                $anoAtual = (int) date('Y');
+for ($a = $anoAtual; $a >= $anoAtual - 10; $a--) {
+    echo '<option value="' . $a . '">' . $a . '</option>';
+}
+?>
                 </select>
                 <button id="gerar-relatorio"><i class="fa-solid fa-download" aria-hidden="true"></i> Gerar relatório</button>
             </div>
@@ -234,7 +234,9 @@ $conn->close();
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>
-    <?php if (is_file(__DIR__ . '/../css/modalSessao.php')) include __DIR__ . '/../css/modalSessao.php'; ?>
+    <?php if (is_file(__DIR__ . '/../css/modalSessao.php')) {
+        include __DIR__ . '/../css/modalSessao.php';
+    } ?>
 </body>
 
 </html>

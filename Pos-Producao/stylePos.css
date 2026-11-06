@@ -1952,3 +1952,146 @@ header button#openModalBtnRender:hover {
     width: 100%;
   }
 }
+
+/* Em telas estreitas, a página rola como um todo e a tabela mantém suas colunas. */
+.tabela-scroll-hint {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  #filtro {
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #filtro > header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  #filtro > header .header-left {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  #filtro > header .header-left h1 {
+    font-size: 1.1rem;
+    line-height: 1.25;
+  }
+
+  #filtro > header .header-right {
+    display: block;
+  }
+
+  #filtro > header button#openModalBtnRender {
+    min-height: 40px;
+  }
+
+  .metricas-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px 12px 0;
+  }
+
+  .metric-card {
+    min-width: 0;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .metric-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+
+  .metric-value {
+    font-size: 21px;
+  }
+  .metric-label {
+    line-height: 1.2;
+  }
+
+  .tabela-container {
+    flex: none;
+    min-width: 0;
+    overflow: visible;
+    padding: 16px 12px calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .tabela-container nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #widget-prazos {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .tabela-scroll-hint {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  #tabela-imagens {
+    width: 100%;
+    height: clamp(300px, 55dvh, 600px) !important;
+    min-width: 0;
+  }
+
+  #modal .modal-content,
+  #renderModal .modal-content {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  #renderModal .modal-content {
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  #renderModal .closeModalRender {
+    align-self: flex-end;
+    line-height: 1;
+  }
+
+  #modal .form-row-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #modal .modal-body {
+    padding: 16px;
+  }
+  #modal .modal-footer {
+    padding: 12px 16px;
+  }
+
+  #filtro .filter-bar select,
+  #filtro .filter-bar input {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .metric-card {
+    padding: 8px;
+  }
+  .metric-icon {
+    width: 28px;
+    height: 28px;
+  }
+  .metric-label {
+    font-size: 11px;
+  }
+  #modal .modal-footer {
+    flex-wrap: wrap;
+  }
+}

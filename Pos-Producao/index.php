@@ -130,7 +130,7 @@ $conn->close();
     <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=2'; ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=3'; ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -250,6 +250,7 @@ $conn->close();
                 </div>
                 <p style="margin: 15px 0; text-align: right;">Total de pós: <span id="total-pos"></span></p>
             </nav>
+            <p class="tabela-scroll-hint">Deslize a tabela para ver todas as colunas.</p>
             <div id="tabela-imagens"></div>
         </div>
     </div>
@@ -503,7 +504,7 @@ $conn->close();
     <script>
         window.POS_REFERENCE_READONLY = true;
     </script>
-    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=6'; ?>"></script>
+    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=8'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

@@ -303,6 +303,15 @@ window.onclick = function (event) {
 };
 
 var tabelaGlobal = null; // Acessível globalmente para o filter bar e cards
+var posMobileTable = window.matchMedia("(max-width: 800px)");
+
+posMobileTable.addEventListener("change", function (event) {
+  if (!tabelaGlobal) return;
+  var colunaImagem = tabelaGlobal.getColumn("imagem_nome");
+  if (colunaImagem) {
+    colunaImagem.updateDefinition({ minWidth: event.matches ? 240 : 40 });
+  }
+});
 
 document.getElementById("opcao_obra").addEventListener("change", function () {
   var obraId = this.value;
@@ -449,7 +458,8 @@ function atualizarTabela() {
           data: data,
           layout: "fitColumns",
           pagination: "local",
-          responsiveLayout: true,
+          // Keep every column available through horizontal scrolling on narrow screens.
+          responsiveLayout: false,
           index: "idpos_producao",
           height: "100%",
           pagination: true,
@@ -478,6 +488,7 @@ function atualizarTabela() {
             {
               title: "Nome imagem",
               field: "imagem_nome",
+              minWidth: posMobileTable.matches ? 240 : 40,
               widthGrow: 3,
               formatter: function (cell) {
                 return cell.getValue() || "";

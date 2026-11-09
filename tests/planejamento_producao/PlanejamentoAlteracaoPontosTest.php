@@ -127,6 +127,10 @@ $facts = flow_pac_resumir_realizado(
 pa_assert($facts['itens'][0]['baseline']['responsavel_planejado_id'] === 1 && $facts['itens'][0]['vigente']['responsavel_planejado_id'] === 2 && $facts['itens'][0]['executor_id'] === 3, 'Baseline, vigente e executor são fatos distintos');
 pa_assert($facts['itens'][0]['dias_uteis_atraso'] === 1 && $facts['itens'][0]['entrega_cliente'] === '2026-11-06', 'Conclusão humana e entrega ao cliente permanecem distintas');
 pa_assert($facts['por_dia'][3]['2026-10-30']['concluidos'] === 15.0 && $facts['por_dia'][2]['2026-10-29']['pendentes_do_planejado'] === 15.0, 'Realizado por dia preserva pontos e pendências');
+pa_assert($facts['por_dia'][2]['2026-10-29']['carga_pendente'] === 0, 'Conclusão em atraso preserva o histórico sem consumir carga futura');
+$active = $exact[0] + ['responsavel_preservado_id' => 1];
+pa_assert(!flow_pac_sobrecargas([$active], []), 'Compromisso protegido de responsável inelegível fica sem capacidade estimada');
+pa_assert(flow_pac_sobrecargas([$active], $agenda)[0]['excesso'] === 5.0, 'Ciclo ativo mantém os pontos integrais quando há capacidade conhecida');
 $none = flow_pac_resumir_realizado([['entrega_item_id' => 2]], [], [], [['entrega_item_id' => 1,'inicio_em' => '2026-10-29']]);
 pa_assert($none['itens'][0]['executor_id'] === null && $none['itens'][0]['conclusao_alteracao'] === null, 'Outra rodada não fornece evidência de execução');
 require_once dirname(__DIR__, 2).'/helpers/planejamento_alocacao_helper.php';

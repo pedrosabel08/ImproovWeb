@@ -263,6 +263,7 @@
   padding: 10px 14px 0;
 }
 #entregaModal .delivery-images-heading {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   justify-content: space-between;

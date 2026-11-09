@@ -748,11 +748,17 @@ function fixture() {
       pode_editar_responsavel: false,
       motivo_bloqueio_responsavel: "Responsável protegido durante a execução",
     });
-    await page.locator("#ap-reload").evaluate((el) => { el.hidden = false; });
+    await page.locator("#ap-reload").evaluate((el) => {
+      el.hidden = false;
+    });
     await page.locator("#ap-reload").click();
-    await page.waitForFunction(() => document.getElementById("ap-reload").hidden);
+    await page.waitForFunction(
+      () => document.getElementById("ap-reload").hidden,
+    );
     check(
-      (await page.locator("#ap-partial").textContent()).includes("1 entregue · 9 elegíveis"),
+      (await page.locator("#ap-partial").textContent()).includes(
+        "1 entregue · 9 elegíveis",
+      ),
       "Entrega mista mostra quantidades e permite iniciar replanejamento",
     );
     await page.locator("#ap-replan").click();
@@ -771,10 +777,19 @@ function fixture() {
       "Imagem em execução permite data e protege atribuição",
     );
     await page.locator("#ap-select-all").check();
-    check((await page.locator("#ap-selection").textContent()) === "9 selecionadas", "Seleção em massa exclui itens bloqueados");
+    check(
+      (await page.locator("#ap-selection").textContent()) === "9 selecionadas",
+      "Seleção em massa exclui itens bloqueados",
+    );
     await page.locator("#ap-save").click();
-    await page.waitForFunction(() => !document.getElementById("ap-save").disabled);
-    check(posts.at(-1).itens.length === 9 && !posts.at(-1).itens.some((i) => i.entrega_item_id === 1), "Rascunho envia apenas decisões elegíveis");
+    await page.waitForFunction(
+      () => !document.getElementById("ap-save").disabled,
+    );
+    check(
+      posts.at(-1).itens.length === 9 &&
+        !posts.at(-1).itens.some((i) => i.entrega_item_id === 1),
+      "Rascunho envia apenas decisões elegíveis",
+    );
     check(errors.length === 0, `Sem erros JavaScript: ${errors.join("; ")}`);
     console.log(
       JSON.stringify(

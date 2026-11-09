@@ -424,42 +424,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Render a list of entregas into the columns
   function renderEntregas(list) {
-    // Clear existing cards
-    columns.forEach((col) =>
-      (col.querySelector(".column-cards") || col)
-        .querySelectorAll(".card-entrega")
-        .forEach((card) => card.remove()),
-    );
+    const columnData = Array.from(columns, (col) => ({
+      col,
+      target: col.querySelector(".column-cards") || col,
+      statuses: (col.dataset.status || "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase()),
+      cards: document.createDocumentFragment(),
+      count: 0,
+    }));
 
     list.forEach((entrega) => {
-      // Find column based on dataset statuses
-      const col = Array.from(columns).find((c) => {
-        const statuses = (c.dataset.status || "")
-          .split(",")
-          .map((s) => s.trim().toLowerCase());
-
-        const entStatus = String(
-          entrega.kanban_status || entrega.status || entrega.nome_etapa || "",
-        )
-          .trim()
-          .toLowerCase();
-
-        return entStatus && statuses.includes(entStatus);
-      });
-
-      if (!col) return;
-
-      const card = createCard(entrega);
-      (col.querySelector(".column-cards") || col).appendChild(card);
+      const status = String(
+        entrega.kanban_status || entrega.status || entrega.nome_etapa || "",
+      )
+        .trim()
+        .toLowerCase();
+      const column = columnData.find(
+        (item) => status && item.statuses.includes(status),
+      );
+      if (!column) return;
+      column.cards.appendChild(createCard(entrega));
+      column.count++;
     });
 
     // Update column count badges and hide empty HOLD column
-    columns.forEach((col) => {
-      const count = col.querySelectorAll(".card-entrega").length;
-
-      const statuses = (col.dataset.status || "")
-        .split(",")
-        .map((status) => status.trim().toLowerCase());
+    columnData.forEach(({ col, target, statuses, cards, count }) => {
+      target.querySelectorAll(".card-entrega").forEach((card) => card.remove());
+      target.appendChild(cards);
 
       const statusKey = statuses[0] || "";
 
@@ -475,14 +467,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const board = document.getElementById("kanban");
     const cards = board ? board.querySelectorAll(".card-entrega") : [];
-    if (window.FlowMotion && cards.length) {
+    if (window.FlowMotion && cards.length && cards.length <= 30) {
       window.FlowMotion.enterItems(board, {
         items: cards,
         initial: entregasMotionInitial,
         preset: "card",
       });
-      entregasMotionInitial = false;
     }
+    entregasMotionInitial = false;
   }
   // Populate filter selects (obra/status) from the fetched entregas
   function populateFiltersFrom(entregas) {
@@ -1904,11 +1896,15 @@ document.addEventListener("DOMContentLoaded", () => {
       entregaDados = data;
       const planLink = document.getElementById("deliveryPlanLink");
       if (planLink) {
-        const usesImagePlanning = data.planejamento_modelo === "IMAGENS_ALTERACAO";
+        const usesImagePlanning =
+          data.planejamento_modelo === "IMAGENS_ALTERACAO";
         planLink.hidden = !usesImagePlanning;
         planLink.style.display = usesImagePlanning ? "" : "none";
         planLink.href = usesImagePlanning
-          ? new URL(`../PlanejamentoProducao/index.php?entrega_id=${Number(data.id)}`, BASE).href
+          ? new URL(
+              `../PlanejamentoProducao/index.php?entrega_id=${Number(data.id)}`,
+              BASE,
+            ).href
           : "#";
       }
       modalRecebimento.textContent = formatarData(data.data_recebimento) || "-";
@@ -2182,6 +2178,63 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- CONTEXTO MENU NO MODAL DE IMAGENS (rich menu) ---
   const MODAL_CTX_ID = "modalImagemContextMenu";
 
+  async function copiarNomesImagens(nomes) {
+    let message = "Nenhuma imagem pendente nesta entrega.";
+    let success = true;
+    if (nomes.length) {
+      const text = nomes.join("\n");
+      try {
+        try {
+          if (!navigator.clipboard?.writeText)
+            throw new Error("Clipboard indisponível");
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const previousFocus = document.activeElement;
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.cssText =
+            "position:fixed;opacity:0;pointer-events:none;";
+          modalEntrega.appendChild(textarea);
+          try {
+            textarea.select();
+            if (!document.execCommand("copy"))
+              throw new Error("Falha ao copiar");
+          } finally {
+            textarea.remove();
+            previousFocus?.focus({ preventScroll: true });
+          }
+        }
+        message =
+          nomes.length === 1
+            ? "Nome copiado!"
+            : `${nomes.length} nomes copiados!`;
+      } catch {
+        success = false;
+        message = "Não foi possível copiar os nomes. Tente novamente.";
+      }
+    }
+    Toastify({
+      text: message,
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      style: { background: success ? "#059669" : "#dc2626" },
+    }).showToast();
+  }
+
+  document
+    .getElementById("btnCopiarNomesPendentes")
+    ?.addEventListener("click", () => {
+      const nomes = Array.from(
+        modalImagens.querySelectorAll(
+          '.modal-imagem-item[data-delivery-status="Pendente de entrega"] .imagem_nome',
+        ),
+      )
+        .map((label) => label.textContent.trim())
+        .filter(Boolean);
+      copiarNomesImagens(nomes);
+    });
+
   function getModalCtxMenu() {
     let m = document.getElementById(MODAL_CTX_ID);
     if (!m) {
@@ -2191,6 +2244,9 @@ document.addEventListener("DOMContentLoaded", () => {
       m.innerHTML = `
         <div class="ctx-header"><span class="ctx-title">Ações da imagem</span></div>
         <div class="ctx-body">
+          <button type="button" class="ctx-item ctx-copy-name">
+            <i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar nome
+          </button>
           <a class="ctx-item ctx-flow-review" target="_blank" rel="noopener">
             <i class="fa-solid fa-comments" aria-hidden="true"></i> Flow Review
           </a>
@@ -2211,6 +2267,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showModalCtxMenu(item, x, y) {
     const m = getModalCtxMenu();
+    m.querySelector(".ctx-copy-name").onclick = () => {
+      hideModalCtxMenu();
+      const nome = item.querySelector(".imagem_nome")?.textContent.trim();
+      if (nome) copiarNomesImagens([nome]);
+    };
     const isRvw = item.classList.contains("rvw-selectable");
     m.querySelector(".ctx-rvw-done").style.display = isRvw ? "" : "none";
 

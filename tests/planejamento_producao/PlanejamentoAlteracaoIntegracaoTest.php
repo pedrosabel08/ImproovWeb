@@ -99,10 +99,70 @@ $blocked=$payload;$blocked['lock_version']=$replan['planejamento']['lock_version
 pa_fails(fn()=>flow_planejamento_alteracao_salvar($conn,1,$blocked,false,1),'sem vínculo');
 pa_assert($replan['planejamento']['baseline_versao_id']===$baseline && $replan['planejamento']['versao_atual_id']!==$baseline,'Replanejar preserva baseline');
 pa_assert((int)flow_pa_rows($conn,'SELECT responsavel_planejado_id FROM entrega_planejamento_item WHERE versao_id=? AND entrega_item_id=1','i',[(int)$baseline])[0]['responsavel_planejado_id']===1,'Baseline original permanece imutável');
+$conn->query("UPDATE entregas_itens SET data_entregue='2026-11-04 14:00:00' WHERE id IN (2,3,4,5)");
+$conn->query("UPDATE funcao_imagem SET status='HOLD' WHERE idfuncao_imagem=6");
+$conn->query("UPDATE funcao_imagem SET status='Finalizado' WHERE idfuncao_imagem=7");
+$conn->query('UPDATE funcao_imagem SET colaborador_id=2 WHERE idfuncao_imagem IN (2,8)');
+$versaoAnterior = (int)$replan['planejamento']['versao_atual_id'];
+$conn->query("INSERT INTO janela_operacional_ciclo
+    (id,chave_referencia,perfil_id,perfil_codigo_snapshot,perfil_versao_snapshot,perfil_nome_snapshot,
+     aplica_regra_snapshot,inicio_em,previsao_original,previsao_atual,estado_original,estado_atual,
+     responsavel_original_id,responsavel_atual_id,entrega_item_id,planejamento_versao_id_snapshot,prazo_necessario_snapshot)
+    VALUES (806,'teste-ciclo-6',1,'TESTE',1,'Teste',1,'2026-11-04 09:00:00','2026-11-05','2026-11-05',
+            'NORMAL','NORMAL',1,1,6,$versaoAnterior,'2026-11-05')");
+$conn->query('INSERT INTO janela_operacional_ciclo_item(ciclo_id,funcao_imagem_id) VALUES (806,6)');
+$cicloAntes = flow_pa_rows($conn, 'SELECT * FROM janela_operacional_ciclo WHERE id=806')[0];
+$misto = flow_planejamento_alteracao_carregar($conn, 1);
+pa_assert($misto['pode_editar'] && count(flow_pa_itens_editaveis($misto['itens'])) === 5, 'Entrega mista mantém replanejamento para cinco itens');
+pa_assert($misto['itens'][5]['pode_editar_datas'] && !$misto['itens'][5]['pode_editar_responsavel'], 'HOLD permite datas e protege responsável');
+$decisoesMistas = array_map(fn ($i) => [
+    'entrega_item_id' => $i['entrega_item_id'],
+    'responsavel_planejado_id' => $i['responsavel_planejado_id'],
+    'fim_planejado' => $i['entrega_item_id'] === 6 ? '2026-11-06' : $i['fim_planejado'],
+], flow_pa_itens_editaveis($misto['itens']));
+$payloadMisto = pa_ack($misto, [
+    'lock_version' => $misto['planejamento']['lock_version'],
+    'fingerprint' => $misto['fingerprint'],
+    'replanejar' => true,
+    'motivo_codigo' => 'ALTERACAO_PRAZO',
+    'itens' => $decisoesMistas,
+]);
+$forjado = $payloadMisto;
+$forjado['itens'][] = ['entrega_item_id' => 2, 'responsavel_planejado_id' => 1, 'fim_planejado' => '2026-11-06'];
+pa_fails(fn () => flow_planejamento_alteracao_salvar($conn, 1, $forjado, true, 1), 'imagens informadas está bloqueada');
+$troca = $payloadMisto;
+$troca['itens'][1]['responsavel_planejado_id'] = 2;
+pa_fails(fn () => flow_planejamento_alteracao_salvar($conn, 1, $troca, true, 1), 'ciclo operacional ativo');
+$rascunhoMisto = flow_planejamento_alteracao_salvar($conn, 1, $payloadMisto, false, 1);
+pa_assert($rascunhoMisto['planejamento']['rascunho_pendente'], 'Rascunho parcial retoma no contexto original');
+$payloadMisto['lock_version'] = $rascunhoMisto['planejamento']['lock_version'];
+$parcialConfirmado = flow_planejamento_alteracao_salvar($conn, 1, $payloadMisto, true, 1);
+pa_assert($parcialConfirmado['planejamento']['baseline_versao_id'] === $baseline && count($parcialConfirmado['vigente_itens']) === 10, 'Nova versão mantém baseline e dez itens');
+$antesPorId = array_column($misto['vigente_itens'], null, 'entrega_item_id');
+$depoisPorId = array_column($parcialConfirmado['vigente_itens'], null, 'entrega_item_id');
+pa_assert($depoisPorId[2] === $antesPorId[2] && $depoisPorId[7] === $antesPorId[7], 'Entregue e concluída mantêm snapshots idênticos');
+pa_assert($depoisPorId[6]['fim_planejado'] === '2026-11-06', 'HOLD recebe novo prazo no plano vigente');
+pa_assert(flow_pa_rows($conn, 'SELECT * FROM janela_operacional_ciclo WHERE id=806')[0] === $cicloAntes, 'Ciclo ativo preserva todo o snapshot original');
+pa_assert(array_map('intval', array_column(flow_pa_rows($conn, 'SELECT colaborador_id FROM funcao_imagem WHERE idfuncao_imagem IN (2,8) ORDER BY idfuncao_imagem'), 'colaborador_id')) === [2,2], 'Atribuições de itens entregues e sem alteração não são sobrescritas');
+$agendaExterna = flow_pac_agenda($conn, 999, $parcialConfirmado['configuracao'], $parcialConfirmado['colaboradores'], '2026-11-05', '2026-11-06');
+pa_assert((float)$agendaExterna[1]['2026-11-05']['comprometidos'] === 45.0 && (float)$agendaExterna[1]['2026-11-06']['comprometidos'] === 15.0, 'Capacidade externa exclui encerradas e preserva a carga integral do HOLD');
+$payloadMisto['lock_version'] = $parcialConfirmado['planejamento']['lock_version'];
+$rascunhoMisto = flow_planejamento_alteracao_salvar($conn, 1, $payloadMisto, false, 1);
+$payloadMisto['lock_version'] = $rascunhoMisto['planejamento']['lock_version'];
+$conn->query("UPDATE entregas_itens SET data_entregue='2026-11-06 14:00:00' WHERE id=9");
+pa_fails(fn () => flow_planejamento_alteracao_salvar($conn, 1, $payloadMisto, true, 1), 'escopo');
+$aposEntrega = flow_planejamento_alteracao_carregar($conn, 1);
+pa_assert($aposEntrega['planejamento']['rascunho_requer_revisao'] && !$aposEntrega['planejamento']['rascunho_pendente'], 'Entrega concorrente invalida retomada do rascunho');
+$payloadMisto['fingerprint'] = $aposEntrega['fingerprint'];
+$payloadMisto['itens'] = array_values(array_filter($payloadMisto['itens'], fn ($i) => $i['entrega_item_id'] !== 9));
+$payloadMisto = pa_ack($aposEntrega, $payloadMisto);
+pa_fails(fn () => flow_planejamento_alteracao_salvar($conn, 1, $payloadMisto, true, 1), 'contexto do rascunho');
+$conn->query('UPDATE entregas_itens SET data_entregue=NOW() WHERE entrega_id=1');
+pa_assert(!flow_planejamento_alteracao_carregar($conn, 1)['pode_editar'], 'Sem itens elegíveis, replanejamento indisponível');
 $conn->query("UPDATE entregas SET data_prevista='2026-11-09' WHERE id=1");
-$payload['lock_version']=$replan['planejamento']['lock_version'];
+$payload['lock_version']=$rascunhoMisto['planejamento']['lock_version'];
 pa_fails(fn()=>flow_planejamento_alteracao_salvar($conn,1,$payload,true,1),'escopo');
-pa_assert(flow_planejamento_alteracao_carregar($conn,1)['desatualizado'],'Mudança estrutural sinalizada na leitura');
+pa_assert(flow_planejamento_alteracao_carregar($conn,1)['planejamento']['rascunho_requer_revisao'],'Mudança estrutural sinalizada na leitura');
 pa_assert(flow_planejamento_modelo($conn,999)==='FUNCOES_R00','Entrega antiga mantém fluxo legado');
 // A release plans its destination delivery, even while its lot has other images.
 // Six images are released to R02; the other four remain in R01/triage.

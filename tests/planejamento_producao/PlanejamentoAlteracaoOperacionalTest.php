@@ -2,6 +2,7 @@
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once dirname(__DIR__, 2) . '/PreAlteracao/conclusao_helpers.php';
 require_once dirname(__DIR__, 2) . '/helpers/planejamento_alteracao_operacional_helper.php';
+require_once dirname(__DIR__, 2) . '/helpers/planejamento_alteracao_helper.php';
 
 function pa_op_assert(bool $ok, string $message): void
 {
@@ -35,6 +36,26 @@ pa_op_reject(fn() => flow_planejamento_alteracao_validar_operacao(array_merge($c
 foreach (['versao_atual_id', 'responsavel_planejado_id', 'fim_planejado'] as $campo) {
     pa_op_reject(fn() => flow_planejamento_alteracao_validar_operacao(array_merge($contexto, [$campo => null]), 11, 11, true), 'Plano incompleto deve bloquear a execucao: ' . $campo);
 }
+
+$item = ['entrega_item_id' => 10, 'etapa_atual_id' => 3, 'status_id_entrega' => 3, 'data_entregue' => null, 'responsavel_operacional_id' => 11];
+foreach (['HOLD', 'Em andamento', 'Ajuste', 'Não iniciado'] as $status) {
+    $permissoes = flow_pa_estado_item($item, $status, null, $status === 'Não iniciado');
+    pa_op_assert($permissoes['pode_editar_datas'] && !$permissoes['pode_editar_responsavel'], 'Execução protege atribuição e permite datas: '.$status);
+    $escopo = [flow_pa_preservar_responsavel($item + $permissoes, ['responsavel_planejado_id' => 11])];
+    $decisao = ['entrega_item_id' => 10, 'responsavel_planejado_id' => 11, 'fim_planejado' => '2026-11-05'];
+    pa_op_assert(flow_pa_validar_itens($escopo, [$decisao], [], true)[0]['fim_planejado'] === '2026-11-05', 'Prazo pode mudar mantendo atribuição protegida');
+    $decisao['responsavel_planejado_id'] = 22;
+    try {
+        flow_pa_validar_itens($escopo, [$decisao], [['id' => 22, 'nome' => 'Outra pessoa']], true);
+        throw new LogicException('Esperava conflito de atribuição');
+    } catch (RuntimeException $e) {
+        pa_op_assert($e->getCode() === 409, 'Tentativa de transferência deve retornar conflito');
+    }
+}
+$encerrado = flow_pa_estado_item($item, 'Em aprovação', ['situacao' => 'ENCERRADO', 'motivo_encerramento' => 'ENVIO_APROVACAO'], false);
+pa_op_assert(!$encerrado['pode_editar_datas'] && !$encerrado['pode_editar_responsavel'], 'Conclusão da rodada protege o plano antes da entrega ao cliente');
+$entregue = flow_pa_estado_item(array_replace($item, ['data_entregue' => '2026-11-05']), 'Não iniciado', null, false);
+pa_op_assert($entregue['motivo_bloqueio'] === 'Entregue ao cliente', 'Status pendente não desfaz uma entrega registrada');
 
 if (in_array('--db', $argv ?? [], true)) {
     require_once dirname(__DIR__, 2) . '/config/database.php';
@@ -82,6 +103,13 @@ if (in_array('--db', $argv ?? [], true)) {
     $ctx = flow_planejamento_alteracao_contexto_operacional($db,101,true);
     flow_planejamento_alteracao_validar_operacao($ctx,11,11,true);
     flow_planejamento_alteracao_vincular_ciclo($db,101,801);
+    $db->query("INSERT INTO entrega_planejamento_item VALUES (703,501,101,11,NULL,'2026-11-03')");
+    $db->query('UPDATE entrega_planejamento_producao SET versao_atual_id=703 WHERE id=601');
+    $vigente = flow_planejamento_alteracao_contexto_operacional($db, 101);
+    $ciclo = $db->query('SELECT planejamento_versao_id_snapshot,prazo_necessario_snapshot FROM janela_operacional_ciclo WHERE id=801')->fetch_assoc();
+    pa_op_assert((int)$vigente['versao_atual_id'] === 703 && $vigente['fim_planejado'] === '2026-11-03', 'Acompanhamento da mesma rodada consulta a versão e a data vigentes');
+    pa_op_assert((int)$ciclo['planejamento_versao_id_snapshot'] === 701 && $ciclo['prazo_necessario_snapshot'] === '2026-10-30', 'Replanejamento na mesma rodada preserva versão e prazo do ciclo existente');
+    $db->query('UPDATE entrega_planejamento_producao SET versao_atual_id=701 WHERE id=601');
     $db->query('INSERT INTO pre_alt_liberacao_itens VALUES(302,202,402)');
     $db->query('UPDATE imagens_cliente_obra SET status_id=4 WHERE idimagens_cliente_obra=10');
     $ctx = flow_planejamento_alteracao_contexto_operacional($db,101,true);

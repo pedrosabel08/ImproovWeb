@@ -43,6 +43,7 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
             <section class="delivery-images-pane" aria-labelledby="deliveryImagesTitle">
                 <div class="delivery-images-heading">
                     <h3 class="delivery-section-title" id="deliveryImagesTitle"><i class="fa-regular fa-images" aria-hidden="true"></i> Imagens</h3>
+                    <button type="button" class="btn-action btn-secondary" id="btnCopiarNomesPendentes" title="Copiar todos os nomes com status Pendente desta entrega, um por linha"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar nomes pendentes</button>
                     <button type="button" class="btn-action btn-primary" id="btnAdicionarImagem"><i class="fa-solid fa-plus" aria-hidden="true"></i> Adicionar</button>
                 </div>
                 <div class="delivery-images-scroll" tabindex="0" role="region" aria-label="Lista de imagens da entrega">

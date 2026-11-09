@@ -14,11 +14,13 @@ import os
 import re
 import subprocess
 import tempfile
+import shutil
 import uuid
 from pathlib import Path
 
 from deadline_client import parse_output
 from deadline_domain import state_from_deadline, valid_job_id
+from deadline_nas_submission import NasSubmission, destination
 
 
 def ensure_smb_destination_ready(destination: str, logger=None) -> None:
@@ -124,17 +126,33 @@ def read_info(path: Path) -> dict[str, str]:
 
 
 def write_info(path: Path, values: dict) -> None:
+    if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(key)) or any(c in str(value) for c in "\r\n\0") for key, value in values.items()):
+        raise ValueError("Configuração contém uma chave ou quebra de linha inválida.")
     path.write_text(
         "".join(f"{key}={value}\n" for key, value in values.items()), encoding="utf-8"
     )
 
 
-class RenderEF:
+def asset_base_script(plan: dict, phase='PreLoadScript') -> str:
+    directories = {ntpath.dirname(plan['scene_path'])}
+    def mxs_string(value):
+        if any(ord(c) < 32 for c in value):
+            raise ValueError('Caminho de dependência contém caracteres inválidos.')
+        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+    script='\n'.join('sessionPaths.add #' + kind + ' ' + mxs_string(d) for d in sorted(directories) for kind in ('map','xref')) + '\nsysInfo.currentdir = ' + mxs_string(ntpath.dirname(plan['scene_path'])) + '\n'
+    original=plan.get('source_info',{}).get(phase,'')
+    if original:script+='fileIn ((getFilenamePath (getSourceFileName())) + '+mxs_string(ntpath.basename(original))+')\n'
+    return script
+
+
+class RenderEF(NasSubmission):
     def __init__(self, worker):
         self.worker = worker
         self.db = worker.database
         self.client = worker.client
         self.enabled = None
+        self.file_checks = {}
+        self.file_pool = None
 
     def command(self, args: list[str]) -> str:
         result = self.client.run(args)
@@ -153,12 +171,14 @@ class RenderEF:
     def update(
         self, request: dict, stage: str, message: str, status="PROCESSANDO", **fields
     ):
-        allowed = {"plano_json", "novo_job_id", "render_ef_id"}
+        allowed = {"plano_json", "novo_job_id", "render_ef_id", "snapshot_id", "origem_tentativa_id", "origem_job_id"}
         if set(fields) - allowed:
             raise ValueError("Unsupported EF request field")
         sets = ["etapa = %s", "mensagem = %s", "status = %s"] + [
             f"{k} = %s" for k in fields
         ]
+        if stage == "SUBMETENDO":
+            sets.append("submissao_iniciada_em = COALESCE(submissao_iniciada_em, NOW())")
         with self.db.transaction() as cursor:
             cursor.execute(
                 f"UPDATE render_ef_solicitacoes SET {', '.join(sets)} WHERE id = %s AND worker_id = %s",
@@ -175,7 +195,11 @@ class RenderEF:
                 raise RuntimeError(
                     "A solicitação perdeu a reserva do worker. Nenhum novo envio será executado."
                 )
+            cursor.execute("INSERT INTO render_ef_eventos (solicitacao_id, etapa, status, mensagem) VALUES (%s,%s,%s,%s)",
+                           (request["id"], stage, status, message))
         request.update(etapa=stage, mensagem=message, status=status, **fields)
+        if stage == "SUBMETENDO":
+            request["submissao_iniciada_em"] = True
         self.worker.business.publish_render_update(
             "render.ef_progress",
             {
@@ -189,8 +213,9 @@ class RenderEF:
         with self.db.transaction() as cursor:
             cursor.execute(
                 """SELECT r.job_folder, r.imagem_id, r.excluido_em,
-                i.imagem_nome, i.status_id, s.nome_status
+                i.imagem_nome, i.status_id, s.nome_status, o.nomenclatura, r.status AS origem_status, r.responsavel_id, r.deadline_job_id
                 FROM render_alta r JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = r.imagem_id
+                JOIN obra o ON o.idobra=i.obra_id
                 JOIN status_imagem s ON s.idstatus = i.status_id WHERE r.idrender_alta = %s""",
                 (request["render_origem_id"],),
             )
@@ -205,6 +230,21 @@ class RenderEF:
                 raise RuntimeError(
                     "A imagem não está mais na etapa EF. O envio foi interrompido."
                 )
+            own_handoff = request.get('novo_job_id') and context['deadline_job_id'] == request['novo_job_id']
+            if context["origem_status"] != "Aprovado" and not own_handoff:
+                raise RuntimeError("O render de origem precisa permanecer aprovado para enviar a alta.")
+            actor = request.get('confirmado_por') or request.get('criado_por')
+            cursor.execute("""SELECT u.nivel_acesso,c.nome AS cargo FROM usuario u
+                LEFT JOIN usuario_cargo uc ON uc.usuario_id=u.idusuario LEFT JOIN cargo c ON c.id=uc.cargo_id
+                WHERE u.idcolaborador=%s AND u.ativo=1""", (actor,))
+            users = cursor.fetchall()
+            manager = any(int(u.get('nivel_acesso') or 0) in {1,5} or any(t in str(u.get('cargo') or '').lower() for t in ('gestor','diretor','gerente')) for u in users)
+            if not users:
+                raise RuntimeError("O usuário responsável pela solicitação não está mais ativo.")
+            if not manager and int(context.get('responsavel_id') or 0) != int(actor or 0):
+                cursor.execute("SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id=%s AND colaborador_id=%s AND funcao_id IN (4,6) LIMIT 1", (request['imagem_id'],actor))
+                if not cursor.fetchone():
+                    raise RuntimeError("O usuário não tem mais permissão para enviar render desta imagem.")
             cursor.execute(
                 """SELECT id FROM deadline_comandos WHERE deadline_job_id = %s
                 AND tipo = 'DELETE_JOB' AND status IN ('PENDENTE', 'PROCESSANDO') LIMIT 1""",
@@ -224,6 +264,7 @@ class RenderEF:
             if (
                 existing
                 and existing["deadline_job_id"]
+                and existing["tentativa_status"] in {"VINCULADA", "EM_ANDAMENTO", "EM_APROVACAO", "ERRO", "EXCLUSAO_PENDENTE"}
                 and existing["deadline_job_id"] != request.get("novo_job_id")
             ):
                 raise RuntimeError(
@@ -233,13 +274,13 @@ class RenderEF:
                 existing
                 and not existing["deadline_job_id"]
                 and (
-                    not existing["id"]
-                    or existing["tentativa_status"] != "AGUARDANDO_JOB"
+                    existing["id"] and existing["tentativa_status"] not in {"AGUARDANDO_JOB", "APROVADA", "REPROVADA", "REFAZENDO", "ENCERRADA", "CANCELADA", "INCONSISTENTE", "CONCLUIDA_MANUALMENTE"}
                 )
             ):
                 raise RuntimeError(
                     "Já existe um render EF que não está aguardando um novo Job. Verifique esse registro antes de continuar."
                 )
+        context["submissao_uuid"] = request.get("submissao_uuid")
         return context
 
     def storage(self, context: dict, source: str, action: str) -> dict:
@@ -253,6 +294,8 @@ class RenderEF:
                     "source": source,
                     "image_name": context["imagem_nome"],
                     "action": action,
+                    "submissao_uuid": context.get("submissao_uuid"),
+                    "image_id": context.get("imagem_id"),
                 }
             ),
             capture_output=True,
@@ -274,6 +317,8 @@ class RenderEF:
         return data
 
     def source(self, request: dict) -> tuple[dict, dict, list[str]]:
+        if request.get("origem") == "NAS":
+            return self.revalidate_nas(request, json.loads(request["plano_json"]))
         data = parse_output(
             self.command(["-GetDeletedJob", request["origem_job_id"], "True"])
         )
@@ -347,6 +392,8 @@ class RenderEF:
         return data, info, files
 
     def inspect(self, request: dict):
+        if request.get("origem") == "NAS":
+            return self.inspect_nas(request)
         self.update(
             request, "INSPECAO", "Buscando o Job deletado e conferindo a cena original."
         )
@@ -390,6 +437,7 @@ class RenderEF:
                 "A chave de saída principal não foi encontrada no Job original."
             )
         plan = {
+            "origin": "JOB",
             "old_width": width,
             "old_height": height,
             "width": new_w,
@@ -407,6 +455,9 @@ class RenderEF:
             "renderer": info.get("SubmittedRendererName", ""),
             "outputs": outputs,
             "source_info": info,
+            "plugin_overrides": {"IgnoreMissingExternalFiles": "0", "IgnoreMissingDLLs": "0", "IgnoreMissingXREFs": "0"},
+            "parameter_sources": {key: "Job anterior" for key in ("camera", "renderer", "frames", "Pool", "Group", "Priority", "ChunkSize", "max_version")},
+            "max_version": info.get("Version", ""),
             "snapshot": snapshot(info),
             "job_snapshot": snapshot(data["_job_info"]),
             "generic": {
@@ -417,6 +468,7 @@ class RenderEF:
             "rounding": width * 5000 % max(width, height) != 0
             or height * 5000 % max(width, height) != 0,
         }
+        plan["parameter_sources"]["resolution"] = "Regra EF existente"
         self.update(
             request,
             "REVISAO",
@@ -426,6 +478,9 @@ class RenderEF:
         )
 
     def submit(self, request: dict, plan: dict, context: dict) -> str:
+        # No caller, UI or retry can bypass this deployment gate.
+        if os.getenv("DEADLINE_EF_SUBMIT_ENABLED", "0") != "1":
+            raise RuntimeError("Submissão real desabilitada. Aguarde autorização para o teste controlado da farm.")
         source_data, info, files = self.source(request)
         if (
             snapshot(info) != plan["snapshot"]
@@ -438,9 +493,12 @@ class RenderEF:
         self.update(
             request, "CRIANDO_PASTA", "Criando a pasta EF e a subpasta desta imagem."
         )
-        storage_result = self.storage(context, plan["source_folder"], "inspect")
-        if storage_result["destination"] != plan["destination"]:
-            raise RuntimeError("O destino do armazenamento mudou desde a inspeção.")
+        if plan.get("origin") != "NAS":
+            storage_result = self.storage(context, plan["source_folder"], "inspect")
+            if storage_result["destination"] != plan["destination"]:
+                raise RuntimeError("O destino do armazenamento mudou desde a inspeção.")
+        if os.path.isdir(plan["destination"]) and os.listdir(plan["destination"]):
+            raise RuntimeError("A pasta desta tentativa já contém arquivos. Nenhuma saída será sobrescrita.")
         self.worker.logger.info(
             "EF SFTP storage inspection completed",
             extra={"destination": plan["destination"]},
@@ -457,11 +515,27 @@ class RenderEF:
                 Path(temp) / "plugin_info.job",
             )
             job, plugin = dict(source_data["_job_info"]), dict(info)
+            if plan.get("origin") == "NAS":
+                from deadline_scene import fingerprint
+                isolated = Path(temp) / plan["scene"]
+                shutil.copyfile(plan["scene_path"], isolated)
+                if fingerprint(str(isolated))["sha256"] != plan["scene_fingerprint"]["sha256"]:
+                    raise RuntimeError("A cena mudou durante a preparação. Nenhum Job foi submetido.")
+                files = [str(isolated), *files[1:]]
+                # PreLoadScript is resolved relative to Deadline's job data dir.
+                # Add every resolved relative asset directory, then the source base.
+                for phase,name in [('PreLoadScript','flow_asset_base_pre.ms'),('PostLoadScript','flow_asset_base_post.ms')]:
+                    asset_script=Path(temp)/name
+                    asset_script.write_text(asset_base_script(plan,phase),encoding='utf-8-sig')
+                    files.append(str(asset_script))
+                if len({ntpath.basename(f).casefold() for f in files})!=len(files):
+                    raise RuntimeError('Arquivos auxiliares com nomes conflitantes. Submissão bloqueada.')
             if any(plugin.get(k) != v for k, v in plan["source_info"].items()):
                 raise RuntimeError(
                     "A exportação do Plugin Info não preservou todas as configurações da origem."
                 )
             plugin.update(plan["outputs"])
+            plugin.update(plan.get("plugin_overrides", {}))
             plugin[plan["width_key"]], plugin[plan["height_key"]] = str(
                 plan["width"]
             ), str(plan["height"])
@@ -477,6 +551,16 @@ class RenderEF:
             while f"ExtraInfoKeyValue{extra}" in job:
                 extra += 1
             job[f"ExtraInfoKeyValue{extra}"] = f"FlowRenderEFRequest={request['id']}"
+            if request.get("submissao_uuid"):
+                extra += 1
+                while f"ExtraInfoKeyValue{extra}" in job:
+                    extra += 1
+                job[f"ExtraInfoKeyValue{extra}"] = f"FlowSubmissionUUID={request['submissao_uuid']}"
+            if plan.get('snapshot_id'):
+                for value in ('FlowJobType=HighResolution', 'FlowSnapshotID='+str(plan['snapshot_id'])):
+                    extra+=1
+                    while f'ExtraInfoKeyValue{extra}' in job:extra+=1
+                    job[f'ExtraInfoKeyValue{extra}']=value
             write_info(job_path, job)
             write_info(plugin_path, plugin)
             self.context(request)
@@ -503,6 +587,7 @@ class RenderEF:
                     "O Deadline não confirmou o novo Job ID. Verifique o Monitor antes de qualquer novo envio. A solicitação não será reenviada automaticamente.",
                     status="ATENCAO",
                 )
+                self.reconcile_submission(request)
                 return ""
             new_id = found.group(1)
             if not valid_job_id(new_id) or new_id == request["origem_job_id"]:
@@ -532,6 +617,7 @@ class RenderEF:
         expected = {
             **plan["source_info"],
             **plan["outputs"],
+            **plan.get("plugin_overrides", {}),
             plan["width_key"]: str(plan["width"]),
             plan["height_key"]: str(plan["height"]),
         }
@@ -567,11 +653,31 @@ class RenderEF:
         scene = Path(folder) / plan["scene"]
         if not scene.is_file() or scene.stat().st_size != plan["scene_size"]:
             raise RuntimeError("O .max auxiliar não foi encontrado no novo Job.")
+        if plan.get("origin") == "NAS":
+            from deadline_scene import fingerprint
+            from deadline_snapshots import SnapshotStore,decode_snapshot
+            row=SnapshotStore(self.db).get(request['origem_job_id'])
+            if not row or row['id']!=plan['snapshot_id'] or row['conteudo_sha256']!=plan['snapshot_sha256']:
+                raise RuntimeError('Snapshot histórico divergente. Job permanecerá suspenso.')
+            decode_snapshot(row)
+            for phase,name in [('PreLoadScript','flow_asset_base_pre.ms'),('PostLoadScript','flow_asset_base_post.ms')]:
+                script=Path(folder)/name
+                if not script.is_file() or script.read_text(encoding='utf-8-sig')!=asset_base_script(plan,phase):
+                    raise RuntimeError('Script de resolução de dependências divergente. Job permanecerá suspenso.')
+            if fingerprint(str(scene))["sha256"] != plan["scene_fingerprint"]["sha256"]:
+                raise RuntimeError("A cópia da cena no Deadline difere do .max confirmado.")
+            for asset in plan.get('auxiliaries',[]):
+                copied=Path(folder)/asset['name']
+                if fingerprint(str(copied))['sha256']!=asset['sha256']:
+                    raise RuntimeError('Auxiliar divergente antes da liberação: '+asset['name'])
         return result, data
 
     def execute(self, request: dict):
         plan = json.loads(request["plano_json"])
         context = self.context(request)
+        if request.get("submissao_iniciada_em") and not request.get("novo_job_id"):
+            if not self.reconcile_submission(request):
+                return
         fresh_submission = not request.get("novo_job_id")
         if fresh_submission:
             if not self.submit(request, plan, context):
@@ -581,49 +687,14 @@ class RenderEF:
             raise RuntimeError(
                 "O novo Job não permaneceu suspenso durante a conferência. Verifique-o no Deadline Monitor antes de retomar."
             )
+        if not request.get("render_ef_id") and str(data.get("Status", "")).lower() != "suspended":
+            raise RuntimeError("O Job reconciliado não está suspenso. Intervenção operacional necessária antes de vincular.")
         self.update(
             request,
             "VINCULANDO",
             "Registrando o render EF e sua tentativa no fluxo padrão do worker.",
         )
-        candidate = {
-            "imagem_id": request["imagem_id"],
-            "status_id": context["status_id"],
-        }
-        attempt = self.worker.repository.create_first_render(
-            candidate, request["novo_job_id"], plan["job_name"], "VINCULADA"
-        )
-        if attempt["outcome"] in {"JOB_ALREADY_KNOWN", "RACE_RENDER_EXISTS"}:
-            with self.db.transaction() as cursor:
-                cursor.execute(
-                    """SELECT rt.* FROM render_tentativas rt JOIN render_alta r ON r.idrender_alta = rt.render_id
-                    WHERE rt.imagem_id = %s AND rt.status_id = %s AND rt.ativa = 1 AND r.excluido_em IS NULL""",
-                    (request["imagem_id"], context["status_id"]),
-                )
-                candidates = cursor.fetchall()
-            if len(candidates) != 1:
-                raise RuntimeError(
-                    "O registro EF não tem uma tentativa única para receber o Job. O novo Job permanecerá suspenso."
-                )
-            attempt = candidates[0]
-            if not attempt["deadline_job_id"]:
-                if not self.worker.repository.bind_job(
-                    attempt["id"], request["novo_job_id"], plan["job_name"]
-                ):
-                    raise RuntimeError(
-                        "Não foi possível vincular o novo Job à tentativa EF."
-                    )
-                attempt.update(
-                    deadline_job_id=request["novo_job_id"], status="VINCULADA"
-                )
-            if attempt["deadline_job_id"] != request["novo_job_id"]:
-                raise RuntimeError(
-                    "A tentativa EF foi vinculada a outro Job. O novo Job permanecerá suspenso."
-                )
-        elif attempt["outcome"] != "FIRST_RENDER_CREATED":
-            raise RuntimeError(
-                "A criação do registro EF foi recusada pelo fluxo padrão."
-            )
+        attempt = self.worker.repository.bind_ef_submission(request, context, plan)
         self.update(
             request,
             "LIBERANDO",
@@ -638,6 +709,8 @@ class RenderEF:
         self.context(request)
         _, data = self.validate(request, plan)
         if str(data.get("Status", "")).lower() == "suspended":
+            if os.getenv("DEADLINE_EF_SUBMIT_ENABLED", "0") != "1":
+                raise RuntimeError("Liberação real desabilitada; o mesmo Job permanecerá suspenso.")
             self.command(["-ResumeJob", request["novo_job_id"]])
         job_result, data = self.client.get_job(request["novo_job_id"])
         if not job_result.success or str(data.get("Status", "")).lower() not in {
@@ -665,11 +738,23 @@ class RenderEF:
             status="CONCLUIDO",
         )
 
+    def reconcile_submission(self, request):
+        if request.get("novo_job_id"):
+            return True
+        matches = self.client.find_submission(request["submissao_uuid"], request["id"])
+        if len(matches) != 1:
+            self.update(request, "SUBMISSAO_INCERTA",
+                        "A reconciliação não encontrou um único Job confirmado. A solicitação permanece reservada e não será reenviada.",
+                        status="ATENCAO")
+            return False
+        self.update(request, "VALIDANDO", "Job localizado pelo identificador da submissão; validando o mesmo Job, sem novo envio.", novo_job_id=matches[0])
+        return True
+
     def process_one(self) -> bool:
         if self.enabled is None:
             with self.db.transaction() as cursor:
                 cursor.execute(
-                    "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'render_ef_solicitacoes'"
+                    "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'render_ef_solicitacoes' AND COLUMN_NAME='submissao_uuid'"
                 )
                 self.enabled = bool(cursor.fetchone())
         if not self.enabled:
@@ -677,23 +762,44 @@ class RenderEF:
         with self.db.transaction() as cursor:
             # Stale executions stop for review, never blindly resubmit.
             cursor.execute(
-                """UPDATE render_ef_solicitacoes SET status = 'ATENCAO',
+                """UPDATE render_ef_solicitacoes SET status = CASE WHEN submissao_iniciada_em IS NULL AND novo_job_id IS NULL AND etapa NOT IN ('SUBMETENDO','SUBMISSAO_INCERTA') THEN 'ERRO' ELSE 'ATENCAO' END,
                 mensagem = 'O processamento foi interrompido. Confira o Job no Monitor antes de retomar; nenhum novo envio automático será feito.'
                 WHERE status = 'PROCESSANDO' AND atualizado_em < NOW() - INTERVAL 30 MINUTE"""
             )
             cursor.execute(
-                "SELECT * FROM render_ef_solicitacoes WHERE status IN ('PENDENTE', 'EXECUTAR') ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED"
+                """SELECT * FROM render_ef_solicitacoes WHERE status IN ('PENDENTE', 'INSPECIONAR', 'SNAPSHOT_PREPARAR', 'EXECUTAR', 'EXECUTAR_V2', 'CONFIGURER', 'RECONCILIAR')
+                OR (status='SNAPSHOT_ARQUIVO' AND atualizado_em < NOW()-INTERVAL 5 SECOND)
+                OR (status='SNAPSHOT_AGUARDAR' AND atualizado_em < NOW()-INTERVAL 15 SECOND)
+                OR (status='ATENCAO' AND submissao_iniciada_em IS NOT NULL AND novo_job_id IS NULL
+                    AND atualizado_em < NOW() - INTERVAL 1 MINUTE)
+                ORDER BY id LIMIT 1 FOR UPDATE"""
             )
             request = cursor.fetchone()
             if not request:
                 return False
             mode = request["status"]
+            if mode == "ATENCAO":
+                mode = "RECONCILIAR"
             cursor.execute(
                 "UPDATE render_ef_solicitacoes SET status = 'PROCESSANDO', worker_id = %s WHERE id = %s",
                 (self.worker.settings.worker_id, request["id"]),
             )
+        request.update(worker_id=self.worker.settings.worker_id, status="PROCESSANDO")
         try:
-            self.inspect(request) if mode == "PENDENTE" else self.execute(request)
+            if mode in {"PENDENTE", "INSPECIONAR", "SNAPSHOT_PREPARAR", "SNAPSHOT_AGUARDAR", "SNAPSHOT_ARQUIVO"}:
+                if request.get('origem') == 'NAS':
+                    self.context(request)
+                    path = self.selected_scene(request)
+                    self.inspect_nas(request)
+                else:
+                    self.inspect(request)
+            elif mode == "CONFIGURER":
+                self.configure_nas(request)
+            elif mode == "RECONCILIAR":
+                if self.reconcile_submission(request):
+                    self.execute(request)
+            else:
+                self.execute(request)
         except Exception as exc:
             self.worker.logger.exception(
                 "manual EF request failed",
@@ -703,9 +809,13 @@ class RenderEF:
                 },
             )
             message = str(exc)
+            self.file_checks.pop(request['id'],None)
+            if mode == "CONFIGURER":
+                self.update(request, "CONFIGURACAO", message, status="CONFIGURAR")
+                return True
             if request.get("novo_job_id"):
                 message += f" Job EF: {request['novo_job_id']}. Não será criado outro Job ao retomar."
-            uncertain = request.get("etapa") == "SUBMETENDO" and not request.get(
+            uncertain = bool(request.get("submissao_iniciada_em")) and not request.get(
                 "novo_job_id"
             )
             if uncertain:

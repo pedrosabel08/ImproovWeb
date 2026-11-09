@@ -259,7 +259,16 @@ ok($part['quantidade_pagos'] < 7 && $part['situacao'] === 'PARCIALMENTE_PAGO', '
 ok($s->pagar('2026-09', 17, 'paid-17', '2026-10-07', 'Teste isolado')['pago_centavos'] === $part['pago_centavos'], 'Retry pagamento não duplica ledger');
 blocked(fn () => $s->pagar('2026-09', 17, 'paid-17', '2026-10-07', 'Outro conteúdo'), 'Chave não pode mudar de conteúdo');
 blocked(fn () => $s->concluirPagamento('2026-09', 'quit-early'), 'Quitação exige todos pagos');
+$snapshotAntes = $c->query('SELECT id,snapshot_hash FROM pagamento_fechamento_revisao ORDER BY id')->fetch_all(MYSQLI_ASSOC);
+$c->query('UPDATE funcao_imagem SET colaborador_id=9 WHERE idfuncao_imagem=900');
+blocked(fn () => $s->pagar('2026-09', 3, 'changed-paid-source', '2026-10-07'), 'Troca de responsável em serviço remunerado continua bloqueando');
+$c->query('UPDATE funcao_imagem SET colaborador_id=3 WHERE idfuncao_imagem=900');
+$c->query('UPDATE funcao_imagem SET colaborador_id=9,pagamento=0 WHERE idfuncao_imagem=902');
+$tarefaAntes = $c->query('SELECT * FROM funcao_imagem WHERE idfuncao_imagem=902')->fetch_assoc();
 $race = race($f['db'], 'pagar');
+ok($c->query('SELECT * FROM funcao_imagem WHERE idfuncao_imagem=902')->fetch_assoc() === $tarefaAntes, 'Tarefa sem saldo transferida não bloqueia nem sofre alteração');
+ok((int)$c->query("SELECT COUNT(*) n FROM pagamento_itens WHERE origem='funcao_imagem' AND origem_id=902")->fetch_assoc()['n'] === 0, 'Tarefa transferida sem saldo não gera lançamento');
+ok($c->query('SELECT id,snapshot_hash FROM pagamento_fechamento_revisao ORDER BY id')->fetch_all(MYSQLI_ASSOC) === $snapshotAntes, 'Liquidação preserva snapshots do fechamento');
 ok($race[0]['ok'] && $race[1]['ok'] && $race[0]['pago'] === $race[1]['pago'], 'Dois pagamentos concorrentes retornam a mesma liquidação');
 ok((int)$c->query("SELECT COUNT(*) n FROM pagamento_competencia_evento WHERE chave='concurrent-paid-3'")->fetch_assoc()['n'] === 1, 'Pagamento concorrente registra um evento e um valor');
 

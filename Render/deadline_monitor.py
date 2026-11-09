@@ -996,6 +996,9 @@ def process_deadline_job(
     error_info=None,
     processing_plan=None,
 ):
+    from deadline_inspection import is_inspection
+    if is_inspection(job_data or {}):
+        return False
     is_deadline_job = bool(deadline_job_id)
     strict_attempt = attempt_context is not None
     event_mode = strict_attempt and processing_plan is not None
@@ -1014,6 +1017,13 @@ def process_deadline_job(
 
     render_output = extract_render_output(job_data or {}, raw_job_output)
     xml_data = deadline_status_to_legacy(job_data or {}, task_data or {}, render_output)
+    if xml_data.get("Complete") == "Yes":
+        from deadline_output import validate_completed, OutputValidationError
+        # Raise before state/POS/previews/notifications; the worker rolls back and retries.
+        try:
+            validate_completed(cursor, deadline_job_id, job_data or {}, convert_deadline_render_path)
+        except (RuntimeError, OSError, ValueError) as exc:
+            raise OutputValidationError(str(exc)) from exc
     has_error, errors = error_info or deadline_error_info(
         deadline_job_id, job_data or {}, task_data or {}
     )

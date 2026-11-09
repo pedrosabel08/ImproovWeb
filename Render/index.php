@@ -375,7 +375,7 @@ $conn->close();
                     </button>
                     <div class="modal-more-menu" id="modalMoreMenu" role="menu" aria-hidden="true">
                         <button type="button" class="btn-action btn-render-ef" id="renderHighResolution" role="menuitem" disabled>
-                            <i class="fa-solid fa-expand" aria-hidden="true"></i> Render em alta
+                            <i class="fa-solid fa-expand" aria-hidden="true"></i> Enviar render em alta
                         </button>
                         <button type="button" class="btn-action btn-excluir" id="deleteRender" role="menuitem">
                             <i class="fa-solid fa-trash"></i> Excluir
@@ -402,17 +402,36 @@ $conn->close();
 
     <div id="renderEfModal" class="render-ef-overlay" hidden>
         <section class="render-ef-dialog" role="dialog" aria-modal="true" aria-labelledby="renderEfTitle" data-csrf="<?php echo htmlspecialchars($renderEfCsrf, ENT_QUOTES, 'UTF-8'); ?>">
-            <header><div><h2 id="renderEfTitle">Render em alta</h2><p>5000 px na maior dimensão · etapa EF</p></div><button type="button" id="renderEfClose" class="modal-close" aria-label="Fechar render em alta"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
+            <header><div><h2 id="renderEfTitle">Enviar render em alta</h2><p>Configuração do render aprovado · arquivo final confirmado</p></div><button type="button" id="renderEfClose" class="modal-close" aria-label="Fechar render em alta"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
             <div class="render-ef-status" role="status" aria-live="polite" aria-atomic="true">
                 <canvas id="renderEfOrb" data-thinking-orb data-orb-state="composing" data-orb-size="56" aria-label="Conferindo o render"></canvas>
                 <div><strong id="renderEfStage">Conferindo o render</strong><p id="renderEfMessage"></p></div>
             </div>
             <p id="renderEfWorkerWarning" class="render-ef-warning" role="alert" hidden>O worker atualizado não confirmou atividade recentemente. A solicitação permanecerá na fila até ele ficar disponível.</p>
-            <ol class="render-ef-steps" aria-label="Etapas do envio"><li data-ef-step="0">Conferir origem</li><li data-ef-step="1">Revisar destino</li><li data-ef-step="2">Criar Job EF</li><li data-ef-step="3">Registrar no Flow</li><li data-ef-step="4">Liberar render</li></ol>
+            <ol class="render-ef-steps" aria-label="Etapas do envio"><li data-ef-step="0">Recuperar configuração</li><li data-ef-step="1">Revisar destino</li><li data-ef-step="2">Criar Job EF</li><li data-ef-step="3">Registrar no Flow</li><li data-ef-step="4">Liberar render</li></ol>
+            <dl id="renderEfContext" class="render-ef-details"></dl>
+            <form id="renderEfSource" class="render-ef-form" hidden>
+                <input type="hidden" name="origin" value="NAS">
+                <label id="renderEfFileLabel">Arquivo .max final<select id="renderEfFile" name="file_id" required><option value="">Selecione o arquivo aprovado</option></select></label>
+                <label>Maior dimensão da alta (px)<input id="renderEfTargetEdge" name="edge" type="number" min="1" max="65536" value="5000" required></label>
+                <p id="renderEfFileInfo" class="render-ef-notice"></p>
+                <label class="render-ef-check"><input name="file_confirmed" type="checkbox" value="1" required> Confirmo que este é o arquivo .max final desta imagem.</label>
+                <button type="submit" class="btn-action">Preparar render em alta</button>
+            </form>
+            <form id="renderEfConfiguration" class="render-ef-form" hidden>
+                <p class="render-ef-notice">O Deadline não informou a resolução original. Preencha as dimensões comprovadas do render aprovado para preservar sua proporção.</p>
+                <label>Largura original (px)<input name="source_width" type="number" min="1" max="65536" required></label>
+                <label>Altura original (px)<input name="source_height" type="number" min="1" max="65536" required></label>
+                <label class="render-ef-check"><input name="dimensions_confirmed" type="checkbox" value="1" required> Confirmo as dimensões originais do render aprovado.</label>
+                <button type="submit" class="btn-action">Confirmar dimensões</button>
+            </form>
+            <ul id="renderEfBlockers" class="render-ef-warning" hidden></ul>
             <dl id="renderEfDetails" class="render-ef-details" hidden></dl>
+            <details id="renderEfDependencies" hidden><summary>Saídas do render</summary><div></div></details>
+            <details id="renderEfHistory"><summary>Histórico de solicitações</summary><ol></ol></details>
             <p id="renderEfBackground" class="render-ef-notice" hidden>A solicitação continua após fechar esta janela. Use Render em alta novamente para acompanhar.</p>
-            <p id="renderEfNotice" class="render-ef-notice" hidden>O novo Job usará uma cópia do .max auxiliar original e será conferido enquanto estiver suspenso, antes de liberar a renderização.</p>
-            <footer><button type="button" id="renderEfCancel" class="btn-action">Fechar</button><button type="button" id="renderEfRetry" class="btn-action" hidden>Conferir novamente</button><button type="button" id="renderEfConfirm" class="btn-action btn-render-ef" hidden>Confirmar envio EF</button><button type="button" id="renderEfOpen" class="btn-action btn-render-ef" hidden>Abrir render EF</button></footer>
+            <p id="renderEfNotice" class="render-ef-notice" hidden>O Job será criado suspenso e liberado somente após validação e vínculo no Flow. A submissão real depende da habilitação autorizada no serviço.</p>
+            <footer><button type="button" id="renderEfCancel" class="btn-action">Fechar</button><button type="button" id="renderEfAbandon" class="btn-action" hidden>Encerrar preparação</button><button type="button" id="renderEfNew" class="btn-action" hidden>Nova preparação</button><button type="button" id="renderEfRetry" class="btn-action" hidden>Reconciliar o mesmo Job</button><button type="button" id="renderEfConfirm" class="btn-action btn-render-ef" hidden>Enviar render em alta</button><button type="button" id="renderEfOpen" class="btn-action btn-render-ef" hidden>Abrir render EF</button></footer>
         </section>
     </div>
 

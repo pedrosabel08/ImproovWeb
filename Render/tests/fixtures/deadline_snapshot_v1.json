@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "job_id": "aaaaaaaaaaaaaaaaaaaaaaaa",
+  "attempt_id": 1,
+  "image_id": 10,
+  "job_info": {
+    "Name": "1.QA_TEST-Imagem-R01",
+    "Plugin": "3dsmax",
+    "Pool": "still",
+    "Group": "farm_dedicated",
+    "Priority": "100",
+    "Frames": "0",
+    "ChunkSize": "1",
+    "Denylist": "",
+    "OutputDirectory0": "M:\\QA_TEST\\R01",
+    "OutputFilename0": "Imagem..exr"
+  },
+  "plugin_info": {
+    "Version": "2024",
+    "SceneFile": "",
+    "Camera": "Camera_aprovada",
+    "SubmittedRendererName": "Corona:Corona",
+    "RenderWidth": "1920",
+    "RenderHeight": "1080",
+    "Padding": "4",
+    "RemovePadding": "0",
+    "RenderOutput": "M:\\QA_TEST\\R01\\Imagem..exr",
+    "RenderElementOutputFilename0": "M:\\QA_TEST\\R01\\Imagem_Beauty..exr",
+    "IgnoreMissingExternalFiles": "1",
+    "IgnoreMissingDLLs": "0",
+    "IgnoreMissingXREFs": "1"
+  },
+  "metadata": {
+    "job_id": "aaaaaaaaaaaaaaaaaaaaaaaa",
+    "origin": "DEADLINE_ATIVO",
+    "primary_scene": "original.max",
+    "auxiliary_names": ["original.max"]
+  },
+  "auxiliaries": [],
+  "recovered_fields": {"ChunkSize": "GetJob/GetDeletedJob"}
+}

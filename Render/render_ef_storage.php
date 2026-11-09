@@ -31,6 +31,12 @@ try {
         throw new RuntimeException('Nome de imagem inválido para criar a pasta EF.');
     }
     $leaf = preg_replace('/_EF$/i', '', $imageName) . '_EF';
+    if (!empty($input['submissao_uuid'])) {
+        if (!preg_match('/^[a-f0-9-]{36}$/D', $input['submissao_uuid']) || (int)($input['image_id'] ?? 0) < 1) {
+            throw new RuntimeException('Identificador da tentativa inválido.');
+        }
+        $leaf = 'flow_' . (int)$input['image_id'] . '_' . $input['submissao_uuid'];
+    }
     $share = strtolower($parts[2]);
     $root = rtrim(improov_env('IMPROOV_SFTP_' . strtoupper($share) . '_ROOT', '/mnt/' . $share), '/');
     $remoteSource = $root . '/' . $parts[3];

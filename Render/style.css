@@ -1674,6 +1674,19 @@ body {
   gap: 8px;
   margin-top: 20px;
 }
+.render-ef-form { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; margin:18px 0; }
+.render-ef-form label { display:flex; flex-direction:column; gap:7px; min-width:0; font-size:13px; }
+.render-ef-form input:not([type=checkbox]), .render-ef-form select { width:100%; min-width:0; padding:10px; box-sizing:border-box; border:1px solid var(--border-modal); border-radius:var(--radius-sm); background:var(--bg-section); color:var(--text-primary); font:inherit; }
+.render-ef-form small,.render-ef-origin { display:block; color:var(--text-secondary); font-size:11px; }
+.render-ef-form p,.render-ef-form .render-ef-check { grid-column:1/-1; }
+.render-ef-form .render-ef-check { flex-direction:row; align-items:flex-start; line-height:1.5; }
+.render-ef-check input { flex:none; margin-top:3px; }
+.render-ef-dialog details { margin-top:16px; font-size:12px; overflow-wrap:anywhere; }
+.render-ef-dialog summary { cursor:pointer; padding:10px 0; }
+.render-ef-dialog details button { border:0; background:transparent; color:var(--accent); text-align:left; padding:8px 0; cursor:pointer; overflow-wrap:anywhere; font:inherit; }
+.render-ef-dialog details p { margin:8px 0; overflow-wrap:anywhere; }
+.render-ef-dialog .render-ef-details + .render-ef-details { margin-top:12px; }
+@media(max-width:600px) { .render-ef-form {grid-template-columns:minmax(0,1fr);} .render-ef-dialog footer .btn-action {flex:1 1 130px;} }
 .render-ef-dialog footer .btn-action {
   white-space: normal;
   height: auto;

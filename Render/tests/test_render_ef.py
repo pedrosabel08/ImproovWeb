@@ -150,6 +150,11 @@ class SmbDestinationReadinessTests(unittest.TestCase):
 
 
 class RenderEFTests(unittest.TestCase):
+    def setUp(self):
+        # All submissions in this suite use fake clients, never deadlinecommand.
+        gate = patch.dict(os.environ, {"DEADLINE_EF_SUBMIT_ENABLED": "1"})
+        gate.start()
+        self.addCleanup(gate.stop)
     def test_deadline_utf8_paths_survive_windows_locale(self):
         completed = SimpleNamespace(
             returncode=0,

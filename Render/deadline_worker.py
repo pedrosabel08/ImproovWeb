@@ -21,6 +21,7 @@ from deadline_domain import (
 )
 from deadline_repository import DeadlineRepository
 from deadline_render_ef import RenderEF
+from deadline_output import OutputValidationError
 
 BASE_DIR = Path(__file__).resolve().parent
 LOG_DIR = BASE_DIR / "logs"
@@ -167,6 +168,8 @@ class DeadlineWorker:
         deadline_monitor.EXTERNAL_LOGGER = self.logger
         self.business = deadline_monitor
         self.render_ef = RenderEF(self)
+        from deadline_snapshots import SnapshotCapture
+        self.snapshots = SnapshotCapture(self)
 
     def observation_fingerprint(
         self, target: str, job_data: dict, task_data: dict
@@ -190,6 +193,8 @@ class DeadlineWorker:
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def process_one_command(self) -> bool:
+        if hasattr(self, 'snapshots'):
+            self.snapshots.tick()
         if self.render_ef.process_one():
             return True
         command = self.repository.reserve_command(self.settings.worker_id)
@@ -267,6 +272,10 @@ class DeadlineWorker:
             job_result, job_data = self.client.get_job(attempt["deadline_job_id"])
             if not job_result.success:
                 self.logger.warning("active job could not be read", extra=context)
+                continue
+            from deadline_inspection import is_inspection
+            if is_inspection(job_data):
+                self.logger.error('Inspection job excluded from render synchronization', extra=context)
                 continue
             task_result, task_data = self.client.get_tasks(attempt["deadline_job_id"])
             if not task_result.success:
@@ -387,7 +396,9 @@ class DeadlineWorker:
                         "status": target,
                     },
                 )
-            except Exception:
+            except Exception as exc:
+                if isinstance(exc, OutputValidationError):
+                    self.repository.record_output_issue(attempt, str(exc))
                 self.logger.exception("active synchronization failed", extra=context)
 
     def discover(self) -> None:
@@ -403,6 +414,9 @@ class DeadlineWorker:
         for job_id in unknown:
             job_result, job_data = self.client.get_job(job_id)
             if not job_result.success:
+                continue
+            from deadline_inspection import is_inspection
+            if is_inspection(job_data):
                 continue
             job_name = str(
                 job_data.get("Name") or job_data.get("JobName") or ""
@@ -420,7 +434,7 @@ class DeadlineWorker:
                     task_data = {}
                 target = state_from_deadline(job_data, task_data)
                 created = self.repository.create_first_render(
-                    target_info, job_id, job_name, target
+                    target_info, job_id, job_name, "VINCULADA" if target == "EM_APROVACAO" else target
                 )
                 outcome = created["outcome"]
                 if outcome == "FIRST_RENDER_CREATED":
@@ -567,7 +581,9 @@ class DeadlineWorker:
                 "first render processed",
                 extra={**context, "target": target, "result": "FIRST_RENDER_CREATED"},
             )
-        except Exception:
+        except Exception as exc:
+            if isinstance(exc, OutputValidationError):
+                self.repository.record_output_issue(attempt, str(exc))
             self.logger.exception("first render processing failed", extra=context)
 
     def reconcile(self) -> None:
@@ -619,6 +635,10 @@ class DeadlineWorker:
             )
 
     def heartbeat(self, status: str = "ATIVO", details: str = "") -> None:
+        if not details:
+            from deadline_snapshots import capture_enabled, flow_enabled
+            details = json.dumps({'ef_submit_enabled': os.getenv('DEADLINE_EF_SUBMIT_ENABLED', '0') == '1',
+                                  'snapshot_capture_enabled': capture_enabled(), 'snapshot_flow_enabled': flow_enabled(), 'snapshot_version': 1})
         self.repository.heartbeat(
             self.settings.worker_id,
             self.hostname,

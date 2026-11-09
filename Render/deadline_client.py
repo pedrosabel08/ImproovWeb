@@ -228,6 +228,23 @@ class DeadlineClient:
             result.output = result.output or f"Job {job_id} returned no data"
         return result, data
 
+    def find_submission(self, token: str, request_id: int) -> list[str]:
+        """Read-only reconciliation. An incomplete scan is never proof of absence."""
+        if not re.fullmatch(r"[a-f0-9-]{36}", token):
+            raise ValueError("invalid submission uuid")
+        result, ids = self.list_job_ids()
+        if not result.success:
+            raise RuntimeError("Não foi possível consultar o Deadline para reconciliar a submissão.")
+        matches = []
+        for job_id in ids:
+            response, data = self.get_job(job_id)
+            if not response.success:
+                raise RuntimeError("A consulta de reconciliação ficou incompleta. Nenhum reenvio é permitido.")
+            metadata = str(data.get("ExtraInfoDictionary", ""))
+            if re.search(r"(?:^|[,\s])FlowSubmissionUUID=" + re.escape(token) + r"(?:$|[,\s])", metadata):
+                matches.append(job_id)
+        return matches
+
     def get_tasks(self, job_id: str) -> tuple[CommandResult, dict]:
         if not valid_job_id(job_id):
             return CommandResult(False, "invalid job id"), {}

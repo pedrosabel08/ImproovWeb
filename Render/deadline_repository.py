@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import hashlib
 from datetime import datetime, timedelta
 
 from deadline_domain import (
@@ -221,7 +222,7 @@ class DeadlineRepository:
                     status = VALUES(status),
                     detalhes = VALUES(detalhes)
                 """,
-                (worker_id, hostname, pid, "2.1", status, details[:65535]),
+                (worker_id, hostname, pid, "2.4", status, details[:65535]),
             )
 
     def reserve_command(self, worker_id: str) -> dict | None:
@@ -825,6 +826,59 @@ class DeadlineRepository:
                 {"job_name": job_name},
             )
             return True
+
+    def bind_ef_submission(self, request: dict, context: dict, plan: dict) -> dict:
+        """Atomic EF handoff; previous attempts retain their Job IDs."""
+        with self.database.transaction() as cursor:
+            cursor.execute("SELECT status_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra=%s FOR UPDATE", (request["imagem_id"],))
+            image = cursor.fetchone()
+            if not image or int(image["status_id"]) != int(context["status_id"]):
+                raise RuntimeError("A etapa da imagem mudou; o Job permanecerá suspenso.")
+            cursor.execute("SELECT * FROM render_ef_solicitacoes WHERE id=%s FOR UPDATE", (request["id"],))
+            locked = cursor.fetchone()
+            if not locked or locked["status"] != "PROCESSANDO" or locked["novo_job_id"] != request["novo_job_id"] or locked["worker_id"] != request["worker_id"]:
+                raise RuntimeError("A reserva mudou; o Job permanecerá suspenso.")
+            cursor.execute("SELECT id FROM render_ef_solicitacoes WHERE imagem_id=%s AND id<>%s AND operacao_ativa_imagem IS NOT NULL LIMIT 1 FOR UPDATE", (request["imagem_id"], request["id"]))
+            if cursor.fetchone():
+                raise RuntimeError("Existe outra submissão ativa para a imagem.")
+            cursor.execute("SELECT idrender_alta FROM render_alta WHERE imagem_id=%s AND status_id=%s FOR UPDATE", (request["imagem_id"], context["status_id"]))
+            render = cursor.fetchone()
+            if not render:
+                cursor.execute("SELECT responsavel_id FROM render_alta WHERE idrender_alta=%s", (request["render_origem_id"],))
+                owner = cursor.fetchone()
+                cursor.execute("INSERT INTO render_alta (imagem_id,status_id,responsavel_id,status,data) VALUES (%s,%s,%s,'Não iniciado',NOW())", (request["imagem_id"], context["status_id"], owner["responsavel_id"]))
+                render = {"idrender_alta": cursor.lastrowid}
+            render_id = render["idrender_alta"]
+            cursor.execute("SELECT * FROM render_tentativas WHERE render_id=%s AND ativa=1 FOR UPDATE", (render_id,))
+            active = cursor.fetchone()
+            if active and active["deadline_job_id"] == request["novo_job_id"]:
+                return active
+            if active and active["status"] in {"VINCULADA", "EM_ANDAMENTO", "EM_APROVACAO", "ERRO", "EXCLUSAO_PENDENTE"}:
+                raise RuntimeError("Já existe uma tentativa EF ativa. O novo Job continuará suspenso.")
+            if active and active["status"] == "AGUARDANDO_JOB" and not active["deadline_job_id"]:
+                attempt_id = active["id"]
+                cursor.execute("UPDATE render_tentativas SET deadline_job_id=%s,deadline_job_name=%s,status='VINCULADA',vinculado_em=NOW() WHERE id=%s", (request["novo_job_id"], plan["job_name"], attempt_id))
+            else:
+                if active:
+                    cursor.execute("UPDATE render_tentativas SET ativa=0,encerrado_em=COALESCE(encerrado_em,NOW()) WHERE id=%s", (active["id"],))
+                cursor.execute("SELECT COALESCE(MAX(numero_tentativa),0)+1 AS numero FROM render_tentativas WHERE render_id=%s", (render_id,))
+                number = cursor.fetchone()["numero"]
+                cursor.execute("""INSERT INTO render_tentativas (render_id,imagem_id,status_id,numero_tentativa,deadline_job_id,deadline_job_name,status,ativa,vinculado_em)
+                    VALUES (%s,%s,%s,%s,%s,%s,'VINCULADA',1,NOW())""", (render_id, request["imagem_id"], context["status_id"], number, request["novo_job_id"], plan["job_name"]))
+                attempt_id = cursor.lastrowid
+            cursor.execute("UPDATE render_alta SET deadline_job_id=%s,job_folder=%s,status='Não iniciado',excluido_em=NULL,previa_jpg=NULL,has_error=0,errors=NULL WHERE idrender_alta=%s", (request["novo_job_id"], plan["destination"], render_id))
+            self._insert_event_dict(cursor, attempt_id, "VINCULO", request["novo_job_id"], {"origem": request["origem"], "solicitacao_id": request["id"], "submissao_uuid": request["submissao_uuid"], "snapshot_id": plan.get('snapshot_id'), "tentativa_aprovada_id": plan.get('approved_attempt_id')})
+            cursor.execute("SELECT * FROM render_tentativas WHERE id=%s", (attempt_id,))
+            return cursor.fetchone()
+
+    def record_output_issue(self, attempt: dict, message: str):
+        """Audits an output failure without advancing business/approval state."""
+        message = 'Saída aguardando validação: ' + message[:1500]
+        with self.database.transaction() as cursor:
+            cursor.execute("""UPDATE render_alta r JOIN render_tentativas rt ON rt.render_id=r.idrender_alta
+                SET r.has_error=1,r.errors=%s WHERE rt.id=%s AND rt.ativa=1 AND rt.deadline_job_id=%s
+                AND r.deadline_job_id=%s AND r.excluido_em IS NULL""", (message,attempt['id'],attempt['deadline_job_id'],attempt['deadline_job_id']))
+            self._insert_event_dict(cursor,attempt['id'],'VALIDACAO_SAIDA',hashlib.sha256(message.encode()).hexdigest(),{'message':message})
 
     def claim_event_tuple(
         self, cursor, attempt_id: int, event_type: str, key: str, data: dict

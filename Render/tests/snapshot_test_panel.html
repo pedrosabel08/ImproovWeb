@@ -1,0 +1,26 @@
+<aside style="padding:12px;border:1px solid #818cf8;border-radius:10px;margin:12px 0;background:#202441;color:#f4f4ff">
+  <strong>Teste local de render em alta</strong>
+  <p style="margin:6px 0;font-size:12px">Somente este fluxo é simulado. O botão Enviar conclui o teste sem criar jobs na farm.</p>
+  <label style="display:block;font-size:12px">Cenário
+    <select id="qaSnapshotScenario" style="width:100%;padding:8px;margin:5px 0;background:#151824;color:#fff">
+      <option value="valid">Snapshot disponível · job original removido</option>
+      <option value="dimensions">Snapshot sem resolução original</option>
+      <option value="missing">Sem snapshot e sem job original</option>
+    </select>
+  </label>
+  <button type="button" id="qaSnapshotApply" class="btn-action">Reiniciar neste cenário</button>
+  <small id="qaSnapshotFeedback" style="display:block;margin-top:6px" role="status"></small>
+</aside>
+<script>
+document.getElementById('qaSnapshotApply').addEventListener('click',async function () {
+  const button=this, feedback=document.getElementById('qaSnapshotFeedback'); button.disabled=true;
+  try {
+    const data=new URLSearchParams({action:'qa_reset',render_id:document.getElementById('modal_idrender').textContent.trim(),scenario:document.getElementById('qaSnapshotScenario').value,csrf:document.querySelector('.render-ef-dialog').dataset.csrf});
+    const response=await fetch('render_ef.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:data});
+    const result=await response.json(); if(!response.ok) throw new Error(result.message);
+    document.getElementById('renderEfClose').click();
+    setTimeout(()=>document.getElementById('renderHighResolution').click(),100);
+    feedback.textContent='Cenário aplicado. Escolha e confirme o arquivo final.';
+  } catch(error) {feedback.textContent=error.message;} finally {button.disabled=false;}
+});
+</script>

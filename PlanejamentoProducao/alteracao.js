@@ -17,7 +17,7 @@
     typePriority: [],
     priorityEnabled: false,
     dayIndex: 0,
-    dayCount: 3,
+    dayCount: 5,
     backlogLevel: "",
   };
   const escape = (value) =>
@@ -154,7 +154,7 @@
     }
     return found;
   }
-  function applyDecisions(decisions) {
+  async function applyDecisions(decisions) {
     if (!editable()) return false;
     if (
       state.items.some((i) => {
@@ -176,6 +176,7 @@
       renderPlanner();
       return false;
     }
+    const originalItems = state.items;
     const next = state.items.map((i) => {
       const change = decisions.get(Number(i.entrega_item_id));
       if (!change) return { ...i };
@@ -206,9 +207,9 @@
       );
       if (!already) {
         if (
-          !window.confirm(
+          !(await confirmAction(
             `${personName(s.colaborador_id)} · ${formatDate(s.dia)}: capacidade excedida em ${num(s.excesso)} pts. Planejar mesmo assim?`,
-          )
+          ))
         ) {
           renderRows();
           renderPlanner();
@@ -222,6 +223,15 @@
         );
         item.excecao_capacidade = s;
       }
+    }
+    if (!editable() || state.items !== originalItems) {
+      message(
+        "O planejamento mudou enquanto a confirmação estava aberta. Revise e tente novamente.",
+        true,
+      );
+      renderRows();
+      renderPlanner();
+      return false;
     }
     state.items = next;
     next.forEach((i) => {
@@ -241,7 +251,7 @@
       name = escape(item.imagem_nome),
       canEdit = editable() && pendingWork(item),
       dis = canEdit ? "" : " disabled";
-    return `<article class="ap-card${state.selected.has(id) ? " is-selected" : ""}" data-card="${id}" draggable="${canEdit}"><span class="ap-drag" aria-hidden="true">⠿</span><input type="checkbox" data-card-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${dis}>${thumbnail(item)}<div><strong>${name}</strong><small>N${escape(level(item))} · ${pointsLabel(item)}${item.motivo_bloqueio ? " · " + escape(item.motivo_bloqueio) : ""}${backlog && complete(item) ? " · Planejada" : ""}</small></div>${!backlog ? `<button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${dis}>${item.fixado ? "◆" : "◇"}</button><button type="button" class="ap-card-remove" data-unplan="${id}" aria-label="Retirar ${name} do planejamento"${dis}>×</button>` : ""}</article>`;
+    return `<article class="ap-card${state.selected.has(id) ? " is-selected" : ""}" data-card="${id}" draggable="${canEdit}"><span class="ap-drag" aria-hidden="true">⠿</span><input type="checkbox" data-card-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${dis}>${thumbnail(item)}<div><strong title="${name}">${name}</strong><small>N${escape(level(item))} · ${pointsLabel(item)}${item.motivo_bloqueio ? " · " + escape(item.motivo_bloqueio) : ""}${backlog && complete(item) ? " · Planejada" : ""}</small></div>${!backlog ? `<button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${dis}>${item.fixado ? "◆" : "◇"}</button><button type="button" class="ap-card-remove" data-unplan="${id}" aria-label="Retirar ${name} do planejamento"${dis}>×</button>` : ""}</article>`;
   }
   function renderPlanner() {
     if (!state.plan) return;
@@ -319,7 +329,7 @@
           `<button type="button" class="ap-button${state.backlogLevel === n ? " is-active" : ""}" data-backlog-level="${n}" aria-pressed="${state.backlogLevel === n}">${n ? "N" + n : "Todas"} ${work.filter((i) => !n || level(i) === n).length}</button>`,
       )
       .join("");
-    const q = $("ap-backlog-search").value.trim().toLocaleLowerCase("pt-BR");
+    const q = $("ap-search").value.trim().toLocaleLowerCase("pt-BR");
     const backlog = work.filter(
       (i) =>
         (!$("ap-backlog-pending").checked || !complete(i)) &&
@@ -475,11 +485,27 @@
             : Number(item.responsavel_planejado_id) === Number(person))),
     );
   };
+  async function confirmAction(text) {
+    if (!window.FlowAlert?.confirm) return false;
+    const result = await window.FlowAlert.confirm({
+      title: "Confirmar ação",
+      message: text,
+    });
+    return result.isConfirmed;
+  }
   function message(text, error = false) {
-    $("ap-message").hidden = !text;
-    $("ap-message").textContent = text;
-    $("ap-message").classList.toggle("is-error", error);
-    $("ap-message").setAttribute("role", error ? "alert" : "status");
+    if (!text) return;
+    if (error)
+      window.FlowAlert?.error({
+        title: "Atenção",
+        message: text,
+        mode: "modal",
+      });
+    else if (typeof window.Toastify === "function")
+      window
+        .Toastify({ text, duration: 4000, gravity: "top", position: "right" })
+        .showToast();
+    else window.FlowAlert?.info({ message: text });
   }
   function setLoading(
     loading,
@@ -725,9 +751,9 @@
       !state.reviewedDraft
     ) {
       if (
-        !window.confirm(
+        !(await confirmAction(
           "Substituir o rascunho anterior pelas decisões revisadas nesta tela?",
-        )
+        ))
       )
         return;
       state.reviewedDraft = true;
@@ -768,11 +794,11 @@
     ).length;
     if (
       action === "confirmar" &&
-      !window.confirm(
+      !(await confirmAction(
         confirmed()
           ? `${movedDays} imagens mudaram de dia; ${movedPeople} mudaram de responsável. Confirmar a nova versão e aplicar os responsáveis? A baseline será preservada.`
           : "Confirmar o planejamento e aplicar os responsáveis às tarefas desta entrega?",
-      )
+      ))
     )
       return;
     state.saving = true;
@@ -910,11 +936,16 @@
     renderRows();
     renderPlanner();
   });
-  $("ap-search").addEventListener("input", () => state.plan && renderRows());
+  $("ap-search").addEventListener("input", () => {
+    if (state.plan) {
+      renderRows();
+      renderPlanner();
+    }
+  });
   ["ap-pending", "ap-level", "ap-person"].forEach((id) =>
     $(id).addEventListener("change", () => state.plan && renderRows()),
   );
-  $("ap-apply").addEventListener("click", () => {
+  $("ap-apply").addEventListener("click", async () => {
     if (!editable()) return;
     const person = Number($("ap-bulk-person").value) || null;
     const start = $("ap-bulk-start").value;
@@ -931,7 +962,7 @@
         ...(finish ? { fim_planejado: finish } : {}),
       }),
     );
-    if (applyDecisions(changes))
+    if (await applyDecisions(changes))
       message(
         "Decisões aplicadas à seleção. Salve o rascunho para guardá-las.",
       );
@@ -974,22 +1005,24 @@
     renderRows();
     renderSummary();
   });
-  $("ap-cancel-replan").addEventListener("click", () => {
+  $("ap-cancel-replan").addEventListener("click", async () => {
     if (
       state.dirty &&
-      !window.confirm("Descartar as alterações locais deste replanejamento?")
+      !(await confirmAction(
+        "Descartar as alterações locais deste replanejamento?",
+      ))
     )
       return;
     state.replanning = false;
     acceptPlan(state.plan);
     message("");
   });
-  $("ap-reload").addEventListener("click", () => {
+  $("ap-reload").addEventListener("click", async () => {
     if (
       !state.dirty ||
-      window.confirm(
+      (await confirmAction(
         "Recarregar os dados? As alterações locais não salvas serão descartadas.",
-      )
+      ))
     )
       load();
   });
@@ -1061,7 +1094,6 @@
         $("ap-history-snapshot").textContent = error.message;
     }
   });
-  $("ap-backlog-search").addEventListener("input", renderPlanner);
   $("ap-backlog-pending").addEventListener("change", renderPlanner);
   $("ap-backlog-levels").addEventListener("click", (event) => {
     const b = event.target.closest("[data-backlog-level]");

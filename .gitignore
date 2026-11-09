@@ -175,4 +175,4 @@ ALMA/scripts/reports
 !.env.example
 /Backup/**/*.sql*
 
-/output
+/output/

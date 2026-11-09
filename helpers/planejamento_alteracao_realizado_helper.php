@@ -1,4 +1,9 @@
 <?php
+function flow_pac_ciclo_concluido(?array $ciclo): bool
+{
+    return $ciclo && $ciclo['situacao'] === 'ENCERRADO' && in_array($ciclo['motivo_encerramento'], ['CONCLUSAO', 'ENVIO_APROVACAO', 'SINCRONIZACAO_ENVIO_APROVACAO'], true);
+}
+
 /** Fatos de execução somente por ciclo vinculado à identidade da rodada. */
 function flow_pac_resumir_realizado(array $itens,array $baseline,array $vigente,array $ciclos): array
 {
@@ -8,7 +13,7 @@ function flow_pac_resumir_realizado(array $itens,array $baseline,array $vigente,
     foreach ($itens as $i) {
         $id=$i['entrega_item_id'];$lista=$porItem[$id]??[];$ultimo=$lista?end($lista):null;
         $inicio=$lista?min(array_column($lista,'inicio_em')):null;
-        $concluido=$ultimo && $ultimo['situacao']==='ENCERRADO' && in_array($ultimo['motivo_encerramento'],['CONCLUSAO','ENVIO_APROVACAO','SINCRONIZACAO_ENVIO_APROVACAO'],true);
+        $concluido=flow_pac_ciclo_concluido($ultimo);
         $fim=$concluido?$ultimo['encerrado_em']:null;$dia=$fim?substr($fim,0,10):null;
         $plano=$vs[$id]??[];$previsto=$plano['fim_planejado']??null;
         $atraso=$dia&&$previsto&&$dia>$previsto?flow_planejamento_dias_uteis_entre($previsto,$dia):0;
@@ -16,16 +21,20 @@ function flow_pac_resumir_realizado(array $itens,array $baseline,array $vigente,
         $resultado[]=$r;
         $pontos=(float)($plano['pontos_snapshot']??0);$resp=$plano['responsavel_planejado_id']??null;
         if ($resp&&$previsto) {
-            $dias[$resp][$previsto]??=['planejados'=>0,'concluidos'=>0,'pendentes_do_planejado'=>0];
+            $dias[$resp][$previsto]??=['planejados'=>0,'concluidos'=>0,'pendentes_do_planejado'=>0,'carga_pendente'=>0];
             $dias[$resp][$previsto]['planejados']+=$pontos;
-            if (!$dia||$dia>$previsto) $dias[$resp][$previsto]['pendentes_do_planejado']+=$pontos;
+            $pendente = !$dia && empty($i['data_entregue']) && ($i['pode_editar_datas'] ?? true);
+            $pendenteNoDia = ($dia ?: substr((string)($i['data_entregue'] ?? ''), 0, 10)) > $previsto || $pendente;
+            if ($pendenteNoDia) $dias[$resp][$previsto]['pendentes_do_planejado']+=$pontos;
+            if ($pendente) $dias[$resp][$previsto]['carga_pendente']+=$pontos;
             if (!isset($plano['pontos_snapshot'])) {
                 $semPontos[$resp][$previsto]['planejados']=true;
-                if (!$dia||$dia>$previsto) $semPontos[$resp][$previsto]['pendentes_do_planejado']=true;
+                if ($pendenteNoDia) $semPontos[$resp][$previsto]['pendentes_do_planejado']=true;
+                if ($pendente) $semPontos[$resp][$previsto]['carga_pendente']=true;
             }
         }
         if ($dia&&$r['executor_id']) {
-            $dias[$r['executor_id']][$dia]??=['planejados'=>0,'concluidos'=>0,'pendentes_do_planejado'=>0];
+            $dias[$r['executor_id']][$dia]??=['planejados'=>0,'concluidos'=>0,'pendentes_do_planejado'=>0,'carga_pendente'=>0];
             $dias[$r['executor_id']][$dia]['concluidos']+=$pontos;
             if (!isset($plano['pontos_snapshot'])) $semPontos[$r['executor_id']][$dia]['concluidos']=true;
         }

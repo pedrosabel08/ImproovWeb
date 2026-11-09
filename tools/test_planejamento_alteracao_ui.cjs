@@ -734,6 +734,47 @@ function fixture() {
         (await page.locator("#ap-rows select").first().isDisabled()),
       "Leitura sem permissão de gestão não permite editar",
     );
+    plan.pode_editar = true;
+    plan.planejamento.estado = "CONFIRMADO";
+    plan.planejamento.rascunho_pendente = false;
+    Object.assign(plan.itens[0], {
+      data_entregue: "2026-10-29 12:00:00",
+      pode_editar_datas: false,
+      pode_editar_responsavel: false,
+      motivo_bloqueio: "Entregue ao cliente",
+    });
+    Object.assign(plan.itens[1], {
+      pode_editar_datas: true,
+      pode_editar_responsavel: false,
+      motivo_bloqueio_responsavel: "Responsável protegido durante a execução",
+    });
+    await page.locator("#ap-reload").evaluate((el) => { el.hidden = false; });
+    await page.locator("#ap-reload").click();
+    await page.waitForFunction(() => document.getElementById("ap-reload").hidden);
+    check(
+      (await page.locator("#ap-partial").textContent()).includes("1 entregue · 9 elegíveis"),
+      "Entrega mista mostra quantidades e permite iniciar replanejamento",
+    );
+    await page.locator("#ap-replan").click();
+    const deliveredRow = page.locator('#ap-rows tr[data-id="1"]');
+    const activeRow = page.locator('#ap-rows tr[data-id="2"]');
+    check(
+      (await deliveredRow.textContent()).includes("Entregue ao cliente") &&
+        (await deliveredRow.locator('input[type="date"]').isDisabled()) &&
+        (await deliveredRow.locator("select").isDisabled()) &&
+        (await deliveredRow.locator("[data-select]").isDisabled()),
+      "Imagem entregue permanece visível e somente leitura",
+    );
+    check(
+      (await activeRow.locator('input[type="date"]').isEnabled()) &&
+        (await activeRow.locator("select").isDisabled()),
+      "Imagem em execução permite data e protege atribuição",
+    );
+    await page.locator("#ap-select-all").check();
+    check((await page.locator("#ap-selection").textContent()) === "9 selecionadas", "Seleção em massa exclui itens bloqueados");
+    await page.locator("#ap-save").click();
+    await page.waitForFunction(() => !document.getElementById("ap-save").disabled);
+    check(posts.at(-1).itens.length === 9 && !posts.at(-1).itens.some((i) => i.entrega_item_id === 1), "Rascunho envia apenas decisões elegíveis");
     check(errors.length === 0, `Sem erros JavaScript: ${errors.join("; ")}`);
     console.log(
       JSON.stringify(

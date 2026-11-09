@@ -42,7 +42,7 @@ function flow_alt_item(array $r, array $semana): array
     $dia = $confirmado ? $r['fim_planejado'] : null;
     $resp = $confirmado ? $r['responsavel_planejado_id'] : $r['colaborador_id'];
     $status = trim((string)($r['status_funcao'] ?? '')) ?: 'Não iniciado';
-    $concluida = flow_alt_concluida($status);
+    $concluida = !empty($r['conclusao_comprovada']) || flow_alt_concluida($status);
     $ef = (int)$r['imagem_status_id'] === 6;
     return [
         'funcao_id' => (int)$r['idfuncao_imagem'], 'imagem_id' => (int)$r['imagem_id'], 'imagem_nome' => $r['imagem_nome'],
@@ -114,7 +114,8 @@ function flow_alt_planner_carregar(mysqli $conn, array $semana, array $acesso): 
     if ($disponivel) {
         $historicoWhere = " WHERE p.modelo='IMAGENS_ALTERACAO' AND o.status_obra=0
             AND pi.fim_planejado BETWEEN ? AND ?
-            AND (ei.data_entregue IS NOT NULL OR (jc.situacao='ENCERRADO' AND jc.motivo_encerramento='CONCLUSAO'))";
+            AND (ei.data_entregue IS NOT NULL OR (jc.situacao='ENCERRADO'
+                AND jc.motivo_encerramento IN ('CONCLUSAO','ENVIO_APROVACAO','SINCRONIZACAO_ENVIO_APROVACAO')))";
         $historyParams = [$semana['inicio'], $semana['fim']]; $historyTypes = 'ss';
         if (($acesso['modo'] ?? '') !== 'gestao') {
             $historicoWhere .= " AND EXISTS (SELECT 1 FROM obra_pacote op WHERE op.obra_id=i.obra_id AND op.tipo=? AND op.status='ATIVO')";
@@ -132,9 +133,18 @@ function flow_alt_planner_carregar(mysqli $conn, array $semana, array $acesso): 
             LEFT JOIN (SELECT entrega_item_id,situacao,motivo_encerramento,
                 ROW_NUMBER() OVER (PARTITION BY entrega_item_id ORDER BY id DESC) AS posicao
                 FROM janela_operacional_ciclo WHERE entrega_item_id IS NOT NULL) jc ON jc.entrega_item_id=ei.id AND jc.posicao=1" . $historicoWhere, $historyTypes, $historyParams);
-        $atuaisPorItem = array_flip(array_filter(array_column($rows, 'entrega_item_id')));
+        $atuaisPorItem = [];
+        foreach ($rows as $index => $r) {
+            if ($r['entrega_item_id']) $atuaisPorItem[$r['entrega_item_id']] = $index;
+        }
         foreach ($historico as $r) {
-            if (!isset($atuaisPorItem[$r['entrega_item_id']])) { $r['historica'] = true; $rows[] = $r; }
+            $index = $atuaisPorItem[$r['entrega_item_id']] ?? null;
+            if ($index !== null) {
+                $rows[$index]['conclusao_comprovada'] = true;
+            } else {
+                $r['historica'] = true;
+                $rows[] = $r;
+            }
         }
     }
     $items = []; $mapas = ['obras' => [], 'colaboradores' => [], 'status_imagens' => []];

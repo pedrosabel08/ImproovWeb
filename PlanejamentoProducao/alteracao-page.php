@@ -22,8 +22,9 @@ if (!isset($planejamentoPorImagem) || !$planejamentoPorImagem) {
   <button id="ap-reload" type="button" class="ap-button" hidden>Recarregar dados da entrega</button>
 
   <div id="ap-content" hidden>
+    <p id="ap-partial" class="ap-message" role="status" hidden></p>
     <section class="ap-overview" aria-label="Resumo da entrega">
-      <dl><div><dt>Retorno recebido</dt><dd id="ap-received">—</dd></div><div><dt>Prazo cliente</dt><dd id="ap-due">—</dd></div><div><dt>Demanda da entrega</dt><dd id="ap-demand">—</dd></div></dl>
+      <dl><div><dt>Retorno recebido</dt><dd id="ap-received">—</dd></div><div><dt>Prazo cliente</dt><dd id="ap-due">—</dd></div><div><dt>Carga pendente da Alteração</dt><dd id="ap-demand">—</dd></div></dl>
       <div class="ap-progress"><strong id="ap-complete">0/0 completos</strong><span id="ap-status">Planejamento pendente</span><progress id="ap-progress" max="1" value="0" aria-label="Imagens com planejamento completo"></progress><small id="ap-missing"></small></div>
       <div class="ap-save"><span id="ap-save-status" aria-live="polite"></span><div class="ap-actions"><button type="button" id="ap-replan" class="ap-button" hidden>Replanejar</button><button type="button" id="ap-save" class="ap-button">Salvar rascunho</button><button type="button" id="ap-confirm" class="ap-button ap-primary">Confirmar planejamento</button></div></div>
     </section>

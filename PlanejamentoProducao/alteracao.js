@@ -49,17 +49,20 @@
   const hasResponsible = (item) =>
     confirmed() && !state.replanning
       ? Number(item.responsavel_planejado_id) > 0
-      : validPerson(item.responsavel_planejado_id);
+      : validPerson(item.responsavel_planejado_id) || keepsResponsible(item);
+  const keepsResponsible = (item) =>
+    Number(item.responsavel_preservado_id) > 0 &&
+    Number(item.responsavel_preservado_id) === Number(item.responsavel_planejado_id);
   const complete = (item) =>
     hasResponsible(item) &&
     validDate(item.fim_planejado) &&
     ((confirmed() && !state.replanning) ||
       (Number(item.pontos_snapshot) > 0 &&
-        Boolean(
+        (keepsResponsible(item) || Boolean(
           state.plan.capacidade?.agenda?.[item.responsavel_planejado_id]?.[
             item.fim_planejado
           ],
-        )));
+        ))));
   const confirmed = () => Boolean(state.plan?.planejamento?.versao_atual_id);
   const editable = () =>
     !!state.plan &&
@@ -67,6 +70,10 @@
     (!confirmed() || state.replanning) &&
     !state.saving &&
     !state.conflict;
+  const pendingWork = (item) => item.pode_editar_datas !== false;
+  const canAssign = (item) => item.pode_editar_responsavel !== false;
+  const pendingItems = () => state.items.filter(pendingWork);
+  const suggestibleItems = () => pendingItems().filter(canAssign);
   const personName = (id) =>
     state.plan.colaboradores.find((person) => Number(person.id) === Number(id))
       ?.nome ||
@@ -108,6 +115,7 @@
     return items
       .filter(
         (i) =>
+          pendingWork(i) &&
           Number(i.responsavel_planejado_id) === Number(id) &&
           i.fim_planejado === d,
       )
@@ -117,7 +125,7 @@
     const found = [];
     const keys = new Set(
       items
-        .filter((i) => i.responsavel_planejado_id && i.fim_planejado)
+        .filter((i) => pendingWork(i) && i.responsavel_planejado_id && i.fim_planejado)
         .map((i) => `${i.responsavel_planejado_id}|${i.fim_planejado}`),
     );
     for (const key of keys) {
@@ -143,12 +151,26 @@
   }
   function applyDecisions(decisions) {
     if (!editable()) return false;
+    if (state.items.some((i) => {
+      const change = decisions.get(Number(i.entrega_item_id));
+      return change && (!pendingWork(i) || (!canAssign(i) &&
+        change.responsavel_planejado_id != null &&
+        change.responsavel_planejado_id !== i.responsavel_planejado_id));
+    })) {
+      message("A seleção contém uma imagem bloqueada para essa alteração.", true);
+      renderRows();
+      renderPlanner();
+      return false;
+    }
     const next = state.items.map((i) => {
       const change = decisions.get(Number(i.entrega_item_id));
-      return change ? { ...i, ...change, excecao_capacidade: null } : { ...i };
+      if (!change) return { ...i };
+      const nextItem = { ...i, ...change, excecao_capacidade: null };
+      if (!canAssign(i)) nextItem.responsavel_planejado_id = i.responsavel_planejado_id;
+      return nextItem;
     });
     if (
-      next.some((i) => i.fim_planejado && !days().includes(i.fim_planejado))
+      next.some((i) => pendingWork(i) && i.fim_planejado && !days().includes(i.fim_planejado))
     ) {
       message("Escolha um dia útil dentro da agenda disponível.", true);
       renderRows();
@@ -174,6 +196,7 @@
         }
         const item = next.find(
           (i) =>
+            pendingWork(i) &&
             Number(i.responsavel_planejado_id) === s.colaborador_id &&
             i.fim_planejado === s.dia,
         );
@@ -196,8 +219,9 @@
   function card(item, backlog = false) {
     const id = Number(item.entrega_item_id),
       name = escape(item.imagem_nome),
-      dis = editable() ? "" : " disabled";
-    return `<article class="ap-card${state.selected.has(id) ? " is-selected" : ""}" data-card="${id}" draggable="${editable()}"><span class="ap-drag" aria-hidden="true">⠿</span><input type="checkbox" data-card-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${dis}>${thumbnail(item)}<div><strong>${name}</strong><small>N${escape(level(item))} · ${pointsLabel(item)}${backlog && complete(item) ? " · Planejada" : ""}</small></div>${!backlog ? `<button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${dis}>${item.fixado ? "◆" : "◇"}</button><button type="button" class="ap-card-remove" data-unplan="${id}" aria-label="Retirar ${name} do planejamento"${dis}>×</button>` : ""}</article>`;
+      canEdit = editable() && pendingWork(item),
+      dis = canEdit ? "" : " disabled";
+    return `<article class="ap-card${state.selected.has(id) ? " is-selected" : ""}" data-card="${id}" draggable="${canEdit}"><span class="ap-drag" aria-hidden="true">⠿</span><input type="checkbox" data-card-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${dis}>${thumbnail(item)}<div><strong>${name}</strong><small>N${escape(level(item))} · ${pointsLabel(item)}${item.motivo_bloqueio ? " · " + escape(item.motivo_bloqueio) : ""}${backlog && complete(item) ? " · Planejada" : ""}</small></div>${!backlog ? `<button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${dis}>${item.fixado ? "◆" : "◇"}</button><button type="button" class="ap-card-remove" data-unplan="${id}" aria-label="Retirar ${name} do planejamento"${dis}>×</button>` : ""}</article>`;
   }
   function renderPlanner() {
     if (!state.plan) return;
@@ -224,18 +248,19 @@
     $("ap-day-next").disabled =
       state.dayIndex + visibleDays.length >= allDays.length;
     $("ap-more-days").disabled = mobile || state.dayCount >= 10;
-    const total = state.items.reduce((s, i) => s + points(i), 0),
-      ready = state.items.filter(complete);
-    const unknownPoints = state.items.some((i) => i.pontos_snapshot == null);
+    const work = pendingItems();
+    const total = work.reduce((s, i) => s + points(i), 0),
+      ready = work.filter(complete);
+    const unknownPoints = work.some((i) => i.pontos_snapshot == null);
     $("ap-demand").textContent = unknownPoints
-      ? `Pontos não registrados · ${state.items.length} imagens`
-      : `${num(total)} pontos · ${state.items.length} imagens`;
+      ? `Pontos não registrados · ${work.length} imagens`
+      : `${num(total)} pontos · ${work.length} imagens`;
     $("ap-allocated").textContent = unknownPoints
       ? `${ready.length} imagens planejadas · sem snapshot de pontos`
       : `${num(ready.reduce((s, i) => s + points(i), 0))} / ${num(total)} pts alocados`;
     $("ap-level-summary").innerHTML = [1, 2, 3, 4, 5]
       .map((n) => {
-        const items = state.items.filter((i) => Number(level(i)) === n);
+        const items = work.filter((i) => Number(level(i)) === n);
         return `<div><span class="ap-level" data-level="${n}">N${n}</span><small>${items.length} imagens</small><strong>${items.some((i) => i.pontos_snapshot == null) ? "Sem pontos" : num(items.reduce((s, i) => s + points(i), 0)) + " pts"}</strong></div>`;
       })
       .join("");
@@ -246,7 +271,7 @@
           .at(-1)
       : null;
     const due = date(state.plan.entrega.data_prevista),
-      completePlan = ready.length === state.items.length && ready.length > 0;
+      completePlan = ready.length === work.length && ready.length > 0;
     $("ap-forecast").textContent = finish
       ? formatDate(finish) + (completePlan ? "" : " · parcial")
       : "—";
@@ -266,16 +291,16 @@
           : `Após o prazo · ${margin} dias úteis`;
     $("ap-margin").className =
       finish && finish > due ? "ap-late" : "ap-healthy";
-    const pending = state.items.filter((i) => !complete(i));
+    const pending = work.filter((i) => !complete(i));
     $("ap-backlog-count").textContent = `${pending.length} não planejadas`;
     $("ap-backlog-levels").innerHTML = ["", "1", "2", "3", "4", "5"]
       .map(
         (n) =>
-          `<button type="button" class="ap-button${state.backlogLevel === n ? " is-active" : ""}" data-backlog-level="${n}" aria-pressed="${state.backlogLevel === n}">${n ? "N" + n : "Todas"} ${state.items.filter((i) => !n || level(i) === n).length}</button>`,
+          `<button type="button" class="ap-button${state.backlogLevel === n ? " is-active" : ""}" data-backlog-level="${n}" aria-pressed="${state.backlogLevel === n}">${n ? "N" + n : "Todas"} ${work.filter((i) => !n || level(i) === n).length}</button>`,
       )
       .join("");
     const q = $("ap-backlog-search").value.trim().toLocaleLowerCase("pt-BR");
-    const backlog = state.items.filter(
+    const backlog = work.filter(
       (i) =>
         (!$("ap-backlog-pending").checked || !complete(i)) &&
         (!state.backlogLevel || level(i) === state.backlogLevel) &&
@@ -339,7 +364,7 @@
                     i.fim_planejado === d,
                 );
                 const unknownLoad = items.some(
-                    (i) => i.pontos_snapshot == null,
+                    (i) => pendingWork(i) && i.pontos_snapshot == null,
                   ),
                   unknownOffer = !a || a.avisos?.length;
                 const offerLabel = !a
@@ -370,11 +395,11 @@
       ? `${usedIds.size} ${usedIds.size === 1 ? "colaborador utilizado" : "colaboradores utilizados"} · capacidade histórica não estimada`
       : `${usedIds.size} ${usedIds.size === 1 ? "colaborador utilizado" : "colaboradores utilizados"} · ${num([...usedIds].reduce((sum, id) => sum + Number(state.plan.configuracao?.colaboradores?.[id] ?? state.plan.configuracao?.capacidade_padrao ?? 0), 0))} pts/dia nominais`;
     $("ap-grid-summary").textContent =
-      `${ready.length}/${state.items.length} imagens · conclusão ${formatDate(finish)}`;
-    $("ap-suggest").disabled = !editable() || !state.people.size;
+      `${ready.length}/${work.length} imagens · conclusão ${formatDate(finish)}`;
+    $("ap-suggest").disabled = !editable() || !state.people.size || !suggestibleItems().length;
     $("ap-suggest-order").disabled = !editable() || !state.people.size;
     const types = [
-      ...new Set(state.items.map((i) => i.tipo_imagem).filter(Boolean)),
+      ...new Set(suggestibleItems().map((i) => i.tipo_imagem).filter(Boolean)),
     ].sort((a, b) => a.localeCompare(b, "pt-BR"));
     state.typePriority = [
       ...state.typePriority.filter((type) => types.includes(type)),
@@ -455,22 +480,25 @@
     $("ap-empty").textContent = state.items.length
       ? "Nenhuma imagem corresponde aos filtros."
       : "Esta entrega ainda não possui imagens para planejar.";
-    const disabled = editable() ? "" : " disabled";
     $("ap-rows").innerHTML = items
       .map((item) => {
         const id = Number(item.entrega_item_id);
+        const disabled = editable() && pendingWork(item) ? "" : " disabled";
         const name = escape(item.imagem_nome || `Imagem ${item.imagem_id}`);
-        return `<tr data-id="${id}" class="${state.selected.has(id) ? "is-selected" : ""}"><td><input type="checkbox" data-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${disabled}></td><td><div class="ap-table-image">${thumbnail(item)}<span>${name}</span></div></td><td>${levelBadge(item)}</td><td data-label="Responsável"><select data-field="responsavel_planejado_id" aria-label="Responsável de ${name}"${disabled}>${personOptions(item.responsavel_planejado_id)}</select></td><td data-label="Pontos">${pointsLabel(item)}</td><td data-label="Dia planejado"><input type="date" data-field="fim_planejado" aria-label="Dia planejado de ${name}" value="${escape(item.fim_planejado || "")}"${disabled}></td><td><span data-item-status>${itemStatus(item)}</span> <button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${disabled}>${item.fixado ? "◆" : "◇"}</button></td></tr>`;
+        return `<tr data-id="${id}" class="${state.selected.has(id) ? "is-selected" : ""}"><td><input type="checkbox" data-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${disabled}></td><td><div class="ap-table-image">${thumbnail(item)}<span>${name}</span></div></td><td>${levelBadge(item)}</td><td data-label="Responsável"><select data-field="responsavel_planejado_id" aria-label="Responsável de ${name}" title="${escape(item.motivo_bloqueio_responsavel || "")}"${canAssign(item) ? disabled : " disabled"}>${personOptions(item.responsavel_planejado_id)}</select></td><td data-label="Pontos">${pointsLabel(item)}</td><td data-label="Dia planejado"><input type="date" data-field="fim_planejado" aria-label="Dia planejado de ${name}" value="${escape(item.fim_planejado || "")}"${disabled}></td><td><span data-item-status>${itemStatus(item)}</span> <button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${disabled}>${item.fixado ? "◆" : "◇"}</button></td></tr>`;
       })
       .join("");
     renderSelection();
   }
   function itemStatus(item) {
+    const notice = item.motivo_bloqueio ||
+      (item.atribuicao_divergente ? "Atribuição operacional difere do plano" : item.motivo_bloqueio_responsavel);
+    if (notice) return `<span class="ap-item-state">${escape(notice)}</span>`;
     const ready = complete(item);
     return `<span class="ap-item-state${ready ? " is-complete" : ""}">${ready ? (confirmed() && !state.replanning ? "Planejada" : "Completa") : item.inicio_planejado && item.fim_planejado && item.inicio_planejado > item.fim_planejado ? "Rever datas" : "Pendente"}</span>`;
   }
   function renderSelection() {
-    const items = visibleItems();
+    const items = visibleItems().filter(pendingWork);
     const count = items.filter((item) =>
       state.selected.has(Number(item.entrega_item_id)),
     ).length;
@@ -482,15 +510,16 @@
     $("ap-clear").disabled = !editable() || !state.selected.size;
   }
   function renderSummary() {
-    const count = state.items.filter(complete).length;
-    const withoutPerson = state.items.filter(
+    const work = pendingItems();
+    const count = work.filter(complete).length;
+    const withoutPerson = work.filter(
       (item) => !hasResponsible(item),
     ).length;
-    const withoutDate = state.items.filter(
+    const withoutDate = work.filter(
       (item) => !validDate(item.fim_planejado),
     ).length;
-    $("ap-complete").textContent = `${count}/${state.items.length} completos`;
-    $("ap-progress").max = state.items.length || 1;
+    $("ap-complete").textContent = `${count}/${work.length} completos`;
+    $("ap-progress").max = work.length || 1;
     $("ap-progress").value = count;
     $("ap-status").textContent =
       confirmed() && !state.replanning
@@ -499,7 +528,7 @@
           ? "Replanejamento em rascunho"
           : count === 0
             ? "Planejamento pendente"
-            : count === state.items.length
+            : count === work.length
               ? "Pronto para confirmar"
               : "Planejamento parcial";
     $("ap-missing").textContent =
@@ -517,7 +546,7 @@
       confirmed() && !state.replanning;
     $("ap-save").disabled = !editable();
     $("ap-confirm").disabled =
-      !editable() || count !== state.items.length || !state.items.length;
+      !editable() || count !== work.length || !work.length;
     $("ap-replan").hidden = !confirmed() || state.replanning;
     $("ap-replan").disabled =
       state.plan.pode_editar === false || state.saving || state.conflict;
@@ -529,7 +558,7 @@
   }
   function renderDistribution() {
     const groups = new Map();
-    state.items.forEach((item) => {
+    pendingItems().forEach((item) => {
       const id = Number(item.responsavel_planejado_id) || 0;
       if (!groups.has(id))
         groups.set(id, {
@@ -576,10 +605,10 @@
   function acceptPlan(plan) {
     const firstLoad = !state.plan;
     state.plan = plan;
-    if (
-      plan.planejamento.estado === "REPLANEJAMENTO" ||
-      (plan.planejamento.versao_atual_id && plan.planejamento.rascunho_pendente)
-    )
+    state.reviewedDraft = false;
+    if (!plan.planejamento.rascunho_requer_revisao &&
+      (plan.planejamento.estado === "REPLANEJAMENTO" ||
+      (plan.planejamento.versao_atual_id && plan.planejamento.rascunho_pendente)))
       state.replanning = true;
     state.items = (plan.itens || []).map((item) => ({
       ...item,
@@ -608,6 +637,10 @@
     state.selected.clear();
     state.dirty = false;
     state.conflict = false;
+    const eligible = pendingItems().length;
+    const delivered = state.items.filter((i) => i.data_entregue).length;
+    $("ap-partial").hidden = !confirmed() || eligible === state.items.length;
+    $("ap-partial").textContent = `Replanejamento parcial · ${delivered} ${delivered === 1 ? "entregue" : "entregues"} · ${eligible} ${eligible === 1 ? "elegível" : "elegíveis"}`;
     const e = plan.entrega;
     $("ap-project").textContent =
       `${e.nomenclatura || "Projeto"} · ${e.etapa || "Alteração"}`;
@@ -621,7 +654,9 @@
     $("ap-reload").hidden = true;
     renderRows();
     renderSummary();
-    if (plan.desatualizado)
+    if (plan.planejamento.rascunho_requer_revisao)
+      message("O contexto do rascunho salvo mudou. Revise o plano atual e refaça as decisões antes de salvar.", true);
+    else if (plan.desatualizado)
       message(
         "O contexto da entrega mudou desde a versão confirmada. Revise as imagens e confirme um replanejamento antes de continuar.",
         true,
@@ -652,6 +687,10 @@
   }
   async function save(action) {
     if (!editable()) return;
+    if (state.plan.planejamento.rascunho_requer_revisao && !state.reviewedDraft) {
+      if (!window.confirm("Substituir o rascunho anterior pelas decisões revisadas nesta tela?")) return;
+      state.reviewedDraft = true;
+    }
     if (action === "confirmar" && state.replanning && !$("ap-reason").value) {
       message("Selecione o motivo do replanejamento.", true);
       $("ap-reason").focus();
@@ -719,7 +758,8 @@
           lock_version: state.plan.planejamento.lock_version,
           fingerprint: state.plan.fingerprint,
           capacidade_fingerprint: state.plan.capacidade?.fingerprint,
-          itens: state.items.map(
+          revisar_rascunho: Boolean(state.reviewedDraft),
+          itens: pendingItems().map(
             ({
               entrega_item_id,
               responsavel_planejado_id,
@@ -780,7 +820,7 @@
     const row = target.closest("tr[data-id]");
     if (!row) return;
     const id = Number(row.dataset.id);
-    if (target.matches("[data-select]")) {
+    if (target.matches("[data-select]") && pendingItems().some((i) => Number(i.entrega_item_id) === id)) {
       target.checked ? state.selected.add(id) : state.selected.delete(id);
       row.classList.toggle("is-selected", target.checked);
       renderSelection();
@@ -816,7 +856,7 @@
   });
   $("ap-select-all").addEventListener("change", (event) => {
     if (!editable()) return;
-    visibleItems().forEach((item) =>
+    visibleItems().filter(pendingWork).forEach((item) =>
       event.target.checked
         ? state.selected.add(Number(item.entrega_item_id))
         : state.selected.delete(Number(item.entrega_item_id)),
@@ -869,7 +909,7 @@
   $("ap-confirm").addEventListener("click", () => save("confirmar"));
   $("ap-replan").addEventListener("click", () => {
     state.replanning = true;
-    state.items = state.items.map((i) => ({
+    state.items = state.items.map((i) => pendingWork(i) ? ({
       ...i,
       nivel_complexidade_snapshot:
         i.nivel_atual ?? i.nivel_complexidade_snapshot,
@@ -877,7 +917,7 @@
         i.pontos_replanejamento ??
         i.pontos_snapshot ??
         state.plan.configuracao.niveis[level(i)],
-    }));
+    }) : i);
     message(
       "Revise as decisões e informe o motivo. A versão confirmada permanece vigente até a nova confirmação.",
     );
@@ -934,13 +974,13 @@
     $("ap-history-title").textContent = "Planejado × executado";
     $("ap-history-list").replaceChildren();
     $("ap-history-snapshot").innerHTML =
-      `<div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Imagem</th><th>Baseline</th><th>Plano vigente</th><th>Executor</th><th>Início real</th><th>Conclusão da alteração</th><th>Entrega ao cliente</th><th>Resultado</th></tr></thead><tbody>${facts.itens.map((r) => `<tr><td>${escape(names.get(Number(r.entrega_item_id)))}</td><td>${planned(r.baseline)}</td><td>${planned(r.vigente)}</td><td>${escape(r.executor_nome || "Sem evidência")}</td><td>${formatDate(r.inicio_real)}</td><td>${formatDate(r.conclusao_alteracao)}</td><td>${formatDate(r.entrega_cliente)}</td><td>${escape(r.resultado)}</td></tr>`).join("")}</tbody></table></div><h3>Realizado por dia</h3><div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Colaborador</th><th>Dia</th><th>Pts planejados</th><th>Pts concluídos</th><th>Pendentes do planejado no dia</th></tr></thead><tbody>${Object.entries(
+      `<div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Imagem</th><th>Baseline</th><th>Plano vigente</th><th>Executor</th><th>Início real</th><th>Conclusão da alteração</th><th>Entrega ao cliente</th><th>Resultado</th></tr></thead><tbody>${facts.itens.map((r) => `<tr><td>${escape(names.get(Number(r.entrega_item_id)))}</td><td>${planned(r.baseline)}</td><td>${planned(r.vigente)}</td><td>${escape(r.executor_nome || "Sem evidência")}</td><td>${formatDate(r.inicio_real)}</td><td>${formatDate(r.conclusao_alteracao)}</td><td>${formatDate(r.entrega_cliente)}</td><td>${escape(r.resultado)}</td></tr>`).join("")}</tbody></table></div><h3>Realizado por dia</h3><div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Colaborador</th><th>Dia</th><th>Pts planejados</th><th>Pts concluídos</th><th>Pendentes na data planejada</th><th>Carga pendente atual</th></tr></thead><tbody>${Object.entries(
         facts.por_dia,
       )
         .flatMap(([id, ds]) =>
           Object.entries(ds).map(
             ([d, v]) =>
-              `<tr><td>${escape(personName(id))}</td><td>${formatDate(d)}</td><td>${v.planejados == null ? "Não registrados" : num(v.planejados)}</td><td>${v.concluidos == null ? "Não registrados" : num(v.concluidos)}</td><td>${v.pendentes_do_planejado == null ? "Não registrados" : num(v.pendentes_do_planejado)}</td></tr>`,
+              `<tr><td>${escape(personName(id))}</td><td>${formatDate(d)}</td><td>${v.planejados == null ? "Não registrados" : num(v.planejados)}</td><td>${v.concluidos == null ? "Não registrados" : num(v.concluidos)}</td><td>${v.pendentes_do_planejado == null ? "Não registrados" : num(v.pendentes_do_planejado)}</td><td>${v.carga_pendente == null ? "Não registrada" : num(v.carga_pendente)}</td></tr>`,
           ),
         )
         .join(
@@ -1038,7 +1078,7 @@
   });
   $("alteration-plan").addEventListener("change", (event) => {
     const id = Number(event.target.dataset.cardSelect);
-    if (!id || !editable()) return;
+    if (!id || !editable() || !pendingItems().some((i) => Number(i.entrega_item_id) === id)) return;
     event.target.checked ? state.selected.add(id) : state.selected.delete(id);
     renderRows();
     renderPlanner();
@@ -1081,6 +1121,7 @@
       const item = state.items.find(
         (i) => Number(i.entrega_item_id) === Number(pin.dataset.pin),
       );
+      if (!item || !pendingWork(item)) return;
       if (!item.fixado && !complete(item)) {
         message(
           "A imagem precisa de responsável e dia antes de ser fixada.",
@@ -1139,8 +1180,9 @@
   $("alteration-plan").addEventListener("dragstart", (event) => {
     const el = event.target.closest("[data-card]");
     if (!el || !editable()) return event.preventDefault();
-    const id = Number(el.dataset.card),
-      ids = state.selected.has(id) ? [...state.selected] : [id];
+    const id = Number(el.dataset.card);
+    if (!pendingItems().some((i) => Number(i.entrega_item_id) === id)) return event.preventDefault();
+    const ids = state.selected.has(id) ? [...state.selected] : [id];
     event.dataTransfer.setData(
       "application/x-flow-images",
       JSON.stringify(ids),
@@ -1259,7 +1301,7 @@
           responsaveis_por_tipo: state.typeRules,
           prioridade_tipos: state.priorityEnabled ? state.typePriority : [],
           colaboradores: [...state.people],
-          itens: state.items,
+          itens: pendingItems(),
         }),
       });
       const result = await response.json();
@@ -1275,7 +1317,7 @@
       );
       state.items = state.items.map((i) => ({
         ...i,
-        ...suggested.get(Number(i.entrega_item_id)),
+        ...(pendingWork(i) && canAssign(i) ? suggested.get(Number(i.entrega_item_id)) : {}),
       }));
       const firstDay = state.items
         .map((i) => i.fim_planejado)

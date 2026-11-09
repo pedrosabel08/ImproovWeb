@@ -42,14 +42,37 @@ try {
             if ((int)($dados['lock_version'] ?? -1) !== (int)$plano['planejamento']['lock_version'] || !hash_equals($plano['fingerprint'], (string)($dados['fingerprint'] ?? '')) || !hash_equals($plano['capacidade']['fingerprint'], (string)($dados['capacidade_fingerprint'] ?? ''))) {
                 throw new RuntimeException('O contexto mudou. Recarregue o planejamento.', 409);
             }
-            $escopo = $plano['itens'];
+            $escopo = flow_pa_itens_editaveis($plano['itens']);
             foreach ($escopo as &$i) {
                 $i['nivel_complexidade_snapshot'] = $i['nivel_atual'];
                 $i['pontos_snapshot'] = $i['pontos_replanejamento'];
             }
             unset($i);
-            $decisoes = flow_pac_decisoes_sugestao($dados['itens'] ?? [], $plano['colaboradores']);
+            $porItem = array_column($escopo, null, 'entrega_item_id');
+            $decisoes = $dados['itens'] ?? [];
+            foreach ($decisoes as &$d) {
+                if (is_array($d) && isset($porItem[(int)($d['entrega_item_id'] ?? 0)]['responsavel_preservado_id'])) {
+                    $d['fixado'] = true;
+                }
+            }
+            unset($d);
+            $decisoes = flow_pac_decisoes_sugestao($decisoes, $plano['colaboradores']);
             $itens = flow_pa_validar_itens($escopo, $decisoes, $plano['colaboradores'], false);
+            $agenda = $plano['capacidade']['agenda'];
+            $itens = array_values(array_filter($itens, static function ($i) use (&$agenda) {
+                if ($i['pode_editar_responsavel']) {
+                    return true;
+                }
+                $responsavel = $i['responsavel_planejado_id'];
+                $dia = $i['fim_planejado'];
+                if (isset($agenda[$responsavel][$dia])) {
+                    $agenda[$responsavel][$dia]['comprometidos'] += (float)$i['pontos_snapshot'];
+                }
+                return false;
+            }));
+            if (!$itens) {
+                throw new DomainException('Não há imagens disponíveis para redistribuição automática.');
+            }
             $ids = array_map('intval', $dados['colaboradores'] ?? []);
             $pessoas = array_values(array_filter($plano['colaboradores'], fn ($p) => in_array((int)$p['id'], $ids, true)));
             $ordem = $dados['ordem_complexidade'] ?? 'MAIOR';
@@ -64,7 +87,7 @@ try {
             if (!is_array($prioridade)) {
                 throw new InvalidArgumentException('Prioridade de tipos inválida.');
             }
-            $sugestao = flow_pac_sugerir($itens, $pessoas, $plano['capacidade']['agenda'], $plano['capacidade']['dias'], substr($plano['entrega']['data_prevista'], 0, 10), $ordem, $regras, $prioridade);
+            $sugestao = flow_pac_sugerir($itens, $pessoas, $agenda, $plano['capacidade']['dias'], substr($plano['entrega']['data_prevista'], 0, 10), $ordem, $regras, $prioridade);
             echo json_encode(['success' => true,'sugestao' => $sugestao], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         } else {
@@ -74,6 +97,11 @@ try {
     $plano['csrf_token'] = $_SESSION['planejamento_alteracao_csrf'];
     echo json_encode($method === 'GET' ? $plano : ['success' => true,'plano' => $plano], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
+    if ($e instanceof mysqli_sql_exception && in_array($e->getCode(), [1205, 1213], true)) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'O planejamento está sendo atualizado. Recarregue e revise antes de tentar novamente.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     http_response_code(in_array($e->getCode(), [401,403,405,409], true) ? $e->getCode() : 422);
     echo json_encode(['success' => false,'erro' => $e->getMessage(),'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

@@ -52,17 +52,19 @@
       : validPerson(item.responsavel_planejado_id) || keepsResponsible(item);
   const keepsResponsible = (item) =>
     Number(item.responsavel_preservado_id) > 0 &&
-    Number(item.responsavel_preservado_id) === Number(item.responsavel_planejado_id);
+    Number(item.responsavel_preservado_id) ===
+      Number(item.responsavel_planejado_id);
   const complete = (item) =>
     hasResponsible(item) &&
     validDate(item.fim_planejado) &&
     ((confirmed() && !state.replanning) ||
       (Number(item.pontos_snapshot) > 0 &&
-        (keepsResponsible(item) || Boolean(
-          state.plan.capacidade?.agenda?.[item.responsavel_planejado_id]?.[
-            item.fim_planejado
-          ],
-        ))));
+        (keepsResponsible(item) ||
+          Boolean(
+            state.plan.capacidade?.agenda?.[item.responsavel_planejado_id]?.[
+              item.fim_planejado
+            ],
+          ))));
   const confirmed = () => Boolean(state.plan?.planejamento?.versao_atual_id);
   const editable = () =>
     !!state.plan &&
@@ -125,7 +127,10 @@
     const found = [];
     const keys = new Set(
       items
-        .filter((i) => pendingWork(i) && i.responsavel_planejado_id && i.fim_planejado)
+        .filter(
+          (i) =>
+            pendingWork(i) && i.responsavel_planejado_id && i.fim_planejado,
+        )
         .map((i) => `${i.responsavel_planejado_id}|${i.fim_planejado}`),
     );
     for (const key of keys) {
@@ -151,13 +156,22 @@
   }
   function applyDecisions(decisions) {
     if (!editable()) return false;
-    if (state.items.some((i) => {
-      const change = decisions.get(Number(i.entrega_item_id));
-      return change && (!pendingWork(i) || (!canAssign(i) &&
-        change.responsavel_planejado_id != null &&
-        change.responsavel_planejado_id !== i.responsavel_planejado_id));
-    })) {
-      message("A seleção contém uma imagem bloqueada para essa alteração.", true);
+    if (
+      state.items.some((i) => {
+        const change = decisions.get(Number(i.entrega_item_id));
+        return (
+          change &&
+          (!pendingWork(i) ||
+            (!canAssign(i) &&
+              change.responsavel_planejado_id != null &&
+              change.responsavel_planejado_id !== i.responsavel_planejado_id))
+        );
+      })
+    ) {
+      message(
+        "A seleção contém uma imagem bloqueada para essa alteração.",
+        true,
+      );
       renderRows();
       renderPlanner();
       return false;
@@ -166,11 +180,17 @@
       const change = decisions.get(Number(i.entrega_item_id));
       if (!change) return { ...i };
       const nextItem = { ...i, ...change, excecao_capacidade: null };
-      if (!canAssign(i)) nextItem.responsavel_planejado_id = i.responsavel_planejado_id;
+      if (!canAssign(i))
+        nextItem.responsavel_planejado_id = i.responsavel_planejado_id;
       return nextItem;
     });
     if (
-      next.some((i) => pendingWork(i) && i.fim_planejado && !days().includes(i.fim_planejado))
+      next.some(
+        (i) =>
+          pendingWork(i) &&
+          i.fim_planejado &&
+          !days().includes(i.fim_planejado),
+      )
     ) {
       message("Escolha um dia útil dentro da agenda disponível.", true);
       renderRows();
@@ -396,10 +416,15 @@
       : `${usedIds.size} ${usedIds.size === 1 ? "colaborador utilizado" : "colaboradores utilizados"} · ${num([...usedIds].reduce((sum, id) => sum + Number(state.plan.configuracao?.colaboradores?.[id] ?? state.plan.configuracao?.capacidade_padrao ?? 0), 0))} pts/dia nominais`;
     $("ap-grid-summary").textContent =
       `${ready.length}/${work.length} imagens · conclusão ${formatDate(finish)}`;
-    $("ap-suggest").disabled = !editable() || !state.people.size || !suggestibleItems().length;
+    $("ap-suggest").disabled =
+      !editable() || !state.people.size || !suggestibleItems().length;
     $("ap-suggest-order").disabled = !editable() || !state.people.size;
     const types = [
-      ...new Set(suggestibleItems().map((i) => i.tipo_imagem).filter(Boolean)),
+      ...new Set(
+        suggestibleItems()
+          .map((i) => i.tipo_imagem)
+          .filter(Boolean),
+      ),
     ].sort((a, b) => a.localeCompare(b, "pt-BR"));
     state.typePriority = [
       ...state.typePriority.filter((type) => types.includes(type)),
@@ -491,8 +516,11 @@
     renderSelection();
   }
   function itemStatus(item) {
-    const notice = item.motivo_bloqueio ||
-      (item.atribuicao_divergente ? "Atribuição operacional difere do plano" : item.motivo_bloqueio_responsavel);
+    const notice =
+      item.motivo_bloqueio ||
+      (item.atribuicao_divergente
+        ? "Atribuição operacional difere do plano"
+        : item.motivo_bloqueio_responsavel);
     if (notice) return `<span class="ap-item-state">${escape(notice)}</span>`;
     const ready = complete(item);
     return `<span class="ap-item-state${ready ? " is-complete" : ""}">${ready ? (confirmed() && !state.replanning ? "Planejada" : "Completa") : item.inicio_planejado && item.fim_planejado && item.inicio_planejado > item.fim_planejado ? "Rever datas" : "Pendente"}</span>`;
@@ -512,9 +540,7 @@
   function renderSummary() {
     const work = pendingItems();
     const count = work.filter(complete).length;
-    const withoutPerson = work.filter(
-      (item) => !hasResponsible(item),
-    ).length;
+    const withoutPerson = work.filter((item) => !hasResponsible(item)).length;
     const withoutDate = work.filter(
       (item) => !validDate(item.fim_planejado),
     ).length;
@@ -606,9 +632,12 @@
     const firstLoad = !state.plan;
     state.plan = plan;
     state.reviewedDraft = false;
-    if (!plan.planejamento.rascunho_requer_revisao &&
+    if (
+      !plan.planejamento.rascunho_requer_revisao &&
       (plan.planejamento.estado === "REPLANEJAMENTO" ||
-      (plan.planejamento.versao_atual_id && plan.planejamento.rascunho_pendente)))
+        (plan.planejamento.versao_atual_id &&
+          plan.planejamento.rascunho_pendente))
+    )
       state.replanning = true;
     state.items = (plan.itens || []).map((item) => ({
       ...item,
@@ -640,7 +669,8 @@
     const eligible = pendingItems().length;
     const delivered = state.items.filter((i) => i.data_entregue).length;
     $("ap-partial").hidden = !confirmed() || eligible === state.items.length;
-    $("ap-partial").textContent = `Replanejamento parcial · ${delivered} ${delivered === 1 ? "entregue" : "entregues"} · ${eligible} ${eligible === 1 ? "elegível" : "elegíveis"}`;
+    $("ap-partial").textContent =
+      `Replanejamento parcial · ${delivered} ${delivered === 1 ? "entregue" : "entregues"} · ${eligible} ${eligible === 1 ? "elegível" : "elegíveis"}`;
     const e = plan.entrega;
     $("ap-project").textContent =
       `${e.nomenclatura || "Projeto"} · ${e.etapa || "Alteração"}`;
@@ -655,7 +685,10 @@
     renderRows();
     renderSummary();
     if (plan.planejamento.rascunho_requer_revisao)
-      message("O contexto do rascunho salvo mudou. Revise o plano atual e refaça as decisões antes de salvar.", true);
+      message(
+        "O contexto do rascunho salvo mudou. Revise o plano atual e refaça as decisões antes de salvar.",
+        true,
+      );
     else if (plan.desatualizado)
       message(
         "O contexto da entrega mudou desde a versão confirmada. Revise as imagens e confirme um replanejamento antes de continuar.",
@@ -687,8 +720,16 @@
   }
   async function save(action) {
     if (!editable()) return;
-    if (state.plan.planejamento.rascunho_requer_revisao && !state.reviewedDraft) {
-      if (!window.confirm("Substituir o rascunho anterior pelas decisões revisadas nesta tela?")) return;
+    if (
+      state.plan.planejamento.rascunho_requer_revisao &&
+      !state.reviewedDraft
+    ) {
+      if (
+        !window.confirm(
+          "Substituir o rascunho anterior pelas decisões revisadas nesta tela?",
+        )
+      )
+        return;
       state.reviewedDraft = true;
     }
     if (action === "confirmar" && state.replanning && !$("ap-reason").value) {
@@ -820,7 +861,10 @@
     const row = target.closest("tr[data-id]");
     if (!row) return;
     const id = Number(row.dataset.id);
-    if (target.matches("[data-select]") && pendingItems().some((i) => Number(i.entrega_item_id) === id)) {
+    if (
+      target.matches("[data-select]") &&
+      pendingItems().some((i) => Number(i.entrega_item_id) === id)
+    ) {
       target.checked ? state.selected.add(id) : state.selected.delete(id);
       row.classList.toggle("is-selected", target.checked);
       renderSelection();
@@ -856,11 +900,13 @@
   });
   $("ap-select-all").addEventListener("change", (event) => {
     if (!editable()) return;
-    visibleItems().filter(pendingWork).forEach((item) =>
-      event.target.checked
-        ? state.selected.add(Number(item.entrega_item_id))
-        : state.selected.delete(Number(item.entrega_item_id)),
-    );
+    visibleItems()
+      .filter(pendingWork)
+      .forEach((item) =>
+        event.target.checked
+          ? state.selected.add(Number(item.entrega_item_id))
+          : state.selected.delete(Number(item.entrega_item_id)),
+      );
     renderRows();
     renderPlanner();
   });
@@ -909,15 +955,19 @@
   $("ap-confirm").addEventListener("click", () => save("confirmar"));
   $("ap-replan").addEventListener("click", () => {
     state.replanning = true;
-    state.items = state.items.map((i) => pendingWork(i) ? ({
-      ...i,
-      nivel_complexidade_snapshot:
-        i.nivel_atual ?? i.nivel_complexidade_snapshot,
-      pontos_snapshot:
-        i.pontos_replanejamento ??
-        i.pontos_snapshot ??
-        state.plan.configuracao.niveis[level(i)],
-    }) : i);
+    state.items = state.items.map((i) =>
+      pendingWork(i)
+        ? {
+            ...i,
+            nivel_complexidade_snapshot:
+              i.nivel_atual ?? i.nivel_complexidade_snapshot,
+            pontos_snapshot:
+              i.pontos_replanejamento ??
+              i.pontos_snapshot ??
+              state.plan.configuracao.niveis[level(i)],
+          }
+        : i,
+    );
     message(
       "Revise as decisões e informe o motivo. A versão confirmada permanece vigente até a nova confirmação.",
     );
@@ -1078,7 +1128,12 @@
   });
   $("alteration-plan").addEventListener("change", (event) => {
     const id = Number(event.target.dataset.cardSelect);
-    if (!id || !editable() || !pendingItems().some((i) => Number(i.entrega_item_id) === id)) return;
+    if (
+      !id ||
+      !editable() ||
+      !pendingItems().some((i) => Number(i.entrega_item_id) === id)
+    )
+      return;
     event.target.checked ? state.selected.add(id) : state.selected.delete(id);
     renderRows();
     renderPlanner();
@@ -1181,7 +1236,8 @@
     const el = event.target.closest("[data-card]");
     if (!el || !editable()) return event.preventDefault();
     const id = Number(el.dataset.card);
-    if (!pendingItems().some((i) => Number(i.entrega_item_id) === id)) return event.preventDefault();
+    if (!pendingItems().some((i) => Number(i.entrega_item_id) === id))
+      return event.preventDefault();
     const ids = state.selected.has(id) ? [...state.selected] : [id];
     event.dataTransfer.setData(
       "application/x-flow-images",
@@ -1317,7 +1373,9 @@
       );
       state.items = state.items.map((i) => ({
         ...i,
-        ...(pendingWork(i) && canAssign(i) ? suggested.get(Number(i.entrega_item_id)) : {}),
+        ...(pendingWork(i) && canAssign(i)
+          ? suggested.get(Number(i.entrega_item_id))
+          : {}),
       }));
       const firstDay = state.items
         .map((i) => i.fim_planejado)

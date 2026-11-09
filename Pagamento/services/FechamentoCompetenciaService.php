@@ -465,6 +465,12 @@ final class FechamentoCompetenciaService
                     throw new DomainException('Origem financeira não reconhecida.');
                 }
                 $source = $this->db->sql('SELECT * FROM ' . $ident['origem'] . ' WHERE ' . $tables[$ident['origem']] . '=? FOR UPDATE', [$ident['origem_id']])[0] ?? null;
+                // O snapshot preserva a rodada anterior; não quitar a tarefa de outro executor.
+                if ($source && (int)$source['colaborador_id'] !== $b
+                    && $ident['classe'] !== FechamentoFinanceiroRules::COMISSAO
+                    && isset($s['saldo_centavos']) && (int)$s['saldo_centavos'] === 0) {
+                    continue;
+                }
                 if (!$source || ((int)$source['colaborador_id'] !== $b && $ident['classe'] !== FechamentoFinanceiroRules::COMISSAO) || ($ident['classe'] === FechamentoFinanceiroRules::COMISSAO && !in_array((int)$source['colaborador_id'], [23, 40], true))) {
                     throw new DomainException('Beneficiário da função foi alterado. Confira antes de registrar o pagamento.');
                 }

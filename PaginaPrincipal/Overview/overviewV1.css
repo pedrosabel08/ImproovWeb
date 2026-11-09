@@ -1415,7 +1415,11 @@ body.overview-page a:focus-visible {
   border: 1px solid #26353d;
   border-radius: 12px;
   background:
-    radial-gradient(ellipse at 8% 0%, rgba(35, 112, 143, 0.13), transparent 56%),
+    radial-gradient(
+      ellipse at 8% 0%,
+      rgba(35, 112, 143, 0.13),
+      transparent 56%
+    ),
     linear-gradient(145deg, #12191d 0%, #101416 72%);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
 }
@@ -2261,6 +2265,7 @@ body.overview-page a:focus-visible {
   .overview-active main header .top {
     flex-wrap: wrap;
     gap: 9px;
+    grid-template-columns: 1fr 1fr;
   }
   .overview-active main header nav {
     order: 3;
@@ -2274,6 +2279,9 @@ body.overview-page a:focus-visible {
     width: min(100%, 320px);
     justify-content: space-between;
     margin: 12px auto 0;
+  }
+  .overview-active main nav .nav-left button span {
+    display: none !important;
   }
   .overview-active main nav .nav-left button {
     min-width: 0;
@@ -3140,11 +3148,17 @@ body.overview-page a:focus-visible {
 .area-progress .task-card--compact .task-card__meta time.is-prazo_proximo {
   color: var(--ov-amber);
 }
-.area-progress .task-card--compact .task-card__meta--adjustment .task-card__adjustment-age {
+.area-progress
+  .task-card--compact
+  .task-card__meta--adjustment
+  .task-card__adjustment-age {
   color: var(--ov-blue);
   font-weight: 750;
 }
-.area-progress .task-card--compact .task-card__meta--adjustment .task-card__commitment {
+.area-progress
+  .task-card--compact
+  .task-card__meta--adjustment
+  .task-card__commitment {
   grid-column: 1 / -1;
   color: var(--ov-faint);
   font-size: var(--ov-font-micro);

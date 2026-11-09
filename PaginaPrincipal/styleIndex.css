@@ -700,6 +700,50 @@ main header .top {
   gap: 24px;
 }
 
+/* O cabeçalho e a navegação são compartilhados por todas as abas da home. */
+@media (max-width: 680px) {
+  .container > main.main_inicio > header {
+    padding-block: 17px 15px;
+  }
+
+  .container > main.main_inicio > header .top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .container > main.main_inicio > header nav {
+    grid-column: 1 / -1;
+    order: 3;
+    width: 100%;
+  }
+
+  .container > main.main_inicio > header .header-logo {
+    display: none;
+  }
+
+  .container > main.main_inicio > header nav .flow-view-tabs {
+    width: min(100%, 320px);
+    justify-content: space-between;
+    margin: 12px auto 0;
+  }
+
+  .container > main.main_inicio > header nav .flow-view-tabs > button {
+    min-width: 0;
+    flex: 1;
+    padding-inline: 4px;
+  }
+
+  .container > main.main_inicio > header nav .flow-view-tabs > button span {
+    display: none !important;
+  }
+
+  .container > main.main_inicio > header nav .flow-view-tabs > button.active {
+    min-width: 58px;
+    min-height: 58px;
+    margin-inline: 1px;
+  }
+}
+
 main header h3 {
   font-size: 1.8rem;
 }
@@ -782,6 +826,51 @@ main .nav-right select {
 
 main .nav-right button:last-child {
   margin-left: auto;
+}
+
+.container > main.main_inicio > header .nav-right {
+  flex-wrap: wrap;
+  min-width: 0;
+  margin-top: 12px;
+}
+
+.container > main.main_inicio > header .nav-right > * {
+  min-width: 0;
+}
+
+@media (max-width: 680px) {
+  .container > main.main_inicio > header .nav-right {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .container > main.main_inicio > header .nav-right #idcolab {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .container > main.main_inicio > header .nav-right #date {
+    display: none;
+  }
+
+  .container > main.main_inicio > header .kanban-searchbar,
+  .container > main.main_inicio > header .kanban-searchbox {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .container > main.main_inicio > header .kanban-searchbox,
+  .container > main.main_inicio > header .nav-right #filter {
+    min-height: 44px;
+  }
+
+  .container > main.main_inicio > header .nav-right #filter {
+    justify-content: center;
+    margin: 0;
+  }
 }
 
 main .kanban {

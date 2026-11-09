@@ -447,13 +447,6 @@ function renderKanbanResponse(loadId, data) {
     kanbanPayloadAtual = data;
     configurarBuscaKanban();
     processarDados(data);
-    if (window.updateListaTabela) {
-      try {
-        window.updateListaTabela(data);
-      } catch (error) {
-        console.error("updateListaTabela error", error);
-      }
-    }
     kanbanLoading.hasRendered = true;
     window.setTimeout(() => {
       if (loadId !== kanbanLoading.sequence) return;
@@ -3177,8 +3170,6 @@ function processarDados(data) {
     }
 
     const tempoDisplay = item.tempo_calculado;
-    const tempoTooltip = item.tempo_tooltip || formatarDuracao(mediaFuncao);
-    const tempoAoVivo = Number(item.tempo_ao_vivo) === 1;
 
     const requisitos = item.requisitos || {};
     const pendenciasInicio = Array.isArray(requisitos.bloqueios)
@@ -3330,14 +3321,6 @@ function processarDados(data) {
                         ${desvioPlanejamentoHtml}
                     </div>
                     <div class="card-log">
-                            <span 
-                                class="date tooltip ${tempoClass}"
-                                data-tooltip="${escapeKanbanText(tempoTooltip)}"
-                                data-inicio="${tempoDisplay || ""}"
-                                data-tempo-ao-vivo="${tempoAoVivo ? "1" : "0"}">
-                                <i class="ri-time-line"></i> 
-                                ${tempoDisplay ? formatarDuracao(tempoDisplay) : "-"}
-                                </span>
                     <div class="comments">
                         ${item.indice_envio_atual ? `<span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual} |</span>` : ""}
                         ${
@@ -4757,53 +4740,6 @@ function updateEvent(event) {
     })
     .catch((err) => showToast(err.message, false));
 }
-
-function atualizarTemposEmAndamento() {
-  const spans = document.querySelectorAll(".card-log .date[data-inicio]");
-
-  spans.forEach((span) => {
-    // pega o card correto
-    const card = span.closest(".kanban-card");
-    if (!card || span.dataset.tempoAoVivo !== "1") return;
-
-    // pega o valor de data-inicio (em minutos)
-    let minutosIniciais = parseInt(span.dataset.inicio, 10);
-    if (isNaN(minutosIniciais)) minutosIniciais = 0;
-
-    // salva timestamp do carregamento da página
-    if (!span.dataset.startTimestamp) {
-      span.dataset.startTimestamp = Date.now();
-    }
-
-    const agora = Date.now();
-    const diffMs = agora - span.dataset.startTimestamp; // ms desde que abriu
-    const diffSeg = Math.floor(diffMs / 1000); // segundos decorridos desde que abriu
-
-    // converte minutos iniciais em segundos e soma
-    const totalSegundos = minutosIniciais * 60 + diffSeg;
-
-    // calcula dias, horas, minutos e segundos
-    const dias = Math.floor(totalSegundos / 86400); // 86400 = 24*60*60
-    const horas = Math.floor((totalSegundos % 86400) / 3600);
-    const minutos = Math.floor((totalSegundos % 3600) / 60);
-    const segundos = totalSegundos % 60;
-
-    // monta a string formatada
-    let partes = [];
-    if (dias > 0) partes.push(`${dias}d`);
-    if (horas > 0) partes.push(`${horas}h`);
-    if (minutos > 0) partes.push(`${minutos}min`);
-    partes.push(`${segundos}s`);
-
-    span.innerHTML = `<i class="ri-time-line"></i> ${partes.join(" ")}`;
-  });
-}
-
-// Atualiza a cada segundo
-setInterval(atualizarTemposEmAndamento, 1000);
-
-// Atualiza imediatamente ao carregar
-atualizarTemposEmAndamento();
 
 const statusMap = {
   "Não iniciado": "to-do",
@@ -9046,163 +8982,19 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   });
 });
 
-// List view (Tabulator) - visual only
-(function () {
-  let tabelaLista = null;
-  let ultimoPayloadLista = null;
-  const listaPayloadPorColaborador = new Map();
-  const listaRequisicaoPorColaborador = new Map();
-
-  function normalizarStatus(status) {
-    if (!status) return "Não iniciado";
-    if (status === "Hold") return "HOLD";
-    if (status === "Aguardando Direcao") return "Aguardando Direção";
-    if (status === "Aprovado" || status === "Aprovado com ajustes")
-      return "Finalizado";
-    return status;
-  }
-
-  function garantirTabela() {
-    if (tabelaLista || !window.Tabulator) return;
-    const container = document.getElementById("list-section");
-    if (container && container.offsetParent === null) return;
-
-    tabelaLista = new Tabulator("#tarefas-table", {
-      layout: "fitColumns",
-      height: "70vh",
-      placeholder: "Sem tarefas para exibir",
-      reactiveData: false,
-      movableColumns: false,
-      columns: [
-        {
-          title: "Nome da imagem",
-          field: "imagem_nome",
-          headerFilter: "input",
-          headerFilterPlaceholder: "Filtrar imagem...",
-          sorter: "string",
-        },
-        {
-          title: "Nome da função",
-          field: "nome_funcao",
-          headerFilter: "input",
-          headerFilterPlaceholder: "Filtrar função...",
-          sorter: "string",
-        },
-        {
-          title: "Status",
-          field: "status",
-          headerFilter: "list",
-          headerFilterParams: {
-            values: [
-              "Não iniciado",
-              "HOLD",
-              "Em andamento",
-              "Em aprovação",
-              "Aguardando Direção",
-              "Ajuste",
-              "Finalizado",
-            ],
-            clearable: true,
-          },
-          headerFilterFunc: "=",
-          formatter: function (cell) {
-            const v = (cell.getValue() || "").toString();
-            const statusKey = v
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .replace(/\s+/g, "-")
-              .replace(/[^a-z0-9\-]/g, "");
-
-            return `<span class="status-pill status-${statusKey}">${v || "-"}</span>`;
-          },
-          sorter: "string",
-        },
-      ],
-    });
-  }
-
-  // Exposta para o scriptIndex.js reaproveitar o mesmo payload do Kanban
-  window.updateListaTabela = function (payload) {
-    try {
-      // O payload enxuto do Kanban nunca deve substituir a lista completa.
-      if (payload && !payload.kanban_meta) ultimoPayloadLista = payload;
-      garantirTabela();
-      if (!tabelaLista) return;
-
-      const funcoes =
-        payload && Array.isArray(payload.funcoes) ? payload.funcoes : [];
-
-      const linhas = funcoes.map((f) => ({
-        imagem_nome: f.imagem_nome || "-",
-        nome_funcao: f.nome_funcao || "-",
-        status: normalizarStatus(f.status),
-      }));
-
-      tabelaLista.setData(linhas);
-    } catch (e) {
-      console.error("updateListaTabela error", e);
-    }
-  };
-
-  window.renderizarListaTarefas = function () {
-    if (ultimoPayloadLista) window.updateListaTabela(ultimoPayloadLista);
-  };
-
-  window.carregarListaCompleta = function () {
-    const id = String(colaborador_id || idColaborador || "");
-    if (!id) return Promise.resolve();
-    if (listaPayloadPorColaborador.has(id)) {
-      ultimoPayloadLista = listaPayloadPorColaborador.get(id);
-      window.renderizarListaTarefas();
-      return Promise.resolve();
-    }
-    if (listaRequisicaoPorColaborador.has(id)) {
-      return listaRequisicaoPorColaborador.get(id);
-    }
-
-    const requisicao = fetch(
-      `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${encodeURIComponent(id)}`,
-    )
-      .then((response) => {
-        if (!response.ok) throw new Error(`Resposta HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((payload) => {
-        listaPayloadPorColaborador.set(id, payload);
-        if (id === String(colaborador_id || idColaborador || "")) {
-          ultimoPayloadLista = payload;
-          window.updateListaTabela(payload);
-        }
-      })
-      .catch((error) => {
-        console.error("Erro ao carregar a lista completa:", error);
-      })
-      .finally(() => listaRequisicaoPorColaborador.delete(id));
-    listaRequisicaoPorColaborador.set(id, requisicao);
-    return requisicao;
-  };
-})();
-
-// ─────────────────────────────────────────────────────────────────
-//  Visão Geral, Kanban e Lista são experiências irmãs no shell de início.
-// ─────────────────────────────────────────────────────────────────
+// Alterna entre Vis?o Geral e Kanban.
 (function () {
   const btnOverview = document.getElementById("overviewBtn");
   const btnKanban = document.getElementById("kanbanBtn");
-  const btnLista = document.getElementById("listBtn");
   const overviewSec = document.getElementById("overview-section");
   const kanbanSec = document.getElementById("kanban-section");
-  const listSec = document.getElementById("list-section");
   const searchBar = document.querySelector(".kanban-searchbar");
   const navRight = document.querySelector("main header .nav-right");
   if (
     !btnOverview ||
     !btnKanban ||
-    !btnLista ||
     !overviewSec ||
-    !kanbanSec ||
-    !listSec
+    !kanbanSec
   )
     return;
 
@@ -9214,11 +9006,9 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
     }
     overviewSec.style.display = "none";
     kanbanSec.style.display = "none";
-    listSec.style.display = "none";
     if (searchBar) searchBar.style.display = "none";
     btnOverview.classList.remove("active");
     btnKanban.classList.remove("active");
-    btnLista.classList.remove("active");
   }
 
   function showOverview() {
@@ -9239,32 +9029,13 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
     agendarRecalculoDensidadeKanban();
   }
 
-  function showLista() {
-    clearViews();
-    listSec.style.display = "block";
-    btnLista.classList.add("active");
-    window.carregarListaCompleta?.();
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        if (
-          listSec.style.display !== "none" &&
-          typeof window.renderizarListaTarefas === "function"
-        ) {
-          window.renderizarListaTarefas();
-        }
-      }),
-    );
-  }
-
   const params = new URLSearchParams(window.location.search);
   if (params.get("focus_task")) showKanban();
-  else if (params.get("view") === "list") showLista();
   else showOverview();
 
   btnOverview.addEventListener("click", showOverview);
   btnKanban.addEventListener("click", showKanban);
-  btnLista.addEventListener("click", showLista);
-  window.FlowHomeViews = { showOverview, showKanban, showLista };
+  window.FlowHomeViews = { showOverview, showKanban };
 
   const focusTask = params.get("focus_task");
   if (focusTask && params.get("embed_task") !== "1") {

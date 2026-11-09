@@ -219,20 +219,16 @@ if ($foto_colab !== ''):
         <!-- NAVEGAÇÃO -->
         <nav>
             <div class="nav-left flow-view-tabs">
-                <button id="overviewBtn">
+                <button id="overviewBtn" aria-label="Visão Geral">
                     <i class="ri-dashboard-line"></i>
                     <span>Visão Geral</span>
                 </button>
 
-                <button id="kanbanBtn" class="active">
+                <button id="kanbanBtn" class="active" aria-label="Kanban">
                     <i class="ri-kanban-view"></i>
                     <span>Kanban</span>
                 </button>
 
-                <button id="listBtn">
-                    <i class="ri-list-check"></i>
-                    <span>Lista</span>
-                </button>
             </div>
 
         </nav>
@@ -259,7 +255,7 @@ if ($foto_colab !== ''):
                     ></div>
                 </div>
 
-                <select name="idcolab" id="idcolab">
+                <select name="idcolab" id="idcolab" aria-label="Selecionar colaborador">
                     <option value="">Selecione um colaborador</option>
 
                     <?php foreach ($colaboradores as $colab): ?>
@@ -382,12 +378,7 @@ if ($foto_colab !== ''):
 
             </div>
 
-            <!-- Lista (tabela) -->
-            <div id="list-section" class="list-section" style="display:none; padding: 20px;">
-                <div id="tarefas-table"></div>
-            </div>
-
-            <!-- Visão Geral: seção operacional irmã do Kanban e da Lista. -->
+            <!-- Visão Geral: seção operacional irmã do Kanban. -->
             <section id="overview-section" class="overview-inline" style="display:none;" aria-label="Visão Geral">
                 <div id="overview-v1" class="flow-overview" aria-live="polite" aria-busy="true"></div>
             </section>

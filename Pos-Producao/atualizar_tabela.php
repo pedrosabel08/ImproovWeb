@@ -1,4 +1,5 @@
 <?php
+
 include_once __DIR__ . '/../conexao.php';
 
 $sql = "SELECT 
@@ -20,17 +21,25 @@ $sql = "SELECT
     i.prazo,
     p.prioridade,
     p.flag_urgente,
-    ppo.prioridade AS prioridade_obra
+    ppo.prioridade AS prioridade_obra,
+    fi.status as status_funcao
 FROM pos_producao p
 INNER JOIN colaborador col ON p.colaborador_id = col.idcolaborador
 INNER JOIN obra o ON p.obra_id = o.idobra
 INNER JOIN imagens_cliente_obra i ON p.imagem_id = i.idimagens_cliente_obra
+INNER JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id AND fi.funcao_id = 5
 INNER JOIN status_imagem s ON p.status_id = s.idstatus
 LEFT JOIN colaborador resp ON p.responsavel_id = resp.idcolaborador
 LEFT JOIN render_alta r ON p.render_id = r.idrender_alta
 LEFT JOIN pos_prioridade_obra ppo ON o.idobra = ppo.obra_id
 WHERE r.status IN ('Em Aprovação', 'Aprovado')
 ORDER BY
+    CASE
+        WHEN p.status_pos = 1
+             AND fi.status = 'Em andamento' THEN 0
+        WHEN p.status_pos = 1 THEN 1
+        ELSE 2
+    END ASC,
     CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,
     CASE WHEN p.status_pos != 0 THEN p.flag_urgente END DESC,
     CASE WHEN p.status_pos != 0 THEN (ppo.prioridade IS NULL) END ASC,

@@ -12,6 +12,7 @@ require_once __DIR__ . '/helpers/motor_requisitos_helper.php';
 require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 require_once __DIR__ . '/helpers/inicio_operacional_helper.php';
+require_once __DIR__ . '/Pos-Producao/ws_notify.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -221,6 +222,9 @@ try {
     }
 
     $conn->commit();
+    if ($updatedIds) {
+        notifyPosProducaoUpdate('funcao_atualizada');
+    }
 
     json_response(200, [
         'success' => true,

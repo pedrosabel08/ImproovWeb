@@ -19,6 +19,19 @@ require_once __DIR__ . '/helpers/funcao_imagem_prazo_helper.php';
 require_once __DIR__ . '/helpers/unidade_trabalho_helper.php';
 require_once __DIR__ . '/helpers/inicio_operacional_helper.php';
 
+function notifyFuncaoAtualizada(): void
+{
+    try {
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+        }
+        if (class_exists('\Predis\Client')) {
+            (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'insereFuncao']));
+        }
+    } catch (Throwable $e) { /* Não desfazer a alteração confirmada por falha no Redis. */
+    }
+}
+
 // Simple file logger for debugging
 function write_log_insere_funcao($msg)
 {
@@ -175,6 +188,7 @@ try {
             'origem_acionamento' => 'KANBAN',
         ]);
         $conn->commit();
+        notifyFuncaoAtualizada();
         echo json_encode($resultadoInicio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $conn->close();
         exit;
@@ -270,6 +284,7 @@ try {
             'nivel_acesso' => (int) ($_SESSION['nivel_acesso'] ?? 0),
         ]);
         $conn->commit();
+        notifyFuncaoAtualizada();
         echo json_encode($resultadoEnvio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $conn->close();
         exit;
@@ -525,15 +540,7 @@ try {
     }
 
     $conn->commit();
-    try {
-        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-            require_once __DIR__ . '/vendor/autoload.php';
-        }
-        if (class_exists('\Predis\Client')) {
-            (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'insereFuncao']));
-        }
-    } catch (Exception $e) { /* ignore Redis failures */
-    }
+    notifyFuncaoAtualizada();
     echo json_encode(['success' => 'Dados inseridos/atualizados com sucesso!']);
 } catch (Throwable $e) {
     // Log exception details for debugging

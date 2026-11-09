@@ -479,9 +479,22 @@ function atualizarTabela() {
               hozAlign: "center",
               width: 120,
               formatter: (cell) => {
-                let val = cell.getValue();
-                let txt = val == 1 ? "Não começou" : "Finalizado";
-                let cor = val == 1 ? "red" : "green";
+                const val = cell.getValue();
+                const statusFuncao = cell.getRow().getData().status_funcao;
+
+                let txt, cor;
+
+                if (val == 1 && statusFuncao === "Em andamento") {
+                  txt = "Em andamento";
+                  cor = "#f59e0b";
+                } else if (val == 1) {
+                  txt = "Não começou";
+                  cor = "red";
+                } else {
+                  txt = "Finalizado";
+                  cor = "green";
+                }
+
                 return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`;
               },
             },
@@ -645,6 +658,9 @@ carregarMetricas();
 
 // Atualiza tabela automaticamente quando outro usuário faz uma alteração (via WebSocket)
 window.addEventListener("improov:posProducaoUpdated", () => {
+  atualizarTabela();
+});
+window.addEventListener("improov:funcaoAtualizada", () => {
   atualizarTabela();
 });
 

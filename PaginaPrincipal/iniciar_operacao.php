@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../helpers/inicio_operacional_helper.php';
+require_once __DIR__ . '/../Pos-Producao/ws_notify.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -32,6 +33,7 @@ try {
         ? flow_inicio_operacional_enviar_aprovacao($conn, $entrada)
         : flow_inicio_operacional_iniciar($conn, $entrada);
     $conn->commit();
+    notifyPosProducaoUpdate('funcao_atualizada');
     error_log(sprintf('[FLOW][JANELA][INICIO] tarefa=%d ciclo=%d estado=%s resultado=COMMIT', (int) ($entrada['funcao_imagem_id'] ?? 0), (int) ($resultado['cycle']['ciclo_id'] ?? 0), (string) ($resultado['evaluation']['estado'] ?? 'SEM_REGRA')));
     flow_inicio_operacional_responder(200, $resultado);
 } catch (FlowWipException $error) {

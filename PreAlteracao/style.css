@@ -171,13 +171,13 @@ button {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(120px, 1fr));
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .kpi-card {
-  min-height: 84px;
-  padding: 14px;
+  min-height: 72px;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-secondary);
@@ -194,12 +194,12 @@ button {
   background: var(--bg-tertiary);
   color: var(--triagem);
   font-size: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .kpi-card strong {
   display: block;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
   font-weight: 700;
 }
@@ -228,7 +228,7 @@ button {
 }
 
 .kpi-card.is-loading {
-  min-height: 84px;
+  min-height: 72px;
 }
 
 .filter-bar {
@@ -1955,7 +1955,7 @@ button {
   }
 
   .kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .filter-bar,
@@ -2009,7 +2009,7 @@ button {
   }
 
   .kpi-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .modal-pa,

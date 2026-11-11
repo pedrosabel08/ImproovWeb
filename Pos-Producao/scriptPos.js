@@ -442,6 +442,8 @@ function atualizarTabela() {
         return;
       }
 
+      atualizarContagensAbas(data);
+
       function listaValores(col) {
         let valores = [];
         data.forEach((item) => {
@@ -457,10 +459,12 @@ function atualizarTabela() {
         tabelaGlobal = new Tabulator("#tabela-imagens", {
           data: data,
           layout: "fitColumns",
+          columnDefaults: { widthShrink: 1 },
           pagination: "local",
           // Keep every column available through horizontal scrolling on narrow screens.
           responsiveLayout: false,
           index: "idpos_producao",
+          initialFilter: [{ field: "status_pos", type: "=", value: 1 }],
           height: "100%",
           pagination: true,
           paginationSize: 100,
@@ -474,10 +478,11 @@ function atualizarTabela() {
 
           columns: [
             {
-              title: "Status",
+              title: "",
+              headerTooltip: "Status da pós",
               field: "status_pos",
               hozAlign: "center",
-              width: 120,
+              width: 55,
               formatter: (cell) => {
                 const val = cell.getValue();
                 const statusFuncao = cell.getRow().getData().status_funcao;
@@ -486,20 +491,20 @@ function atualizarTabela() {
 
                 if (val == 1 && statusFuncao === "Em andamento") {
                   txt = "Em andamento";
-                  cor = "#f59e0b";
+                  cor = "#f5cd50";
                 } else if (val == 1) {
                   txt = "Não começou";
-                  cor = "red";
+                  cor = "#f45e66";
                 } else {
                   txt = "Finalizado";
-                  cor = "green";
+                  cor = "#45c98a";
                 }
 
-                return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`;
+                return `<span class="pos-status-dot" style="--dot-color:${cor}" title="${txt}" aria-label="Status da pós: ${txt}"></span>`;
               },
             },
             {
-              title: "Nome imagem",
+              title: "Imagem",
               field: "imagem_nome",
               minWidth: posMobileTable.matches ? 240 : 40,
               widthGrow: 3,
@@ -507,7 +512,7 @@ function atualizarTabela() {
                 return cell.getValue() || "";
               },
             },
-            { title: "Nome Obra", field: "nomenclatura" },
+            { title: "Obra", field: "nomenclatura" },
             {
               title: "Etapa",
               field: "nome_status",
@@ -519,7 +524,7 @@ function atualizarTabela() {
                 return `<span style="background:var(--si-${cor});color:black;padding:4px 6px;border-radius:4px;font-size:12px;font-weight:bold">${val}</span>`;
               },
             },
-            { title: "Nome Finalizador", field: "nome_colaborador" },
+            { title: "Finalizador", field: "nome_colaborador" },
             {
               title: "Render",
               field: "status_render",
@@ -564,6 +569,21 @@ function atualizarTabela() {
         // Atualiza total ao filtrar
         tabelaGlobal.on("dataFiltered", function (filters, rows) {
           document.getElementById("total-pos").innerText = rows.length;
+          // A barra vertical pode surgir depois do cálculo inicial das colunas.
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              var holder = document.querySelector(
+                "#tabela-imagens .tabulator-tableholder",
+              );
+              if (
+                !posMobileTable.matches &&
+                holder &&
+                holder.scrollWidth > holder.clientWidth
+              ) {
+                tabelaGlobal.redraw(true);
+              }
+            });
+          });
         });
         // Renderiza o widget de prazos com os dados iniciais
         try {
@@ -775,10 +795,36 @@ document.getElementById("fb-busca").addEventListener("keydown", function (e) {
   if (e.key === "Enter") document.getElementById("fb-aplicar").click();
 });
 
+function atualizarContagensAbas(data) {
+  var pendentes = data.filter(function (item) {
+    return String(item.status_pos) === "1";
+  }).length;
+  document.getElementById("tab-count-pendentes").textContent =
+    pendentes.toLocaleString("pt-BR");
+  document.getElementById("tab-count-finalizadas").textContent = (
+    data.length - pendentes
+  ).toLocaleString("pt-BR");
+  document.getElementById("tab-count-todas").textContent =
+    data.length.toLocaleString("pt-BR");
+}
+function sincronizarAbasPos() {
+  var valor = document.getElementById("fb-status-pos").value;
+  document.querySelectorAll("[data-pos-tab]").forEach(function (tab) {
+    tab.setAttribute("aria-selected", String(tab.dataset.posTab === valor));
+  });
+}
+document.querySelectorAll("[data-pos-tab]").forEach(function (tab) {
+  tab.addEventListener("click", function () {
+    document.getElementById("fb-status-pos").value = tab.dataset.posTab;
+    sincronizarAbasPos();
+    document.getElementById("fb-aplicar").click();
+  });
+});
 // Filter bar — Selects aplicam filtro automaticamente ao mudar
 ["fb-status-render", "fb-status-pos", "fb-obra", "fb-finalizador"].forEach(
   function (id) {
     document.getElementById(id).addEventListener("change", function () {
+      if (id === "fb-status-pos") sincronizarAbasPos();
       document.getElementById("fb-aplicar").click();
     });
   },
@@ -834,10 +880,12 @@ document
   .getElementById("fb-limpar")
   .addEventListener("click", function (event) {
     resetarFiltrosBar();
+    document.getElementById("fb-status-pos").value = "1";
+    sincronizarAbasPos();
     document.querySelectorAll(".metric-card").forEach(function (c) {
       c.classList.remove("metric-card--active");
     });
-    if (tabelaGlobal) tabelaGlobal.clearFilter();
+    if (tabelaGlobal) tabelaGlobal.setFilter("status_pos", "=", 1);
     if (event.isTrusted) closePosFilters();
   });
 
@@ -852,6 +900,7 @@ document.querySelectorAll(".metric-card").forEach(function (card) {
     });
 
     resetarFiltrosBar();
+    sincronizarAbasPos();
 
     // Se já estava ativo, apenas remove o filtro
     if (jaAtivo) {
@@ -1930,10 +1979,12 @@ function _initDragDropGrupos(container) {
         g.classList.remove("widget-grupo--over");
       });
       this.classList.add("widget-grupo--over");
-      var mid =
-        this.getBoundingClientRect().top +
-        this.getBoundingClientRect().height / 2;
-      if (e.clientY < mid) container.insertBefore(dragSrcGrupo, this);
+      var rect = this.getBoundingClientRect();
+      var horizontal = getComputedStyle(container).flexDirection === "row";
+      var before = horizontal
+        ? e.clientX < rect.left + rect.width / 2
+        : e.clientY < rect.top + rect.height / 2;
+      if (before) container.insertBefore(dragSrcGrupo, this);
       else container.insertBefore(dragSrcGrupo, this.nextSibling);
     });
 
@@ -2190,3 +2241,27 @@ function aplicarFiltroCard(filterType) {
     });
   }
 }
+
+// Entrada da página segue a sequência visual, sem interferir nas atualizações da tabela.
+(function animarEntradaPos() {
+  if (
+    !window.gsap ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+    return;
+  var timeline = gsap.timeline({
+    defaults: { ease: "power3.out", duration: 0.24 },
+  });
+  timeline
+    .from(".metric-card", { opacity: 0, y: 8, stagger: 0.035 })
+    .from("#widget-prazos", { opacity: 0, y: 8 }, "-=0.14")
+    .from(".pos-tabs", { opacity: 0, y: 6 }, "-=0.14");
+  if (!isPosFilterModalViewport()) {
+    timeline.from(
+      "#filters > :not(.filter-bar__modal-head)",
+      { opacity: 0, y: 6, stagger: 0.025 },
+      "-=0.14",
+    );
+  }
+  timeline.from(".tabela-container", { opacity: 0, y: 8 }, "-=0.12");
+})();

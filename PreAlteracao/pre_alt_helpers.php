@@ -41,7 +41,7 @@ function pre_alt_ensure_schema(mysqli $conn): void
     $conn->query("CREATE TABLE IF NOT EXISTS pre_alt_itens (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
         pre_alt_lote_id INT UNSIGNED NOT NULL,
-        review_batch_item_id INT NOT NULL,
+        review_batch_item_id INT NULL,
         entrega_id INT NOT NULL,
         entrega_item_id INT NULL,
         imagem_id INT NOT NULL,

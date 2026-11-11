@@ -32,7 +32,7 @@ try {
     $conn->begin_transaction();
 
     // Verifica existência da entrega
-    $stmt = $conn->prepare("SELECT id, obra_id, status_id FROM entregas WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, obra_id, status_id FROM entregas WHERE id = ? FOR UPDATE");
     $stmt->bind_param('i', $entrega_id);
     $stmt->execute();
     $res = $stmt->get_result();

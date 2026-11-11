@@ -137,8 +137,8 @@ $stmtItens = $conn->prepare(
         ico.substatus_id
      FROM pre_alt_itens pai
      JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = pai.imagem_id
-     JOIN review_batch_items rbi ON rbi.id = pai.review_batch_item_id
-     JOIN review_batch rb ON rb.id = rbi.review_batch_id
+     LEFT JOIN review_batch_items rbi ON rbi.id = pai.review_batch_item_id
+     LEFT JOIN review_batch rb ON rb.id = rbi.review_batch_id
      LEFT JOIN entregas_p00_versoes pv ON pv.id = rbi.p00_versao_id
      LEFT JOIN (
         SELECT
@@ -173,7 +173,7 @@ $itens = [];
 while ($row = $resItens->fetch_assoc()) {
     $row['item_id'] = (int) $row['item_id'];
     $row['lote_id'] = (int) $row['lote_id'];
-    $row['review_batch_item_id'] = (int) $row['review_batch_item_id'];
+    $row['review_batch_item_id'] = isset($row['review_batch_item_id']) ? (int) $row['review_batch_item_id'] : null;
     $row['entrega_id'] = (int) $row['entrega_id'];
     $row['entrega_item_id'] = isset($row['entrega_item_id']) ? (int) $row['entrega_item_id'] : null;
     $row['imagem_id'] = (int) $row['imagem_id'];

@@ -5,6 +5,14 @@ require_once __DIR__ . '/planejamento_producao_helper.php';
 require_once __DIR__ . '/planejamento_alteracao_capacidade_helper.php';
 require_once __DIR__ . '/planejamento_alteracao_realizado_helper.php';
 
+final class FlowPaClassificacaoPendente extends DomainException
+{
+    public function __construct(public array $itens)
+    {
+        parent::__construct('Classifique as imagens adicionadas à entrega para continuar o planejamento.', 409);
+    }
+}
+
 function flow_pa_query(mysqli $conn, string $sql, string $types = '', array $params = []): mysqli_stmt
 {
     $stmt = $conn->prepare($sql);
@@ -56,6 +64,7 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
         WHERE ei.entrega_id=? ORDER BY ei.id".($lock ? ' FOR UPDATE' : '');
     $dados = flow_pa_rows($conn, $sql, 'i', [$id]);
     $saida = [];
+    $pendentes = [];
     $vistos = [];
     if (!$dados) {
         return [];
@@ -88,14 +97,20 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
         $vistos[$r['imagem_id']] = true;
         $ts = $tarefas[$r['imagem_id']] ?? [];
         $ps = $origens[$r['imagem_id']] ?? [];
-        if (count($ts) !== 1) {
-            throw new DomainException('Cada imagem precisa de uma única tarefa de Alteração.');
+        if ((int)$r['imagem_obra_id'] !== (int)$r['entrega_obra_id']) {
+            throw new DomainException('A imagem não pertence à obra da entrega.');
+        }
+        if (!$ps && count($ts) <= 1 && empty($r['data_entregue']) && !isset($ciclos[$r['id']])
+            && (int)$r['etapa_atual_id'] === (int)$r['status_id_entrega']
+            && ($rodadasAtuais[$r['imagem_id']] ?? 0) < $id) {
+            $pendentes[] = ['entrega_item_id' => (int)$r['id'], 'imagem_id' => (int)$r['imagem_id'], 'imagem_nome' => $r['imagem_nome']];
+            continue;
         }
         if (count($ps) !== 1 || $ps[0]['resultado'] !== 'ALTERACAO') {
             throw new DomainException('A origem da Pré-alteração não é compatível com a imagem da entrega.');
         }
-        if ((int)$r['imagem_obra_id'] !== (int)$r['entrega_obra_id']) {
-            throw new DomainException('A imagem não pertence à obra da entrega.');
+        if (count($ts) !== 1) {
+            throw new DomainException('Cada imagem precisa de uma única tarefa de Alteração.');
         }
         $tarefa = $ts[0];
         $r['rodada_substituida'] = $rodadasAtuais[$r['imagem_id']] !== $id;
@@ -105,6 +120,9 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
             'etapa_atual_id' => (int)$r['etapa_atual_id'],'data_entregue' => $r['data_entregue'],'tarefa_cancelada' => flow_planejamento_normalizar((string)$ts[0]['status']) === 'cancelado',
             'responsavel_planejado_id' => null,'inicio_planejado' => null,'fim_planejado' => null] + $estado + [
             'responsavel_operacional_id' => (int)$tarefa['colaborador_id']];
+    }
+    if ($pendentes) {
+        throw new FlowPaClassificacaoPendente($pendentes);
     }
     return $saida;
 }
@@ -128,6 +146,90 @@ function flow_pa_estado_item(array $item, string $status, ?array $ciclo, bool $a
         'motivo_bloqueio' => $motivo,
         'motivo_bloqueio_responsavel' => $motivo ?? ($trocaBloqueada ? 'Responsável protegido durante a execução' : null),
     ];
+}
+
+function flow_pa_liberacao_classificacao(mysqli $conn, array $entrega, bool $lock = false): array
+{
+    $liberacoes = flow_pa_rows($conn, "SELECT l.id, l.pre_alt_lote_id
+        FROM pre_alt_liberacoes l JOIN pre_alt_lote p ON p.id=l.pre_alt_lote_id
+        WHERE l.entrega_alteracao_id=? AND p.obra_id=? AND p.status<>'CANCELADO'"
+        . ($lock ? ' FOR UPDATE' : ''), 'ii', [$entrega['id'], $entrega['obra_id']]);
+    if (count($liberacoes) !== 1) {
+        throw new DomainException('A entrega precisa estar vinculada a uma única liberação de Pré-alteração.');
+    }
+    return $liberacoes[0];
+}
+
+function flow_pa_classificar_imagens(mysqli $conn, int $id, array $dados): void
+{
+    if (!improov_usuario_eh_gestor_sidebar($conn)) {
+        throw new RuntimeException('Somente a gestão pode classificar imagens da entrega.', 403);
+    }
+    require_once __DIR__ . '/../PreAlteracao/conclusao_helpers.php';
+    $coluna = flow_pa_rows($conn, "SELECT IS_NULLABLE FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pre_alt_itens' AND COLUMN_NAME='review_batch_item_id'");
+    if (($coluna[0]['IS_NULLABLE'] ?? '') !== 'YES') {
+        throw new RuntimeException('Aplique a migration 2026-11-10_pre_alt_imagens_avulsas.sql antes de classificar imagens avulsas.');
+    }
+    if (!alteracoes_column_exists($conn, 'alteracoes', 'nivel_complexidade')) {
+        throw new RuntimeException('Atualize o esquema de Alterações antes de classificar imagens avulsas.');
+    }
+
+    $conn->begin_transaction();
+    try {
+        $entrega = flow_pa_entrega($conn, $id, true);
+        if (!improov_usuario_pode_acessar_obra($conn, (int)$entrega['obra_id'])) {
+            throw new RuntimeException('Sem permissão para acessar esta obra.', 403);
+        }
+        $plano = flow_planejamento_carregar_raiz($conn, $id, true);
+        if (!empty($entrega['arquivada']) || ($plano['modelo'] ?? '') !== 'IMAGENS_ALTERACAO') {
+            throw new DomainException('A entrega não está disponível para classificação.');
+        }
+        $liberacao = flow_pa_liberacao_classificacao($conn, $entrega, true);
+        $pendentes = [];
+        try {
+            flow_pa_escopo($conn, $id, true);
+        } catch (FlowPaClassificacaoPendente $erro) {
+            $pendentes = array_column($erro->itens, null, 'entrega_item_id');
+        }
+        $niveis = $dados['niveis'] ?? null;
+        if (!$pendentes || (int)($dados['liberacao_id'] ?? 0) !== (int)$liberacao['id']
+            || !is_array($niveis) || array_diff_key($niveis, $pendentes) || array_diff_key($pendentes, $niveis)) {
+            throw new RuntimeException('As imagens pendentes mudaram. Recarregue o planejamento.', 409);
+        }
+
+        $loteId = (int)$liberacao['pre_alt_lote_id'];
+        $prazo = $entrega['data_prevista'];
+        $statusId = (int)$entrega['status_id'];
+        foreach ($pendentes as $itemId => $item) {
+            $valor = $niveis[$itemId];
+            if ((!is_string($valor) && !is_int($valor)) || !preg_match('/^[1-5]$/D', (string)$valor)) {
+                throw new InvalidArgumentException('Escolha um nível de complexidade de 1 a 5 para cada imagem.');
+            }
+            $nivel = (int)$valor;
+            $imagemId = $item['imagem_id'];
+            if (flow_pa_rows($conn, 'SELECT id FROM pre_alt_itens WHERE pre_alt_lote_id=? AND imagem_id=? FOR UPDATE', 'ii', [$loteId, $imagemId])) {
+                throw new DomainException('Uma das imagens já consta neste lote da Pré-alteração. Revise a liberação existente.');
+            }
+            $tarefaId = pre_alt_upsert_funcao_alteracao($conn, $imagemId, $prazo, true);
+            alteracoes_upsert_registro($conn, $tarefaId, $statusId, $entrega['data_recebimento'], $nivel, true);
+            $stmt = flow_pa_query($conn, "INSERT INTO pre_alt_itens
+                (pre_alt_lote_id, entrega_id, entrega_item_id, imagem_id, resultado, nivel_complexidade)
+                VALUES (?, ?, ?, ?, 'ALTERACAO', ?)", 'iiiii', [$loteId, $id, $itemId, $imagemId, $nivel]);
+            $preAltItemId = (int)$stmt->insert_id;
+            $stmt->close();
+            flow_pa_query($conn, 'INSERT INTO pre_alt_liberacao_itens
+                (liberacao_id, pre_alt_item_id, entrega_destino_id, status_destino_id, prazo)
+                VALUES (?, ?, ?, ?, ?)', 'iiiis', [$liberacao['id'], $preAltItemId, $id, $statusId, $prazo])->close();
+            pre_alt_registrar_historico($conn, $loteId, 'INCLUSAO_MANUAL', 'nivel_complexidade', null, $nivel,
+                'Imagem classificada no planejamento da entrega.', $preAltItemId, null, ['entrega_id' => $id]);
+        }
+        flow_pa_escopo($conn, $id, true);
+        $conn->commit();
+    } catch (Throwable $erro) {
+        $conn->rollback();
+        throw $erro;
+    }
 }
 
 function flow_pa_itens_editaveis(array $itens): array

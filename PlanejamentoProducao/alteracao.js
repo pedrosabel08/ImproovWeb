@@ -735,6 +735,10 @@
         throw new Error(
           result.message || "Não foi possível carregar o planejamento.",
         );
+      if (result.classificacao_pendente) {
+        showClassification(result.classificacao_pendente, result.csrf_token);
+        return;
+      }
       state.replanning = false;
       acceptPlan(result.plano || result);
     } catch (error) {
@@ -744,6 +748,65 @@
       setLoading(false);
     }
   }
+  const classificationDialog = $("ap-classification-dialog");
+  const classificationForm = $("ap-classification-form");
+  const classificationSubmit = $("ap-classification-submit");
+  const classificationError = $("ap-classification-error");
+  const classificationClose = $("ap-classification-close");
+  function showClassification(pending, csrfToken) {
+    $("ap-content").hidden = true;
+    $("ap-reload").hidden = false;
+    classificationForm.dataset.liberacaoId = pending.liberacao.id;
+    classificationForm.dataset.csrfToken = csrfToken;
+    classificationError.hidden = true;
+    $("ap-classification-description").textContent =
+      `Escolha os níveis de complexidade para incluir as imagens no lote #${pending.liberacao.pre_alt_lote_id} da Pré-alteração.`;
+    const options = ["Muito baixa", "Baixa", "Média", "Alta", "Muito alta"]
+      .map((label, index) => `<option value="${index + 1}">N${index + 1} — ${label}</option>`)
+      .join("");
+    $("ap-classification-items").innerHTML = pending.itens.map((item) =>
+      `<label><span>${escape(item.imagem_nome)} — Complexidade</span><select name="${Number(item.entrega_item_id)}" required><option value="">Selecione o nível</option>${options}</select></label>`
+    ).join("");
+    classificationDialog.showModal();
+  }
+  classificationClose.addEventListener("click", () => classificationDialog.close());
+  classificationDialog.addEventListener("cancel", (event) => {
+    if (classificationSubmit.disabled) event.preventDefault();
+  });
+  classificationForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (classificationSubmit.disabled) return;
+    const levels = Object.fromEntries(new FormData(classificationForm));
+    classificationError.hidden = true;
+    classificationSubmit.disabled = classificationClose.disabled = true;
+    classificationForm.setAttribute("aria-busy", "true");
+    try {
+      const response = await fetch("alteracao.php", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          acao: "classificar",
+          entrega_id: entregaId,
+          liberacao_id: Number(classificationForm.dataset.liberacaoId),
+          csrf_token: classificationForm.dataset.csrfToken,
+          niveis: levels,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success)
+        throw new Error(result.message || "Não foi possível classificar as imagens.");
+      classificationDialog.close();
+      state.replanning = false;
+      acceptPlan(result.plano);
+    } catch (error) {
+      classificationError.textContent = error.message;
+      classificationError.hidden = false;
+    } finally {
+      classificationSubmit.disabled = classificationClose.disabled = false;
+      classificationForm.removeAttribute("aria-busy");
+    }
+  });
   async function save(action) {
     if (!editable()) return;
     if (

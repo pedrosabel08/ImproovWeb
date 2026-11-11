@@ -411,6 +411,35 @@ body.light .ap-item-state.is-complete {
 .ap-dialog::backdrop {
   background: rgba(0, 0, 0, 0.6);
 }
+#ap-classification-form {
+  padding: 16px;
+}
+#ap-classification-items {
+  display: grid;
+  gap: 12px;
+}
+#ap-classification-items label {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+#ap-classification-items select {
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--pp-line);
+  border-radius: 6px;
+  background: var(--pp-panel);
+  color: var(--pp-text);
+  font: inherit;
+}
+.ap-classification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
 #ap-history-list,
 #ap-history-snapshot {
   padding: 18px;

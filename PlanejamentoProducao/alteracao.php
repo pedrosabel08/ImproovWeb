@@ -28,13 +28,27 @@ try {
     }
     $conn = conectarBanco();
     if ($method === 'GET') {
-        $plano = flow_planejamento_alteracao_carregar($conn, $id);
+        try {
+            $plano = flow_planejamento_alteracao_carregar($conn, $id);
+        } catch (FlowPaClassificacaoPendente $erro) {
+            $entrega = flow_pa_entrega($conn, $id);
+            if (!empty($entrega['arquivada']) || !improov_usuario_eh_gestor_sidebar($conn)) {
+                throw $erro;
+            }
+            $plano = ['classificacao_pendente' => [
+                'liberacao' => flow_pa_liberacao_classificacao($conn, $entrega),
+                'itens' => $erro->itens,
+            ]];
+        }
     } else {
         $acao = $dados['acao'] ?? '';
-        if (!in_array($acao, ['rascunho','confirmar','sugerir'], true)) {
+        if (!in_array($acao, ['rascunho','confirmar','sugerir','classificar'], true)) {
             throw new InvalidArgumentException('Ação inválida.');
         }
-        if ($acao === 'sugerir') {
+        if ($acao === 'classificar') {
+            flow_pa_classificar_imagens($conn, $id, $dados);
+            $plano = flow_planejamento_alteracao_carregar($conn, $id);
+        } elseif ($acao === 'sugerir') {
             $plano = flow_planejamento_alteracao_carregar($conn, $id);
             if (!$plano['pode_editar']) {
                 throw new RuntimeException('Somente a gestão pode planejar.', 403);

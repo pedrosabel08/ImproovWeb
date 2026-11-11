@@ -80,5 +80,17 @@ if (!isset($planejamentoPorImagem) || !$planejamentoPorImagem) {
 </main>
 <dialog id="ap-history-dialog" class="ap-dialog" aria-labelledby="ap-history-title"><div class="ap-section-head"><h2 id="ap-history-title">Histórico do planejamento</h2><button class="ap-button" type="button" id="ap-close-history">Fechar</button></div><div id="ap-history-list"></div><div id="ap-history-snapshot"></div></dialog>
 <dialog id="ap-people-dialog" class="ap-dialog" aria-labelledby="ap-people-title"><div class="ap-section-head"><h2 id="ap-people-title">Colaboradores de Alteração</h2><button type="button" id="ap-close-people" class="ap-button">Fechar</button></div><p>Disponibilidade no dia selecionado. Os compromissos são calculados por dia.</p><div id="ap-people-list"></div></dialog>
+<dialog id="ap-classification-dialog" class="ap-dialog" aria-labelledby="ap-classification-title" aria-describedby="ap-classification-description">
+  <form id="ap-classification-form">
+    <div class="ap-section-head"><h2 id="ap-classification-title">Classificar imagens adicionadas</h2></div>
+    <p id="ap-classification-description"></p>
+    <div id="ap-classification-items"></div>
+    <p id="ap-classification-error" role="alert" hidden></p>
+    <div class="ap-classification-actions">
+      <button type="button" id="ap-classification-close" class="ap-button">Agora não</button>
+      <button type="submit" id="ap-classification-submit" class="ap-button ap-primary">Incluir no lote e continuar</button>
+    </div>
+  </form>
+</dialog>
 <script src="<?= asset_url('../assets/js/thinking-orbs.js') ?>"></script>
 <script src="alteracao.js?v=<?= filemtime(__DIR__ . '/alteracao.js') ?>" defer></script>

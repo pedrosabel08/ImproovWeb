@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/planejamento_producao_helper.php';
+require_once __DIR__ . '/planejamento_entrega_real_helper.php';
 require_once __DIR__ . '/tarefa_planejamento_contexto_helper.php';
 require_once __DIR__ . '/unidade_trabalho_helper.php';
 require_once __DIR__ . '/planejamento_alteracao_operacional_helper.php';
@@ -278,6 +279,12 @@ function flow_janela_perfil_vigente(mysqli $conn, ?string $codigo): ?array
     return $row;
 }
 
+function flow_janela_r00_entregue(mysqli $conn, array $unidade): bool
+{
+    $imagemId = (int) ($unidade['tarefa_principal']['imagem_id'] ?? 0);
+    return isset(flow_planejamento_imagens_entregues_r00($conn, [$imagemId])[$imagemId]);
+}
+
 function flow_janela_prazo_necessario(mysqli $conn, array $unidade): array
 {
     foreach ($unidade['membros'] as $membro) {
@@ -316,10 +323,11 @@ function flow_janela_avaliar(mysqli $conn, array $unidade, string $previsao, ?st
     if (!$previsao) {
         throw new DomainException('Informe uma previsao de conclusao valida.');
     }
+    $r00Entregue = flow_janela_r00_entregue($conn, $unidade);
     $perfil = flow_janela_perfil_vigente($conn, $unidade['perfil_codigo']);
-    $prazo = flow_janela_prazo_necessario($conn, $unidade);
+    $prazo = $r00Entregue ? ['data' => null, 'versao_id' => null] : flow_janela_prazo_necessario($conn, $unidade);
     $inicioData = flow_janela_data_valida($inicioData ?: date('Y-m-d')) ?: date('Y-m-d');
-    $aplica = $perfil && !empty($perfil['aplica_regra']);
+    $aplica = !$r00Entregue && $perfil && !empty($perfil['aplica_regra']);
     $limite = $aplica ? flow_planejamento_adicionar_dias_uteis($inicioData, (int) $perfil['limite_dias_uteis']) : null;
     // Sem janela, a avaliacao operacional permanece inerte; o conflito com o
     // prazo necessario continua independente e preserva a regra de planejamento.
@@ -327,6 +335,7 @@ function flow_janela_avaliar(mysqli $conn, array $unidade, string $previsao, ?st
         ? flow_janela_classificar($previsao, $limite, $prazo['data'])
         : flow_janela_classificar($previsao, null, $prazo['data']);
     return [
+        'r00_entregue' => $r00Entregue,
         'aplica_regra' => $aplica,
         'perfil' => $perfil,
         'perfil_codigo' => $unidade['perfil_codigo'],
@@ -534,8 +543,8 @@ function flow_janela_criar_ciclo(
     $perfilCodigo = $perfil['codigo'];
     $perfilVersao = (int) $perfil['versao'];
     $perfilNome = $perfil['nome'];
-    $aplicaRegra = !empty($perfil['aplica_regra']) ? 1 : 0;
-    $dias = $perfil['limite_dias_uteis'] === null ? null : (int) $perfil['limite_dias_uteis'];
+    $aplicaRegra = $avaliacao['aplica_regra'] ? 1 : 0;
+    $dias = $avaliacao['limite_dias_uteis'];
     $limite = $avaliacao['limite_data'];
     $prazo = $avaliacao['prazo_necessario'];
     $versaoPlanejamento = $avaliacao['planejamento_versao_id'];
@@ -727,8 +736,8 @@ function flow_janela_ativar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoIma
     $codigo = $perfil['codigo'] ?? null;
     $versao = $perfil['versao'] ?? null;
     $nome = $perfil['nome'] ?? null;
-    $aplica = !empty($perfil['aplica_regra']) ? 1 : 0;
-    $dias = $perfil['limite_dias_uteis'] ?? null;
+    $aplica = $avaliacao['aplica_regra'] ? 1 : 0;
+    $dias = $avaliacao['limite_dias_uteis'];
     $limite = $avaliacao['limite_data'];
     $prazoNecessario = $avaliacao['prazo_necessario'];
     $versaoPlanejamento = $avaliacao['planejamento_versao_id'];
@@ -761,8 +770,10 @@ function flow_janela_atualizar_previsao(mysqli $conn, int $funcaoImagemId, strin
         throw new DomainException('Informe uma previsao de conclusao valida.');
     }
     $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, true);
-    $prazo = flow_janela_prazo_necessario($conn, $unidade);
-    $estadoNovo = flow_janela_classificar($previsao, $ciclo['limite_data_atual'], $prazo['data']);
+    $r00Entregue = flow_janela_r00_entregue($conn, $unidade);
+    $prazo = $r00Entregue ? ['data' => null, 'versao_id' => null] : flow_janela_prazo_necessario($conn, $unidade);
+    $limite = $r00Entregue ? null : $ciclo['limite_data_atual'];
+    $estadoNovo = flow_janela_classificar($previsao, $limite, $prazo['data']);
     $motivo = flow_janela_validar_justificativa($conn, $estadoNovo, $motivoCodigo, $motivoTexto);
     $stmt = $conn->prepare('UPDATE janela_operacional_ciclo SET previsao_atual = ?, estado_atual = ?, prazo_necessario_snapshot = COALESCE(prazo_necessario_snapshot, ?), planejamento_versao_id_snapshot = COALESCE(planejamento_versao_id_snapshot, ?) WHERE id = ?');
     $versao = $prazo['versao_id'];
@@ -776,7 +787,7 @@ function flow_janela_atualizar_previsao(mysqli $conn, int $funcaoImagemId, strin
         'previsao_anterior' => $ciclo['previsao_atual'],
         'previsao_nova' => $previsao,
         'prazo_necessario' => $prazo['data'],
-        'limite_data' => $ciclo['limite_data_atual'],
+        'limite_data' => $limite,
         'motivo' => $motivo,
         'ator_colaborador_id' => $atorColaboradorId,
         'ator_usuario_id' => $atorUsuarioId,
@@ -849,10 +860,12 @@ function flow_janela_avaliar_retomada(mysqli $conn, int $funcaoImagemId, string 
     }
 
     $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, $forUpdate);
-    $prazo = flow_janela_prazo_necessario($conn, $unidade);
-    $aplicaRegra = !empty($ciclo['aplica_regra_snapshot']);
+    $r00Entregue = flow_janela_r00_entregue($conn, $unidade);
+    $prazo = $r00Entregue ? ['data' => null, 'versao_id' => null] : flow_janela_prazo_necessario($conn, $unidade);
+    $aplicaRegra = !$r00Entregue && !empty($ciclo['aplica_regra_snapshot']);
     $estado = flow_janela_calcular_estado_retomada($previsao, $aplicaRegra ? $limite : null, $prazo['data']);
     return [
+        'r00_entregue' => $r00Entregue,
         'tem_ciclo' => true,
         'ciclo_id' => (int) $ciclo['id'],
         'situacao' => $ciclo['situacao'],

@@ -32,16 +32,18 @@ try {
         $unidade = flow_janela_resolver_unidade($conn, $tarefaId, false, $agrupar);
         $ciclo = flow_janela_ciclo_ativo_por_tarefa($conn, $tarefaId, false);
         if ($ciclo) {
-            $prazo = flow_janela_prazo_necessario($conn, $unidade);
-            $aplica = !empty($ciclo['aplica_regra_snapshot']);
+            $r00Entregue = flow_janela_r00_entregue($conn, $unidade);
+            $prazo = $r00Entregue ? ['data' => null] : flow_janela_prazo_necessario($conn, $unidade);
+            $aplica = !$r00Entregue && !empty($ciclo['aplica_regra_snapshot']);
             $estado = flow_janela_classificar($previsao, $aplica ? $ciclo['limite_data_atual'] : null, $prazo['data']);
             $avaliacao = [
+                'r00_entregue' => $r00Entregue,
                 'aplica_regra' => $aplica,
                 'perfil_codigo' => $ciclo['perfil_codigo_snapshot'],
                 'perfil_nome' => $ciclo['perfil_nome_snapshot'],
                 'limite_dias_uteis' => $ciclo['limite_dias_uteis_snapshot'] === null ? null : (int) $ciclo['limite_dias_uteis_snapshot'],
-                'inicio_data' => substr($ciclo['inicio_em'], 0, 10),
-                'limite_data' => $ciclo['limite_data_atual'],
+                'inicio_data' => $ciclo['inicio_em'] ? substr($ciclo['inicio_em'], 0, 10) : null,
+                'limite_data' => $r00Entregue ? null : $ciclo['limite_data_atual'],
                 'limite_data_original' => $ciclo['limite_data_original'],
                 'prazo_necessario' => $prazo['data'],
                 'previsao' => $previsao,
@@ -60,7 +62,8 @@ try {
             unset($avaliacao['perfil']);
         }
     }
-    echo json_encode(['success' => true, 'evaluation' => $avaliacao, 'reasons' => flow_janela_motivos_ativos($conn)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $motivos = !empty($avaliacao['r00_entregue']) ? [] : flow_janela_motivos_ativos($conn);
+    echo json_encode(['success' => true, 'evaluation' => $avaliacao, 'reasons' => $motivos], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $error) {
     http_response_code(422);
     echo json_encode(['success' => false, 'code' => 'EVALUATION_FAILED', 'message' => $error->getMessage()], JSON_UNESCAPED_UNICODE);

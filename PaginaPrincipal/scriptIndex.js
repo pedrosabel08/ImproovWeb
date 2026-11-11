@@ -2367,8 +2367,14 @@ function abrirReplanejamentoFlowBlock(card) {
   const prazoInput = form.querySelector('[data-field="prazo"]');
   prazoInput.value = "";
   const windowLimit = form.querySelector('[data-field="window-limit"]');
+  const windowBox = form.querySelector('[data-field="window"]');
   const windowDetail = form.querySelector('[data-field="window-detail"]');
   const evaluationBox = form.querySelector('[data-field="evaluation"]');
+  const ocultarJanelaRetomada = () => {
+    windowBox.style.display = "none";
+    evaluationBox.style.display = "none";
+  };
+  if (card.dataset.r00Entregue === "1") ocultarJanelaRetomada();
   const reasonWrap = form.querySelector('[data-field="reason-wrap"]');
   const reasonSelect = form.querySelector('[data-field="reason"]');
   const reasonTextWrap = form.querySelector('[data-field="reason-text-wrap"]');
@@ -2442,6 +2448,13 @@ function abrirReplanejamentoFlowBlock(card) {
       }
       if (requestId !== previewRequest) return false;
       currentEvaluation = payload.evaluation || null;
+      if (currentEvaluation?.r00_entregue) {
+        ocultarJanelaRetomada();
+        reasonSelect.value = "";
+        reasonText.value = "";
+        reasonText.required = false;
+        return true;
+      }
       if (!currentEvaluation?.tem_ciclo) {
         windowLimit.textContent = "Sem ciclo operacional";
         windowDetail.textContent =
@@ -3370,6 +3383,7 @@ function processarDados(data) {
     card.dataset.obra_nome = item.nomenclatura || ""; // nome da obra
     card.dataset.funcao_nome = item.nome_funcao || ""; // nome da função
     card.dataset.status = status; // status normalizado
+    card.dataset.r00Entregue = item.r00_entregue === true ? "1" : "0";
     card.dataset.planningAvailable = planejamento.planejamento_disponivel
       ? "1"
       : "0";
@@ -7171,6 +7185,7 @@ function ocultarPlanejamentoModal() {
   modalPlanejamento.dataset.taskId = "";
   modalPlanejamento.dataset.cycleId = "";
   modalPlanejamento.dataset.operationalState = "";
+  modalPlanejamento.dataset.r00Entregue = "";
   if (modalPrevisaoConclusao) {
     modalPrevisaoConclusao.value = "";
     modalPrevisaoConclusao.disabled = false;
@@ -7189,6 +7204,15 @@ function renderizarFeedbackPrevisao(resultado) {
   const estado = avaliacao.estado || "NORMAL";
   modalPlanejamento.dataset.cycleId = avaliacao.ciclo_id || "";
   modalPlanejamento.dataset.operationalState = estado;
+  if (avaliacao.r00_entregue) {
+    modalPlanejamento.dataset.r00Entregue = "1";
+    modalJanelaOperacional.hidden = true;
+    modalMotivoWrap.hidden = true;
+    modalJustificativaWrap.hidden = true;
+    modalMotivo.value = "";
+    modalJustificativa.value = "";
+    return;
+  }
   if (modalPrazoNecessario) {
     modalPrazoNecessario.textContent = formatarDataPlanejamento(
       avaliacao.prazo_necessario || "",
@@ -7307,13 +7331,16 @@ function configurarModalPlanejamento(card) {
   modalPlanejamento.dataset.taskId = card.dataset.id || "";
   modalPlanejamento.dataset.cycleId = "";
   modalPlanejamento.dataset.operationalState = "";
+  modalPlanejamento.dataset.r00Entregue = card.dataset.r00Entregue || "";
   modalPrazoNecessario.textContent = formatarDataPlanejamento(
     card.dataset.planningRequiredDue || "",
   );
   modalPrevisaoConclusao.value =
-    card.dataset.planningPrediction || (!disponivel ? prazoFallback : "");
+    card.dataset.planningPrediction ||
+    (!disponivel || card.dataset.r00Entregue === "1" ? prazoFallback : "");
   modalPrevisaoConclusao.disabled = false;
-  modalJustificativa.value = card.dataset.planningJustification || "";
+  modalJustificativa.value =
+    card.dataset.r00Entregue === "1" ? "" : card.dataset.planningJustification || "";
   if (modalMotivo) modalMotivo.value = "";
   const salvarButton = document.getElementById("salvarModal");
   if (salvarButton) {
@@ -7752,7 +7779,9 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
             const choice = await Swal.fire({
               icon: "question",
               title: "Iniciar Modelagem e Composição juntas?",
-              text: "A unidade conjunta terá uma única janela operacional de 4 dias úteis.",
+              text: cardSelecionado.dataset.r00Entregue === "1"
+                ? "As duas tarefas serão iniciadas com a mesma previsão."
+                : "A unidade conjunta terá uma única janela operacional de 4 dias úteis.",
               showCancelButton: true,
               showDenyButton: true,
               confirmButtonText: "Iniciar juntas",

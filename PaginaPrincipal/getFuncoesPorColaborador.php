@@ -1671,9 +1671,11 @@ if (!empty($suppressedIndexes)) {
 }
 
 $contextosJanela = flow_janela_contextos_lote($conn, array_column($funcoesFinal, 'idfuncao_imagem'));
+$imagensEntreguesR00 = flow_planejamento_imagens_entregues_r00($conn, array_column($funcoesFinal, 'imagem_id'));
 foreach ($funcoesFinal as &$funcaoComJanela) {
     $taskIdJanela = (int) ($funcaoComJanela['idfuncao_imagem'] ?? 0);
     $funcaoComJanela['janela_operacional'] = $contextosJanela[$taskIdJanela] ?? null;
+    $funcaoComJanela['r00_entregue'] = isset($imagensEntreguesR00[(int) ($funcaoComJanela['imagem_id'] ?? 0)]);
 }
 unset($funcaoComJanela);
 

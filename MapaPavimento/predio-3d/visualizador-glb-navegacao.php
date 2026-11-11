@@ -44,6 +44,10 @@ $html = preg_replace_callback('~(href|src)="(\.{1,2}/[^"?]+)(?:\?[^\"]*)?"~', st
     return $match[1] . '="' . $match[2] . (is_file($file) ? '?v=' . filemtime($file) : '') . '"';
 }, $html);
 $html = flow_metadata_apply_to_html($html);
+require_once __DIR__ . '/../../config/secure_env.php';
+if (improov_env('FLOW_GEO_CACHE_ENABLED', '0') === '1') {
+    $html = str_replace('<head>', '<head><meta name="flow-geo-cache" content="1">', $html);
+}
 $html = str_replace('<head>', '<head>' . flow_auth_navigation_script(), $html);
 $html = str_replace('</head>', '<link rel="stylesheet" href="../../css/styleSidebar.css"><link rel="stylesheet" href="./flow-spatial-shell.css?v=' . filemtime(__DIR__ . '/flow-spatial-shell.css') . '"></head>', $html);
 $html = str_replace('</body>', '<script src="../../script/sidebar.js"></script><script src="../../script/controleSessao.js?authReturn=1"></script></body>', $html);

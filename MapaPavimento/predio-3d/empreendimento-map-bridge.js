@@ -1,4 +1,4 @@
-import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js?v=20261019-permissions";
+import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js?v=20261110-bootstrap-v1";
 import { ModelUpload } from "./model-upload.js?v=20261019-permissions";
 
 const apiUrl = new URL("../api.php", import.meta.url);
@@ -75,7 +75,10 @@ export class EmpreendimentoMapBridge {
     this.modelSelect.addEventListener("change", () => {
       if (!this.canEdit) return;
       this.modelId = Number(this.modelSelect.value);
-      this.loadModel().catch((error) => this.showFailure(error));
+      const signal = this.beginModelLoad();
+      this.loadModel(signal).catch((error) => {
+        if (!signal.aborted) this.showFailure(error);
+      });
     });
     this.viewSwitch = el("nav", undefined, "spatial-view-switch");
     this.viewSwitch.setAttribute(
@@ -183,13 +186,14 @@ export class EmpreendimentoMapBridge {
     this.uploader?.sync();
   }
 
-  async api(actionName, data = {}, method = "GET") {
+  async api(actionName, data = {}, method = "GET", signal) {
     const url = new URL(apiUrl);
     url.searchParams.set("action", actionName);
     const options = {
       method,
       headers: { Accept: "application/json" },
       credentials: "same-origin",
+      signal,
     };
     const payload = { obra_id: this.obraId, ...data };
     if (method === "GET")
@@ -210,27 +214,45 @@ export class EmpreendimentoMapBridge {
     return result;
   }
 
+  beginModelLoad() {
+    this.modelLoad?.abort();
+    this.modelLoad = new AbortController();
+    return this.modelLoad.signal;
+  }
+
+  async loadNavigation(signal) {
+    const data = await this.api("modelos_3d", {}, "GET", signal);
+    signal.throwIfAborted();
+    this.csrf = data.csrf;
+    this.canEdit = data.can_edit;
+    this.modelLabel.hidden = !this.canEdit;
+    this.changeMapLink.hidden = !this.canEdit;
+    this.uploadMax = data.upload_max_bytes;
+    this.uploader.notice.hidden = true;
+    this.workSelect.replaceChildren(
+      ...data.obras.map((work) => new Option(work.nome, work.id)),
+    );
+    this.workSelect.value = String(this.obraId);
+    document.getElementById("projectName").textContent =
+      this.workSelect.selectedOptions[0]?.textContent || "Empreendimento";
+    this.models = data.modelos;
+    this.modelSelect.replaceChildren(
+      ...this.models.map((model) => new Option(model.nome, model.id)),
+    );
+    this.modelSelect.value = String(this.modelId);
+  }
+
   async start() {
+    const signal = this.beginModelLoad();
     this.spatial.reset();
     this.setBusy(true, "Buscando obra e modelos 3D");
     try {
-      const data = await this.api("modelos_3d");
-      this.csrf = data.csrf;
-      this.canEdit = data.can_edit;
-      this.modelLabel.hidden = !this.canEdit;
-      this.changeMapLink.hidden = !this.canEdit;
-      this.uploadMax = data.upload_max_bytes;
-      this.uploader.notice.hidden = true;
-      this.workSelect.replaceChildren(
-        ...data.obras.map((work) => new Option(work.nome, work.id)),
-      );
-      this.workSelect.value = String(this.obraId);
-      document.getElementById("projectName").textContent =
-        this.workSelect.selectedOptions[0]?.textContent || "Empreendimento";
-      this.models = data.modelos;
-      this.modelSelect.replaceChildren(
-        ...this.models.map((model) => new Option(model.nome, model.id)),
-      );
+      // Subtype deep links may need to search other models, so they still wait for the list.
+      if (this.modelId > 0 && !Number(this.params.get("subtipo_id"))) {
+        await this.loadModel(signal, false, true);
+        return;
+      }
+      await this.loadNavigation(signal);
       if (!this.models.some((model) => model.id === this.modelId))
         this.modelId = this.models[0]?.id || 0;
       this.modelSelect.value = String(this.modelId);
@@ -255,32 +277,37 @@ export class EmpreendimentoMapBridge {
         this.updateUrl();
         return;
       }
-      await this.loadModel();
+      await this.loadModel(signal, false);
     } catch (error) {
-      this.showFailure(error);
+      if (!signal.aborted) {
+        this.showFailure(error);
+        this.setBusy(false);
+        this.modelLoad.abort();
+      }
     } finally {
-      this.setBusy(false);
+      if (!signal.aborted) this.setBusy(false);
     }
   }
 
-  async refreshContext() {
+  async refreshContext(signal) {
     const data = await this.api("modelo_3d_contexto", {
       modelo_id: this.modelId,
-    });
+    }, "GET", signal);
+    signal?.throwIfAborted();
     this.model = data.modelo;
     this.subtypes = data.subtipos;
     this.links = new Map(data.vinculos.map((link) => [link.object_name, link]));
     return data;
   }
 
-  async loadModel() {
+  async loadModel(signal, releaseBusy = true, loadNavigation = false) {
     this.spatial.reset();
     this.setBusy(true, "Carregando empreendimento 3D");
     try {
       this.currentFloor = null;
       this.hooks.highlight(null);
       this.hooks.clearModel();
-      let data = await this.refreshContext();
+      let data = await this.refreshContext(signal);
       const requestedSubtype = Number(this.params.get("subtipo_id"));
       if (
         requestedSubtype &&
@@ -293,7 +320,8 @@ export class EmpreendimentoMapBridge {
         )) {
           const candidate = await this.api("modelo_3d_contexto", {
             modelo_id: model.id,
-          });
+          }, "GET", signal);
+          signal.throwIfAborted();
           if (
             !candidate.vinculos.some(
               (link) => Number(link.subtipo_id) === requestedSubtype,
@@ -302,17 +330,26 @@ export class EmpreendimentoMapBridge {
             continue;
           this.modelId = model.id;
           this.modelSelect.value = String(model.id);
-          data = await this.refreshContext();
+          data = await this.refreshContext(signal);
           break;
         }
       }
-      await this.hooks.loadModel(data.modelo.src, this.obraId);
-      void this.spatial.load();
+      const model = this.hooks.loadModel(data.modelo.src, this.obraId, signal);
+      // Read the alignment inputs early, but apply them after installing the model.
+      const spatial = this.hooks.prefetchSpatial
+        ? this.api("espacial_configuracao", {}, "GET", signal).then(data => ({ data }), error => ({ error }))
+        : null;
+      // Give the context and asset requests priority over the selector lists.
+      const navigation = loadNavigation
+        ? this.loadNavigation(signal).then(() => ({}), error => ({ error }))
+        : null;
+      await model;
+      signal.throwIfAborted();
+      void this.spatial.load(spatial);
       document.getElementById("projectName").textContent =
         this.workSelect.selectedOptions[0]?.textContent || data.modelo.nome;
       // Keep the institutional page title; model names belong in the workspace.
       this.updateUrl();
-      this.hooks.refreshTree();
       this.showIntro();
       const subtype = Number(this.params.get("subtipo_id"));
       if (subtype) {
@@ -322,6 +359,7 @@ export class EmpreendimentoMapBridge {
         const floor = link && this.hooks.findFloor(link.object_name);
         if (floor) {
           await this.hooks.focusFloor(floor);
+          signal.throwIfAborted();
           this.currentFloor = floor;
           this.showSummary(floor);
         } else
@@ -331,8 +369,12 @@ export class EmpreendimentoMapBridge {
           );
         this.params.delete("subtipo_id");
       }
+      if (navigation) {
+        const { error } = await navigation;
+        if (error) throw error;
+      }
     } finally {
-      this.setBusy(false);
+      if (releaseBusy && !signal.aborted) this.setBusy(false);
     }
   }
 

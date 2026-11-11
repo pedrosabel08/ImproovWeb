@@ -2,39 +2,23 @@ import * as THREE from "three";
 import { SOLAR_VISUAL_RADIUS_MULTIPLIER } from "../solar-visuals.js?v=20261103-solar-orbit-v1";
 import {
   validGeoConfig,
-  geoProjector,
 } from "./geo-coordinates.js?v=20261103-boundary-v4";
 import {
   loadOSM,
   browserOSMCache,
   OSM_RADIUS,
 } from "./osm-service.js?v=20261103-osm-cache-v3";
-import {
-  GeometryBatches,
-  polygonGeometry,
-} from "./feature-builder.js?v=20261104-surface-v3";
-import { clipBufferGeometry } from "./geometry-clip.js?v=20261104-surface-v3";
-import { buildBuilding } from "./building-builder.js?v=20261104-terrain-v1";
-import { buildRoad } from "./road-builder.js?v=20261104-terrain-v1";
-import { buildWater } from "./water-builder.js?v=20261104-surface-v3";
-import { buildVegetation } from "./vegetation-builder.js?v=20261104-surface-v3";
 import { urbanMaterial, softenEnvironmentEdge } from "./urban-haze.js?v=20261104-terrain-v1";
 import { loadElevation } from "./elevation-service.js?v=20261104-terrain-v1";
-import { TerrainSurface } from "./terrain-surface.js?v=20261104-surface-v3";
-import { inspectModelGround } from "./model-ground.js?v=20261104-surface-v3";
 import {
   GEO_OPTIONS,
   GEO_COLORS,
-  SURFACE_Y,
 } from "./environment-config.js?v=20261103-boundary-v4";
-import {
-  createEnvironmentBounds,
-  polygonArea,
-} from "./environment-clip.js?v=20261103-boundary-v4";
-import { buildCoastalAreas } from "./coastline-builder.js?v=20261103-boundary-v4";
-import { prepareEnvironment } from "./prepare-environment.js?v=20261103-boundary-v4";
 import { GeoDebug } from "./geo-debug.js?v=20261103-boundary-v4";
 import { installTerrainDebug } from "./terrain-debug.js?v=20261104-surface-v3";
+import { generateEnvironment } from "./generate-environment.js?v=20261110-shared-v1";
+import { createEnvironmentBounds } from "./environment-clip.js?v=20261103-boundary-v4";
+import { cacheRequest, fetchGeometryCache, restoreGeometryCache, validateGeometryAlignment } from "./server-geometry-cache.js?v=20261110-cache-v3";
 
 /** New group outside modelRoot: never enters picking, fit, floor or solar bounds. */
 export class GeoEnvironment {
@@ -45,11 +29,14 @@ export class GeoEnvironment {
     onChange = () => {},
     options = GEO_OPTIONS,
     elevationLoader = loadElevation,
+    serverCache = typeof document !== "undefined" &&
+      document.querySelector?.('meta[name="flow-geo-cache"][content="1"]') != null,
   }) {
     Object.assign(this, { scene, viewport, sky, onChange });
     this.options = options;
     this.surfaceDebug=options.geoDebug||new URLSearchParams(window.location?.search||'').get('geo_debug')==='1';
     this.elevationLoader = elevationLoader;
+    this.serverCache = serverCache;
     let storage;
     try {
       storage = window.localStorage;
@@ -92,24 +79,27 @@ export class GeoEnvironment {
     this.config = key ? { ...config } : null;
     return this.refresh();
   }
-  setModel(root, bounds, buildingBounds = bounds, groundInfo = null) {
+  setModel(root, bounds, buildingBounds = bounds, groundInfo = null, cacheModel = null) {
     this.model = root;
     this.groundInfo = groundInfo;
+    this.cacheModel = cacheModel;
     this.bounds = bounds?.clone();
     this.buildingBounds = buildingBounds?.clone();
     return this.refresh();
+  }
+  prefetchCache(obraId, model, signal) {
+    if (this.serverCache && !this.surfaceDebug && obraId && model?.id && model?.version) {
+      return fetchGeometryCache(obraId, model, signal);
+    }
+    return null;
   }
   clear() {
     ++this.generation;
     this.abort?.abort();
     this.abort = null;
-    this.batches?.dispose();
-    this.pendingSurfaceParts?.forEach(g=>g.dispose());this.pendingSurfaceParts=null;
-    this.pendingBeds?.forEach(g=>g.dispose());this.pendingBeds=null;
     this.debug?.dispose();
     this.terrainDebug?.dispose();this.terrainDebug=null;
     this.debug = null;
-    this.batches = null;
     if (this.group) {
       this.scene.remove(this.group);
       this.group.traverse((object) => object.geometry?.dispose());
@@ -142,9 +132,37 @@ export class GeoEnvironment {
     )
       return;
     const generation = this.generation;
+    const start = performance.now();
     this.abort = new AbortController();
     this.viewport.dataset.geoState = "loading";
     try {
+      const model = this.cacheModel;
+      const config = this.config;
+      const signal = this.abort.signal;
+      const useCache = this.serverCache && !this.surfaceDebug && !!model?.id && !!model?.version &&
+        (model.obraId == null || model.obraId === config.obra_id);
+      let cacheMetrics;
+      if (useCache) {
+        try {
+          const request = model.prefetch ?? fetchGeometryCache(config.obra_id, model, signal);
+          model.prefetch = null;
+          const { cached, metrics, error } = await request;
+          if (signal.aborted) return;
+          cacheMetrics = metrics;
+          if (error) throw error;
+          if (cached) {
+            cacheMetrics.alignmentMs = await validateGeometryAlignment(cached, config, this.bounds, this.buildingBounds, this.groundInfo);
+            if (signal.aborted) return;
+            this.installCached(cached, cacheMetrics);
+            this.measurePresentation(generation, start);
+            return;
+          }
+        } catch (error) {
+          if (signal.aborted) return;
+          cacheMetrics = { ...cacheMetrics, source: "error" };
+          console.debug("[Flow Geo Cache] Usando geração convencional.", error.message);
+        }
+      }
       const demPromise = this.elevationLoader(this.config, {signal:this.abort.signal})
         .then(data=>({data}), error=>({error}));
       const response = await loadOSM(this.config, {
@@ -167,7 +185,15 @@ export class GeoEnvironment {
       if (generation !== this.generation) return;
       this.viewport.dataset.demState = elevation.data ? "ready" : "fallback";
       if (elevation.error) console.debug("[Flow DEM] Terreno plano preservado.", elevation.error.message);
+      if (cacheMetrics?.needsInputs && elevation.data && !response.stale) {
+        cacheRequest(config, model, signal, true).catch(() => {});
+      }
       await this.build(response.data, generation, response, elevation.data);
+      if (useCache && generation === this.generation && this.group) {
+        this.group.userData.metrics.geometryCache = cacheMetrics;
+        this.viewport.dataset.geoMetrics = JSON.stringify(this.group.userData.metrics);
+        this.measurePresentation(generation, start);
+      }
     } catch (error) {
       if (generation !== this.generation) return;
       this.clear();
@@ -180,209 +206,69 @@ export class GeoEnvironment {
       );
     }
   }
-  async build(data, generation, response, dem = null) {
-    const start = performance.now(),
-      radius = OSM_RADIUS;
-    const anchor = this.buildingBounds.getCenter(new THREE.Vector3());
-    const groundY = this.groundInfo?.elevation ?? this.bounds.min.y;
-    const environmentBounds = createEnvironmentBounds(
-        radius,
-        this.config.norte_graus,
-      ),
-      project = geoProjector(this.config);
-    let coastal;
+  installCached(cached, cacheMetrics) {
+    const start = performance.now();
+    const bounds = createEnvironmentBounds(OSM_RADIUS, this.config.norte_graus);
+    const materials = this.createMaterials(bounds, OSM_RADIUS);
+    let group;
     try {
-      coastal = buildCoastalAreas(
-        data.coastlines || [],
-        project,
-        environmentBounds,
-      );
+      group = restoreGeometryCache(cached, materials);
     } catch (error) {
-      coastal = {
-        sea: [],
-        land: [environmentBounds.polygon],
-        coastLines: [],
-        state: "processing-error",
-      };
-      console.debug(
-        "[GeoEnvironment] Costa não classificada; preservando terra.",
-        error.message,
-      );
+      Object.values(materials).forEach(material => material.dispose());
+      throw error;
     }
-    if (this.options.geoDebug) this.debug = new GeoDebug(environmentBounds);
-    const prepared = prepareEnvironment(
-      data,
-      project,
-      environmentBounds,
-      coastal,
-      this.debug,
-    );
-    const site = {
-      minX: this.bounds.min.x - anchor.x - 1,
-      maxX: this.bounds.max.x - anchor.x + 1,
-      minZ: this.bounds.min.z - anchor.z - 1,
-      maxZ: this.bounds.max.z - anchor.z + 1,
-    };
-    let ground = null;
-    const terrainTimes={};
-    if (dem) {
-      try {
-        let stage=performance.now();
-        ground = inspectModelGround(this.groundInfo?.object, anchor, groundY);
-        terrainTimes.groundMs=performance.now()-stage;stage=performance.now();
-        await new Promise(resolve=>setTimeout(resolve,0));
-        if(generation!==this.generation)return;
-        this.terrain = new TerrainSurface({dem, bounds:environmentBounds, ground, site, coastLines:coastal.coastLines,deferGrid:true});
-        this.viewport.dataset.geoBuildStage='water-profile';
-        this.terrain.prepareWater(prepared.data.water,{rebuild:false});
-        terrainTimes.waterMs=performance.now()-stage;
-        stage=performance.now();
-        this.viewport.dataset.geoBuildStage='dem-grid';
-        await this.terrain.rebuildAsync(this.abort.signal);
-        if(generation!==this.generation)return;
-        terrainTimes.gridMs=performance.now()-stage;
-      } catch (error) {
-        if(generation!==this.generation)return;
-        this.terrain = null;
-        this.viewport.dataset.demState = "fallback";
-        console.debug("[Flow DEM] Alinhamento indisponível; terreno plano preservado.",error.message);
-      }
-    }
-    this.group = new THREE.Group();
-    this.group.name = "Entorno urbano OpenStreetMap";
-    this.group.position.set(anchor.x, groundY, anchor.z);
-    this.group.userData.geoOrigin = {
-      latitude: this.config.latitude,
-      longitude: this.config.longitude,
-    };
-    this.materials = Object.fromEntries(
-      Object.entries(GEO_COLORS).map(([key, color]) => [
-        key,
-        urbanMaterial(color, {
-          sky: this.sky,
-          radius,
-          ground: key === "ground",
-        }),
-      ]),
-    );
-    for (const [key,material] of Object.entries(this.materials)) {
-      softenEnvironmentEdge(material,environmentBounds);
-      if(["road","FOREST","GRASS","PARK","water"].includes(key)) {
-        material.polygonOffset=true;material.polygonOffsetFactor=-1;material.polygonOffsetUnits=-2;
-      }
-    }
-    this.batches = new GeometryBatches(
-      this.group,
-      this.materials,
-      environmentBounds,
-    );
     const metrics = {
-      buildings: 0,
-      roads: 0,
-      polygons: 0,
-      water: 0,
-      vegetation: 0,
-      excludedBuildings: 0,
-      sourceBuildings: data.buildings.length,
-      cacheHit: response.cacheHit,
-      acquisitionSource: response.acquisitionSource,
-      serverCacheHit: response.serverCacheHit,
-      stale: response.stale,
-      processingMs: response.processingMs,
-      acquisitionMs: response.acquisitionMs,
-      seaAreaM2: Math.round(
-        coastal.sea.reduce((s, p) => s + polygonArea(p), 0),
-      ),
-      coastline: coastal.state,
-      environmentSizeM: radius * 2,
-      dem: this.terrain ? {source:dem.source, tiles:dem.tiles, memoryCacheHits:dem.cacheHits,
-        referenceAltitudeM:dem.reference, modelReferenceY:groundY+this.terrain.referenceModel,
-        seaWorldY:groundY+this.terrain.seaLevel, verticalScale:1,
-        groundTriangles:ground?.triangles ?? 0, groundSourceTriangles:ground?.sourceTriangles ?? 0, groundReliefM:ground ? ground.max-ground.min : null,
-        groundAreaM2:ground?.footprint.reduce((sum,p)=>sum+polygonArea(p),0),
-        minRelativeM:this.terrain.heights.reduce((a,b)=>Math.min(a,b),Infinity),
-        maxRelativeM:this.terrain.heights.reduce((a,b)=>Math.max(a,b),-Infinity),
-        alignment:ground ? "glb-surface" : "protected-footprint", gridAxis:this.terrain.axis.length} : {fallback:true},
-      terrainTimes,
+      ...cached.header.metrics,
+      meshes: group.children.length,
+      triangles: group.children.reduce((sum, mesh) => sum + mesh.geometry.attributes.position.count / 3, 0),
+      geometryCache: {
+        ...cacheMetrics, source: cacheMetrics.source === "indexeddb" ? "indexeddb" : "server",
+        transferMs: cached.transferMs, validationMs: cached.validationMs,
+        restorationMs: performance.now() - start, serializationMs: cached.serializationMs, ...cached.header.timings,
+      },
     };
-    const context = {
-      project: (point) => point,
-      site,
-      radius,
-      batches: this.batches,
-      metrics,
-      terrain:this.terrain,
-    };
-    const surfaceParts=[];this.pendingSurfaceParts=surfaceParts;
-    this.viewport.dataset.geoBuildStage='ground-mesh';
-    // Exact complementary land/sea footprints: no ocean plane over land.
-    for (const p of this.terrain?.groundPolygons(coastal.land) || coastal.land) {
-      let geometry=this.terrain ? await this.terrain.geometryAsync(p,this.abort.signal) : polygonGeometry(p);
-      if(generation!==this.generation) {geometry.dispose();return;}
-      if(this.terrain)geometry=clipBufferGeometry(geometry,environmentBounds);
-      if(!geometry)continue;
-      if(this.terrain)surfaceParts.push(geometry);
-      else this.batches.add("ground",geometry);
-      await new Promise(resolve=>setTimeout(resolve,0));
-      if (generation !== this.generation) return;
+    group.userData.environmentBounds = bounds.polygon;
+    group.userData.terrainDimension = OSM_RADIUS * 2;
+    group.userData.geoOrigin = { latitude: this.config.latitude, longitude: this.config.longitude };
+    group.userData.metrics = metrics;
+    Object.assign(this, { group, materials });
+    this.viewport.dataset.demState = "ready";
+    this.present(metrics, true);
+  }
+  measurePresentation(generation, start) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (generation !== this.generation || !this.group) return;
+      const metrics = this.group.userData.metrics;
+      metrics.geometryCache.presentationMs = performance.now();
+      metrics.geometryCache.environmentPresentationMs = performance.now() - start;
+      this.viewport.dataset.geoMetrics = JSON.stringify(metrics);
+    }));
+  }
+  async build(data, generation, response, dem = null) {
+    const result = await generateEnvironment({
+      data, response, dem,
+      config: this.config,
+      bounds: this.bounds,
+      buildingBounds: this.buildingBounds,
+      groundInfo: this.groundInfo,
+      signal: this.abort.signal,
+      createMaterials: (environmentBounds, radius) => this.createMaterials(environmentBounds, radius),
+      createDebug: bounds => this.options.geoDebug ? new GeoDebug(bounds) : null,
+      onStage: stage => { this.viewport.dataset.geoBuildStage = stage; },
+      onDemFallback: error => {
+        this.viewport.dataset.demState = "fallback";
+        console.debug("[Flow DEM] Alinhamento indisponível; terreno plano preservado.", error.message);
+      },
+    });
+    if (!result) return;
+    const { group, materials, terrain, debug, metrics, environmentBounds, radius, prepared, coastal, project, start } = result;
+    if (generation !== this.generation) {
+      group.traverse(object => object.geometry?.dispose());
+      Object.values(materials).forEach(material => material.dispose());
+      debug?.dispose();
+      return;
     }
-    let modelGeometry=null;
-    if (this.terrain && ground) {
-      let geometry=new THREE.BufferGeometry();
-      geometry.setAttribute("position",new THREE.Float32BufferAttribute(ground.positions,3));
-      geometry.computeVertexNormals();
-      geometry=clipBufferGeometry(geometry,environmentBounds);
-      if(geometry) {
-        surfaceParts.push(geometry);
-        modelGeometry=geometry;
-      }
-    }
-    if(this.terrain) {
-      // Build and index ground BEFORE draping other layers. Keep a bed in the
-      // CPU index so roads crossing a channel retain their existing behaviour.
-      const beds=[];this.pendingBeds=beds;
-      this.viewport.dataset.geoBuildStage='water-mesh';
-      for(const polygon of this.terrain.waterFootprint) {
-        const bed=clipBufferGeometry(this.terrain.geometry(polygon,0,(x,z)=>this.terrain.waterHeight(null,x,z)-.12),environmentBounds);
-        if(bed)beds.push(bed);
-        const water=this.terrain.geometry(polygon,SURFACE_Y.water,(x,z)=>this.terrain.waterHeight(null,x,z));
-        this.batches.add("water",water);metrics.polygons++;
-        await new Promise(resolve=>setTimeout(resolve,0));
-        if(generation!==this.generation) {surfaceParts.forEach(g=>g.dispose());beds.forEach(g=>g.dispose());return;}
-      }
-      this.terrain.installMesh([...surfaceParts,...beds]);
-      beds.forEach(g=>g.dispose());
-      this.pendingBeds=null;
-      surfaceParts.forEach(g=>{
-        if(g===modelGeometry) {
-          const mesh=new THREE.Mesh(g,this.materials.ground);mesh.name='OSM · terreno GLB';
-          mesh.userData.geoLayer='model-ground';mesh.receiveShadow=true;mesh.raycast=()=>{};this.group.add(mesh);
-        } else this.batches.add("ground",g);
-      });
-    }
-    this.pendingSurfaceParts=null;
-    let count = 0;
-    for (const [kind, builder] of [
-      ["buildings", buildBuilding],
-      ["roads", buildRoad],
-      ["water", buildWater],
-      ["vegetation", buildVegetation],
-    ]) {
-      this.viewport.dataset.geoBuildStage=kind;
-      for (const feature of prepared.data[kind]) {
-        builder(feature, context);
-        if (++count % 80 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 0));
-          if (generation !== this.generation) return;
-        }
-      }
-    }
-    for (const p of coastal.sea) {
-      const geometry = polygonGeometry(p);
-      geometry.translate(0, this.terrain?.seaLevel ?? SURFACE_Y.sea, 0);
-      this.batches.add("sea", geometry);
-    }
-    this.batches.finish();
+    Object.assign(this, { group, materials, terrain, debug });
     this.viewport.dataset.geoBuildStage='audit';
     if(this.surfaceDebug)this.terrainDebug=installTerrainDebug(this.group,this.viewport,this.terrain);
     metrics.meshes = this.group.children.length;
@@ -413,15 +299,37 @@ export class GeoEnvironment {
       console.groupEnd();
       console.debug("[GeoEnvironment] coastline", coastal.state);
     }
+    this.present(metrics, !!this.terrain);
+  }
+  present(metrics, demReady) {
     this.viewport.dataset.geoMetrics = JSON.stringify(metrics);
     this.viewport.dataset.geoState = "ready";
     this.viewport.dataset.geoBuildStage='ready';
     this.scene.add(this.group);
     this.onChange();
     this.attribution.hidden = false;
-    this.demAttribution.hidden = !this.terrain;
+    this.demAttribution.hidden = !demReady;
     this.update();
     console.debug("[Flow OSM] Entorno", metrics);
+  }
+  createMaterials(environmentBounds, radius) {
+    const materials = Object.fromEntries(
+      Object.entries(GEO_COLORS).map(([key, color]) => [
+        key,
+        urbanMaterial(color, {
+          sky: this.sky,
+          radius,
+          ground: key === "ground",
+        }),
+      ]),
+    );
+    for (const [key,material] of Object.entries(materials)) {
+      softenEnvironmentEdge(material,environmentBounds);
+      if(["road","FOREST","GRASS","PARK","water"].includes(key)) {
+        material.polygonOffset=true;material.polygonOffsetFactor=-1;material.polygonOffsetUnits=-2;
+      }
+    }
+    return materials;
   }
   update() {
     if (!this.materials) return;

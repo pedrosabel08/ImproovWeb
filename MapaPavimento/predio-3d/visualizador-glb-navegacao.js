@@ -4,9 +4,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
-import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261103-night-glass-native-v2";
+import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261110-bootstrap-v2";
 import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
-import { SolarLighting } from "./solar-lighting.js?v=20261104-terrain-v1";
+import { SolarLighting } from "./solar-lighting.js?v=20261110-bootstrap-v1";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { ModelMeasurement } from "./model-measurement.js";
 import { visibleSurface } from "./measurement-geometry.js";
@@ -17,7 +17,8 @@ import {
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
 import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
 import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
-import { GeoEnvironment } from "./geo/geo-environment.js?v=20261104-surface-v3";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261110-cache-v3";
+import { buildIndex, modelGroundSelection } from "./geo/model-alignment.js?v=20261110-cache-v1";
 import { fitSolarShadow } from "./solar-shadow.js";
 
 const themeStyle = getComputedStyle(document.documentElement);
@@ -160,7 +161,7 @@ $("grid").setAttribute("aria-pressed", "false");
 const { loader } = createModelLoader();
 const raycaster = new THREE.Raycaster(),
   pointer = new THREE.Vector2();
-const floorObjectPattern = /^(PAV(?:TO)?_.+_[0-9]+)_([0-9]+)$/i;
+
 // Only meshes with a recognized floor identifier use the picking layer.
 const PICKING_LAYER = 1;
 raycaster.layers.set(PICKING_LAYER);
@@ -256,117 +257,6 @@ const measurements = new ModelMeasurement({
 function status(text, error = false) {
   $("status").textContent = text;
   $("status").style.color = error ? "#ff9b9b" : "";
-}
-function parseFloorObjectName(name) {
-  const match = floorObjectPattern.exec((name || "").trim());
-  return match
-    ? { floor: match[1].toUpperCase(), objectNumber: match[2] }
-    : null;
-}
-function buildIndex(root, sourceName = "") {
-  const byFloor = new Map(),
-    records = [],
-    floorByObject = new Map();
-  let hasObjectNames = false;
-  root.traverse((object) => {
-    const parsed = parseFloorObjectName(object.name);
-    if (parsed) {
-      floorByObject.set(object, parsed);
-      if (object.isMesh) hasObjectNames = true;
-    } else if (/^PAV(?:TO)?_.+_[0-9]{1,3}$/i.test(object.name || ""))
-      floorByObject.set(object, {
-        floor: object.name.trim().toUpperCase(),
-        objectNumber: "",
-      });
-  });
-  const addRecord = (object, floorId, objectNumber = "") => {
-    if (!byFloor.has(floorId))
-      byFloor.set(floorId, {
-        id: floorId,
-        records: [],
-        contextMeshes: [],
-        bounds: new THREE.Box3(),
-      });
-    const record = { object, floor: floorId, objectNumber, name: object.name };
-    const floor = byFloor.get(floorId);
-    floor.records.push(record);
-    floor.bounds.union(new THREE.Box3().setFromObject(object, true));
-    records.push(record);
-  };
-  root.traverse((object) => {
-    if (!object.isMesh) return;
-    const ownFloor = floorByObject.get(object);
-    // O GLTFLoader transforma peças com várias primitives em grupos e cria
-    // nomes para suas malhas internas. O grupo original define o pavimento;
-    // o sufixo gerado para cada primitive não identifica outro pavimento.
-    for (
-      let ancestor = object.parent;
-      ancestor && ancestor !== root;
-      ancestor = ancestor.parent
-    ) {
-      const ancestorFloor = floorByObject.get(ancestor);
-      if (ancestorFloor) {
-        addRecord(
-          object,
-          ancestorFloor.floor,
-          ownFloor?.floor === ancestorFloor.floor
-            ? ownFloor.objectNumber
-            : ancestorFloor.objectNumber,
-        );
-        return;
-      }
-    }
-    if (ownFloor) addRecord(object, ownFloor.floor, ownFloor.objectNumber);
-  });
-  // A standalone floor file can use its filename as the identifier while its meshes
-  // are being renamed to the shared-prefix convention for a whole-building GLB.
-  if (!hasObjectNames) {
-    const fileName =
-      sourceName
-        .split("?")[0]
-        .replace(/\\/g, "/")
-        .split("/")
-        .pop()
-        ?.replace(/\.(glb|gltf)$/i, "")
-        .trim()
-        .toUpperCase() || "";
-    if (/^PAV(?:TO)?_[A-Z0-9_]+$/.test(fileName)) {
-      byFloor.clear();
-      records.length = 0;
-      root.traverse((object) => {
-        if (object.isMesh) addRecord(object, fileName);
-      });
-    }
-  }
-  const floors = [...byFloor.values()].sort(
-    (a, b) =>
-      a.bounds.min.y - b.bounds.min.y ||
-      a.id.localeCompare(b.id, "pt-BR", { numeric: true }),
-  );
-  // A superfície do entorno é a referência do chão; o térreo pode estar
-  // elevado ou rebaixado em relação a ela. Na ausência de terreno identificado
-  // não é possível inferir essa altura com segurança.
-  let groundElevation,
-    groundArea = 0;
-  root.traverse((object) => {
-    if (
-      !object.isMesh ||
-      !/^(terreno|terrain|ground|rua)(?:_|\b)/i.test(object.name || "")
-    )
-      return;
-    for (let node = object; node; node = node.parent) if (!node.visible) return;
-    const bounds = new THREE.Box3().setFromObject(object, true);
-    const size = bounds.getSize(new THREE.Vector3());
-    const area = size.x * size.z;
-    if (!bounds.isEmpty() && area > groundArea) {
-      groundArea = area;
-      groundElevation = bounds.max.y;
-    }
-  });
-  floors.forEach((floor) => {
-    floor.groundElevation = groundElevation;
-  });
-  return { floors, records };
 }
 function floorLabel(id) {
   return id.replace(/_/g, " ");
@@ -1025,9 +915,9 @@ function setCamera(bounds, top = false, animate = false) {
   }
   return pose;
 }
-function fitFull() {
+function fitFull(bounds = null) {
   if (!modelRoot) return;
-  const box = visibleModelBounds(modelRoot);
+  const box = bounds ?? visibleModelBounds(modelRoot);
   if (!box.isEmpty()) {
     setCamera(box, false, false);
     fullCameraPose = captureCameraPose();
@@ -1333,6 +1223,28 @@ async function leaveFloor() {
   solarLighting.setProjectionSuspended(false);
   await resetBuildingView();
 }
+function disposeModelResources(root) {
+  const materials = new Set(),
+    geometries = new Set(),
+    textures = new Set();
+  root.traverse((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    if (object.material)
+      (Array.isArray(object.material)
+        ? object.material
+        : [object.material]
+      ).forEach((material) => materials.add(material));
+  });
+  materials.forEach((material) => {
+    Object.values(material).forEach((value) => {
+      if (value?.isTexture) textures.add(value);
+    });
+    material.dispose();
+  });
+  textures.forEach((texture) => texture.dispose());
+  geometries.forEach((geometry) => geometry.dispose());
+}
+
 function clearModel() {
   clearVisualHighlights();
   floorVisibility?.restore();
@@ -1361,25 +1273,7 @@ function clearModel() {
   if (modelRoot) {
     viewerEnvironment.clearModel();
     scene.remove(modelRoot);
-    const materials = new Set(),
-      geometries = new Set(),
-      textures = new Set();
-    modelRoot.traverse((object) => {
-      if (object.geometry) geometries.add(object.geometry);
-      if (object.material)
-        (Array.isArray(object.material)
-          ? object.material
-          : [object.material]
-        ).forEach((material) => materials.add(material));
-    });
-    materials.forEach((material) => {
-      Object.values(material).forEach((value) => {
-        if (value?.isTexture) textures.add(value);
-      });
-      material.dispose();
-    });
-    textures.forEach((texture) => texture.dispose());
-    geometries.forEach((geometry) => geometry.dispose());
+    disposeModelResources(modelRoot);
   }
   modelRoot = null;
   floors = [];
@@ -1403,7 +1297,7 @@ function clearModel() {
   renderTree();
   renderFloorSwitcher();
 }
-function install(gltf, sourceName, obraId = null) {
+function install(gltf, sourceName, obraId = null, cacheModel = null) {
   ++transitionToken;
   transitioning = false;
   controls.enabled = true;
@@ -1446,28 +1340,7 @@ function install(gltf, sourceName, obraId = null) {
   viewerEnvironment.registerModel(modelRoot, obraId);
   scene.add(modelRoot);
   modelRoot.updateMatrixWorld(true);
-  const groundObjects = [];
-  let groundInfo = null,
-    groundArea = 0;
-  modelRoot.traverseVisible((object) => {
-    if (!/^(terreno|terrain|ground|rua)(?:_|\b)/i.test(object.name || ""))
-      return;
-    groundObjects.push(object);
-    const bounds = new THREE.Box3().setFromObject(object, true);
-    const size = bounds.getSize(new THREE.Vector3()),
-      area = size.x * size.z;
-    if (!bounds.isEmpty() && area > groundArea) {
-      groundArea = area;
-      let material;
-      object.traverseVisible((child) => {
-        if (!material && child.isMesh)
-          material = Array.isArray(child.material)
-            ? child.material[0]
-            : child.material;
-      });
-      groundInfo = { elevation: bounds.max.y, color: material?.color?.clone(), object };
-    }
-  });
+  const { groundObjects, groundInfo } = modelGroundSelection(modelRoot);
   const indexed = buildIndex(modelRoot, sourceName);
   groundObjects.forEach((object) => {
     object.visible = false;
@@ -1512,6 +1385,7 @@ function install(gltf, sourceName, obraId = null) {
     modelBounds,
     geographicAnchorBounds.isEmpty() ? modelBounds : geographicAnchorBounds,
     groundInfo,
+    cacheModel,
   );
   delete viewport.dataset.activeFloor;
   viewport.dataset.pickableCount = String(allFloorMeshes.length);
@@ -1522,7 +1396,7 @@ function install(gltf, sourceName, obraId = null) {
   renderTree();
   renderFloorSwitcher();
   updateStats(modelRoot);
-  fitFull();
+  fitFull(modelBounds);
   $("backToProject").hidden = true;
   $("modeLabel").textContent =
     "Empreendimento completo · passe o mouse para destacar pavimentos";
@@ -1573,14 +1447,33 @@ function install(gltf, sourceName, obraId = null) {
     console.groupEnd();
   }
 }
-async function loadUrl(url, obraId = null) {
+async function loadUrl(url, obraId = null, signal) {
   const src = (url || "").trim();
   if (!src) return;
   status("Carregando empreendimento…");
-  const gltf = await loader.loadAsync(src);
-  const modelPath = new URL(src, location.href).pathname;
+  const modelUrl = new URL(src, location.href);
+  const modelPath = modelUrl.pathname;
   obraId ??= modelPath.match(/\/uploads\/model-3d\/obra-(\d+)\//)?.[1];
-  install(gltf, decodeURIComponent(src.split("/").pop().split("?")[0]) || src, obraId);
+  const cacheModel = modelUrl.origin === location.origin &&
+    modelUrl.searchParams.get("obra_id") === String(obraId) &&
+    modelUrl.searchParams.get("action") === "modelo_3d_arquivo"
+    ? { id: modelUrl.searchParams.get("modelo_id"), version: modelUrl.searchParams.get("v"), obraId: Number(obraId) }
+    : null;
+  const cacheAbort = new AbortController();
+  const cacheSignal = signal ? AbortSignal.any([signal, cacheAbort.signal]) : cacheAbort.signal;
+  try {
+    const loading = loader.loadAsync(src);
+    if (cacheModel) cacheModel.prefetch = geoEnvironment.prefetchCache(cacheModel.obraId, cacheModel, cacheSignal);
+    const gltf = await loading;
+    if (signal?.aborted) {
+      disposeModelResources(gltf.scene);
+      signal.throwIfAborted();
+    }
+    install(gltf, decodeURIComponent(src.split("/").pop().split("?")[0]) || src, obraId, cacheModel);
+  } catch (error) {
+    cacheAbort.abort();
+    throw error;
+  }
 }
 function loadFile(file) {
   if (!file || mapBridge) return;
@@ -1947,6 +1840,7 @@ if (params.has("src") && !params.has("obra_id")) {
   $("axes").textContent = "Eixos: desligados";
   $("grid").textContent = "Grade: desligada";
   mapBridge = new EmpreendimentoMapBridge({
+    prefetchSpatial: geoEnvironment.serverCache && !geoEnvironment.surfaceDebug,
     loadModel: loadUrl,
     clearModel,
     enterFloor,

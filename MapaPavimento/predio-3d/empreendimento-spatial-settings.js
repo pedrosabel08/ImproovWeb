@@ -101,12 +101,19 @@ export class EmpreendimentoSpatialSettings {
     this.hooks.setConfig?.(null);
     this.sync();
   }
-  async load() {
+  async load(pending = null) {
     const generation = ++this.generation,
       obraId = this.bridge.obraId;
     this.loadError = null;
     try {
-      const data = await this.bridge.api("espacial_configuracao");
+      let data;
+      if (pending) {
+        const result = await pending;
+        if (result.error) throw result.error;
+        data = result.data;
+      } else {
+        data = await this.bridge.api("espacial_configuracao");
+      }
       if (generation !== this.generation || obraId !== this.bridge.obraId)
         return;
       this.saved = data.configuracao;

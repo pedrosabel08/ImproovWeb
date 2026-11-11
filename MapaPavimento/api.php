@@ -47,8 +47,14 @@ try {
     }
     $obra = (int)($input['obra_id'] ?? 0);
     $subtype = (int)($input['subtipo_id'] ?? 0);
+    // These GETs use the authenticated session snapshot. Persist the CSRF token
+    // above and release the session before concurrent requests enter the database.
+    if ($method === 'GET' && session_status() === PHP_SESSION_ACTIVE &&
+        in_array($action, ['modelos_3d', 'modelo_3d_contexto', 'modelo_3d_arquivo', 'geometria_cache', 'espacial_configuracao'], true)) {
+        session_write_close();
+    }
     $conn = conectarBanco();
-    mp_require_obra($conn, $obra);
+    $allowedWorks = mp_require_obra($conn, $obra);
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
@@ -74,6 +80,51 @@ try {
         case 'espacial_configuracao':
             $result['configuracao'] = mpe_get($conn, $obra);
             break;
+        case 'geometria_cache':
+            require_once __DIR__ . '/../helpers/mapa_geo_cache_helper.php';
+            if (!flow_geo_cache_enabled()) {
+                http_response_code(204);
+                exit;
+            }
+            $model = mp3d_model($conn, $obra, (int) ($input['modelo_id'] ?? 0), resolveFile: false);
+            $config = mpe_get($conn, $obra);
+            $conn->close();
+            $conn = null;
+            try {
+                // A missing local GLB must not trigger a remote transfer in this request.
+                $candidate = dirname(__DIR__) . '/' . $model['arquivo'];
+                if (!is_file($candidate)) {
+                    http_response_code(204);
+                    exit;
+                }
+                $path = mp3d_file($model['arquivo']);
+                if ((string) filemtime($path) !== ($input['v'] ?? null)) {
+                    http_response_code(204);
+                    exit;
+                }
+                $job = flow_geo_cache_inputs($config, $path);
+                if (!$job) header('X-Flow-Geometry-State: inputs-missing');
+                $known = $input['known'] ?? null;
+                $known = is_string($known) && preg_match('/^[a-f0-9]{64}$/D', $known) ? $known : null;
+                $cached = $job ? flow_geo_cache_resolve($job, known: $known) : null;
+                if ($cached && ($input['warm'] ?? '') !== '1') {
+                    if (!isset($cached['bytes'])) {
+                        header('X-Flow-Geometry-State: known');
+                        echo json_encode($cached, JSON_THROW_ON_ERROR);
+                        exit;
+                    }
+                    header('Content-Type: application/octet-stream');
+                    header('Content-Length: ' . strlen($cached['bytes']));
+                    header('X-Flow-Geometry-SHA256: ' . $cached['sha256']);
+                    header('X-Flow-Geometry-Serialization-Ms: ' . number_format($cached['serialization_ms'], 3, '.', ''));
+                    echo $cached['bytes'];
+                    exit;
+                }
+            } catch (Throwable $error) {
+                error_log('[Flow Geo Cache] ' . get_class($error));
+            }
+            http_response_code(204);
+            exit;
         case 'dem_tile':
             require_once __DIR__ . '/../helpers/mapa_dem_helper.php';
             $demConfig = mpe_get($conn, $obra);
@@ -103,7 +154,7 @@ try {
             $result['csrf'] = $_SESSION['mapa_pavimento_csrf'];
             $result['can_edit'] = mp_can_edit($_SESSION);
             $result['upload_max_bytes'] = mp3d_upload_limit();
-            $result['obras'] = array_map(fn ($o) => ['id' => (int)$o['idobra'], 'nome' => $o['nomenclatura'] . ' — ' . $o['nome_obra']], obterObras($conn));
+            $result['obras'] = array_map(fn ($o) => ['id' => (int)$o['idobra'], 'nome' => $o['nomenclatura'] . ' — ' . $o['nome_obra']], $allowedWorks);
             $result['modelos'] = mp_rows($conn, 'SELECT id,nome,arquivo FROM mapa_modelos_3d WHERE obra_id=? ORDER BY nome,id', 'i', [$obra]);
             foreach ($result['modelos'] as &$model) {
                 $model['id'] = (int)$model['id'];
@@ -111,7 +162,7 @@ try {
             unset($model);
             break;
         case 'modelo_3d_contexto':
-            $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0));
+            $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0), resolveFile: false);
             $result['modelo'] = $model;
             $result['modelo']['src'] = '../api.php?' . http_build_query(['action' => 'modelo_3d_arquivo', 'obra_id' => $obra, 'modelo_id' => $model['id'], 'v' => filemtime(mp3d_file($model['arquivo']))]);
             $result['subtipos'] = mp3d_subtypes($conn, $obra);
@@ -129,10 +180,11 @@ try {
             mp3d_activate_version($conn, $obra, $input);
             break;
         case 'modelo_3d_arquivo':
-            $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0));
+            $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0), resolveFile: false);
             $conn->close();
             $conn = null;
-            mp3d_stream($model);
+            mp3d_stream($model, improov_env('FLOW_GEO_CACHE_ENABLED', '0') === '1' &&
+                improov_env('FLOW_GEO_GLB_CACHE_ENABLED', '1') === '1');
             // no break
         case 'modelo_3d_vincular':
             $modelId = (int)($input['modelo_id'] ?? 0);

@@ -1,4 +1,5 @@
 RewriteEngine On
+RewriteRule ^cache/flow-geometry(?:/|$) - [F,L,NC]
 RewriteRule ^$ login-preview.php [L]
 RewriteRule ^index\.html$ login-preview.php [L]
 RewriteRule ^Dashboard/obra$ Dashboard/obra.php [L]

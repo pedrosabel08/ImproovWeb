@@ -109,13 +109,13 @@ function mp3d_floor_names_from_data(array $data): array
     return $names;
 }
 
-function mp3d_model(mysqli $conn, int $obra, int $model, bool $lock = false): array
+function mp3d_model(mysqli $conn, int $obra, int $model, bool $lock = false, bool $resolveFile = true): array
 {
     $row = mp_row($conn, 'SELECT id,obra_id,nome,arquivo FROM mapa_modelos_3d WHERE id=? AND obra_id=?' . ($lock ? ' FOR UPDATE' : ''), 'ii', [$model, $obra]);
     if (!$row) {
         throw new RuntimeException('Modelo 3D indisponível nesta obra.', 404);
     }
-    mp3d_file($row['arquivo']);
+    if ($resolveFile) mp3d_file($row['arquivo']);
     $row['id'] = (int) $row['id'];
     $row['obra_id'] = (int) $row['obra_id'];
     return $row;

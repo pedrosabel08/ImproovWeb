@@ -287,15 +287,16 @@ function mp_rows(mysqli $conn, string $sql, string $types = '', array $params = 
     return $rows;
 }
 
-function mp_require_obra(mysqli $conn, int $obraId): void
+function mp_require_obra(mysqli $conn, int $obraId): array
 {
-    static $allowed = null;
-    if ($allowed === null) {
-        $allowed = array_map('intval', array_column(obterObras($conn), 'idobra'));
+    static $works = null;
+    if ($works === null) {
+        $works = array_column(obterObras($conn), null, 'idobra');
     }
-    if ($obraId <= 0 || !in_array($obraId, $allowed, true)) {
+    if ($obraId <= 0 || !isset($works[$obraId])) {
         throw new RuntimeException('Obra indisponível para este usuário.', 403);
     }
+    return array_values($works);
 }
 
 function mp_subtype(mysqli $conn, int $id): array

@@ -213,9 +213,10 @@ export class SolarLighting {
         select("solarTune-" + key).value = String(state.runtime[key]);
         select("solarTuneValue-" + key).value = state.runtime[key].toFixed(3);
       }
+      const requestedPreset = ENVIRONMENTS[state.requested];
       select("solarEnvironmentStatus").textContent =
-        state.state === "loading"
-          ? "Preparando " + ENVIRONMENTS[state.requested].label + "…"
+        state.state === "loading" && requestedPreset
+          ? "Preparando " + requestedPreset.label + "…"
           : state.state === "error"
             ? "Não foi possível carregar o HDRI. " +
               state.error +

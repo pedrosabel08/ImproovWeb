@@ -241,21 +241,48 @@ function mp3d_activate_version(mysqli $conn, int $obra, array $input): void
     }
 }
 
-function mp3d_stream(array $model): never
+function mp3d_etag_matches(string $condition, string $etag): bool
+{
+    foreach (explode(',', $condition) as $candidate) {
+        $candidate = trim($candidate);
+        if ($candidate === '*' || $candidate === $etag || $candidate === "W/$etag") return true;
+    }
+    return false;
+}
+
+/** Call only after validating the session, work and model. */
+function mp3d_stream(array $model, bool $revalidate = false): never
 {
     $path = mp3d_file($model['arquivo']);
+    $handle = @fopen($path, 'rb');
+    $stat = $handle ? fstat($handle) : false;
+    if (!$stat) throw new RuntimeException('Arquivo do modelo 3D indisponível.', 404);
     header('Content-Type: model/gltf-binary');
     header('Content-Disposition: inline; filename="' . basename($path) . '"');
-    header('Content-Length: ' . filesize($path));
     header('Cache-Control: private, no-store');
     header('X-Content-Type-Options: nosniff');
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
-    $handle = fopen($path, 'rb');
-    if ($handle) {
-        fpassthru($handle);
-        fclose($handle);
+    if ($revalidate) {
+        $hash = hash_init('sha256');
+        $read = hash_update_stream($hash, $handle);
+        if (!rewind($handle) || $read !== $stat['size']) {
+            fclose($handle);
+            http_response_code(503);
+            exit;
+        }
+        $etag = '"' . hash_final($hash) . '"';
+        header('Cache-Control: private, no-cache, must-revalidate');
+        header('ETag: ' . $etag);
+        if (mp3d_etag_matches((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''), $etag)) {
+            fclose($handle);
+            http_response_code(304);
+            exit;
+        }
     }
+    header('Content-Length: ' . $stat['size']);
+    fpassthru($handle);
+    fclose($handle);
     exit;
 }

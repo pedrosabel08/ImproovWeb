@@ -508,7 +508,7 @@ if ($__isProd) {
 <link rel="stylesheet" href="<?php echo asset_url($__basePath . 'assets/css/flow-block-mentions.css'); ?>&fbm=<?php echo filemtime(__DIR__ . '/assets/css/flow-block-mentions.css'); ?>">
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>&fbws=<?php echo filemtime(__DIR__ . '/assets/js/upload-ws.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/flow-block-mentions.js'); ?>&fbm=<?php echo filemtime(__DIR__ . '/assets/js/flow-block-mentions.js'); ?>"></script>
-<script src="<?php echo asset_url($__basePath . 'assets/js/upload-badge.js'); ?>"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/upload-badge.js'); ?>&build=<?php echo filemtime(__DIR__ . '/assets/js/upload-badge.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/components/flow-alert.js'); ?>&flowalert=<?php echo filemtime(__DIR__ . '/assets/js/components/flow-alert.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/sidebar-counts.js'); ?>"></script>
 <script src="<?php echo asset_url($__basePath . 'assets/js/flow-shell.js'); ?>&sidebar=<?php echo filemtime(__DIR__ . '/assets/js/flow-shell.js'); ?>"></script>

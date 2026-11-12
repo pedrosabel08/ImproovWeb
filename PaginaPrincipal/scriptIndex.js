@@ -445,6 +445,9 @@ function renderKanbanResponse(loadId, data) {
       }
     }
     kanbanPayloadAtual = data;
+    window.dispatchEvent(
+      new CustomEvent("flow:kanban-pending-data", { detail: data }),
+    );
     configurarBuscaKanban();
     processarDados(data);
     kanbanLoading.hasRendered = true;
@@ -2617,58 +2620,552 @@ function abrirReplanejamentoFlowBlock(card) {
   cardModal.style.top = `${Math.max(10, Math.round((window.innerHeight - modalHeight) / 2))}px`;
 }
 
-function alertarPendenciasSeNecessario(data) {
-  const funcoes = data && Array.isArray(data.funcoes) ? data.funcoes : [];
-  const pendentes = funcoes.filter(
-    (item) => Number(item.requires_file_upload || 0) === 1,
-  );
-  const quantidade = pendentes.length;
+const enviosPendentes = new Map();
 
-  if (quantidade <= 0) {
-    ultimoResumoPendencia = "";
-    return;
+function obterPendenciasKanban(data) {
+  return (data?.funcoes || []).filter(
+    (item) =>
+      !item.is_animacao &&
+      [
+        item.requires_file_upload,
+        item.requires_render_send,
+        item.angulo_ciencia_pendente,
+      ].some((flag) => Number(flag) === 1),
+  );
+}
+
+const tiposPendenciaKanban = [
+  {
+    key: "arquivo",
+    flag: "requires_file_upload",
+    title: "Envio de arquivos",
+    filter: "Arquivos",
+    icon: "ri-image-line",
+    notice: ["arquivo para enviar", "arquivos para enviar"],
+  },
+  {
+    key: "render",
+    flag: "requires_render_send",
+    title: "Render para enviar",
+    filter: "Renders",
+    icon: "ri-box-3-line",
+    notice: ["render para enviar", "renders para enviar"],
+  },
+  {
+    key: "angulo",
+    flag: "angulo_ciencia_pendente",
+    title: "Ângulo aprovado",
+    filter: "Ângulos",
+    icon: "ri-focus-3-line",
+    notice: ["ângulo aprovado", "ângulos aprovados"],
+  },
+];
+
+function contarPendenciasKanban(itens) {
+  return Object.fromEntries(
+    tiposPendenciaKanban.map(({ key, flag }) => [
+      key,
+      itens.filter((item) => Number(item[flag]) === 1).length,
+    ]),
+  );
+}
+
+function abrirPendenciasKanban(itens) {
+  if (!itens.length || document.getElementById("kanban-pending-dialog")) return;
+  const dialog = document.createElement("dialog");
+  dialog.id = "kanban-pending-dialog";
+  dialog.setAttribute("aria-labelledby", "kanban-pending-title");
+  const counts = contarPendenciasKanban(itens);
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const tipos = tiposPendenciaKanban.filter(({ key }) => counts[key]);
+  const opcoes = [
+    {
+      key: "todas",
+      title: "Pendências",
+      filter: "Todas",
+      icon: "ri-hourglass-line",
+    },
+    ...tipos,
+  ];
+  const countOf = (key) => (key === "todas" ? total : counts[key]);
+  const icon = (name) => `<i class="${name}" aria-hidden="true"></i>`;
+  dialog.innerHTML = `
+    <div class="kanban-pending-top">
+      <header class="kanban-pending-header">
+        <span class="kanban-pending-symbol">${icon("ri-image-circle-line")}</span>
+        <div><h2 id="kanban-pending-title">Pendências do Kanban</h2>
+          <p>Gerencie os arquivos, renders e ângulos das imagens.</p></div>
+        <form method="dialog"><button type="submit" class="kanban-pending-close" aria-label="Fechar" autofocus>${icon("ri-close-line")}</button></form>
+      </header>
+      <div class="kanban-pending-metrics">
+        ${opcoes
+          .map(
+            ({
+              key,
+              title,
+              icon: glyph,
+            }) => `<div class="kanban-pending-metric" data-kind="${key}">
+          <span class="kanban-pending-symbol">${icon(glyph)}</span><div><strong>${countOf(key)}</strong><span>${title}</span></div>
+        </div>`,
+          )
+          .join("")}
+      </div>
+      <div class="kanban-pending-tools">
+        <label class="kanban-pending-search">${icon("ri-search-line")}
+          <input type="search" placeholder="Buscar imagem, obra ou função..." aria-label="Buscar imagem, obra ou função">
+        </label>
+        <div class="kanban-pending-filters" role="group" aria-label="Filtrar pendências">
+          ${opcoes.map(({ key, filter, icon: glyph }) => `<button type="button" data-filter="${key}" aria-pressed="${key === "todas"}">${icon(glyph)} ${filter} <span>${countOf(key)}</span></button>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="kanban-pending-list"></div>
+    <footer class="kanban-pending-footer">
+      <div class="kanban-pending-progress">
+        <div class="kanban-pending-summary" role="status"></div>
+        <div class="kanban-pending-progress-line"><progress max="${total}" value="0" aria-label="Pendências resolvidas"></progress><span>0%</span></div>
+      </div>
+      <div class="kanban-pending-busy" hidden>
+        <canvas data-thinking-orb data-orb-state="working" data-orb-size="24" aria-label="Enviando arquivos"></canvas>
+        <span>Enviando arquivos</span>
+      </div>
+      <form method="dialog" class="kanban-pending-footer-actions">
+        <button type="submit">Fechar</button>
+        <button type="submit" class="kanban-pending-primary" disabled>${icon("ri-check-line")} Concluir enviadas</button>
+      </form>
+    </footer>`;
+  const list = dialog.querySelector(".kanban-pending-list");
+  const busy = dialog.querySelector(".kanban-pending-busy");
+  const summary = dialog.querySelector(".kanban-pending-summary");
+  const progress = dialog.querySelector("progress");
+  const concluir = dialog.querySelector(".kanban-pending-primary");
+  const search = dialog.querySelector('input[type="search"]');
+  const grupos = new Map();
+  const linhas = [];
+  const colaborador = colaborador_id;
+  const angulosLidos = new Set();
+  let dadosRecentes;
+  let filtro = "todas";
+  let cleanupOrb;
+  let closeTimer;
+  let retornandoDoReview = false;
+
+  function atualizarModal() {
+    let resolvidas = 0;
+    let enviados = 0;
+    let enviando = false;
+    for (const { id, tiposItem, acoes, atualizarArquivo } of linhas) {
+      const envio = enviosPendentes.get(id);
+      const atual = dadosRecentes?.get(id);
+      for (const { key, flag } of tiposItem) {
+        const resolvida =
+          (key === "arquivo" && envio?.state === "done") ||
+          (key === "angulo" && angulosLidos.has(id)) ||
+          (atual && Number(atual[flag]) !== 1);
+        if (resolvida) resolvidas++;
+        if (key === "arquivo") {
+          atualizarArquivo(resolvida ? "done" : envio?.state, envio?.message);
+          if (resolvida) enviados++;
+          else if (["sending", "queued"].includes(envio?.state))
+            enviando = true;
+        } else {
+          acoes.get(key).classList.toggle("is-resolved", Boolean(resolvida));
+        }
+      }
+    }
+    busy.hidden = !enviando;
+    if (enviando && !cleanupOrb) cleanupOrb = window.thinkingOrbs?.(busy);
+    if (!enviando && cleanupOrb) {
+      cleanupOrb();
+      cleanupOrb = null;
+    }
+    const arquivosEnviados = counts.arquivo > 0 && enviados === counts.arquivo;
+    const mensagem = `${resolvidas} de ${total} ${total === 1 ? "pendência resolvida" : "pendências resolvidas"}`;
+    const mensagemResumo = arquivosEnviados
+      ? `${mensagem} · Arquivos enviados`
+      : mensagem;
+    if (summary.textContent !== mensagemResumo)
+      summary.textContent = mensagemResumo;
+    summary.classList.toggle(
+      "is-complete",
+      arquivosEnviados || resolvidas === total,
+    );
+    progress.value = resolvidas;
+    progress.nextElementSibling.textContent = `${Math.round((resolvidas / total) * 100)}%`;
+    concluir.disabled = !enviados || enviando;
+    if (resolvidas === total)
+      closeTimer ||= window.setTimeout(() => dialog.close(), 1600);
   }
 
-  const chave = `${colaborador_id}:${quantidade}`;
+  function filtrar() {
+    const termo = normalizarBuscaPendencia(search.value);
+    let visiveis = 0;
+    for (const grupo of grupos.values()) {
+      let count = 0;
+      for (const linha of grupo.linhas) {
+        const corresponde = linha.texto.includes(termo);
+        let acoesVisiveis = 0;
+        for (const [key, acao] of linha.acoes) {
+          acao.hidden = !corresponde || (filtro !== "todas" && filtro !== key);
+          if (!acao.hidden) acoesVisiveis++;
+        }
+        linha.row.hidden = !acoesVisiveis;
+        count += acoesVisiveis;
+      }
+      grupo.element.hidden = !count;
+      if (count && (termo || filtro !== "todas")) grupo.element.open = true;
+      grupo.badge.textContent = rotuloPendenciasKanban(count);
+      visiveis += count;
+    }
+    empty.hidden = Boolean(visiveis);
+  }
+
+  for (const item of itens) {
+    const id = String(item.idfuncao_imagem);
+    const tiposItem = tipos.filter(({ flag }) => Number(item[flag]) === 1);
+    const codigoObra = item.nomenclatura || item.nome_obra || "Sem obra";
+    const grupoKey = item.obra_id || codigoObra;
+    if (!grupos.has(grupoKey)) {
+      const element = document.createElement("details");
+      element.className = "kanban-pending-group";
+      element.open = !grupos.size;
+      element.innerHTML = `<summary>${icon("ri-arrow-right-s-line")}<strong>${escapeKanbanText(codigoObra)}</strong><span class="kanban-pending-count"></span></summary>
+        <div class="kanban-pending-row kanban-pending-labels"><span>Imagem e função</span><span>Ação</span></div>`;
+      list.append(element);
+      grupos.set(grupoKey, {
+        element,
+        badge: element.querySelector(".kanban-pending-count"),
+        linhas: [],
+      });
+    }
+    const grupo = grupos.get(grupoKey);
+    const nome = item.imagem_nome || "Imagem";
+    const funcao = [item.nome_funcao, item.nome_status]
+      .filter(Boolean)
+      .join(" · ");
+    const comAjustes = /^aprovado[ _]com[ _]ajustes$/i.test(
+      String(item.status).trim(),
+    );
+    const row = document.createElement("div");
+    row.className = "kanban-pending-row";
+    row.innerHTML = `
+      <div class="kanban-pending-image">
+        <span class="kanban-pending-thumb">${icon("ri-image-line")}</span>
+        <div><strong>${escapeKanbanText(nome)}</strong><span>${escapeKanbanText(funcao)}</span></div>
+        ${comAjustes || tiposItem.some(({ key }) => key === "render") ? `<span class="kanban-pending-approved">${icon("ri-send-plane-line")} ${comAjustes ? "Aprovado com ajustes" : "Imagem aprovada"}</span>` : ""}
+      </div>
+      <div class="kanban-pending-actions"></div>`;
+    const thumb = row.querySelector(".kanban-pending-thumb");
+    if (item.ultima_imagem) {
+      const raw = String(item.ultima_imagem);
+      const path = raw.startsWith("/mnt/clientes")
+        ? sftpToPublicUrl(raw) || raw
+        : raw;
+      const img = document.createElement("img");
+      img.alt = "";
+      img.loading = "lazy";
+      img.addEventListener("error", () => img.remove(), { once: true });
+      img.src = /^https?:\/\//i.test(path)
+        ? path
+        : `thumb.php?path=${encodeURIComponent(path)}&w=180&q=70`;
+      thumb.append(img);
+    }
+
+    const acoes = new Map();
+    const linha = {
+      id,
+      tiposItem,
+      row,
+      acoes,
+      texto: normalizarBuscaPendencia(
+        [nome, funcao, codigoObra, item.nome_obra].join(" "),
+      ),
+    };
+    for (const { key } of tiposItem) {
+      const acao = document.createElement("div");
+      acao.className = "kanban-pending-action";
+      acao.dataset.kind = key;
+      const rotulo = {
+        arquivo: "Arquivo pendente",
+        render: "Render pendente",
+        angulo: "Ângulo aprovado",
+      }[key];
+      const glyph = {
+        arquivo: "ri-file-warning-line",
+        render: "ri-box-3-line",
+        angulo: "ri-focus-3-line",
+      }[key];
+      acao.innerHTML = `<span class="kanban-pending-tag">${icon(glyph)} ${rotulo}</span>`;
+      row.querySelector(".kanban-pending-actions").append(acao);
+      acoes.set(key, acao);
+
+      if (key === "arquivo") {
+        linha.atualizarArquivo = configurarEnvioPendencia(
+          acao,
+          item,
+          colaborador,
+          icon,
+        );
+      } else {
+        const url = new URL("FlowReview/index.php", location.href);
+        url.searchParams.set("funcao_imagem_id", id);
+        if (item.nomenclatura)
+          url.searchParams.set("obra_nome", item.nomenclatura);
+        const link = document.createElement("a");
+        link.href = url.href;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.innerHTML = `${icon("ri-external-link-line")} Abrir Flow Review`;
+        if (key === "angulo") {
+          acao.insertAdjacentHTML(
+            "beforeend",
+            '<span class="kanban-pending-action-note">Conferir ângulo</span>',
+          );
+        }
+        acao.append(link);
+        link.addEventListener("click", () => {
+          retornandoDoReview = true;
+          if (key === "angulo" && !angulosLidos.has(id)) {
+            marcarCienciaAngulo(id, colaborador)
+              .then((visualizado) => {
+                if (!visualizado) return;
+                angulosLidos.add(id);
+                atualizarModal();
+                if (colaborador === colaborador_id) carregarDados(colaborador);
+              })
+              .catch(() => {});
+          }
+        });
+      }
+    }
+    linhas.push(linha);
+    grupo.linhas.push(linha);
+    grupo.element.append(row);
+  }
+
+  const empty = document.createElement("p");
+  empty.className = "kanban-pending-empty";
+  empty.textContent = "Nenhuma pendência encontrada.";
+  list.append(empty);
+  search.addEventListener("input", filtrar);
+  for (const button of dialog.querySelectorAll("[data-filter]")) {
+    button.addEventListener("click", () => {
+      dialog
+        .querySelector('[aria-pressed="true"]')
+        .setAttribute("aria-pressed", "false");
+      button.setAttribute("aria-pressed", "true");
+      filtro = button.dataset.filter;
+      filtrar();
+    });
+  }
+
+  function atualizarDados({ detail }) {
+    if (colaborador !== colaborador_id) return;
+    dadosRecentes = new Map(
+      (detail.funcoes || []).map((item) => [
+        String(item.idfuncao_imagem),
+        item,
+      ]),
+    );
+    atualizarModal();
+  }
+  const recarregar = () => {
+    if (!retornandoDoReview || colaborador !== colaborador_id) return;
+    retornandoDoReview = false;
+    carregarDados(colaborador);
+  };
+
+  document.body.append(dialog);
+  dialog.addEventListener(
+    "close",
+    () => {
+      clearTimeout(closeTimer);
+      cleanupOrb?.();
+      window.removeEventListener("flow:kanban-pending-upload", atualizarModal);
+      window.removeEventListener("flow:kanban-pending-data", atualizarDados);
+      window.removeEventListener("focus", recarregar);
+      dialog.remove();
+      limparEnviosConcluidos(kanbanPayloadAtual);
+    },
+    { once: true },
+  );
+  window.addEventListener("flow:kanban-pending-upload", atualizarModal);
+  window.addEventListener("flow:kanban-pending-data", atualizarDados);
+  window.addEventListener("focus", recarregar);
+  dialog.showModal();
+  filtrar();
+  atualizarModal();
+}
+
+function normalizarBuscaPendencia(texto) {
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
+}
+
+function rotuloPendenciasKanban(total) {
+  return `${total} ${total === 1 ? "pendência" : "pendências"}`;
+}
+
+function configurarEnvioPendencia(acao, item, colaborador, icon) {
+  const id = String(item.idfuncao_imagem);
+  acao.insertAdjacentHTML(
+    "beforeend",
+    `
+    <form class="kanban-pending-upload">
+      <label class="kanban-pending-drop">
+        <input type="file" aria-label="Selecionar arquivo para ${escapeKanbanText(item.imagem_nome || "imagem")}">
+        ${icon("ri-upload-cloud-2-line")} <span>Arraste o arquivo aqui ou clique para selecionar</span>
+      </label>
+      <button type="submit" class="kanban-pending-send" aria-label="Enviar arquivo" title="Enviar arquivo" hidden>${icon("ri-send-plane-fill")}</button>
+      <div class="kanban-pending-file-status" role="status"></div>
+    </form>`,
+  );
+  const form = acao.querySelector("form");
+  const drop = form.querySelector("label");
+  const input = form.querySelector("input");
+  const submit = form.querySelector("button");
+  const status = form.querySelector('[role="status"]');
+  const tag = acao.querySelector(".kanban-pending-tag");
+  let arquivo;
+  function selecionar(file) {
+    arquivo = file;
+    drop.querySelector("span").textContent = file.name;
+    submit.hidden = false;
+  }
+  input.addEventListener("change", () => {
+    if (input.files[0]) selecionar(input.files[0]);
+  });
+  drop.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    if (!input.disabled) drop.classList.add("is-dragging");
+  });
+  drop.addEventListener("dragleave", () =>
+    drop.classList.remove("is-dragging"),
+  );
+  drop.addEventListener("drop", (event) => {
+    event.preventDefault();
+    drop.classList.remove("is-dragging");
+    const file = event.dataTransfer.files[0];
+    if (!input.disabled && file) selecionar(file);
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const anterior = enviosPendentes.get(id);
+    if (!arquivo || (anterior && anterior.state !== "error")) return;
+
+    const atualizarEnvio = (state, message) => {
+      enviosPendentes.set(id, { state, message });
+      window.dispatchEvent(new Event("flow:kanban-pending-upload"));
+    };
+    atualizarEnvio("sending", "Enviando arquivo…");
+    enfileirarArquivoFinal(
+      arquivo,
+      {
+        funcaoId: id,
+        imagemId: item.imagem_id,
+        funcao: item.nome_funcao,
+        imagem: item.imagem_nome,
+        nomenclatura: item.nomenclatura,
+        colaborador,
+      },
+      {
+        queued: () => {
+          if (enviosPendentes.get(id)?.state === "sending") {
+            atualizarEnvio("queued", "Na fila de transferência");
+          }
+        },
+        done: () => {
+          atualizarEnvio("done", "Arquivo enviado");
+          if (colaborador === colaborador_id) carregarDados(colaborador);
+        },
+        error: (message) => atualizarEnvio("error", message),
+      },
+    );
+  });
+
+  return (state, message) => {
+    if (acao.dataset.uploadState === (state || "")) return;
+    acao.dataset.uploadState = state || "";
+    const done = state === "done";
+    form.hidden = done;
+    input.disabled = submit.disabled = Boolean(state && state !== "error");
+    status.textContent = message || "";
+    tag.innerHTML = done
+      ? `${icon("ri-check-line")} Arquivo enviado`
+      : `${icon("ri-file-warning-line")} Arquivo pendente`;
+  };
+}
+
+function alertarPendenciasSeNecessario(data) {
+  if (!document.getElementById("kanban-pending-dialog"))
+    limparEnviosConcluidos(data);
+  const pendentes = obterPendenciasKanban(data);
+  const atalho = document.getElementById("kanban-pending-open");
+  const abrirModal = () =>
+    abrirPendenciasKanban(obterPendenciasKanban(kanbanPayloadAtual || data));
+  if (atalho) {
+    atalho.hidden = !pendentes.length;
+    atalho.onclick = abrirModal;
+  }
+
+  const chave = pendentes.length
+    ? `${colaborador_id}:${pendentes
+        .map(
+          (item) =>
+            `${item.idfuncao_imagem}/${item.requires_file_upload}/${item.requires_render_send}/${item.angulo_ciencia_pendente}`,
+        )
+        .sort()
+        .join(",")}`
+    : "";
   if (ultimoResumoPendencia === chave) return;
   ultimoResumoPendencia = chave;
+  if (!chave || document.getElementById("kanban-pending-dialog")?.open) return;
 
+  const counts = contarPendenciasKanban(pendentes);
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const avisos = tiposPendenciaKanban
+    .filter(({ key }) => counts[key])
+    .map(
+      ({ key, notice }) =>
+        `${counts[key]} ${notice[counts[key] === 1 ? 0 : 1]}`,
+    );
   window.FlowAlert.warning({
     mode: "notification",
-    title: `${quantidade} arquivo${quantidade === 1 ? "" : "s"} pendente${quantidade === 1 ? "" : "s"}`,
-    message: "Existem cards aguardando o envio de arquivo.",
-    action: {
-      label: "Ver pendências",
-      onClick: () => {
-        const cards = Array.from(
-          document.querySelectorAll(
-            '#kanban-section .kanban-card[data-requires-file-upload="1"]',
-          ),
-        );
-        const card =
-          cards.find((item) => item.getClientRects().length > 0) || cards[0];
-        if (!card) return;
-
-        document
-          .querySelectorAll(".kanban-card.selected")
-          .forEach((selected) => selected.classList.remove("selected"));
-        card.classList.add("selected");
-        const reduceMotion = window.matchMedia?.(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        card.scrollIntoView({
-          behavior: reduceMotion ? "auto" : "smooth",
-          block: "center",
-        });
-        abrirSidebar(
-          card.dataset.id,
-          card.dataset.idImagem,
-          card.dataset.nomeObraReal || "",
-        );
-      },
-    },
+    title: `${rotuloPendenciasKanban(total)} no Kanban`,
+    message: `${avisos.join(" · ")}.`,
+    action: { label: "Ver pendências", onClick: abrirModal },
     secondaryAction: { label: "Agora não" },
   });
+}
+
+function limparEnviosConcluidos(data) {
+  for (const item of data?.funcoes || []) {
+    if (item.is_animacao || Number(item.requires_file_upload) === 1) continue;
+    const id = String(item.idfuncao_imagem);
+    if (enviosPendentes.get(id)?.state === "done") enviosPendentes.delete(id);
+  }
+}
+
+async function marcarCienciaAngulo(funcaoId, colaboradorId) {
+  const response = await fetch(
+    "PaginaPrincipal/marcarAnguloCienciaVisualizada.php",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        funcao_imagem_id: Number(funcaoId),
+        colaborador_id: Number(colaboradorId),
+      }),
+    },
+  );
+  const payload = await response.json();
+  return response.ok && payload?.success && payload.visualizado;
 }
 
 // extrai a lógica do fetch para uma função reutilizável
@@ -2687,7 +3184,7 @@ function processarDados(data) {
     "Aguardando Direção": "aguardando-direcao",
     Ajuste: "ajuste",
     Aprovado: "aprovado",
-    "Aprovado com ajustes": "aprovado",
+    "Aprovado com ajustes": "aprovado-ajustes",
     Finalizado: "done",
     HOLD: "hold",
   };
@@ -2700,16 +3197,6 @@ function processarDados(data) {
       col.querySelector(".content").innerHTML = "";
     }
   });
-  // Extra column for "Aprovado com ajustes"
-  const extraCols = ["aprovado-ajustes", "aguardando-direcao"];
-  extraCols.forEach((colId) => {
-    const col = document.getElementById(colId);
-    if (col) {
-      col.style.display = "";
-      col.querySelector(".content").innerHTML = "";
-    }
-  });
-
   const pendenciasCol = document.getElementById("pendencias-flowreview");
   const temPendenciasOperacionais =
     Array.isArray(data.pendencias_operacionais) &&
@@ -2769,6 +3256,9 @@ function processarDados(data) {
     // Normalize incoming status: trim and compare case-insensitively
     const rawStatus = (item.status || "Não iniciado").toString().trim();
     const s = rawStatus.toLowerCase();
+    const temColunaAprovadoComAjustes = [4, 5, 6].includes(
+      Number(item.funcao_id || item.funcaoId || 0),
+    );
     let status = "Não iniciado";
     if (s === "ajuste") status = "Ajuste";
     else if (s === "em aprovação" || s === "em aprovacao")
@@ -2783,19 +3273,10 @@ function processarDados(data) {
       status = "Em andamento";
     else if (s === "aprovado") status = "Aprovado";
     else if (s === "aprovado com ajustes" || s === "aprovado_com_ajustes") {
-      // Para Finalização (funcao_id=4), manter como "Aprovado com ajustes" sempre.
-      const fid = Number(item.funcao_id || item.funcaoId || 0);
-      if (fid === 4 || fid === 5) {
-        status = "Aprovado com ajustes";
-      } else {
-        // Se já existe arquivo associado à função, mostramos visualmente como Finalizado
-        // mas NÃO alteramos o status no banco (isso é responsabilidade do backend).
-        if (item.requires_file_upload == 0) {
-          status = "Finalizado";
-        } else {
-          status = "Aprovado com ajustes";
-        }
-      }
+      status =
+        !temColunaAprovadoComAjustes && Number(item.requires_file_upload) === 0
+          ? "Finalizado"
+          : "Aprovado com ajustes";
     } else if (s === "finalizado") status = "Finalizado";
     else if (
       s === "não iniciado" ||
@@ -2806,22 +3287,10 @@ function processarDados(data) {
     else if (s === "hold") status = "HOLD";
     else status = rawStatus || "Não iniciado";
 
-    // default mapping
-    let colunaId = statusMap[status];
-    // special-case: 'Aprovado com ajustes' should go to its own column
-    // but ONLY for função finalização (funcao_id == 4). Otherwise fall back to 'aprovado'.
-    if (status === "Aprovado com ajustes") {
-      try {
-        const fid = Number(item.funcao_id || item.funcaoId || 0);
-        if (fid === 4 || fid === 5) {
-          colunaId = "aprovado-ajustes";
-        } else {
-          colunaId = "aprovado";
-        }
-      } catch (e) {
-        colunaId = "aprovado";
-      }
-    }
+    const colunaId =
+      status === "Aprovado com ajustes" && !temColunaAprovadoComAjustes
+        ? "aprovado"
+        : statusMap[status];
     if (colunaId === "done") {
       kanbanFinalizadosEncontrados += 1;
       if (
@@ -3414,24 +3883,15 @@ function processarDados(data) {
         () => {
           if (marcacaoVisualizacaoEmAndamento) return;
           marcacaoVisualizacaoEmAndamento = true;
-          fetch("PaginaPrincipal/marcarAnguloCienciaVisualizada.php", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({
-              funcao_imagem_id: Number(item.idfuncao_imagem),
-              colaborador_id: colaboradorAnguloCienciaId,
-            }),
-          })
-            .then((response) => response.json())
-            .then((payload) => {
-              if (!payload?.success || !payload.visualizado) {
+          marcarCienciaAngulo(item.idfuncao_imagem, colaboradorAnguloCienciaId)
+            .then((visualizado) => {
+              if (!visualizado) {
                 marcacaoVisualizacaoEmAndamento = false;
                 return;
               }
+              item.angulo_ciencia_pendente = 0;
               card.querySelector(".angle-science-ribbon")?.remove();
+              alertarPendenciasSeNecessario(kanbanPayloadAtual);
             })
             .catch(() => {
               marcacaoVisualizacaoEmAndamento = false;
@@ -7340,7 +7800,9 @@ function configurarModalPlanejamento(card) {
     (!disponivel || card.dataset.r00Entregue === "1" ? prazoFallback : "");
   modalPrevisaoConclusao.disabled = false;
   modalJustificativa.value =
-    card.dataset.r00Entregue === "1" ? "" : card.dataset.planningJustification || "";
+    card.dataset.r00Entregue === "1"
+      ? ""
+      : card.dataset.planningJustification || "";
   if (modalMotivo) modalMotivo.value = "";
   const salvarButton = document.getElementById("salvarModal");
   if (salvarButton) {
@@ -7779,9 +8241,10 @@ document.getElementById("salvarModal").addEventListener("click", async () => {
             const choice = await Swal.fire({
               icon: "question",
               title: "Iniciar Modelagem e Composição juntas?",
-              text: cardSelecionado.dataset.r00Entregue === "1"
-                ? "As duas tarefas serão iniciadas com a mesma previsão."
-                : "A unidade conjunta terá uma única janela operacional de 4 dias úteis.",
+              text:
+                cardSelecionado.dataset.r00Entregue === "1"
+                  ? "As duas tarefas serão iniciadas com a mesma previsão."
+                  : "A unidade conjunta terá uma única janela operacional de 4 dias úteis.",
               showCancelButton: true,
               showDenyButton: true,
               confirmButtonText: "Iniciar juntas",
@@ -8789,37 +9252,63 @@ function enviarArquivo() {
     return;
   }
 
-  // Monta os campos exatamente como o backend espera
-  const file = arquivosFinais[0];
-  const isAnimacaoCard = cardSelecionado?.dataset?.isAnimacao === "1";
-  const tipoAnimacaoCard = cardSelecionado?.dataset?.tipoAnimacao || "";
+  enfileirarArquivoFinal(
+    arquivosFinais[0],
+    {
+      funcaoId: idfuncao_imagem,
+      imagemId: idimagem,
+      funcao: subtitulo,
+      imagem: titulo,
+      nomenclatura: obra,
+      colaborador: colaborador_id,
+      isAnimacao: cardSelecionado?.dataset?.isAnimacao === "1",
+      animacaoId: cardSelecionado?.dataset?.animacaoId,
+      tipoAnimacao: cardSelecionado?.dataset?.tipoAnimacao,
+    },
+    {
+      queued: () => {
+        cardModal.classList.remove("active");
+        cardSelecionado = null;
+        carregarDados(colaborador_id);
+      },
+      error: (message) =>
+        Toastify({
+          text: message,
+          duration: 6000,
+          gravity: "top",
+          backgroundColor: "#f44336",
+        }).showToast(),
+    },
+  );
+}
+
+function enfileirarArquivoFinal(file, tarefa, callbacks) {
   const formData = new FormData();
   formData.append("arquivo_final", file);
-  formData.append("tipo_tarefa", isAnimacaoCard ? "animacao" : "imagem");
-  if (isAnimacaoCard) {
-    formData.append("funcao_animacao_id", idfuncao_imagem || "");
-    formData.append("animacao_id", cardSelecionado?.dataset?.animacaoId || "");
-    formData.append("tipo_animacao", tipoAnimacaoCard);
+  formData.append("tipo_tarefa", tarefa.isAnimacao ? "animacao" : "imagem");
+  if (tarefa.isAnimacao) {
+    formData.append("funcao_animacao_id", tarefa.funcaoId || "");
+    formData.append("animacao_id", tarefa.animacaoId || "");
+    formData.append("tipo_animacao", tarefa.tipoAnimacao || "");
     formData.append("caminho_base_upload", "04.Finalizacao/Anima");
   } else {
-    formData.append("dataIdFuncoes", JSON.stringify([idfuncao_imagem]));
+    formData.append("dataIdFuncoes", JSON.stringify([tarefa.funcaoId]));
   }
-  formData.append("idimagem", idimagem);
-  formData.append("nome_funcao", subtitulo);
-  const campoNomeImagem = titulo;
+  formData.append("idimagem", tarefa.imagemId);
+  formData.append("nome_funcao", tarefa.funcao || "");
+  const campoNomeImagem = tarefa.imagem || "";
   formData.append("nome_imagem", campoNomeImagem);
   formData.append("nome_imagem_original", campoNomeImagem);
 
   const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || "";
   formData.append("numeroImagem", numeroImagem);
-  const nomenclatura = obra;
-  formData.append("nomenclatura", nomenclatura);
+  formData.append("nomenclatura", tarefa.nomenclatura || "");
   const descricaoMatch = campoNomeImagem.match(
     /^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i,
   );
   const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : "";
   formData.append("primeiraPalavra", primeiraPalavra);
-  formData.append("idcolaborador", colaborador_id);
+  formData.append("idcolaborador", tarefa.colaborador);
 
   // Gerar e persistir client_id para rastreio via WebSocket (Fase 2)
   const clientId =
@@ -8827,19 +9316,45 @@ function enviarArquivo() {
   try {
     localStorage.setItem("improov_client_id", clientId);
   } catch (e) {}
-  if (window.improovUploadWS) window.improovUploadWS.subscribe(clientId);
   formData.append("client_id", clientId);
 
   const xhr = new XMLHttpRequest();
-  let uploadCancelado = false;
+  let terminal = false;
+  const falhar = (message, updateBadge = true) => {
+    if (terminal) return;
+    terminal = true;
+    window.removeEventListener("improov:uploadProgress", acompanhar);
+    if (updateBadge) window.UploadBadge?.error(clientId, message);
+    callbacks.error(message);
+  };
+  const acompanhar = ({ detail }) => {
+    if (String(detail?.id) !== clientId || terminal) return;
+    if (detail.status === "failed" || detail.status === "error") {
+      falhar(
+        detail.message || "Falha na transferência. Tente novamente.",
+        false,
+      );
+    } else if (
+      detail.status === "done" ||
+      detail.status === "awaiting_approval"
+    ) {
+      terminal = true;
+      window.removeEventListener("improov:uploadProgress", acompanhar);
+      callbacks.done();
+    }
+  };
+  if (callbacks.done)
+    window.addEventListener("improov:uploadProgress", acompanhar);
 
   if (window.UploadBadge)
     window.UploadBadge.add(clientId, file.name, file.size, xhr);
+  window.improovUploadWS?.subscribe(clientId);
 
   const _enqueueUrl = window.IMPROOV_APP_BASE
     ? window.location.origin + window.IMPROOV_APP_BASE + "/upload_enqueue.php"
     : "upload_enqueue.php";
   xhr.open("POST", _enqueueUrl);
+  xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
 
   xhr.upload.addEventListener("progress", (e) => {
     if (e.lengthComputable && window.UploadBadge) {
@@ -8848,20 +9363,20 @@ function enviarArquivo() {
     }
   });
 
-  xhr.onabort = () => {
-    uploadCancelado = true;
-  };
+  xhr.onabort = () => falhar("Envio cancelado.", false);
 
   xhr.onload = () => {
-    if (uploadCancelado) return;
-    let res = null;
+    if (terminal) return;
+    let resultado;
     try {
-      res = JSON.parse(xhr.responseText || "null");
-    } catch (err) {
-      console.error("Resposta não-JSON do servidor:", xhr.responseText);
-    }
+      resultado = JSON.parse(xhr.responseText)?.[0];
+    } catch {}
 
-    if (xhr.status >= 200 && xhr.status < 300) {
+    if (
+      xhr.status >= 200 &&
+      xhr.status < 300 &&
+      resultado?.status === "enfileirado"
+    ) {
       // Fase 1 concluída — badge entra em modo "Na fila"
       // Fase 2 (transferência remota) é atualizada automaticamente via WebSocket (upload-ws.js → upload-badge.js)
       if (window.UploadBadge)
@@ -8870,36 +9385,19 @@ function enviarArquivo() {
           0,
           "Na fila — aguardando transferência...",
         );
-      cardModal.classList.remove("active");
-      cardSelecionado = null;
-      carregarDados(colaborador_id);
+      window.improovUploadWS?.subscribe(clientId);
+      callbacks.queued();
     } else {
-      const serverMsg = xhr.responseText
-        ? xhr.responseText
-        : `Status ${xhr.status}`;
-      if (window.UploadBadge)
-        window.UploadBadge.error(clientId, "Erro no servidor");
-      Toastify({
-        text: "Erro no servidor: " + serverMsg,
-        duration: 6000,
-        gravity: "top",
-        backgroundColor: "#f44336",
-      }).showToast();
+      falhar(
+        xhr.status === 413
+          ? "O arquivo excede o limite de envio."
+          : "Não foi possível receber o arquivo. Tente novamente.",
+      );
     }
   };
 
-  xhr.onerror = () => {
-    if (!uploadCancelado) {
-      if (window.UploadBadge)
-        window.UploadBadge.error(clientId, "Erro ao enfileirar arquivo");
-      Toastify({
-        text: "Erro ao enfileirar arquivo",
-        duration: 3000,
-        gravity: "top",
-        backgroundColor: "#f44336",
-      }).showToast();
-    }
-  };
+  xhr.onerror = () =>
+    falhar("Falha na conexão durante o envio. Tente novamente.");
 
   xhr.send(formData);
 }
@@ -9019,13 +9517,7 @@ document.querySelectorAll(".dropbtn").forEach((btn) => {
   const kanbanSec = document.getElementById("kanban-section");
   const searchBar = document.querySelector(".kanban-searchbar");
   const navRight = document.querySelector("main header .nav-right");
-  if (
-    !btnOverview ||
-    !btnKanban ||
-    !overviewSec ||
-    !kanbanSec
-  )
-    return;
+  if (!btnOverview || !btnKanban || !overviewSec || !kanbanSec) return;
 
   function clearViews() {
     document.body.classList.remove("overview-active");

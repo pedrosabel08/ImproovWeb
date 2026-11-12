@@ -5171,14 +5171,15 @@ form#dailyForm button {
   text-transform: uppercase;
 }
 
-.modalPlanejamento[data-r00-entregue="1"] > :is(
-  .modal-planning-required,
-  .modal-operational-window,
-  .modal-planning-feedback,
-  .modal-planning-reason,
-  .modal-planning-justification,
-  .modal-planning-note
-) {
+.modalPlanejamento[data-r00-entregue="1"]
+  > :is(
+    .modal-planning-required,
+    .modal-operational-window,
+    .modal-planning-feedback,
+    .modal-planning-reason,
+    .modal-planning-justification,
+    .modal-planning-note
+  ) {
   display: none;
 }
 .modalPlanejamento small {
@@ -10042,4 +10043,509 @@ tr.prod-row-recorde td {
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
+}
+#kanban-pending-open[hidden],
+#kanban-pending-dialog [hidden] {
+  display: none !important;
+}
+
+#kanban-pending-dialog {
+  --pending-accent: #6950e8;
+  --pending-ink: light-dark(#5440bb, #c5b9ff);
+  --pending-tint: light-dark(#eeeaff, #2a2542);
+  --pending-file: light-dark(#a73c32, #ffada2);
+  --pending-render: light-dark(#865000, #ffc146);
+  --pending-angle: light-dark(#3355a3, #a9c2ff);
+  color-scheme: light dark;
+  box-sizing: border-box;
+  width: min(1260px, calc(100% - 32px));
+  height: min(1000px, calc(100dvh - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  margin: auto;
+  border: 1px solid var(--border-modal);
+  border-radius: 16px;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  background: var(--bg-modal);
+  box-shadow: 0 24px 68px #0007;
+}
+
+[data-theme="light"] #kanban-pending-dialog {
+  color-scheme: light;
+}
+[data-theme="dark"] #kanban-pending-dialog {
+  color-scheme: dark;
+}
+
+#kanban-pending-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+#kanban-pending-dialog::backdrop {
+  background: var(--bg-overlay);
+  backdrop-filter: blur(4px);
+}
+
+.kanban-pending-top {
+  padding: 18px 20px 12px;
+}
+.kanban-pending-header,
+.kanban-pending-metric,
+.kanban-pending-tools,
+.kanban-pending-search,
+.kanban-pending-filters,
+.kanban-pending-group > summary,
+.kanban-pending-action,
+.kanban-pending-busy,
+.kanban-pending-footer,
+.kanban-pending-progress-line,
+.kanban-pending-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kanban-pending-header {
+  margin-bottom: 20px;
+}
+.kanban-pending-header form {
+  margin-inline-start: auto;
+  align-self: flex-start;
+}
+.kanban-pending-header h2 {
+  margin: 0;
+  color: inherit;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+.kanban-pending-header p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+}
+
+.kanban-pending-symbol {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-count);
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+}
+
+.kanban-pending-header .kanban-pending-symbol,
+.kanban-pending-metric[data-kind="todas"] .kanban-pending-symbol {
+  color: var(--pending-ink);
+  background: var(--pending-tint);
+}
+
+.kanban-pending-metrics {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 14px;
+}
+.kanban-pending-metric {
+  padding: 10px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  min-width: 0;
+}
+.kanban-pending-metric[data-kind="todas"] {
+  background: var(--pending-tint);
+  border-color: var(--pending-accent);
+}
+.kanban-pending-metric strong {
+  display: block;
+  font-size: 1.375rem;
+  line-height: 1.12;
+}
+.kanban-pending-metric div > span {
+  color: var(--text-secondary);
+}
+.kanban-pending-metric[data-kind="todas"] strong,
+.kanban-pending-metric[data-kind="todas"] div > span {
+  color: var(--pending-ink);
+}
+
+.kanban-pending-tools {
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.kanban-pending-search {
+  flex: 1 1 270px;
+  padding: 0 12px;
+  min-width: 0;
+  border: 1px solid var(--border-input);
+  border-radius: 9px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+.kanban-pending-search:focus-within {
+  outline: 2px solid var(--pending-accent);
+  outline-offset: 2px;
+}
+#kanban-pending-dialog .kanban-pending-search input {
+  flex: 1;
+  min-width: 0;
+  height: 39px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+}
+.kanban-pending-filters {
+  gap: 5px;
+  flex-wrap: wrap;
+}
+#kanban-pending-dialog button {
+  padding: 8px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 9px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+#kanban-pending-dialog button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+#kanban-pending-dialog button[aria-pressed="true"] {
+  border-color: var(--pending-accent);
+  background: var(--pending-tint);
+  color: var(--pending-ink);
+}
+.kanban-pending-filters button span,
+.kanban-pending-count {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  color: var(--text-secondary);
+  background: var(--bg-count);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.kanban-pending-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 20px 16px;
+}
+.kanban-pending-group {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.kanban-pending-group > summary {
+  padding: 8px 14px;
+  list-style: none;
+  background: var(--bg-surface);
+  cursor: pointer;
+}
+.kanban-pending-group > summary::-webkit-details-marker {
+  display: none;
+}
+.kanban-pending-group[open] > summary i {
+  transform: rotate(90deg);
+}
+.kanban-pending-group > summary i {
+  font-size: 1rem;
+}
+.kanban-pending-group > summary strong {
+  overflow-wrap: anywhere;
+}
+
+.kanban-pending-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  gap: 12px 18px;
+  padding: 6px 12px 6px clamp(12px, 3vw, 50px);
+  border-top: 1px solid var(--border-default);
+  align-items: center;
+}
+.kanban-pending-labels {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+.kanban-pending-image {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.kanban-pending-image strong,
+.kanban-pending-image div > span {
+  display: block;
+}
+.kanban-pending-image div > span {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.kanban-pending-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 45px;
+  flex: 0 0 80px;
+  overflow: hidden;
+  background: var(--bg-count);
+  color: var(--text-secondary);
+  border-radius: 8px;
+}
+.kanban-pending-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.kanban-pending-approved {
+  color: var(--pending-render);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+.kanban-pending-actions {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.kanban-pending-action {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.kanban-pending-action a {
+  color: var(--pending-ink);
+  font-weight: 650;
+}
+.kanban-pending-action[data-kind="render"] a {
+  margin: auto;
+}
+.kanban-pending-action-note {
+  margin: auto;
+  color: var(--text-primary);
+}
+.kanban-pending-action.is-resolved .kanban-pending-tag {
+  color: var(--color-success);
+}
+.kanban-pending-tag {
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, currentColor 36%, transparent);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--pending-file);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.kanban-pending-action[data-kind="render"] .kanban-pending-tag {
+  color: var(--pending-render);
+}
+.kanban-pending-action[data-kind="angulo"] .kanban-pending-tag {
+  color: var(--pending-angle);
+}
+
+.kanban-pending-upload {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1 1 210px;
+  min-width: 0;
+}
+.kanban-pending-drop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 190px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px dashed var(--pending-accent);
+  border-radius: 9px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.kanban-pending-drop:focus-within,
+.kanban-pending-drop.is-dragging {
+  outline: 2px solid var(--pending-accent);
+  outline-offset: 1px;
+}
+.kanban-pending-drop i {
+  color: var(--pending-ink);
+  font-size: 1.125rem;
+}
+.kanban-pending-drop input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: inherit;
+}
+.kanban-pending-drop:has(input:disabled) {
+  opacity: 0.65;
+  cursor: default;
+}
+#kanban-pending-dialog .kanban-pending-send {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  flex: 0 0 36px;
+  min-height: 36px;
+  padding: 0;
+  background: var(--pending-accent);
+  border-color: var(--pending-accent);
+  color: #fff;
+  font-size: 1rem;
+}
+.kanban-pending-file-status {
+  flex-basis: 100%;
+  font-size: 0.75rem;
+}
+.kanban-pending-file-status:empty {
+  display: none;
+}
+[data-upload-state="error"] .kanban-pending-file-status {
+  color: var(--color-danger);
+}
+[data-upload-state="done"] .kanban-pending-tag,
+.kanban-pending-summary.is-complete {
+  color: var(--color-success);
+  font-weight: 700;
+  animation: kanban-pending-confirm 0.38s ease-out both;
+}
+
+.kanban-pending-empty {
+  padding: 18px 12px;
+  color: var(--text-secondary);
+}
+.kanban-pending-footer {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+.kanban-pending-progress {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.kanban-pending-progress-line {
+  margin-top: 7px;
+}
+.kanban-pending-progress-line progress {
+  width: 100%;
+  height: 10px;
+  appearance: none;
+  accent-color: var(--pending-accent);
+}
+.kanban-pending-progress-line progress::-webkit-progress-bar {
+  background: var(--bg-count);
+  border-radius: 20px;
+}
+.kanban-pending-progress-line progress::-webkit-progress-value {
+  background: var(--pending-accent);
+  border-radius: 20px;
+}
+.kanban-pending-footer-actions {
+  margin-inline-start: auto;
+}
+#kanban-pending-dialog .kanban-pending-primary {
+  background: var(--pending-accent);
+  color: white;
+  border-color: var(--pending-accent);
+}
+
+@keyframes kanban-pending-confirm {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 850px) {
+  .kanban-pending-image {
+    flex-wrap: wrap;
+  }
+  .kanban-pending-approved {
+    flex-basis: 100%;
+  }
+  .kanban-pending-action-note {
+    margin-inline-start: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  #kanban-pending-dialog {
+    width: calc(100% - 16px);
+  }
+  .kanban-pending-top,
+  .kanban-pending-list,
+  .kanban-pending-footer {
+    padding-inline: 12px;
+  }
+  .kanban-pending-header .kanban-pending-symbol {
+    display: none;
+  }
+  .kanban-pending-header p {
+    font-size: 0.75rem;
+  }
+  .kanban-pending-metrics {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .kanban-pending-metric {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+  .kanban-pending-metric strong {
+    font-size: 1.25rem;
+  }
+  .kanban-pending-metric .kanban-pending-symbol {
+    display: none;
+  }
+  .kanban-pending-tools {
+    margin-top: 10px;
+    gap: 6px;
+  }
+  .kanban-pending-filters {
+    font-size: 0.75rem;
+  }
+  #kanban-pending-dialog .kanban-pending-filters button {
+    padding: 5px 6px;
+  }
+  .kanban-pending-row {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 9px 12px;
+  }
+  .kanban-pending-row.kanban-pending-labels {
+    display: none;
+  }
+  .kanban-pending-footer {
+    padding-block: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-upload-state="done"] .kanban-pending-tag,
+  .kanban-pending-summary.is-complete {
+    animation: none;
+  }
 }

@@ -192,7 +192,8 @@
       }
 
       getActiveUploadIds().forEach(function (activeId) {
-        if (idsToSubscribe.indexOf(activeId) === -1) idsToSubscribe.push(activeId);
+        if (idsToSubscribe.indexOf(activeId) === -1)
+          idsToSubscribe.push(activeId);
       });
 
       idsToSubscribe.forEach(function (subscribeId) {
@@ -206,12 +207,18 @@
         const data = JSON.parse(ev.data);
 
         if (data.channel && data.channel.startsWith("pos_producao:")) {
-          window.dispatchEvent(new CustomEvent("improov:posProducaoUpdated", { detail: data.payload }));
+          window.dispatchEvent(
+            new CustomEvent("improov:posProducaoUpdated", {
+              detail: data.payload,
+            }),
+          );
           return;
         }
 
         if (data.channel && data.channel.startsWith("render:")) {
-          window.dispatchEvent(new CustomEvent("improov:renderUpdated", { detail: data.payload }));
+          window.dispatchEvent(
+            new CustomEvent("improov:renderUpdated", { detail: data.payload }),
+          );
           return;
         }
 
@@ -243,7 +250,9 @@
 
         if (data.channel && data.channel.startsWith("fotografico:")) {
           window.dispatchEvent(
-            new CustomEvent("improov:fotograficoUpdated", { detail: data.payload }),
+            new CustomEvent("improov:fotograficoUpdated", {
+              detail: data.payload,
+            }),
           );
           return;
         }
@@ -275,10 +284,8 @@
 
         log("upload-ws got", payload);
 
-        const isDone =
-          (payload.status &&
-            payload.status.toString().toLowerCase() === "done") ||
-          Number(payload.progress) >= 100;
+        const status = String(payload.status || "").toLowerCase();
+        const isDone = status === "done" || status === "awaiting_approval";
 
         if (isDone) {
           try {
@@ -334,7 +341,10 @@
   // construção. A falha não pode impedir o bridge WebSocket de inicializar.
   let bc = null;
   try {
-    bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(BC_NAME) : null;
+    bc =
+      typeof BroadcastChannel !== "undefined"
+        ? new BroadcastChannel(BC_NAME)
+        : null;
   } catch (e) {
     log("upload-ws BroadcastChannel unavailable", e);
   }

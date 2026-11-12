@@ -1619,6 +1619,7 @@ do {
                     // cleanup meta
                     @unlink($processingMeta);
                     cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
+                    publishProgress($redis, $jobId, 100, 'done', 'Finalizado e removido localmente');
                     worker_log('DB atualizado e job finalizado (sem staged).');
                 } else {
                     error_log('[upload_worker] could not finalize: missing log_ids even after insert; keeping meta for retry');
@@ -1628,6 +1629,7 @@ do {
 
             worker_log("Arquivo staged não encontrado: {$staged}", 'ERROR');
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+            publishProgress($redis, $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME), 0, 'failed', 'Arquivo temporário não encontrado');
             continue;
         }
 
@@ -1993,10 +1995,7 @@ do {
             // Detect transient network errors (ENETUNREACHABLE=101, ECONNREFUSED=111, etc.)
             $isNetworkError = (bool) preg_match('/Error 10[019]|Network is unreachable|Cannot connect|Connection refused|connection timed out/i', $msg);
 
-            if ($ok) {
-                publishProgress($redis, $jobId, 100, 'done', 'Enviado com sucesso');
-                // defer final DB update to finalize block below
-            } else {
+            if (!$ok) {
                 publishProgress($redis, $jobId, min(95, 10 + $meta['attempts'] * 15), 'retry', $msg);
                 // Sleep between retries so we don't hammer a temporarily unreachable host.
                 // Network errors get a longer delay; other errors get a shorter one.

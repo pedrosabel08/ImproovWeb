@@ -10410,6 +10410,33 @@ tr.prod-row-recorde td {
   color: #fff;
   font-size: 1rem;
 }
+.kanban-pending-file-progress {
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 9px;
+}
+.kanban-pending-file-progress > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kanban-pending-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kanban-pending-file-percent {
+  font-variant-numeric: tabular-nums;
+}
+.kanban-pending-file-progress progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 6px;
+  accent-color: var(--pending-accent);
+}
 .kanban-pending-file-status {
   flex-basis: 100%;
   font-size: 0.75rem;

@@ -2764,7 +2764,7 @@ function abrirPendenciasKanban(itens) {
           (atual && Number(atual[flag]) !== 1);
         if (resolvida) resolvidas++;
         if (key === "arquivo") {
-          atualizarArquivo(resolvida ? "done" : envio?.state, envio?.message);
+          atualizarArquivo(resolvida ? { state: "done" } : envio);
           if (resolvida) enviados++;
           else if (["sending", "queued"].includes(envio?.state))
             enviando = true;
@@ -3020,6 +3020,10 @@ function configurarEnvioPendencia(acao, item, colaborador, icon) {
         ${icon("ri-upload-cloud-2-line")} <span>Arraste o arquivo aqui ou clique para selecionar</span>
       </label>
       <button type="submit" class="kanban-pending-send" aria-label="Enviar arquivo" title="Enviar arquivo" hidden>${icon("ri-send-plane-fill")}</button>
+      <div class="kanban-pending-file-progress" hidden>
+        <div><strong class="kanban-pending-file-name"></strong><span class="kanban-pending-file-percent" aria-hidden="true"></span></div>
+        <progress max="100" aria-label="Progresso do arquivo para ${escapeKanbanText(item.imagem_nome || "imagem")}"></progress>
+      </div>
       <div class="kanban-pending-file-status" role="status"></div>
     </form>`,
   );
@@ -3027,6 +3031,10 @@ function configurarEnvioPendencia(acao, item, colaborador, icon) {
   const drop = form.querySelector("label");
   const input = form.querySelector("input");
   const submit = form.querySelector("button");
+  const progresso = form.querySelector(".kanban-pending-file-progress");
+  const barra = progresso.querySelector("progress");
+  const nomeArquivo = progresso.querySelector(".kanban-pending-file-name");
+  const percentual = progresso.querySelector(".kanban-pending-file-percent");
   const status = form.querySelector('[role="status"]');
   const tag = acao.querySelector(".kanban-pending-tag");
   let arquivo;
@@ -3056,8 +3064,20 @@ function configurarEnvioPendencia(acao, item, colaborador, icon) {
     const anterior = enviosPendentes.get(id);
     if (!arquivo || (anterior && anterior.state !== "error")) return;
 
-    const atualizarEnvio = (state, message) => {
-      enviosPendentes.set(id, { state, message });
+    const atualizarEnvio = (state, message, percent = null) => {
+      const anterior = enviosPendentes.get(id);
+      if (
+        anterior?.state === state &&
+        anterior.message === message &&
+        anterior.percent === percent
+      )
+        return;
+      enviosPendentes.set(id, {
+        state,
+        message,
+        percent,
+        filename: arquivo.name,
+      });
       window.dispatchEvent(new Event("flow:kanban-pending-upload"));
     };
     atualizarEnvio("sending", "Enviando arquivo…");
@@ -3077,6 +3097,33 @@ function configurarEnvioPendencia(acao, item, colaborador, icon) {
             atualizarEnvio("queued", "Na fila de transferência");
           }
         },
+        uploadProgress: (percent) =>
+          atualizarEnvio(
+            "sending",
+            percent === 100 ? "Confirmando recebimento…" : "Enviando arquivo…",
+            percent,
+          ),
+        transferProgress: ({ status, progress }) => {
+          const mensagens = {
+            claimed: "Preparando transferência…",
+            connecting: "Conectando ao destino…",
+            retry: "Tentando transferir novamente…",
+          };
+          if (status === "uploading") {
+            atualizarEnvio(
+              "queued",
+              progress === 100
+                ? "Finalizando transferência…"
+                : "Transferindo arquivo…",
+              progress,
+            );
+          } else if (mensagens[status] || status === "queued") {
+            atualizarEnvio(
+              "queued",
+              mensagens[status] || "Na fila de transferência",
+            );
+          }
+        },
         done: () => {
           atualizarEnvio("done", "Arquivo enviado");
           if (colaborador === colaborador_id) carregarDados(colaborador);
@@ -3086,16 +3133,27 @@ function configurarEnvioPendencia(acao, item, colaborador, icon) {
     );
   });
 
-  return (state, message) => {
-    if (acao.dataset.uploadState === (state || "")) return;
+  return ({ state, message = "", percent = null, filename = "" } = {}) => {
+    const mudouEstado = acao.dataset.uploadState !== (state || "");
     acao.dataset.uploadState = state || "";
     const done = state === "done";
+    const ativo = state === "sending" || state === "queued";
     form.hidden = done;
-    input.disabled = submit.disabled = Boolean(state && state !== "error");
-    status.textContent = message || "";
-    tag.innerHTML = done
-      ? `${icon("ri-check-line")} Arquivo enviado`
-      : `${icon("ri-file-warning-line")} Arquivo pendente`;
+    drop.hidden = input.disabled = submit.disabled = ativo || done;
+    submit.hidden = !arquivo || ativo || done;
+    progresso.hidden = !ativo;
+    if (ativo) {
+      nomeArquivo.textContent = filename;
+      percentual.textContent = percent === null ? "" : `${percent}%`;
+      if (percent === null) barra.removeAttribute("value");
+      else barra.value = percent;
+    }
+    if (status.textContent !== message) status.textContent = message;
+    if (mudouEstado) {
+      tag.innerHTML = done
+        ? `${icon("ri-check-line")} Arquivo enviado`
+        : `${icon("ri-file-warning-line")} Arquivo pendente`;
+    }
   };
 }
 
@@ -9341,6 +9399,8 @@ function enfileirarArquivoFinal(file, tarefa, callbacks) {
       terminal = true;
       window.removeEventListener("improov:uploadProgress", acompanhar);
       callbacks.done();
+    } else {
+      callbacks.transferProgress?.(detail);
     }
   };
   if (callbacks.done)
@@ -9357,9 +9417,10 @@ function enfileirarArquivoFinal(file, tarefa, callbacks) {
   xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
 
   xhr.upload.addEventListener("progress", (e) => {
-    if (e.lengthComputable && window.UploadBadge) {
+    if (e.lengthComputable && e.total > 0) {
       const percent = (e.loaded / e.total) * 100;
-      window.UploadBadge.phase1Progress(clientId, percent, e.loaded, e.total);
+      window.UploadBadge?.phase1Progress(clientId, percent, e.loaded, e.total);
+      callbacks.uploadProgress?.(Math.floor(percent));
     }
   });
 

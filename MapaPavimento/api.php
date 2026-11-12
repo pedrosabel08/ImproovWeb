@@ -144,7 +144,9 @@ try {
             $osmConfig = mpe_get($conn, $obra);
             $conn->close();
             $conn = null;
-            $result['contexto_osm'] = flow_osm_context($osmConfig);
+            $cacheOnly = ($input['cache_only'] ?? '') === '1';
+            if (!$cacheOnly) @set_time_limit(120);
+            $result['contexto_osm'] = flow_osm_context($osmConfig, cacheOnly: $cacheOnly);
             flow_osm_log('api', ['stage'=>'api', 'result'=>'success']);
             break;
         case 'espacial_salvar':

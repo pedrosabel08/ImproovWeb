@@ -17,7 +17,7 @@ import {
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
 import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
 import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
-import { GeoEnvironment } from "./geo/geo-environment.js?v=20261110-cache-v3";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261112-overpass";
 import { buildIndex, modelGroundSelection } from "./geo/model-alignment.js?v=20261110-cache-v1";
 import { fitSolarShadow } from "./solar-shadow.js";
 

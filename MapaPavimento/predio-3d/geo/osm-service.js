@@ -105,7 +105,7 @@ export function browserOSMCache(storage) {
 
 export async function loadOSM(
   config,
-  { radius = OSM_RADIUS, signal, cache, fetcher = fetch } = {},
+  { radius = OSM_RADIUS, signal, cache, fetcher = fetch, cacheOnly = false } = {},
 ) {
   overpassQuery(config, radius);
   if (!Number.isSafeInteger(config.obra_id) || config.obra_id <= 0 || radius !== OSM_RADIUS)
@@ -125,11 +125,12 @@ export async function loadOSM(
   const cancel = () => abort.abort();
   signal?.addEventListener("abort", cancel, { once: true });
   if (signal?.aborted) abort.abort();
-  const timeout = setTimeout(cancel, 35000);
+  const timeout = setTimeout(cancel, cacheOnly ? 10000 : 125000);
   try {
     const api = new URL("../../api.php", import.meta.url);
     api.searchParams.set("action", "osm_contexto");
     api.searchParams.set("obra_id", config.obra_id);
+    if (cacheOnly) api.searchParams.set("cache_only", "1");
     const response = await fetcher(api.href, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -139,6 +140,7 @@ export async function loadOSM(
     if (!response.ok) throw new Error(`Overpass HTTP ${response.status}`);
     const result = await response.json();
     const upstream = result.contexto_osm;
+    if (cacheOnly && result.sucesso && upstream === null) return null;
     if (!result.sucesso || !upstream?.origin ||
       !Number.isFinite(upstream.origin.latitude) || !Number.isFinite(upstream.origin.longitude) ||
       Math.abs(upstream.origin.latitude - config.latitude) > 1e-7 ||

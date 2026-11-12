@@ -141,38 +141,34 @@ do navegador são descartadas por segurança, pois não guardavam a idade da
 origem; o servidor continua lendo entradas v2 existentes. Dados de contingência
 não são gravados no navegador e são identificados na interface.
 
-Travas por localização e vagas globais são não bloqueantes: se não houver vaga,
-retorna-se o cache de contingência ou erro 503, sem fila PHP. Configure
-`FLOW_OSM_MAX_CONCURRENT` (padrão 2, intervalo 1–16) e
-`FLOW_OSM_CACHE_MAX_BYTES` (padrão 256 MiB, mínimo 12 MB). A cota cobre os
-arquivos de dados; arquivos pequenos de trava e estado não entram no limite.
-O serviço remove entradas com pelo menos 30 dias quando não estão em uso.
-Entradas ainda elegíveis para contingência nunca são removidas para abrir espaço:
-se elas preencherem a cota, novas gravações são recusadas até haver espaço.
-Arquivos de trava são mantidos para impedir corridas na troca de inode.
+O cache do navegador vem primeiro. Quando ele não cobre a localização, o
+visualizador usa `cache_only=1` na API para ler imediatamente o cache persistente.
+O cache fresco evita chamadas externas. O cache de 7 a 30 dias é exibido
+enquanto o navegador solicita uma atualização em segundo plano. Uma atualização
+bem-sucedida alimenta a próxima abertura do entorno. Sem cache, o visualizador
+exibe Thinking Orbs enquanto aguarda, com os controles do modelo disponíveis.
 
-Falhas externas acionam cooldown global com backoff de 60 s até 30 min;
-`Retry-After` pode aumentá-lo até 24 h. Um intervalo maior solicitado pelo
-servidor é limitado a 24 h. Não há consulta recorrente automática. Eventos
-estruturados no log PHP incluem cache hit/miss, ocupação, falhas, duração e
-HTTP/cURL da aquisição. A coordenação exige que todos os processos PHP usem o
-mesmo diretório de cache e um sistema de arquivos com `flock` funcional.
+As travas por localização e a vaga global são não bloqueantes. A vaga admite
+uma cadeia de aquisição de cada vez, compartilhada entre obras. Sem vaga, a API
+serve o cache disponível ou retorna HTTP 503. A cota
+`FLOW_OSM_CACHE_MAX_BYTES` (padrão 256 MiB, mínimo 12 MB) cobre os arquivos de
+dados. Entradas com 30 dias ou mais são elegíveis para limpeza. Os arquivos de
+trava permanecem para preservar a coordenação entre processos.
 
-A consulta externa direta no navegador apresentou timeout/504. A aquisição por
-obra agora passa por `MapaPavimento/api.php?action=osm_contexto&obra_id=...`.
-A API mantém o guard de sessão, método GET e `mp_require_obra`; recebe somente
-o ID e lê as coordenadas salvas, sem aceitar URL, bbox ou query do cliente.
-Solta a sessão e a conexão de banco antes da requisição externa.
+A API autenticada recebe o ID da obra e lê as coordenadas salvas após verificar
+a permissão. Sessão e conexão com o banco são liberadas antes de consultar o
+Overpass. As requisições usam POST com TLS verificado, 7 s de conexão e 55 s
+por provedor. A cadeia tem no máximo duas tentativas. Respostas com JSON
+inválido, geometria incompleta ou indicação de resultado parcial são rejeitadas.
 
-`helpers/mapa_osm_helper.php` consulta apenas o endpoint público fixo já utilizado,
-via cURL com TLS verificado, timeout de 28 s e limite de 12 MB. A resposta mantém
-somente geometrias e tags visuais; nomes e metadados pessoais OSM são removidos.
-As respostas da API são privadas/no-store. O cache em `cache/flow-osm` (ignorado
-no Git) usa chave por localização/raio, validade de 7 dias e trava por chave.
-Todos os arquivos possuem extensão `.php` e guard 404 antes do conteúdo JSON.
-Falhas têm cooldown global com backoff; se houver dados com menos de 30 dias, podem ser
-servidos como contingência, sem renovar o cache do navegador. Fora disso o GLB
-e o estudo solar continuam disponíveis sem o entorno. Não há retry automático.
+Cada provedor tem estado persistente, intervalo mínimo de 60 s entre inícios
+e orçamento de 60 chamadas e 9 MB por dia UTC. Falhas acionam espera
+exponencial de 2 a 60 min no provedor afetado. HTTP 429, HTTP 406 ou
+`Retry-After` suspendem toda a cadeia pelo intervalo aplicável. O log registra
+provedor, duração, HTTP e motivo, sem coordenadas ou corpo da resposta.
+A chave v2 por localização e o formato dos arquivos de cache permanecem
+compatíveis. Todos os processos PHP devem compartilhar o mesmo diretório de
+cache, com suporte a `flock`.
 
 O cache normalizado do navegador continua com limite de quatro áreas/7 dias.
 A origem retornada pela API é conferida antes de usar/cachear os dados; mudanças

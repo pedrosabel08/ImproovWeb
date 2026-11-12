@@ -1,9 +1,17 @@
 <?php
 /** OSM acquisition only. Coordinates come from the authorised work's saved settings. */
-const FLOW_OSM_ENDPOINT = 'https://maps.mail.ru/osm/tools/overpass/api/interpreter';
+const FLOW_OSM_PROVIDERS = [
+    'fossgis' => 'https://overpass-api.de/api/interpreter',
+    'mailru' => 'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
 const FLOW_OSM_CACHE_GUARD = "<?php http_response_code(404); exit; ?>\n";
 const FLOW_OSM_MAX_BYTES = 12000000;
-class FlowOsmUpstreamException extends RuntimeException { public int $retryAfter = 0; public string $reason = 'external'; public bool $shouldCooldown = true; }
+class FlowOsmUpstreamException extends RuntimeException {
+    public int $retryAfter = 0;
+    public string $reason = 'external';
+    public int $httpStatus = 0;
+    public int $bytes = 0;
+}
 class FlowOsmResponseException extends RuntimeException {}
 class FlowOsmLocalException extends RuntimeException {
     public function __construct(public string $reason, string $message = 'Cache OSM indisponível.') { parent::__construct($message, 503); }
@@ -59,18 +67,18 @@ function flow_osm_payload(array $payload): array
     return ['elements' => $elements];
 }
 
-function flow_osm_download(string $query): array
+function flow_osm_download(string $query, string $endpoint, int $limit): array
 {
     if (!extension_loaded('curl')) throw new FlowOsmLocalException('curl_unavailable', 'Aquisição OSM indisponível.');
-    $body = ''; $retryAfter = 0; $started = microtime(true); $tooLarge = false;
-    $handle = curl_init(FLOW_OSM_ENDPOINT);
+    $body = ''; $retryAfter = 0; $tooLarge = false;
+    $handle = curl_init($endpoint);
     curl_setopt_array($handle, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => http_build_query(['data' => $query]),
         CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
-        CURLOPT_USERAGENT => 'Flow-OSM-PoC/1.0',
+        CURLOPT_USERAGENT => 'Improov Flow/1.0 (https://improov.com.br/)',
         CURLOPT_CONNECTTIMEOUT => 7,
-        CURLOPT_TIMEOUT => 28,
+        CURLOPT_TIMEOUT => 55,
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
@@ -81,8 +89,8 @@ function flow_osm_download(string $query): array
             }
             return strlen($line);
         },
-        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body, &$tooLarge): int {
-            if (strlen($body) + strlen($chunk) > FLOW_OSM_MAX_BYTES) { $tooLarge = true; return 0; }
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body, &$tooLarge, $limit): int {
+            if (strlen($body) + strlen($chunk) > $limit) { $tooLarge = true; return 0; }
             $body .= $chunk;
             return strlen($chunk);
         },
@@ -91,20 +99,96 @@ function flow_osm_download(string $query): array
     $status = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
     $curlError = curl_errno($handle);
     curl_close($handle);
-    flow_osm_log('upstream', ['stage'=>'download', 'result'=>($ok !== false && $status === 200 ? 'success' : 'failure'), 'http'=>$status, 'curl'=>$curlError, 'duration_ms'=>(int)((microtime(true)-$started)*1000)]);
-    if ($tooLarge) throw new FlowOsmResponseException('Resposta Overpass excede o limite permitido.', 502);
-    if ($ok === false || $status !== 200) {
-        error_log("Flow OSM: aquisição indisponível (HTTP $status, cURL $curlError).");
+    try {
+        if ($tooLarge || $ok === false || $status !== 200) {
+            throw new FlowOsmResponseException($tooLarge ? 'response_too_large' :
+                ($curlError === 28 ? 'timeout' : ($curlError ? 'curl_error' : 'http_error')));
+        }
+        $decoded = json_decode($body, false, 512, JSON_THROW_ON_ERROR);
+        if (!is_object($decoded) || !is_array($decoded->elements ?? null)) {
+            throw new FlowOsmResponseException('invalid_structure');
+        }
+        unset($decoded);
+        $payload = flow_osm_payload(json_decode($body, true, 512, JSON_THROW_ON_ERROR));
+        return ['payload' => $payload, 'bytes' => strlen($body)];
+    } catch (JsonException | FlowOsmResponseException $cause) {
         $error = new FlowOsmUpstreamException('Overpass temporariamente indisponível.', 503);
-        $error->reason = $curlError === 28 ? 'timeout' : ($curlError ? 'curl_error' : 'http_error');
-        $error->shouldCooldown = $curlError !== 0 || $status === 408 || $status === 429 || $status >= 500;
+        $error->reason = $cause instanceof JsonException ? 'invalid_json' :
+            ($cause->getCode() === 502 ? 'invalid_geometry' : $cause->getMessage());
         $error->retryAfter = $retryAfter;
+        $error->httpStatus = $status;
+        $error->bytes = $tooLarge ? $limit : strlen($body);
         throw $error;
     }
-    try { $payload = json_decode($body, true, 512, JSON_THROW_ON_ERROR); }
-    catch (Throwable $error) { throw new FlowOsmResponseException('Resposta Overpass inválida.', 502); }
-    if (!is_array($payload)) throw new FlowOsmResponseException('Resposta Overpass inválida.', 502);
-    return flow_osm_payload($payload);
+}
+
+/** Called with the shared upstream lock held. */
+function flow_osm_acquire(string $query, string $directory, ?callable $transport = null, ?callable $clock = null): array
+{
+    $transport ??= 'flow_osm_download';
+    $clock ??= 'time';
+    $pausePath = $directory . '/overpass-pause.state.php';
+    $GLOBALS['flow_osm_log_context']['cooldown_state'] = 'inactive';
+    if ((flow_osm_cache_read($pausePath)['until'] ?? 0) > $clock()) {
+        $GLOBALS['flow_osm_log_context']['cooldown_state'] = 'active';
+        flow_osm_log('cooldown', ['result' => 'active', 'reason' => 'provider_rate_limit']);
+        throw new FlowOsmUpstreamException('Overpass temporariamente indisponível.', 503);
+    }
+    foreach (FLOW_OSM_PROVIDERS as $provider => $endpoint) {
+        $now = $clock();
+        $day = gmdate('Y-m-d', $now);
+        $path = $directory . '/overpass-' . $provider . '.state.php';
+        $state = flow_osm_cache_read($path) ?? [];
+        if (($state['until'] ?? 0) > $now) {
+            flow_osm_log('cooldown', ['provider' => $provider, 'result' => 'active',
+                'cooldown_state' => 'active', 'remaining_s' => $state['until'] - $now]);
+            continue;
+        }
+        if (($state['day'] ?? null) !== $day) {
+            $state['day'] = $day;
+            $state['calls'] = $state['bytes'] = 0;
+        }
+        $remaining = 9000000 - $state['bytes'];
+        if ($state['calls'] >= 60 || $remaining < 100000 || ($state['next_at'] ?? 0) > $now) {
+            flow_osm_log('budget', ['provider' => $provider, 'result' => 'limited']);
+            break;
+        }
+        $state['calls']++;
+        $state['next_at'] = $now + 60;
+        flow_osm_cache_write($path, $state);
+        $started = microtime(true);
+        $error = null;
+        try {
+            $result = $transport($query, $endpoint, $remaining);
+            $state['bytes'] += $result['bytes'];
+            $state['failures'] = $state['until'] = 0;
+        } catch (FlowOsmUpstreamException $failure) {
+            $error = $failure;
+            $state['bytes'] += $error->bytes;
+            $state['failures'] = min(8, ($state['failures'] ?? 0) + 1);
+            $delay = max(min(3600, 120 * (2 ** ($state['failures'] - 1))), $error->retryAfter);
+            $completedAt = $clock();
+            $state['until'] = $completedAt + min($delay, PHP_INT_MAX - $completedAt);
+        }
+        flow_osm_log('upstream', [
+            'provider' => $provider,
+            'result' => $error ? 'failure' : 'success',
+            'http' => $error ? $error->httpStatus : 200,
+            'reason' => $error ? $error->reason : null,
+            'duration_ms' => (int)((microtime(true) - $started) * 1000),
+        ]);
+        $limited = $error && (in_array($error->httpStatus, [406, 429], true) || $error->retryAfter > 0);
+        try {
+            if ($limited) flow_osm_cache_write($pausePath, ['until' => $state['until']]);
+            flow_osm_cache_write($path, $state);
+        } catch (FlowOsmLocalException $storageError) {
+            flow_osm_log('provider_state', ['provider' => $provider, 'result' => 'failure', 'reason' => $storageError->reason]);
+            if ($error) throw $error;
+        }
+        if (!$error) return $result['payload'];
+        if ($limited) throw $error;
+    }
+    throw new FlowOsmUpstreamException('Overpass temporariamente indisponível.', 503);
 }
 
 function flow_osm_cache_read(string $path): ?array
@@ -202,91 +286,71 @@ function flow_osm_store_payload(string $directory, string $path, array $entry): 
     } finally { flow_osm_unlock($maintenance); }
 }
 
-/** One live request per key; fresh for 7 days, stale-on-error up to 30 days.
- * $fetcher/$directory/$now isolate network and filesystem in CLI tests. */
-function flow_osm_context(array $config, ?callable $fetcher = null, ?string $directory = null, ?int $now = null, ?callable $store = null): array
+/** Fresh for seven days, usable as a fallback for thirty days. */
+function flow_osm_context(array $config, ?callable $fetcher = null, ?string $directory = null, ?int $now = null, ?callable $store = null, bool $cacheOnly = false): ?array
 {
-    if (!isset($GLOBALS['flow_osm_log_context']['request_id'])) flow_osm_begin();
     if (!isset($config['latitude'], $config['longitude']) || !is_numeric($config['latitude']) || !is_numeric($config['longitude'])) {
         throw new InvalidArgumentException('Defina a localização da obra.');
     }
-    $latitude = (float)$config['latitude']; $longitude = (float)$config['longitude'];
+    $latitude = (float)$config['latitude'];
+    $longitude = (float)$config['longitude'];
     $query = flow_osm_query($latitude, $longitude);
+    $origin = ['latitude' => $latitude, 'longitude' => $longitude];
     $key = hash('sha256', sprintf('v2:%.7F:%.7F:1000', $latitude, $longitude));
     $directory ??= __DIR__ . '/../cache/flow-osm';
+    $path = $directory . '/' . $key . '.json.php';
     $now ??= time();
-    $fetcher ??= 'flow_osm_download';
     $store ??= 'flow_osm_store_payload';
-    if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) throw new RuntimeException('Cache OSM indisponível.', 503);
-    // Lock files are guarded PHP as well; the file name is never user-controlled.
-    $lockPath = $directory . '/' . $key . '.lock.php';
-    $lockError = null;
-    try { $lock = flow_osm_lock($lockPath); }
-    catch (FlowOsmLocalException $error) { $lock = null; $lockError = $error; flow_osm_log('lock', ['result'=>'failure', 'reason'=>$error->reason, 'lock_kind'=>'key']); }
-    if (!$lock) {
-        if (!$lockError) flow_osm_log('key_busy', ['result'=>'busy']);
-        $entry = flow_osm_valid_cache(flow_osm_cache_read($directory . '/' . $key . '.json.php'), $now);
-        $saved = (int)($entry['saved_at'] ?? 0); $age = $now - $saved;
-        if ($entry && $age < 30 * 86400) { $GLOBALS['flow_osm_log_context']['cache_state'] = $age < 7*86400 ? 'fresh' : 'stale'; $GLOBALS['flow_osm_log_context']['cache_age_s'] = $age; flow_osm_log('cache_hit', ['result'=>'success']); return ['payload'=>$entry['payload'], 'origin'=>['latitude'=>$latitude, 'longitude'=>$longitude], 'acquired_at'=>$saved, 'expires_at'=>$saved+7*86400, 'cache_hit'=>true, 'stale'=>$age>=7*86400]; }
-        if ($lockError) throw $lockError;
-        throw new RuntimeException('Consulta OSM em andamento. Tente novamente em instantes.', 503);
-    }
-    $slot = null;
-    try {
-        flow_osm_cleanup_safely($directory, $now);
-        if (fstat($lock)['size'] === 0) { fwrite($lock, FLOW_OSM_CACHE_GUARD); fflush($lock); }
-        $path = $directory . '/' . $key . '.json.php';
+    if (!isset($GLOBALS['flow_osm_log_context']['request_id'])) flow_osm_begin();
+
+    $read = static function () use ($path, $now, $origin): ?array {
+        clearstatcache(true, $path);
         $entry = flow_osm_valid_cache(flow_osm_cache_read($path), $now);
-        $saved = (int)($entry['saved_at'] ?? 0);
-        $age = $now - $saved;
-        $valid = $entry !== null;
-        $GLOBALS['flow_osm_log_context']['cache_state'] = !$valid ? 'miss' : ($age < 7*86400 ? 'fresh' : ($age < 30*86400 ? 'stale' : 'expired'));
-        $GLOBALS['flow_osm_log_context']['cache_age_s'] = $valid ? $age : null;
-        $origin = ['latitude' => $latitude, 'longitude' => $longitude];
-        $result = static fn(bool $stale) => ['payload'=>$entry['payload'], 'origin'=>$origin, 'acquired_at'=>$saved, 'expires_at'=>$saved+7*86400, 'cache_hit'=>true, 'stale'=>$stale];
-        if ($valid && $age < 7 * 86400) { flow_osm_log('cache_hit'); return $result(false); }
-        flow_osm_log('cache_miss');
-        $statePath = $directory . '/global.state.php';
-        try { $stateLock = flow_osm_lock($directory . '/global.lock.php'); }
-        catch (FlowOsmLocalException $error) { if ($valid && $age < 30*86400) return $result(true); throw $error; }
-        if (!$stateLock) { if ($valid && $age < 30*86400) return $result(true); throw new RuntimeException('Serviço OSM ocupado.', 503); }
-        try {
-            $state = flow_osm_cache_read($statePath) ?? [];
-            $GLOBALS['flow_osm_log_context']['cooldown_state'] = $now < (int)($state['until'] ?? 0) ? 'active' : 'inactive';
-            if ($now < (int)($state['until'] ?? 0)) { flow_osm_log('cooldown', ['result'=>'active', 'remaining_s'=>(int)$state['until']-$now]); if ($valid && $age < 30*86400) return $result(true); throw new RuntimeException('Overpass temporariamente indisponível.', 503); }
-            $slots = flow_osm_setting('FLOW_OSM_MAX_CONCURRENT', 2, 1, 16);
-            try { for ($i = 0; $i < $slots; $i++) { $slot = flow_osm_lock($directory . '/slot-' . $i . '.lock.php'); if ($slot) break; } }
-            catch (FlowOsmLocalException $error) { if ($valid && $age < 30*86400) return $result(true); throw $error; }
-            if (!$slot) { flow_osm_log('capacity'); if ($valid && $age < 30*86400) return $result(true); throw new RuntimeException('Serviço OSM ocupado.', 503); }
-        } finally { flow_osm_unlock($stateLock); }
-        try {
-            $payload = flow_osm_payload($fetcher($query));
-            try {
-                $store($directory, $path, ['saved_at' => $now, 'payload' => $payload]);
-            } catch (Throwable $storageError) {
-                flow_osm_log('persistence', ['result'=>'failure', 'reason'=>$storageError instanceof FlowOsmLocalException ? $storageError->reason : 'unexpected']);
-            }
-            try {
-                $stateLock = flow_osm_lock($directory . '/global.lock.php');
-                if ($stateLock) { try { $current = flow_osm_cache_read($statePath) ?? []; if ((int)($current['until'] ?? 0) <= $now) flow_osm_cache_write($statePath, ['failures'=>0, 'until'=>0]); } finally { flow_osm_unlock($stateLock); } }
-                else flow_osm_log('cooldown_reset', ['result'=>'busy']);
-            } catch (Throwable $ignored) { flow_osm_log('cooldown_reset', ['result'=>'failure', 'reason'=>$ignored instanceof FlowOsmLocalException ? $ignored->reason : 'unexpected']); }
-            flow_osm_log('fetch_success');
-            return ['payload' => $payload, 'origin' => $origin, 'acquired_at'=>$now, 'expires_at'=>$now+7*86400, 'cache_hit' => false, 'stale' => false];
-        } catch (Throwable $error) {
-            flow_osm_log('failure', ['result'=>'failure', 'reason'=>$error instanceof FlowOsmUpstreamException ? $error->reason : ($error instanceof FlowOsmResponseException ? 'invalid_response' : ($error instanceof FlowOsmLocalException ? $error->reason : 'internal'))]);
-            $stateLock = null;
-            try { if ($error instanceof FlowOsmUpstreamException && $error->shouldCooldown) $stateLock = flow_osm_lock($directory . '/global.lock.php'); }
-            catch (Throwable $ignored) { flow_osm_log('cooldown_write_failure', ['result'=>'failure', 'reason'=>'lock_error']); }
-            if ($stateLock) {
-                try {
-                    $state = flow_osm_cache_read($statePath) ?? []; $failures = min(8, (int)($state['failures'] ?? 0) + 1);
-                    $delay = max(min(1800, 60 * (2 ** ($failures - 1))), min(86400, $error instanceof FlowOsmUpstreamException ? $error->retryAfter : 0));
-                    try { flow_osm_cache_write($statePath, ['failures'=>$failures, 'until'=>max((int)($state['until'] ?? 0), $now+$delay)]); $GLOBALS['flow_osm_log_context']['cooldown_state']='active'; flow_osm_log('cooldown_set', ['result'=>'success', 'delay_s'=>$delay]); } catch (Throwable $ignored) { flow_osm_log('cooldown_write_failure', ['result'=>'failure', 'reason'=>$ignored instanceof FlowOsmLocalException ? $ignored->reason : 'unexpected']); }
-                } finally { flow_osm_unlock($stateLock); }
-            }
-            if ($valid && $age < 30 * 86400) return $result(true);
-            throw $error;
+        $age = $entry ? $now - $entry['saved_at'] : null;
+        $GLOBALS['flow_osm_log_context']['cache_age_s'] = $age;
+        $GLOBALS['flow_osm_log_context']['cache_state'] = $age === null ? 'miss' :
+            ($age < 7 * 86400 ? 'fresh' : ($age < 30 * 86400 ? 'stale' : 'expired'));
+        if ($age === null || $age >= 30 * 86400) return null;
+        return ['payload' => $entry['payload'], 'origin' => $origin, 'acquired_at' => $entry['saved_at'],
+            'expires_at' => $entry['saved_at'] + 7 * 86400, 'cache_hit' => true, 'stale' => $age >= 7 * 86400];
+    };
+    $cached = $read();
+    if ($cacheOnly || ($cached && !$cached['stale'])) {
+        flow_osm_log($cached ? 'cache_hit' : 'cache_miss');
+        return $cached;
+    }
+
+    $lock = $slot = null;
+    try {
+        if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
+            throw new FlowOsmLocalException('mkdir_failed');
         }
-    } finally { if ($slot) flow_osm_unlock($slot); flow_osm_unlock($lock); flow_osm_cleanup_safely($directory, $now); }
+        $lock = flow_osm_lock($directory . '/' . $key . '.lock.php');
+        if (!$lock) throw new FlowOsmLocalException('key_busy', 'Consulta OSM em andamento.');
+        $cached = $read();
+        if ($cached && !$cached['stale']) return $cached;
+
+        $slot = flow_osm_lock($directory . '/slot-0.lock.php');
+        if (!$slot) throw new FlowOsmLocalException('capacity', 'Serviço OSM ocupado.');
+        flow_osm_cleanup_safely($directory, $now);
+        $payload = $fetcher ? flow_osm_payload($fetcher($query)) : flow_osm_acquire($query, $directory);
+        try {
+            $store($directory, $path, ['saved_at' => $now, 'payload' => $payload]);
+        } catch (Throwable $storageError) {
+            flow_osm_log('persistence', ['result' => 'failure', 'reason' =>
+                $storageError instanceof FlowOsmLocalException ? $storageError->reason : 'unexpected']);
+        }
+        flow_osm_log('fetch_success');
+        return ['payload' => $payload, 'origin' => $origin, 'acquired_at' => $now,
+            'expires_at' => $now + 7 * 86400, 'cache_hit' => false, 'stale' => false];
+    } catch (Throwable $error) {
+        flow_osm_log('failure', ['result' => 'failure', 'reason' =>
+            $error instanceof FlowOsmUpstreamException || $error instanceof FlowOsmLocalException ? $error->reason :
+                ($error instanceof FlowOsmResponseException ? 'invalid_response' : 'internal')]);
+        if ($cached) return $cached;
+        throw $error;
+    } finally {
+        if ($slot) flow_osm_unlock($slot);
+        if ($lock) flow_osm_unlock($lock);
+    }
 }

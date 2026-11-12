@@ -7,7 +7,7 @@ import {
   loadOSM,
   browserOSMCache,
   OSM_RADIUS,
-} from "./osm-service.js?v=20261103-osm-cache-v3";
+} from "./osm-service.js?v=20261112-overpass";
 import { urbanMaterial, softenEnvironmentEdge } from "./urban-haze.js?v=20261104-terrain-v1";
 import { loadElevation } from "./elevation-service.js?v=20261104-terrain-v1";
 import {
@@ -69,6 +69,12 @@ export class GeoEnvironment {
     this.notice.style.cssText = "position:absolute;left:12px;bottom:48px;z-index:2;max-width:min(380px,calc(100% - 24px));padding:8px 10px;border-radius:6px;background:var(--spatial-panel,#171b22);color:var(--spatial-text,#e4e9ec);font:12px/1.4 sans-serif";
     this.notice.hidden = true;
     viewport.append(this.notice);
+    this.loading = document.createElement("div");
+    this.loading.setAttribute("role", "status");
+    this.loading.style.cssText = this.notice.style.cssText + ";pointer-events:none";
+    this.loading.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><canvas data-thinking-orb data-orb-state="searching" data-orb-size="32" aria-label="Buscando ruas e edifícios"></canvas><span>Carregando entorno OpenStreetMap…</span></div>';
+    this.loading.hidden = true;
+    viewport.append(this.loading);
   }
   setConfig(config) {
     const key = validGeoConfig(config)
@@ -97,6 +103,7 @@ export class GeoEnvironment {
     ++this.generation;
     this.abort?.abort();
     this.abort = null;
+    this.hideOsmLoading();
     this.debug?.dispose();
     this.terrainDebug?.dispose();this.terrainDebug=null;
     this.debug = null;
@@ -115,6 +122,11 @@ export class GeoEnvironment {
     delete this.viewport.dataset.geoMetrics;
     delete this.viewport.dataset.geoBuildStage;
     this.viewport.dataset.geoState = "inactive";
+  }
+  hideOsmLoading() {
+    this.loading.hidden = true;
+    this.stopOsmOrb?.();
+    this.stopOsmOrb = null;
   }
   async refresh() {
     this.clear();
@@ -165,17 +177,28 @@ export class GeoEnvironment {
       }
       const demPromise = this.elevationLoader(this.config, {signal:this.abort.signal})
         .then(data=>({data}), error=>({error}));
-      const response = await loadOSM(this.config, {
-        cache: this.cache,
-        signal: this.abort.signal,
-      });
+      const osmOptions = { cache: this.cache, signal };
+      let response = await loadOSM(config, { ...osmOptions, cacheOnly: true });
+      if (signal.aborted) return;
+      if (!response) {
+        this.loading.hidden = false;
+        this.stopOsmOrb = window.thinkingOrbs?.(this.loading);
+        try {
+          response = await loadOSM(config, osmOptions);
+        } finally {
+          if (generation === this.generation) this.hideOsmLoading();
+        }
+      } else if (response.stale) {
+        // Keep the displayed scene stable. The refresh populates the cache for the next view.
+        loadOSM(config, osmOptions).catch(() => {});
+      }
       if (generation !== this.generation) return;
       if (response.stale) {
-        this.notice.textContent = "O entorno exibido está desatualizado; não foi possível consultar dados mais recentes.";
+        this.notice.textContent = "O entorno exibido foi carregado de uma versão anterior.";
         this.notice.hidden = false;
       }
       if (!Object.values(response.data).some((items) => items.length)) {
-        this.abort.abort();
+        if (!response.stale) this.abort.abort();
         this.viewport.dataset.geoState = "empty";
         this.notice.textContent = "Nenhum dado de entorno foi encontrado para esta localização.";
         this.notice.hidden = false;
@@ -366,5 +389,6 @@ export class GeoEnvironment {
     this.attribution.remove();
     this.demAttribution.remove();
     this.notice.remove();
+    this.loading.remove();
   }
 }

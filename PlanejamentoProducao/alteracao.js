@@ -17,8 +17,7 @@
     typePriority: [],
     priorityEnabled: false,
     dayIndex: 0,
-    dayCount: 5,
-    backlogLevel: "",
+    editorId: null,
   };
   const escape = (value) =>
     String(value ?? "").replace(
@@ -33,6 +32,10 @@
         })[char],
     );
   const date = (value) => String(value || "").slice(0, 10);
+  const today = () =>
+    new Date().toLocaleDateString("sv-SE", {
+      timeZone: "America/Sao_Paulo",
+    });
   const formatDate = (value) =>
     /^\d{4}-\d{2}-\d{2}$/.test(date(value))
       ? date(value).split("-").reverse().join("/")
@@ -112,6 +115,11 @@
   const num = (n) =>
     Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
   const days = () => state.plan.capacidade?.dias || [];
+  const todayIndex = () => {
+    const current = today();
+    const index = days().findIndex((day) => day >= current);
+    return index < 0 ? Math.max(0, days().length - 5) : index;
+  };
   const capacity = (id, d) => state.plan.capacidade?.agenda?.[id]?.[d];
   function cellLoad(id, d, items = state.items) {
     return items
@@ -197,6 +205,17 @@
       renderRows();
       return false;
     }
+    const current = today();
+    if (
+      originalItems.some((item) => {
+        const day = decisions.get(Number(item.entrega_item_id))?.fim_planejado;
+        return day && day < current && day !== item.fim_planejado;
+      }) &&
+      !(await confirmAction(
+        "A data escolhida é anterior a hoje. Aplicar mesmo assim?",
+      ))
+    )
+      return false;
     for (const s of excessCells(next)) {
       const already = next.some(
         (i) =>
@@ -234,6 +253,7 @@
       return false;
     }
     state.items = next;
+    renderEditor();
     next.forEach((i) => {
       if (validPerson(i.responsavel_planejado_id))
         state.people.add(Number(i.responsavel_planejado_id));
@@ -244,47 +264,74 @@
   }
   const thumbnail = (item) =>
     item.thumbnail_url
-      ? `<img class="ap-thumb" src="${escape(item.thumbnail_url)}" alt="" loading="lazy">`
+      ? `<img class="ap-thumb" src="${escape(item.thumbnail_url)}" alt="" loading="lazy" draggable="false">`
       : '<span class="ap-thumb ap-thumb-empty" aria-hidden="true">▧</span>';
-  function card(item, backlog = false) {
-    const id = Number(item.entrega_item_id),
-      name = escape(item.imagem_nome),
-      canEdit = editable() && pendingWork(item),
-      dis = canEdit ? "" : " disabled";
-    return `<article class="ap-card${state.selected.has(id) ? " is-selected" : ""}" data-card="${id}" draggable="${canEdit}"><span class="ap-drag" aria-hidden="true">⠿</span><input type="checkbox" data-card-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${dis}>${thumbnail(item)}<div><strong title="${name}">${name}</strong><small>N${escape(level(item))} · ${pointsLabel(item)}${item.motivo_bloqueio ? " · " + escape(item.motivo_bloqueio) : ""}${backlog && complete(item) ? " · Planejada" : ""}</small></div>${!backlog ? `<button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${dis}>${item.fixado ? "◆" : "◇"}</button><button type="button" class="ap-card-remove" data-unplan="${id}" aria-label="Retirar ${name} do planejamento"${dis}>×</button>` : ""}</article>`;
+  function card(item, showStatus = false) {
+    const id = Number(item.entrega_item_id);
+    const name = escape(item.imagem_nome);
+    const active = state.editorId === id;
+    const planned = complete(item);
+    return `<button type="button" class="ap-card${active ? " is-active" : ""}" data-card="${id}" data-edit-image="${id}" draggable="${editable() && pendingWork(item)}" aria-pressed="${active}" title="${name}">${thumbnail(item)}<span><strong>${name}</strong><small>${levelBadge(item)} <span>${pointsLabel(item)}</span></small>${showStatus ? `<small class="ap-rail-status${planned ? " is-planned" : ""}">${planned ? `Planejada · ${formatDate(item.fim_planejado).slice(0, 5)}` : "Não planejada"}</small>` : ""}</span></button>`;
   }
+  function renderRail() {
+    const query = $("ap-rail-search").value.trim().toLocaleLowerCase("pt-BR");
+    const selectedLevel = $("ap-rail-level").value;
+    const onlyPending = $("ap-rail-pending").checked;
+    const items = state.items.filter(
+      (item) =>
+        (!query ||
+          String(item.imagem_nome)
+            .toLocaleLowerCase("pt-BR")
+            .includes(query)) &&
+        (!selectedLevel || (level(item) || "none") === selectedLevel) &&
+        (!onlyPending || !complete(item)),
+    );
+    $("ap-rail-count").textContent = `${items.length} / ${state.items.length}`;
+    $("ap-rail-items").innerHTML =
+      items.map((item) => card(item, true)).join("") ||
+      '<p class="ap-empty">Nenhuma imagem corresponde aos filtros.</p>';
+  }
+  $("ap-rail-search").addEventListener("input", renderRail);
+  $("ap-rail-level").addEventListener("change", renderRail);
+  $("ap-rail-pending").addEventListener("change", renderRail);
+  $("ap-today").addEventListener("click", () => {
+    state.dayIndex = todayIndex();
+    renderPlanner();
+  });
+
   function renderPlanner() {
     if (!state.plan) return;
-    const allDays = days(),
-      mobile = window.matchMedia("(max-width: 600px)").matches;
-    state.dayIndex = Math.min(
-      Math.max(0, state.dayIndex),
-      Math.max(0, allDays.length - 1),
-    );
-    const visibleDays = allDays.slice(
-      state.dayIndex,
-      state.dayIndex + (mobile ? 1 : state.dayCount),
-    );
-    $("ap-mobile-day").innerHTML = allDays
-      .map(
-        (d) =>
-          `<option value="${d}"${d === allDays[state.dayIndex] ? " selected" : ""}>${formatDate(d)}</option>`,
-      )
-      .join("");
-    $("ap-period-label").textContent = visibleDays.length
-      ? `${formatDate(visibleDays[0])} a ${formatDate(visibleDays.at(-1))}`
+    const allDays = days();
+    const lastStart = Math.max(0, allDays.length - 5);
+    state.dayIndex = Math.min(Math.max(0, state.dayIndex), lastStart);
+    const visibleDays = allDays.slice(state.dayIndex, state.dayIndex + 5);
+    const current = today();
+    $("ap-today").disabled =
+      state.dayIndex === Math.min(todayIndex(), lastStart);
+    renderRail();
+    const period = visibleDays.length
+      ? `${formatDate(visibleDays[0]).slice(0, 5)} a ${formatDate(visibleDays.at(-1)).slice(0, 5)} · ${visibleDays.length} dias úteis`
       : "Nenhum dia útil";
+    $("ap-mobile-day").innerHTML =
+      allDays
+        .slice(0, lastStart + 1)
+        .map((d) =>
+          d === visibleDays[0]
+            ? `<option value="${d}" selected>${period}</option>`
+            : `<option value="${d}">${formatDate(d)}</option>`,
+        )
+        .join("") || '<option value="">Nenhum dia útil</option>';
+    $("ap-mobile-day").disabled = allDays.length <= 5;
     $("ap-day-prev").disabled = state.dayIndex === 0;
     $("ap-day-next").disabled =
       state.dayIndex + visibleDays.length >= allDays.length;
-    $("ap-more-days").disabled = mobile || state.dayCount >= 10;
     const work = pendingItems();
     const total = work.reduce((s, i) => s + points(i), 0),
       ready = work.filter(complete);
     const unknownPoints = work.some((i) => i.pontos_snapshot == null);
     $("ap-demand").textContent = unknownPoints
-      ? `Pontos não registrados · ${work.length} imagens`
-      : `${num(total)} pontos · ${work.length} imagens`;
+      ? `Sem pontos · ${work.length} img.`
+      : `${num(total)} pts · ${work.length} img.`;
     $("ap-allocated").textContent = unknownPoints
       ? `${ready.length} imagens planejadas · sem snapshot de pontos`
       : `${num(ready.reduce((s, i) => s + points(i), 0))} / ${num(total)} pts alocados`;
@@ -315,36 +362,12 @@
         : null;
     $("ap-margin").textContent =
       margin === null
-        ? "Planeje as imagens para calcular a margem"
+        ? "—"
         : finish <= due
-          ? `Dentro do prazo · margem ${margin} dias úteis`
-          : `Após o prazo · ${margin} dias úteis`;
+          ? `+${margin} dias úteis`
+          : `−${margin} dias úteis`;
     $("ap-margin").className =
       finish && finish > due ? "ap-late" : "ap-healthy";
-    const pending = work.filter((i) => !complete(i));
-    $("ap-backlog-count").textContent = `${pending.length} não planejadas`;
-    $("ap-backlog-levels").innerHTML = ["", "1", "2", "3", "4", "5"]
-      .map(
-        (n) =>
-          `<button type="button" class="ap-button${state.backlogLevel === n ? " is-active" : ""}" data-backlog-level="${n}" aria-pressed="${state.backlogLevel === n}">${n ? "N" + n : "Todas"} ${work.filter((i) => !n || level(i) === n).length}</button>`,
-      )
-      .join("");
-    const q = $("ap-search").value.trim().toLocaleLowerCase("pt-BR");
-    const backlog = work.filter(
-      (i) =>
-        (!$("ap-backlog-pending").checked || !complete(i)) &&
-        (!state.backlogLevel || level(i) === state.backlogLevel) &&
-        (!q || i.imagem_nome.toLocaleLowerCase("pt-BR").includes(q)),
-    );
-    $("ap-backlog").innerHTML =
-      [5, 4, 3, 2, 1, 0]
-        .map((n) => {
-          const items = backlog.filter((i) => Number(level(i)) === n);
-          return items.length
-            ? `<div class="ap-backlog-group"><h3>${n ? "N" + n : "Sem nível"} · ${items.some((i) => i.pontos_snapshot == null) ? "pontos não registrados" : num(items.reduce((s, i) => s + points(i), 0)) + " pontos"} <small>(${items.length} imagens)</small></h3>${items.map((i) => card(i, true)).join("")}</div>`
-            : "";
-        })
-        .join("") || '<p class="ap-empty">Nenhuma imagem neste filtro.</p>';
     const people = state.plan.colaboradores.filter((p) =>
       state.people.has(Number(p.id)),
     );
@@ -360,7 +383,7 @@
     );
     $("ap-grid").style.setProperty("--ap-days", visibleDays.length || 1);
     $("ap-grid").innerHTML =
-      `<div class="ap-grid-corner">Colaborador</div>${visibleDays.map((d) => `<div class="ap-grid-day"><strong>${formatDate(d).slice(0, 5)}</strong><small>${new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long" })}</small></div>`).join("")}` +
+      `<div class="ap-grid-corner">Colaborador</div>${visibleDays.map((d) => `<div class="ap-grid-day${d < current ? " is-past" : ""}"${d === current ? ' aria-current="date"' : ""}><strong>${formatDate(d).slice(0, 5)}</strong><small>${new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short" })}</small>${d === current ? '<span class="ap-today-label">Hoje</span>' : ""}</div>`).join("")}` +
       people
         .map((p) => {
           const id = Number(p.id),
@@ -371,7 +394,7 @@
             ? "Vínculo de Alteração indisponível"
             : `Alteração ${roleName(p).toLowerCase()}`;
           return (
-            `<div class="ap-grid-person"><span class="ap-avatar">${escape(p.nome.slice(0, 1))}</span><strong>${escape(p.nome)}</strong><small class="ap-role${p.tipo_atuacao === "SECUNDARIA" || p.historico ? " is-secondary" : ""}">${personRole}</small><small>${p.historico ? "Responsável histórico" : num(nominal) + " pts/dia nominais"}</small>${!p.historico ? `<button type="button" class="ap-button" data-agenda="${id}">Ver agenda</button><button class="ap-person-remove" type="button" data-remove-person="${id}"${editable() ? "" : " disabled"}>Remover da grade</button>` : ""}</div>` +
+            `<div class="ap-grid-person"><span class="ap-avatar">${escape(p.nome.slice(0, 1))}</span><strong>${escape(p.nome)}</strong><small class="ap-role${p.tipo_atuacao === "SECUNDARIA" || p.historico ? " is-secondary" : ""}">${personRole}</small><small>${p.historico ? "Responsável histórico" : num(nominal) + " pts/dia nominais"}</small>${!p.historico ? `<div class="ap-person-actions"><button type="button" class="ap-button" data-agenda="${id}" aria-label="Agenda de ${escape(p.nome)}" title="Ver agenda"><i class="fa-regular fa-calendar" aria-hidden="true"></i></button><button class="ap-person-remove ap-button" type="button" data-remove-person="${id}" aria-label="Retirar ${escape(p.nome)} da grade" title="Remover da grade"${editable() ? "" : " disabled"}>×</button></div>` : ""}</div>` +
             visibleDays
               .map((d) => {
                 const a = capacity(id, d),
@@ -380,14 +403,7 @@
                   cap = Number(a?.capacidade || 0),
                   used = load + committed,
                   ratio = cap > 0 ? used / cap : used ? 2 : 0;
-                const cls =
-                  ratio > 1
-                    ? " is-overloaded"
-                    : ratio === 1
-                      ? " is-full"
-                      : ratio >= 0.8
-                        ? " is-warning"
-                        : "";
+                const overloaded = ratio > 1;
                 const items = state.items.filter(
                   (i) =>
                     Number(i.responsavel_planejado_id) === id &&
@@ -407,7 +423,25 @@
                   : !a
                     ? `${items.length} imagens`
                     : `${num(used)} / ${num(cap)} pts`;
-                return `<div class="ap-grid-cell${!unknownOffer && !unknownLoad ? cls : ""}"${p.historico ? "" : ` data-drop-person="${id}" data-drop-day="${d}"`}><strong class="ap-cell-load">${loadLabel}</strong>${!unknownOffer && !unknownLoad ? `<meter min="0" max="${cap || 1}" value="${Math.min(used, cap || 1)}" aria-label="Capacidade de ${escape(p.nome)} em ${formatDate(d)}"></meter>` : ""}<small>${offerLabel}${committed ? " · " + num(committed) + " pts de outras entregas" : ""}</small>${ratio > 1 && a ? `<span class="ap-late">Sobrecarga conhecida: ${num(used - cap)} pts</span>` : ""}${a?.ocupacao_r00 ? `<small>R00: ${num(a.ocupacao_r00 * 100)}% do dia</small>` : ""}${(a?.avisos || []).map((s) => `<small class="ap-capacity-warning">${escape(s)}</small>`).join("")}${items.map((i) => card(i)).join("")}${!p.historico ? `<button type="button" class="ap-add-image" data-place-person="${id}" data-place-day="${d}"${editable() ? "" : " disabled"}>+ Adicionar seleção</button>` : ""}</div>`;
+                const context = [
+                  offerLabel,
+                  committed ? `${num(committed)} pts de outras entregas` : "",
+                  overloaded ? `Sobrecarga de ${num(used - cap)} pts` : "",
+                  a?.ocupacao_r00
+                    ? `R00: ${num(a.ocupacao_r00 * 100)}% do dia`
+                    : "",
+                  ...(a?.avisos || []),
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return `<div class="ap-grid-cell${a && overloaded ? " is-overloaded" : ""}"${p.historico ? "" : ` data-drop-person="${id}" data-drop-day="${d}"`}>
+                  <div class="ap-load" title="${escape(context)}">
+                    <strong class="ap-cell-load">${loadLabel}</strong>
+                    ${!unknownOffer && !unknownLoad ? `<meter min="0" max="${cap || 1}" value="${Math.min(used, cap || 1)}" aria-label="${escape(context)}"></meter>` : `<small>${escape(offerLabel)}</small>`}
+                  </div>
+                  ${items.map((item) => card(item)).join("")}
+                  ${!p.historico && editable() ? `<button type="button" class="ap-add-image" data-place-person="${id}" data-place-day="${d}" aria-label="Adicionar imagem para ${escape(p.nome)} em ${formatDate(d)}"><span aria-hidden="true">+</span><span>Adicionar imagem</span></button>` : ""}
+                </div>`;
               })
               .join("")
           );
@@ -465,16 +499,20 @@
     const pending = $("ap-pending").value;
     const selectedLevel = $("ap-level").value;
     const person = $("ap-person").value;
+    const matchesStatus = {
+      responsavel: (item) => !hasResponsible(item),
+      data: (item) => !validDate(item.fim_planejado),
+      planejada: complete,
+      pendente: (item) => pendingWork(item) && !complete(item),
+      bloqueada: (item) => !pendingWork(item) || !canAssign(item),
+    };
     return state.items.filter(
       (item) =>
         (!query ||
           String(item.imagem_nome)
             .toLocaleLowerCase("pt-BR")
             .includes(query)) &&
-        (!pending ||
-          (pending === "responsavel"
-            ? !hasResponsible(item)
-            : !validDate(item.fim_planejado))) &&
+        (!pending || matchesStatus[pending](item)) &&
         (!selectedLevel ||
           (selectedLevel === "none"
             ? !level(item)
@@ -494,7 +532,6 @@
     return result.isConfirmed;
   }
   function message(text, error = false) {
-    if (!text) return;
     if (error)
       window.FlowAlert?.error({
         title: "Atenção",
@@ -507,15 +544,7 @@
         .showToast();
     else window.FlowAlert?.info({ message: text });
   }
-  function setLoading(
-    loading,
-    label = "Carregando planejamento…",
-    suggestion = false,
-  ) {
-    const slot =
-      suggestion && loading ? $("ap-suggestion-loading") : $("ap-loading-home");
-    if ($("ap-loading").parentElement !== slot)
-      slot.appendChild($("ap-loading"));
+  function setLoading(loading, label = "Carregando planejamento…") {
     $("ap-loading").hidden = !loading;
     $("ap-loading").querySelector("span").textContent = label;
     $("ap-loading")
@@ -536,7 +565,14 @@
         const id = Number(item.entrega_item_id);
         const disabled = editable() && pendingWork(item) ? "" : " disabled";
         const name = escape(item.imagem_nome || `Imagem ${item.imagem_id}`);
-        return `<tr data-id="${id}" class="${state.selected.has(id) ? "is-selected" : ""}"><td><input type="checkbox" data-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${disabled}></td><td><div class="ap-table-image">${thumbnail(item)}<span>${name}</span></div></td><td>${levelBadge(item)}</td><td data-label="Responsável"><select data-field="responsavel_planejado_id" aria-label="Responsável de ${name}" title="${escape(item.motivo_bloqueio_responsavel || "")}"${canAssign(item) ? disabled : " disabled"}>${personOptions(item.responsavel_planejado_id)}</select></td><td data-label="Pontos">${pointsLabel(item)}</td><td data-label="Dia planejado"><input type="date" data-field="fim_planejado" aria-label="Dia planejado de ${name}" value="${escape(item.fim_planejado || "")}"${disabled}></td><td><span data-item-status>${itemStatus(item)}</span> <button type="button" class="ap-card-lock" data-pin="${id}" aria-label="${item.fixado ? "Desafixar" : "Fixar"} ${name}" aria-pressed="${!!item.fixado}"${disabled}>${item.fixado ? "◆" : "◇"}</button></td></tr>`;
+        return `<article class="ap-list-row${state.selected.has(id) ? " is-selected" : ""}" data-id="${id}">
+          <input type="checkbox" data-select="${id}" aria-label="Selecionar ${name}"${state.selected.has(id) ? " checked" : ""}${disabled}>
+          <button type="button" class="ap-list-image" data-edit-image="${id}">${thumbnail(item)}<strong>${name}</strong></button>
+          <span class="ap-list-score">${levelBadge(item)} ${pointsLabel(item)}</span>
+          <span>${escape(personName(item.responsavel_planejado_id))}</span>
+          <time>${formatDate(item.fim_planejado)}</time>
+          <span>${itemStatus(item)}</span>
+        </article>`;
       })
       .join("");
     renderSelection();
@@ -570,7 +606,7 @@
     const withoutDate = work.filter(
       (item) => !validDate(item.fim_planejado),
     ).length;
-    $("ap-complete").textContent = `${count}/${work.length} completos`;
+    $("ap-complete").textContent = `${count} / ${work.length}`;
     $("ap-progress").max = work.length || 1;
     $("ap-progress").value = count;
     $("ap-status").textContent =
@@ -604,6 +640,7 @@
       state.plan.pode_editar === false || state.saving || state.conflict;
     $("ap-replan-fields").hidden = !state.replanning;
     $("ap-bulk").disabled = !editable();
+    updateEditorAvailability();
     renderDistribution();
     renderSelection();
     renderPlanner();
@@ -682,13 +719,7 @@
         .forEach((p) => state.people.add(Number(p.id)));
     if (!state.people.size && plan.colaboradores.length)
       state.people.add(Number(plan.colaboradores[0].id));
-    if (firstLoad) {
-      const scheduled = state.items
-        .map((i) => i.fim_planejado)
-        .filter(Boolean)
-        .sort()[0];
-      if (scheduled) state.dayIndex = Math.max(0, days().indexOf(scheduled));
-    }
+    if (firstLoad) state.dayIndex = todayIndex();
     state.selected.clear();
     state.dirty = false;
     state.conflict = false;
@@ -699,7 +730,7 @@
       `Replanejamento parcial · ${delivered} ${delivered === 1 ? "entregue" : "entregues"} · ${eligible} ${eligible === 1 ? "elegível" : "elegíveis"}`;
     const e = plan.entrega;
     $("ap-project").textContent =
-      `${e.nomenclatura || "Projeto"} · ${e.etapa || "Alteração"}`;
+      `Lote ${e.id} · ${e.nomenclatura || "Projeto"} · ${e.etapa || "Alteração"}`;
     $("ap-received").textContent = formatDate(e.data_recebimento);
     $("ap-due").textContent = formatDate(e.data_prevista);
     $("ap-person").innerHTML =
@@ -710,6 +741,7 @@
     $("ap-reload").hidden = true;
     renderRows();
     renderSummary();
+    renderEditor();
     if (plan.planejamento.rascunho_requer_revisao)
       message(
         "O contexto do rascunho salvo mudou. Revise o plano atual e refaça as decisões antes de salvar.",
@@ -723,7 +755,6 @@
   }
   async function load() {
     setLoading(true);
-    message("");
     try {
       const response = await fetch(`alteracao.php?entrega_id=${entregaId}`, {
         credentials: "same-origin",
@@ -1027,7 +1058,6 @@
     state.saving = true;
     renderRows();
     renderSummary();
-    message("");
     setLoading(
       true,
       action === "confirmar"
@@ -1104,48 +1134,256 @@
       renderSummary();
     }
   }
-  $("ap-rows").addEventListener("change", (event) => {
-    if (!editable()) return;
-    const target = event.target;
-    const row = target.closest("tr[data-id]");
-    if (!row) return;
-    const id = Number(row.dataset.id);
-    if (
-      target.matches("[data-select]") &&
-      pendingItems().some((i) => Number(i.entrega_item_id) === id)
-    ) {
-      target.checked ? state.selected.add(id) : state.selected.delete(id);
-      row.classList.toggle("is-selected", target.checked);
-      renderSelection();
-      renderPlanner();
+  let editorTrigger;
+  function openEditor(trigger) {
+    editorTrigger = trigger;
+    const id = Number(trigger.dataset.editImage);
+    state.editorId = id;
+    renderEditor();
+    updateActiveCards();
+    $("ap-editor-close").focus();
+  }
+
+  function closeEditor() {
+    const id = state.editorId;
+    state.editorId = null;
+    $("ap-editor").hidden = true;
+    updateActiveCards();
+    const view = $("ap-list-view").hidden
+      ? $("ap-calendar-view")
+      : $("ap-list-view");
+    const trigger =
+      editorTrigger?.isConnected && view.contains(editorTrigger)
+        ? editorTrigger
+        : view.querySelector(`[data-edit-image="${id}"]`);
+    (
+      trigger || document.querySelector('.ap-tabs [aria-selected="true"]')
+    ).focus();
+    editorTrigger = null;
+  }
+
+  function updateActiveCards() {
+    $("alteration-plan")
+      .querySelectorAll(".ap-card")
+      .forEach((card) => {
+        const active = Number(card.dataset.card) === state.editorId;
+        card.classList.toggle("is-active", active);
+        card.setAttribute("aria-pressed", String(active));
+      });
+  }
+
+  const editorItem = () =>
+    state.items.find((item) => Number(item.entrega_item_id) === state.editorId);
+
+  function updateEditorAvailability() {
+    const item = editorItem();
+    if (!item) return;
+    const locked = !editable() || !pendingWork(item);
+    $("ap-editor-person").disabled = locked || !canAssign(item);
+    $("ap-editor-day").disabled = locked;
+    $("ap-editor-pin").disabled = locked;
+    $("ap-editor-save").disabled = locked;
+    $("ap-editor-remove").disabled = locked || !item.fim_planejado;
+  }
+
+  function renderEditor() {
+    const item = editorItem();
+    $("ap-editor").hidden = !item;
+    if (!item) return;
+    $("ap-editor-image").innerHTML =
+      `${thumbnail(item)}<strong>${escape(item.imagem_nome)}</strong>`;
+    $("ap-editor-person").innerHTML = personOptions(
+      item.responsavel_planejado_id,
+      "Sem responsável",
+    );
+    $("ap-editor-person").title = item.motivo_bloqueio_responsavel || "";
+    $("ap-editor-day").value = item.fim_planejado || "";
+    $("ap-editor-level").innerHTML = levelBadge(item);
+    $("ap-editor-points").textContent = pointsLabel(item);
+    $("ap-editor-status").innerHTML = itemStatus(item);
+    $("ap-editor-pin").checked = !!item.fixado;
+    updateEditorAvailability();
+  }
+
+  $("ap-editor-close").addEventListener("click", closeEditor);
+  $("ap-editor").addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeEditor();
+  });
+  $("ap-editor-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const item = editorItem();
+    if (!item || !editable() || !pendingWork(item)) return;
+    const change = {
+      responsavel_planejado_id: canAssign(item)
+        ? Number($("ap-editor-person").value) || null
+        : item.responsavel_planejado_id,
+      fim_planejado: $("ap-editor-day").value || null,
+      fixado: $("ap-editor-pin").checked,
+    };
+    if (change.fixado && !item.fixado && !complete({ ...item, ...change })) {
+      message(
+        "A imagem precisa de responsável e dia antes de ser fixada.",
+        true,
+      );
       return;
     }
-    const item = state.items.find(
-      (entry) => Number(entry.entrega_item_id) === id,
-    );
-    const field = target.dataset.field;
     if (
-      !item ||
-      ![
-        "responsavel_planejado_id",
-        "inicio_planejado",
-        "fim_planejado",
-      ].includes(field)
+      Object.entries(change).every(
+        ([key, value]) =>
+          (key === "fixado" ? Boolean(item[key]) : item[key]) === value,
+      )
     )
       return;
-    applyDecisions(
-      new Map([
-        [
+    if (await applyDecisions(new Map([[state.editorId, change]]))) {
+      message("Alterações aplicadas. Salve o rascunho para guardá-las.");
+    }
+  });
+  $("ap-editor-remove").addEventListener("click", async () => {
+    const item = editorItem();
+    if (!item || !editable() || !pendingWork(item)) return;
+    if (
+      await applyDecisions(
+        new Map([
+          [
+            state.editorId,
+            {
+              responsavel_planejado_id: null,
+              fim_planejado: null,
+              inicio_planejado: null,
+              fixado: false,
+            },
+          ],
+        ]),
+      )
+    )
+      closeEditor();
+  });
+
+  const calendarTab = $("ap-tab-calendar");
+  const listTab = $("ap-tab-list");
+  function selectTab(tab) {
+    const showCalendar = tab === calendarTab;
+    calendarTab.setAttribute("aria-selected", String(showCalendar));
+    listTab.setAttribute("aria-selected", String(!showCalendar));
+    calendarTab.tabIndex = showCalendar ? 0 : -1;
+    listTab.tabIndex = showCalendar ? -1 : 0;
+    $("ap-calendar-view").hidden = !showCalendar;
+    $("ap-list-view").hidden = showCalendar;
+    tab.focus();
+  }
+  [calendarTab, listTab].forEach((tab) => {
+    tab.addEventListener("click", () => selectTab(tab));
+    tab.addEventListener("keydown", (event) => {
+      const target = {
+        ArrowLeft: tab === calendarTab ? listTab : calendarTab,
+        ArrowRight: tab === calendarTab ? listTab : calendarTab,
+        Home: calendarTab,
+        End: listTab,
+      }[event.key];
+      if (!target) return;
+      event.preventDefault();
+      selectTab(target);
+    });
+  });
+
+  const moreDialog = $("ap-more-dialog");
+  $("ap-more").addEventListener("click", () => moreDialog.showModal());
+  $("ap-more-close").addEventListener("click", () => moreDialog.close());
+
+  const picker = $("ap-picker");
+  const pickerSelection = new Set();
+  let pickerDestination;
+  function renderPicker() {
+    const query = $("ap-picker-search").value.trim().toLocaleLowerCase("pt-BR");
+    const { person, day } = pickerDestination;
+    const items = pendingItems().filter(
+      (item) =>
+        (canAssign(item) || item.responsavel_planejado_id === person) &&
+        !(
+          item.responsavel_planejado_id === person && item.fim_planejado === day
+        ) &&
+        String(item.imagem_nome).toLocaleLowerCase("pt-BR").includes(query),
+    );
+    $("ap-picker-items").innerHTML =
+      items
+        .map((item) => {
+          const id = Number(item.entrega_item_id);
+          return `<label class="ap-picker-item"><input type="checkbox" value="${id}"${pickerSelection.has(id) ? " checked" : ""}>${thumbnail(item)}<strong>${escape(item.imagem_nome)}</strong>${levelBadge(item)}<small>${pointsLabel(item)}${complete(item) ? " · " + formatDate(item.fim_planejado) : ""}</small></label>`;
+        })
+        .join("") ||
+      '<p class="ap-empty">Nenhuma imagem elegível corresponde à busca.</p>';
+    updatePickerSelection();
+  }
+
+  function updatePickerSelection() {
+    $("ap-picker-apply").disabled = !pickerSelection.size;
+    $("ap-picker-apply").textContent = pickerSelection.size
+      ? `Adicionar seleção (${pickerSelection.size})`
+      : "Adicionar seleção";
+  }
+
+  function openPicker(person, day) {
+    pickerDestination = { person, day };
+    pickerSelection.clear();
+    pendingItems().forEach((item) => {
+      const id = Number(item.entrega_item_id);
+      if (
+        state.selected.has(id) &&
+        (canAssign(item) || item.responsavel_planejado_id === person) &&
+        !(
+          item.responsavel_planejado_id === person && item.fim_planejado === day
+        )
+      )
+        pickerSelection.add(id);
+    });
+    $("ap-picker-search").value = "";
+    $("ap-picker-destination").textContent =
+      `${personName(person)} · ${formatDate(day)}`;
+    renderPicker();
+    picker.showModal();
+    $("ap-picker-search").focus();
+  }
+
+  $("ap-picker-search").addEventListener("input", renderPicker);
+  $("ap-picker-items").addEventListener("change", (event) => {
+    if (!event.target.matches('input[type="checkbox"]')) return;
+    const id = Number(event.target.value);
+    event.target.checked ? pickerSelection.add(id) : pickerSelection.delete(id);
+    updatePickerSelection();
+  });
+  $("ap-picker-close").addEventListener("click", () => picker.close());
+  function placeImages(ids, person, day) {
+    return applyDecisions(
+      new Map(
+        ids.map((id) => [
           id,
           {
-            [field]:
-              field === "responsavel_planejado_id"
-                ? Number(target.value) || null
-                : target.value || null,
+            responsavel_planejado_id: person,
+            fim_planejado: day,
+            inicio_planejado: null,
           },
-        ],
-      ]),
+        ]),
+      ),
     );
+  }
+  $("ap-picker-apply").addEventListener("click", async () => {
+    const { person, day } = pickerDestination;
+    picker.close();
+    if (await placeImages([...pickerSelection], person, day))
+      message(
+        "Imagens adicionadas. Salve o rascunho para guardar as alterações.",
+      );
+  });
+
+  $("ap-rows").addEventListener("change", (event) => {
+    const input = event.target.closest("[data-select]");
+    if (!input || !editable()) return;
+    const id = Number(input.dataset.select);
+    if (!pendingItems().some((item) => Number(item.entrega_item_id) === id))
+      return;
+    input.checked ? state.selected.add(id) : state.selected.delete(id);
+    input.closest("[data-id]").classList.toggle("is-selected", input.checked);
+    renderSelection();
   });
   $("ap-select-all").addEventListener("change", (event) => {
     if (!editable()) return;
@@ -1227,6 +1465,7 @@
     );
     renderRows();
     renderSummary();
+    renderEditor();
   });
   $("ap-cancel-replan").addEventListener("click", async () => {
     if (
@@ -1238,7 +1477,6 @@
       return;
     state.replanning = false;
     acceptPlan(state.plan);
-    message("");
   });
   $("ap-reload").addEventListener("click", async () => {
     if (
@@ -1277,6 +1515,7 @@
       p
         ? `${escape(p.responsavel_planejado_nome || personName(p.responsavel_planejado_id))}<br>${formatDate(p.fim_planejado)}`
         : "Sem versão";
+    $("ap-more-dialog").close();
     $("ap-history-title").textContent = "Planejado × executado";
     $("ap-history-list").replaceChildren();
     $("ap-history-snapshot").innerHTML =
@@ -1317,34 +1556,18 @@
         $("ap-history-snapshot").textContent = error.message;
     }
   });
-  $("ap-backlog-pending").addEventListener("change", renderPlanner);
-  $("ap-backlog-levels").addEventListener("click", (event) => {
-    const b = event.target.closest("[data-backlog-level]");
-    if (b) {
-      state.backlogLevel = b.dataset.backlogLevel;
-      renderPlanner();
-    }
-  });
   $("ap-mobile-day").addEventListener("change", (event) => {
     state.dayIndex = days().indexOf(event.target.value);
     renderPlanner();
   });
   $("ap-day-prev").addEventListener("click", () => {
-    state.dayIndex = Math.max(
-      0,
-      state.dayIndex - (window.innerWidth <= 600 ? 1 : state.dayCount),
-    );
+    state.dayIndex = Math.max(0, state.dayIndex - 5);
     renderPlanner();
   });
   $("ap-day-next").addEventListener("click", () => {
-    state.dayIndex += window.innerWidth <= 600 ? 1 : state.dayCount;
+    state.dayIndex += 5;
     renderPlanner();
   });
-  $("ap-more-days").addEventListener("click", () => {
-    state.dayCount = Math.min(10, state.dayCount + 1);
-    renderPlanner();
-  });
-  window.addEventListener("resize", () => state.plan && renderPlanner());
   $("ap-add-person").addEventListener("click", () => {
     if (!state.plan) return;
     const d = days()[state.dayIndex];
@@ -1381,18 +1604,6 @@
     } else state.people.delete(id);
     renderPlanner();
   });
-  $("alteration-plan").addEventListener("change", (event) => {
-    const id = Number(event.target.dataset.cardSelect);
-    if (
-      !id ||
-      !editable() ||
-      !pendingItems().some((i) => Number(i.entrega_item_id) === id)
-    )
-      return;
-    event.target.checked ? state.selected.add(id) : state.selected.delete(id);
-    renderRows();
-    renderPlanner();
-  });
   $("alteration-plan").addEventListener(
     "error",
     (event) => {
@@ -1407,11 +1618,14 @@
     true,
   );
   $("alteration-plan").addEventListener("click", (event) => {
-    const pin = event.target.closest("[data-pin]"),
-      unplan = event.target.closest("[data-unplan]"),
-      place = event.target.closest("[data-place-person]"),
-      remove = event.target.closest("[data-remove-person]"),
-      agenda = event.target.closest("[data-agenda]");
+    const edit = event.target.closest("[data-edit-image]");
+    if (edit) {
+      openEditor(edit);
+      return;
+    }
+    const place = event.target.closest("[data-place-person]");
+    const remove = event.target.closest("[data-remove-person]");
+    const agenda = event.target.closest("[data-agenda]");
     if (agenda) {
       const id = Number(agenda.dataset.agenda);
       $("ap-history-title").textContent = "Agenda de Alterações";
@@ -1420,6 +1634,7 @@
         `<h3>Agenda de ${escape(personName(id))}</h3><div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Dia</th><th>Nominal</th><th>Oferta efetiva</th><th>Outras alterações</th><th>Esta entrega</th><th>Contexto</th></tr></thead><tbody>${days()
           .map((d) => {
             const a = capacity(id, d);
+            if (!a) return "";
             return `<tr><td>${formatDate(d)}</td><td>${num(a.nominal)}</td><td>${num(a.capacidade)}</td><td>${num(a.comprometidos)}</td><td>${num(cellLoad(id, d))}</td><td>${escape(a.avisos.join("; "))}${a.ocupacao_r00 ? " R00: " + num(a.ocupacao_r00 * 100) + "%" : ""}</td></tr>`;
           })
           .join("")}</tbody></table></div>`;
@@ -1427,54 +1642,8 @@
       return;
     }
     if (!editable()) return;
-    if (pin) {
-      const item = state.items.find(
-        (i) => Number(i.entrega_item_id) === Number(pin.dataset.pin),
-      );
-      if (!item || !pendingWork(item)) return;
-      if (!item.fixado && !complete(item)) {
-        message(
-          "A imagem precisa de responsável e dia antes de ser fixada.",
-          true,
-        );
-        return;
-      }
-      item.fixado = !item.fixado;
-      markDirty();
-      renderRows();
-    } else if (unplan)
-      applyDecisions(
-        new Map([
-          [
-            Number(unplan.dataset.unplan),
-            {
-              responsavel_planejado_id: null,
-              fim_planejado: null,
-              inicio_planejado: null,
-              fixado: false,
-            },
-          ],
-        ]),
-      );
-    else if (place) {
-      if (!state.selected.size) {
-        message(
-          "Selecione uma ou mais imagens no painel lateral ou na tabela.",
-        );
-        return;
-      }
-      applyDecisions(
-        new Map(
-          [...state.selected].map((id) => [
-            id,
-            {
-              responsavel_planejado_id: Number(place.dataset.placePerson),
-              fim_planejado: place.dataset.placeDay,
-              inicio_planejado: null,
-            },
-          ]),
-        ),
-      );
+    if (place) {
+      openPicker(Number(place.dataset.placePerson), place.dataset.placeDay);
     } else if (remove) {
       const id = Number(remove.dataset.removePerson);
       if (state.items.some((i) => Number(i.responsavel_planejado_id) === id)) {
@@ -1487,76 +1656,73 @@
       renderPlanner();
     }
   });
+  const grid = $("ap-grid");
+  let draggedItems = [];
+  let hoveredCell = null;
+
+  function highlightCell(cell) {
+    if (hoveredCell === cell) return;
+    hoveredCell?.classList.remove("is-drop-hover");
+    cell?.classList.add("is-drop-hover");
+    hoveredCell = cell;
+  }
+
+  function clearDrag() {
+    highlightCell(null);
+    grid
+      .querySelectorAll(".is-drop-target")
+      .forEach((cell) => cell.classList.remove("is-drop-target"));
+    draggedItems = [];
+  }
+
   $("alteration-plan").addEventListener("dragstart", (event) => {
     const el = event.target.closest("[data-card]");
     if (!el || !editable()) return event.preventDefault();
     const id = Number(el.dataset.card);
-    if (!pendingItems().some((i) => Number(i.entrega_item_id) === id))
-      return event.preventDefault();
-    const ids = state.selected.has(id) ? [...state.selected] : [id];
-    event.dataTransfer.setData(
-      "application/x-flow-images",
-      JSON.stringify(ids),
+    clearDrag();
+    const ids = state.selected.has(id) ? state.selected : new Set([id]);
+    draggedItems = state.items.filter((item) =>
+      ids.has(Number(item.entrega_item_id)),
     );
+    if (!draggedItems.length || !draggedItems.every(pendingWork))
+      return event.preventDefault();
+    event.dataTransfer.setData("application/x-flow-images", String(id));
     event.dataTransfer.effectAllowed = "move";
+    grid.querySelectorAll("[data-drop-person]").forEach((cell) => {
+      const person = Number(cell.dataset.dropPerson);
+      if (
+        draggedItems.every(
+          (item) => canAssign(item) || item.responsavel_planejado_id === person,
+        )
+      ) {
+        cell.classList.add("is-drop-target");
+      }
+    });
   });
-  $("ap-grid").addEventListener("dragover", (event) => {
-    if (editable() && event.target.closest("[data-drop-person]"))
-      event.preventDefault();
-  });
-  $("ap-grid").addEventListener("drop", (event) => {
-    const cell = event.target.closest("[data-drop-person]");
-    if (!cell || !editable()) return;
+  document.addEventListener("dragend", clearDrag);
+  function allowDrop(event) {
+    const cell = editable() ? event.target.closest(".is-drop-target") : null;
+    highlightCell(cell);
+    if (!cell) return;
     event.preventDefault();
-    try {
-      const ids = JSON.parse(
-        event.dataTransfer.getData("application/x-flow-images"),
-      );
-      applyDecisions(
-        new Map(
-          ids.map((id) => [
-            Number(id),
-            {
-              responsavel_planejado_id: Number(cell.dataset.dropPerson),
-              fim_planejado: cell.dataset.dropDay,
-              inicio_planejado: null,
-            },
-          ]),
-        ),
-      );
-    } catch (_) {
-      message(
-        "Não foi possível mover as imagens. Selecione-as e use Adicionar seleção.",
-        true,
-      );
-    }
+    event.dataTransfer.dropEffect = "move";
+  }
+  grid.addEventListener("dragenter", allowDrop);
+  grid.addEventListener("dragover", allowDrop);
+  grid.addEventListener("dragleave", (event) => {
+    if (!grid.contains(event.relatedTarget)) highlightCell(null);
   });
-  $("ap-backlog").addEventListener("dragover", (event) => {
-    if (editable()) event.preventDefault();
-  });
-  $("ap-backlog").addEventListener("drop", (event) => {
-    if (!editable()) return;
+  grid.addEventListener("drop", (event) => {
+    const cell = event.target.closest(".is-drop-target");
+    const items = draggedItems;
+    clearDrag();
+    if (!cell || !editable() || !items.length) return;
     event.preventDefault();
-    try {
-      const ids = JSON.parse(
-        event.dataTransfer.getData("application/x-flow-images"),
-      );
-      applyDecisions(
-        new Map(
-          ids.map((id) => [
-            Number(id),
-            {
-              responsavel_planejado_id: null,
-              fim_planejado: null,
-              inicio_planejado: null,
-              fixado: false,
-            },
-          ]),
-        ),
-      );
-    } catch (_) {
-      message("Não foi possível retirar a imagem.", true);
-    }
+    placeImages(
+      items.map((item) => Number(item.entrega_item_id)),
+      Number(cell.dataset.dropPerson),
+      cell.dataset.dropDay,
+    );
   });
   $("ap-type-rules").addEventListener("change", (event) => {
     const select = event.target.closest("select[data-type-rule]");
@@ -1588,11 +1754,11 @@
   });
   $("ap-suggest").addEventListener("click", async () => {
     if (!editable()) return;
+    moreDialog.close();
     state.saving = true;
     state.suggesting = true;
     renderSummary();
-    setLoading(true, "Gerando sugestão…", true);
-    message("");
+    setLoading(true, "Gerando sugestão…");
     try {
       const response = await fetch("alteracao.php", {
         method: "POST",
@@ -1638,6 +1804,7 @@
         .sort()[0];
       if (firstDay) state.dayIndex = Math.max(0, days().indexOf(firstDay));
       state.dirty = true;
+      renderEditor();
       message(result.sugestao.mensagem);
     } catch (error) {
       message(error.message, true);

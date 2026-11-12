@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
 if (empty($_SESSION['logado'])) {
-  flow_auth_redirect_to_login();
-  exit();
+    flow_auth_redirect_to_login();
+    exit();
 }
 
 
@@ -11,10 +11,10 @@ require_once __DIR__ . '/../conexaoMain.php';
 include_once __DIR__ . '/../conexao.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
-  if ($__p && is_file($__p)) {
-    require_once $__p;
-    break;
-  }
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
 }
 unset($__root, $__p);
 
@@ -25,34 +25,34 @@ $entregaId = (int) ($_GET['entrega_id'] ?? 0);
 $tema = ($_GET['tema'] ?? '') === 'light' ? 'light' : '';
 $conn = conectarBanco();
 if ($obraId <= 0 && $entregaId > 0) {
-  $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
-  if ($stmtEntrega) {
-    $stmtEntrega->bind_param('i', $entregaId);
-    $stmtEntrega->execute();
-    $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
-    $stmtEntrega->close();
-  }
+    $stmtEntrega = $conn->prepare('SELECT obra_id FROM entregas WHERE id = ? LIMIT 1');
+    if ($stmtEntrega) {
+        $stmtEntrega->bind_param('i', $entregaId);
+        $stmtEntrega->execute();
+        $obraId = (int) (($stmtEntrega->get_result()->fetch_assoc()['obra_id'] ?? 0));
+        $stmtEntrega->close();
+    }
 }
 if ($obraId <= 0 || !improov_usuario_pode_acessar_obra($conn, $obraId)) {
-  $conn->close();
-  header('Location: ../acesso_negado.php');
-  exit();
+    $conn->close();
+    header('Location: ../acesso_negado.php');
+    exit();
 }
 
 $planejamentoPorImagem = false;
 if ($entregaId > 0) {
-  require_once __DIR__ . '/../helpers/planejamento_alteracao_helper.php';
-  $planejamentoPorImagem = flow_planejamento_modelo($conn, $entregaId) === 'IMAGENS_ALTERACAO';
+    require_once __DIR__ . '/../helpers/planejamento_alteracao_helper.php';
+    $planejamentoPorImagem = flow_planejamento_modelo($conn, $entregaId) === 'IMAGENS_ALTERACAO';
 }
 
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 if (!$planejamentoPorImagem) {
-  $clientes = obterClientes($conn);
-  $colaboradores = obterColaboradores($conn);
-  $status_imagens = obterStatusImagens($conn);
-  $funcoes = obterFuncoes($conn);
-  $imagens = obterImagens($conn);
+    $clientes = obterClientes($conn);
+    $colaboradores = obterColaboradores($conn);
+    $status_imagens = obterStatusImagens($conn);
+    $funcoes = obterFuncoes($conn);
+    $imagens = obterImagens($conn);
 }
 
 $conn->close();

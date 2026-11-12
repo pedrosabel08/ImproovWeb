@@ -35,10 +35,13 @@ try {
             if (!empty($entrega['arquivada']) || !improov_usuario_eh_gestor_sidebar($conn)) {
                 throw $erro;
             }
-            $plano = ['classificacao_pendente' => [
-                'liberacao' => flow_pa_liberacao_classificacao($conn, $entrega),
-                'itens' => $erro->itens,
-            ]];
+            $liberacao = flow_pa_liberacao_classificacao($conn, $entrega);
+            $itens = $erro->itens;
+            if (!$liberacao) {
+                $existentes = flow_pa_niveis_manuais($conn, $entrega, $itens);
+                $itens = array_values(array_filter($itens, static fn ($item) => !isset($existentes[$item['entrega_item_id']])));
+            }
+            $plano = ['classificacao_pendente' => ['liberacao' => $liberacao, 'itens' => $itens]];
         }
     } else {
         $acao = $dados['acao'] ?? '';

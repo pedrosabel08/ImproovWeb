@@ -753,38 +753,195 @@
   const classificationSubmit = $("ap-classification-submit");
   const classificationError = $("ap-classification-error");
   const classificationClose = $("ap-classification-close");
+  const classificationWorkspace = $("ap-classification-workspace");
+  const classificationItems = $("ap-classification-items");
+  const classificationSearch = $("ap-classification-search");
+  const classificationType = $("ap-classification-type");
+  const classificationFilter = $("ap-classification-filter");
+  const classificationSelectAll = $("ap-classification-select-all");
+  const classificationBatchLevel = $("ap-classification-batch-level");
+  const classificationApply = $("ap-classification-apply");
+  const classificationOptions = [
+    "Muito baixa",
+    "Baixa",
+    "Média",
+    "Alta",
+    "Muito alta",
+  ]
+    .map(
+      (label, index) =>
+        `<option value="${index + 1}">N${index + 1} — ${label}</option>`,
+    )
+    .join("");
+  const classificationSearchKey = (value) =>
+    value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
+  let classificationRows = [];
+
+  function renderClassification() {
+    const query = classificationSearchKey(classificationSearch.value.trim());
+    let visible = 0;
+    let selected = 0;
+    let classified = 0;
+    for (const { row, name, type, checkbox, level } of classificationRows) {
+      const matchesLevel =
+        !classificationFilter.value ||
+        (level.value || "pending") === classificationFilter.value;
+      row.hidden =
+        !name.includes(query) ||
+        (classificationType.value !== "" &&
+          classificationType.value !== type) ||
+        !matchesLevel;
+      if (row.hidden) checkbox.checked = false;
+      row.classList.toggle("is-selected", checkbox.checked);
+      row.classList.toggle("has-level", Boolean(level.value));
+      visible += Number(!row.hidden);
+      selected += Number(checkbox.checked);
+      classified += Number(Boolean(level.value));
+    }
+    classificationSelectAll.disabled = visible === 0;
+    classificationSelectAll.checked = visible > 0 && selected === visible;
+    classificationSelectAll.indeterminate = selected > 0 && selected < visible;
+    classificationApply.disabled = !selected || !classificationBatchLevel.value;
+    $("ap-classification-selected").textContent =
+      `${selected} ${selected === 1 ? "selecionada" : "selecionadas"}`;
+    $("ap-classification-visible").textContent =
+      `${visible} de ${classificationRows.length} imagens visíveis`;
+    $("ap-classification-empty").hidden = visible !== 0;
+    $("ap-classification-progress").textContent =
+      `${classified} de ${classificationRows.length} imagens classificadas`;
+  }
+
+  function resetClassificationFilters() {
+    classificationSearch.value =
+      classificationType.value =
+      classificationFilter.value =
+        "";
+    renderClassification();
+  }
+
   function showClassification(pending, csrfToken) {
     $("ap-content").hidden = true;
     $("ap-reload").hidden = false;
-    classificationForm.dataset.liberacaoId = pending.liberacao.id;
+    classificationForm.dataset.liberacaoId = pending.liberacao?.id ?? 0;
     classificationForm.dataset.csrfToken = csrfToken;
     classificationError.hidden = true;
-    $("ap-classification-description").textContent =
-      `Escolha os níveis de complexidade para incluir as imagens no lote #${pending.liberacao.pre_alt_lote_id} da Pré-alteração.`;
-    const options = ["Muito baixa", "Baixa", "Média", "Alta", "Muito alta"]
-      .map((label, index) => `<option value="${index + 1}">N${index + 1} — ${label}</option>`)
+    $("ap-classification-title").textContent = pending.itens.length
+      ? "Classificar imagens"
+      : "Iniciar planejamento";
+    $("ap-classification-description").textContent = pending.itens.length
+      ? "Escolha o nível de complexidade de cada imagem pendente para continuar."
+      : "As imagens desta entrega já têm nível de complexidade. Continue para abrir o planejamento.";
+    classificationSubmit.textContent = pending.itens.length
+      ? "Salvar classificação"
+      : "Continuar";
+    classificationWorkspace.hidden = pending.itens.length === 0;
+    $("ap-classification-progress").hidden = classificationWorkspace.hidden;
+    const types = [
+      ...new Set(pending.itens.map((item) => item.tipo_imagem).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    classificationType.innerHTML =
+      '<option value="">Todos os tipos</option>' +
+      types
+        .map(
+          (type) => `<option value="${escape(type)}">${escape(type)}</option>`,
+        )
+        .join("");
+    classificationFilter.innerHTML =
+      '<option value="">Todos os níveis</option><option value="pending">Sem nível</option>' +
+      classificationOptions;
+    classificationBatchLevel.innerHTML =
+      '<option value="">Ação em lote</option>' +
+      classificationOptions +
+      '<option value="clear">Limpar nível</option>';
+    classificationItems.innerHTML = pending.itens
+      .map(
+        (item) =>
+          `<div class="ap-classification-row">
+        <input type="checkbox" aria-label="Selecionar ${escape(item.imagem_nome)}">
+        <div class="ap-classification-image"><strong>${escape(item.imagem_nome)}</strong>${item.tipo_imagem ? `<small>${escape(item.tipo_imagem)}</small>` : ""}</div>
+        <select name="${Number(item.entrega_item_id)}" aria-label="Nível de ${escape(item.imagem_nome)}" required>
+          <option value="">Sem nível</option>${classificationOptions}
+        </select>
+      </div>`,
+      )
       .join("");
-    $("ap-classification-items").innerHTML = pending.itens.map((item) =>
-      `<label><span>${escape(item.imagem_nome)} — Complexidade</span><select name="${Number(item.entrega_item_id)}" required><option value="">Selecione o nível</option>${options}</select></label>`
-    ).join("");
+    classificationRows = [...classificationItems.children].map(
+      (row, index) => ({
+        row,
+        name: classificationSearchKey(pending.itens[index].imagem_nome),
+        type: pending.itens[index].tipo_imagem,
+        checkbox: row.querySelector("input"),
+        level: row.querySelector("select"),
+      }),
+    );
+    resetClassificationFilters();
     classificationDialog.showModal();
+    if (classificationRows.length) classificationSearch.focus();
   }
-  classificationClose.addEventListener("click", () => classificationDialog.close());
+  classificationSearch.addEventListener("input", renderClassification);
+  classificationSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") event.preventDefault();
+  });
+  classificationType.addEventListener("change", renderClassification);
+  classificationFilter.addEventListener("change", renderClassification);
+  classificationBatchLevel.addEventListener("change", renderClassification);
+  classificationItems.addEventListener("change", (event) => {
+    if (event.target.matches("select")) classificationError.hidden = true;
+    renderClassification();
+  });
+  $("ap-classification-reset").addEventListener("click", () => {
+    resetClassificationFilters();
+    classificationSearch.focus();
+  });
+  classificationSelectAll.addEventListener("change", () => {
+    for (const { row, checkbox } of classificationRows) {
+      if (!row.hidden) checkbox.checked = classificationSelectAll.checked;
+    }
+    renderClassification();
+  });
+  classificationApply.addEventListener("click", () => {
+    const value = classificationBatchLevel.value;
+    for (const { checkbox, level } of classificationRows) {
+      if (!checkbox.checked) continue;
+      level.value = value === "clear" ? "" : value;
+      checkbox.checked = false;
+    }
+    classificationBatchLevel.value = "";
+    classificationError.hidden = true;
+    renderClassification();
+    classificationBatchLevel.focus();
+  });
+  classificationClose.addEventListener("click", () =>
+    classificationDialog.close(),
+  );
   classificationDialog.addEventListener("cancel", (event) => {
     if (classificationSubmit.disabled) event.preventDefault();
   });
   classificationForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (classificationSubmit.disabled) return;
+    const missing = classificationRows.find(({ level }) => !level.value);
+    if (missing) {
+      if (missing.row.hidden) resetClassificationFilters();
+      classificationError.textContent =
+        "Escolha um nível para cada imagem antes de salvar.";
+      classificationError.hidden = false;
+      missing.level.focus();
+      return;
+    }
     const levels = Object.fromEntries(new FormData(classificationForm));
     classificationError.hidden = true;
     classificationSubmit.disabled = classificationClose.disabled = true;
+    classificationWorkspace.inert = true;
     classificationForm.setAttribute("aria-busy", "true");
     try {
       const response = await fetch("alteracao.php", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({
           acao: "classificar",
           entrega_id: entregaId,
@@ -795,7 +952,9 @@
       });
       const result = await response.json();
       if (!response.ok || !result.success)
-        throw new Error(result.message || "Não foi possível classificar as imagens.");
+        throw new Error(
+          result.message || "Não foi possível classificar as imagens.",
+        );
       classificationDialog.close();
       state.replanning = false;
       acceptPlan(result.plano);
@@ -804,6 +963,7 @@
       classificationError.hidden = false;
     } finally {
       classificationSubmit.disabled = classificationClose.disabled = false;
+      classificationWorkspace.inert = false;
       classificationForm.removeAttribute("aria-busy");
     }
   });

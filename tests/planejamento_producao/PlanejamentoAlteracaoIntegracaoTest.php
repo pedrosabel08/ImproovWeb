@@ -190,6 +190,36 @@ pa_fails(fn()=>flow_planejamento_alteracao_salvar($conn,2,$draft2,true,1),'Dupli
 $root2=flow_planejamento_carregar_raiz($conn,2);
 pa_assert($root2['baseline_versao_id']===null && $root2['versao_atual_id']===null,'Erro tardio não deixa baseline ou versão parcial');
 pa_assert((int)flow_pa_rows($conn,'SELECT colaborador_id FROM funcao_imagem WHERE idfuncao_imagem=1')[0]['colaborador_id']===2,'Erro tardio desfaz atribuição operacional');
+foreach (['pre_alt_lote', 'pre_alt_liberacoes', 'pre_alt_lote_historico', 'alteracoes'] as $table) {
+    pa_shadow($conn, $table);
+}
+$conn->query("INSERT INTO entregas(id,obra_id,status_id,data_recebimento,data_prevista,status)
+    VALUES(378,1,4,'2026-11-12','2026-11-18','Pendente')");
+for ($n = 21; $n <= 29; $n++) {
+    $conn->query("INSERT INTO imagens_cliente_obra(idimagens_cliente_obra,imagem_nome,status_id,cliente_id,obra_id,antecipada,dias_trabalhados,animacao,clima)
+        VALUES($n,'Manual $n',4,1,1,0,0,0,'Dia')");
+    $conn->query("INSERT INTO entregas_itens(id,entrega_id,imagem_id) VALUES($n,378,$n)");
+    $conn->query("INSERT INTO funcao_imagem(idfuncao_imagem,imagem_id,funcao_id,status) VALUES($n,$n,6,'Não iniciado')");
+}
+pa_assert(flow_planejamento_modelo($conn, 378) === 'IMAGENS_ALTERACAO', 'Entrega manual abre o planejamento por imagens');
+try {
+    flow_planejamento_alteracao_carregar($conn, 378);
+    pa_assert(false, 'Entrega manual exige classificação antes de planejar');
+} catch (FlowPaClassificacaoPendente $erro) {
+    pa_assert(count($erro->itens) === 9, 'As nove imagens manuais aguardam classificação');
+}
+$conn->query("INSERT INTO alteracoes(funcao_id,status_id,nivel_complexidade,data_recebimento) VALUES(21,4,5,'2026-11-12')");
+$niveis = array_fill_keys(range(22, 29), 2);
+$invalidos = $niveis;
+$invalidos[29] = 6;
+pa_fails(fn () => flow_pa_classificar_imagens($conn, 378, ['niveis' => $invalidos]), '1 a 5');
+pa_assert(!flow_planejamento_carregar_raiz($conn, 378) && !flow_pa_liberacao_classificacao($conn, flow_pa_entrega($conn, 378)),
+    'Nível inválido desfaz a classificação e a origem da entrega');
+flow_pa_classificar_imagens($conn, 378, ['niveis' => $niveis]);
+$manual = flow_planejamento_alteracao_carregar($conn, 378);
+pa_assert(count($manual['itens']) === 9 && $manual['pode_editar'], 'Classificação abre o planejamento para as nove imagens');
+pa_assert(array_column($manual['itens'], 'nivel_atual') === [5, 2, 2, 2, 2, 2, 2, 2, 2], 'Classificação preserva o nível existente e grava os demais');
+pa_fails(fn () => flow_pa_classificar_imagens($conn, 378, ['niveis' => $niveis]), 'pendentes mudaram');
 $conn->query('ALTER TABLE entrega_planejamento_producao DROP COLUMN modelo');
 $conn->begin_transaction();
 $conn->query("INSERT INTO entregas(id,obra_id,status_id,data_recebimento,data_prevista,status) VALUES(3,1,4,'2026-11-02','2026-11-11','Pendente')");

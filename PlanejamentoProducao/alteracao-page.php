@@ -81,14 +81,43 @@ if (!isset($planejamentoPorImagem) || !$planejamentoPorImagem) {
 <dialog id="ap-history-dialog" class="ap-dialog" aria-labelledby="ap-history-title"><div class="ap-section-head"><h2 id="ap-history-title">Histórico do planejamento</h2><button class="ap-button" type="button" id="ap-close-history">Fechar</button></div><div id="ap-history-list"></div><div id="ap-history-snapshot"></div></dialog>
 <dialog id="ap-people-dialog" class="ap-dialog" aria-labelledby="ap-people-title"><div class="ap-section-head"><h2 id="ap-people-title">Colaboradores de Alteração</h2><button type="button" id="ap-close-people" class="ap-button">Fechar</button></div><p>Disponibilidade no dia selecionado. Os compromissos são calculados por dia.</p><div id="ap-people-list"></div></dialog>
 <dialog id="ap-classification-dialog" class="ap-dialog" aria-labelledby="ap-classification-title" aria-describedby="ap-classification-description">
-  <form id="ap-classification-form">
-    <div class="ap-section-head"><h2 id="ap-classification-title">Classificar imagens adicionadas</h2></div>
-    <p id="ap-classification-description"></p>
-    <div id="ap-classification-items"></div>
-    <p id="ap-classification-error" role="alert" hidden></p>
+  <form id="ap-classification-form" novalidate>
+    <header class="ap-classification-header">
+      <h2 id="ap-classification-title">Classificar imagens</h2>
+      <p id="ap-classification-description"></p>
+    </header>
+    <div id="ap-classification-workspace">
+      <div class="ap-classification-tools">
+        <div class="ap-classification-filters">
+          <label>Buscar imagem<input type="search" id="ap-classification-search" placeholder="Nome da imagem"></label>
+          <label>Tipo de imagem<select id="ap-classification-type"><option value="">Todos os tipos</option></select></label>
+          <label>Nível<select id="ap-classification-filter"></select></label>
+        </div>
+        <div class="ap-classification-batch">
+          <label class="ap-classification-check"><input type="checkbox" id="ap-classification-select-all"> Selecionar visíveis</label>
+          <span id="ap-classification-selected" role="status"></span>
+          <div class="ap-classification-apply">
+            <select id="ap-classification-batch-level" aria-label="Nível para as imagens selecionadas"></select>
+            <button type="button" id="ap-classification-apply" class="ap-button" disabled>Aplicar</button>
+          </div>
+        </div>
+      </div>
+      <div class="ap-classification-list">
+        <p id="ap-classification-visible" role="status"></p>
+        <div id="ap-classification-items"></div>
+        <div id="ap-classification-empty" hidden>
+          <p>Nenhuma imagem corresponde aos filtros.</p>
+          <button type="button" id="ap-classification-reset" class="ap-button">Limpar filtros</button>
+        </div>
+      </div>
+    </div>
     <div class="ap-classification-actions">
-      <button type="button" id="ap-classification-close" class="ap-button">Agora não</button>
-      <button type="submit" id="ap-classification-submit" class="ap-button ap-primary">Incluir no lote e continuar</button>
+      <p id="ap-classification-error" role="alert" hidden></p>
+      <p id="ap-classification-progress" role="status"></p>
+      <div class="ap-classification-buttons">
+        <button type="button" id="ap-classification-close" class="ap-button">Agora não</button>
+        <button type="submit" id="ap-classification-submit" class="ap-button ap-primary">Salvar classificação</button>
+      </div>
     </div>
   </form>
 </dialog>

@@ -156,12 +156,13 @@ $conn->close();
     <div id="filtro">
         <header>
             <div class="header-left">
-                <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" alt="">
-                <h1>Lista Pós-Produção</h1>
+                <div><span class="page-eyebrow">Produção</span>
+                    <h1>Lista Pós-Produção</h1>
+                </div>
             </div>
             <div class="header-right">
                 <button id="openModalBtn" style="display: none;">Inserir render</button>
-                <button id="openModalBtnRender">Ver Render Elements</button>
+                <button id="openModalBtnRender"><i class="fa-solid fa-layer-group"></i> Render Elements <i class="fa-solid fa-arrow-up-right-from-square"></i></button>
             </div>
         </header>
 
@@ -197,6 +198,20 @@ $conn->close();
             </div>
         </section>
 
+        <section id="widget-prazos" aria-label="Próximos prazos">
+            <div class="widget-heading"><i class="fa-regular fa-calendar-check"></i>
+                <div>
+                    <h3>Próximos Prazos</h3>
+                    <p>Prioridade de execução da fila</p>
+                </div>
+            </div>
+            <div id="widget-prazos-content">Carregando...</div>
+        </section>
+        <div class="pos-tabs" role="tablist" aria-label="Situação da pós-produção">
+            <button type="button" role="tab" data-pos-tab="1" aria-selected="true">Pendentes <span id="tab-count-pendentes">0</span></button>
+            <button type="button" role="tab" data-pos-tab="0" aria-selected="false">Finalizadas <span id="tab-count-finalizadas">0</span></button>
+            <button type="button" role="tab" data-pos-tab="" aria-selected="false">Todas <span id="tab-count-todas">0</span></button>
+        </div>
         <!-- Filter Bar -->
         <section class="filter-bar" id="filters" aria-modal="false">
             <div class="filter-bar__modal-head">
@@ -223,7 +238,7 @@ $conn->close();
             </select>
             <select id="fb-status-pos">
                 <option value="">Status Pós</option>
-                <option value="1">Não começou</option>
+                <option value="1" selected>Não começou</option>
                 <option value="0">Finalizado</option>
             </select>
             <select id="fb-obra">
@@ -243,13 +258,7 @@ $conn->close();
         </button>
 
         <div class="tabela-container">
-            <nav>
-                <div id="widget-prazos">
-                    <h3>Próximos Prazos</h3>
-                    <div id="widget-prazos-content">Carregando...</div>
-                </div>
-                <p style="margin: 15px 0; text-align: right;">Total de pós: <span id="total-pos"></span></p>
-            </nav>
+            <p class="pos-total">Total de pós: <span id="total-pos"></span></p>
             <p class="tabela-scroll-hint">Deslize a tabela para ver todas as colunas.</p>
             <div id="tabela-imagens"></div>
         </div>
@@ -504,6 +513,7 @@ $conn->close();
     <script>
         window.POS_REFERENCE_READONLY = true;
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
     <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=8'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

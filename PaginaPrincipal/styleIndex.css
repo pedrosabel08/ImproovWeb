@@ -5170,6 +5170,17 @@ form#dailyForm button {
   font-weight: 800;
   text-transform: uppercase;
 }
+
+.modalPlanejamento[data-r00-entregue="1"] > :is(
+  .modal-planning-required,
+  .modal-operational-window,
+  .modal-planning-feedback,
+  .modal-planning-reason,
+  .modal-planning-justification,
+  .modal-planning-note
+) {
+  display: none;
+}
 .modalPlanejamento small {
   color: var(--text-muted);
   font-size: 0.74rem;

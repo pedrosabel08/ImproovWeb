@@ -2,6 +2,29 @@
 
 require_once __DIR__ . '/planejamento_producao_helper.php';
 
+/** Identifica a entrega por imagem, inclusive em lotes ainda abertos. */
+function flow_planejamento_imagens_entregues_r00(mysqli $conn, array $imagemIds): array
+{
+    $ids = array_unique(array_filter(array_map('intval', $imagemIds), static fn(int $id): bool => $id > 0));
+    if (!$ids) {
+        return [];
+    }
+    $in = implode(',', $ids);
+    $result = $conn->query("SELECT DISTINCT ei.imagem_id
+                             FROM entregas_itens ei
+                             JOIN entregas e ON e.id = ei.entrega_id AND e.status_id = 2
+                            WHERE ei.imagem_id IN ($in)
+                              AND (ei.data_entregue >= '1000-01-01'
+                                   OR (e.data_conclusao >= '1000-01-01'
+                                       AND e.status IN ('Entregue no prazo', 'Entregue com atraso', 'Entrega antecipada')))");
+    $entregues = [];
+    while ($row = $result->fetch_assoc()) {
+        $entregues[(int) $row['imagem_id']] = true;
+    }
+    $result->free();
+    return $entregues;
+}
+
 /** Apenas eventos persistidos de entrega; progresso de função nunca encerra R00. */
 function flow_planejamento_entrega_real_com_dados(array $entrega, array $itens): array
 {

@@ -92,7 +92,8 @@ if (flow_janela_schema_disponivel($conn) && flow_janela_ciclo_ativo_por_tarefa($
 }
 
 $contexto = flow_tarefa_contexto_planejamento($conn, $tarefa);
-$prazoNecessario = $contexto['prazo_necessario'] ?? null;
+$r00Entregue = isset(flow_planejamento_imagens_entregues_r00($conn, [$tarefa['imagem_id']])[(int) $tarefa['imagem_id']]);
+$prazoNecessario = $r00Entregue ? null : ($contexto['prazo_necessario'] ?? null);
 $diferenca = $prazoNecessario ? flow_tarefa_planejamento_desvio($prazoNecessario, $previsao) : null;
 if ($diferenca !== null && $diferenca > 0 && $justificativa === '') {
     http_response_code(422);

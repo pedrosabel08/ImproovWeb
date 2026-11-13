@@ -11,7 +11,10 @@ import {
   hasVisibleGroundReceiver,
 } from "./shadow-catcher.js?v=20261030-spherical";
 import { SolarProjection } from "./solar-projection.js?v=20261103-solar-orbit-v1";
-import { solarGlowTexture, solarVisualRadius } from "./solar-visuals.js?v=20261103-solar-orbit-v1";
+import {
+  solarGlowTexture,
+  solarVisualRadius,
+} from "./solar-visuals.js?v=20261103-solar-orbit-v1";
 import {
   ENVIRONMENTS,
   ENVIRONMENT_SETTINGS,
@@ -313,6 +316,72 @@ export class SolarLighting {
     scene.add(this.receiver);
     this.light.shadow.autoUpdate = false;
     this.viewPoint = new THREE.Vector3();
+    this.explorerShadowBounds = new THREE.Box3();
+    this.explorerShadowCenter = new THREE.Vector3();
+    this.explorerShadowDirection = new THREE.Vector3();
+    this.aerialLightPosition = new THREE.Vector3();
+    this.aerialLightTarget = new THREE.Vector3();
+    this.explorerShadowFit = false;
+    this.explorerPosition = null;
+    this.explorerShadowFrame = -Infinity;
+  }
+  setExplorerPosition(position) {
+    if (!position && this.explorerShadowFit) {
+      this.light.position.copy(this.aerialLightPosition);
+      this.light.target.position.copy(this.aerialLightTarget);
+    }
+    this.explorerPosition = position;
+    this.explorerShadowFit = false;
+    if (!position && this.bounds) {
+      if (this.result) this.fitShadow();
+      else this.onRestore(this.bounds);
+    }
+  }
+  fitShadow() {
+    if (this.explorerPosition) {
+      this.explorerShadowFit = false;
+    } else fitSolarShadow(this.light, this.bounds, this.receiverBounds);
+  }
+  updateExplorerShadow(now) {
+    const position = this.explorerPosition;
+    if (
+      !position ||
+      this.light.intensity <= 0 ||
+      (this.result && this.result.altitude <= 0)
+    )
+      return;
+    if (
+      !this.explorerShadowFit ||
+      this.explorerShadowCenter.distanceToSquared(position) > 16
+    ) {
+      const light = this.light;
+      if (!this.explorerShadowFit) {
+        this.aerialLightPosition.copy(light.position);
+        this.aerialLightTarget.copy(light.target.position);
+      }
+      const direction = this.explorerShadowDirection
+        .subVectors(light.position, light.target.position)
+        .normalize();
+      this.explorerShadowCenter.copy(position);
+      // A local shadow frustum keeps Josh's silhouette readable on metre-scale geometry.
+      // Moving the existing directional light and target together preserves the solar direction.
+      light.target.position.copy(position);
+      light.position.copy(position).addScaledVector(direction, 350);
+      const box = this.explorerShadowBounds;
+      box.min.copy(position).addScalar(-16);
+      box.max.copy(position).addScalar(16);
+      // Include upstream casters above the walker at low sun angles.
+      box.expandByPoint(
+        this.viewPoint.copy(position).addScaledVector(direction, 100),
+      );
+      fitSolarShadow(light, box);
+      this.explorerShadowFit = true;
+    }
+    // Animate the silhouette without redrawing the entire shadow map at display refresh rate.
+    if (now - this.explorerShadowFrame >= 1000 / 30) {
+      this.explorerShadowFrame = now;
+      this.light.shadow.needsUpdate = true;
+    }
   }
   setTerrainDimension(dimension) {
     this.terrainDimension = dimension || 0;
@@ -320,7 +389,10 @@ export class SolarLighting {
     this.relight();
   }
   updateVisualRadius() {
-    this.visualRadius = solarVisualRadius(this.radius || 0.5, this.terrainDimension);
+    this.visualRadius = solarVisualRadius(
+      this.radius || 0.5,
+      this.terrainDimension,
+    );
     this.projection.setVisualRadius(this.visualRadius);
   }
   setBounds(bounds) {
@@ -416,6 +488,7 @@ export class SolarLighting {
     this.light.color.copy(this.navigationColor);
     this.ambient.intensity = 1.65;
     if (this.bounds) this.onRestore(this.bounds);
+    this.explorerShadowFit = false;
   }
   relight() {
     const error = this.loadError || solarConfigError(this.config);
@@ -477,12 +550,13 @@ export class SolarLighting {
     this.fitReceiver(direction);
     // The OSM terrain already receives the same directional shadow map. A flat
     // technical receiver would intersect hills and leave floating black patches.
-    this.receiver.visible = result.altitude > 0 && !this.hasGroundReceiver && !this.terrainDimension;
+    this.receiver.visible =
+      result.altitude > 0 && !this.hasGroundReceiver && !this.terrainDimension;
     this.marker.visible = result.altitude > 0;
     this.marker.position
       .copy(this.center)
       .addScaledVector(direction, this.visualRadius);
-    fitSolarShadow(this.light, this.bounds, this.receiverBounds);
+    this.fitShadow();
     const minutes =
       Number(this.time.value.slice(0, 2)) * 60 +
       Number(this.time.value.slice(3));
@@ -581,14 +655,16 @@ export class SolarLighting {
         ? "Trajetória do dia · horários locais da obra."
         : "Sem trajetória acima do horizonte nesta data.";
   }
-  update(camera) {
+  update(camera, now = performance.now()) {
+    this.updateExplorerShadow(now);
     this.projection.update(camera);
     if (!this.marker.visible) {
       this.markerLabel.hidden = true;
       return;
     }
     if (camera.isOrthographicCamera && this.viewport.clientHeight) {
-      const worldPerPixel = (camera.top - camera.bottom) / camera.zoom / this.viewport.clientHeight;
+      const worldPerPixel =
+        (camera.top - camera.bottom) / camera.zoom / this.viewport.clientHeight;
       this.marker.scale.setScalar(worldPerPixel * 5);
     }
     this.viewPoint.copy(this.marker.position).project(camera);

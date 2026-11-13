@@ -1,14 +1,15 @@
 import * as THREE from "three";
 import { SOLAR_VISUAL_RADIUS_MULTIPLIER } from "../solar-visuals.js?v=20261103-solar-orbit-v1";
-import {
-  validGeoConfig,
-} from "./geo-coordinates.js?v=20261103-boundary-v4";
+import { validGeoConfig } from "./geo-coordinates.js?v=20261103-boundary-v4";
 import {
   loadOSM,
   browserOSMCache,
   OSM_RADIUS,
 } from "./osm-service.js?v=20261112-overpass";
-import { urbanMaterial, softenEnvironmentEdge } from "./urban-haze.js?v=20261104-terrain-v1";
+import {
+  urbanMaterial,
+  softenEnvironmentEdge,
+} from "./urban-haze.js?v=20261104-terrain-v1";
 import { loadElevation } from "./elevation-service.js?v=20261104-terrain-v1";
 import {
   GEO_OPTIONS,
@@ -18,7 +19,12 @@ import { GeoDebug } from "./geo-debug.js?v=20261103-boundary-v4";
 import { installTerrainDebug } from "./terrain-debug.js?v=20261104-surface-v3";
 import { generateEnvironment } from "./generate-environment.js?v=20261110-shared-v1";
 import { createEnvironmentBounds } from "./environment-clip.js?v=20261103-boundary-v4";
-import { cacheRequest, fetchGeometryCache, restoreGeometryCache, validateGeometryAlignment } from "./server-geometry-cache.js?v=20261110-cache-v3";
+import {
+  cacheRequest,
+  fetchGeometryCache,
+  restoreGeometryCache,
+  validateGeometryAlignment,
+} from "./server-geometry-cache.js?v=20261110-cache-v3";
 
 /** New group outside modelRoot: never enters picking, fit, floor or solar bounds. */
 export class GeoEnvironment {
@@ -30,11 +36,15 @@ export class GeoEnvironment {
     options = GEO_OPTIONS,
     elevationLoader = loadElevation,
     serverCache = typeof document !== "undefined" &&
-      document.querySelector?.('meta[name="flow-geo-cache"][content="1"]') != null,
+      document.querySelector?.('meta[name="flow-geo-cache"][content="1"]') !=
+        null,
   }) {
     Object.assign(this, { scene, viewport, sky, onChange });
     this.options = options;
-    this.surfaceDebug=options.geoDebug||new URLSearchParams(window.location?.search||'').get('geo_debug')==='1';
+    this.surfaceDebug =
+      options.geoDebug ||
+      new URLSearchParams(window.location?.search || "").get("geo_debug") ===
+        "1";
     this.elevationLoader = elevationLoader;
     this.serverCache = serverCache;
     let storage;
@@ -59,33 +69,50 @@ export class GeoEnvironment {
     this.demAttribution.href = "https://mapterhorn.com/attribution/";
     this.demAttribution.target = "_blank";
     this.demAttribution.rel = "noopener noreferrer";
+    this.demAttribution.className = "geo-attribution";
     this.demAttribution.textContent = "© Mapterhorn · Copernicus DEM";
-    this.demAttribution.title = "© DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.";
-    this.demAttribution.style.cssText = this.attribution.style.cssText + ";bottom:65px";
+    this.demAttribution.title =
+      "© DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.";
+    this.demAttribution.style.cssText =
+      this.attribution.style.cssText + ";bottom:65px";
     this.demAttribution.hidden = true;
     viewport.append(this.demAttribution);
     this.notice = document.createElement("div");
     this.notice.setAttribute("role", "status");
-    this.notice.style.cssText = "position:absolute;left:12px;bottom:48px;z-index:2;max-width:min(380px,calc(100% - 24px));padding:8px 10px;border-radius:6px;background:var(--spatial-panel,#171b22);color:var(--spatial-text,#e4e9ec);font:12px/1.4 sans-serif";
+    this.notice.style.cssText =
+      "position:absolute;left:12px;bottom:48px;z-index:2;max-width:min(380px,calc(100% - 24px));padding:8px 10px;border-radius:6px;background:var(--spatial-panel,#171b22);color:var(--spatial-text,#e4e9ec);font:12px/1.4 sans-serif";
     this.notice.hidden = true;
     viewport.append(this.notice);
     this.loading = document.createElement("div");
     this.loading.setAttribute("role", "status");
-    this.loading.style.cssText = this.notice.style.cssText + ";pointer-events:none";
-    this.loading.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><canvas data-thinking-orb data-orb-state="searching" data-orb-size="32" aria-label="Buscando ruas e edifícios"></canvas><span>Carregando entorno OpenStreetMap…</span></div>';
+    this.loading.style.cssText =
+      this.notice.style.cssText + ";pointer-events:none";
+    this.loading.innerHTML =
+      '<div style="display:flex;align-items:center;gap:6px"><canvas data-thinking-orb data-orb-state="searching" data-orb-size="32" aria-label="Buscando ruas e edifícios"></canvas><span>Carregando entorno OpenStreetMap…</span></div>';
     this.loading.hidden = true;
     viewport.append(this.loading);
   }
   setConfig(config) {
     const key = validGeoConfig(config)
-      ? JSON.stringify([config.latitude, config.longitude, config.norte_graus, config.obra_id])
+      ? JSON.stringify([
+          config.latitude,
+          config.longitude,
+          config.norte_graus,
+          config.obra_id,
+        ])
       : null;
     if (key === this.configKey) return;
     this.configKey = key;
     this.config = key ? { ...config } : null;
     return this.refresh();
   }
-  setModel(root, bounds, buildingBounds = bounds, groundInfo = null, cacheModel = null) {
+  setModel(
+    root,
+    bounds,
+    buildingBounds = bounds,
+    groundInfo = null,
+    cacheModel = null,
+  ) {
     this.model = root;
     this.groundInfo = groundInfo;
     this.cacheModel = cacheModel;
@@ -94,7 +121,13 @@ export class GeoEnvironment {
     return this.refresh();
   }
   prefetchCache(obraId, model, signal) {
-    if (this.serverCache && !this.surfaceDebug && obraId && model?.id && model?.version) {
+    if (
+      this.serverCache &&
+      !this.surfaceDebug &&
+      obraId &&
+      model?.id &&
+      model?.version
+    ) {
       return fetchGeometryCache(obraId, model, signal);
     }
     return null;
@@ -105,7 +138,8 @@ export class GeoEnvironment {
     this.abort = null;
     this.hideOsmLoading();
     this.debug?.dispose();
-    this.terrainDebug?.dispose();this.terrainDebug=null;
+    this.terrainDebug?.dispose();
+    this.terrainDebug = null;
     this.debug = null;
     if (this.group) {
       this.scene.remove(this.group);
@@ -132,7 +166,8 @@ export class GeoEnvironment {
     this.clear();
     this.notice.hidden = true;
     if (this.model && this.bounds && !this.config) {
-      this.notice.textContent = "Entorno indisponível. Configure a localização e o Norte da obra.";
+      this.notice.textContent =
+        "Entorno indisponível. Configure a localização e o Norte da obra.";
       this.notice.hidden = false;
     }
     if (
@@ -151,19 +186,30 @@ export class GeoEnvironment {
       const model = this.cacheModel;
       const config = this.config;
       const signal = this.abort.signal;
-      const useCache = this.serverCache && !this.surfaceDebug && !!model?.id && !!model?.version &&
+      const useCache =
+        this.serverCache &&
+        !this.surfaceDebug &&
+        !!model?.id &&
+        !!model?.version &&
         (model.obraId == null || model.obraId === config.obra_id);
       let cacheMetrics;
       if (useCache) {
         try {
-          const request = model.prefetch ?? fetchGeometryCache(config.obra_id, model, signal);
+          const request =
+            model.prefetch ?? fetchGeometryCache(config.obra_id, model, signal);
           model.prefetch = null;
           const { cached, metrics, error } = await request;
           if (signal.aborted) return;
           cacheMetrics = metrics;
           if (error) throw error;
           if (cached) {
-            cacheMetrics.alignmentMs = await validateGeometryAlignment(cached, config, this.bounds, this.buildingBounds, this.groundInfo);
+            cacheMetrics.alignmentMs = await validateGeometryAlignment(
+              cached,
+              config,
+              this.bounds,
+              this.buildingBounds,
+              this.groundInfo,
+            );
             if (signal.aborted) return;
             this.installCached(cached, cacheMetrics);
             this.measurePresentation(generation, start);
@@ -172,11 +218,18 @@ export class GeoEnvironment {
         } catch (error) {
           if (signal.aborted) return;
           cacheMetrics = { ...cacheMetrics, source: "error" };
-          console.debug("[Flow Geo Cache] Usando geração convencional.", error.message);
+          console.debug(
+            "[Flow Geo Cache] Usando geração convencional.",
+            error.message,
+          );
         }
       }
-      const demPromise = this.elevationLoader(this.config, {signal:this.abort.signal})
-        .then(data=>({data}), error=>({error}));
+      const demPromise = this.elevationLoader(this.config, {
+        signal: this.abort.signal,
+      }).then(
+        (data) => ({ data }),
+        (error) => ({ error }),
+      );
       const osmOptions = { cache: this.cache, signal };
       let response = await loadOSM(config, { ...osmOptions, cacheOnly: true });
       if (signal.aborted) return;
@@ -194,34 +247,43 @@ export class GeoEnvironment {
       }
       if (generation !== this.generation) return;
       if (response.stale) {
-        this.notice.textContent = "O entorno exibido foi carregado de uma versão anterior.";
+        this.notice.textContent =
+          "O entorno exibido foi carregado de uma versão anterior.";
         this.notice.hidden = false;
       }
       if (!Object.values(response.data).some((items) => items.length)) {
         if (!response.stale) this.abort.abort();
         this.viewport.dataset.geoState = "empty";
-        this.notice.textContent = "Nenhum dado de entorno foi encontrado para esta localização.";
+        this.notice.textContent =
+          "Nenhum dado de entorno foi encontrado para esta localização.";
         this.notice.hidden = false;
         return;
       }
       const elevation = await demPromise;
       if (generation !== this.generation) return;
       this.viewport.dataset.demState = elevation.data ? "ready" : "fallback";
-      if (elevation.error) console.debug("[Flow DEM] Terreno plano preservado.", elevation.error.message);
+      if (elevation.error)
+        console.debug(
+          "[Flow DEM] Terreno plano preservado.",
+          elevation.error.message,
+        );
       if (cacheMetrics?.needsInputs && elevation.data && !response.stale) {
         cacheRequest(config, model, signal, true).catch(() => {});
       }
       await this.build(response.data, generation, response, elevation.data);
       if (useCache && generation === this.generation && this.group) {
         this.group.userData.metrics.geometryCache = cacheMetrics;
-        this.viewport.dataset.geoMetrics = JSON.stringify(this.group.userData.metrics);
+        this.viewport.dataset.geoMetrics = JSON.stringify(
+          this.group.userData.metrics,
+        );
         this.measurePresentation(generation, start);
       }
     } catch (error) {
       if (generation !== this.generation) return;
       this.clear();
       this.viewport.dataset.geoState = "error";
-      this.notice.textContent = "Não foi possível carregar o entorno OpenStreetMap. Tente novamente mais tarde.";
+      this.notice.textContent =
+        "Não foi possível carregar o entorno OpenStreetMap. Tente novamente mais tarde.";
       this.notice.hidden = false;
       console.debug(
         "[Flow OSM] Entorno indisponível; visualizador preservado.",
@@ -237,63 +299,102 @@ export class GeoEnvironment {
     try {
       group = restoreGeometryCache(cached, materials);
     } catch (error) {
-      Object.values(materials).forEach(material => material.dispose());
+      Object.values(materials).forEach((material) => material.dispose());
       throw error;
     }
     const metrics = {
       ...cached.header.metrics,
       meshes: group.children.length,
-      triangles: group.children.reduce((sum, mesh) => sum + mesh.geometry.attributes.position.count / 3, 0),
+      triangles: group.children.reduce(
+        (sum, mesh) => sum + mesh.geometry.attributes.position.count / 3,
+        0,
+      ),
       geometryCache: {
-        ...cacheMetrics, source: cacheMetrics.source === "indexeddb" ? "indexeddb" : "server",
-        transferMs: cached.transferMs, validationMs: cached.validationMs,
-        restorationMs: performance.now() - start, serializationMs: cached.serializationMs, ...cached.header.timings,
+        ...cacheMetrics,
+        source: cacheMetrics.source === "indexeddb" ? "indexeddb" : "server",
+        transferMs: cached.transferMs,
+        validationMs: cached.validationMs,
+        restorationMs: performance.now() - start,
+        serializationMs: cached.serializationMs,
+        ...cached.header.timings,
       },
     };
     group.userData.environmentBounds = bounds.polygon;
     group.userData.terrainDimension = OSM_RADIUS * 2;
-    group.userData.geoOrigin = { latitude: this.config.latitude, longitude: this.config.longitude };
+    group.userData.geoOrigin = {
+      latitude: this.config.latitude,
+      longitude: this.config.longitude,
+    };
     group.userData.metrics = metrics;
     Object.assign(this, { group, materials });
     this.viewport.dataset.demState = "ready";
     this.present(metrics, true);
   }
   measurePresentation(generation, start) {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (generation !== this.generation || !this.group) return;
-      const metrics = this.group.userData.metrics;
-      metrics.geometryCache.presentationMs = performance.now();
-      metrics.geometryCache.environmentPresentationMs = performance.now() - start;
-      this.viewport.dataset.geoMetrics = JSON.stringify(metrics);
-    }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (generation !== this.generation || !this.group) return;
+        const metrics = this.group.userData.metrics;
+        metrics.geometryCache.presentationMs = performance.now();
+        metrics.geometryCache.environmentPresentationMs =
+          performance.now() - start;
+        this.viewport.dataset.geoMetrics = JSON.stringify(metrics);
+      }),
+    );
   }
   async build(data, generation, response, dem = null) {
     const result = await generateEnvironment({
-      data, response, dem,
+      data,
+      response,
+      dem,
       config: this.config,
       bounds: this.bounds,
       buildingBounds: this.buildingBounds,
       groundInfo: this.groundInfo,
       signal: this.abort.signal,
-      createMaterials: (environmentBounds, radius) => this.createMaterials(environmentBounds, radius),
-      createDebug: bounds => this.options.geoDebug ? new GeoDebug(bounds) : null,
-      onStage: stage => { this.viewport.dataset.geoBuildStage = stage; },
-      onDemFallback: error => {
+      createMaterials: (environmentBounds, radius) =>
+        this.createMaterials(environmentBounds, radius),
+      createDebug: (bounds) =>
+        this.options.geoDebug ? new GeoDebug(bounds) : null,
+      onStage: (stage) => {
+        this.viewport.dataset.geoBuildStage = stage;
+      },
+      onDemFallback: (error) => {
         this.viewport.dataset.demState = "fallback";
-        console.debug("[Flow DEM] Alinhamento indisponível; terreno plano preservado.", error.message);
+        console.debug(
+          "[Flow DEM] Alinhamento indisponível; terreno plano preservado.",
+          error.message,
+        );
       },
     });
     if (!result) return;
-    const { group, materials, terrain, debug, metrics, environmentBounds, radius, prepared, coastal, project, start } = result;
+    const {
+      group,
+      materials,
+      terrain,
+      debug,
+      metrics,
+      environmentBounds,
+      radius,
+      prepared,
+      coastal,
+      project,
+      start,
+    } = result;
     if (generation !== this.generation) {
-      group.traverse(object => object.geometry?.dispose());
-      Object.values(materials).forEach(material => material.dispose());
+      group.traverse((object) => object.geometry?.dispose());
+      Object.values(materials).forEach((material) => material.dispose());
       debug?.dispose();
       return;
     }
     Object.assign(this, { group, materials, terrain, debug });
-    this.viewport.dataset.geoBuildStage='audit';
-    if(this.surfaceDebug)this.terrainDebug=installTerrainDebug(this.group,this.viewport,this.terrain);
+    this.viewport.dataset.geoBuildStage = "audit";
+    if (this.surfaceDebug)
+      this.terrainDebug = installTerrainDebug(
+        this.group,
+        this.viewport,
+        this.terrain,
+      );
     metrics.meshes = this.group.children.length;
     metrics.buildMs = performance.now() - start;
     metrics.triangles = this.group.children.reduce(
@@ -327,7 +428,7 @@ export class GeoEnvironment {
   present(metrics, demReady) {
     this.viewport.dataset.geoMetrics = JSON.stringify(metrics);
     this.viewport.dataset.geoState = "ready";
-    this.viewport.dataset.geoBuildStage='ready';
+    this.viewport.dataset.geoBuildStage = "ready";
     this.scene.add(this.group);
     this.onChange();
     this.attribution.hidden = false;
@@ -346,10 +447,12 @@ export class GeoEnvironment {
         }),
       ]),
     );
-    for (const [key,material] of Object.entries(materials)) {
-      softenEnvironmentEdge(material,environmentBounds);
-      if(["road","FOREST","GRASS","PARK","water"].includes(key)) {
-        material.polygonOffset=true;material.polygonOffsetFactor=-1;material.polygonOffsetUnits=-2;
+    for (const [key, material] of Object.entries(materials)) {
+      softenEnvironmentEdge(material, environmentBounds);
+      if (["road", "FOREST", "GRASS", "PARK", "water"].includes(key)) {
+        material.polygonOffset = true;
+        material.polygonOffsetFactor = -1;
+        material.polygonOffsetUnits = -2;
       }
     }
     return materials;
@@ -375,7 +478,10 @@ export class GeoEnvironment {
     const center = this.group.position.clone();
     center.y += 250;
     // A esfera celeste visual também deve ficar à frente do plano próximo.
-    const radius = Math.hypot(OSM_RADIUS * 2 * SOLAR_VISUAL_RADIUS_MULTIPLIER, 250);
+    const radius = Math.hypot(
+      OSM_RADIUS * 2 * SOLAR_VISUAL_RADIUS_MULTIPLIER,
+      250,
+    );
     const distance = center.sub(camera.position).dot(backward.clone().negate());
     const correction = Math.max(0, camera.near + 10 + radius - distance);
     if (correction > 0) {

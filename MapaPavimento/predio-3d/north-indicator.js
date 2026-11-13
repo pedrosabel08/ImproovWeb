@@ -188,14 +188,14 @@ export class NorthIndicator {
         " graus.",
     );
   }
-  update() {
+  update(camera = this.camera) {
     if (!this.available || this.mapVisible) return;
     for (const label of this.environmentLabels) {
       if (!this.environment.visible) {
         label.element.hidden = true;
         continue;
       }
-      this.projected.copy(label.position).project(this.camera);
+      this.projected.copy(label.position).project(camera);
       label.element.hidden =
         Math.abs(this.projected.x) > 0.94 ||
         Math.abs(this.projected.y) > 0.94 ||
@@ -207,10 +207,11 @@ export class NorthIndicator {
     }
     // Bússola em planta: orientação horizontal do topo da tela, respondendo ao giro da câmera.
     // A direção geográfica continua vindo de northDirection, compartilhada com o Sol.
-    this.compassUp.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
+    if (camera.isPerspectiveCamera) camera.getWorldDirection(this.compassUp);
+    else this.compassUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
     this.compassUp.y = 0;
     if (this.compassUp.lengthSq() < 1e-10) {
-      this.camera.getWorldDirection(this.compassUp);
+      camera.getWorldDirection(this.compassUp);
       this.compassUp.y = 0;
     }
     this.compassUp.normalize();
@@ -232,7 +233,7 @@ export class NorthIndicator {
       this.label.hidden = true;
       return;
     }
-    const point = this.tip.clone().project(this.camera);
+    const point = this.tip.clone().project(camera);
     this.label.hidden =
       point.z < -1 ||
       point.z > 1 ||

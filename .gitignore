@@ -165,6 +165,9 @@ ALMA/scripts/reports
 /uploads/model-3d/obra-*/
 
 *.glb
+!/assets/person/Josh.glb
+# Source files for offline conversion; ship only the generated browser asset.
+/assets/person/*.fbx
 
 # Configuracao central sem credenciais pode ser versionada
 !/conexao.php

@@ -1,14 +1,14 @@
 import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
-import { setupPersonCamera } from "./person-camera.js";
+import { setupExploration } from "./exploration-mode.js?v=6";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
 import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261110-bootstrap-v2";
-import { NorthIndicator } from "./north-indicator.js?v=20261016-model-compass";
-import { SolarLighting } from "./solar-lighting.js?v=20261110-bootstrap-v1";
+import { NorthIndicator } from "./north-indicator.js?v=20261113-explore";
+import { SolarLighting } from "./solar-lighting.js?v=20261113-explore2";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
-import { ModelMeasurement } from "./model-measurement.js";
+import { ModelMeasurement } from "./model-measurement.js?v=20261113-explore";
 import { visibleSurface } from "./measurement-geometry.js";
 import { floorOrbitPose } from "./floor-navigation.js";
 import {
@@ -17,8 +17,11 @@ import {
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
 import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
 import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
-import { GeoEnvironment } from "./geo/geo-environment.js?v=20261112-overpass";
-import { buildIndex, modelGroundSelection } from "./geo/model-alignment.js?v=20261110-cache-v1";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261113-explore";
+import {
+  buildIndex,
+  modelGroundSelection,
+} from "./geo/model-alignment.js?v=20261110-cache-v1";
 import { fitSolarShadow } from "./solar-shadow.js";
 
 const themeStyle = getComputedStyle(document.documentElement);
@@ -106,25 +109,34 @@ viewport.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = null;
 const viewerEnvironment = setupEnvironment(renderer, scene, { solar: true });
-viewerEnvironment.subscribe(state => {
+viewerEnvironment.subscribe((state) => {
   viewport.dataset.nightGlassMeshes = String(state.nightGlass.meshes);
   viewport.dataset.nightGlassMaterials = String(state.nightGlass.materials);
   viewport.dataset.nightGlassFactor = String(state.nightGlass.factor);
-  viewport.dataset.nightGlassEmission = JSON.stringify(state.nightGlass.emission);
-  viewport.dataset.nightGlassSettings = JSON.stringify(state.nightGlass.settings);
+  viewport.dataset.nightGlassEmission = JSON.stringify(
+    state.nightGlass.emission,
+  );
+  viewport.dataset.nightGlassSettings = JSON.stringify(
+    state.nightGlass.settings,
+  );
 });
 const geoEnvironment = new GeoEnvironment({
   scene,
   viewport,
   sky: viewerEnvironment.sky,
   onChange: () => {
+    exploration?.invalidate();
     light.shadow.needsUpdate = true;
-    solarLighting.setTerrainDimension(geoEnvironment.group?.userData.terrainDimension || 0);
+    solarLighting.setTerrainDimension(
+      geoEnvironment.group?.userData.terrainDimension || 0,
+    );
+    updateAerialZoomLimit();
     geoEnvironment.fitCameraDepth(camera, controls.target);
   },
 });
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
+    exploration?.invalidate();
     geoEnvironment.dispose();
     viewerEnvironment.dispose();
   }
@@ -199,6 +211,8 @@ let mapBridge = null,
   fullControlState = null;
 let northDefining = false,
   northPreviousControls = true;
+let exploration = null;
+let restorePersonScene = null;
 const northIndicator = new NorthIndicator(
   scene,
   camera,
@@ -457,6 +471,7 @@ function clearVisualHighlights() {
 }
 function refreshHighlights() {
   clearVisualHighlights();
+  if (restorePersonScene) return;
   const targets = new Map();
   if (activeFloor) {
     if (selected)
@@ -763,6 +778,7 @@ function applyCameraPose(pose) {
   camera.up.copy(pose.up);
   controls.target.copy(pose.target);
   camera.zoom = pose.zoom ?? 1;
+  updateAerialZoomLimit();
   camera.lookAt(pose.target);
   geoEnvironment.fitCameraDepth(camera, controls.target);
   camera.updateProjectionMatrix();
@@ -925,6 +941,32 @@ function fitFull(bounds = null) {
     grid.position.y = box.min.y - 0.015;
   }
 }
+
+function updateAerialZoomLimit() {
+  const polygon = geoEnvironment.group?.userData.environmentBounds?.outer;
+  let span;
+  if (polygon?.length) {
+    const corner = polygon[0];
+    span =
+      Math.max(
+        ...polygon.map((point) =>
+          Math.hypot(point.x - corner.x, point.z - corner.z),
+        ),
+      ) * 1.1;
+  } else if (geoEnvironment.bounds && !geoEnvironment.bounds.isEmpty()) {
+    span = geoEnvironment.bounds.getSize(new THREE.Vector3()).length() * 3;
+  }
+  // Limit the smaller viewport dimension so the complete surroundings still fit in portrait.
+  const visibleSpan = Math.min(
+    camera.right - camera.left,
+    camera.top - camera.bottom,
+  );
+  controls.minZoom = span > 0 ? visibleSpan / span : 0;
+  if (camera.zoom < controls.minZoom) {
+    camera.zoom = controls.minZoom;
+    camera.updateProjectionMatrix();
+  }
+}
 function floorBounds(floor) {
   const box = floor.bounds.clone();
   if (mapBridge) return box;
@@ -949,6 +991,7 @@ function activateFloor(floor) {
 // A seleção 3D é independente da vista isolada usada apenas ao abrir o mapa.
 async function focusFloor(floor) {
   if (!modelRoot || !floor || floor.bounds.isEmpty()) return;
+  exploration?.invalidate();
   measurements.setScope(floor.id);
   if (viewerState.mode === "building") {
     const damping = controls.enableDamping;
@@ -1059,6 +1102,7 @@ function closeFloorPopover() {
 }
 async function resetBuildingView() {
   if (!modelRoot) return;
+  exploration?.invalidate();
   measurements.setScope(null);
   ++transitionToken;
   transitioning = false;
@@ -1141,6 +1185,7 @@ async function fadeOtherObjects(floor, from = 1, to = 0) {
 }
 async function enterFloor(floor) {
   if (!modelRoot || activeFloor === floor) return;
+  exploration?.invalidate();
   closeFloorPopover();
   if (!activeFloor && !viewerState.selectedFloor) {
     const damping = controls.enableDamping;
@@ -1183,6 +1228,7 @@ async function enterFloor(floor) {
   await transitionCamera(cameraPoseFor(floorBounds(floor), true), 900);
 }
 async function leaveFloor() {
+  exploration?.invalidate();
   if (!activeFloor) {
     await resetBuildingView();
     solarLighting.setProjectionSuspended(false);
@@ -1246,6 +1292,7 @@ function disposeModelResources(root) {
 }
 
 function clearModel() {
+  exploration?.invalidate();
   clearVisualHighlights();
   floorVisibility?.restore();
   floorVisibility = null;
@@ -1454,22 +1501,39 @@ async function loadUrl(url, obraId = null, signal) {
   const modelUrl = new URL(src, location.href);
   const modelPath = modelUrl.pathname;
   obraId ??= modelPath.match(/\/uploads\/model-3d\/obra-(\d+)\//)?.[1];
-  const cacheModel = modelUrl.origin === location.origin &&
+  const cacheModel =
+    modelUrl.origin === location.origin &&
     modelUrl.searchParams.get("obra_id") === String(obraId) &&
     modelUrl.searchParams.get("action") === "modelo_3d_arquivo"
-    ? { id: modelUrl.searchParams.get("modelo_id"), version: modelUrl.searchParams.get("v"), obraId: Number(obraId) }
-    : null;
+      ? {
+          id: modelUrl.searchParams.get("modelo_id"),
+          version: modelUrl.searchParams.get("v"),
+          obraId: Number(obraId),
+        }
+      : null;
   const cacheAbort = new AbortController();
-  const cacheSignal = signal ? AbortSignal.any([signal, cacheAbort.signal]) : cacheAbort.signal;
+  const cacheSignal = signal
+    ? AbortSignal.any([signal, cacheAbort.signal])
+    : cacheAbort.signal;
   try {
     const loading = loader.loadAsync(src);
-    if (cacheModel) cacheModel.prefetch = geoEnvironment.prefetchCache(cacheModel.obraId, cacheModel, cacheSignal);
+    if (cacheModel)
+      cacheModel.prefetch = geoEnvironment.prefetchCache(
+        cacheModel.obraId,
+        cacheModel,
+        cacheSignal,
+      );
     const gltf = await loading;
     if (signal?.aborted) {
       disposeModelResources(gltf.scene);
       signal.throwIfAborted();
     }
-    install(gltf, decodeURIComponent(src.split("/").pop().split("?")[0]) || src, obraId, cacheModel);
+    install(
+      gltf,
+      decodeURIComponent(src.split("/").pop().split("?")[0]) || src,
+      obraId,
+      cacheModel,
+    );
   } catch (error) {
     cacheAbort.abort();
     throw error;
@@ -1512,6 +1576,7 @@ $("fit").addEventListener("click", () =>
       ? focusFloor(viewerState.selectedFloor)
       : fitFull(),
 );
+$("fit").addEventListener("click", () => exploration?.stop(), true);
 $("backToProject").addEventListener("click", () =>
   mapBridge?.mapShown ? mapBridge.requestReturn() : leaveFloor(),
 );
@@ -1591,6 +1656,7 @@ function pickRecord(event) {
 }
 renderer.domElement.addEventListener("pointermove", (event) => {
   if (
+    exploration?.engaged ||
     northDefining ||
     transitioning ||
     mapBridge?.busy ||
@@ -1658,6 +1724,7 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   if (!pickingPointers.size) multiPointerGesture = false;
   if (
     multiPointer ||
+    exploration?.engaged ||
     northDefining ||
     transitioning ||
     mapBridge?.busy ||
@@ -1771,6 +1838,7 @@ function resizeViewport() {
   camera.aspect = w / h;
   camera.left = -camera.top * (w / h);
   camera.right = camera.top * (w / h);
+  if (!restorePersonScene) updateAerialZoomLimit();
   camera.updateProjectionMatrix();
 }
 function scheduleResizeViewport() {
@@ -1791,23 +1859,96 @@ layout.addEventListener("transitionend", (event) => {
 new ResizeObserver(scheduleResizeViewport).observe(viewport);
 window.addEventListener("resize", scheduleResizeViewport);
 resizeViewport();
-setupPersonCamera({
-  THREE,
-  renderer,
-  scene,
-  camera,
-  controls,
+exploration = setupExploration({
   viewport,
-  getMeshes: () => modelMeshes,
+  scene,
+  canvas: renderer.domElement,
+  orbitCamera: camera,
+  controls,
   available: () =>
     !!modelRoot &&
     !mapVisible &&
     !transitioning &&
     !northDefining &&
-    !measurements.active,
+    !measurements.active &&
+    !mapBridge?.busy &&
+    viewport.dataset.geoState !== "loading",
+  getSource: () => ({
+    model: modelRoot,
+    meshes: modelMeshes,
+    group: geoEnvironment.group,
+    terrain: geoEnvironment.terrain,
+    scope: activeFloor || viewerState.selectedFloor,
+    modelSurface: (mesh) =>
+      wasVisible(mesh) ? basePersonMaterial(mesh) : null,
+  }),
+  onChange(position) {
+    dragStart = null;
+    pickingPointers.clear();
+    multiPointerGesture = false;
+    hideTooltip();
+    hoveredRecord = viewerState.hoveredFloor = null;
+    if (position) {
+      clearVisualHighlights();
+      restorePersonScene = openPersonScene();
+      solarLighting.setExplorerPosition(position);
+    } else {
+      solarLighting.setExplorerPosition(null);
+      restorePersonScene?.();
+      restorePersonScene = null;
+      refreshHighlights();
+    }
+    resizeViewport();
+  },
 });
-(function animate() {
+
+function basePersonMaterial(mesh) {
+  return (
+    floorVisibility?.materials.get(mesh) ??
+    contextMaterials.get(mesh) ??
+    highlightMaterials.get(mesh) ??
+    mesh.material
+  );
+}
+
+function openPersonScene() {
+  // The cutaway helps pick an interior floor. Walk through the complete model,
+  // then put back the exact cutaway and inspection aids on exit.
+  const visibility = new Map();
+  const materials = new Map();
+  if (activeFloor || viewerState.selectedFloor) {
+    modelRoot.traverse((object) => {
+      visibility.set(object, {
+        visible: object.visible,
+        castShadow: object.castShadow,
+      });
+      object.visible = originalVisibility.get(object) ?? object.visible;
+      if (!object.isMesh) return;
+      const base = basePersonMaterial(object);
+      if (base !== object.material) {
+        materials.set(object, object.material);
+        object.material = base;
+      }
+      const surfaces = Array.isArray(base) ? base : [base];
+      object.castShadow = surfaces.some(solarOpaqueMaterial);
+    });
+  }
+  const helpers = [axes, grid, measurements.group, northIndicator.environment];
+  const helperStates = helpers.map((object) => object.visible);
+  helpers.forEach((object) => {
+    object.visible = false;
+  });
+  return () => {
+    for (const [object, state] of visibility) Object.assign(object, state);
+    for (const [mesh, material] of materials) mesh.material = material;
+    helpers.forEach((object, index) => {
+      object.visible = helperStates[index];
+    });
+  };
+}
+(function animate(now = performance.now()) {
   requestAnimationFrame(animate);
+  const explorerCamera = exploration.update(now);
   $("backToProject").disabled =
     measurements.active || northDefining || !!mapBridge?.busy;
   $("resetBuildingView").disabled =
@@ -1817,16 +1958,17 @@ setupPersonCamera({
       !mapVisible &&
       !northDefining &&
       !transitioning &&
-      !mapBridge?.busy,
+      !mapBridge?.busy &&
+      !exploration.engaged,
   );
   if (!mapVisible) {
-    if (!transitioning && !northDefining) controls.update();
-    northIndicator.update();
-    solarLighting.update(camera);
+    if (!transitioning && !northDefining && !explorerCamera) controls.update();
+    northIndicator.update(explorerCamera || camera);
+    solarLighting.update(explorerCamera || camera, now);
     geoEnvironment.update();
     viewerEnvironment.tick();
-    measurements.update();
-    renderer.render(scene, camera);
+    measurements.update(explorerCamera || camera);
+    renderer.render(scene, explorerCamera || camera);
   }
 })();
 toggleSidebar("left", "Pavimentos", true);
@@ -1859,6 +2001,7 @@ if (params.has("src") && !params.has("obra_id")) {
       refreshHighlights();
     },
     setMapVisible: (value) => {
+      if (value) exploration.stop();
       mapVisible = value;
       solarLighting.setMapVisible(value);
       northIndicator.setMapVisible(value);
@@ -1873,6 +2016,7 @@ if (params.has("src") && !params.has("obra_id")) {
       setNorth: (degrees, defining = false) =>
         northIndicator.set(degrees, defining),
       setDefining: (value) => {
+        if (value) exploration.stop();
         northDefining = value;
         measurements.setSuspended(value);
         solarLighting.setSuspended(value);
@@ -1912,6 +2056,7 @@ for (const [label, direction, up = [0, 1, 0]] of cubeViews) {
   button.setAttribute("aria-label", "Vista " + label.toLowerCase());
   button.addEventListener("click", async () => {
     if (!modelRoot || transitioning || northDefining || mapBridge?.busy) return;
+    exploration.stop();
     const focusedFloor = activeFloor || viewerState.selectedFloor;
     const bounds = focusedFloor
       ? floorBounds(focusedFloor)

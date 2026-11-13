@@ -2,6 +2,7 @@
   const state = {
     token: window.BRIEFING_ACCESS_TOKEN || "",
     csrf: "",
+    participant: null,
     briefing: null,
     section: 0,
     answers: new Map(),
@@ -72,7 +73,16 @@
   };
   const setSave = (text, kind = "") => {
     const element = $("save-state");
-    element.textContent = text;
+    const labels = {
+      Salvo: "Todas as alterações salvas",
+      "Salvando…": "Salvando…",
+      "Sincronizando…": "Sincronizando…",
+      "Alteração pendente": "Não foi possível salvar uma alteração",
+      Conflito: "Uma resposta precisa ser revisada",
+      Enviado: "Briefing enviado",
+      "Sem conexão": "Não foi possível salvar uma alteração",
+    };
+    element.textContent = labels[text] || text;
     element.className = `save-state ${kind}`;
   };
   const requestCode = async (action) => {
@@ -148,6 +158,7 @@
         token: state.token,
       });
       state.csrf = result.csrf || state.csrf;
+      state.participant = result.participant || state.participant;
       hydrateAnswers(result.briefing);
       state.briefing = result.briefing;
       render();
@@ -465,57 +476,129 @@
     }
     return field;
   }
+  const initials = (name = "") =>
+    name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "FL";
+  const answered = (question) => {
+    const current = answerState(question);
+    return current.notApplicable || (current.value !== null && current.value !== undefined && current.value !== "" && (!Array.isArray(current.value) || current.value.length));
+  };
+  const sectionStats = (section) => {
+    const total = section.questions.length;
+    const complete = section.questions.filter(answered).length;
+    return { total, complete, done: total > 0 && total === complete };
+  };
+  const requestFor = (questionId) =>
+    (state.briefing?.requests || []).find((request) => Number(request.briefing_question_id) === Number(questionId));
+  const setAvatar = (element, name, small = false) => {
+    element.className = `avatar${small ? " small" : ""}`;
+    element.textContent = initials(name);
+  };
+  function updateProgressUi() {
+    const progress = state.briefing.progress || { percent: 0, answered: 0, total: 0 };
+    const percent = Number(progress.percent || 0);
+    $("progress-fill").style.width = `${percent}%`;
+    $("progress-label").textContent = `${progress.answered} de ${progress.total} perguntas respondidas`;
+    $("progress-percent").textContent = `${percent}%`;
+    $("progress-ring").style.setProperty("--progress", `${percent}%`);
+    $("progress-detail").textContent = `${progress.answered} de ${progress.total} perguntas respondidas`;
+    $("progress-message").textContent = percent >= 75 ? "Você está quase lá!" : percent ? "Seu projeto está tomando forma" : "Vamos começar";
+    $("summary-answers").textContent = `${progress.answered} de ${progress.total}`;
+    const completedSections = state.briefing.sections.filter((section) => sectionStats(section).done).length;
+    $("summary-sections").textContent = `${completedSections} de ${state.briefing.sections.length}`;
+  }
+  function goToSection(index) {
+    state.section = Math.max(0, Math.min(index, state.briefing.sections.length - 1));
+    render();
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function renderAuthor(question, side) {
+    const answer = question.answer || {};
+    const authorName = answer.author || answer.updated_by?.name;
+    if (!authorName) return;
+    const author = document.createElement("div");
+    author.className = "answer-author";
+    const avatar = document.createElement("span");
+    setAvatar(avatar, authorName, true);
+    const copy = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = authorName;
+    copy.append(name, document.createTextNode(`atualizou ${formatUpdatedAt(answer.updated_at || answer.updatedAt)}`));
+    author.append(avatar, copy);
+    side.append(author);
+  }
   function render() {
     const briefing = state.briefing;
     if (!briefing?.sections?.length) return;
     state.section = Math.min(state.section, briefing.sections.length - 1);
-    $("title").textContent = briefing.titulo;
-    $("subtitle").textContent =
-      `${briefing.nome_obra || ""} · ${briefing.temporal_status.replaceAll("_", " ")}`;
-    $("progress-fill").style.width = `${briefing.progress.percent}%`;
-    $("progress-label").textContent =
-      `${briefing.progress.answered} de ${briefing.progress.total} respondidas`;
+    const participantName = state.participant?.name || "Participante";
+    $("title").textContent = briefing.nome_obra || briefing.titulo;
+    $("subtitle").textContent = `${briefing.temporal_status || ""}`.replaceAll("_", " ").toLowerCase();
+    $("project-monogram").textContent = initials(briefing.nome_obra || briefing.titulo);
+    $("welcome-title").textContent = `Olá, ${participantName.split(" ")[0]}!`;
+    $("welcome-copy").textContent = `Preparamos algumas perguntas para entender melhor o que você imagina para ${briefing.nome_obra || briefing.titulo}.`;
+    const chip = $("participant-chip");
+    chip.replaceChildren();
+    const avatar = document.createElement("span");
+    setAvatar(avatar, participantName);
+    chip.append(avatar, document.createTextNode(participantName));
+    const currentSection = briefing.sections[state.section];
+    $("mobile-section-count").textContent = `Seção ${state.section + 1} de ${briefing.sections.length}`;
+    $("mobile-section-name").textContent = currentSection.titulo;
+    updateProgressUi();
     $("sections").replaceChildren(
       ...briefing.sections.map((section, index) => {
+        const stats = sectionStats(section);
+        const hasRequest = section.questions.some((question) => requestFor(question.id));
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = section.titulo;
-        button.className = index === state.section ? "active" : "";
-        button.onclick = () => {
-          state.section = index;
-          render();
-        };
+        button.className = `section-nav-button${index === state.section ? " active" : ""}${stats.done ? " complete" : ""}${hasRequest ? " has-request" : ""}`;
+        button.setAttribute("aria-current", index === state.section ? "step" : "false");
+        button.innerHTML = `<span class="nav-order">${index + 1}.</span><span class="nav-title"></span><span class="nav-progress">${stats.done ? "✓" : `${stats.complete} / ${stats.total}`}</span>`;
+        button.querySelector(".nav-title").textContent = section.titulo;
+        button.onclick = () => goToSection(index);
         return button;
       }),
     );
-    const section = briefing.sections[state.section];
+    const request = currentSection.questions.map((question) => ({ question, request: requestFor(question.id) })).find((item) => item.request);
+    $("request-summary").hidden = !request;
+    if (request) {
+      $("request-title").textContent = currentSection.titulo;
+      $("request-copy").textContent = request.request.mensagem || `Verifique a pergunta: ${request.question.pergunta}`;
+    }
     const form = $("form");
     form.replaceChildren();
-    const heading = document.createElement("h2");
-    heading.textContent = section.titulo;
+    const heading = document.createElement("div");
+    heading.className = "section-heading";
+    const icon = document.createElement("span");
+    icon.className = "section-heading-icon";
+    icon.textContent = "✦";
+    const headingCopy = document.createElement("div");
+    const headingTitle = document.createElement("h2");
+    headingTitle.textContent = `${state.section + 1}. ${currentSection.titulo}`;
+    headingCopy.append(headingTitle);
+    heading.append(icon, headingCopy);
     form.append(heading);
-    section.questions.forEach((question) => {
+    if (!currentSection.questions.length) {
+      const empty = document.createElement("p");
+      empty.className = "answer-meta";
+      empty.textContent = "Esta etapa não possui perguntas no momento.";
+      form.append(empty);
+    }
+    currentSection.questions.forEach((question, index) => {
       const card = document.createElement("div");
       card.className = "question";
       card.dataset.questionId = String(question.id);
+      const number = document.createElement("span");
+      number.className = "question-number";
+      number.textContent = String(index + 1).padStart(2, "0");
+      const main = document.createElement("div");
+      main.className = "question-main";
       const label = document.createElement("label");
       label.textContent = question.pergunta;
-      if (question.obrigatoria)
-        label.append(
-          Object.assign(document.createElement("span"), {
-            className: "required",
-            textContent: " *",
-          }),
-        );
-      card.append(label);
-      if (question.ajuda)
-        card.append(
-          Object.assign(document.createElement("p"), {
-            className: "help",
-            textContent: question.ajuda,
-          }),
-        );
-      card.append(fieldFor(question));
+      if (question.obrigatoria) label.append(Object.assign(document.createElement("span"), { className: "required", textContent: " *" }));
+      main.append(label);
+      if (question.ajuda) main.append(Object.assign(document.createElement("p"), { className: "help", textContent: question.ajuda }));
+      main.append(fieldFor(question));
       if (question.permite_nao_aplica) {
         const notApplicable = document.createElement("label");
         notApplicable.className = "na";
@@ -524,44 +607,35 @@
         checkbox.dataset.notApplicable = "true";
         checkbox.checked = answerState(question).notApplicable;
         checkbox.disabled = !question.editable;
-        checkbox.onchange = () =>
-          recordLocalChange(
-            question,
-            checkbox.checked
-              ? null
-              : valueOf(question, card.querySelector("[data-answer-control]")),
-            checkbox.checked,
-            true,
-          );
-        notApplicable.append(
-          checkbox,
-          document.createTextNode(" Não se aplica"),
-        );
-        card.append(notApplicable);
+        checkbox.onchange = () => recordLocalChange(question, checkbox.checked ? null : valueOf(question, card.querySelector("[data-answer-control]")), checkbox.checked, true);
+        notApplicable.append(checkbox, document.createTextNode(" Não se aplica"));
+        main.append(notApplicable);
       }
+      const side = document.createElement("div");
+      side.className = "answer-side";
       const status = document.createElement("div");
       status.className = "answer-save-status";
-      card.append(status);
-      if (!question.editable)
-        card.append(
-          Object.assign(document.createElement("p"), {
-            className: "answer-meta",
-            textContent: "Resposta disponível somente para leitura.",
-          }),
-        );
+      side.append(status);
+      renderAuthor(question, side);
+      card.append(number, main, side);
+      const questionRequest = requestFor(question.id);
+      if (questionRequest) card.append(Object.assign(document.createElement("p"), { className: "request", textContent: `Complemento solicitado: ${questionRequest.mensagem || "Revise esta resposta."}` }));
+      if (!question.editable) card.append(Object.assign(document.createElement("p"), { className: "answer-meta", textContent: "Resposta disponível somente para leitura." }));
       form.append(card);
       setQuestionStatus(question.id, answerState(question).status);
     });
-    const editable = briefing.sections
-      .flatMap((sectionItem) => sectionItem.questions)
-      .some((question) => question.editable);
-    $("submit").disabled =
-      !editable ||
-      ![
-        "AGUARDANDO_CLIENTE",
-        "EM_PREENCHIMENTO",
-        "AJUSTES_SOLICITADOS",
-      ].includes(briefing.status);
+    const editable = briefing.sections.flatMap((sectionItem) => sectionItem.questions).some((question) => question.editable);
+    $("submit").disabled = !editable || !["AGUARDANDO_CLIENTE", "EM_PREENCHIMENTO", "AJUSTES_SOLICITADOS"].includes(briefing.status);
+    $("previous-section").disabled = state.section === 0;
+    $("previous-section").onclick = () => goToSection(state.section - 1);
+    const last = state.section === briefing.sections.length - 1;
+    $("next-section").textContent = last ? "Enviar briefing" : "Continuar →";
+    $("next-section").onclick = () => last ? $("submit").click() : goToSection(state.section + 1);
+    $("toggle-sections").onclick = () => {
+      const sidebar = document.querySelector(".project-sidebar");
+      const open = sidebar.classList.toggle("mobile-open");
+      $("toggle-sections").setAttribute("aria-expanded", String(open));
+    };
   }
   async function saveQuestion(
     question,
@@ -620,6 +694,7 @@
         not_applicable: answer.notApplicable,
         version: answer.version,
         updated_at: answer.updatedAt,
+        author: state.participant?.name || item.question.answer?.author || null,
       };
       current.persistedValue = cloneValue(answer.value);
       current.persistedNotApplicable = answer.notApplicable;
@@ -638,9 +713,7 @@
       setQuestionStatus(item.question.id, current.status);
       if (result.progress) {
         state.briefing.progress = result.progress;
-        $("progress-fill").style.width = `${result.progress.percent}%`;
-        $("progress-label").textContent =
-          `${result.progress.answered} de ${result.progress.total} respondidas`;
+        updateProgressUi();
       }
       setSave(
         current.dirty ? "Alteração pendente" : "Salvo",
@@ -833,9 +906,7 @@
         }
         if (result.progress) {
           state.briefing.progress = result.progress;
-          $("progress-fill").style.width = `${result.progress.percent}%`;
-          $("progress-label").textContent =
-            `${result.progress.answered} de ${result.progress.total} respondidas`;
+          updateProgressUi();
         }
       })
       .catch((error) => {

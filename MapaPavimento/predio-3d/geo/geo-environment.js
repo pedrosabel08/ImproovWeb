@@ -5,7 +5,7 @@ import {
   loadOSM,
   browserOSMCache,
   OSM_RADIUS,
-} from "./osm-service.js?v=20261112-overpass";
+} from "./osm-service.js?v=20261113-surfaces3";
 import {
   urbanMaterial,
   softenEnvironmentEdge,
@@ -14,10 +14,11 @@ import { loadElevation } from "./elevation-service.js?v=20261104-terrain-v1";
 import {
   GEO_OPTIONS,
   GEO_COLORS,
-} from "./environment-config.js?v=20261103-boundary-v4";
+} from "./environment-config.js?v=20261113-surfaces";
 import { GeoDebug } from "./geo-debug.js?v=20261103-boundary-v4";
-import { installTerrainDebug } from "./terrain-debug.js?v=20261104-surface-v3";
-import { generateEnvironment } from "./generate-environment.js?v=20261110-shared-v1";
+import { installTerrainDebug } from "./terrain-debug.js?v=20261113-surfaces";
+import { generateEnvironment } from "./generate-environment.js?v=20261113-surfaces2";
+import { TerrainMaterials } from "./terrain-materials.js?v=20261113-surfaces2";
 import { createEnvironmentBounds } from "./environment-clip.js?v=20261103-boundary-v4";
 import {
   cacheRequest,
@@ -34,6 +35,7 @@ export class GeoEnvironment {
     sky,
     onChange = () => {},
     options = GEO_OPTIONS,
+    terrainMaterialOptions,
     elevationLoader = loadElevation,
     serverCache = typeof document !== "undefined" &&
       document.querySelector?.('meta[name="flow-geo-cache"][content="1"]') !=
@@ -41,6 +43,8 @@ export class GeoEnvironment {
   }) {
     Object.assign(this, { scene, viewport, sky, onChange });
     this.options = options;
+    this.terrainMaterials = new TerrainMaterials(terrainMaterialOptions);
+    this.texturesEnabled = options.terrainTextures ?? GEO_OPTIONS.terrainTextures;
     this.surfaceDebug =
       options.geoDebug ||
       new URLSearchParams(window.location?.search || "").get("geo_debug") ===
@@ -145,7 +149,9 @@ export class GeoEnvironment {
       this.scene.remove(this.group);
       this.group.traverse((object) => object.geometry?.dispose());
     }
-    this.materials && Object.values(this.materials).forEach((m) => m.dispose());
+    this.hazeMaterials?.forEach(material => material.dispose());
+    this.hazeMaterials = null;
+    this.terrainMaterials.clear();
     const hadGroup = !!this.group;
     this.materials = this.group = null;
     if (hadGroup) this.onChange();
@@ -155,6 +161,8 @@ export class GeoEnvironment {
     delete this.viewport.dataset.demState;
     delete this.viewport.dataset.geoMetrics;
     delete this.viewport.dataset.geoBuildStage;
+    delete this.viewport.dataset.terrainTextures;
+    delete this.viewport.dataset.terrainMaterials;
     this.viewport.dataset.geoState = "inactive";
   }
   hideOsmLoading() {
@@ -320,6 +328,7 @@ export class GeoEnvironment {
       },
     };
     group.userData.environmentBounds = bounds.polygon;
+    group.userData.geoBounds = bounds;
     group.userData.terrainDimension = OSM_RADIUS * 2;
     group.userData.geoOrigin = {
       latitude: this.config.latitude,
@@ -403,6 +412,7 @@ export class GeoEnvironment {
     );
     this.group.userData.metrics = metrics;
     this.group.userData.environmentBounds = environmentBounds.polygon;
+    this.group.userData.geoBounds = environmentBounds;
     this.group.userData.terrainDimension = radius * 2;
     this.group.userData.categories = prepared.diagnostics;
     if (this.debug) {
@@ -426,10 +436,12 @@ export class GeoEnvironment {
     this.present(metrics, !!this.terrain);
   }
   present(metrics, demReady) {
+    this.hazeMaterials = Object.values(this.materials);
     this.viewport.dataset.geoMetrics = JSON.stringify(metrics);
     this.viewport.dataset.geoState = "ready";
     this.viewport.dataset.geoBuildStage = "ready";
     this.scene.add(this.group);
+    this.applyTerrainTextures();
     this.onChange();
     this.attribution.hidden = false;
     this.demAttribution.hidden = !demReady;
@@ -449,7 +461,7 @@ export class GeoEnvironment {
     );
     for (const [key, material] of Object.entries(materials)) {
       softenEnvironmentEdge(material, environmentBounds);
-      if (["road", "FOREST", "GRASS", "PARK", "water"].includes(key)) {
+      if (["road", "asphalt", "soil", "sand", "rock", "sidewalk", "sidewalk-extra", "FOREST", "GRASS", "PARK", "water"].includes(key)) {
         material.polygonOffset = true;
         material.polygonOffsetFactor = -1;
         material.polygonOffsetUnits = -2;
@@ -457,11 +469,27 @@ export class GeoEnvironment {
     }
     return materials;
   }
-  update() {
+  setTexturesEnabled(enabled) {
+    if (this.texturesEnabled === enabled) return;
+    this.texturesEnabled = enabled;
+    this.applyTerrainTextures();
+  }
+  applyTerrainTextures() {
+    if (!this.group) return;
+    this.terrainMaterials.apply(this.group, this.group.userData.geoBounds, this.sky, OSM_RADIUS,
+      this.texturesEnabled, (state, packs) => {
+        this.viewport.dataset.terrainTextures = state;
+        this.viewport.dataset.terrainMaterials = packs.join(",");
+      });
+  }
+  update(now = performance.now()) {
     if (!this.materials) return;
-    for (const material of Object.values(this.materials))
-      material.userData.hazeUniforms.urbanSkyEnabled.value =
-        !!this.sky?.mesh.visible;
+    const skyVisible = !!this.sky?.mesh.visible;
+    for (const material of this.hazeMaterials)
+      material.userData.hazeUniforms.urbanSkyEnabled.value = skyVisible;
+    for (const material of this.terrainMaterials.materials.values())
+      material.userData.hazeUniforms.urbanSkyEnabled.value = skyVisible;
+    this.terrainMaterials.update(now);
   }
   /** Translating an orthographic eye backwards along its view ray preserves
    * screen positions, zoom and pan; it keeps the near plane ahead of the whole
@@ -492,6 +520,7 @@ export class GeoEnvironment {
   dispose() {
     this.disposed = true;
     this.clear();
+    this.terrainMaterials.dispose();
     this.attribution.remove();
     this.demAttribution.remove();
     this.notice.remove();

@@ -17,7 +17,7 @@ import {
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
 import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
 import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
-import { GeoEnvironment } from "./geo/geo-environment.js?v=20261113-explore";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261113-surfaces3";
 import {
   buildIndex,
   modelGroundSelection,
@@ -124,7 +124,12 @@ const geoEnvironment = new GeoEnvironment({
   scene,
   viewport,
   sky: viewerEnvironment.sky,
+  terrainMaterialOptions: {
+    anisotropy: renderer.capabilities.getMaxAnisotropy(),
+    registerWater: (material) => viewerEnvironment.registerMaterial(material),
+  },
   onChange: () => {
+    textureToggle.hidden = !geoEnvironment.group;
     exploration?.invalidate();
     light.shadow.needsUpdate = true;
     solarLighting.setTerrainDimension(
@@ -133,6 +138,27 @@ const geoEnvironment = new GeoEnvironment({
     updateAerialZoomLimit();
     geoEnvironment.fitCameraDepth(camera, controls.target);
   },
+});
+const textureToggle = document.createElement("button");
+textureToggle.type = "button";
+textureToggle.textContent = "Texturas";
+textureToggle.title = "Texturas do terreno";
+textureToggle.setAttribute("aria-label", textureToggle.title);
+textureToggle.hidden = true;
+$("grid").after(textureToggle);
+const texturePreference = "flow-3d-terrain-textures";
+try {
+  const saved = localStorage.getItem(texturePreference);
+  if (saved === "0" || saved === "1") geoEnvironment.setTexturesEnabled(saved === "1");
+} catch { /* A preferência vale nesta aba mesmo sem acesso ao armazenamento. */ }
+const syncTextureToggle = () =>
+  textureToggle.setAttribute("aria-pressed", String(geoEnvironment.texturesEnabled));
+syncTextureToggle();
+textureToggle.addEventListener("click", () => {
+  geoEnvironment.setTexturesEnabled(!geoEnvironment.texturesEnabled);
+  syncTextureToggle();
+  try { localStorage.setItem(texturePreference, geoEnvironment.texturesEnabled ? "1" : "0"); }
+  catch { /* Armazenamento indisponível. */ }
 });
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
@@ -1965,7 +1991,7 @@ function openPersonScene() {
     if (!transitioning && !northDefining && !explorerCamera) controls.update();
     northIndicator.update(explorerCamera || camera);
     solarLighting.update(explorerCamera || camera, now);
-    geoEnvironment.update();
+    geoEnvironment.update(now);
     viewerEnvironment.tick();
     measurements.update(explorerCamera || camera);
     renderer.render(scene, explorerCamera || camera);

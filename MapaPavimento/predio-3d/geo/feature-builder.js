@@ -121,11 +121,11 @@ export class GeometryBatches {
     mesh.name = `OSM · ${bucket.key}`;
     // Roads cover a large area in one batch. Render them before other transparent
     // objects so the batch centre cannot put them on top of the GLB or sun halo.
-    if (bucket.key === "road") mesh.renderOrder = -1;
+    if (["road", "asphalt", "sidewalk", "sidewalk-extra"].includes(bucket.key)) mesh.renderOrder = -1;
     mesh.castShadow = bucket.shadows;
     mesh.receiveShadow =
       bucket.shadows ||
-      ["ground", "road", "FOREST", "GRASS", "PARK"].includes(bucket.key);
+      ["ground", "road", "asphalt", "soil", "sand", "rock", "sidewalk", "sidewalk-extra", "FOREST", "GRASS", "PARK"].includes(bucket.key);
     mesh.raycast = () => {};
     this.group.add(mesh);
     this.buckets.delete(key);

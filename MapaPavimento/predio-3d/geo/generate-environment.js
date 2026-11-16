@@ -2,27 +2,26 @@ import * as THREE from "three";
 import {
   GeometryBatches,
   polygonGeometry,
-} from "./feature-builder.js?v=20261104-surface-v3";
+} from "./feature-builder.js?v=20261113-surfaces";
 import { clipBufferGeometry } from "./geometry-clip.js?v=20261104-surface-v3";
 import { buildBuilding } from "./building-builder.js?v=20261104-terrain-v1";
-import { buildRoad } from "./road-builder.js?v=20261104-terrain-v1";
-import { buildWater } from "./water-builder.js?v=20261104-surface-v3";
+import { buildRoad } from "./road-builder.js?v=20261113-surfaces";
+import { buildWater } from "./water-builder.js?v=20261113-surfaces";
 import { buildVegetation } from "./vegetation-builder.js?v=20261104-surface-v3";
 import { TerrainSurface } from "./terrain-surface.js?v=20261104-surface-v3";
 import { inspectModelGround } from "./model-ground.js?v=20261104-surface-v3";
-import {
-  createEnvironmentBounds,
-  polygonArea,
-} from "./environment-clip.js?v=20261103-boundary-v4";
+import { createEnvironmentBounds, polygonArea } from "./environment-clip.js?v=20261113-surfaces";
 import { buildCoastalAreas } from "./coastline-builder.js?v=20261103-boundary-v4";
-import { prepareEnvironment } from "./prepare-environment.js?v=20261103-boundary-v4";
+import { prepareEnvironment } from "./prepare-environment.js?v=20261113-surfaces";
 import { geoProjector } from "./geo-coordinates.js?v=20261103-boundary-v4";
-import { GEO_COLORS, SURFACE_Y } from "./environment-config.js?v=20261103-boundary-v4";
-import { OSM_RADIUS } from "./osm-service.js?v=20261103-osm-cache-v3";
+import { BEACH_BY_PROJECT, GEO_COLORS, SURFACE_Y } from "./environment-config.js?v=20261113-surfaces";
+import { OSM_RADIUS } from "./osm-service.js?v=20261113-surfaces";
+import { prepareLandSurfaces, limitManualBeachHeight } from "./land-surfaces.js?v=20261113-surfaces2";
 
 /** Build detached geometry. The browser supplies its materials and optional diagnostics. */
 export async function generateEnvironment({
   data, config, bounds, buildingBounds, groundInfo, response = {}, dem,
+  beachByProject = BEACH_BY_PROJECT,
   signal = new AbortController().signal,
   createMaterials = () => Object.fromEntries(Object.keys(GEO_COLORS).map(key => [key, null])),
   createDebug = () => null,
@@ -200,6 +199,17 @@ export async function generateEnvironment({
       });
     }
     pendingSurfaceParts=null;
+    let landLayers = {};
+    try {
+      const { layers, mappedSidewalks } = prepareLandSurfaces({
+        prepared: prepared.data, config, project, bounds: environmentBounds, coastal, terrain, beachByProject,
+      });
+      landLayers = layers;
+      context.mappedSidewalks = mappedSidewalks;
+      metrics.mappedSidewalks = mappedSidewalks.size + prepared.data.sidewalk.length;
+    } catch (error) {
+      console.debug("[Flow OSM] Recorte de superfícies indisponível; terreno neutro preservado.", error.message);
+    }
     let count = 0;
     for (const [kind, builder] of [
       ["buildings", buildBuilding],
@@ -216,6 +226,32 @@ export async function generateEnvironment({
         }
       }
     }
+    for (const [layer, polygons] of Object.entries(landLayers)) {
+      onStage(layer);
+      const key = layer === "sand-manual" ? "sand" : layer;
+      const offset = key.startsWith("sidewalk") ? SURFACE_Y.road : SURFACE_Y.vegetation;
+      metrics.surfaceAreasM2 ??= {};
+      metrics.surfaceAreasM2[layer] = Math.round(polygons.reduce((sum, polygon) => sum + polygonArea(polygon), 0));
+      for (const polygon of polygons) {
+        let geometry = polygonGeometry(polygon);
+        if (terrain) geometry = terrain.drape(geometry, offset);
+        else geometry.translate(0, offset, 0);
+        if (layer === "sand-manual") {
+          const configuredElevation = beachByProject[config.obra_id].maxElevationM;
+          const maxElevation = Number.isFinite(configuredElevation) && configuredElevation > 0 ? configuredElevation : 6;
+          geometry = limitManualBeachHeight(geometry, terrain.seaLevel + maxElevation + offset);
+        }
+        if (!geometry.attributes.position.count) {
+          geometry.dispose();
+          continue;
+        }
+        batches.add(key, geometry);
+        metrics.polygons++;
+        await new Promise(resolve => setTimeout(resolve, 0));
+        if (signal.aborted) return null;
+      }
+    }
+    metrics.soilAreaM2 = metrics.surfaceAreasM2?.soil ?? 0;
     for (const p of coastal.sea) {
       const geometry = polygonGeometry(p);
       geometry.translate(0, terrain?.seaLevel ?? SURFACE_Y.sea, 0);

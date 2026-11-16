@@ -1,4 +1,9 @@
 import { pointInRing } from "./geo-coordinates.js?v=20261103-boundary-v4";
+import {
+  isMappedSidewalk,
+  isSoilArea,
+  mappedLandLayer,
+} from "./surface-classification.js?v=4";
 
 const validPoint = (p) =>
   p &&
@@ -70,13 +75,24 @@ function category(tags) {
     tags.waterway
   )
     return "water";
+  if (tags.highway && tags.area !== "yes") return "roads";
+  if (isMappedSidewalk(tags) && tags.area === "yes") return "sidewalk";
+  const landLayer = mappedLandLayer(tags);
+  if (landLayer) return landLayer;
   if (
-    tags.leisure === "park" ||
+    !tags.highway &&
+    (/^(port|industrial|commercial|retail|residential)$/.test(tags.landuse) ||
+      /^(pier|breakwater|quay)$/.test(tags.man_made))
+  )
+    return "urbanExclusion";
+  if (isSoilArea(tags)) return "soil";
+  if (
+    /^(park|garden)$/.test(tags.leisure) ||
     /^(forest|grass)$/.test(tags.landuse) ||
-    /^(wood|grassland)$/.test(tags.natural)
+    /^(wood|grassland)$/.test(tags.natural) ||
+    tags.landcover === "grass"
   )
     return "vegetation";
-  if (tags.highway && tags.area !== "yes") return "roads";
   return null;
 }
 
@@ -89,6 +105,11 @@ export function parseOSM(payload) {
     roads: [],
     water: [],
     vegetation: [],
+    soil: [],
+    sand: [],
+    rock: [],
+    sidewalk: [],
+    urbanExclusion: [],
     coastlines: [],
   };
   const claimed = new Set();
@@ -151,9 +172,17 @@ export function parseOSM(payload) {
       [
         "building",
         "highway",
+        "footway",
+        "sidewalk",
+        "sidewalk:both",
+        "sidewalk:left",
+        "sidewalk:right",
         "natural",
         "landuse",
+        "landcover",
         "leisure",
+        "man_made",
+        "surface",
         "water",
         "waterway",
       ]
@@ -164,7 +193,7 @@ export function parseOSM(payload) {
       kind === "vegetation"
         ? tags.natural === "wood" || tags.landuse === "forest"
           ? "FOREST"
-          : tags.leisure === "park"
+          : /^(park|garden)$/.test(tags.leisure)
             ? "PARK"
             : "GRASS"
         : kind === "water"

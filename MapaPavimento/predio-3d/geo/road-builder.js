@@ -4,6 +4,7 @@ import {
   simplifyPoints,
 } from "./feature-builder.js?v=20261103-boundary-v4";
 import { SURFACE_Y } from "./environment-config.js?v=20261103-boundary-v4";
+import { roadLayer } from "./surface-classification.js?v=1";
 
 const WIDTHS = {
   motorway: 20,
@@ -29,7 +30,12 @@ const WIDTHS = {
 };
 
 /** Connected ribbon with limited miter joins. Two triangles per segment, flat +Y normals. */
-export function ribbonGeometry(points, width, elevation = SURFACE_Y.road) {
+export function ribbonGeometry(
+  points,
+  width,
+  elevation = SURFACE_Y.road,
+  lateralOffset = 0,
+) {
   const clean = points.filter(
     (p, i) =>
       i === 0 ||
@@ -44,12 +50,17 @@ export function ribbonGeometry(points, width, elevation = SURFACE_Y.road) {
     const segment = new THREE.Vector2(next.x - p.x, next.z - p.z);
     if (segment.lengthSq() === 0) segment.copy(direction);
     else segment.normalize();
-    const half = width / 2 / Math.max(0.5, Math.abs(direction.dot(segment)));
-    const dx = -direction.y * half,
-      dz = direction.x * half;
+    const miter = Math.max(0.5, Math.abs(direction.dot(segment)));
+    const half = width / 2 / miter;
+    const dx = -direction.y * half;
+    const dz = direction.x * half;
+    const shift = lateralOffset / miter;
+    const centre = shift
+      ? { x: p.x - direction.y * shift, z: p.z + direction.x * shift }
+      : p;
     return [
-      { x: p.x + dx, z: p.z + dz },
-      { x: p.x - dx, z: p.z - dz },
+      { x: centre.x + dx, z: centre.z + dz },
+      { x: centre.x - dx, z: centre.z - dz },
     ];
   });
   const positions = [];
@@ -67,19 +78,26 @@ export function ribbonGeometry(points, width, elevation = SURFACE_Y.road) {
   return geometry;
 }
 
-export function buildRoad(feature, { project, batches, metrics, radius, terrain }) {
+export function roadDimensions(feature, project, radius) {
   const width = WIDTHS[feature.highway];
-  if (!width || !feature.line) return;
+  if (!width || !feature.line) return null;
   const points = feature.line.map(project),
     band = distanceBand(points, radius);
-  if (band < 0) return;
-  let geometry = ribbonGeometry(
-    simplifyPoints(points, [0, 0.6, 1.5][band]),
-    width,
-  );
+  if (band < 0) return null;
+  return { points: simplifyPoints(points, [0, 0.6, 1.5][band]), width };
+}
+
+export function buildRoad(
+  feature,
+  { project, batches, metrics, radius, terrain, mappedSidewalks },
+) {
+  if (mappedSidewalks?.has(feature)) return;
+  const road = roadDimensions(feature, project, radius);
+  if (!road) return;
+  let geometry = ribbonGeometry(road.points, road.width);
   if (geometry) {
     if (terrain) geometry = terrain.drape(geometry, SURFACE_Y.road);
-    batches.add("road", geometry);
+    batches.add(roadLayer(feature), geometry);
     metrics.roads++;
   }
 }

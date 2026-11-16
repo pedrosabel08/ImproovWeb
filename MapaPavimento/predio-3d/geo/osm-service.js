@@ -1,4 +1,4 @@
-import { parseOSM } from "./osm-parser.js?v=20261103-boundary-v4";
+import { parseOSM } from "./osm-parser.js?v=20261113-surfaces3";
 
 export const OSM_RADIUS = 1000;
 const VERSION = 3,
@@ -31,9 +31,16 @@ export function overpassQuery({ latitude, longitude }, radius = OSM_RADIUS) {
     '[natural="coastline"]',
     "[waterway]",
     '[landuse="reservoir"]',
-    '[leisure="park"]',
+    '[leisure~"^(park|garden)$"]',
     '[landuse~"^(forest|grass)$"]',
     '[natural~"^(wood|grassland)$"]',
+    '[landcover="grass"]',
+    '[natural="mud"]',
+    '[surface~"^(ground|dirt|earth|mud)$"]',
+    '[natural~"^(beach|sand|bare_rock|scree|shingle)$"]',
+    '[surface~"^(rock|bare_rock|stone)$"]',
+    '[landuse~"^(port|industrial|commercial|retail|residential)$"]',
+    '[man_made~"^(pier|breakwater|quay)$"]',
   ]
     .map(
       (filter) =>
@@ -61,9 +68,15 @@ function validEntry(entry) {
     Number.isFinite(entry.savedAt) &&
     Date.now() - entry.savedAt >= 0 &&
     Date.now() - entry.savedAt < TTL &&
-    Number.isFinite(entry.expiresAt) && Date.now() < entry.expiresAt &&
+    Number.isFinite(entry.expiresAt) &&
+    Date.now() < entry.expiresAt &&
     ["buildings", "roads", "water", "vegetation", "coastlines"].every(
       (k) => Array.isArray(entry.data?.[k]) && entry.data[k].every(feature),
+    ) &&
+    ["soil", "sand", "rock", "sidewalk", "urbanExclusion"].every(
+      (k) =>
+        entry.data[k] === undefined ||
+        (Array.isArray(entry.data[k]) && entry.data[k].every(feature)),
     ) &&
     entry.data.buildings.every(
       (f) => Number.isFinite(f.height) && f.height > 0 && f.height <= 500,
@@ -105,10 +118,20 @@ export function browserOSMCache(storage) {
 
 export async function loadOSM(
   config,
-  { radius = OSM_RADIUS, signal, cache, fetcher = fetch, cacheOnly = false } = {},
+  {
+    radius = OSM_RADIUS,
+    signal,
+    cache,
+    fetcher = fetch,
+    cacheOnly = false,
+  } = {},
 ) {
   overpassQuery(config, radius);
-  if (!Number.isSafeInteger(config.obra_id) || config.obra_id <= 0 || radius !== OSM_RADIUS)
+  if (
+    !Number.isSafeInteger(config.obra_id) ||
+    config.obra_id <= 0 ||
+    radius !== OSM_RADIUS
+  )
     throw new Error("Consulta OSM requer uma obra autorizada e o raio padrão.");
   const key = osmCacheKey(config, radius);
   const start = performance.now();
@@ -141,10 +164,14 @@ export async function loadOSM(
     const result = await response.json();
     const upstream = result.contexto_osm;
     if (cacheOnly && result.sucesso && upstream === null) return null;
-    if (!result.sucesso || !upstream?.origin ||
-      !Number.isFinite(upstream.origin.latitude) || !Number.isFinite(upstream.origin.longitude) ||
+    if (
+      !result.sucesso ||
+      !upstream?.origin ||
+      !Number.isFinite(upstream.origin.latitude) ||
+      !Number.isFinite(upstream.origin.longitude) ||
       Math.abs(upstream.origin.latitude - config.latitude) > 1e-7 ||
-      Math.abs(upstream.origin.longitude - config.longitude) > 1e-7) {
+      Math.abs(upstream.origin.longitude - config.longitude) > 1e-7
+    ) {
       throw new Error("Localização da obra mudou. Atualize o visualizador.");
     }
     const payload = upstream.payload;
@@ -152,8 +179,16 @@ export async function loadOSM(
     const data = parseOSM(payload);
     if (abort.signal.aborted)
       throw new DOMException("Consulta cancelada", "AbortError");
-    const acquiredAt = upstream.acquired_at * 1000, expiresAt = upstream.expires_at * 1000;
-    if (!upstream.stale && Number.isFinite(acquiredAt) && Number.isFinite(expiresAt) && acquiredAt <= Date.now() && expiresAt > Date.now() && expiresAt <= acquiredAt + TTL)
+    const acquiredAt = upstream.acquired_at * 1000,
+      expiresAt = upstream.expires_at * 1000;
+    if (
+      !upstream.stale &&
+      Number.isFinite(acquiredAt) &&
+      Number.isFinite(expiresAt) &&
+      acquiredAt <= Date.now() &&
+      expiresAt > Date.now() &&
+      expiresAt <= acquiredAt + TTL
+    )
       cache?.set(key, data, acquiredAt, expiresAt);
     return {
       data,

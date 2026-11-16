@@ -27,7 +27,10 @@ function flow_osm_query(float $latitude, float $longitude, int $radius = 1000): 
     $bbox = '(' . implode(',', array_map(static fn($n) => json_encode($n, JSON_THROW_ON_ERROR), [
         $latitude - $latDelta, $longitude - $lonDelta, $latitude + $latDelta, $longitude + $lonDelta,
     ])) . ')';
-    $filters = ['[building][building!="no"]', '[highway]', '[natural="water"]', '[water]', '[natural="coastline"]', '[waterway]', '[landuse="reservoir"]', '[leisure="park"]', '[landuse~"^(forest|grass)$"]', '[natural~"^(wood|grassland)$"]'];
+    $filters = ['[building][building!="no"]', '[highway]', '[natural="water"]', '[water]', '[natural="coastline"]', '[waterway]', '[landuse="reservoir"]', '[leisure~"^(park|garden)$"]', '[landuse~"^(forest|grass)$"]', '[natural~"^(wood|grassland)$"]', '[landcover="grass"]', '[natural="mud"]', '[surface~"^(ground|dirt|earth|mud)$"]'];
+    array_push($filters, '[natural~"^(beach|sand|bare_rock|scree|shingle)$"]',
+        '[surface~"^(rock|bare_rock|stone)$"]', '[landuse~"^(port|industrial|commercial|retail|residential)$"]',
+        '[man_made~"^(pier|breakwater|quay)$"]');
     $query = '[out:json][timeout:25];(';
     foreach ($filters as $filter) $query .= "way$filter$bbox;relation[type=\"multipolygon\"]$filter$bbox;";
     return $query . ');out geom;';
@@ -39,7 +42,8 @@ function flow_osm_payload(array $payload): array
     if (!isset($payload['elements']) || !is_array($payload['elements']) || !empty($payload['remark'])) {
         throw new FlowOsmResponseException('Resposta Overpass incompleta.', 502);
     }
-    $tags = array_flip(['type', 'building', 'height', 'building:levels', 'highway', 'area', 'natural', 'water', 'waterway', 'landuse', 'leisure']);
+    $tags = array_flip(['type', 'building', 'height', 'building:levels', 'highway', 'area', 'natural', 'water', 'waterway', 'landuse', 'landcover', 'leisure', 'surface']);
+    $tags += array_flip(['footway', 'sidewalk', 'sidewalk:both', 'sidewalk:left', 'sidewalk:right', 'man_made']);
     $elements = [];
     foreach ($payload['elements'] as $element) {
         if (!is_array($element) || !in_array($element['type'] ?? '', ['way', 'relation'], true) || !isset($element['id']) || !is_numeric($element['id'])) {
@@ -296,6 +300,7 @@ function flow_osm_context(array $config, ?callable $fetcher = null, ?string $dir
     $longitude = (float)$config['longitude'];
     $query = flow_osm_query($latitude, $longitude);
     $origin = ['latitude' => $latitude, 'longitude' => $longitude];
+    // Older payloads are valid subsets. New surface tags arrive on the normal refresh.
     $key = hash('sha256', sprintf('v2:%.7F:%.7F:1000', $latitude, $longitude));
     $directory ??= __DIR__ . '/../cache/flow-osm';
     $path = $directory . '/' . $key . '.json.php';

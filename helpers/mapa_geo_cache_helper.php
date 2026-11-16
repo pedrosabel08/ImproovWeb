@@ -41,7 +41,12 @@ function flow_geo_cache_inputs(array $config, string $model, ?string $sourceRoot
         array_map(static fn($name) => "$base/MapaPavimento/predio-3d/$name", ['floor-visibility.js', 'model-scene.js', 'north-direction.js']),
         ["$base/tools/geo-cache/worker.mjs", "$base/tools/geo-cache/package-lock.json"]
     );
-    foreach ($files as $file) if (!hash_update_file($code, $file)) return null;
+    $presentationOnly = ['terrain-materials.js', 'geo-environment.js', 'urban-haze.js',
+        'server-geometry-cache.js', 'browser-geometry-cache.js', 'geo-debug.js', 'terrain-debug.js'];
+    foreach ($files as $file) {
+        if (in_array(basename($file), $presentationOnly, true)) continue;
+        if (!hash_update_file($code, $file)) return null;
+    }
     $key = hash('sha256', json_encode([
         1, hash_final($code), $modelHash, $config['latitude'], $config['longitude'], $config['norte_graus'],
         hash('sha256', json_encode($osm['payload'], JSON_THROW_ON_ERROR)),

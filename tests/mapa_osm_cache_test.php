@@ -16,6 +16,13 @@ try {
     foreach ([[NAN,0],[90,0],[0,181],[0,0,99],[0,0,1501]] as $invalid) fails(fn()=>flow_osm_query(...$invalid),InvalidArgumentException::class);
     $query = flow_osm_query($config['latitude'],$config['longitude']);
     check(str_contains($query,'[natural="coastline"]') && str_contains($query,'relation[type="multipolygon"]'), 'Coast and relations included');
+    check(str_contains($query, '[leisure~"^(park|garden)$"]') &&
+        str_contains($query, '[surface~"^(ground|dirt|earth|mud)$"]'), 'Gardens and mapped exposed soil included in the usual acquisition');
+    $surface = $fixture;
+    $surface['elements'][0]['tags'] += ['surface'=>'dirt', 'landcover'=>'grass'];
+    $tags = flow_osm_payload($surface)['elements'][0]['tags'];
+    check($tags['surface'] === 'dirt' && $tags['landcover'] === 'grass' && !isset($tags['name']),
+        'Surface metadata survives sanitization without names');
     $first = flow_osm_context($config,$fetcher,$directory,$now);
     check(!$first['cache_hit'] && !$first['stale'] && $first['origin']===$config,'First fetch and origin');
     $clean = $first['payload']['elements'][0];

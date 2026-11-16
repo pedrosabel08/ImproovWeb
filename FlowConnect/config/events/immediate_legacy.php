@@ -19,6 +19,7 @@ $events = [
     'resposta_diaria.questionario.respondido',
     'notificacao.interna.visualizada',
     'render.job.transicao',
+    'render.farm.incidente',
 ];
 
 $definitions = [];
@@ -35,5 +36,6 @@ foreach ($events as $eventCode) {
 }
 $definitions['sire.importacao_referencias.falhou']['severity'] = 'CRITICO';
 $definitions['render.job.transicao']['severity'] = 'ACAO';
+$definitions['render.farm.incidente']['severity'] = 'ACAO';
 
 return $definitions;

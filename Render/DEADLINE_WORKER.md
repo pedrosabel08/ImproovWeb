@@ -239,3 +239,17 @@ Fechar o diálogo não cancela a operação. Retomar um erro com Job identificad
 revalida esse mesmo Job. Falhas sem confirmação da submissão ou interrupções
 prolongadas exigem conferência no Monitor; nunca fazem uma segunda submissão
 automática. Não existe remoção ou purge de Jobs neste fluxo.
+
+## Monitoramento da Farm
+
+A aba Farm lê o cache do banco compartilhado. O serviço contínuo do Deadline coleta a lista e os detalhes dos Workers aproximadamente a cada 10 segundos, na máquina que já acessa o Repository. A coleta usa uma conexão ao banco independente da fila de renderização. Um lock no banco evita coletas simultâneas por serviços que apontam para o mesmo banco.
+
+1. Aplicar [a migração da Farm](../sql/2026-11-16_deadline_farm.sql) no banco usado pelo Flow e pelo serviço contínuo.
+2. Publicar os arquivos atualizados de `Render/` e reiniciar o serviço contínuo na máquina do Deadline. Conferir a aba Farm após o primeiro ciclo.
+3. Confirmar o grupo dedicado. O padrão é `farm_dedicated`. `DEADLINE_FARM_DEDICATED_GROUPS` aceita outros grupos separados por vírgula. `DEADLINE_FARM_DEDICATED_WORKERS` aceita nomes explícitos separados por vírgula.
+
+Um Worker dedicado precisa permanecer offline por dois minutos para gerar um alerta. O painel registra stalled nos Workers dedicados ou associados a um job, aumentos na contagem de tarefas com falha e falhas de comunicação. Quando um Worker volta a Idle ou Rendering, a resolução registra o retorno. A Farm preserva a última leitura em caso de falha.
+
+A integração com Flow Connect usa `render.farm.incidente` e uma chave de idempotência por incidente e transição. O padrão é desligado. Em homologação, `FLOW_CONNECT_RENDER_FARM_MODE=shadow` no worker registra os eventos no Flow Connect. Para entrega ativa, o worker usa `FLOW_CONNECT_RENDER_FARM_MODE=active` e o serviço de entrega do Flow Connect precisa de `FLOW_CONNECT_RENDER_FARM_WEBHOOK`. `DEADLINE_FARM_PHP` seleciona o PHP CLI usado pelo publicador quando ele não está no PATH.
+
+Os contadores de Pendentes e Aprovados usam imagens únicas por aba. O grid mantém os registros por etapa. Os indicadores usam os filtros da biblioteca, com a entrada mais recente de cada imagem no recorte. A taxa de sucesso considera aprovados entre aprovados, erros e retrabalhos. A média diária divide o total de imagens pelos dias do período, inclusive os limites. Na ausência de um limite, usa a menor ou maior data disponível. O tempo médio usa somente tentativas com início e conclusão registrados e exclui conclusões manuais.

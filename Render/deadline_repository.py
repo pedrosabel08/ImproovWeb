@@ -77,10 +77,11 @@ class DeadlineRepository:
                 WHERE TABLE_SCHEMA = DATABASE()
                   AND TABLE_NAME IN (
                       'render_tentativas', 'deadline_comandos',
-                      'deadline_workers', 'render_tentativa_eventos'
+                      'deadline_workers', 'render_tentativa_eventos', 'deadline_job_execution'
                   )
                 """)
             tables = {row["TABLE_NAME"] for row in cursor.fetchall()}
+            self.execution_cache_available = "deadline_job_execution" in tables
             cursor.execute("""
                 SELECT COUNT(*) AS total
                 FROM INFORMATION_SCHEMA.COLUMNS
@@ -197,6 +198,35 @@ class DeadlineRepository:
                     tasks_ok,
                     aggregate_ok,
                 ),
+            )
+
+    def record_job_execution(self, job_id: str, job: dict, tasks: dict) -> None:
+        if not getattr(self, "execution_cache_available", False):
+            return
+        raw = tasks.get("TaskStatus", [])
+        statuses = [str(item).lower() for item in (raw if isinstance(raw, list) else [raw])]
+        job_status = str(job.get("Status") or job.get("JobStatus") or "").lower()
+        if job_status in {"completed", "complete", "succeeded", "failed", "error", "suspended"}:
+            state = {"complete": "completed", "succeeded": "completed", "error": "failed"}.get(job_status, job_status)
+        elif "rendering" in statuses or job_status == "rendering":
+            state = "rendering"
+        elif "queued" in statuses or job_status in {"queued", "pending"}:
+            state = "queued"
+        else:
+            state = "unknown"
+        raw_workers = tasks.get("TaskSlaveName", [])
+        workers = raw_workers if isinstance(raw_workers, list) else [raw_workers]
+        active_workers = sorted({
+            worker for status, worker in zip(statuses, workers)
+            if state == "rendering" and status == "rendering" and worker and worker not in {"-", "N/A"}
+        })
+        with self.database.transaction() as cursor:
+            cursor.execute(
+                """INSERT INTO deadline_job_execution (deadline_job_id,execution_state,worker,observed_at)
+                   VALUES (%s,%s,%s,NOW())
+                   ON DUPLICATE KEY UPDATE execution_state=VALUES(execution_state),
+                   worker=VALUES(worker),observed_at=VALUES(observed_at)""",
+                (job_id, state, ", ".join(active_workers)[:255] or None),
             )
 
     def heartbeat(

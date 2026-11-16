@@ -266,11 +266,11 @@ if ($__isProd) {
             <ul class="division">
                 <label for="">Ferramentas</label>
                 <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
-                <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
+                <!-- <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
                     <li><a title="Mapa de Compatibilização"
                             href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i
                             class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
-                <?php endif; ?>
+                <?php endif; ?> -->
                 <li><a title="Mapa Improov" href="<?= htmlspecialchars(improov_sidebar_url('MapaImproov/'), ENT_QUOTES, 'UTF-8') ?>"><i class="fa-solid fa-globe"></i><span> Mapa Improov</span></a></li>
                 <li><a title="Mapa de pavimento" href="<?= htmlspecialchars(improov_sidebar_url('MapaPavimento/'), ENT_QUOTES, 'UTF-8') ?>"><i class="fa-solid fa-draw-polygon"></i><span> Mapa de pavimento</span></a></li>
                 <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span> SIRE</span></a></li>
@@ -430,7 +430,7 @@ if ($__isProd) {
                     <li><a title="Mapa de pavimento" href="<?= htmlspecialchars(improov_sidebar_url('MapaPavimento/'), ENT_QUOTES, 'UTF-8') ?>"><i class="fa-solid fa-draw-polygon"></i><span>Mapa de pavimento</span></a></li>
                     <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span>SIRE</span></a></li>
                      <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                    <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span>Mapa Compatib.</span></a></li>
+                    <!-- <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span>Mapa Compatib.</span></a></li> -->
                     <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
                     <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i class="fas fa-paperclip"></i><span>Flow Referências</span></a></li>
                    <?php endif; ?>

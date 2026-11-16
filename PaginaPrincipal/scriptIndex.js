@@ -4,6 +4,15 @@ const focusedTaskColaborador = initialFlowParams.get("focus_task")
   : 0;
 if (focusedTaskColaborador > 0) colaborador_id = focusedTaskColaborador;
 
+const selectColaboradorKanban = document.getElementById("idcolab");
+if (
+  Array.from(selectColaboradorKanban.options).some(
+    (option) => option.value === String(colaborador_id),
+  )
+) {
+  selectColaboradorKanban.value = String(colaborador_id);
+}
+
 if (
   colaborador_id === 9 ||
   colaborador_id === 21 ||

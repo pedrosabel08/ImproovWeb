@@ -56,10 +56,17 @@ class RuleTests(unittest.TestCase):
 
     def test_crash_alone_and_unknown(self):
         self.assertEqual(self.result(CRASH)["confidence"], "indeterminado")
+        self.assertEqual(self.result(CRASH + "\nINFO: Ignore missing DLL errors: 1")["confidence"], "indeterminado")
         self.assertEqual(self.result(CRASH + "\nRAM usage: 99%")["category"], "max_exit")
         self.assertEqual(self.result("RenderPluginException: generic")["category"], "unknown")
         self.assertNotEqual(self.result("RenderPluginException: invalid material channel")["signature"],
                             self.result("RenderPluginException: invalid codec setting")["signature"])
+
+    def test_old_plugin_hit_is_not_reused_after_catalog_upgrade(self):
+        report = make_report(CRASH)
+        evidence = extract(CRASH + "\nINFO: Ignore missing DLL errors: 1", report)
+        evidence["hits"][r"old_plugin_pattern"] = "INFO: Ignore missing DLL errors: 1"
+        self.assertEqual("indeterminado", classify(evidence, report)["confidence"])
 
     def test_initial_categories(self):
         for report, category in (
@@ -132,6 +139,12 @@ class RuleTests(unittest.TestCase):
         request["known"][collected["report_id"]] = [collected["metadata_hash"], True]
         self.assertEqual([], module.export(JOB_A, request)["reports"])
         sdk.GetJobReportLog.assert_called_once_with(sdk_report)
+        newer = SimpleNamespace(**vars(sdk_report))
+        newer.ReportID = "b" * 24
+        newer.ReportDateTimeOf = date("16:00:00.000000")
+        sdk.GetJobReports.return_value.GetErrorReports.return_value = [sdk_report, newer]
+        self.assertEqual(newer.ReportID, module.export(JOB_A, {**request, "known": {}, "limit": 1})["reports"][0]["report_id"])
+        sdk.GetJobReports.return_value.GetErrorReports.return_value = [sdk_report]
         request["known"][collected["report_id"]][1] = False
         sdk.GetJobReportLog.side_effect = OSError("temporary")
         self.assertEqual("", module.export(JOB_A, request)["reports"][0]["body"])
@@ -238,6 +251,17 @@ class DiagnosticIntegrationTests(unittest.TestCase):
         self.record(JOB_A, self.report(ASSET, 1, 3), self.report(NETWORK, 2, 3), self.report(CRITICAL, 3, 2))
         self.assertEqual(3, len(self.query("SELECT id FROM deadline_diagnostic_incidents")))
         self.assertEqual(["deadline.incidente.aberto_critico"], [row["event_type"] for row in self.events()])
+
+    def test_shadow_records_threshold_and_critical_with_shadow_metadata(self):
+        from dataclasses import replace
+        self.collector.settings = replace(self.collector.settings, mode="shadow")
+        self.record(JOB_A, self.report(ASSET, 1, 10), self.report(ASSET, 2, 5))
+        self.assertEqual((), self.events())
+        self.record(JOB_A, self.report(ASSET, 3, 1), self.report(CRITICAL, 4, 1))
+        events = self.events()
+        self.assertEqual(["deadline.incidente.aberto", "deadline.incidente.aberto_critico"],
+                         [event["event_type"] for event in events])
+        self.assertTrue(all(json.loads(event["metadata_json"])["flow_connect_mode"] == "shadow" for event in events))
 
     def test_new_undated_critical_report_uses_observation_without_inventing_time(self):
         self.record(JOB_A, make_report(CRITICAL, 1))

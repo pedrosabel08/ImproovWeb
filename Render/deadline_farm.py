@@ -325,12 +325,17 @@ class FarmCollector:
         mode = os.getenv("FLOW_CONNECT_RENDER_FARM_MODE", "").lower()
         if mode not in {"shadow", "active"}:
             return
+        task_failure_enabled = os.getenv(
+            "FLOW_CONNECT_RENDER_FARM_TASK_FAILURE_ENABLED", "1"
+        ).strip().lower() not in {"0", "false", "no", "off"}
         with self.database.transaction() as cursor:
             cursor.execute(
                 """SELECT id,worker,kind,opened_at,resolved_at,resolved_reason,notified_open,notified_resolved
                    FROM deadline_farm_incidents WHERE opened_at IS NOT NULL
+                   AND (%s=1 OR kind<>'task_failure')
                    AND (notified_open=0 OR (resolved_at IS NOT NULL AND notified_resolved=0))
-                   ORDER BY id LIMIT 4"""
+                   ORDER BY id LIMIT 4""",
+                (int(task_failure_enabled),),
             )
             events = cursor.fetchall()
         label = {

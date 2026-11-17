@@ -21,6 +21,11 @@ if (empty($_SESSION['logado'])) {
     exit;
 }
 require_once __DIR__ . '/../conexao.php';
+if (($_GET['action'] ?? '') === 'deadlineRecovery') {
+    require_once __DIR__ . '/deadline_recovery_flow.php';
+    render_recovery_api($conn);
+    exit;
+}
 
 function render_current_colaborador_id(): int
 {
@@ -637,9 +642,16 @@ if (isset($_GET['action'])) {
                 }
                 $manager = render_current_colaborador_id() > 0 && render_current_user_is_manager($conn);
                 $diagnoses = render_diagnostic_page($conn, $_GET, $manager);
-                if ($diagnoses === null) http_response_code(403);
-                echo json_encode($diagnoses ?? ['message' => 'Sem acesso aos diagnósticos solicitados.'],
-                    JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG);
+                if ($diagnoses === null) {
+                    http_response_code(403);
+                }
+                echo json_encode(
+                    $diagnoses ?? ['message' => 'Sem acesso aos diagnósticos solicitados.'],
+                    JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG
+                );
+            } catch (InvalidArgumentException $e) {
+                http_response_code(400);
+                echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
             } catch (Throwable $e) {
                 error_log('Render Deadline diagnosis query failed: ' . get_class($e));
                 http_response_code(503);
@@ -974,13 +986,24 @@ LIMIT $limit OFFSET $offset";
 
                 [$attempts, $processingLogs] = render_processing_history($conn, $idrender_alta);
                 $jobId = deadline_flow_valid_job_id($render['deadline_job_id'] ?? null);
-                $render['detail_job_id'] = $jobId ?: deadline_flow_valid_job_id($attempts[0]['deadline_job_id'] ?? null);
-                if ($jobId && render_overview_table_available($conn, 'deadline_job_execution')) {
+                $detailJobId = $jobId;
+                foreach ($attempts as $attempt) {
+                    if ($detailJobId) {
+                        break;
+                    }
+                    $detailJobId = deadline_flow_valid_job_id($attempt['deadline_job_id'] ?? null);
+                }
+                $render['detail_job_id'] = $detailJobId;
+                if ($detailJobId && render_overview_table_available($conn, 'deadline_job_execution')) {
                     $execution = $conn->prepare('SELECT execution_state, worker, observed_at FROM deadline_job_execution WHERE deadline_job_id=?');
-                    $execution->bind_param('s', $jobId);
+                    $execution->bind_param('s', $detailJobId);
                     $execution->execute();
                     $render['execution'] = $execution->get_result()->fetch_assoc();
                     $execution->close();
+                }
+                if ($detailJobId) {
+                    require_once __DIR__ . '/deadline_recovery_flow.php';
+                    $render['deadline_task_summary'] = render_recovery_task_summary($conn, (int)$idrender_alta, $detailJobId);
                 }
                 if ($jobId && $render['status'] !== 'Aprovado') {
                     try {

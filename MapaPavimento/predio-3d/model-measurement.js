@@ -316,8 +316,10 @@ export class ModelMeasurement {
     const visible = record.scope === this.scope;
     record.line.visible = visible;
     record.guide.visible = visible && record.hasGuide;
-    record.markerA.hidden = record.markerB.hidden = record.valueLabel.hidden =
-      !visible;
+    record.markerA.hidden =
+      record.markerB.hidden =
+      record.valueLabel.hidden =
+        !visible;
     record.valueLabel.textContent = formatMeasurement(record.valor);
     record.valueLabel.setAttribute(
       "aria-label",
@@ -351,7 +353,9 @@ export class ModelMeasurement {
 
   clearAll() {
     this.cancelDraft();
-    const removed = this.records.filter((record) => record.scope === this.scope);
+    const removed = this.records.filter(
+      (record) => record.scope === this.scope,
+    );
     removed.forEach((record) => this.disposeRecord(record));
     this.records = this.records.filter((record) => record.scope !== this.scope);
     this.selected = null;
@@ -383,7 +387,9 @@ export class ModelMeasurement {
 
   renderList() {
     this.list.replaceChildren();
-    const records = this.records.filter((record) => record.scope === this.scope);
+    const records = this.records.filter(
+      (record) => record.scope === this.scope,
+    );
     records.forEach((record, index) => {
       const button = this.button("", () => this.select(record));
       button.className = "measurement-item";
@@ -401,8 +407,7 @@ export class ModelMeasurement {
     this.panel.querySelector("#measurementCount").textContent = String(
       records.length,
     );
-    this.panel.querySelector(".measurement-history").hidden =
-      !records.length;
+    this.panel.querySelector(".measurement-history").hidden = !records.length;
   }
 
   sync() {
@@ -450,7 +455,7 @@ export class ModelMeasurement {
     });
   }
 
-  update() {
+  update(camera = this.camera) {
     if (this.suspended) return;
     if (this.pendingPointer && this.active && this.draft) {
       const hit = this.pick(this.pendingPointer);
@@ -463,7 +468,7 @@ export class ModelMeasurement {
     const place = (element, point) => {
       const projected = projectMeasurementPoint(
         point,
-        this.camera,
+        camera,
         width,
         height,
         this.projected,

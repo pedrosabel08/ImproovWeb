@@ -13,14 +13,28 @@ export function prepareEnvironment(
   coastal,
   debug = null,
 ) {
-  const prepared = { buildings: [], roads: [], water: [], vegetation: [] };
+  const prepared = {
+    buildings: [],
+    roads: [],
+    water: [],
+    vegetation: [],
+    soil: [],
+    sand: [],
+    rock: [],
+    sidewalk: [],
+    urbanExclusion: [],
+  };
   const diagnostics = [];
   for (const kind of Object.keys(prepared))
-    for (const feature of data[kind]) {
+    for (const feature of data[kind] ?? []) {
       const originals = feature.polygons.map((p) => localPolygon(p, project));
       let polygons = clipPolygons(originals, bounds);
       // Vegetation and freshwater never paint over the classified ocean.
-      if (kind === "vegetation" || kind === "water")
+      if (
+        ["vegetation", "water", "soil", "sand", "rock", "sidewalk"].includes(
+          kind,
+        )
+      )
         polygons = differencePolygons(polygons, coastal.sea, bounds);
       const line = feature.line?.map(project) || null;
       if (kind === "vegetation" || feature.polygons.length) {

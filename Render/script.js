@@ -6,260 +6,134 @@ let renderFilterOptions = null;
 let filterSearchTimeout = null;
 let renderRequestSequence = 0;
 let renderMotionInitial = true;
-const RENDER_KPI_DEFAULT_DAYS = 30;
-const renderKpiState = {
-  mode: "quick",
-  days: RENDER_KPI_DEFAULT_DAYS,
-  from: "",
-  to: "",
+
+let activeRenderView = "pending";
+let libraryLayout = "cards";
+let detailRequestSequence = 0;
+let renderReturnFocus;
+const renderNumber = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 1,
+});
+const renderGroups = {
+  rendering: "Em execução",
+  queued: "Na fila",
+  error: "Com erro",
+  rework: "Com retrabalho",
+  other: "Demais pendências",
 };
 
-function toInputDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function renderDuration(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds)));
+  return [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60]
+    .map((part) => String(part).padStart(2, "0"))
+    .join(":");
 }
 
-function getQuickRange(days) {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - (days - 1));
-  return {
-    from: toInputDate(start),
-    to: toInputDate(end),
-  };
+function renderPreviewUrl(filename, width) {
+  const base = "https://improov.com.br/flow/ImproovWeb/";
+  return width
+    ? base +
+        "thumb.php?path=" +
+        encodeURIComponent("uploads/renders/" + filename) +
+        "&w=" +
+        width +
+        "&q=75"
+    : base + "uploads/renders/" + encodeURIComponent(filename);
 }
 
-function formatKpiDate(dateValue) {
-  if (!dateValue || !dateValue.includes("-")) return "";
-  const [year, month, day] = dateValue.split("-");
-  return `${day}/${month}/${year}`;
+function updateRenderSummary(summary) {
+  const metricValue = (value, suffix = "") =>
+    value == null ? "—" : renderNumber.format(value) + suffix;
+  $("#pendingCount").text(metricValue(summary?.pending));
+  $("#approvedCount").text(metricValue(summary?.approved));
+  document.querySelectorAll("[data-render-metric]").forEach((metric) => {
+    const key = metric.dataset.renderMetric;
+    const value = summary?.[key];
+    metric.textContent =
+      key === "mean_seconds" && value != null
+        ? renderDuration(value)
+        : metricValue(
+            value,
+            key === "success_rate" ? "%" : key === "per_day" ? "/dia" : "",
+          );
+  });
+  const success = document.getElementById("renderSuccessProgress");
+  success.hidden = summary?.success_rate == null;
+  success.value = summary?.success_rate ?? 0;
 }
 
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
-
-function updateRenderKpiPeriodLabel(period) {
-  if (!period || !period.current) return;
-  setText(
-    "renderKpiPeriodo",
-    `${formatKpiDate(period.current.from)} a ${formatKpiDate(period.current.to)}`,
-  );
-  if (period.previous) {
-    setText(
-      "renderKpiComparacao",
-      `${formatKpiDate(period.previous.from)} a ${formatKpiDate(period.previous.to)}`,
-    );
-  }
-}
-
-function setRenderKpiLoading(isLoading) {
-  const panel = document.querySelector(".kpi-panel");
-  if (panel) panel.classList.toggle("is-loading", !!isLoading);
-}
-
-function buildRenderKpiParams() {
-  const params = { action: "getKpis" };
-  if (renderKpiState.mode === "custom") {
-    params.from = renderKpiState.from;
-    params.to = renderKpiState.to;
+function setRenderView(view) {
+  if (activeRenderView === view) return;
+  const wasFarm = activeRenderView === "farm";
+  activeRenderView = view;
+  const farm = view === "farm";
+  document.querySelectorAll("[data-render-view]").forEach((tab) => {
+    const selected = tab.dataset.renderView === view;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+  document.getElementById("renderLibrary").hidden = farm;
+  document.getElementById("renderFarm").hidden = !farm;
+  $("#filters").removeClass("open");
+  $("#filter-toggle-btn").attr("aria-expanded", "false");
+  if (!farm) {
+    document
+      .getElementById("renderLibrary")
+      .setAttribute(
+        "aria-labelledby",
+        view === "pending" ? "tabPending" : "tabApproved",
+      );
+    document.getElementById("renderMetrics").hidden = view !== "pending";
+    document.getElementById("renderViewSwitch").hidden = view !== "approved";
+    document
+      .getElementById("renderGrid")
+      .classList.toggle(
+        "is-list",
+        view === "approved" && libraryLayout === "list",
+      );
+    if (!wasFarm) $("#filterStatus").val("");
+    allRenders = [];
+    $("#renderGrid").empty().attr("aria-busy", "true");
+    $("#renderLoading").prop("hidden", false);
+    $("#loadMoreWrap").hide();
+    updateResultsBadge(0, isFilterActive());
+    loadRenders(1);
   } else {
-    params.days = renderKpiState.days;
+    $("#resultsBadge").prop("hidden", true);
+    renderRequestSequence++;
   }
-  return params;
+  document.querySelector(".render-center").scrollTop = 0;
+  window.setRenderFarmActive?.(farm);
 }
 
-function formatKpiNumber(value) {
-  const num = Number(value || 0);
-  return Number.isInteger(num)
-    ? String(num)
-    : num.toLocaleString("pt-BR", {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      });
-}
-
-function formatSigned(value, suffix) {
-  const num = Number(value || 0);
-  const sign = num > 0 ? "+" : "";
-  return `${sign}${formatKpiNumber(num)}${suffix || ""}`;
-}
-
-function renderSparkline(id, series) {
-  const svg = document.getElementById(id);
-  if (!svg) return;
-  const values =
-    Array.isArray(series) && series.length
-      ? series.map((item) => Number(item || 0))
-      : [0, 0];
-  const width = 120;
-  const height = 34;
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = max - min || 1;
-  const step = values.length > 1 ? width / (values.length - 1) : width;
-  const points = values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - ((value - min) / range) * (height - 6) - 3;
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
-  svg.innerHTML = `<polyline points="${points}" vector-effect="non-scaling-stroke"></polyline>`;
-}
-
-function updateKpiCard(cardKey, metric, config) {
-  if (!metric) return;
-  const card = document.querySelector(`[data-kpi-card="${cardKey}"]`);
-  if (card) {
-    card.classList.remove("is-positive", "is-negative", "is-neutral");
-    card.classList.add(`is-${metric.sentiment || "neutral"}`);
-  }
-
-  const value = config.percent
-    ? `${formatKpiNumber(metric.current)}%`
-    : `${formatKpiNumber(metric.current)}${config.valueSuffix || ""}`;
-  setText(config.valueId, value);
-
-  const arrow =
-    metric.trend === "up" ? "▲" : metric.trend === "down" ? "▼" : "•";
-  const changeSuffix = config.percent ? " p.p." : "%";
-  const changeText = formatSigned(metric.change, changeSuffix);
-  const diffText = config.percent
-    ? ""
-    : `${formatSigned(metric.diff, "")} ${Math.abs(Number(metric.diff || 0)) === 1 ? config.singular : config.plural}`;
-  const delta = document.getElementById(config.deltaId);
-  if (delta) {
-    delta.innerHTML = diffText
-      ? `<span>${arrow} ${changeText}</span><small>${diffText}</small>`
-      : `<span>${arrow} ${changeText}</span>`;
-  }
-
-  setText(config.diffId, "vs periodo anterior");
-  renderSparkline(config.sparkId, metric.series);
-}
-
-function loadRenderKpis() {
-  if (!document.getElementById("renderKpiGrid")) return;
-  setRenderKpiLoading(true);
-
-  $.ajax({
-    url: "ajax.php",
-    method: "GET",
-    data: buildRenderKpiParams(),
-    dataType: "json",
-    success: function (response) {
-      if (!response || response.status !== "sucesso") return;
-      const metrics = response.metrics || {};
-      updateKpiCard("aprovados", metrics.aprovados, {
-        valueId: "renderKpiAprovados",
-        deltaId: "renderKpiAprovadosDelta",
-        diffId: "renderKpiAprovadosDiff",
-        sparkId: "renderKpiAprovadosSpark",
-        singular: "render",
-        plural: "renders",
-      });
-      updateKpiCard("retrabalho", metrics.retrabalho, {
-        valueId: "renderKpiRetrabalho",
-        deltaId: "renderKpiRetrabalhoDelta",
-        diffId: "renderKpiRetrabalhoDiff",
-        sparkId: "renderKpiRetrabalhoSpark",
-        singular: "render",
-        plural: "renders",
-      });
-      updateKpiCard("erros", metrics.erros, {
-        valueId: "renderKpiErros",
-        deltaId: "renderKpiErrosDelta",
-        diffId: "renderKpiErrosDiff",
-        sparkId: "renderKpiErrosSpark",
-        singular: "render",
-        plural: "renders",
-      });
-      updateKpiCard("media_diaria", metrics.media_diaria, {
-        valueId: "renderKpiMediaDia",
-        deltaId: "renderKpiMediaDiaDelta",
-        diffId: "renderKpiMediaDiaDiff",
-        sparkId: "renderKpiMediaDiaSpark",
-        singular: "render/dia",
-        plural: "renders/dia",
-        valueSuffix: "/dia",
-      });
-      updateRenderKpiPeriodLabel(response.period);
-    },
-    error: function (xhr, status, error) {
-      console.error("Erro ao carregar KPIs de renders:", status, error);
-    },
-    complete: function () {
-      setRenderKpiLoading(false);
-    },
+const renderTabs = [...document.querySelectorAll("[data-render-view]")];
+renderTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => setRenderView(tab.dataset.renderView));
+  tab.addEventListener("keydown", (event) => {
+    const destinations = {
+      ArrowLeft: (index + 2) % 3,
+      ArrowRight: (index + 1) % 3,
+      Home: 0,
+      End: 2,
+    };
+    if (!Object.hasOwn(destinations, event.key)) return;
+    event.preventDefault();
+    const next = renderTabs[destinations[event.key]];
+    next.focus();
+    setRenderView(next.dataset.renderView);
   });
-}
-
-function initRenderKpis() {
-  const controls = document.querySelector('[data-kpi-controls="render"]');
-  const customRange = document.getElementById("renderKpiCustomRange");
-  const fromInput = document.getElementById("renderKpiDateFrom");
-  const toInput = document.getElementById("renderKpiDateTo");
-  const defaultRange = getQuickRange(RENDER_KPI_DEFAULT_DAYS);
-  if (fromInput) fromInput.value = defaultRange.from;
-  if (toInput) toInput.value = defaultRange.to;
-
-  if (!controls) {
-    loadRenderKpis();
-    return;
-  }
-
-  controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
-    btn.classList.toggle(
-      "active",
-      btn.dataset.days === String(RENDER_KPI_DEFAULT_DAYS),
-    );
-  });
-
-  controls.querySelectorAll(".kpi-period-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      controls
-        .querySelectorAll(".kpi-period-btn")
-        .forEach((item) => item.classList.remove("active"));
-      btn.classList.add("active");
-
-      if (btn.dataset.custom === "1") {
-        renderKpiState.mode = "custom";
-        renderKpiState.from = fromInput ? fromInput.value : defaultRange.from;
-        renderKpiState.to = toInput ? toInput.value : defaultRange.to;
-        if (customRange) customRange.classList.add("is-open");
-      } else {
-        renderKpiState.mode = "quick";
-        renderKpiState.days = parseInt(
-          btn.dataset.days || String(RENDER_KPI_DEFAULT_DAYS),
-          10,
-        );
-        if (customRange) customRange.classList.remove("is-open");
-      }
-
-      loadRenderKpis();
+});
+document.querySelectorAll("[data-library-layout]").forEach((button) => {
+  button.addEventListener("click", () => {
+    libraryLayout = button.dataset.libraryLayout;
+    document
+      .getElementById("renderGrid")
+      .classList.toggle("is-list", libraryLayout === "list");
+    document.querySelectorAll("[data-library-layout]").forEach((item) => {
+      item.setAttribute("aria-pressed", String(item === button));
     });
   });
-
-  [fromInput, toInput].forEach((input) => {
-    if (!input) return;
-    input.addEventListener("change", () => {
-      renderKpiState.mode = "custom";
-      renderKpiState.from = fromInput ? fromInput.value : defaultRange.from;
-      renderKpiState.to = toInput ? toInput.value : defaultRange.to;
-      controls.querySelectorAll(".kpi-period-btn").forEach((item) => {
-        item.classList.toggle("active", item.dataset.custom === "1");
-      });
-      if (customRange) customRange.classList.add("is-open");
-      if (renderKpiState.from && renderKpiState.to) loadRenderKpis();
-    });
-  });
-
-  loadRenderKpis();
-}
+});
 
 function renderObraFilter() {
   const selected = $("#filterObra").val();
@@ -268,7 +142,7 @@ function renderObraFilter() {
     [
       ...new Set(allRenders.map((r) => r.obra_nomenclatura).filter(Boolean)),
     ].sort();
-  $("#filterObra").empty().append('<option value="">Todas as Obras</option>');
+  $("#filterObra").empty().append('<option value="">Todas</option>');
   obras.forEach((nome) => {
     $("#filterObra").append($("<option>").val(nome).text(nome));
   });
@@ -284,9 +158,7 @@ function renderCollaboratorFilter() {
     [
       ...new Set(allRenders.map((r) => r.nome_colaborador).filter(Boolean)),
     ].sort();
-  $("#filterColaborador")
-    .empty()
-    .append('<option value="">Todos os Responsáveis</option>');
+  $("#filterColaborador").empty().append('<option value="">Todos</option>');
   colaboradores.forEach((nome) => {
     $("#filterColaborador").append($("<option>").val(nome).text(nome));
   });
@@ -300,15 +172,24 @@ function renderStatusFilter() {
   const status =
     renderFilterOptions?.status ||
     [...new Set(allRenders.map((r) => r.status).filter(Boolean))].sort();
-  $("#filterStatus")
-    .empty()
-    .append('<option value="">Todos os Status</option>');
+  const select = document.getElementById("filterStatus");
+  select.replaceChildren(new Option("Todos", ""));
+  const flowOptions = document.createElement("optgroup");
+  flowOptions.label = "Status no Flow";
   status.forEach((nome) => {
-    $("#filterStatus").append($("<option>").val(nome).text(nome));
+    flowOptions.append(new Option(nome, nome));
   });
-  if (selected && status.includes(selected)) {
-    $("#filterStatus").val(selected);
+  select.append(flowOptions);
+  if (activeRenderView === "pending") {
+    const groups = document.createElement("optgroup");
+    groups.label = "Grupos de pendências";
+    Object.entries(renderGroups).forEach(([key, label]) =>
+      groups.append(new Option(label, "group:" + key)),
+    );
+    select.append(groups);
   }
+  if ([...select.options].some((option) => option.value === selected))
+    select.value = selected;
 }
 
 function renderStatusImagemFilter() {
@@ -316,9 +197,7 @@ function renderStatusImagemFilter() {
   const statusImagens =
     renderFilterOptions?.statusImagem ||
     [...new Set(allRenders.map((r) => r.nome_status).filter(Boolean))].sort();
-  $("#filterStatusImagem")
-    .empty()
-    .append('<option value="">Todos os Status Imagem</option>');
+  $("#filterStatusImagem").empty().append('<option value="">Todos</option>');
   statusImagens.forEach((nome) => {
     $("#filterStatusImagem").append($("<option>").val(nome).text(nome));
   });
@@ -430,7 +309,7 @@ function formatDeadlineTaskDuration(value) {
   if (!raw || raw.includes("?")) return "";
   const parts = raw.split(":").map((part) => Number(part));
   if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
-    return escapeHtml(raw);
+    return raw;
   }
   const [hours, minutes, seconds] = parts;
   const formatted = [];
@@ -440,11 +319,11 @@ function formatDeadlineTaskDuration(value) {
   return formatted.join(" ");
 }
 
-function renderDeadlineProgress(render) {
+function renderDeadlineProgress(render, context = "card") {
   const progress = normalizeDeadlineProgress(
     render.deadline_task_progress ?? render.deadline_job_progress,
   );
-  const tooltipId = `deadlineProgressTooltip-${render.idrender_alta}`;
+  const tooltipId = `deadlineProgressTooltip-${context}-${Number(render.idrender_alta)}`;
   if (progress === null) {
     return `
       <div class="deadline-progress is-unavailable" tabindex="0" aria-describedby="${tooltipId}" aria-label="Progresso do Deadline indisponível">
@@ -467,13 +346,13 @@ function renderDeadlineProgress(render) {
   );
   const taskTimes =
     elapsed || remaining
-      ? `<span class="deadline-progress-time-grid"><span><small>Decorrido</small><b>${elapsed || "—"}</b></span><span><small>Restante estimado</small><b>${remaining || "—"}</b></span></span>`
+      ? `<span class="deadline-progress-time-grid"><span><small>Decorrido</small><b>${escapeHtml(elapsed || "—")}</b></span><span><small>Restante estimado</small><b>${escapeHtml(remaining || "—")}</b></span></span>`
       : "";
   return `
     <div class="deadline-progress ${deadlineProgressTone(progress)}" tabindex="0" aria-describedby="${tooltipId}" aria-label="Progresso do Deadline: ${percentage}% concluído">
       <div class="deadline-progress-track" aria-hidden="true"><progress class="deadline-progress-fill" max="100" value="${progress}"></progress></div>
       <span class="deadline-progress-value">${percentage}%</span>
-      <span class="deadline-progress-tooltip" id="${tooltipId}" role="tooltip"><strong>Progresso do Deadline</strong><span>${percentage}% concluído</span>${taskTimes}${eta ? `<span>Tempo restante estimado: ${escapeHtml(eta)}</span>` : ""}</span>
+      <span class="deadline-progress-tooltip" id="${tooltipId}" role="tooltip"><strong>Progresso do Deadline</strong><span>${percentage}% concluído</span>${taskSummary ? `<span class="deadline-progress-task-status">${escapeHtml(taskSummary)}</span>` : ""}${taskTimes}${!remaining && eta ? `<span>Tempo restante estimado: ${escapeHtml(eta)}</span>` : ""}</span>
     </div>`;
 }
 
@@ -492,38 +371,45 @@ function renderCards(renders, motionStartIndex) {
   }
 
   let html = "";
+  let lastGroup;
   renders.forEach(function (render) {
     const imgUrl = render.previa_jpg
-      ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI("uploads/renders/" + render.previa_jpg)}&w=360&q=75`
+      ? renderPreviewUrl(render.previa_jpg, 540)
       : "../assets/logo.jpg";
 
     const sc = getStatusBadgeClass(render.status);
     const ico = getStatusIcon(render.status);
     const dateLabel = formatDateShort(render.data);
     const isInProgress =
-      String(render.status || "")
-        .trim()
-        .toLowerCase() === "em andamento";
+      render.execution_state === "rendering" ||
+      (!render.execution_state && render.status === "Em andamento");
     const deadlineProgress = isInProgress ? renderDeadlineProgress(render) : "";
     const manualBadge = render.concluido_manualmente
       ? '<span class="status-badge manual-completion-badge" title="Execução concluída fora do Deadline"><i class="fa-solid fa-hand"></i> Feito manualmente</span>'
       : "";
-    const obra = render.obra_nomenclatura || "—";
-    const colab = render.nome_colaborador || "—";
+    const obra = escapeHtml(render.obra_nomenclatura || "—");
+    const colab = escapeHtml(render.nome_colaborador || "—");
+    const image = escapeHtml(render.imagem_nome || "Imagem sem nome");
+    const status = escapeHtml(render.status || "—");
+    if (activeRenderView === "pending" && render.render_group !== lastGroup) {
+      lastGroup = render.render_group;
+      html += `<h2 class="render-group-title">${renderGroups[lastGroup] || renderGroups.other}</h2>`;
+    }
 
     html += `
-      <div class="render-card" data-motion-item data-id="${render.idrender_alta}" data-status="${render.status}">
+      <article class="render-card" tabindex="0" data-motion-item data-id="${Number(render.idrender_alta)}" data-status="${status}">
         <div class="card-thumb-wrap">
           <img loading="lazy" decoding="async" src="${imgUrl}" alt="" class="loading"
-               onload="this.classList.remove('loading')">
+               onload="this.classList.remove('loading')" onerror="this.onerror=null; this.src='../assets/logo.jpg'">
         </div>
+        <button type="button" class="card-menu" aria-label="Trocar responsável de ${image}" title="Trocar responsável"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>
         ${deadlineProgress}
         <div class="card-body">
-          <p class="card-title" title="${render.imagem_nome}">${render.imagem_nome}</p>
+          <p class="card-title" title="${image}">${image}</p>
           <div class="card-meta-row">
             <div class="card-meta-item">
               <i class="fa-solid fa-building"></i>
-              <span title="${obra}">${obra} - ${render.nome_status || "—"}</span>
+              <span title="${obra}">${obra} · ${escapeHtml(render.nome_status || "—")}</span>
             </div>
             <div class="card-meta-item">
               <i class="fa-solid fa-user"></i>
@@ -533,7 +419,7 @@ function renderCards(renders, motionStartIndex) {
           <div class="card-footer">
             <span class="status-badge ${sc}">
               <i class="fa-solid ${ico}"></i>
-              ${render.status}
+              ${status}
             </span>
             ${manualBadge}
             <span class="card-date">
@@ -542,7 +428,7 @@ function renderCards(renders, motionStartIndex) {
             </span>
           </div>
         </div>
-      </div>`;
+      </article>`;
   });
 
   grid.innerHTML = html;
@@ -564,10 +450,21 @@ function renderCards(renders, motionStartIndex) {
 // Use event delegation to avoid re-attaching handlers on every re-render
 $("#renderGrid")
   .off("click.renderClick")
-  .on("click.renderClick", ".render-card", function () {
-    const idrender_alta = $(this).data("id");
-    editRender(idrender_alta);
-  });
+  .on(
+    "click.renderClick keydown.renderClick",
+    ".render-card",
+    function (event) {
+      if ($(event.target).closest(".card-menu").length) return;
+      if (event.type === "keydown") {
+        if (event.target !== this || !["Enter", " "].includes(event.key))
+          return;
+        event.preventDefault();
+      }
+      renderReturnFocus = this;
+      const idrender_alta = $(this).data("id");
+      editRender(idrender_alta);
+    },
+  );
 
 function positionDeadlineProgressTooltip(element) {
   const tooltip = element.querySelector(".deadline-progress-tooltip");
@@ -610,16 +507,22 @@ window.addEventListener("resize", () => {
 });
 
 function loadRenders(page) {
+  if (activeRenderView === "farm") return;
   page = page || 1;
   const requestSequence = ++renderRequestSequence;
   const btn = document.getElementById("btnLoadMore");
-  if (btn) btn.classList.add("loading");
+  if (page > 1) {
+    btn.disabled = true;
+    btn.querySelector("i").hidden = true;
+    btn.querySelector("canvas").hidden = false;
+  }
 
   $.ajax({
     url: "ajax.php",
     method: "GET",
     data: {
       action: "getRenders",
+      view: activeRenderView,
       page: page,
       limit: PAGE_LIMIT,
       ...getActiveFilters(),
@@ -638,6 +541,7 @@ function loadRenders(page) {
 
         const total = response.total || 0;
         totalRenders = total;
+        updateRenderSummary(response.summary);
         const loaded = allRenders.length;
         const hasMore = loaded < total;
 
@@ -655,18 +559,41 @@ function loadRenders(page) {
         const counter = document.getElementById("loadMoreCounter");
         if (counter)
           counter.textContent = hasMore ? `(${loaded} / ${total})` : "";
+      } else if (page === 1) {
+        showRenderLoadError();
       }
+    },
+    error: function () {
+      if (requestSequence === renderRequestSequence && page === 1)
+        showRenderLoadError();
     },
     complete: function () {
       if (requestSequence !== renderRequestSequence) return;
-      if (btn) btn.classList.remove("loading");
+      $("#renderLoading").prop("hidden", true);
+      $("#renderGrid").attr("aria-busy", "false");
+      btn.disabled = false;
+      btn.querySelector("i").hidden = false;
+      btn.querySelector("canvas").hidden = true;
     },
   });
 }
 
+function showRenderLoadError() {
+  updateRenderSummary(null);
+  updateResultsBadge(0, isFilterActive());
+  $("#loadMoreWrap").hide();
+  $("#renderGrid").html(
+    '<div class="empty-state" role="status"><p>Não foi possível carregar os renders.</p><button type="button" id="retryRenders">Tentar novamente</button></div>',
+  );
+}
+$("#renderGrid").on("click", "#retryRenders", () => loadRenders(1));
+
 function getActiveFilters() {
+  const status = $("#filterStatus").val() || "";
+  const isGroup = status.startsWith("group:");
   return {
-    status: $("#filterStatus").val() || "",
+    status: isGroup ? "" : status,
+    renderGroup: isGroup ? status.slice("group:".length) : "",
     statusImagem: $("#filterStatusImagem").val() || "",
     colaborador: $("#filterColaborador").val() || "",
     obra: $("#filterObra").val() || "",
@@ -683,9 +610,11 @@ function updateResultsBadge(count, hasFilter, total) {
   const totalEl = document.getElementById("resultsTotal");
   const dot = document.getElementById("filterDot");
   if (!badge) return;
-  countEl.textContent = count;
+  badge.hidden = false;
+  document.getElementById("resultsUnit").textContent = "renders";
+  countEl.textContent = renderNumber.format(count);
   if (total !== undefined && total > 0) {
-    totalEl.textContent = " / " + total;
+    totalEl.textContent = " / " + renderNumber.format(total);
   } else {
     totalEl.textContent = "";
   }
@@ -820,16 +749,16 @@ function renderTimeline(events) {
   $container.html(html);
 }
 
-function loadRenderTimeline(renderId) {
-  $("#renderTimeline").html(
-    '<div class="tl-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Carregando…</div>',
-  );
+function loadRenderTimeline(renderId, sequence) {
+  $("#renderTimeline").empty();
+  $("#timelineLoading").prop("hidden", false);
   $.ajax({
     url: "ajax.php",
     method: "GET",
     data: { action: "getRenderTimeline", render_id: renderId },
     dataType: "json",
     success: function (resp) {
+      if (sequence !== detailRequestSequence) return;
       if (resp && resp.status === "sucesso") {
         renderTimeline(resp.timeline || []);
       } else {
@@ -839,21 +768,127 @@ function loadRenderTimeline(renderId) {
       }
     },
     error: function () {
+      if (sequence !== detailRequestSequence) return;
       $("#renderTimeline").html(
         '<div class="tl-empty">Erro ao carregar histórico.</div>',
       );
     },
+    complete: function () {
+      if (sequence === detailRequestSequence)
+        $("#timelineLoading").prop("hidden", true);
+    },
   });
 }
 
+const executionLabels = {
+  rendering: "Renderizando",
+  queued: "Na fila",
+  completed: "Concluído",
+  failed: "Falhou",
+  suspended: "Suspenso",
+};
+const attemptLabels = {
+  AGUARDANDO_JOB: "Aguardando job",
+  VINCULADA: "Vinculada",
+  EM_ANDAMENTO: "Em andamento",
+  EM_APROVACAO: "Em aprovação",
+  ERRO: "Erro",
+  APROVADA: "Aprovada",
+  REPROVADA: "Reprovada",
+  REFAZENDO: "Refazendo",
+  EXCLUSAO_PENDENTE: "Exclusão pendente",
+  ENCERRADA: "Encerrada",
+  CANCELADA: "Cancelada",
+  CONCLUIDA_MANUALMENTE: "Concluída manualmente",
+  INCONSISTENTE: "Inconsistente",
+};
+
+function updateProcessingDetails(render, attempts, logs) {
+  const execution = render.execution;
+  const progress = normalizeDeadlineProgress(
+    render.deadline_task_progress ?? render.deadline_job_progress,
+  );
+  const elapsed = formatDeadlineTaskDuration(render.deadline_task_elapsed);
+  const remaining = formatDeadlineTaskDuration(
+    render.deadline_task_time_remaining ||
+      render.deadline_estimated_time_remaining,
+  );
+  $("#modalDeadline").prop("hidden", !render.detail_job_id);
+  const inferredState =
+    render.status === "Em andamento" && elapsed ? "rendering" : "";
+  $("#modal_deadline_state")
+    .text(
+      executionLabels[execution?.execution_state] ||
+        executionLabels[inferredState] ||
+        "—",
+    )
+    .attr(
+      "title",
+      execution?.observed_at
+        ? `Último registro do Deadline: ${formatarData(execution.observed_at)}`
+        : "",
+    );
+  $("#modal_deadline_worker").text(execution?.worker || render.computer || "—");
+  $("#modal_deadline_job").text(render.detail_job_id || "—");
+  $("#modalDeadlineProgress").html(
+    progress === null ? "" : renderDeadlineProgress(render, "detail"),
+  );
+  $("#modalDeadlineTimes").prop("hidden", !elapsed && !remaining);
+  $("#modalDeadlineElapsed").text(elapsed || "—");
+  $("#modalDeadlineRemaining").text(remaining || "—");
+  $("#attemptCount").text(attempts.length ? `(${attempts.length})` : "");
+
+  const attemptRows = attempts.map((attempt) => {
+    const attemptStatus = attemptLabels[attempt.status] || attempt.status;
+    const date =
+      attempt.encerrado_em ||
+      attempt.concluido_em ||
+      attempt.iniciado_em ||
+      attempt.criado_em;
+    return `<article><header><strong>Tentativa ${Number(attempt.numero_tentativa)} · ${escapeHtml(attemptStatus)}</strong><time>${formatarData(date)}</time></header>
+      ${attempt.deadline_job_id ? `<span>Job ${escapeHtml(attempt.deadline_job_id)}</span>` : ""}
+      ${attempt.motivo_encerramento ? `<span>${escapeHtml(attempt.motivo_encerramento)}</span>` : ""}</article>`;
+  });
+  $("#historyAttempts").html(
+    attemptRows.join("") ||
+      '<p class="tl-empty">Nenhuma tentativa registrada.</p>',
+  );
+  const logRows = logs.map((log) => {
+    const name = log.tipo.replaceAll("_", " ").toLocaleLowerCase("pt-BR");
+    return `<article><header><strong>Tentativa ${Number(log.numero_tentativa)} · ${escapeHtml(name)}</strong><time>${formatarData(log.criado_em)}</time></header>
+      ${log.message ? `<span>${escapeHtml(log.message)}</span>` : ""}</article>`;
+  });
+  if (render.errors)
+    logRows.unshift(
+      `<article><strong>Erros registrados no Flow</strong><pre>${escapeHtml(render.errors)}</pre></article>`,
+    );
+  $("#historyLogs").html(
+    logRows.join("") ||
+      '<p class="tl-empty">Nenhum log de processamento disponível.</p>',
+  );
+}
+
+$("[data-history-tab]").on("click", function () {
+  const eventButton = this;
+  $("[data-history-tab]").each(function () {
+    const selected = this === eventButton;
+    this.setAttribute("aria-pressed", String(selected));
+    document.getElementById(this.getAttribute("aria-controls")).hidden =
+      !selected;
+  });
+});
+
 // Função para abrir o modal e carregar os dados para edição
 function editRender(idrender_alta) {
+  const sequence = ++detailRequestSequence;
+  const isOpen = $("#myModal").hasClass("is-open");
   $.ajax({
     url: "ajax.php",
     method: "GET",
     data: { action: "getRender", idrender_alta: idrender_alta },
     dataType: "json",
     success: function (response) {
+      if (sequence !== detailRequestSequence) return;
       if (response.status == "sucesso") {
         const r = response.render;
         const canRenderEf =
@@ -877,6 +912,8 @@ function editRender(idrender_alta) {
         // — Header fields —
         $("#modal_imagem_id").text(r.imagem_nome || "—");
         $("#modal_obra_nome").text(r.obra_nomenclatura || "");
+        $("#modal_stage").text(r.nome_status || "");
+        $("#modal_image_type").text(r.tipo_imagem || "—");
 
         // Status badge in header subtitle
         const sc = getStatusBadgeClass(r.status);
@@ -885,7 +922,7 @@ function editRender(idrender_alta) {
           ? ' <span class="status-badge manual-completion-badge"><i class="fa-solid fa-hand"></i> Feito manualmente</span>'
           : "";
         $("#modal_status_badge").html(
-          `<span class="status-badge ${sc}"><i class="fa-solid ${ico}"></i> ${r.status}</span>${manualHeaderBadge}`,
+          `<span class="status-badge ${sc}"><i class="fa-solid ${ico}"></i> ${escapeHtml(r.status)}</span>${manualHeaderBadge}`,
         );
 
         if (r.status !== "Aprovado" || isPlantaHumanizada) {
@@ -905,6 +942,11 @@ function editRender(idrender_alta) {
 
         $("#modal_job_folder").text(r.job_folder || "—");
         $("#modal_previa_jpg").text(r.previa_jpg || "—");
+        updateProcessingDetails(
+          r,
+          response.attempts || [],
+          response.processing_logs || [],
+        );
 
         // — Error section —
         if (r.concluido_manualmente) {
@@ -948,11 +990,11 @@ function editRender(idrender_alta) {
         $gallery.empty();
 
         if (previews.length > 0) {
-          const firstUrl = `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(previews[0].filename)}`;
+          const firstUrl = renderPreviewUrl(previews[0].filename);
           $("#modalPreviewImg").attr("src", firstUrl);
 
           previews.forEach(function (p, idx) {
-            const thumbUrl = `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(p.filename)}`;
+            const thumbUrl = renderPreviewUrl(p.filename);
             const $thumb = $(
               `<img class="modal-thumb${idx === 0 ? " active" : ""}" loading="lazy" decoding="async" src="${thumbUrl}" alt="Preview ${idx + 1}">`,
             );
@@ -969,19 +1011,24 @@ function editRender(idrender_alta) {
             });
         } else {
           const imgUrl = r.previa_jpg
-            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(r.previa_jpg)}`
+            ? renderPreviewUrl(r.previa_jpg)
             : "../assets/logo.jpg";
           $("#modalPreviewImg").attr("src", imgUrl);
         }
 
         // — Open modal —
         $("#myModal").addClass("is-open");
-        window.FlowMotion?.openModal(
-          document.querySelector("#myModal .modal-content"),
-        );
+        if (!isOpen) {
+          $("[data-history-tab='timeline']").trigger("click");
+          document.querySelector("#myModal .modal-body").scrollTop = 0;
+          window.FlowMotion?.openModal(
+            document.querySelector("#myModal .modal-content"),
+          );
+          document.getElementById("closeModal").focus({ preventScroll: true });
+        }
 
         // — Load timeline —
-        loadRenderTimeline(idrender_alta);
+        loadRenderTimeline(idrender_alta, sequence);
 
         // — Action button visibility —
         if (r.status === "Reprovado" || r.status === "Refazendo") {
@@ -1117,15 +1164,24 @@ $("#modalPreviewImg")
 
     applyTransforms();
   });
+$("#modalPreviewImg").on("keydown", function (event) {
+  if (["Enter", " "].includes(event.key)) {
+    event.preventDefault();
+    $(this).trigger("click");
+  }
+});
 
 // Fechar o modal (novo botão + clique no overlay)
-$("#closeModal").on("click", function () {
+function closeRenderDetails() {
+  detailRequestSequence++;
   $("#myModal").removeClass("is-open");
-});
+  renderReturnFocus?.focus({ preventScroll: true });
+}
+$("#closeModal").on("click", closeRenderDetails);
 
 $("#myModal").on("click", function (e) {
   if (e.target === this) {
-    $(this).removeClass("is-open");
+    closeRenderDetails();
   }
 });
 
@@ -1144,7 +1200,7 @@ $("#aprovarRender").click(function () {
       if (response.status === "sucesso") {
         // Atualiza os renders
         loadRenders();
-        loadRenderKpis();
+
         Toastify({
           text: "Render aprovado com sucesso!",
           duration: 3000,
@@ -1183,7 +1239,7 @@ $("#aprovarRender").click(function () {
 
 function abrirPosAposAprovarRender(idrender_alta) {
   loadRenders();
-  loadRenderKpis();
+
   Toastify({
     text: "Render aprovado com sucesso!",
     duration: 3000,
@@ -1316,7 +1372,7 @@ function concluirRenderManualmente(justificativa) {
     function (response) {
       if (response && response.status === "sucesso") {
         loadRenders();
-        loadRenderKpis();
+
         $("#myModal").removeClass("is-open");
         Toastify({
           text: response.message || "Render enviado para aprovação.",
@@ -1557,7 +1613,7 @@ $("#reprovarRender").click(function () {
     function (response) {
       if (response.status === "sucesso") {
         loadRenders();
-        loadRenderKpis();
+
         $("#myModal").removeClass("is-open");
         Toastify({
           text:
@@ -1642,7 +1698,7 @@ $("#deleteRender")
       success: function (response) {
         if (response.status == "sucesso") {
           loadRenders();
-          loadRenderKpis();
+
           $("#myModal").removeClass("is-open");
 
           Toastify({
@@ -1667,8 +1723,12 @@ $("#deleteRender")
 
 // Carregar os renders quando a página for carregada
 $(document).ready(function () {
+  document
+    .querySelectorAll(
+      "#renderLoading canvas, #farmLoading canvas, #timelineLoading canvas, #btnLoadMore canvas",
+    )
+    .forEach((canvas) => window.thinkingOrbs?.(canvas, { theme: "dark" }));
   loadRenders(1);
-  initRenderKpis();
 
   $("#btnLoadMore").on("click", function () {
     loadRenders(currentPage + 1);
@@ -1698,19 +1758,32 @@ $(document).ready(function () {
   });
 
   // Abrir menu no botão direito do card
-  $("#renderGrid").on("contextmenu", ".render-card", function (e) {
-    e.preventDefault();
-    ctxRenderId = $(this).data("id");
+  function showResponsibleMenu(card, clientX, clientY) {
+    ctxRenderId = $(card).data("id");
 
     // Posicionar o menu perto do cursor, ajustando para não sair da tela
     const menuW = 230,
       menuH = 130;
-    let x = e.clientX,
-      y = e.clientY;
+    let x = clientX,
+      y = clientY;
     if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
     if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
 
     $ctxMenu.css({ top: y, left: x }).addClass("is-open");
+  }
+  $("#renderGrid").on("contextmenu", ".render-card", function (event) {
+    event.preventDefault();
+    showResponsibleMenu(this, event.clientX, event.clientY);
+  });
+  $("#renderGrid").on("click", ".card-menu", function (event) {
+    event.stopPropagation();
+    const rect = this.getBoundingClientRect();
+    showResponsibleMenu(
+      this.closest(".render-card"),
+      rect.left,
+      rect.bottom + 4,
+    );
+    document.getElementById("ctxResponsavelSelect").focus();
   });
 
   // Salvar novo responsável
@@ -1769,47 +1842,19 @@ window.addEventListener("improov:renderUpdated", function (event) {
   if (renderRealtimeReloadTimer) clearTimeout(renderRealtimeReloadTimer);
   renderRealtimeReloadTimer = setTimeout(function () {
     loadRenders(1);
-    loadRenderKpis();
+
     const openedId = Number($("#modal_idrender").text());
-    if (openedId && Number(detail.render_id) === openedId) editRender(openedId);
+    if (
+      $("#myModal").hasClass("is-open") &&
+      openedId &&
+      Number(detail.render_id) === openedId
+    )
+      editRender(openedId);
   }, 180);
 });
 
-// Mobile filter toggle (Render)
-(function () {
-  try {
-    const $filters = $("#filters");
-    const $toggle = $("#filter-toggle-btn");
-    if ($filters.length && $toggle.length) {
-      $toggle.on("click", function (e) {
-        e.preventDefault();
-        const isOpen = $filters.hasClass("open");
-        if (isOpen) {
-          $filters.removeClass("open");
-          $(this).attr("aria-expanded", "false");
-        } else {
-          $filters.addClass("open");
-          $(this).attr("aria-expanded", "true");
-          // ensure the sheet is visible on some devices
-          setTimeout(() => {
-            try {
-              $filters[0].scrollIntoView({ behavior: "smooth", block: "end" });
-            } catch (e) {}
-          }, 50);
-        }
-      });
-
-      // close when tapping outside filters or the FAB
-      $(document).on("click touchstart", function (ev) {
-        if (!$(ev.target).closest("#filters, #filter-toggle-btn").length) {
-          if ($filters.hasClass("open")) {
-            $filters.removeClass("open");
-            $toggle.attr("aria-expanded", "false");
-          }
-        }
-      });
-    }
-  } catch (err) {
-    console.error("filter toggle init error:", err);
-  }
-})();
+$("#filter-toggle-btn").on("click", function () {
+  const expanded = this.getAttribute("aria-expanded") === "true";
+  $("#filters").toggleClass("open", !expanded);
+  this.setAttribute("aria-expanded", String(!expanded));
+});

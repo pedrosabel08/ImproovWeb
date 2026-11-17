@@ -1,0 +1,146 @@
+.person-camera-controls,
+.exploration-hint {
+  position: absolute;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--spatial-control-border);
+  border-radius: var(--spatial-radius);
+  background: var(--spatial-float);
+  color: var(--spatial-text);
+}
+.person-camera-controls {
+  left: 12px;
+  bottom: 55px;
+  max-width: calc(100% - 24px);
+  flex-wrap: wrap;
+}
+.person-camera-controls .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.person-camera-controls button[aria-pressed="true"] {
+  background: var(--spatial-selected);
+  border-color: var(--spatial-accent);
+  color: var(--spatial-accent);
+}
+.exploration-hint {
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 7px 11px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+}
+.exploration-hint canvas {
+  flex: none;
+}
+.person-camera-controls [hidden],
+.exploration-hint[hidden],
+.exploration-hint canvas[hidden],
+.exploration-pad[hidden] {
+  display: none;
+}
+.viewport:has(.exploration-hint:not([hidden])) > .hint,
+.viewport.exploration-placing .floor-popover {
+  visibility: hidden;
+}
+.viewport.exploration-placing canvas.gl {
+  cursor: crosshair;
+}
+.viewport.exploring canvas.gl {
+  cursor: grab;
+  touch-action: none;
+}
+.viewport.exploring canvas.gl:active {
+  cursor: grabbing;
+}
+.viewport.exploration-loading canvas.gl {
+  cursor: wait;
+}
+
+body.person-camera-view {
+  overflow: hidden;
+}
+body.person-camera-view #flowSpatialWorkspace {
+  inset: 0;
+}
+body.person-camera-view > :is(aside.sidebar, .mi-viewer-return) {
+  display: none;
+}
+body.person-camera-view .app.spatial-workspace {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+body.person-camera-view .app > .top,
+body.person-camera-view .app .layout > .side {
+  display: none;
+}
+body.person-camera-view .app .layout {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+}
+body.person-camera-view .app .viewport.exploring {
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+}
+.viewport.exploring
+  > :not(
+    canvas.gl,
+    .person-camera-controls,
+    .exploration-pad,
+    .geo-attribution
+  ) {
+  display: none;
+}
+.viewport.exploring .person-camera-controls {
+  bottom: 12px;
+}
+.viewport.exploring .geo-attribution {
+  transform: translateY(30px);
+}
+
+.exploration-pad {
+  position: absolute;
+  z-index: 8;
+  left: 12px;
+  bottom: 66px;
+  display: flex;
+  gap: 4px;
+  touch-action: none;
+  user-select: none;
+}
+.exploration-pad .btn {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 5px;
+}
+@media (max-width: 600px) {
+  .exploration-hint {
+    font-size: 11px;
+  }
+  .viewport.exploring .person-camera-controls {
+    bottom: 58px;
+  }
+  .viewport.exploring .exploration-pad {
+    bottom: 116px;
+  }
+}

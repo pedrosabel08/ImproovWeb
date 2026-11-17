@@ -98,13 +98,14 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="<?php echo asset_url('center.css') . '&t=' . filemtime(__DIR__ . '/center.css'); ?>">
     <?php require __DIR__ . '/../includes/page-head.php'; ?>
 </head>
 
 <body>
     <?php include '../sidebar.php'; ?>
 
-    <div class="container">
+    <div class="container render-center">
 
         <!-- Page Header -->
         <div class="page-header" data-motion="header">
@@ -112,7 +113,7 @@ $conn->close();
                 <img src="../gif/assinatura_preto.gif" alt="Improov" class="page-header-logo" id="gif">
                 <div class="page-title-wrap">
                     <h1 class="page-title">Renders</h1>
-                    <span class="page-subtitle">Biblioteca de jobs de render</span>
+                    <span class="page-subtitle">Central de renderização e acompanhamento de jobs</span>
                 </div>
             </div>
             <div class="results-summary">
@@ -123,12 +124,45 @@ $conn->close();
                 <?php endif; ?>
                 <span class="results-badge" id="resultsBadge">
                     <i class="fa-solid fa-layer-group"></i>
-                    <span id="resultsCount">0</span><span id="resultsTotal" class="results-total"></span> renders
+                    <span id="resultsCount">—</span><span id="resultsTotal" class="results-total"></span> <span id="resultsUnit">renders</span>
                     <span class="filter-active-dot" id="filterDot"></span>
                 </span>
             </div>
         </div>
 
+        <?php require __DIR__ . '/overview-panel.php'; ?>
+        <section id="renderLibrary" class="render-library" role="tabpanel" aria-labelledby="tabPending">
+            <section class="overview-metrics" id="renderMetrics" aria-label="Indicadores de renders">
+                <?php foreach ([
+                    'rendering' => ['Em execução', 'fa-play', 'blue', 'Imagens únicas em renderização no Deadline'],
+                    'queued' => ['Na fila', 'fa-list', 'slate', 'Imagens aguardando execução no Flow ou no Deadline'],
+                    'rework' => ['Com retrabalho', 'fa-rotate-right', 'amber', 'Imagens reprovadas ou em retrabalho'],
+                    'error' => ['Com erro', 'fa-triangle-exclamation', 'red', 'Imagens com falha de processamento'],
+                ] as $key => [$label, $icon, $tone, $description]): ?>
+                    <div class="overview-metric tone-<?= $tone ?>" title="<?= $description ?>">
+                        <span><i class="fa-solid <?= $icon ?>" aria-hidden="true"></i><?= $label ?></span>
+                        <strong data-render-metric="<?= $key ?>">—</strong>
+                    </div>
+                <?php endforeach; ?>
+                <div class="overview-metrics-secondary">
+                    <?php foreach ([
+                        'success_rate' => ['Taxa de sucesso', 'fa-check', 'green', 'Imagens aprovadas entre as que têm resultado de aprovação, erro ou retrabalho'],
+                        'per_day' => ['Média por dia', 'fa-chart-line', 'slate', 'Imagens únicas divididas pelos dias do período filtrado'],
+                        'mean_seconds' => ['Tempo médio', 'fa-clock', 'slate', 'Duração média das execuções com início e conclusão registrados'],
+                    ] as $key => [$label, $icon, $tone, $description]): ?>
+                        <div class="overview-metric tone-<?= $tone ?>" title="<?= $description ?>">
+                            <span><i class="fa-solid <?= $icon ?>" aria-hidden="true"></i><?= $label ?></span>
+                            <strong data-render-metric="<?= $key ?>">—</strong>
+                            <?php if ($key === 'success_rate'): ?>
+                                <progress id="renderSuccessProgress" aria-label="Taxa de sucesso" max="100" hidden></progress>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <button type="button" id="filter-toggle-btn" aria-expanded="false" aria-controls="filters" class="render-filter-toggle">
+            <i class="fa-solid fa-filter" aria-hidden="true"></i> Filtros
+        </button>
         <!-- Filter Bar -->
         <div class="filters" id="filters" data-motion="toolbar">
 
@@ -163,9 +197,9 @@ $conn->close();
             <div class="filter-date-group">
                 <label><i class="fa-solid fa-calendar"></i> Período</label>
                 <div class="filter-date-range">
-                    <input type="date" id="filterDateFrom" title="Data inicial">
+                    <input type="date" id="filterDateFrom" aria-label="Data inicial" title="Data inicial">
                     <span>até</span>
-                    <input type="date" id="filterDateTo" title="Data final">
+                    <input type="date" id="filterDateTo" aria-label="Data final" title="Data final">
                 </div>
             </div>
 
@@ -176,78 +210,31 @@ $conn->close();
 
         </div>
 
-        <section class="kpi-panel" aria-label="KPIs de renders" data-motion="section">
-            <div class="kpi-grid" id="renderKpiGrid">
-                <div class="kpi-card kpi-green" data-kpi-card="aprovados">
-                    <div class="kpi-card-top">
-                        <span class="kpi-icon"><i class="fa-solid fa-circle-check"></i></span>
-                        <span class="kpi-label">Aprovados</span>
-                    </div>
-                    <strong class="kpi-value" id="renderKpiAprovados">0</strong>
-                    <div class="kpi-delta" id="renderKpiAprovadosDelta">-</div>
-                    <svg class="kpi-sparkline" id="renderKpiAprovadosSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
-                </div>
-                <div class="kpi-card kpi-yellow" data-kpi-card="retrabalho">
-                    <div class="kpi-card-top">
-                        <span class="kpi-icon"><i class="fa-solid fa-rotate-right"></i></span>
-                        <span class="kpi-label">Com retrabalho</span>
-                    </div>
-                    <strong class="kpi-value" id="renderKpiRetrabalho">0</strong>
-                    <div class="kpi-delta" id="renderKpiRetrabalhoDelta">-</div>
-                    <svg class="kpi-sparkline" id="renderKpiRetrabalhoSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
-                </div>
-                <div class="kpi-card kpi-red" data-kpi-card="erros">
-                    <div class="kpi-card-top">
-                        <span class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
-                        <span class="kpi-label">Com erro</span>
-                    </div>
-                    <strong class="kpi-value" id="renderKpiErros">0</strong>
-                    <div class="kpi-delta" id="renderKpiErrosDelta">-</div>
-                    <svg class="kpi-sparkline" id="renderKpiErrosSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
-                </div>
-                <div class="kpi-card kpi-purple" data-kpi-card="media_diaria">
-                    <div class="kpi-card-top">
-                        <span class="kpi-icon"><i class="fa-solid fa-chart-line"></i></span>
-                        <span class="kpi-label">Media por dia</span>
-                    </div>
-                    <strong class="kpi-value" id="renderKpiMediaDia">0/dia</strong>
-                    <div class="kpi-delta" id="renderKpiMediaDiaDelta">-</div>
-                    <svg class="kpi-sparkline" id="renderKpiMediaDiaSpark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg>
-                </div>
-            </div>
-        </section>
-
-        <!-- Mobile: FAB to toggle filters -->
-        <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filters" class="fab-filter" title="Filtros" style="display:none;">
-            <i class="fa-solid fa-filter"></i>
-        </button>
-
         <!-- Render Grid + Load More (scrollable area) -->
         <div class="grid-scroll-area" data-motion="section">
-            <div id="renderGrid" class="render-grid" data-motion-group="cards">
-                <!-- Skeleton placeholders shown while loading -->
-                <?php for ($i = 0; $i < 8; $i++): ?>
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumb"></div>
-                        <div class="skeleton-body">
-                            <div class="skeleton-line medium"></div>
-                            <div class="skeleton-line short"></div>
-                            <div class="skeleton-line medium"></div>
-                        </div>
-                    </div>
-                <?php endfor; ?>
+            <div class="render-view-switch" id="renderViewSwitch" hidden aria-label="Visualização dos aprovados">
+                <button type="button" data-library-layout="cards" aria-label="Cards" aria-pressed="true" title="Cards"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i></button>
+                <button type="button" data-library-layout="list" aria-label="Lista" aria-pressed="false" title="Lista"><i class="fa-solid fa-list" aria-hidden="true"></i></button>
             </div>
+            <div class="render-loading" id="renderLoading" role="status">
+                <canvas data-thinking-orb data-orb-state="composing" data-orb-size="44" aria-label="Carregando renders"></canvas>
+                <span>Carregando renders…</span>
+            </div>
+            <div id="renderGrid" class="render-grid" data-motion-group="cards" aria-busy="true"></div>
 
             <!-- Load more -->
             <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
                 <button type="button" class="btn-load-more" id="btnLoadMore">
-                    <i class="fa-solid fa-rotate"></i>
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                    <canvas data-thinking-orb data-orb-state="composing" data-orb-size="21" aria-label="Carregando mais renders" hidden></canvas>
                     Carregar mais
                     <span class="load-more-counter" id="loadMoreCounter"></span>
                 </button>
             </div>
         </div>
 
+        </section>
+        <?php require __DIR__ . '/farm-panel.php'; ?>
     </div><!-- /.container -->
 
     <!-- ===== CONTEXT MENU: TROCAR RESPONSÁVEL ===== -->
@@ -262,7 +249,7 @@ $conn->close();
     </div>
 
     <!-- ===== JOB DETAILS MODAL ===== -->
-    <div id="myModal" class="modal">
+    <div id="myModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal_imagem_id">
         <div class="modal-content">
 
             <!-- Header -->
@@ -271,11 +258,12 @@ $conn->close();
                     <span class="modal-title" id="modal_imagem_id">—</span>
                     <span class="modal-subtitle">
                         <span id="modal_obra_nome"></span>
+                        <span id="modal_stage"></span>
                         <span id="modal_status_badge"></span>
                     </span>
                 </div>
                 <div class="modal-header-right">
-                    <button class="modal-close" id="closeModal" title="Fechar">
+                    <button class="modal-close" id="closeModal" title="Fechar" aria-label="Fechar detalhes do render">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
@@ -286,7 +274,7 @@ $conn->close();
 
                 <!-- Left: image preview + gallery -->
                 <div class="modal-preview-panel">
-                    <img id="modalPreviewImg" class="modal-main-img" src="" alt="Preview">
+                    <img id="modalPreviewImg" class="modal-main-img" src="../assets/logo.jpg" alt="Prévia do render" tabindex="0" role="button" aria-label="Ampliar prévia do render">
                     <div class="modal-gallery" id="modalGallery"></div>
                 </div>
 
@@ -300,13 +288,14 @@ $conn->close();
                         </div>
                         <div class="detail-grid">
                             <div class="detail-row">
-                                <span class="detail-label">ID</span>
+                                <span class="detail-label">ID do render</span>
                                 <span class="detail-value" id="modal_idrender">—</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">Número BG</span>
                                 <span class="detail-value" id="modal_numero_bg">—</span>
                             </div>
+                            <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value" id="modal_image_type">—</span></div>
                         </div>
                     </div>
 
@@ -321,7 +310,7 @@ $conn->close();
                                 <span class="detail-value" id="modal_status">—</span>
                             </div>
                             <div class="detail-row">
-                                <span class="detail-label">Status detalhado</span>
+                                <span class="detail-label">Etapa da imagem</span>
                                 <span class="detail-value" id="modal_status_id">—</span>
                             </div>
                             <div class="detail-row">
@@ -355,15 +344,17 @@ $conn->close();
                         </div>
                     </div>
 
-                    <!-- Section: Linha do tempo -->
-                    <div class="detail-section">
-                        <div class="detail-section-title">
-                            <i class="fa-solid fa-clock-rotate-left"></i> Linha do Tempo
+                    <div class="detail-section" id="modalDeadline" hidden>
+                        <div class="detail-section-title"><i class="fa-solid fa-server" aria-hidden="true"></i> Deadline</div>
+                        <div class="detail-grid">
+                            <div class="detail-row"><span class="detail-label">Execução do job</span><span class="detail-value" id="modal_deadline_state">—</span></div>
+                            <div class="detail-row"><span class="detail-label">Worker</span><span class="detail-value" id="modal_deadline_worker">—</span></div>
+                            <div class="detail-row full-detail"><span class="detail-label">ID do job</span><span class="detail-value path" id="modal_deadline_job">—</span></div>
                         </div>
-                        <div id="renderTimeline" class="render-timeline">
-                            <div class="tl-loading">
-                                <i class="fa-solid fa-circle-notch fa-spin"></i> Carregando…
-                            </div>
+                        <div id="modalDeadlineProgress"></div>
+                        <div class="deadline-detail-times" id="modalDeadlineTimes" hidden>
+                            <div><span>Decorrido</span><strong id="modalDeadlineElapsed">—</strong></div>
+                            <div><span>Restante estimado</span><strong id="modalDeadlineRemaining">—</strong></div>
                         </div>
                     </div>
 
@@ -385,6 +376,22 @@ $conn->close();
                     </div>
 
                 </div><!-- /.modal-details-panel -->
+                <section class="render-history" aria-label="Histórico de processamento">
+                    <div class="history-tabs" role="group" aria-label="Histórico do render">
+                        <button type="button" data-history-tab="timeline" aria-controls="historyTimeline" aria-pressed="true"><i class="fa-regular fa-clock" aria-hidden="true"></i> Linha do tempo</button>
+                        <button type="button" data-history-tab="attempts" aria-controls="historyAttempts" aria-pressed="false"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Tentativas <span id="attemptCount"></span></button>
+                        <button type="button" data-history-tab="logs" aria-controls="historyLogs" aria-pressed="false"><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Logs</button>
+                    </div>
+                    <div id="historyTimeline">
+                        <div id="timelineLoading" class="render-loading" role="status" hidden>
+                            <canvas data-thinking-orb data-orb-state="composing" data-orb-size="32" aria-label="Carregando linha do tempo"></canvas>
+                            <span>Carregando linha do tempo…</span>
+                        </div>
+                        <div id="renderTimeline" class="render-timeline"></div>
+                    </div>
+                    <div id="historyAttempts" class="history-entries" hidden></div>
+                    <div id="historyLogs" class="history-entries" hidden></div>
+                </section>
             </div><!-- /.modal-body -->
 
             <!-- Footer: actions -->
@@ -552,6 +559,7 @@ $conn->close();
     <script src="<?php echo asset_url('reference-review.js') . '&t=' . filemtime(__DIR__ . '/reference-review.js'); ?>"></script>
     <script src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
     <script src="<?php echo asset_url('render-ef.js') . '&t=' . filemtime(__DIR__ . '/render-ef.js'); ?>"></script>
+    <script src="<?php echo asset_url('farm.js') . '&t=' . filemtime(__DIR__ . '/farm.js'); ?>"></script>
     <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>&authReturn=1"></script>

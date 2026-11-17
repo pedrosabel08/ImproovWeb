@@ -798,11 +798,21 @@ document.getElementById("fb-busca").addEventListener("keydown", function (e) {
 function atualizarContagensAbas(data) {
   var pendentes = data.filter(function (item) {
     return String(item.status_pos) === "1";
+  });
+  var inicioHoje = new Date();
+  inicioHoje.setHours(0, 0, 0, 0);
+  var atrasados = pendentes.filter(function (item) {
+    var prazo = parsePrazoToDate(item.prazo);
+    return prazo && prazo < inicioHoje;
   }).length;
+  document.getElementById("metric-pendentes").textContent =
+    pendentes.length.toLocaleString("pt-BR");
+  document.getElementById("metric-atraso").textContent =
+    atrasados.toLocaleString("pt-BR");
   document.getElementById("tab-count-pendentes").textContent =
-    pendentes.toLocaleString("pt-BR");
+    pendentes.length.toLocaleString("pt-BR");
   document.getElementById("tab-count-finalizadas").textContent = (
-    data.length - pendentes
+    data.length - pendentes.length
   ).toLocaleString("pt-BR");
   document.getElementById("tab-count-todas").textContent =
     data.length.toLocaleString("pt-BR");
@@ -2129,10 +2139,6 @@ function carregarMetricas() {
     })
     .then(function (data) {
       var el;
-      el = document.getElementById("metric-pendentes");
-      if (el) el.textContent = data.total_pendentes ?? "—";
-      el = document.getElementById("metric-atraso");
-      if (el) el.textContent = data.em_atraso ?? "—";
       el = document.getElementById("metric-hoje");
       if (el) el.textContent = data.finalizados_hoje ?? "—";
       el = document.getElementById("metric-semana");
@@ -2211,7 +2217,9 @@ function aplicarFiltroCard(filterType) {
       if (parseInt(data.status_pos) !== 1) return false;
       var dl = parsePrazoToDate(data.prazo);
       if (!dl) return false;
-      return dl < new Date();
+      var inicioHoje = new Date();
+      inicioHoje.setHours(0, 0, 0, 0);
+      return dl < inicioHoje;
     });
   } else if (filterType === "hoje") {
     tabelaGlobal.setFilter(function (data) {

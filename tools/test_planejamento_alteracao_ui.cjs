@@ -113,12 +113,11 @@ function fixture() {
     const page = await browser.newPage({
       viewport: { width: 1440, height: 1000 },
     });
+    await page.clock.setFixedTime(new Date("2026-10-28T12:00:00-03:00"));
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     let acceptDialogs = true;
-    page.on("dialog", (dialog) =>
-      acceptDialogs ? dialog.accept() : dialog.dismiss(),
-    );
+    await page.exposeFunction("acceptFlowAlert", () => acceptDialogs);
     let plan = fixture(),
       posts = [],
       forceConflict = false,
@@ -240,6 +239,31 @@ function fixture() {
         "utf8",
       ),
     });
+    await page.evaluate(() => {
+      window.testMessages = [];
+      const record = ({ message }) => window.testMessages.push(message);
+      window.FlowAlert = {
+        confirm: async () => ({ isConfirmed: await window.acceptFlowAlert() }),
+        error: record,
+        info: record,
+      };
+    });
+    const openImage = async (id) => {
+      await page.locator("#ap-tab-list").click();
+      await page.locator(`#ap-rows [data-edit-image="${id}"]`).click();
+    };
+    const closeEditor = () => page.locator("#ap-editor-close").click();
+    const openSuggestion = async () => {
+      await page.locator("#ap-more").click();
+      const suggestion = page.locator(".ap-suggestion");
+      if ((await suggestion.getAttribute("open")) === null)
+        await suggestion.locator("summary").first().click();
+    };
+    const waitMessage = (message) =>
+      page.waitForFunction(
+        (text) => window.testMessages.at(-1)?.includes(text),
+        message,
+      );
     const boot = async () => {
       await page.addScriptTag({
         content: fs.readFileSync(
@@ -253,21 +277,72 @@ function fixture() {
     };
     await boot();
     check(
-      (await page.locator("#ap-complete").textContent()) === "0/10 completos",
+      (
+        await page.locator('.ap-grid-day[aria-current="date"]').textContent()
+      ).includes("Hoje"),
+      "Agenda abre no dia atual",
+    );
+    await page.locator("#ap-rail-search").fill("01");
+    await page.locator("#ap-rail-level").selectOption("1");
+    await page.locator("#ap-rail-pending").check();
+    const railCard = page.locator('#ap-rail-items [data-card="1"]');
+    check(
+      (await page.locator("#ap-rail-items [data-card]").count()) === 1,
+      "Filtros da lista lateral",
+    );
+    const railTarget = page.locator(
+      '[data-drop-person="11"][data-drop-day="2026-10-29"]',
+    );
+    await railCard.dragTo(railTarget);
+    await railTarget.locator('[data-card="1"]').waitFor();
+    check(
+      (await railCard.count()) === 0,
+      "Arraste da lista para o dia atualiza o filtro de pendências",
+    );
+    await page.locator("#ap-rail-pending").uncheck();
+    const calendarWidth = () =>
+      page.locator("#ap-grid-scroll").evaluate((grid) => grid.clientWidth);
+    const widthBeforeDrawer = await calendarWidth();
+    await railCard.click();
+    check(
+      (await page.locator("#ap-editor").isVisible()) &&
+        (await calendarWidth()) === widthBeforeDrawer,
+      "Drawer abre pela lista sem reduzir a grade",
+    );
+    await page.clock.setFixedTime(new Date("2026-10-29T12:00:00-03:00"));
+    acceptDialogs = false;
+    await page.locator("#ap-editor-day").fill("2026-10-28");
+    await page.locator("#ap-editor-save").click();
+    check(
+      (await railTarget.locator('[data-card="1"]').count()) === 1,
+      "Cancelar confirmação de data passada mantém o dia anterior",
+    );
+    acceptDialogs = true;
+    await page.clock.setFixedTime(new Date("2026-10-28T12:00:00-03:00"));
+    await page.locator("#ap-editor-remove").click();
+    await railTarget.locator('[data-card="1"]').waitFor({ state: "detached" });
+    await page.locator("#ap-rail-search").clear();
+    await page.locator("#ap-rail-level").selectOption("");
+    check(
+      (await page.locator("#ap-complete").textContent()) === "0 / 10",
       "10 imagens iniciam pendentes",
     );
     check(
       await page.locator("#ap-confirm").isDisabled(),
       "Confirmação incompleta permanece bloqueada",
     );
+    await page.locator("#ap-tab-list").click();
     await page.locator("#ap-search").fill("01");
     check(
-      (await page.locator("#ap-rows tr").count()) === 1,
+      (await page.locator("#ap-rows .ap-list-row").count()) === 1,
       "Pesquisa por imagem",
     );
     await page.locator("#ap-search").fill("");
     await page.locator("#ap-level").selectOption("2");
-    check((await page.locator("#ap-rows tr").count()) === 2, "Filtro por N2");
+    check(
+      (await page.locator("#ap-rows .ap-list-row").count()) === 2,
+      "Filtro por N2",
+    );
     await page.locator("#ap-select-all").check();
     check(
       (await page.locator("#ap-selection").textContent()) === "2 selecionadas",
@@ -277,7 +352,7 @@ function fixture() {
     await page.locator("#ap-bulk-finish").fill("2026-11-03");
     await page.locator("#ap-apply").click();
     check(
-      (await page.locator("#ap-complete").textContent()) === "2/10 completos",
+      (await page.locator("#ap-complete").textContent()) === "2 / 10",
       "Atribuição e conclusão em massa",
     );
     check(
@@ -285,10 +360,7 @@ function fixture() {
       "Resumo preserva distribuição por nível",
     );
     await page.locator("#ap-save").click();
-    await page.waitForFunction(
-      () =>
-        document.getElementById("ap-message").textContent === "Rascunho salvo.",
-    );
+    await waitMessage("Rascunho salvo.");
     check(
       posts.length === 1 &&
         posts[0].itens.length === 10 &&
@@ -303,23 +375,23 @@ function fixture() {
     await page.locator("#ap-level").selectOption("");
     await page.locator("#ap-pending").selectOption("responsavel");
     check(
-      (await page.locator("#ap-rows tr").count()) === 8,
+      (await page.locator("#ap-rows .ap-list-row").count()) === 8,
       "Filtro sem responsável",
     );
     await page.locator("#ap-pending").selectOption("data");
     check(
-      (await page.locator("#ap-rows tr").count()) === 8,
+      (await page.locator("#ap-rows .ap-list-row").count()) === 8,
       "Filtro sem conclusão planejada",
     );
     await page.locator("#ap-pending").selectOption("responsavel");
     await page.locator("#ap-person").selectOption("11");
     check(
-      (await page.locator("#ap-rows tr").count()) === 0,
+      (await page.locator("#ap-rows .ap-list-row").count()) === 0,
       "Filtros combinados exibem estado vazio",
     );
     await page.locator("#ap-pending").selectOption("");
     check(
-      (await page.locator("#ap-rows tr").count()) === 2,
+      (await page.locator("#ap-rows .ap-list-row").count()) === 2,
       "Filtro por colaborador",
     );
     await page.locator("#ap-person").selectOption("");
@@ -327,12 +399,12 @@ function fixture() {
     await page.locator("#ap-bulk-person").selectOption("12");
     await page.locator("#ap-apply").click();
     check(
-      (await page.locator("#ap-complete").textContent()) === "10/10 completos",
+      (await page.locator("#ap-complete").textContent()) === "10 / 10",
       "Seleção e substituição em massa completa entrega",
     );
     await page.locator("#ap-clear").click();
     check(
-      (await page.locator("#ap-complete").textContent()) === "0/10 completos",
+      (await page.locator("#ap-complete").textContent()) === "0 / 10",
       "Limpar decisões de rascunho",
     );
     await page.locator("#ap-apply").click();
@@ -340,16 +412,13 @@ function fixture() {
       await page.locator("#ap-confirm").isEnabled(),
       "Plano completo habilita confirmação",
     );
-    await page
-      .locator('#ap-rows input[data-field="fim_planejado"]')
-      .first()
-      .fill("2026-11-02");
-    await page
-      .locator('#ap-rows input[data-field="fim_planejado"]')
-      .first()
-      .blur();
+    await openImage(1);
+    await page.locator("#ap-editor-day").fill("2026-11-02");
+    await page.locator("#ap-editor-save").click();
+    await waitMessage("dia útil");
     check(
-      (await page.locator("#ap-message").textContent()).includes("dia útil"),
+      (await page.locator('#ap-rows [data-id="1"] time').textContent()) ===
+        "03/11/2026",
       "Feriado rejeitado sem mudar decisão",
     );
     await page.locator("#ap-confirm").click();
@@ -358,7 +427,7 @@ function fixture() {
     );
     check(
       plan.planejamento.baseline_versao_id === 1 &&
-        (await page.locator("#ap-rows select").first().isDisabled()),
+        (await page.locator("#ap-editor-person").isDisabled()),
       "Confirmação cria baseline e bloqueia edição direta",
     );
     await page.locator("#ap-history").click();
@@ -377,8 +446,9 @@ function fixture() {
     await page.locator("#ap-close-history").click();
     await page.locator("#ap-replan").click();
     await page.locator("#ap-confirm").click();
+    await waitMessage("motivo");
     check(
-      (await page.locator("#ap-message").textContent()).includes("motivo"),
+      !(await page.locator("#ap-reason").inputValue()),
       "Replanejamento exige motivo para confirmar",
     );
     await page.locator("#ap-reason").selectOption("REDISTRIBUICAO_EQUIPE");
@@ -394,10 +464,7 @@ function fixture() {
     );
     await page.locator("#ap-replan").click();
     await page.locator("#ap-save").click();
-    await page.waitForFunction(
-      () =>
-        document.getElementById("ap-message").textContent === "Rascunho salvo.",
-    );
+    await waitMessage("Rascunho salvo.");
     check(
       await page.locator("#ap-confirm").isVisible(),
       "Rascunho de replanejamento mantém edição disponível",
@@ -431,6 +498,8 @@ function fixture() {
           .count()) === 1,
       "Escolha distingue função principal e secundária",
     );
+    await closeEditor();
+    await page.locator("#ap-tab-calendar").click();
     await page.locator("#ap-add-person").click();
     check(
       (await page.locator("#ap-people-list").textContent()).includes(
@@ -442,6 +511,7 @@ function fixture() {
       "Candidatos exibem qualificação e disponibilidade diária",
     );
     await page.locator("#ap-close-people").click();
+    await openSuggestion();
     await page
       .getByText("Distribuir por tipo de imagem", { exact: true })
       .click();
@@ -451,18 +521,18 @@ function fixture() {
     await page.getByRole("button", { name: "Subir Unidade" }).click();
     await page.locator("#ap-suggest").click();
     await page
-      .locator("#ap-suggestion-loading #ap-loading")
+      .locator("#ap-loading-home #ap-loading")
       .waitFor({ state: "visible" });
     check(
       (await page
         .locator(
-          '#ap-suggestion-loading canvas[data-thinking-orb][aria-label="Gerando sugestão"]',
+          '#ap-loading-home canvas[data-thinking-orb][aria-label="Gerando sugestão"]',
         )
         .isVisible()) && (await page.locator("#ap-suggest-order").isDisabled()),
       "Thinking Orbs visível durante geração; ordem bloqueada",
     );
     await page.waitForFunction(() => {
-      const c = document.querySelector("#ap-suggestion-loading canvas");
+      const c = document.querySelector("#ap-loading-home canvas");
       return (
         c.width > 0 &&
         c.height > 0 &&
@@ -475,11 +545,7 @@ function fixture() {
     check(true, "Thinking Orbs global desenha no canvas durante a sugestão");
     holdSuggestion = false;
     releaseSuggestion();
-    await page.waitForFunction(() =>
-      document
-        .getElementById("ap-message")
-        .textContent.includes("Sugestão gerada"),
-    );
+    await waitMessage("Sugestão gerada");
     check(
       (await page.locator(".ap-grid-cell.is-overloaded").count()) === 0 &&
         posts.at(-1).acao === "sugerir",
@@ -498,6 +564,7 @@ function fixture() {
       posts.at(-1).prioridade_tipos.join(",") === "Unidade,Fachada",
       "Prioridade alterada enviada na ordem escolhida",
     );
+    await openSuggestion();
     await page.locator("#ap-suggest-order").selectOption("MENOR");
     await page.locator("#ap-suggest").click();
     await page.waitForFunction(
@@ -507,60 +574,61 @@ function fixture() {
       posts.at(-1).ordem_complexidade === "MENOR",
       "Geração envia a ordem menor complexidade",
     );
-    await page.locator('#ap-rows tr[data-id="1"] [data-pin]').click();
+    await openImage(1);
+    await page.locator("#ap-editor-pin").check();
+    await page.locator("#ap-editor-save").click();
+    await openSuggestion();
     await page.locator("#ap-suggest").click();
     await page.waitForFunction(
-      () => document.getElementById("ap-suggest").disabled === false,
+      () => !document.getElementById("ap-suggest").disabled,
     );
     check(
-      (await page
-        .locator('#ap-rows tr[data-id="1"] [data-pin]')
-        .getAttribute("aria-pressed")) === "true" &&
+      (await page.locator("#ap-editor-pin").isChecked()) &&
         posts.at(-1).itens[0].fixado,
       "Fixação enviada e preservada durante sugestão",
     );
+    await closeEditor();
+    await page.locator("#ap-tab-calendar").click();
     const target = page.locator(
       '[data-drop-person="12"][data-drop-day="2026-10-29"]',
     );
     await page.locator('#ap-grid [data-card="4"]').dragTo(target);
-    check(
-      (await page.locator('#ap-rows tr[data-id="4"] select').inputValue()) ===
-        "12" &&
-        (await page
-          .locator('#ap-rows tr[data-id="4"] input[type="date"]')
-          .inputValue()) === "2026-10-29",
-      "Drag move entre colaborador e dia",
-    );
+    await target.locator('[data-card="4"]').waitFor();
+    check(true, "Drag move entre colaborador e dia");
     acceptDialogs = false;
     await page.locator('#ap-grid [data-card="5"]').dragTo(target);
+    await page.waitForFunction(() =>
+      document.querySelector(
+        '[data-drop-person="11"][data-drop-day="2026-10-28"] [data-card="5"]',
+      ),
+    );
     check(
-      (await page.locator('#ap-rows tr[data-id="5"] select').inputValue()) ===
-        "11",
+      (await target.locator('[data-card="5"]').count()) === 0,
       "Cancelar sobrecarga reverte a movimentação visual",
     );
     acceptDialogs = true;
     await page.locator('#ap-grid [data-card="5"]').dragTo(target);
+    await target.locator('[data-card="5"]').waitFor();
     check(
-      await target
-        .getAttribute("class")
-        .then((c) => c.includes("is-overloaded")),
+      (await target.getAttribute("class")).includes("is-overloaded"),
       "Sobrecarga explícita visível na célula",
     );
-    await page.locator('#ap-grid [data-card="5"] [data-unplan]').click();
+    await target.locator('[data-card="5"]').click();
+    await page.locator("#ap-editor-remove").click();
+    await target.locator('[data-card="5"]').waitFor({ state: "detached" });
     check(
-      (await page.locator('#ap-backlog [data-card="5"]').count()) === 1,
-      "Retirar imagem devolve ao backlog",
+      (await page.locator('#ap-rows [data-id="5"] time').textContent()) === "—",
+      "Retirar imagem devolve à lista sem data",
     );
-    await page.locator('#ap-backlog [data-card-select="5"]').check();
-    await page
-      .locator('[data-place-person="12"][data-place-day="2026-10-30"]')
-      .click();
-    check(
-      (await page
-        .locator('#ap-rows tr[data-id="5"] input[type="date"]')
-        .inputValue()) === "2026-10-30",
-      "Alternativa acessível ao drag permite adicionar seleção",
+    const newTarget = page.locator(
+      '[data-drop-person="12"][data-drop-day="2026-10-30"]',
     );
+    await newTarget.locator("[data-place-person]").click();
+    await page.locator('#ap-picker-items input[value="5"]').check();
+    await page.locator("#ap-picker-apply").click();
+    await newTarget.locator('[data-card="5"]').waitFor();
+    check(true, "Alternativa acessível ao drag permite adicionar seleção");
+    await page.locator("#ap-more").click();
     await page.locator("#ap-realized").click();
     check(
       (await page.locator("#ap-history-title").textContent()) ===
@@ -568,6 +636,7 @@ function fixture() {
       "Leitura de execução separa fatos das decisões",
     );
     await page.locator("#ap-close-history").click();
+    await newTarget.locator('[data-card="5"]').click();
     for (const [name, width, height] of [
       ["desktop", 1920, 1080],
       ["notebook", 1366, 768],
@@ -579,7 +648,7 @@ function fixture() {
       await page.waitForFunction(
         (expected) =>
           document.querySelectorAll(".ap-grid-day").length === expected,
-        width <= 600 ? 1 : 3,
+        5,
       );
       check(
         await page.evaluate(
@@ -588,19 +657,12 @@ function fixture() {
         `Sem overflow na página: ${name}`,
       );
       check(
-        (await page.locator(".ap-grid-day").count()) === (width <= 600 ? 1 : 3),
-        `Grade diária adaptada: ${name}`,
-      );
-      check(
-        await page
-          .locator("#ap-rows select")
-          .first()
-          .evaluate((element) => {
-            const row = element.closest("tr").getBoundingClientRect(),
-              field = element.getBoundingClientRect();
-            return field.left >= row.left && field.right <= row.right;
-          }),
-        `Responsável acessível na lista: ${name}`,
+        (await page.locator(".ap-grid-day").count()) === 5 &&
+          (await page.locator("#ap-editor").isVisible()) &&
+          (await page
+            .locator("#ap-grid-scroll")
+            .evaluate((grid) => grid.scrollWidth <= grid.clientWidth)),
+        `Cinco dias visíveis com painel aberto: ${name}`,
       );
       const output = path.join(root, "output", "planejamento-alteracao-ui");
       fs.mkdirSync(output, { recursive: true });
@@ -613,6 +675,7 @@ function fixture() {
           path: path.join(output, "mobile-viewport.png"),
         });
     }
+    await closeEditor();
     await page.locator("#ap-theme").click();
     check(
       await page
@@ -627,6 +690,7 @@ function fixture() {
       ),
       fullPage: true,
     });
+    await page.setViewportSize({ width: 1440, height: 1000 });
     plan.planejamento.estado = "CONFIRMADO";
     plan.planejamento.rascunho_pendente = false;
     plan.itens[0].responsavel_planejado_id = 99;
@@ -640,11 +704,12 @@ function fixture() {
       () => document.getElementById("ap-reload").hidden,
     );
     check(
-      (await page.locator("#ap-complete").textContent()) === "10/10 completos",
+      (await page.locator("#ap-complete").textContent()) === "10 / 10",
       "Versão confirmada preserva compromisso de colaborador inativo",
     );
+    await openImage(1);
     check(
-      (await page.locator("#ap-rows select").first().inputValue()) === "99" &&
+      (await page.locator("#ap-editor-person").inputValue()) === "99" &&
         (await page.locator("#ap-distribution").textContent()).includes(
           "Colaborador histórico",
         ),
@@ -652,15 +717,14 @@ function fixture() {
     );
     await page.locator("#ap-replan").click();
     check(
-      (await page.locator("#ap-complete").textContent()) === "9/10 completos" &&
+      (await page.locator("#ap-complete").textContent()) === "9 / 10" &&
         (await page.locator("#ap-confirm").isDisabled()),
       "Novo replanejamento exige responsável ativo",
     );
-    await page.locator('#ap-rows tr[data-id="1"] [data-pin]').click();
+    await page.locator("#ap-editor-pin").uncheck();
+    await page.locator("#ap-editor-save").click();
     check(
-      (await page
-        .locator('#ap-rows tr[data-id="1"] [data-pin]')
-        .getAttribute("aria-pressed")) === "false",
+      !(await page.locator("#ap-editor-pin").isChecked()),
       "Decisão fixada de responsável inelegível pode ser liberada para redistribuição",
     );
     plan.itens.forEach((i) => {
@@ -676,11 +740,8 @@ function fixture() {
       () => document.getElementById("ap-reload").hidden,
     );
     check(
-      (await page.locator("#ap-complete").textContent()) ===
-        "10/10 completos" &&
-        (await page.locator("#ap-demand").textContent()).includes(
-          "Pontos não registrados",
-        ),
+      (await page.locator("#ap-complete").textContent()) === "10 / 10" &&
+        (await page.locator("#ap-demand").textContent()).includes("Sem pontos"),
       "Plano anterior aos pontos não vira demanda zero nem perde decisões",
     );
     check(
@@ -691,16 +752,13 @@ function fixture() {
     );
     await page.locator("#ap-replan").click();
     check(
-      (await page.locator("#ap-demand").textContent()).includes("150 pontos") &&
-        (await page.locator('#ap-rows tr[data-id="1"] select').inputValue()) ===
-          "99",
+      (await page.locator("#ap-demand").textContent()).includes("150 pts") &&
+        (await page.locator("#ap-editor-person").inputValue()) === "99",
       "Replanejar calcula pesos atuais sem substituir responsável automaticamente",
     );
     await page.locator("#ap-cancel-replan").click();
     check(
-      (await page.locator("#ap-demand").textContent()).includes(
-        "Pontos não registrados",
-      ),
+      (await page.locator("#ap-demand").textContent()).includes("Sem pontos"),
       "Cancelar replanejamento restaura ausência de snapshot de pontos",
     );
     plan.capacidade.agenda[11]["2026-10-28"].avisos = [
@@ -713,6 +771,7 @@ function fixture() {
     await page.waitForFunction(
       () => document.getElementById("ap-reload").hidden,
     );
+    await page.locator("#ap-tab-calendar").click();
     const unknownCell = await page
       .locator('[data-drop-person="11"][data-drop-day="2026-10-28"]')
       .textContent();
@@ -731,7 +790,7 @@ function fixture() {
     );
     check(
       (await page.locator("#ap-save").isDisabled()) &&
-        (await page.locator("#ap-rows select").first().isDisabled()),
+        (await page.locator("#ap-editor-person").isDisabled()),
       "Leitura sem permissão de gestão não permite editar",
     );
     plan.pode_editar = true;
@@ -762,18 +821,19 @@ function fixture() {
       "Entrega mista mostra quantidades e permite iniciar replanejamento",
     );
     await page.locator("#ap-replan").click();
-    const deliveredRow = page.locator('#ap-rows tr[data-id="1"]');
-    const activeRow = page.locator('#ap-rows tr[data-id="2"]');
+    await openImage(1);
+    const deliveredRow = page.locator('#ap-rows [data-id="1"]');
     check(
       (await deliveredRow.textContent()).includes("Entregue ao cliente") &&
-        (await deliveredRow.locator('input[type="date"]').isDisabled()) &&
-        (await deliveredRow.locator("select").isDisabled()) &&
+        (await page.locator("#ap-editor-day").isDisabled()) &&
+        (await page.locator("#ap-editor-person").isDisabled()) &&
         (await deliveredRow.locator("[data-select]").isDisabled()),
       "Imagem entregue permanece visível e somente leitura",
     );
+    await openImage(2);
     check(
-      (await activeRow.locator('input[type="date"]').isEnabled()) &&
-        (await activeRow.locator("select").isDisabled()),
+      (await page.locator("#ap-editor-day").isEnabled()) &&
+        (await page.locator("#ap-editor-person").isDisabled()),
       "Imagem em execução permite data e protege atribuição",
     );
     await page.locator("#ap-select-all").check();

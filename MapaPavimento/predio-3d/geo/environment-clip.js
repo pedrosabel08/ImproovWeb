@@ -85,6 +85,10 @@ export function unionPolygons(a, b) {
   if (!b.length) return a;
   return fromMulti(polygonClipping.union(toMulti(a), toMulti(b)));
 }
+export function dissolvePolygons(polygons) {
+  if (!polygons.length) return [];
+  return fromMulti(polygonClipping.union(...toMulti(polygons)));
+}
 export function intersectPolygons(a,b) {
   if(!a.length||!b.length)return [];
   return fromMulti(polygonClipping.intersection(toMulti(a),toMulti(b)));

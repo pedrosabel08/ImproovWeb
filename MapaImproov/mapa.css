@@ -205,7 +205,6 @@ html[data-theme="light"] .mi-page {
   flex-direction: column;
   gap: 14px;
   overflow: auto;
-  scrollbar-width: thin;
 }
 .mi-stats {
   display: grid;
@@ -344,7 +343,6 @@ html[data-theme="light"] .mi-page {
   max-height: calc(100% - 122px);
   padding: 20px;
   overflow: auto;
-  scrollbar-width: thin;
 }
 .mi-code {
   color: var(--mi-accent);

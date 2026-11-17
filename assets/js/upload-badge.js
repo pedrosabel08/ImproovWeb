@@ -16,8 +16,8 @@
 
   const BAR_ID = "upload-badge-bar";
   const STATE_KEY = "improov_upload_state"; // persiste uploads Fase 2 entre páginas
-  const STALE_MS = 4 * 60 * 60 * 1000;     // descarta estado com mais de 4h
-  const STALE_REHYDRATE_MS = 15000;         // remove item rehydratado sem atualização em 15s
+  const STALE_MS = 4 * 60 * 60 * 1000; // descarta estado com mais de 4h
+  const STALE_REHYDRATE_MS = 15000; // remove item rehydratado sem atualização em 15s
 
   // State: id → { id, name, totalBytes, xhr, phase, done, error, _staleTimer, _isRehydrated }
   const items = {};
@@ -34,23 +34,36 @@
     try {
       var entries = JSON.parse(localStorage.getItem(STATE_KEY) || "[]");
       var now = Date.now();
-      return entries.filter(function (e) { return e.ts && (now - e.ts) < STALE_MS; });
-    } catch (e) { return []; }
+      return entries.filter(function (e) {
+        return e.ts && now - e.ts < STALE_MS;
+      });
+    } catch (e) {
+      return [];
+    }
   }
 
   function _persistItem(id) {
     var item = items[id];
     if (!item || item.done || item.error) return;
     try {
-      var state = _loadState().filter(function (s) { return s.id !== id; });
-      state.push({ id: id, name: item.name, totalBytes: item.totalBytes, ts: Date.now() });
+      var state = _loadState().filter(function (s) {
+        return s.id !== id;
+      });
+      state.push({
+        id: id,
+        name: item.name,
+        totalBytes: item.totalBytes,
+        ts: Date.now(),
+      });
       localStorage.setItem(STATE_KEY, JSON.stringify(state));
     } catch (e) {}
   }
 
   function _unpersistItem(id) {
     try {
-      var state = _loadState().filter(function (s) { return s.id !== id; });
+      var state = _loadState().filter(function (s) {
+        return s.id !== id;
+      });
       if (state.length === 0) localStorage.removeItem(STATE_KEY);
       else localStorage.setItem(STATE_KEY, JSON.stringify(state));
     } catch (e) {}
@@ -374,7 +387,12 @@
   window.addEventListener("beforeunload", function (e) {
     var hasActivePhase1 = Object.keys(items).some(function (id) {
       var item = items[id];
-      return item && !item.done && !item.error && (item.phase === 0 || item.phase === 1);
+      return (
+        item &&
+        !item.done &&
+        !item.error &&
+        (item.phase === 0 || item.phase === 1)
+      );
     });
     if (hasActivePhase1) {
       e.preventDefault();
@@ -390,7 +408,12 @@
     state.forEach(function (s) {
       if (!s.id || !s.name) return;
       // Pula se já foi notificado como concluído
-      try { if (localStorage.getItem("improov_upload_notified_" + s.id)) { _unpersistItem(s.id); return; } } catch (e) {}
+      try {
+        if (localStorage.getItem("improov_upload_notified_" + s.id)) {
+          _unpersistItem(s.id);
+          return;
+        }
+      } catch (e) {}
       // Cria o item na barra com estado de espera
       add(s.id, s.name, s.totalBytes || 0, null);
       var e2 = _els(s.id);
@@ -403,7 +426,8 @@
         // Remove se nenhuma atualização via WebSocket chegar em 15s (estado obsoleto)
         items[s.id]._staleTimer = setTimeout(function () {
           var item = items[s.id];
-          if (item && item._isRehydrated && !item.done && !item.error) dismiss(s.id);
+          if (item && item._isRehydrated && !item.done && !item.error)
+            dismiss(s.id);
         }, STALE_REHYDRATE_MS);
       }
     });
@@ -419,16 +443,24 @@
       var id = String(payload.id);
 
       var status = payload.status ? payload.status.toLowerCase() : "";
-      var isDone = status === "done" || payload.progress >= 100;
+      var isDone = status === "done" || status === "awaiting_approval";
 
       // Auto-cria item se não estiver rastreado nesta página (usuário navegou durante Fase 2)
       if (!items[id]) {
-        if (isDone) { _unpersistItem(id); return; } // já concluiu, sem necessidade de mostrar
-        var stored = _loadState().find(function (s) { return s.id === id; });
+        if (isDone) {
+          _unpersistItem(id);
+          return;
+        } // já concluiu, sem necessidade de mostrar
+        var stored = _loadState().find(function (s) {
+          return s.id === id;
+        });
         var name = (stored && stored.name) || id;
         var totalBytes = (stored && stored.totalBytes) || 0;
         add(id, name, totalBytes, null);
-        if (items[id]) { items[id].phase = 2; items[id]._isRehydrated = true; }
+        if (items[id]) {
+          items[id].phase = 2;
+          items[id]._isRehydrated = true;
+        }
       }
 
       // Cancela timer de obsolescência — recebemos atualização real
@@ -441,8 +473,18 @@
       var isQueued = status === "queued" || status === "enqueued";
       var isProcessing = status === "processing";
 
-      if (isDone) { complete(id); return; }
-      if (isQueued) { phase2Progress(id, 0, "Na fila — aguardando transferência..."); return; }
+      if (isDone) {
+        complete(id);
+        return;
+      }
+      if (status === "failed" || status === "error") {
+        error(id, payload.message || "Falha na transferência");
+        return;
+      }
+      if (isQueued) {
+        phase2Progress(id, 0, "Na fila — aguardando transferência...");
+        return;
+      }
       if (isProcessing || payload.progress > 0) {
         var pct = typeof payload.progress === "number" ? payload.progress : 0;
         var msg = payload.message ? "Fase 2: " + payload.message : null;

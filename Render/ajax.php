@@ -1,8 +1,9 @@
 <?php
 
-require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../helpers/aprovacao_interna_helper.php';
 require_once __DIR__ . '/deadline_flow.php';
+require_once __DIR__ . '/render_overview.php';
 require_once __DIR__ . '/pos_referencias_helper.php';
 require_once __DIR__ . '/render_ws_notify.php';
 require_once __DIR__ . '/../Pos-Producao/ws_notify.php';
@@ -19,6 +20,7 @@ if (empty($_SESSION['logado'])) {
     echo json_encode(['status' => 'erro', 'message' => 'Sessão expirada.']);
     exit;
 }
+require_once __DIR__ . '/../conexao.php';
 
 function render_current_colaborador_id(): int
 {
@@ -723,7 +725,10 @@ if (isset($_GET['action'])) {
                 $types .= 's';
             };
 
-            $addFilter('r.status', trim((string)($_GET['status'] ?? '')));
+            $view = $_GET['view'] ?? '';
+            $overview = in_array($view, ['pending', 'approved'], true);
+            $status = trim((string)($_GET['status'] ?? ''));
+            $addFilter('r.status', $status);
             $addFilter('s.nome_status', trim((string)($_GET['statusImagem'] ?? '')));
             $addFilter('c.nome_colaborador', trim((string)($_GET['colaborador'] ?? '')));
             $addFilter('o.nomenclatura', trim((string)($_GET['obra'] ?? '')));
@@ -737,16 +742,16 @@ if (isset($_GET['action'])) {
             }
 
             $dateFrom = trim((string)($_GET['dateFrom'] ?? ''));
-            if ($dateFrom !== '') {
+            if (render_kpi_valid_date($dateFrom)) {
                 $where[] = 'r.data >= ?';
                 $params[] = $dateFrom . ' 00:00:00';
                 $types .= 's';
             }
 
             $dateTo = trim((string)($_GET['dateTo'] ?? ''));
-            if ($dateTo !== '') {
-                $where[] = 'r.data <= ?';
-                $params[] = $dateTo . ' 23:59:59';
+            if (render_kpi_valid_date($dateTo)) {
+                $where[] = 'r.data < DATE_ADD(?, INTERVAL 1 DAY)';
+                $params[] = $dateTo;
                 $types .= 's';
             }
 
@@ -767,13 +772,12 @@ if (isset($_GET['action'])) {
                                ORDER BY rt.numero_tentativa DESC LIMIT 1
                            ) THEN 1 ELSE 0 END AS concluido_manualmente"
                 : ', 0 AS concluido_manualmente';
-            $from = "
+            $baseFrom = "
 FROM render_alta r
 LEFT JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
 LEFT JOIN colaborador c ON r.responsavel_id = c.idcolaborador
 LEFT JOIN status_imagem s ON r.status_id = s.idstatus
-LEFT JOIN obra o ON i.obra_id = o.idobra" . $manualJoin;
-            $whereSql = ' WHERE ' . implode(' AND ', $where);
+LEFT JOIN obra o ON i.obra_id = o.idobra";
 
             $bind = static function ($stmt, $bindTypes, $bindParams) {
                 if ($bindTypes !== '') {
@@ -783,6 +787,51 @@ LEFT JOIN obra o ON i.obra_id = o.idobra" . $manualJoin;
                 return $stmt->get_result();
             };
 
+            $summary = null;
+            $groupSelect = '';
+            $sort = "FIELD(r.status, 'Em aprovação', 'Em andamento', 'Refazendo', 'Reprovado', 'Erro', 'Aprovado')";
+            if ($overview) {
+                $execution = 'NULL';
+                if (render_overview_table_available($conn, 'deadline_job_execution')) {
+                    $baseFrom .= ' LEFT JOIN deadline_job_execution de ON de.deadline_job_id=CAST(LOWER(r.deadline_job_id) AS BINARY)';
+                    $execution = "CASE WHEN de.observed_at >= NOW() - INTERVAL 5 MINUTE
+                        THEN NULLIF(de.execution_state,'unknown') END";
+                }
+                if (render_overview_table_available($conn, 'deadline_job_progress')) {
+                    $baseFrom .= ' LEFT JOIN deadline_job_progress dp ON dp.deadline_job_id=CAST(LOWER(r.deadline_job_id) AS BINARY)';
+                    $execution = "COALESCE($execution, CASE WHEN r.status='Em andamento'
+                        AND dp.observed_at >= NOW() - INTERVAL 5 MINUTE
+                        AND (dp.deadline_task_elapsed IS NOT NULL OR LOWER(dp.deadline_task_render_status) LIKE '%rendering%')
+                        THEN 'rendering' END)";
+                }
+                $duration = deadline_flow_schema_ready($conn) ? "(SELECT TIMESTAMPDIFF(SECOND, rt.iniciado_em, rt.concluido_em)
+                    FROM render_tentativas rt WHERE rt.render_id=r.idrender_alta AND rt.deadline_job_id=r.deadline_job_id
+                    AND rt.status <> 'CONCLUIDA_MANUALMENTE' LIMIT 1)" : 'NULL';
+                $group = render_overview_group($execution);
+                $requestedGroup = $_GET['renderGroup'] ?? '';
+                if ($view === 'pending' && in_array($requestedGroup, ['rendering', 'queued', 'error', 'rework', 'other'], true)) {
+                    $where[] = "($group) = ?";
+                    $types .= 's';
+                    $params[] = $requestedGroup;
+                }
+                $summary = render_overview_summary(
+                    $conn,
+                    $bind,
+                    $baseFrom,
+                    ' WHERE ' . implode(' AND ', $where),
+                    $types,
+                    $params,
+                    $group,
+                    $duration,
+                    render_kpi_valid_date($dateFrom) ? $dateFrom : '',
+                    render_kpi_valid_date($dateTo) ? $dateTo : ''
+                );
+                $where[] = $view === 'approved' ? "r.status = 'Aprovado'" : "r.status <> 'Aprovado'";
+                $groupSelect = ", $group AS render_group, $execution AS execution_state";
+                $sort = "FIELD(($group),'rendering','queued','error','rework','other','approved')";
+            }
+            $from = $baseFrom . $manualJoin;
+            $whereSql = ' WHERE ' . implode(' AND ', $where);
             $stmtCount = $conn->prepare("SELECT COUNT(*) AS total $from $whereSql");
             $resCount = $bind($stmtCount, $types, $params);
             $total = (int)$resCount->fetch_assoc()['total'];
@@ -795,11 +844,11 @@ LEFT JOIN obra o ON i.obra_id = o.idobra" . $manualJoin;
     i.tipo_imagem,
     o.nome_obra,
     o.nomenclatura AS obra_nomenclatura,
-    r.* $manualSelect
+    r.* $manualSelect $groupSelect
  $from
  $whereSql
 ORDER BY 
-    FIELD(r.status, 'Em aprovação', 'Em andamento', 'Refazendo', 'Reprovado', 'Erro', 'Aprovado'), data DESC
+    $sort, r.data DESC, r.idrender_alta DESC
 LIMIT $limit OFFSET $offset";
             $stmt = $conn->prepare($sql);
             $result = $bind($stmt, $types, $params);
@@ -811,10 +860,16 @@ LIMIT $limit OFFSET $offset";
             }
             $stmt->close();
 
-            $progressByJob = render_deadline_progress_for_jobs(
-                $conn,
-                array_column($renders, 'deadline_job_id')
-            );
+            try {
+                $progressByJob = render_deadline_progress_for_jobs(
+                    $conn,
+                    array_column(array_filter($renders, static fn ($r) => !$overview
+                        || ($r['render_group'] === 'rendering' || $r['status'] === 'Em andamento')), 'deadline_job_id')
+                );
+            } catch (Throwable $error) {
+                error_log('[Render] Falha ao consultar o progresso: ' . $error->getMessage());
+                $progressByJob = [];
+            }
             foreach ($renders as &$render) {
                 $jobId = deadline_flow_valid_job_id((string) ($render['deadline_job_id'] ?? ''));
                 $progress = $jobId !== null ? ($progressByJob[$jobId] ?? null) : null;
@@ -844,6 +899,10 @@ LIMIT $limit OFFSET $offset";
                     'status' => "SELECT DISTINCT r.status AS value $from WHERE r.status != 'Arquivado' AND r.status IS NOT NULL ORDER BY value",
                     'statusImagem' => "SELECT DISTINCT s.nome_status AS value $from WHERE r.status != 'Arquivado' AND s.nome_status IS NOT NULL ORDER BY value",
                 ];
+                if ($overview) {
+                    $tabCondition = $view === 'approved' ? "r.status = 'Aprovado'" : "r.status NOT IN ('Arquivado','Aprovado')";
+                    $optionQueries['status'] = "SELECT DISTINCT r.status AS value $baseFrom WHERE $tabCondition ORDER BY value";
+                }
                 foreach ($optionQueries as $key => $optionQuery) {
                     $optionResult = $conn->query($optionQuery);
                     while ($optionRow = $optionResult->fetch_assoc()) {
@@ -852,7 +911,7 @@ LIMIT $limit OFFSET $offset";
                 }
             }
 
-            echo json_encode(['status' => 'sucesso', 'renders' => $renders, 'total' => $total, 'page' => $page, 'limit' => $limit, 'filterOptions' => $filterOptions]);
+            echo json_encode(['status' => 'sucesso', 'renders' => $renders, 'total' => $total, 'page' => $page, 'limit' => $limit, 'filterOptions' => $filterOptions, 'summary' => $summary], JSON_INVALID_UTF8_SUBSTITUTE);
             break;
 
         case 'getRender':
@@ -913,7 +972,27 @@ LIMIT $limit OFFSET $offset";
                     $stmtPre->close();
                 }
 
-                echo json_encode(['status' => 'sucesso', 'render' => $render, 'previews' => $previews]);
+                [$attempts, $processingLogs] = render_processing_history($conn, $idrender_alta);
+                $jobId = deadline_flow_valid_job_id($render['deadline_job_id'] ?? null);
+                $render['detail_job_id'] = $jobId ?: deadline_flow_valid_job_id($attempts[0]['deadline_job_id'] ?? null);
+                if ($jobId && render_overview_table_available($conn, 'deadline_job_execution')) {
+                    $execution = $conn->prepare('SELECT execution_state, worker, observed_at FROM deadline_job_execution WHERE deadline_job_id=?');
+                    $execution->bind_param('s', $jobId);
+                    $execution->execute();
+                    $render['execution'] = $execution->get_result()->fetch_assoc();
+                    $execution->close();
+                }
+                if ($jobId && $render['status'] !== 'Aprovado') {
+                    try {
+                        if (render_overview_table_available($conn, 'deadline_job_progress')) {
+                            $render += render_deadline_progress_for_jobs($conn, [$jobId])[$jobId] ?? [];
+                        }
+                    } catch (Throwable $error) {
+                        error_log('[Render] Falha ao consultar os detalhes do job: ' . $error->getMessage());
+                    }
+                }
+                echo json_encode(['status' => 'sucesso', 'render' => $render, 'previews' => $previews,
+                    'attempts' => $attempts, 'processing_logs' => $processingLogs], JSON_INVALID_UTF8_SUBSTITUTE);
             }
             break;
 

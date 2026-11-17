@@ -5,8 +5,14 @@ import {
 import { ribbonGeometry } from "./road-builder.js?v=20261103-boundary-v4";
 import { SURFACE_Y } from "./environment-config.js?v=20261103-boundary-v4";
 
+export function waterwayWidth(waterway) {
+  return (
+    { river: 12, stream: 3, canal: 6, drain: 1.5, ditch: 1 }[waterway] || 3
+  );
+}
+
 export function buildWater(feature, { project, batches, metrics, terrain }) {
-  if(terrain) {
+  if (terrain) {
     // The controller emits the union once. Rebuilding independent ribbons here
     // would restore overlapping faces and mismatching banks at confluences.
     metrics.water++;
@@ -19,10 +25,7 @@ export function buildWater(feature, { project, batches, metrics, terrain }) {
     metrics.polygons++;
   }
   if (feature.line) {
-    const width =
-      { river: 12, stream: 3, canal: 6, drain: 1.5, ditch: 1 }[
-        feature.waterway
-      ] || 3;
+    const width = waterwayWidth(feature.waterway);
     const geometry = ribbonGeometry(
       feature.line.map(project),
       width,

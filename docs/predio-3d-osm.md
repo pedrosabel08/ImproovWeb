@@ -81,10 +81,11 @@ park, forest, wood, grass e grassland. Usa `out geom`, incluindo multipolígonos
 com membros invertidos/divididos e furos; membros são deduplicados. Nomes e POIs
 não são propagados para os dados normalizados/cache.
 
-Endpoint público: `FLOW_OSM_ENDPOINT` em `helpers/mapa_osm_helper.php`, atualmente a instância
-VK Maps listada na documentação OSM. As instâncias `.de` e Private Coffee
-falharam por indisponibilidade/timeout durante a validação. Não há loop de
-reconsultas nem alternância automática que multiplique requisições.
+Provedores públicos definidos em `FLOW_OSM_PROVIDERS` no helper OSM. A
+aquisição usa POST e dá preferência ao `overpass-api.de`, com a instância VK Maps
+já usada pelo Flow como contingência. Falhas têm cooldown por provedor e
+respostas de limitação suspendem a cadeia. O cache persistente é consultado
+antes da rede.
 
 Cache normalizado em memória + localStorage: versão de schema, validade de sete
 dias, até quatro áreas, chave latitude/longitude com seis casas + raio. Norte

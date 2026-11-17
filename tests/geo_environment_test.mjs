@@ -173,6 +173,30 @@ globalThis.fetch=async()=>{throw Error("OSM offline");};
 await environment.setConfig({...config,obra_id:102,latitude:-27.4});
 ok(viewport.dataset.geoState==="error" && scene.children.includes(root) && scene.children.length===1,"OSM failure keeps GLB alive, no partial group");
 ok(disposed===meshes,"Switch/failure releases all GPU geometries");
+const old = Math.floor(Date.now()/1000)-8*86400;
+const oldContext = {payload:fixture,origin:{latitude:-27.3001,longitude:config.longitude},acquired_at:old,expires_at:old+604800,stale:true,cache_hit:true};
+let finishRefresh;
+globalThis.fetch = input => new URL(input).searchParams.has("cache_only")
+  ? Promise.resolve({ok:true,json:async()=>({sucesso:true,contexto_osm:oldContext})})
+  : new Promise(resolve=>{finishRefresh=resolve;});
+await environment.setConfig({...config,obra_id:102,latitude:-27.3001});
+ok(viewport.dataset.geoState==="ready" && environment.loading.hidden && !!finishRefresh,
+  "Stale server cache is presented while refresh is still pending");
+finishRefresh({ok:false,status:503});
+await new Promise(resolve=>setImmediate(resolve));
+ok(viewport.dataset.geoState==="ready" && environment.group.parent===scene,
+  "Background failure preserves the cached environment");
+
+let finishMiss;
+globalThis.fetch = input => new URL(input).searchParams.has("cache_only")
+  ? Promise.resolve({ok:true,json:async()=>({sucesso:true,contexto_osm:null})})
+  : new Promise(resolve=>{finishMiss=resolve;});
+const miss = environment.setConfig({...config,obra_id:102,latitude:-27.7});
+await new Promise(resolve=>setImmediate(resolve));
+ok(!environment.loading.hidden && scene.children.includes(root), "Cache miss loads without blocking the model");
+finishMiss({ok:false,status:503});
+await miss;
+ok(environment.loading.hidden && viewport.dataset.geoState==="error", "Loading ends on upstream failure");
 globalThis.fetch=async()=>({ok:true,json:async()=>({sucesso:true,contexto_osm:{payload:{elements:[]},origin:{latitude:-27.5,longitude:config.longitude},acquired_at:Math.floor(Date.now()/1000),expires_at:Math.floor(Date.now()/1000)+604800,stale:false}})});
 await environment.setConfig({...config,obra_id:102,latitude:-27.5});
 ok(viewport.dataset.geoState==="empty" && scene.children.length===1,"Empty response preserves current viewer");

@@ -7,6 +7,7 @@ import os
 import signal
 import socket
 import sys
+import threading
 import time
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -19,6 +20,7 @@ from deadline_domain import (
     choose_unambiguous_candidates,
     state_from_deadline,
 )
+from deadline_farm import FarmCollector
 from deadline_repository import DeadlineRepository
 from deadline_render_ef import RenderEF
 from deadline_output import OutputValidationError
@@ -300,6 +302,7 @@ class DeadlineWorker:
                     task_progress,
                     self.settings.worker_id,
                 )
+                self.repository.record_job_execution(attempt["deadline_job_id"], job_data, task_data)
             except Exception:
                 self.logger.exception(
                     "deadline progress cache update failed", extra=context
@@ -669,6 +672,21 @@ class DeadlineWorker:
             STOP_FILE.unlink()
         PID_FILE.write_text(str(os.getpid()), encoding="ascii")
         self.heartbeat("DRY_RUN" if self.settings.delete_dry_run else "ATIVO")
+        farm_stop = threading.Event()
+        farm = FarmCollector(
+            Database(self.settings, self.logger),
+            DeadlineClient(self.settings.deadline_command, timeout=8),
+            self.logger,
+        )
+        farm_thread = threading.Thread(target=farm.run, args=(farm_stop,), name="deadline-farm", daemon=True)
+        farm_thread.start()
+        try:
+            self.run_processing_loop()
+        finally:
+            farm_stop.set()
+            farm_thread.join(timeout=2)
+
+    def run_processing_loop(self) -> None:
         self.reconcile()
         self.logger.info(
             "continuous worker started",

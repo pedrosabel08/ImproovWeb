@@ -290,6 +290,9 @@ if ($foto_colab !== ''):
                     <i class="ri-equalizer-fill"></i>
                     <span>Filtros</span>
                 </button>
+                <button type="button" id="kanban-pending-open" title="Ver pendências" aria-label="Ver pendências" hidden>
+                    <i class="ri-inbox-archive-line" aria-hidden="true"></i>
+                </button>
             </div>
 </header>
             <div id="filtros-ativos-bar" data-motion="toolbar"></div>

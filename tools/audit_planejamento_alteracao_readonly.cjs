@@ -37,14 +37,19 @@ const check = (ok, description) => {
       const button = page.locator(`button[data-sidebar-panel="${panel}"]`);
       const link = page.locator(`.sidebar a[title="${title}"]:visible`).first();
       for (let attempt = 0; attempt < 3; attempt++) {
-        const modal = page.locator('#modalIframeChangelog');
+        const modal = page.locator("#modalIframeChangelog");
         if (await modal.isVisible()) {
           await modal.click({ position: { x: 5, y: 5 } });
-          await modal.waitFor({ state: 'hidden' });
+          await modal.waitFor({ state: "hidden" });
         }
-        if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
-        try { await link.click({ noWaitAfter: true, timeout: 5000 }); return; }
-        catch (error) { if (!await modal.isVisible() || attempt === 2) throw error; }
+        if ((await button.getAttribute("aria-expanded")) !== "true")
+          await button.click();
+        try {
+          await link.click({ noWaitAfter: true, timeout: 5000 });
+          return;
+        } catch (error) {
+          if (!(await modal.isVisible()) || attempt === 2) throw error;
+        }
       }
     }
     const browserErrors = (report.browser_errors = []);
@@ -145,10 +150,10 @@ const check = (ok, description) => {
           "Alguma dependência da Home não concluiu o carregamento em 20 segundos.",
         ),
       );
-    const changelog = page.locator('#modalIframeChangelog');
+    const changelog = page.locator("#modalIframeChangelog");
     if (await changelog.isVisible()) {
       await changelog.click({ position: { x: 5, y: 5 } });
-      await changelog.waitFor({ state: 'hidden' });
+      await changelog.waitFor({ state: "hidden" });
     }
     await page.keyboard.press("Escape");
     if (
@@ -159,7 +164,7 @@ const check = (ok, description) => {
       await page
         .getByRole("button", { name: "Agora não", exact: true })
         .click();
-    await openModule('gestao', 'Planejamento Global de Capacidade');
+    await openModule("gestao", "Planejamento Global de Capacidade");
     await page.waitForURL(
       (url) => /\/PlanejamentoCapacidade\/?$/.test(url.pathname),
       { waitUntil: "domcontentloaded" },
@@ -211,7 +216,7 @@ const check = (ok, description) => {
       await page
         .getByRole("button", { name: "Agora não", exact: true })
         .click();
-    await openModule('producao', 'Entregas');
+    await openModule("producao", "Entregas");
     await page.waitForURL((url) => /\/Entregas\/?$/.test(url.pathname), {
       waitUntil: "domcontentloaded",
     });
@@ -347,57 +352,156 @@ const check = (ok, description) => {
           "Planner real diferencia principal e secundária na escolha",
         );
         report.urls.push(page.url());
-        if ((await page.locator('#ap-demand').textContent()).includes('não registrados')) {
-          check((await page.locator('#ap-complete').textContent()) === '8/8 completos', 'Plano anterior ao modelo de pontos mantém suas oito decisões históricas');
-          check((await page.locator('#ap-grid').textContent()).includes('Responsável histórico'), 'Grade mantém responsável histórico fora da elegibilidade atual');
+        if (
+          (await page.locator("#ap-demand").textContent()).includes(
+            "Sem pontos",
+          )
+        ) {
+          check(
+            (await page.locator("#ap-complete").textContent()) === "8 / 8",
+            "Plano anterior ao modelo de pontos mantém suas oito decisões históricas",
+          );
+          check(
+            (await page.locator("#ap-grid").textContent()).includes(
+              "Responsável histórico",
+            ),
+            "Grade mantém responsável histórico fora da elegibilidade atual",
+          );
         }
         await page.screenshot({
           path: path.join(output, "planner-real.png"),
           fullPage: true,
         });
-        if (await page.locator('#ap-replan').isEnabled()) {
-          await page.locator('#ap-replan').click();
-          check((await page.locator('#ap-demand').textContent()).includes('75 pontos'), 'Replanejamento real calcula 75 pontos sem alterar o histórico');
+        if (await page.locator("#ap-replan").isEnabled()) {
+          await page.locator("#ap-replan").click();
+          check(
+            (await page.locator("#ap-demand").textContent()).includes("75 pts"),
+            "Replanejamento real calcula 75 pontos sem alterar o histórico",
+          );
           await page.evaluate(() => {
             window.__orbSuggestionObserved = false;
-            const loading = document.getElementById('ap-loading');
+            const loading = document.getElementById("ap-loading");
             new MutationObserver(() => {
-              if (!loading.hidden && loading.parentElement.id === 'ap-suggestion-loading') window.__orbSuggestionObserved = true;
-            }).observe(document.getElementById('alteration-plan'), {attributes:true,childList:true,subtree:true});
+              if (
+                !loading.hidden &&
+                loading.parentElement.id === "ap-loading-home"
+              )
+                window.__orbSuggestionObserved = true;
+            }).observe(document.getElementById("alteration-plan"), {
+              attributes: true,
+              childList: true,
+              subtree: true,
+            });
           });
+          const openSuggestion = async () => {
+            await page.locator("#ap-more").click();
+            const details = page.locator(".ap-suggestion");
+            if ((await details.getAttribute("open")) === null)
+              await details.locator("summary").first().click();
+          };
           const generate = async (order) => {
-            await page.locator('#ap-suggest-order').selectOption(order);
-            const wait = page.waitForResponse((r) => r.url().includes('/PlanejamentoProducao/alteracao.php') && r.request().method() === 'POST');
-            await page.locator('#ap-suggest').click();
+            await openSuggestion();
+            await page.locator("#ap-suggest-order").selectOption(order);
+            const wait = page.waitForResponse(
+              (r) =>
+                r.url().includes("/PlanejamentoProducao/alteracao.php") &&
+                r.request().method() === "POST",
+            );
+            await page.locator("#ap-suggest").click();
             const response = await wait;
             const payload = response.request().postDataJSON();
             const result = await response.json();
-            await page.waitForFunction(() => document.getElementById('ap-loading').hidden);
-            check(payload.ordem_complexidade === order, `Sugestão real envia ordem ${order}`);
+            await page.waitForFunction(
+              () => document.getElementById("ap-loading").hidden,
+            );
+            check(
+              payload.ordem_complexidade === order,
+              `Sugestão real envia ordem ${order}`,
+            );
             return result;
           };
-          const suggestion = await generate('MAIOR');
+          const suggestion = await generate("MAIOR");
           if (suggestion.success) {
-            check(suggestion.sugestao.itens.length === 8 && suggestion.sugestao.itens.reduce((sum, i) => sum + Number(i.pontos_snapshot), 0) === 75, 'Sugestão real distribui as oito imagens e 75 pontos');
-            check(await page.locator('.ap-grid-cell.is-overloaded').count() === 0, 'Sugestão real não excede capacidade disponível');
-          } else if (/Não foi encontrada|decisão fixada|fixadas já|colaboradores das imagens fixadas/.test(suggestion.message || '')) report.limitations.push('Sugestão real respeitou o contexto disponível: ' + suggestion.message);
-          else throw new Error(suggestion.message || 'Falha ao gerar sugestão real.');
-          const smaller = await generate('MENOR');
-          check(smaller.success && smaller.sugestao.itens.length === 8, 'Sugestão real por menor complexidade retorna oito imagens');
-          check(await page.evaluate(() => window.__orbSuggestionObserved), 'Orb exibido ao gerar sugestão real');
-          for (const [name, width, height] of [['desktop', 1920, 1080], ['notebook', 1366, 768], ['ipad-landscape', 1180, 820], ['ipad-portrait', 820, 1180], ['mobile', 390, 844]]) {
+            check(
+              suggestion.sugestao.itens.length === 8 &&
+                suggestion.sugestao.itens.reduce(
+                  (sum, i) => sum + Number(i.pontos_snapshot),
+                  0,
+                ) === 75,
+              "Sugestão real distribui as oito imagens e 75 pontos",
+            );
+            check(
+              (await page.locator(".ap-grid-cell.is-overloaded").count()) === 0,
+              "Sugestão real não excede capacidade disponível",
+            );
+          } else if (
+            /Não foi encontrada|decisão fixada|fixadas já|colaboradores das imagens fixadas/.test(
+              suggestion.message || "",
+            )
+          )
+            report.limitations.push(
+              "Sugestão real respeitou o contexto disponível: " +
+                suggestion.message,
+            );
+          else
+            throw new Error(
+              suggestion.message || "Falha ao gerar sugestão real.",
+            );
+          const smaller = await generate("MENOR");
+          check(
+            smaller.success && smaller.sugestao.itens.length === 8,
+            "Sugestão real por menor complexidade retorna oito imagens",
+          );
+          check(
+            await page.evaluate(() => window.__orbSuggestionObserved),
+            "Orb exibido ao gerar sugestão real",
+          );
+          for (const [name, width, height] of [
+            ["desktop", 1920, 1080],
+            ["notebook", 1366, 768],
+            ["ipad-landscape", 1180, 820],
+            ["ipad-portrait", 820, 1180],
+            ["mobile", 390, 844],
+          ]) {
             await page.setViewportSize({ width, height });
-            check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Planner real sem overflow: ${name}`);
-            check(await page.locator('#ap-suggest-order').evaluate((el) => { const r=el.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth; }), `Seletor de ordem visível: ${name}`);
-            await page.locator('#alteration-title').scrollIntoViewIfNeeded();
-            await page.screenshot({ path: path.join(output, `planner-real-${name}.png`) });
-            await page.locator('.ap-planner').screenshot({ path: path.join(output, `planner-grid-real-${name}.png`) });
+            check(
+              await page.evaluate(
+                () => document.documentElement.scrollWidth <= innerWidth,
+              ),
+              `Planner real sem overflow: ${name}`,
+            );
+            check(
+              (await page.locator(".ap-grid-day").count()) === 5 &&
+                (await page
+                  .locator("#ap-grid-scroll")
+                  .evaluate((grid) => grid.scrollWidth <= grid.clientWidth)),
+              `Cinco dias úteis sem rolagem horizontal: ${name}`,
+            );
+            await page.locator("#alteration-title").scrollIntoViewIfNeeded();
+            await page.screenshot({
+              path: path.join(output, `planner-real-${name}.png`),
+            });
+            await page
+              .locator("#ap-calendar-view")
+              .screenshot({
+                path: path.join(output, `planner-grid-real-${name}.png`),
+              });
           }
-          await page.locator('#ap-theme').click();
-          await page.screenshot({ path: path.join(output, 'planner-real-mobile-theme.png') });
-          page.once('dialog', (dialog) => dialog.accept());
-          await page.locator('#ap-cancel-replan').click();
-          check((await page.locator('#ap-demand').textContent()).includes('não registrados'), 'Descartar alterações locais restaura o snapshot sem gravar no banco');
+          await page.locator("#ap-theme").click();
+          await page.screenshot({
+            path: path.join(output, "planner-real-mobile-theme.png"),
+          });
+          await page.locator("#ap-cancel-replan").click();
+          const discard = page
+            .getByRole("alertdialog")
+            .getByRole("button", { name: "Confirmar", exact: true });
+          if (await discard.isVisible()) await discard.click();
+          check(
+            (await page.locator("#ap-demand").textContent()).includes(
+              "Sem pontos",
+            ),
+            "Descartar alterações locais restaura o snapshot sem gravar no banco",
+          );
         }
         foundImagePlan = true;
         break;

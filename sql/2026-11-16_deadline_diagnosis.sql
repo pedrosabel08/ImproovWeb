@@ -8,8 +8,12 @@ CREATE TABLE IF NOT EXISTS deadline_diagnostic_jobs (
     failure_hint CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
     priority_poll TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (job_id),
-    KEY ix_deadline_diagnostic_poll (priority_poll, next_poll_at, job_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    KEY ix_deadline_diagnostic_poll (
+        priority_poll,
+        next_poll_at,
+        job_id
+    )
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE IF NOT EXISTS deadline_diagnostic_incidents (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -26,7 +30,7 @@ CREATE TABLE IF NOT EXISTS deadline_diagnostic_incidents (
     UNIQUE KEY uq_deadline_diagnostic_incident (correlation_key),
     KEY ix_deadline_diagnostic_state (state, last_at),
     KEY ix_deadline_diagnostic_worker (worker, last_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE IF NOT EXISTS deadline_diagnostic_occurrences (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -52,14 +56,17 @@ CREATE TABLE IF NOT EXISTS deadline_diagnostic_occurrences (
     diagnosis_json JSON NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_deadline_diagnostic_report (job_id, report_id),
-    KEY ix_deadline_diagnostic_occurrence_incident (incident_id, episode, occurred_at),
+    KEY ix_deadline_diagnostic_occurrence_incident (
+        incident_id,
+        episode,
+        occurred_at
+    ),
     KEY ix_deadline_diagnostic_occurrence_signature (signature, occurred_at),
     KEY ix_deadline_diagnostic_occurrence_job (job_id, occurred_at),
     KEY ix_deadline_diagnostic_occurrence_worker (worker, occurred_at),
     KEY ix_deadline_diagnostic_occurrence_renderer (renderer, occurred_at),
-    CONSTRAINT fk_deadline_diagnostic_occurrence_incident FOREIGN KEY (incident_id)
-        REFERENCES deadline_diagnostic_incidents (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    CONSTRAINT fk_deadline_diagnostic_occurrence_incident FOREIGN KEY (incident_id) REFERENCES deadline_diagnostic_incidents (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE IF NOT EXISTS deadline_diagnostic_history (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -72,7 +79,7 @@ CREATE TABLE IF NOT EXISTS deadline_diagnostic_history (
     PRIMARY KEY (id),
     KEY ix_deadline_diagnostic_incident_history (incident_id, id),
     KEY ix_deadline_diagnostic_occurrence_history (occurrence_id, id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE IF NOT EXISTS deadline_diagnostic_recovery (
     job_id CHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -82,4 +89,4 @@ CREATE TABLE IF NOT EXISTS deadline_diagnostic_recovery (
     started_at DATETIME(6) NOT NULL,
     completed_at DATETIME(6) NOT NULL,
     PRIMARY KEY (job_id, task_id, worker)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

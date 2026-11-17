@@ -11,6 +11,7 @@ require_once __DIR__ . '/TestModeConfigTest.php';
 require_once __DIR__ . '/WorkerDaemonTest.php';
 require_once __DIR__ . '/OperationalPendingTest.php';
 require_once __DIR__ . '/PendingSummaryTest.php';
+require_once __DIR__ . '/DeadlineIncidentTest.php';
 
 $tests = [
     'event_contracts' => 'flow_connect_test_event_contracts',
@@ -21,6 +22,7 @@ $tests = [
     'worker_daemon' => 'flow_connect_test_worker_daemon',
     'operational_pending' => 'flow_connect_test_operational_pending',
     'pending_summary' => 'flow_connect_test_pending_summary',
+    'deadline_incident' => 'flow_connect_test_deadline_incident',
 ];
 $failed = [];
 foreach ($tests as $name => $test) {

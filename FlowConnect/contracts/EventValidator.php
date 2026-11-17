@@ -71,7 +71,8 @@ final class EventValidator
             require dirname(__DIR__) . '/config/events/immediate_legacy.php',
             require dirname(__DIR__) . '/config/events/operational_pending.php',
             require dirname(__DIR__) . '/config/events/briefing.php',
-            require dirname(__DIR__) . '/config/events/pending_summary.php'
+            require dirname(__DIR__) . '/config/events/pending_summary.php',
+            require dirname(__DIR__) . '/config/events/deadline.php'
         );
         $definition = $definitions[$event['event_type']] ?? null;
         if ($definition === null) {

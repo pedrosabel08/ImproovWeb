@@ -86,12 +86,23 @@ final class SlackApiAdapter implements ChannelAdapter
         if ($url === '') return $this->failure('missing_webhook_destination', 'Webhook Slack ausente.', true, null);
         $ch = curl_init($url);
         curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_HTTPHEADER => ['Content-Type: application/json; charset=utf-8'], CURLOPT_POSTFIELDS => json_encode(['text' => (string) ($delivery['rendered_text'] ?? '')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => (int) ($this->config['timeout_seconds'] ?? 10)]);
+        $retryAfter = 0;
+        if ($envKey === 'FLOW_CONNECT_DEADLINE_WEBHOOK_URL') {
+            curl_setopt($ch, CURLOPT_HEADERFUNCTION, static function ($handle, string $header) use (&$retryAfter): int {
+                if (preg_match('/^Retry-After:\s*(\d+)\s*$/i', $header, $match)) $retryAfter = (int) $match[1];
+                return strlen($header);
+            });
+        }
         $raw = curl_exec($ch);
         $errno = curl_errno($ch);
         $error = curl_error($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($errno !== 0) return $this->failure('transport_error', substr($error, 0, 180), false, $status ?: null);
+        if ($status === 429 && $envKey === 'FLOW_CONNECT_DEADLINE_WEBHOOK_URL') {
+            return $this->failure('rate_limited', 'Slack limitou temporariamente a entrega.', false, $status)
+                + ['retry_after' => $retryAfter];
+        }
         if ($status < 200 || $status >= 300) return $this->failure('webhook_rejected', 'Webhook Slack recusou a entrega.', $status >= 400 && $status < 500, $status ?: null);
         return ['ok' => true, 'http_status' => $status ?: 200, 'provider_message_id' => null, 'error_code' => null, 'safe_error' => null, 'permanent' => false];
     }

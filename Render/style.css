@@ -1163,6 +1163,42 @@ body {
   display: flex;
 }
 
+.deadline-diagnosis.modal-content {
+  display: none;
+  min-height: 0;
+  width: min(740px, calc(100% - 24px));
+  padding: 0;
+  margin: auto;
+  color: var(--text-primary);
+}
+
+.deadline-diagnosis.modal-content[open] {
+  display: flex;
+}
+
+.deadline-diagnosis::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.deadline-diagnosis .modal-details-panel {
+  overflow: auto;
+  padding: 1rem;
+}
+
+.deadline-diagnosis details {
+  margin-block: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.deadline-diagnosis summary {
+  cursor: pointer;
+}
+
+.deadline-diagnosis pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 @keyframes fadeOverlay {
   from {
     opacity: 0;

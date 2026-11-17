@@ -42,6 +42,8 @@ final class RecipientResolver
                 }
                 $webhookEnv = trim((string) ($payload['webhook_env'] ?? ''));
                 return $webhookEnv === '' ? [] : [['destination_kind' => 'WEBHOOK', 'external_id' => $webhookEnv, 'collaborator_id' => null]];
+            case 'deadline_webhook':
+                return [['destination_kind' => 'WEBHOOK', 'external_id' => 'FLOW_CONNECT_DEADLINE_WEBHOOK_URL', 'collaborator_id' => null]];
             case 'review_channel':
                 $channel = trim((string) ($this->config['flow_review']['review_channel_id'] ?? ''));
                 return $channel === '' ? [] : [['destination_kind' => 'CHANNEL', 'external_id' => $channel, 'collaborator_id' => null]];

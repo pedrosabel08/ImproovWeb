@@ -32,6 +32,14 @@ if (empty($_SESSION['render_ef_csrf'])) {
     $_SESSION['render_ef_csrf'] = bin2hex(random_bytes(32));
 }
 $renderEfCsrf = $_SESSION['render_ef_csrf'];
+require_once __DIR__ . '/deadline_diagnostic_flow.php';
+$diagnosticReady = render_diagnostic_ready($conn);
+$diagnosticManager = false;
+if ($diagnosticReady && !empty($_SESSION['idcolaborador'])) {
+    $roles = array_column(render_ef_rows($conn, 'SELECT c.nome FROM usuario_cargo uc
+        JOIN cargo c ON c.id=uc.cargo_id WHERE uc.usuario_id=?', 'i', [(int) $idusuario]), 'nome');
+    $diagnosticManager = render_ef_manager($_SESSION, $roles);
+}
 // Use DB server time for ultima_atividade to avoid clock/timezone mismatches
 // $ultima_atividade = date('Y-m-d H:i:s');
 
@@ -108,6 +116,11 @@ $conn->close();
                 </div>
             </div>
             <div class="results-summary">
+                <?php if ($diagnosticManager): ?>
+                    <button type="button" class="btn-action" id="openDeadlineIncidents">
+                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Incidentes do Deadline
+                    </button>
+                <?php endif; ?>
                 <span class="results-badge" id="resultsBadge">
                     <i class="fa-solid fa-layer-group"></i>
                     <span id="resultsCount">0</span><span id="resultsTotal" class="results-total"></span> renders
@@ -332,6 +345,13 @@ $conn->close();
                                 </button>
                                 <div class="errors-body" id="modal_errors"></div>
                             </div>
+                            <?php if ($diagnosticReady): ?>
+                                <div class="detail-row">
+                                    <button type="button" class="errors-toggle" id="openRenderDiagnoses">
+                                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Diagnóstico do Deadline
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -400,6 +420,19 @@ $conn->close();
     </div><!-- /#myModal -->
 
 
+    <?php if ($diagnosticReady): ?>
+        <dialog id="deadlineDiagnosis" class="modal-content deadline-diagnosis" aria-labelledby="deadlineDiagnosisTitle">
+            <div class="modal-header">
+                <h2 class="modal-title" id="deadlineDiagnosisTitle">Diagnóstico do Deadline</h2>
+                <form method="dialog"><button class="modal-close" aria-label="Fechar diagnóstico" autofocus>&times;</button></form>
+            </div>
+            <div class="modal-details-panel">
+                <p id="deadlineDiagnosisStatus" role="status"></p>
+                <div id="deadlineDiagnosisContent"></div>
+                <button type="button" class="btn-action" id="deadlineDiagnosisMore" hidden>Carregar mais</button>
+            </div>
+        </dialog>
+    <?php endif; ?>
     <div id="renderEfModal" class="render-ef-overlay" hidden>
         <section class="render-ef-dialog" role="dialog" aria-modal="true" aria-labelledby="renderEfTitle" data-csrf="<?php echo htmlspecialchars($renderEfCsrf, ENT_QUOTES, 'UTF-8'); ?>">
             <header><div><h2 id="renderEfTitle">Enviar render em alta</h2><p>Configuração do render aprovado · arquivo final confirmado</p></div><button type="button" id="renderEfClose" class="modal-close" aria-label="Fechar render em alta"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
@@ -513,6 +546,9 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php flow_motion_assets('../'); ?>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
+    <?php if ($diagnosticReady): ?>
+        <script src="<?= asset_url('deadline-diagnostic.js') . '&t=' . filemtime(__DIR__ . '/deadline-diagnostic.js') ?>" defer></script>
+    <?php endif; ?>
     <script src="<?php echo asset_url('reference-review.js') . '&t=' . filemtime(__DIR__ . '/reference-review.js'); ?>"></script>
     <script src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
     <script src="<?php echo asset_url('render-ef.js') . '&t=' . filemtime(__DIR__ . '/render-ef.js'); ?>"></script>

@@ -1,0 +1,5 @@
+RenderPluginException: Monitored managed process "3dsmaxProcess" has exited or been terminated.
+15:14:00: 0: INFO: Starting 3ds Max 2024
+15:16:21: 0: STDOUT: Corona Renderer warning: insufficient memory to render this scene.
+15:16:24: 0: INFO: RAM usage: 96%
+15:16:25: 0: INFO: RAM usage: 99%

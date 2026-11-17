@@ -170,6 +170,8 @@ class DeadlineWorker:
         self.render_ef = RenderEF(self)
         from deadline_snapshots import SnapshotCapture
         self.snapshots = SnapshotCapture(self)
+        from deadline_diagnostic_collector import DiagnosticCollector
+        self.diagnostics = DiagnosticCollector(self)
 
     def observation_fingerprint(
         self, target: str, job_data: dict, task_data: dict
@@ -303,6 +305,11 @@ class DeadlineWorker:
                     "deadline progress cache update failed", extra=context
                 )
             target = state_from_deadline(job_data, task_data)
+            if getattr(self, "diagnostics", None) and self.diagnostics.settings.enabled and task_result.success:
+                try:
+                    self.diagnostics.observe_task_errors(attempt["deadline_job_id"], target == "ERRO", task_data)
+                except Exception:
+                    self.logger.exception("priority report polling failed", extra=context)
             fingerprint = self.observation_fingerprint(target, job_data, task_data)
             plan = self.repository.observe_deadline_state(
                 attempt,
@@ -408,6 +415,11 @@ class DeadlineWorker:
                 "Deadline job discovery failed", extra={"routine": "discovery"}
             )
             return
+        if getattr(self, "diagnostics", None) and self.diagnostics.settings.enabled:
+            try:
+                self.diagnostics.discover(job_ids)
+            except Exception:
+                self.logger.exception("report discovery failed", extra={"routine": "deadline_diagnosis"})
         known_job_ids = self.repository.known_job_ids()
         unknown = [job_id for job_id in job_ids if job_id not in known_job_ids]
         resend_proposals = []
@@ -666,6 +678,7 @@ class DeadlineWorker:
             "queue": 0.0,
             "active": 0.0,
             "discovery": 0.0,
+            "diagnosis": 0.0,
             "reconciliation": time.monotonic() + self.settings.reconciliation_interval,
             "heartbeat": time.monotonic() + self.settings.heartbeat_interval,
         }
@@ -723,6 +736,12 @@ class DeadlineWorker:
                     )
                     self.database.close()
                 next_run["heartbeat"] = now + self.settings.heartbeat_interval
+            if self.diagnostics.settings.enabled and now >= next_run["diagnosis"]:
+                try:
+                    self.diagnostics.tick()
+                except Exception:
+                    self.logger.exception("report collection failed", extra={"routine": "deadline_diagnosis"})
+                next_run["diagnosis"] = time.monotonic() + self.settings.queue_interval
             time.sleep(0.2)
         self.heartbeat("ENCERRANDO")
         self.logger.info("continuous worker stopping", extra={"routine": "shutdown"})

@@ -624,6 +624,27 @@ function render_kpi_sent_daily($conn, $startAt, $endAt)
 // Lidar com as ações de AJAX
 if (isset($_GET['action'])) {
     switch ($_GET['action']) {
+        case 'getDeadlineDiagnoses':
+            require_once __DIR__ . '/deadline_diagnostic_flow.php';
+            header('Cache-Control: no-store');
+            try {
+                if (!render_diagnostic_ready($conn)) {
+                    http_response_code(404);
+                    echo json_encode(['message' => 'Diagnóstico do Deadline indisponível.']);
+                    break;
+                }
+                $manager = render_current_colaborador_id() > 0 && render_current_user_is_manager($conn);
+                $diagnoses = render_diagnostic_page($conn, $_GET, $manager);
+                if ($diagnoses === null) http_response_code(403);
+                echo json_encode($diagnoses ?? ['message' => 'Sem acesso aos diagnósticos solicitados.'],
+                    JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG);
+            } catch (Throwable $e) {
+                error_log('Render Deadline diagnosis query failed: ' . get_class($e));
+                http_response_code(503);
+                echo json_encode(['message' => 'Não foi possível consultar o diagnóstico agora.']);
+            }
+            break;
+
         case 'getKpis':
             $period = render_kpi_period();
             $current = $period['current'];

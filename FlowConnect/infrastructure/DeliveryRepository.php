@@ -47,6 +47,9 @@ final class DeliveryRepository
             $this->conn->query("UPDATE flow_connect_notifications n SET status='ERROR',completed_at=UTC_TIMESTAMP(6) WHERE EXISTS(SELECT 1 FROM flow_connect_deliveries d WHERE d.notification_id=n.id AND d.last_error_code='financial_send_ambiguous') AND NOT EXISTS(SELECT 1 FROM flow_connect_deliveries d WHERE d.notification_id=n.id AND d.status IN ('PENDING','SENDING','RETRY_WAIT'))");
             if (!$financialOnly) $this->conn->query("UPDATE flow_connect_deliveries SET status=IF(attempt_count>0,'RETRY_WAIT','PENDING'), claimed_by=NULL, claimed_at=NULL, claim_expires_at=NULL WHERE status='SENDING' AND claim_expires_at < UTC_TIMESTAMP(6)");
             $scope=$financialOnly?" AND e.event_type IN ('pagamento.competencia.fechamento','pagamento.competencia.pagamento')":'';
+            if (getenv('FLOW_CONNECT_DEADLINE_DELIVERY_PAUSED') === '1') {
+                $scope .= " AND e.source_module <> 'deadline'";
+            }
             $result = $this->conn->query("SELECT d.*, e.event_type IN ('pagamento.competencia.fechamento','pagamento.competencia.pagamento') AS financial_once
                 FROM flow_connect_deliveries d
                 INNER JOIN flow_connect_notifications n ON n.id=d.notification_id

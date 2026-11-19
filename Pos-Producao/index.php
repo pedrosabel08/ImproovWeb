@@ -196,6 +196,14 @@ $conn->close();
                     <span class="metric-label">Esta Semana</span>
                 </div>
             </div>
+            <div class="metric-card metric-card--average" title="Tempo decorrido entre o primeiro Em andamento e o primeiro Em aprovação posterior, considerando envios nos últimos 30 dias.">
+                <div class="metric-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></div>
+                <div class="metric-info">
+                    <span class="metric-value" id="metric-tempo-medio">—</span>
+                    <span class="metric-label">Tempo médio de pós</span>
+                    <span class="metric-detail" id="metric-tempo-amostra">Últimos 30 dias</span>
+                </div>
+            </div>
         </section>
 
         <section id="widget-prazos" aria-label="Próximos prazos">

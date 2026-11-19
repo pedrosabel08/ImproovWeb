@@ -1,9 +1,11 @@
 <?php
 
 require_once __DIR__ . '/render_ef_helpers.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 function render_diagnostic_ready(mysqli $conn): bool
 {
+    improov_load_env_once();
     if (getenv('FLOW_RENDER_DEADLINE_DIAGNOSIS') !== '1') {
         return false;
     }

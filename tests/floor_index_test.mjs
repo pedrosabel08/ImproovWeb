@@ -1,31 +1,16 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
+import { loadViewerModule } from "./viewer_module_loader.mjs";
 
 const modulePath = process.argv
   .find((arg) => arg.startsWith("--three-module="))
   ?.slice(15);
 if (!modulePath)
   throw new Error("Informe --three-module=CAMINHO/three.module.js");
-const THREE = await import(pathToFileURL(resolve(modulePath)).href);
-// Exercita a função do visualizador sem inicializar WebGL nem a interface.
-const source = readFileSync(
-  new URL(
-    "../MapaPavimento/predio-3d/visualizador-glb-navegacao.js",
-    import.meta.url,
-  ),
-  "utf8",
-);
-const pattern = source.match(/const floorObjectPattern = .+;/)[0];
-const functions = source.slice(
-  source.indexOf("function parseFloorObjectName("),
-  source.indexOf("function floorLabel("),
-);
-const buildIndex = new Function(
-  "THREE",
-  `${pattern}\n${functions}\nreturn buildIndex;`,
-)(THREE);
+const threeURL = pathToFileURL(resolve(modulePath)).href;
+const THREE = await import(threeURL);
+const { buildIndex } = await loadViewerModule("geo/model-alignment.js", threeURL);
 
 function group(parent, name) {
   const node = new THREE.Group();

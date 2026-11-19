@@ -2,33 +2,56 @@ import * as THREE from "three";
 import {
   GeometryBatches,
   polygonGeometry,
-} from "./feature-builder.js?v=20261113-surfaces";
+} from "./feature-builder.js?v=20261119-entorno";
 import { clipBufferGeometry } from "./geometry-clip.js?v=20261104-surface-v3";
 import { buildBuilding } from "./building-builder.js?v=20261104-terrain-v1";
 import { buildRoad } from "./road-builder.js?v=20261113-surfaces";
-import { buildWater } from "./water-builder.js?v=20261113-surfaces";
+import { buildWater } from "./water-builder.js?v=20261119-entorno";
 import { buildVegetation } from "./vegetation-builder.js?v=20261104-surface-v3";
-import { TerrainSurface } from "./terrain-surface.js?v=20261104-surface-v3";
+import { TerrainSurface } from "./terrain-surface.js?v=20261119-entorno";
 import { inspectModelGround } from "./model-ground.js?v=20261104-surface-v3";
-import { createEnvironmentBounds, polygonArea } from "./environment-clip.js?v=20261113-surfaces";
+import {
+  createEnvironmentBounds,
+  polygonArea,
+} from "./environment-clip.js?v=20261113-surfaces";
 import { buildCoastalAreas } from "./coastline-builder.js?v=20261103-boundary-v4";
 import { prepareEnvironment } from "./prepare-environment.js?v=20261113-surfaces";
 import { geoProjector } from "./geo-coordinates.js?v=20261103-boundary-v4";
-import { BEACH_BY_PROJECT, GEO_COLORS, SURFACE_Y } from "./environment-config.js?v=20261113-surfaces";
+import {
+  BEACH_BY_PROJECT,
+  GEO_COLORS,
+  SURFACE_Y,
+} from "./environment-config.js?v=20261113-surfaces";
 import { OSM_RADIUS } from "./osm-service.js?v=20261113-surfaces";
-import { prepareLandSurfaces, limitManualBeachHeight } from "./land-surfaces.js?v=20261113-surfaces2";
+import {
+  prepareLandSurfaces,
+  limitManualBeachHeight,
+} from "./land-surfaces.js?v=20261113-surfaces2";
 
 /** Build detached geometry. The browser supplies its materials and optional diagnostics. */
 export async function generateEnvironment({
-  data, config, bounds, buildingBounds, groundInfo, response = {}, dem,
+  data,
+  config,
+  bounds,
+  buildingBounds,
+  groundInfo,
+  response = {},
+  dem,
   beachByProject = BEACH_BY_PROJECT,
   signal = new AbortController().signal,
-  createMaterials = () => Object.fromEntries(Object.keys(GEO_COLORS).map(key => [key, null])),
+  createMaterials = () =>
+    Object.fromEntries(Object.keys(GEO_COLORS).map((key) => [key, null])),
   createDebug = () => null,
   onStage = () => {},
   onDemFallback = () => {},
 }) {
-  let group, batches, terrain, materials, debug, pendingSurfaceParts, pendingBeds;
+  let group,
+    batches,
+    terrain,
+    materials,
+    debug,
+    pendingSurfaceParts,
+    pendingBeds;
   let complete = false;
   try {
     if (signal.aborted) return null;
@@ -75,23 +98,41 @@ export async function generateEnvironment({
       maxZ: bounds.max.z - anchor.z + 1,
     };
     let ground = null;
-    const terrainTimes={};
+    const terrainTimes = {};
     if (dem) {
       try {
-        let stage=performance.now();
+        let stage = performance.now();
         ground = inspectModelGround(groundInfo?.object, anchor, groundY);
-        terrainTimes.groundMs=performance.now()-stage;stage=performance.now();
-        await new Promise(resolve=>setTimeout(resolve,0));
+        terrainTimes.groundMs = performance.now() - stage;
+        stage = performance.now();
+        await new Promise((resolve) => setTimeout(resolve, 0));
         if (signal.aborted) return null;
-        terrain = new TerrainSurface({dem, bounds:environmentBounds, ground, site, coastLines:coastal.coastLines,deferGrid:true});
-        onStage('water-profile');
-        terrain.prepareWater(prepared.data.water,{rebuild:false});
-        terrainTimes.waterMs=performance.now()-stage;
-        stage=performance.now();
-        onStage('dem-grid');
+        terrain = new TerrainSurface({
+          dem,
+          bounds: environmentBounds,
+          ground,
+          site,
+          coastLines: coastal.coastLines,
+          deferGrid: true,
+        });
+        onStage("water-profile");
+        const structures = [
+          ...prepared.data.buildings,
+          ...prepared.data.urbanExclusion.filter((f) =>
+            ["pier", "quay", "breakwater"].includes(f.visualTags?.man_made),
+          ),
+        ].flatMap((f) => f.polygons);
+        terrain.prepareWater(prepared.data.water, {
+          rebuild: false,
+          sea: coastal.sea,
+          structures,
+        });
+        terrainTimes.waterMs = performance.now() - stage;
+        stage = performance.now();
+        onStage("dem-grid");
         await terrain.rebuildAsync(signal);
         if (signal.aborted) return null;
-        terrainTimes.gridMs=performance.now()-stage;
+        terrainTimes.gridMs = performance.now() - stage;
       } catch (error) {
         if (signal.aborted) return null;
         terrain = null;
@@ -106,11 +147,7 @@ export async function generateEnvironment({
       longitude: config.longitude,
     };
     materials = createMaterials(environmentBounds, radius);
-    batches = new GeometryBatches(
-      group,
-      materials,
-      environmentBounds,
-    );
+    batches = new GeometryBatches(group, materials, environmentBounds);
     const metrics = {
       buildings: 0,
       roads: 0,
@@ -130,14 +167,34 @@ export async function generateEnvironment({
       ),
       coastline: coastal.state,
       environmentSizeM: radius * 2,
-      dem: terrain ? {source:dem.source, tiles:dem.tiles, memoryCacheHits:dem.cacheHits,
-        referenceAltitudeM:dem.reference, modelReferenceY:groundY+terrain.referenceModel,
-        seaWorldY:groundY+terrain.seaLevel, verticalScale:1,
-        groundTriangles:ground?.triangles ?? 0, groundSourceTriangles:ground?.sourceTriangles ?? 0, groundReliefM:ground ? ground.max-ground.min : null,
-        groundAreaM2:ground?.footprint.reduce((sum,p)=>sum+polygonArea(p),0),
-        minRelativeM:terrain.heights.reduce((a,b)=>Math.min(a,b),Infinity),
-        maxRelativeM:terrain.heights.reduce((a,b)=>Math.max(a,b),-Infinity),
-        alignment:ground ? "glb-surface" : "protected-footprint", gridAxis:terrain.axis.length} : {fallback:true},
+      dem: terrain
+        ? {
+            source: dem.source,
+            tiles: dem.tiles,
+            memoryCacheHits: dem.cacheHits,
+            referenceAltitudeM: dem.reference,
+            modelReferenceY: groundY + terrain.referenceModel,
+            seaWorldY: groundY + terrain.seaLevel,
+            verticalScale: 1,
+            groundTriangles: ground?.triangles ?? 0,
+            groundSourceTriangles: ground?.sourceTriangles ?? 0,
+            groundReliefM: ground ? ground.max - ground.min : null,
+            groundAreaM2: ground?.footprint.reduce(
+              (sum, p) => sum + polygonArea(p),
+              0,
+            ),
+            minRelativeM: terrain.heights.reduce(
+              (a, b) => Math.min(a, b),
+              Infinity,
+            ),
+            maxRelativeM: terrain.heights.reduce(
+              (a, b) => Math.max(a, b),
+              -Infinity,
+            ),
+            alignment: ground ? "glb-surface" : "protected-footprint",
+            gridAxis: terrain.axis.length,
+          }
+        : { fallback: true },
       terrainTimes,
     };
     const context = {
@@ -146,69 +203,104 @@ export async function generateEnvironment({
       radius,
       batches: batches,
       metrics,
-      terrain:terrain,
+      terrain: terrain,
     };
     const surfaceParts = [];
     pendingSurfaceParts = new Set();
-    onStage('ground-mesh');
+    onStage("ground-mesh");
     // Exact complementary land/sea footprints: no ocean plane over land.
     for (const p of terrain?.groundPolygons(coastal.land) || coastal.land) {
-      let geometry=terrain ? await terrain.geometryAsync(p,signal) : polygonGeometry(p);
-      if(signal.aborted) { geometry?.dispose(); return null; }
-      if(terrain)geometry=clipBufferGeometry(geometry,environmentBounds);
-      if(!geometry)continue;
-      if(terrain) { surfaceParts.push(geometry); pendingSurfaceParts.add(geometry); }
-      else batches.add("ground",geometry);
-      await new Promise(resolve=>setTimeout(resolve,0));
-      if (signal.aborted) return null;
-    }
-    let modelGeometry=null;
-    if (terrain && ground) {
-      let geometry=new THREE.BufferGeometry();
-      geometry.setAttribute("position",new THREE.Float32BufferAttribute(ground.positions,3));
-      geometry.computeVertexNormals();
-      geometry=clipBufferGeometry(geometry,environmentBounds);
-      if(geometry) {
+      let geometry = terrain
+        ? await terrain.geometryAsync(p, signal)
+        : polygonGeometry(p);
+      if (signal.aborted) {
+        geometry?.dispose();
+        return null;
+      }
+      if (terrain) geometry = clipBufferGeometry(geometry, environmentBounds);
+      if (!geometry) continue;
+      if (terrain) {
         surfaceParts.push(geometry);
         pendingSurfaceParts.add(geometry);
-        modelGeometry=geometry;
+      } else batches.add("ground", geometry);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (signal.aborted) return null;
+    }
+    let modelGeometry = null;
+    if (terrain && ground) {
+      let geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(ground.positions, 3),
+      );
+      geometry.computeVertexNormals();
+      geometry = clipBufferGeometry(geometry, environmentBounds);
+      if (geometry) {
+        surfaceParts.push(geometry);
+        pendingSurfaceParts.add(geometry);
+        modelGeometry = geometry;
       }
     }
-    if(terrain) {
+    if (terrain) {
       // Build and index ground BEFORE draping other layers. Keep a bed in the
       // CPU index so roads crossing a channel retain their existing behaviour.
-      const beds=[];pendingBeds=beds;
-      onStage('water-mesh');
-      for(const polygon of terrain.waterFootprint) {
-        const bed=clipBufferGeometry(terrain.geometry(polygon,0,(x,z)=>terrain.waterHeight(null,x,z)-.12),environmentBounds);
-        if(bed)beds.push(bed);
-        const water=terrain.geometry(polygon,SURFACE_Y.water,(x,z)=>terrain.waterHeight(null,x,z));
-        batches.add("water",water);metrics.polygons++;
-        await new Promise(resolve=>setTimeout(resolve,0));
-        if(signal.aborted) return null;
+      const beds = [];
+      pendingBeds = beds;
+      onStage("water-mesh");
+      for (const polygon of terrain.waterFootprint) {
+        const bed = clipBufferGeometry(
+          terrain.geometry(polygon, 0, (x, z) =>
+            terrain.bedHeight(polygon, x, z),
+          ),
+          environmentBounds,
+        );
+        if (bed) beds.push(bed);
       }
-      terrain.installMesh([...surfaceParts,...beds]);
-      beds.forEach(g=>g.dispose());
-      pendingBeds=null;
-      surfaceParts.forEach(g=>{
+      for (const { polygon, profile, component } of terrain.waterSurfaces) {
+        const water = terrain.geometry(polygon, 0, (x, z) =>
+          terrain.visibleWaterHeight(component, x, z),
+        );
+        batches.add("water", water, false, profile);
+        metrics.polygons++;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        if (signal.aborted) return null;
+      }
+      terrain.installMesh([...surfaceParts, ...beds]);
+      beds.forEach((g) => g.dispose());
+      pendingBeds = null;
+      surfaceParts.forEach((g) => {
         pendingSurfaceParts.delete(g);
-        if(g===modelGeometry) {
-          const mesh=new THREE.Mesh(g,materials.ground);mesh.name='OSM · terreno GLB';
-          mesh.userData.geoLayer='model-ground';mesh.receiveShadow=true;mesh.raycast=()=>{};group.add(mesh);
-        } else batches.add("ground",g);
+        if (g === modelGeometry) {
+          const mesh = new THREE.Mesh(g, materials.ground);
+          mesh.name = "OSM · terreno GLB";
+          mesh.userData.geoLayer = "model-ground";
+          mesh.receiveShadow = true;
+          mesh.raycast = () => {};
+          group.add(mesh);
+        } else batches.add("ground", g);
       });
     }
-    pendingSurfaceParts=null;
+    pendingSurfaceParts = null;
     let landLayers = {};
     try {
       const { layers, mappedSidewalks } = prepareLandSurfaces({
-        prepared: prepared.data, config, project, bounds: environmentBounds, coastal, terrain, beachByProject,
+        prepared: prepared.data,
+        config,
+        project,
+        bounds: environmentBounds,
+        coastal,
+        terrain,
+        beachByProject,
       });
       landLayers = layers;
       context.mappedSidewalks = mappedSidewalks;
-      metrics.mappedSidewalks = mappedSidewalks.size + prepared.data.sidewalk.length;
+      metrics.mappedSidewalks =
+        mappedSidewalks.size + prepared.data.sidewalk.length;
     } catch (error) {
-      console.debug("[Flow OSM] Recorte de superfícies indisponível; terreno neutro preservado.", error.message);
+      console.debug(
+        "[Flow OSM] Recorte de superfícies indisponível; terreno neutro preservado.",
+        error.message,
+      );
     }
     let count = 0;
     for (const [kind, builder] of [
@@ -229,17 +321,28 @@ export async function generateEnvironment({
     for (const [layer, polygons] of Object.entries(landLayers)) {
       onStage(layer);
       const key = layer === "sand-manual" ? "sand" : layer;
-      const offset = key.startsWith("sidewalk") ? SURFACE_Y.road : SURFACE_Y.vegetation;
+      const offset = key.startsWith("sidewalk")
+        ? SURFACE_Y.road
+        : SURFACE_Y.vegetation;
       metrics.surfaceAreasM2 ??= {};
-      metrics.surfaceAreasM2[layer] = Math.round(polygons.reduce((sum, polygon) => sum + polygonArea(polygon), 0));
+      metrics.surfaceAreasM2[layer] = Math.round(
+        polygons.reduce((sum, polygon) => sum + polygonArea(polygon), 0),
+      );
       for (const polygon of polygons) {
         let geometry = polygonGeometry(polygon);
         if (terrain) geometry = terrain.drape(geometry, offset);
         else geometry.translate(0, offset, 0);
         if (layer === "sand-manual") {
-          const configuredElevation = beachByProject[config.obra_id].maxElevationM;
-          const maxElevation = Number.isFinite(configuredElevation) && configuredElevation > 0 ? configuredElevation : 6;
-          geometry = limitManualBeachHeight(geometry, terrain.seaLevel + maxElevation + offset);
+          const configuredElevation =
+            beachByProject[config.obra_id].maxElevationM;
+          const maxElevation =
+            Number.isFinite(configuredElevation) && configuredElevation > 0
+              ? configuredElevation
+              : 6;
+          geometry = limitManualBeachHeight(
+            geometry,
+            terrain.seaLevel + maxElevation + offset,
+          );
         }
         if (!geometry.attributes.position.count) {
           geometry.dispose();
@@ -247,7 +350,7 @@ export async function generateEnvironment({
         }
         batches.add(key, geometry);
         metrics.polygons++;
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
         if (signal.aborted) return null;
       }
     }
@@ -259,15 +362,27 @@ export async function generateEnvironment({
     }
     batches.finish();
     complete = true;
-    return { group, materials, terrain, debug, metrics, environmentBounds, radius, prepared, coastal, project, start };
+    return {
+      group,
+      materials,
+      terrain,
+      debug,
+      metrics,
+      environmentBounds,
+      radius,
+      prepared,
+      coastal,
+      project,
+      start,
+    };
   } finally {
     if (!complete) {
-      pendingSurfaceParts?.forEach(geometry => geometry.dispose());
-      pendingBeds?.forEach(geometry => geometry.dispose());
+      pendingSurfaceParts?.forEach((geometry) => geometry.dispose());
+      pendingBeds?.forEach((geometry) => geometry.dispose());
       batches?.dispose();
-      group?.traverse(object => object.geometry?.dispose());
+      group?.traverse((object) => object.geometry?.dispose());
       debug?.dispose();
-      Object.values(materials ?? {}).forEach(material => material?.dispose());
+      Object.values(materials ?? {}).forEach((material) => material?.dispose());
     }
   }
 }

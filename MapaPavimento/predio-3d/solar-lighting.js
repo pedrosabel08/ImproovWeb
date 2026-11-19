@@ -19,7 +19,7 @@ import {
   ENVIRONMENTS,
   ENVIRONMENT_SETTINGS,
   atmosphereInterval,
-} from "./environment-config.mjs?v=20261030-night-neutral-v1";
+} from "./environment-config.mjs?v=20261119-global-hemisphere";
 
 /** Uma única DirectionalLight: navegação quando desativado, Sol astronômico quando ativado. */
 export class SolarLighting {
@@ -212,6 +212,7 @@ export class SolarLighting {
       select("solarProbeError").textContent = state.probe?.error
         ? "LightProbe: " + state.probe.error
         : "";
+      select("solarTune-hemisphere").max = String(state.hemisphereTuningMax);
       for (const key of ["probe", "hemisphere", "glass"]) {
         select("solarTune-" + key).value = String(state.runtime[key]);
         select("solarTuneValue-" + key).value = state.runtime[key].toFixed(3);
@@ -476,7 +477,6 @@ export class SolarLighting {
   }
   navigation() {
     this.result = null;
-    this.environment?.navigation();
     this.projection.hide();
     this.onCompassChange(false);
     this.compassToggle.disabled = true;
@@ -487,6 +487,7 @@ export class SolarLighting {
     this.light.intensity = 2.25;
     this.light.color.copy(this.navigationColor);
     this.ambient.intensity = 1.65;
+    this.environment?.navigation();
     if (this.bounds) this.onRestore(this.bounds);
     this.explorerShadowFit = false;
   }

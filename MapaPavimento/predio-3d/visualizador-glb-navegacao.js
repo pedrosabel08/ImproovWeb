@@ -6,7 +6,7 @@ import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
 import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261110-bootstrap-v2";
 import { NorthIndicator } from "./north-indicator.js?v=20261113-explore";
-import { SolarLighting } from "./solar-lighting.js?v=20261113-explore2";
+import { SolarLighting } from "./solar-lighting.js?v=20261119-global-hemisphere";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { ModelMeasurement } from "./model-measurement.js?v=20261113-explore";
 import { visibleSurface } from "./measurement-geometry.js";
@@ -15,14 +15,16 @@ import {
   FloorVisibility,
   visibleModelBounds,
 } from "./floor-visibility.js?v=20261016-shadow-visibility-2";
-import { setupEnvironment } from "./viewer-environment.js?v=20261103-night-glass-native-v2";
-import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261030-night-neutral-v1";
-import { GeoEnvironment } from "./geo/geo-environment.js?v=20261113-surfaces3";
+import { setupEnvironment } from "./viewer-environment.js?v=20261119-global-hemisphere";
+import { ENVIRONMENT_SETTINGS } from "./environment-config.mjs?v=20261119-global-hemisphere";
+import { GeoEnvironment } from "./geo/geo-environment.js?v=20261119-entorno";
 import {
   buildIndex,
   modelGroundSelection,
 } from "./geo/model-alignment.js?v=20261110-cache-v1";
 import { fitSolarShadow } from "./solar-shadow.js";
+
+const params = new URLSearchParams(location.search);
 
 const themeStyle = getComputedStyle(document.documentElement);
 const highlightPalette = {
@@ -149,16 +151,28 @@ $("grid").after(textureToggle);
 const texturePreference = "flow-3d-terrain-textures";
 try {
   const saved = localStorage.getItem(texturePreference);
-  if (saved === "0" || saved === "1") geoEnvironment.setTexturesEnabled(saved === "1");
-} catch { /* A preferência vale nesta aba mesmo sem acesso ao armazenamento. */ }
+  if (saved === "0" || saved === "1")
+    geoEnvironment.setTexturesEnabled(saved === "1");
+} catch {
+  /* A preferência vale nesta aba mesmo sem acesso ao armazenamento. */
+}
 const syncTextureToggle = () =>
-  textureToggle.setAttribute("aria-pressed", String(geoEnvironment.texturesEnabled));
+  textureToggle.setAttribute(
+    "aria-pressed",
+    String(geoEnvironment.texturesEnabled),
+  );
 syncTextureToggle();
 textureToggle.addEventListener("click", () => {
   geoEnvironment.setTexturesEnabled(!geoEnvironment.texturesEnabled);
   syncTextureToggle();
-  try { localStorage.setItem(texturePreference, geoEnvironment.texturesEnabled ? "1" : "0"); }
-  catch { /* Armazenamento indisponível. */ }
+  try {
+    localStorage.setItem(
+      texturePreference,
+      geoEnvironment.texturesEnabled ? "1" : "0",
+    );
+  } catch {
+    /* Armazenamento indisponível. */
+  }
 });
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
@@ -204,6 +218,7 @@ const raycaster = new THREE.Raycaster(),
 const PICKING_LAYER = 1;
 raycaster.layers.set(PICKING_LAYER);
 let modelRoot = null,
+  modelSource = null,
   floors = [],
   allRecords = [],
   activeFloor = null;
@@ -256,6 +271,16 @@ const solarLighting = new SolarLighting({
   onConfigure: () => mapBridge?.spatial.open(),
   onCompassChange: (value) => northIndicator.setEnvironmentVisible(value),
 });
+let lightingDiagnostic = null;
+if (params.get("iluminacao") === "diagnostico") {
+  const { SolarLightingDiagnostic } =
+    await import("./solar-lighting-diagnostic.js?v=2");
+  lightingDiagnostic = new SolarLightingDiagnostic({
+    renderer,
+    scene,
+    solar: solarLighting,
+  });
+}
 const dimensionFormat = new Intl.NumberFormat("pt-BR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -1349,6 +1374,7 @@ function clearModel() {
     disposeModelResources(modelRoot);
   }
   modelRoot = null;
+  modelSource = null;
   floors = [];
   allRecords = [];
   activeFloor = null;
@@ -1377,6 +1403,7 @@ function install(gltf, sourceName, obraId = null, cacheModel = null) {
   hideTooltip();
   clearModel();
   modelRoot = gltf.scene;
+  modelSource = sourceName;
   hideExcludedObjects(modelRoot);
   // The viewer has no real world behind the model. Physical transmission samples
   // the environment cubemap in that case and can turn balcony panes into bright
@@ -1994,13 +2021,37 @@ function openPersonScene() {
     geoEnvironment.update(now);
     viewerEnvironment.tick();
     measurements.update(explorerCamera || camera);
-    renderer.render(scene, explorerCamera || camera);
+    if (lightingDiagnostic) {
+      lightingDiagnostic.render(
+        explorerCamera || camera,
+        modelRoot,
+        modelSource,
+        {
+          now,
+          busy:
+            transitioning ||
+            northDefining ||
+            exploration.engaged ||
+            !!mapBridge?.busy,
+        },
+      );
+    } else renderer.render(scene, explorerCamera || camera);
+  } else {
+    lightingDiagnostic?.reset();
   }
 })();
 toggleSidebar("left", "Pavimentos", true);
 toggleSidebar("right", "Hub de Inspeção", true);
-const params = new URLSearchParams(location.search);
 if (params.has("src") && !params.has("obra_id")) {
+  if (lightingDiagnostic) {
+    solarLighting.setConfig({
+      latitude: -23.5505,
+      longitude: -46.6333,
+      norte_graus: 0,
+      timezone: "America/Sao_Paulo",
+    });
+    lightingDiagnostic.showReferenceLocation();
+  }
   $("modelUrl").value = params.get("src");
   loadDiagnostic();
 } else {

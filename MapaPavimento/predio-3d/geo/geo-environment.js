@@ -17,15 +17,19 @@ import {
 } from "./environment-config.js?v=20261113-surfaces";
 import { GeoDebug } from "./geo-debug.js?v=20261103-boundary-v4";
 import { installTerrainDebug } from "./terrain-debug.js?v=20261113-surfaces";
-import { generateEnvironment } from "./generate-environment.js?v=20261113-surfaces2";
-import { TerrainMaterials } from "./terrain-materials.js?v=20261113-surfaces2";
+import { generateEnvironment } from "./generate-environment.js?v=20261119-entorno";
+import {
+  TerrainMaterials,
+  CLASSIFIED_BASE_MATERIALS,
+  SURFACE_BASE_COLORS,
+} from "./terrain-materials.js?v=20261119-entorno";
 import { createEnvironmentBounds } from "./environment-clip.js?v=20261103-boundary-v4";
 import {
   cacheRequest,
   fetchGeometryCache,
   restoreGeometryCache,
   validateGeometryAlignment,
-} from "./server-geometry-cache.js?v=20261110-cache-v3";
+} from "./server-geometry-cache.js?v=20261119-entorno";
 
 /** New group outside modelRoot: never enters picking, fit, floor or solar bounds. */
 export class GeoEnvironment {
@@ -44,7 +48,8 @@ export class GeoEnvironment {
     Object.assign(this, { scene, viewport, sky, onChange });
     this.options = options;
     this.terrainMaterials = new TerrainMaterials(terrainMaterialOptions);
-    this.texturesEnabled = options.terrainTextures ?? GEO_OPTIONS.terrainTextures;
+    this.texturesEnabled =
+      options.terrainTextures ?? GEO_OPTIONS.terrainTextures;
     this.surfaceDebug =
       options.geoDebug ||
       new URLSearchParams(window.location?.search || "").get("geo_debug") ===
@@ -149,7 +154,7 @@ export class GeoEnvironment {
       this.scene.remove(this.group);
       this.group.traverse((object) => object.geometry?.dispose());
     }
-    this.hazeMaterials?.forEach(material => material.dispose());
+    this.hazeMaterials?.forEach((material) => material.dispose());
     this.hazeMaterials = null;
     this.terrainMaterials.clear();
     const hadGroup = !!this.group;
@@ -452,16 +457,35 @@ export class GeoEnvironment {
     const materials = Object.fromEntries(
       Object.entries(GEO_COLORS).map(([key, color]) => [
         key,
-        urbanMaterial(color, {
-          sky: this.sky,
-          radius,
-          ground: key === "ground",
-        }),
+        urbanMaterial(
+          CLASSIFIED_BASE_MATERIALS
+            ? (SURFACE_BASE_COLORS[key] ?? color)
+            : color,
+          {
+            sky: this.sky,
+            radius,
+            ground: key === "ground",
+          },
+        ),
       ]),
     );
     for (const [key, material] of Object.entries(materials)) {
       softenEnvironmentEdge(material, environmentBounds);
-      if (["road", "asphalt", "soil", "sand", "rock", "sidewalk", "sidewalk-extra", "FOREST", "GRASS", "PARK", "water"].includes(key)) {
+      if (
+        [
+          "road",
+          "asphalt",
+          "soil",
+          "sand",
+          "rock",
+          "sidewalk",
+          "sidewalk-extra",
+          "FOREST",
+          "GRASS",
+          "PARK",
+          "water",
+        ].includes(key)
+      ) {
         material.polygonOffset = true;
         material.polygonOffsetFactor = -1;
         material.polygonOffsetUnits = -2;
@@ -476,11 +500,17 @@ export class GeoEnvironment {
   }
   applyTerrainTextures() {
     if (!this.group) return;
-    this.terrainMaterials.apply(this.group, this.group.userData.geoBounds, this.sky, OSM_RADIUS,
-      this.texturesEnabled, (state, packs) => {
+    this.terrainMaterials.apply(
+      this.group,
+      this.group.userData.geoBounds,
+      this.sky,
+      OSM_RADIUS,
+      this.texturesEnabled,
+      (state, packs) => {
         this.viewport.dataset.terrainTextures = state;
         this.viewport.dataset.terrainMaterials = packs.join(",");
-      });
+      },
+    );
   }
   update(now = performance.now()) {
     if (!this.materials) return;

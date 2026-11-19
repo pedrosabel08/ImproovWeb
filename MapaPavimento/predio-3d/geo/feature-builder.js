@@ -90,12 +90,22 @@ export class GeometryBatches {
     Object.assign(this, { group, materials, bounds });
     this.buckets = new Map();
   }
-  add(key, geometry, shadows = false) {
+  add(key, geometry, shadows = false, waterProfile) {
+    if (!geometry.attributes.position.count) {
+      geometry.dispose();
+      return;
+    }
     if (this.bounds) geometry = clipBufferGeometry(geometry, this.bounds);
     if (!geometry) return;
-    const bucketKey = `${key}:${shadows}`;
+    const bucketKey = `${key}:${shadows}:${waterProfile ?? ""}`;
     if (!this.buckets.has(bucketKey))
-      this.buckets.set(bucketKey, { key, shadows, parts: [], vertices: 0 });
+      this.buckets.set(bucketKey, {
+        key,
+        shadows,
+        waterProfile,
+        parts: [],
+        vertices: 0,
+      });
     const bucket = this.buckets.get(bucketKey);
     bucket.parts.push(geometry);
     bucket.vertices += geometry.attributes.position.count;
@@ -119,13 +129,27 @@ export class GeometryBatches {
     geometry.computeBoundingSphere();
     const mesh = new THREE.Mesh(geometry, this.materials[bucket.key]);
     mesh.name = `OSM · ${bucket.key}`;
+    if (bucket.waterProfile) mesh.userData.waterProfile = bucket.waterProfile;
     // Roads cover a large area in one batch. Render them before other transparent
     // objects so the batch centre cannot put them on top of the GLB or sun halo.
-    if (["road", "asphalt", "sidewalk", "sidewalk-extra"].includes(bucket.key)) mesh.renderOrder = -1;
+    if (["road", "asphalt", "sidewalk", "sidewalk-extra"].includes(bucket.key))
+      mesh.renderOrder = -1;
     mesh.castShadow = bucket.shadows;
     mesh.receiveShadow =
       bucket.shadows ||
-      ["ground", "road", "asphalt", "soil", "sand", "rock", "sidewalk", "sidewalk-extra", "FOREST", "GRASS", "PARK"].includes(bucket.key);
+      [
+        "ground",
+        "road",
+        "asphalt",
+        "soil",
+        "sand",
+        "rock",
+        "sidewalk",
+        "sidewalk-extra",
+        "FOREST",
+        "GRASS",
+        "PARK",
+      ].includes(bucket.key);
     mesh.raycast = () => {};
     this.group.add(mesh);
     this.buckets.delete(key);

@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import {
   ENVIRONMENTS, ENVIRONMENT_THRESHOLDS, selectEnvironment,
   adjacentEnvironment, atmosphereInterval, nightFactor, smoothRange, ENVIRONMENT_SETTINGS,
+  hemisphereIntensity,
 } from '../MapaPavimento/predio-3d/environment-config.mjs';
 import { solarAt } from '../MapaPavimento/predio-3d/solar-position.mjs';
 
@@ -25,8 +26,9 @@ assert.equal(adjacentEnvironment({ altitude: -4, rising: false }), 'night');
 assert.equal(nightFactor(-6), 1);
 assert.equal(nightFactor(0), 0);
 assert.ok(nightFactor(-3) > 0 && nightFactor(-3) < 1);
-// A visualização noturna deve clarear progressivamente sem alterar o patamar diurno.
-for (const light of [ENVIRONMENT_SETTINGS.lightProbe, ENVIRONMENT_SETTINGS.hemisphere]) {
+// A curva existente da LightProbe conserva os patamares e a transição suave.
+{
+  const light = ENVIRONMENT_SETTINGS.lightProbe;
   const intensity = altitude => light.intensity * (light.baselineScale + (1 - light.baselineScale) *
     smoothRange(ENVIRONMENT_THRESHOLDS.night, ENVIRONMENT_THRESHOLDS.daylight, altitude) +
     (light.nightScale - light.baselineScale) * nightFactor(altitude));
@@ -42,6 +44,31 @@ for (let altitude = -90; altitude <= 90; altitude += 0.05) {
   const state = atmosphereInterval(altitude);
   assert.ok(state.mix >= 0 && state.mix <= 1);
   assert.ok(state.from.zenith && state.to.horizon && state.from.sun);
+}
+// Valores da calibração aprovada na obra 102, agora usados por padrão.
+for (const [altitude, expected] of [
+  [-90, 0.6], [-6, 0.6], [-4.5, 0.5375], [-3, 0.4], [-1.5, 0.2625],
+  [0, 0.2], [7.5, 0.246875], [15, 0.35], [22.5, 0.453125], [30, 0.5], [90, 0.5],
+]) {
+  assert.ok(Math.abs(hemisphereIntensity(altitude) - expected) < 1e-12,
+    `Intensidade da hemisférica a ${altitude}° deve ser ${expected}.`);
+}
+for (const intensity of [0, 0.4, 0.5, 0.6]) {
+  const calibrated = altitude => hemisphereIntensity(altitude, intensity);
+  assert.equal(calibrated(45), intensity);
+  assert.equal(calibrated(0), 0.4 * intensity);
+  assert.equal(calibrated(-6), hemisphereIntensity(-6));
+  assert.equal(calibrated(-20), hemisphereIntensity(-20));
+  for (const boundary of [-6, 0, 30]) {
+    assert.ok(Math.abs(calibrated(boundary - 1e-4) - calibrated(boundary + 1e-4)) < 1e-8);
+  }
+}
+for (const [from, to, direction] of [[-6, 0, -1], [0, 30, 1]]) {
+  for (let altitude = from; altitude < to; altitude += 0.1) {
+    const delta = direction * (hemisphereIntensity(Math.min(altitude + 0.1, to)) -
+      hemisphereIntensity(altitude));
+    assert.ok(delta >= 0 && delta < 0.011);
+  }
 }
 // Latitude, estação, fuso e Norte não podem transformar tarde em manhã.
 for (const timezone of ['America/Sao_Paulo', 'Europe/Lisbon']) {

@@ -814,22 +814,41 @@ function updateProcessingDetails(render, attempts, logs) {
       render.deadline_estimated_time_remaining,
   );
   $("#modalDeadline").prop("hidden", !render.detail_job_id);
-  const inferredState =
-    render.status === "Em andamento" && elapsed ? "rendering" : "";
-  $("#modal_deadline_state")
-    .text(
-      executionLabels[execution?.execution_state] ||
-        executionLabels[inferredState] ||
-        "—",
-    )
-    .attr(
-      "title",
-      execution?.observed_at
-        ? `Último registro do Deadline: ${formatarData(execution.observed_at)}`
-        : "",
-    );
-  $("#modal_deadline_worker").text(execution?.worker || render.computer || "—");
-  $("#modal_deadline_job").text(render.detail_job_id || "—");
+  const deadlineState = executionLabels[execution?.execution_state] || "—";
+  const taskSummary = render.deadline_task_summary;
+  const taskDate = taskSummary?.observed_at
+    ? formatarData(new Date(taskSummary.observed_at.replace(" ", "T") + "Z"))
+    : "";
+  $("#modal_deadline_state").text(deadlineState);
+  $("#modal_deadline_worker").text(
+    execution?.execution_state === "rendering" && execution.worker
+      ? execution.worker
+      : "—",
+  );
+  $("#modal_deadline_running")
+    .text(taskSummary?.running ?? "—")
+    .attr("title", taskDate);
+  $("#modal_deadline_failed")
+    .text(taskSummary?.failed ?? "—")
+    .attr("title", taskDate);
+  $("#modal_deadline_sync").text(
+    execution?.observed_at
+      ? `Sincronizado em ${formatarData(execution.observed_at)}`
+      : taskDate
+        ? `Tarefas consultadas em ${taskDate}`
+        : "Sincronização indisponível",
+  );
+  document.dispatchEvent(
+    new CustomEvent("render:deadline-job", {
+      detail: {
+        renderId: render.idrender_alta,
+        jobId: render.detail_job_id,
+        imageName: render.imagem_nome,
+        renderStatus: render.status,
+        attempts,
+      },
+    }),
+  );
   $("#modalDeadlineProgress").html(
     progress === null ? "" : renderDeadlineProgress(render, "detail"),
   );
@@ -1169,6 +1188,11 @@ $("#modalPreviewImg").on("keydown", function (event) {
     event.preventDefault();
     $(this).trigger("click");
   }
+});
+
+document.addEventListener("render:deadline-resubmitted", ({ detail }) => {
+  editRender(detail.renderId);
+  loadRenders(1);
 });
 
 // Fechar o modal (novo botão + clique no overlay)

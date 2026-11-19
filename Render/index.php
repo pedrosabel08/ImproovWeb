@@ -35,7 +35,7 @@ $renderEfCsrf = $_SESSION['render_ef_csrf'];
 require_once __DIR__ . '/deadline_diagnostic_flow.php';
 $diagnosticReady = render_diagnostic_ready($conn);
 $diagnosticManager = false;
-if ($diagnosticReady && !empty($_SESSION['idcolaborador'])) {
+if (!empty($_SESSION['idcolaborador'])) {
     $roles = array_column(render_ef_rows($conn, 'SELECT c.nome FROM usuario_cargo uc
         JOIN cargo c ON c.id=uc.cargo_id WHERE uc.usuario_id=?', 'i', [(int) $idusuario]), 'nome');
     $diagnosticManager = render_ef_manager($_SESSION, $roles);
@@ -117,7 +117,7 @@ $conn->close();
                 </div>
             </div>
             <div class="results-summary">
-                <?php if ($diagnosticManager): ?>
+                <?php if ($diagnosticReady && $diagnosticManager): ?>
                     <button type="button" class="btn-action" id="openDeadlineIncidents">
                         <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Incidentes do Deadline
                     </button>
@@ -272,6 +272,29 @@ $conn->close();
             <!-- Body: preview + details -->
             <div class="modal-body">
 
+                <section id="modalDeadline" class="deadline-summary" aria-labelledby="deadlineSummaryTitle" hidden>
+                    <div class="deadline-summary-heading">
+                        <h2 id="deadlineSummaryTitle">Renderização</h2>
+                        <small id="modal_deadline_sync">Sincronização indisponível</small>
+                    </div>
+                    <dl class="deadline-summary-metrics">
+                        <div><dt>Status no Deadline</dt><dd id="modal_deadline_state">—</dd></div>
+                        <div><dt>Worker em uso</dt><dd id="modal_deadline_worker">—</dd></div>
+                        <div><dt>Tarefas em execução</dt><dd id="modal_deadline_running">—</dd></div>
+                        <div><dt>Tarefas com erro</dt><dd id="modal_deadline_failed">—</dd></div>
+                    </dl>
+                    <?php if ($diagnosticManager || $diagnosticReady): ?>
+                        <button type="button" class="errors-toggle deadline-summary-action" id="openDeadlineRecovery" aria-haspopup="dialog">
+                            Gerenciar job
+                        </button>
+                    <?php endif; ?>
+                    <div id="modalDeadlineProgress"></div>
+                    <div class="deadline-detail-times" id="modalDeadlineTimes" hidden>
+                        <div><span>Decorrido</span><strong id="modalDeadlineElapsed">—</strong></div>
+                        <div><span>Restante estimado</span><strong id="modalDeadlineRemaining">—</strong></div>
+                    </div>
+                </section>
+
                 <!-- Left: image preview + gallery -->
                 <div class="modal-preview-panel">
                     <img id="modalPreviewImg" class="modal-main-img" src="../assets/logo.jpg" alt="Prévia do render" tabindex="0" role="button" aria-label="Ampliar prévia do render">
@@ -334,27 +357,6 @@ $conn->close();
                                 </button>
                                 <div class="errors-body" id="modal_errors"></div>
                             </div>
-                            <?php if ($diagnosticReady): ?>
-                                <div class="detail-row">
-                                    <button type="button" class="errors-toggle" id="openRenderDiagnoses">
-                                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Diagnóstico do Deadline
-                                    </button>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="detail-section" id="modalDeadline" hidden>
-                        <div class="detail-section-title"><i class="fa-solid fa-server" aria-hidden="true"></i> Deadline</div>
-                        <div class="detail-grid">
-                            <div class="detail-row"><span class="detail-label">Execução do job</span><span class="detail-value" id="modal_deadline_state">—</span></div>
-                            <div class="detail-row"><span class="detail-label">Worker</span><span class="detail-value" id="modal_deadline_worker">—</span></div>
-                            <div class="detail-row full-detail"><span class="detail-label">ID do job</span><span class="detail-value path" id="modal_deadline_job">—</span></div>
-                        </div>
-                        <div id="modalDeadlineProgress"></div>
-                        <div class="deadline-detail-times" id="modalDeadlineTimes" hidden>
-                            <div><span>Decorrido</span><strong id="modalDeadlineElapsed">—</strong></div>
-                            <div><span>Restante estimado</span><strong id="modalDeadlineRemaining">—</strong></div>
                         </div>
                     </div>
 
@@ -427,18 +429,101 @@ $conn->close();
     </div><!-- /#myModal -->
 
 
-    <?php if ($diagnosticReady): ?>
-        <dialog id="deadlineDiagnosis" class="modal-content deadline-diagnosis" aria-labelledby="deadlineDiagnosisTitle">
-            <div class="modal-header">
-                <h2 class="modal-title" id="deadlineDiagnosisTitle">Diagnóstico do Deadline</h2>
-                <form method="dialog"><button class="modal-close" aria-label="Fechar diagnóstico" autofocus>&times;</button></form>
+    <?php if ($diagnosticManager || $diagnosticReady): ?>
+        <dialog id="deadlineRecovery" class="modal-content deadline-recovery" aria-labelledby="deadlineRecoveryTitle"
+            data-manager="<?= $diagnosticManager ? '1' : '0' ?>"
+            data-csrf="<?= htmlspecialchars($renderEfCsrf, ENT_QUOTES, 'UTF-8') ?>">
+            <header class="deadline-recovery-header">
+                <div>
+                    <h2 id="deadlineRecoveryTitle">Gerenciamento do job</h2>
+                    <p id="deadlineRecoveryImage"></p>
+                </div>
+                <button type="button" class="modal-close" id="closeDeadlineRecovery" aria-label="Fechar gerenciamento do job">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="deadline-recovery-toolbar deadline-recovery-jobbar">
+                <label>Job selecionado <select id="deadlineRecoveryJob"></select></label>
+                <dl class="deadline-recovery-metrics">
+                    <div><dt>Situação</dt><dd><span id="deadlineRecoveryState" class="deadline-badge">—</span></dd></div>
+                    <div><dt>Worker atual</dt><dd id="deadlineRecoveryWorker">—</dd></div>
+                    <div><dt>Em execução</dt><dd id="deadlineRecoveryRunning">—</dd></div>
+                    <div><dt>Falhas</dt><dd id="deadlineRecoveryFailed">—</dd></div>
+                </dl>
+                <?php if ($diagnosticManager): ?>
+                    <button type="button" class="errors-toggle" id="deadlineRecoveryRefresh"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Atualizar</button>
+                <?php endif; ?>
             </div>
-            <div class="modal-details-panel">
-                <p id="deadlineDiagnosisStatus" role="status"></p>
-                <div id="deadlineDiagnosisContent"></div>
-                <button type="button" class="btn-action" id="deadlineDiagnosisMore" hidden>Carregar mais</button>
+            <div class="deadline-recovery-tabs" role="tablist" aria-label="Gerenciamento do job">
+                <button type="button" role="tab" id="deadlineActionsTab" aria-controls="deadlineActions" aria-selected="true"><i class="fa-solid fa-play" aria-hidden="true"></i> Ações</button>
+                <button type="button" role="tab" id="deadlineMachinesTab" aria-controls="deadlineMachines" aria-selected="false" tabindex="-1"><i class="fa-solid fa-server" aria-hidden="true"></i> Máquinas</button>
+                <button type="button" role="tab" id="deadlineHistoryTab" aria-controls="deadlineHistory" aria-selected="false" tabindex="-1"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Histórico</button>
+            </div>
+            <div class="deadline-recovery-scroll">
+                <div class="deadline-recovery-feedback" role="status">
+                    <canvas id="deadlineRecoveryLoading" data-thinking-orb data-orb-state="composing" data-orb-size="26" aria-label="Consultando o Deadline" hidden></canvas>
+                    <span id="deadlineRecoveryStatus"></span>
+                </div>
+                <div id="deadlineRecoveryContent">
+                    <div id="deadlineActions" role="tabpanel" aria-labelledby="deadlineActionsTab" tabindex="0"></div>
+                    <div id="deadlineMachines" role="tabpanel" aria-labelledby="deadlineMachinesTab" tabindex="0" hidden></div>
+                    <div id="deadlineHistory" role="tabpanel" aria-labelledby="deadlineHistoryTab" tabindex="0" hidden>
+                        <?php if ($diagnosticReady): ?>
+                            <button type="button" class="errors-toggle" id="openRenderDiagnoses">Ver diagnóstico completo da imagem</button>
+                        <?php endif; ?>
+                        <div id="deadlineRecoveryHistory"></div>
+                    </div>
+                </div>
             </div>
         </dialog>
+    <?php endif; ?>
+
+    <?php if ($diagnosticReady): ?>
+        <dialog id="deadlineDiagnosis" class="modal-content deadline-diagnosis" aria-labelledby="deadlineDiagnosisTitle">
+            <div class="modal-header dd-header">
+                <h2 class="modal-title" id="deadlineDiagnosisTitle"><i class="fa-solid fa-wave-square" aria-hidden="true"></i> Diagnóstico do Deadline</h2>
+                <div id="deadlineDiagnosisStatus" class="dd-load" role="status" hidden>
+                    <canvas data-thinking-orb data-orb-state="composing" data-orb-size="26" aria-label="Carregando diagnóstico"></canvas>
+                    <span>Carregando diagnóstico…</span>
+                </div>
+                <form method="dialog"><button class="modal-close" aria-label="Fechar diagnóstico" autofocus>&times;</button></form>
+            </div>
+            <nav class="dd-tabs" id="deadlineDiagnosisTabs" aria-label="Seções do diagnóstico"></nav>
+            <div class="modal-details-panel dd-scroll">
+                <section id="deadlineDiagnosisDashboard" hidden>
+                    <h3>Resumo <span id="deadlineDiagnosisPeriod"></span></h3>
+                    <div class="dd-metrics" id="deadlineDiagnosisMetrics"></div>
+                    <form id="deadlineDiagnosisFilters" class="dd-filters">
+                        <div class="dd-filter-heading">
+                            <h3><i class="fa-solid fa-filter" aria-hidden="true"></i> Filtros</h3>
+                            <button class="dd-button dd-clear" type="button">Limpar filtros</button>
+                        </div>
+                        <div class="dd-filter-grid">
+                            <label>Período <select name="period">
+                                <option value="1">Últimas 24 horas</option><option value="7">Últimos 7 dias</option>
+                                <option value="30" selected>Últimos 30 dias</option><option value="custom">Intervalo personalizado</option>
+                            </select></label>
+                            <label>Worker <select name="worker"><option value="">Todos</option></select></label>
+                            <label>Renderer <select name="renderer"><option value="">Todos</option></select></label>
+                            <label>Tipo de ocorrência <select name="category"><option value="">Todos</option></select></label>
+                            <label>Status <select name="state"><option value="">Todos</option><option value="open">Aberto</option>
+                                <option value="monitoring">Em monitoramento</option><option value="resolved">Resolvido</option>
+                            </select></label>
+                            <button type="submit" class="dd-button dd-primary"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Aplicar filtros</button>
+                        </div>
+                        <div class="dd-dates" hidden>
+                            <label>De <input type="date" name="start" disabled></label>
+                            <label>Até <input type="date" name="end" disabled></label>
+                            <small>Horário de São Paulo</small>
+                        </div>
+                    </form>
+                </section>
+                <div id="deadlineDiagnosisContent"></div>
+            </div>
+        </dialog>
+    <?php endif; ?>
+    <?php if ($diagnosticManager || $diagnosticReady): ?>
+        <script src="<?= asset_url('deadline-recovery.js') . '&t=' . filemtime(__DIR__ . '/deadline-recovery.js') ?>" defer></script>
     <?php endif; ?>
     <div id="renderEfModal" class="render-ef-overlay" hidden>
         <section class="render-ef-dialog" role="dialog" aria-modal="true" aria-labelledby="renderEfTitle" data-csrf="<?php echo htmlspecialchars($renderEfCsrf, ENT_QUOTES, 'UTF-8'); ?>">

@@ -171,8 +171,10 @@ class DeadlineWorker:
         self.business = deadline_monitor
         self.render_ef = RenderEF(self)
         from deadline_snapshots import SnapshotCapture
+
         self.snapshots = SnapshotCapture(self)
         from deadline_diagnostic_collector import DiagnosticCollector
+
         self.diagnostics = DiagnosticCollector(self)
 
     def observation_fingerprint(
@@ -197,7 +199,7 @@ class DeadlineWorker:
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def process_one_command(self) -> bool:
-        if hasattr(self, 'snapshots'):
+        if hasattr(self, "snapshots"):
             self.snapshots.tick()
         if self.render_ef.process_one():
             return True
@@ -278,8 +280,11 @@ class DeadlineWorker:
                 self.logger.warning("active job could not be read", extra=context)
                 continue
             from deadline_inspection import is_inspection
+
             if is_inspection(job_data):
-                self.logger.error('Inspection job excluded from render synchronization', extra=context)
+                self.logger.error(
+                    "Inspection job excluded from render synchronization", extra=context
+                )
                 continue
             task_result, task_data = self.client.get_tasks(attempt["deadline_job_id"])
             if not task_result.success:
@@ -302,17 +307,27 @@ class DeadlineWorker:
                     task_progress,
                     self.settings.worker_id,
                 )
-                self.repository.record_job_execution(attempt["deadline_job_id"], job_data, task_data)
+                self.repository.record_job_execution(
+                    attempt["deadline_job_id"], job_data, task_data
+                )
             except Exception:
                 self.logger.exception(
                     "deadline progress cache update failed", extra=context
                 )
             target = state_from_deadline(job_data, task_data)
-            if getattr(self, "diagnostics", None) and self.diagnostics.settings.enabled and task_result.success:
+            if (
+                getattr(self, "diagnostics", None)
+                and self.diagnostics.settings.enabled
+                and task_result.success
+            ):
                 try:
-                    self.diagnostics.observe_task_errors(attempt["deadline_job_id"], target == "ERRO", task_data)
+                    self.diagnostics.observe_task_errors(
+                        attempt["deadline_job_id"], target == "ERRO", task_data
+                    )
                 except Exception:
-                    self.logger.exception("priority report polling failed", extra=context)
+                    self.logger.exception(
+                        "priority report polling failed", extra=context
+                    )
             fingerprint = self.observation_fingerprint(target, job_data, task_data)
             plan = self.repository.observe_deadline_state(
                 attempt,
@@ -422,7 +437,9 @@ class DeadlineWorker:
             try:
                 self.diagnostics.discover(job_ids)
             except Exception:
-                self.logger.exception("report discovery failed", extra={"routine": "deadline_diagnosis"})
+                self.logger.exception(
+                    "report discovery failed", extra={"routine": "deadline_diagnosis"}
+                )
         known_job_ids = self.repository.known_job_ids()
         unknown = [job_id for job_id in job_ids if job_id not in known_job_ids]
         resend_proposals = []
@@ -431,13 +448,18 @@ class DeadlineWorker:
             if not job_result.success:
                 continue
             from deadline_inspection import is_inspection
+
             if is_inspection(job_data):
                 continue
             job_name = str(
                 job_data.get("Name") or job_data.get("JobName") or ""
             ).strip()
             # Manual EF requests own their suspended Job until linking commits.
-            if "FlowRenderEFRequest=" in str(job_data.get("ExtraInfoDictionary", "")):
+            job_metadata = str(job_data.get("ExtraInfoDictionary", ""))
+            if (
+                "FlowRenderEFRequest=" in job_metadata
+                or "FlowResubmitRequest=" in job_metadata
+            ):
                 continue
             if not job_name or "ANIMA" in job_name.upper():
                 continue
@@ -449,7 +471,10 @@ class DeadlineWorker:
                     task_data = {}
                 target = state_from_deadline(job_data, task_data)
                 created = self.repository.create_first_render(
-                    target_info, job_id, job_name, "VINCULADA" if target == "EM_APROVACAO" else target
+                    target_info,
+                    job_id,
+                    job_name,
+                    "VINCULADA" if target == "EM_APROVACAO" else target,
                 )
                 outcome = created["outcome"]
                 if outcome == "FIRST_RENDER_CREATED":
@@ -652,8 +677,16 @@ class DeadlineWorker:
     def heartbeat(self, status: str = "ATIVO", details: str = "") -> None:
         if not details:
             from deadline_snapshots import capture_enabled, flow_enabled
-            details = json.dumps({'ef_submit_enabled': os.getenv('DEADLINE_EF_SUBMIT_ENABLED', '0') == '1',
-                                  'snapshot_capture_enabled': capture_enabled(), 'snapshot_flow_enabled': flow_enabled(), 'snapshot_version': 1})
+
+            details = json.dumps(
+                {
+                    "ef_submit_enabled": os.getenv("DEADLINE_EF_SUBMIT_ENABLED", "0")
+                    == "1",
+                    "snapshot_capture_enabled": capture_enabled(),
+                    "snapshot_flow_enabled": flow_enabled(),
+                    "snapshot_version": 1,
+                }
+            )
         self.repository.heartbeat(
             self.settings.worker_id,
             self.hostname,
@@ -678,13 +711,34 @@ class DeadlineWorker:
             DeadlineClient(self.settings.deadline_command, timeout=8),
             self.logger,
         )
-        farm_thread = threading.Thread(target=farm.run, args=(farm_stop,), name="deadline-farm", daemon=True)
+        farm_thread = threading.Thread(
+            target=farm.run, args=(farm_stop,), name="deadline-farm", daemon=True
+        )
         farm_thread.start()
+        from deadline_recovery import Recovery
+
+        self.recovery_discovery_lock = threading.Lock()
+        recovery = Recovery(
+            Database(self.settings, self.logger),
+            DeadlineClient(
+                self.settings.deadline_command, self.settings.command_timeout
+            ),
+            self.logger,
+            self.recovery_discovery_lock,
+        )
+        recovery_thread = threading.Thread(
+            target=recovery.run,
+            args=(farm_stop,),
+            name="deadline-recovery",
+            daemon=True,
+        )
+        recovery_thread.start()
         try:
             self.run_processing_loop()
         finally:
             farm_stop.set()
             farm_thread.join(timeout=2)
+            recovery_thread.join(timeout=2)
 
     def run_processing_loop(self) -> None:
         self.reconcile()
@@ -727,7 +781,11 @@ class DeadlineWorker:
                 next_run["active"] = now + self.settings.active_sync_interval
             if now >= next_run["discovery"]:
                 try:
-                    self.discover()
+                    if self.recovery_discovery_lock.acquire(blocking=False):
+                        try:
+                            self.discover()
+                        finally:
+                            self.recovery_discovery_lock.release()
                 except Exception:
                     self.logger.exception(
                         "discovery routine failed", extra={"routine": "discovery"}
@@ -758,7 +816,10 @@ class DeadlineWorker:
                 try:
                     self.diagnostics.tick()
                 except Exception:
-                    self.logger.exception("report collection failed", extra={"routine": "deadline_diagnosis"})
+                    self.logger.exception(
+                        "report collection failed",
+                        extra={"routine": "deadline_diagnosis"},
+                    )
                 next_run["diagnosis"] = time.monotonic() + self.settings.queue_interval
             time.sleep(0.2)
         self.heartbeat("ENCERRANDO")

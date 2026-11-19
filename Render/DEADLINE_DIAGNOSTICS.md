@@ -8,17 +8,19 @@
 
 ## Arquivos
 
-| Área | Arquivos |
-| --- | --- |
-| Coleta, regras e histórico | `Render/deadline_worker.py`, `Render/deadline_report_export.py`, `Render/deadline_diagnostic_collector.py`, `Render/deadline_diagnosis.py`, `Render/deadline_diagnostic_store.py`, `Render/deadline_diagnostic_reclassify.py` |
-| Interface e API | `Render/index.php`, `Render/ajax.php`, `Render/deadline_diagnostic_flow.php`, `Render/deadline-diagnostic.js`, `Render/style.css` |
-| Flow Connect | `config/events/deadline.php`, `contracts/EventValidator.php`, `application/EventPlanner.php`, `application/RecipientResolver.php`, `infrastructure/DeliveryRepository.php`, `channels/SlackApiAdapter.php`, `templates/slack/operational/deadline_incident.php`, dentro de `FlowConnect/` |
-| Banco | `sql/2026-11-16_deadline_diagnosis.sql` |
-| Testes | `Render/tests/test_deadline_diagnosis.py`, `Render/tests/fixtures/deadline_imp_frm_004.txt`, `FlowConnect/tests/DeadlineIncidentTest.php`, `FlowConnect/tests/run.php` |
+| Área                       | Arquivos                                                                                                                                                                                                                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Coleta, regras e histórico | `Render/deadline_worker.py`, `Render/deadline_report_export.py`, `Render/deadline_diagnostic_collector.py`, `Render/deadline_diagnosis.py`, `Render/deadline_diagnostic_store.py`, `Render/deadline_diagnostic_reclassify.py`                                                             |
+| Interface e API            | `Render/index.php`, `Render/ajax.php`, `Render/deadline_diagnostic_flow.php`, `Render/deadline-diagnostic.js`, `Render/style.css`                                                                                                                                                         |
+| Flow Connect               | `config/events/deadline.php`, `contracts/EventValidator.php`, `application/EventPlanner.php`, `application/RecipientResolver.php`, `infrastructure/DeliveryRepository.php`, `channels/SlackApiAdapter.php`, `templates/slack/operational/deadline_incident.php`, dentro de `FlowConnect/` |
+| Banco                      | `sql/2026-11-16_deadline_diagnosis.sql`                                                                                                                                                                                                                                                   |
+| Testes                     | `Render/tests/test_deadline_diagnosis.py`, `Render/tests/fixtures/deadline_imp_frm_004.txt`, `FlowConnect/tests/DeadlineIncidentTest.php`, `FlowConnect/tests/run.php`                                                                                                                    |
 
 ## Coleta e classificação
 
 O worker contínuo reutiliza a descoberta de jobs da farm. Uma mudança no contador de erros de um job vinculado prioriza sua consulta. O worker executa `deadline_report_export.py` com o mesmo comando usado para exportar snapshots. O SDK lê os Error Reports do job, com ID, tarefa, frames, Worker e data fornecidos pelo repositório. O coletor lê apenas corpos novos, com metadados alterados ou com uma leitura pendente. A ausência de um dado fica explícita.
+
+Quando houver acúmulo, os relatórios ainda não coletados mais recentes são lidos primeiro; relatórios antigos continuam elegíveis nas consultas seguintes. A linha de configuração `Ignore missing DLL errors` não é evidência de que um plugin esteja ausente.
 
 As ocorrências são únicas por Job ID e Report ID. A assinatura considera a regra, o renderer conhecido e, para falhas que precisam de mais detalhe, a mensagem normalizada. O incidente reúne a mesma assinatura no mesmo Worker e pode abranger vários jobs. Os índices também permitem consultar assinaturas em Workers diferentes e falhas distintas no mesmo Worker. Relatórios sem Worker são correlacionados no próprio job. Relatórios sem horário comprovado ficam fora das janelas de notificação comuns e de recuperação. Um relatório crítico sem horário pode gerar alerta se aparecer após uma coleta completa já dentro do período de ativação.
 
@@ -32,18 +34,22 @@ Um incidente passa a monitoramento após haver conclusão relevante para cada co
 2. Configure `DEADLINE_DIAGNOSTIC_ENABLED=1` no serviço existente do worker e reinicie esse serviço conforme o procedimento operacional usual. O padrão é desligado. Use `DEADLINE_DIAGNOSTIC_NOTIFY_MODE=shadow` para registrar os alertas planejados sem entrega. Verifique a versão instalada do Deadline, compare IDs e horários dos relatórios com o Deadline Monitor e valide as assinaturas com logs reais antes do corte.
 3. Configure `FLOW_RENDER_DEADLINE_DIAGNOSIS=1` no ambiente PHP para liberar o painel. Gestores acessam a lista da farm. A visualização pelo render reutiliza as permissões do Render EF para gestores, responsáveis e colaboradores de render/pós associados à imagem. O Flow guarda trechos redigidos e as referências para localizar o original no Deadline Monitor. Opcionalmente, configure `FLOW_RENDER_DEADLINE_REPORT_ORIGIN` para uma origem HTTPS aprovada, autenticada e restrita aos relatórios da farm. O link direto fica visível aos gestores.
 4. Em shadow, compare as ocorrências e incidentes do Flow com os Job Reports e os alertas atuais. Consulte `deadline_diagnostic_jobs.last_error` para falhas de leitura e `flow_connect_events` com `source_module='deadline'` para o histórico do produtor. Os workers do Flow Connect devem planejar eventos shadow sem entrega ao Slack.
+<<<<<<< HEAD
 5. Após validar shadow, configure `FLOW_CONNECT_DEADLINE_WEBHOOK_URL` nos workers de eventos e entrega do Flow Connect. Aponte para o canal operacional restrito da farm. Configure `DEADLINE_DIAGNOSTIC_ALERT_FROM_UTC` para o início do corte, com fuso explícito (por exemplo um instante com sufixo `Z`), e altere `DEADLINE_DIAGNOSTIC_NOTIFY_MODE=active`. O corte evita emitir alertas históricos importados na primeira coleta. Verifique evento, notificação e entrega no Flow Connect. Os alertas genéricos “Falha em tarefa” e “Resolvido: Falha em tarefa” são emitidos por `deadline_farm.py` por meio do evento `render.farm.incidente`. A flag `FLOW_CONNECT_RENDER_FARM_MODE` também controla os alertas de Worker offline, stalled e comunicação, por isso a substituição somente das falhas de tarefa exige uma configuração ou alteração específica. Os avisos de transição de render pertencem ao fluxo de aprovação.
+=======
+5. Após validar shadow, configure `FLOW_CONNECT_DEADLINE_WEBHOOK_URL` nos workers de eventos e entrega do Flow Connect. Aponte para o canal operacional restrito da farm. Configure `DEADLINE_DIAGNOSTIC_ALERT_FROM_UTC` para o início do corte, com fuso explícito (por exemplo um instante com sufixo `Z`), e altere `DEADLINE_DIAGNOSTIC_NOTIFY_MODE=active`. O corte evita emitir alertas históricos importados na primeira coleta. Verifique evento, notificação e entrega no Flow Connect. Só então configure `FLOW_CONNECT_RENDER_FARM_TASK_FAILURE_ENABLED=0` no emissor legado e recarregue o serviço. A chave afeta apenas falhas de tarefa e suas resoluções; eventos já enfileirados seguem seu fluxo normal. Os avisos de transição de render pertencem ao fluxo de aprovação.
+>>>>>>> b33cf7f59de094f066eca5a50be33a04c5ec4460
 
-| Variável do serviço Deadline | Padrão |
-| --- | --- |
-| `DEADLINE_DIAGNOSTIC_NOTIFY_MODE` | `off`. A coleta pode funcionar com alertas desligados. |
-| `DEADLINE_DIAGNOSTIC_THRESHOLD` | 3 ocorrências para alertas comuns |
-| `DEADLINE_DIAGNOSTIC_WINDOW_MINUTES` | 15 minutos |
-| `DEADLINE_DIAGNOSTIC_UPDATE_MINUTES` | 60 minutos entre atualizações, mediante mudança relevante |
-| `DEADLINE_DIAGNOSTIC_STABILITY_MINUTES` | 30 minutos após a recuperação comprovada |
-| `DEADLINE_DIAGNOSTIC_JOB_POLL_SECONDS` | 60 segundos até o job ficar elegível para nova consulta |
-| `DEADLINE_DIAGNOSTIC_REPORTS_PER_POLL` | 8 corpos por consulta, até 25 |
-| `DEADLINE_DIAGNOSTIC_COMMAND_TIMEOUT` | 15 segundos de limite por chamada ao Deadline |
+| Variável do serviço Deadline                      | Padrão                                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `DEADLINE_DIAGNOSTIC_NOTIFY_MODE`                 | `off`. A coleta pode funcionar com alertas desligados.                                                  |
+| `DEADLINE_DIAGNOSTIC_THRESHOLD`                   | 3 ocorrências para alertas comuns                                                                       |
+| `DEADLINE_DIAGNOSTIC_WINDOW_MINUTES`              | 15 minutos                                                                                              |
+| `DEADLINE_DIAGNOSTIC_UPDATE_MINUTES`              | 60 minutos entre atualizações, mediante mudança relevante                                               |
+| `DEADLINE_DIAGNOSTIC_STABILITY_MINUTES`           | 30 minutos após a recuperação comprovada                                                                |
+| `DEADLINE_DIAGNOSTIC_JOB_POLL_SECONDS`            | 60 segundos até o job ficar elegível para nova consulta                                                 |
+| `DEADLINE_DIAGNOSTIC_REPORTS_PER_POLL`            | 8 corpos por consulta, até 25                                                                           |
+| `DEADLINE_DIAGNOSTIC_COMMAND_TIMEOUT`             | 15 segundos de limite por chamada ao Deadline                                                           |
 | `DEADLINE_DIAGNOSTIC_UNSPECIFIED_DATETIME_IS_UTC` | Desligado. Ative somente se a instalação comprovar que valores com `DateTime.Kind=Unspecified` são UTC. |
 
 Alertas críticos são enfileirados no mesmo ciclo em que a evidência é coletada. A latência até a publicação no Slack depende da consulta à farm e dos workers do Flow Connect. Os demais alertas exigem a janela móvel configurada. Criticidade imediata está explícita nas regras de perda de resposta do Worker, comunicação com o repositório e indisponibilidade do servidor de licença. As atualizações usam o webhook existente do Flow Connect, que não devolve um ID de mensagem para edição. A deduplicação é por incidente, episódio, modo e sequência. Em um timeout ambíguo após o aceite pelo Slack, o webhook não oferece garantia de entrega exatamente uma vez.
@@ -51,6 +57,8 @@ Alertas críticos são enfileirados no mesmo ciclo em que a evidência é coleta
 ## Reclassificação e limites
 
 Ao alterar o catálogo, incremente `CATALOG_VERSION` e a versão das regras alteradas. Execute `python Render/deadline_diagnostic_reclassify.py` para reclassificar os registros anteriores, ou informe `--job <ID_DO_DEADLINE>`. O comando usa as evidências preservadas, registra a nova classificação e mantém o vínculo operacional original. Caso uma nova regra exija uma linha que não foi preservada, consulte o Job Report original, se ainda estiver disponível no repositório. A coleta usa IDs e metadados dos relatórios finalizados; uma alteração do corpo sem alteração dos metadados não é detectada no ciclo normal.
+
+A reclassificação não reconstrói a correlação dos incidentes existentes. Revise os vínculos e os alertas já produzidos antes de usar ocorrências reclassificadas para validar o corte de notificações.
 
 Os alertas refletem falhas que geraram um Error Report. A janela de polling depende do número de jobs, do intervalo do worker e da latência do repositório. Jobs ausentes saem da rotação um dia após a última descoberta, com registro da última falha de acesso. A RAM disponível, os grupos e os pools são observações da coleta. Alterações entre coletas são fatores possíveis e podem não refletir a configuração histórica exata na hora da falha.
 

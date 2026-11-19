@@ -1,15 +1,33 @@
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+from contextlib import contextmanager
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from deadline_client import CommandResult
-from deadline_farm import collect_workers, incident_observations, incident_opened_at
+from deadline_farm import FarmCollector, collect_workers, incident_observations, incident_opened_at
 
 
 class FarmTests(unittest.TestCase):
+    def test_task_failure_switch_filters_before_limit_without_changing_incidents(self):
+        cursor = Mock()
+        cursor.fetchall.return_value = []
+        database = Mock()
+        @contextmanager
+        def transaction():
+            yield cursor
+        database.transaction = transaction
+        collector = FarmCollector(database, Mock(), Mock())
+        for value, expected in (("0", 0), ("1", 1)):
+            with patch.dict("os.environ", {"FLOW_CONNECT_RENDER_FARM_MODE": "active", "FLOW_CONNECT_RENDER_FARM_TASK_FAILURE_ENABLED": value}):
+                collector.publish_transitions()
+            sql, params = cursor.execute.call_args.args
+            self.assertIn("kind<>'task_failure'", sql)
+            self.assertIn("LIMIT 4", sql)
+            self.assertEqual((expected,), params)
+
     def test_batch_parser_preserves_real_types_and_marks_missing_records(self):
         client = Mock()
         client.run.side_effect = [

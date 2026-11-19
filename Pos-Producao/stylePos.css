@@ -1233,6 +1233,16 @@ nav {
   font-weight: 500;
 }
 
+.metric-card--average {
+  cursor: default;
+}
+
+.metric-detail {
+  margin-top: 3px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
 /* ==========================================
    FILTER BAR
 ========================================== */
@@ -2146,6 +2156,15 @@ header button#openModalBtnRender:hover {
 }
 #filtro .metric-label {
   font-size: 13px;
+}
+@media (max-width: 800px) {
+  #filtro .metric-card {
+    min-width: 0;
+    padding: 10px;
+  }
+  #filtro .metric-card--average {
+    grid-column: 1 / -1;
+  }
 }
 #widget-prazos {
   display: flex;

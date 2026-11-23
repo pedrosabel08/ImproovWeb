@@ -90,7 +90,26 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
     $itemIds = implode(',', array_map('intval', array_column($dados, 'id')));
     $ciclos = array_column(flow_pa_rows($conn, "SELECT entrega_item_id,situacao,motivo_encerramento FROM janela_operacional_ciclo WHERE entrega_item_id IN ($itemIds) ORDER BY id".($lock ? ' FOR UPDATE' : '')), null, 'entrega_item_id');
     $tarefaIds = implode(',', array_map('intval', array_column(array_merge(...array_values($tarefas ?: [[]])), 'idfuncao_imagem')));
-    $ativos = $tarefaIds ? array_flip(array_column(flow_pa_rows($conn, "SELECT ci.funcao_imagem_id FROM janela_operacional_ciclo c JOIN janela_operacional_ciclo_item ci ON ci.ciclo_id=c.id WHERE ci.funcao_imagem_id IN ($tarefaIds) AND c.ativo_token='ATIVO' ORDER BY ci.funcao_imagem_id".($lock ? ' FOR UPDATE' : '')), 'funcao_imagem_id')) : [];
+    $ativos = [];
+    if ($tarefaIds) {
+        $sqlAtivos = "SELECT ci.funcao_imagem_id,c.id,c.situacao,c.entrega_item_id,c.planejamento_versao_id_snapshot,c.unidade_trabalho_id
+            FROM janela_operacional_ciclo c JOIN janela_operacional_ciclo_item ci ON ci.ciclo_id=c.id
+            WHERE ci.funcao_imagem_id IN ($tarefaIds) AND c.ativo_token='ATIVO'
+            ORDER BY ci.funcao_imagem_id,c.id".($lock ? ' FOR UPDATE' : '');
+        $linhasAtivas = flow_pa_rows($conn, $sqlAtivos);
+        $semPlano = array_filter($linhasAtivas, static fn (array $ciclo) => $ciclo['entrega_item_id'] === null
+            && $ciclo['planejamento_versao_id_snapshot'] === null && $ciclo['unidade_trabalho_id'] === null);
+        $membrosPorCiclo = [];
+        if ($semPlano) {
+            $idsSemPlano = implode(',', array_map('intval', array_column($semPlano, 'id')));
+            $membros = flow_pa_rows($conn, "SELECT ciclo_id FROM janela_operacional_ciclo_item WHERE ciclo_id IN ($idsSemPlano) ORDER BY ciclo_id".($lock ? ' FOR UPDATE' : ''));
+            $membrosPorCiclo = array_count_values(array_column($membros, 'ciclo_id'));
+        }
+        foreach ($linhasAtivas as $ativo) {
+            $ativo['individual'] = ($membrosPorCiclo[$ativo['id']] ?? 0) === 1;
+            $ativos[$ativo['funcao_imagem_id']][] = $ativo;
+        }
+    }
     $origens = [];
     $rodadasAtuais = [];
     $rodadas = flow_pa_rows($conn, "SELECT p.imagem_id,p.id,p.nivel_complexidade,p.resultado,l.entrega_destino_id
@@ -130,17 +149,35 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
         }
         $tarefa = $ts[0];
         $r['rodada_substituida'] = $rodadasAtuais[$r['imagem_id']] !== $id;
-        $estado = flow_pa_estado_item($r, (string)$tarefa['status'], $ciclos[$r['id']] ?? null, isset($ativos[$tarefa['idfuncao_imagem']]));
-        $saida[] = ['entrega_item_id' => (int)$r['id'],'imagem_id' => (int)$r['imagem_id'],'imagem_nome' => $r['imagem_nome'],'tipo_imagem' => (string)($r['tipo_imagem'] ?? ''),
+        $ativosDaTarefa = $ativos[$tarefa['idfuncao_imagem']] ?? [];
+        $cicloResidual = flow_pa_ciclo_residual((string)$tarefa['status'], $ativosDaTarefa);
+        $estado = flow_pa_estado_item($r, (string)$tarefa['status'], $ciclos[$r['id']] ?? null, $ativosDaTarefa && $cicloResidual === null);
+        $item = ['entrega_item_id' => (int)$r['id'],'imagem_id' => (int)$r['imagem_id'],'imagem_nome' => $r['imagem_nome'],'tipo_imagem' => (string)($r['tipo_imagem'] ?? ''),
             'funcao_imagem_id' => (int)$ts[0]['idfuncao_imagem'],'pre_alt_item_id' => (int)$ps[0]['id'],'nivel_complexidade_snapshot' => $ps[0]['nivel_complexidade'] === null ? null : (int)$ps[0]['nivel_complexidade'],
             'etapa_atual_id' => (int)$r['etapa_atual_id'],'data_entregue' => $r['data_entregue'],'tarefa_cancelada' => flow_planejamento_normalizar((string)$ts[0]['status']) === 'cancelado',
             'responsavel_planejado_id' => null,'inicio_planejado' => null,'fim_planejado' => null] + $estado + [
             'responsavel_operacional_id' => (int)$tarefa['colaborador_id']];
+        if ($lock && $cicloResidual !== null) {
+            $item['ciclo_residual_id'] = $cicloResidual;
+        }
+        $saida[] = $item;
     }
     if ($pendentes) {
         throw new FlowPaClassificacaoPendente($pendentes);
     }
     return $saida;
+}
+
+/** Uma tarefa reiniciada pode ter deixado aberto um ciclo individual sem vínculo com um plano. */
+function flow_pa_ciclo_residual(string $status, array $ativos): ?int
+{
+    if (count($ativos) !== 1 || flow_planejamento_normalizar($status) !== 'nao iniciado') {
+        return null;
+    }
+    $ciclo = $ativos[0];
+    return $ciclo['situacao'] === 'ATIVO' && !empty($ciclo['individual'])
+        && $ciclo['entrega_item_id'] === null && $ciclo['planejamento_versao_id_snapshot'] === null
+        && $ciclo['unidade_trabalho_id'] === null ? (int)$ciclo['id'] : null;
 }
 
 function flow_pa_estado_item(array $item, string $status, ?array $ciclo, bool $ativo): array
@@ -312,6 +349,28 @@ function flow_pa_preservar_responsavel(array $item, array $confirmado): array
     return $item;
 }
 
+/** Usa a mesma atribuição confirmada que as operações da tarefa consultam. */
+function flow_pa_snapshot_versao(mysqli $conn, array $versao): array
+{
+    $snapshot = json_decode((string)$versao['snapshot_json'], true) ?? [];
+    if (empty($snapshot['itens'])) {
+        return $snapshot;
+    }
+    $atribuicoes = array_column(flow_pa_rows($conn, 'SELECT i.entrega_item_id,i.responsavel_planejado_id,c.nome_colaborador
+        FROM entrega_planejamento_item i
+        LEFT JOIN colaborador c ON c.idcolaborador=i.responsavel_planejado_id
+        WHERE i.versao_id=?', 'i', [(int)$versao['id']]), null, 'entrega_item_id');
+    foreach ($snapshot['itens'] as &$item) {
+        $atribuicao = $atribuicoes[$item['entrega_item_id']] ?? null;
+        if ($atribuicao && (int)($item['responsavel_planejado_id'] ?? 0) !== (int)$atribuicao['responsavel_planejado_id']) {
+            $item['responsavel_planejado_id'] = (int)$atribuicao['responsavel_planejado_id'];
+            $item['responsavel_planejado_nome'] = $atribuicao['nome_colaborador'];
+        }
+    }
+    unset($item);
+    return $snapshot;
+}
+
 function flow_pa_fingerprint(array $entrega, array $itens): array
 {
     $campos = ['entrega_item_id','imagem_id','funcao_imagem_id','pre_alt_item_id','nivel_complexidade_snapshot','etapa_atual_id','data_entregue','tarefa_cancelada','pode_editar_datas','pode_editar_responsavel','motivo_bloqueio'];
@@ -450,7 +509,7 @@ function flow_planejamento_alteracao_carregar(mysqli $conn, int $id): array
     $fp = flow_pa_fingerprint($e, $itens);
     $config = flow_pac_config($conn);
     $v = !empty($p['versao_atual_id']) ? flow_planejamento_carregar_versao($conn, (int)$p['versao_atual_id']) : null;
-    $confirmados = $v ? (json_decode($v['snapshot_json'], true)['itens'] ?? []) : [];
+    $confirmados = $v ? (flow_pa_snapshot_versao($conn, $v)['itens'] ?? []) : [];
     $confirmadosPorId = array_column($confirmados, null, 'entrega_item_id');
     $rascunho = $p['rascunho_json'] ? json_decode($p['rascunho_json'], true) : null;
     $itens = flow_pac_pontuar($itens, $config, $confirmados);
@@ -509,7 +568,7 @@ function flow_planejamento_alteracao_carregar(mysqli $conn, int $id): array
         $p['estado'] = 'DESATUALIZADO';
     }
     $b = !empty($p['baseline_versao_id']) ? flow_planejamento_carregar_versao($conn, (int)$p['baseline_versao_id']) : null;
-    $realizado = flow_pac_realizado($conn, $id, $itens, $b ? (json_decode($b['snapshot_json'], true)['itens'] ?? []) : [], $confirmados);
+    $realizado = flow_pac_realizado($conn, $id, $itens, $b ? (flow_pa_snapshot_versao($conn, $b)['itens'] ?? []) : [], $confirmados);
     $miniaturas = [];
     if ($itens) {
         $imagemIds = implode(',', array_map('intval', array_column($itens, 'imagem_id')));
@@ -557,10 +616,12 @@ function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados,
         }
         $pessoas = flow_pa_colaboradores($conn, true);
         $anterior = $temVersao ? flow_planejamento_carregar_versao($conn, (int)$p['versao_atual_id']) : null;
-        $confirmados = $anterior ? (json_decode($anterior['snapshot_json'], true)['itens'] ?? []) : [];
+        $confirmados = $anterior ? (flow_pa_snapshot_versao($conn, $anterior)['itens'] ?? []) : [];
         $porId = array_column($confirmados, null, 'entrega_item_id');
+        $ciclosResiduais = array_column($escopo, 'ciclo_residual_id', 'funcao_imagem_id');
         $editaveis = array_map(static function ($item) use ($porId) {
             $anterior = $porId[$item['entrega_item_id']] ?? [];
+            unset($item['ciclo_residual_id']);
             return flow_pa_preservar_responsavel($item, $anterior) + [
                 'responsavel_planejado_nome' => $anterior['responsavel_planejado_nome'] ?? null,
             ];
@@ -584,11 +645,18 @@ function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados,
         }
         $pendentes = flow_pa_validar_itens(flow_pac_pontuar($editaveis, $config, $confirmados), $decisoes, $pessoas, $confirmar);
         $atribuicoes = [];
+        $ciclosParaEncerrar = [];
         foreach ($pendentes as $i) {
             $responsavelAnterior = (int)($porId[$i['entrega_item_id']]['responsavel_planejado_id'] ?? $i['responsavel_operacional_id']);
             $responsavel = (int)$i['responsavel_planejado_id'];
-            if ($confirmar && $responsavel !== $responsavelAnterior && $responsavel !== $i['responsavel_operacional_id']) {
-                $atribuicoes[$i['funcao_imagem_id']] = $responsavel;
+            $tarefaId = $i['funcao_imagem_id'];
+            if ($confirmar && $responsavel !== $responsavelAnterior) {
+                if ($responsavel !== $i['responsavel_operacional_id']) {
+                    $atribuicoes[$tarefaId] = $responsavel;
+                }
+                if (isset($ciclosResiduais[$tarefaId])) {
+                    $ciclosParaEncerrar[$tarefaId] = $ciclosResiduais[$tarefaId];
+                }
             }
             if ($i['fim_planejado'] && (!flow_pac_dia_util($i['fim_planejado']) || $i['fim_planejado'] < substr($e['data_recebimento'], 0, 10))) {
                 throw new InvalidArgumentException('Escolha um dia útil a partir do recebimento.');
@@ -663,6 +731,16 @@ function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados,
                 array_push($paramItens, $vid, $i['entrega_item_id'], $i['funcao_imagem_id'], $i['pre_alt_item_id'], $i['responsavel_planejado_id'], $i['inicio_planejado'], $i['fim_planejado'], $i['nivel_complexidade_snapshot']);
             }
             flow_pa_query($conn, 'INSERT INTO entrega_planejamento_item (versao_id,entrega_item_id,funcao_imagem_id,pre_alt_item_id,responsavel_planejado_id,inicio_planejado,fim_planejado,nivel_complexidade_snapshot) VALUES '.implode(',', $linhas), str_repeat('iiiiissi', count($itens)), $paramItens)->close();
+            if ($ciclosParaEncerrar) {
+                require_once __DIR__ . '/janela_operacional_helper.php';
+                $atorUsuario = isset($_SESSION['idusuario']) ? (int)$_SESSION['idusuario'] : null;
+                foreach ($ciclosParaEncerrar as $tarefaId => $cicloId) {
+                    $encerrado = flow_janela_encerrar_ciclo($conn, $tarefaId, 'REGULARIZACAO_REPLANEJAMENTO', $ator, $atorUsuario);
+                    if (($encerrado['ciclo_id'] ?? null) !== $cicloId) {
+                        throw new RuntimeException('O ciclo operacional mudou. Recarregue e revise o planejamento.', 409);
+                    }
+                }
+            }
             foreach ($atribuicoes as $tarefaId => $responsavel) {
                 flow_pa_query($conn, 'UPDATE funcao_imagem SET colaborador_id=? WHERE idfuncao_imagem=?', 'ii', [$responsavel, $tarefaId])->close();
             }

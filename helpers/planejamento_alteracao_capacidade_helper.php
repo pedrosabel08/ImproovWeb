@@ -84,7 +84,7 @@ function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pes
     $pendentes = [];
     if ($versoes) {
         $ids = implode(',', array_map('intval', array_column($versoes, 'id')));
-        $rows = flow_pa_rows($conn, "SELECT pi.versao_id,ei.id,ei.data_entregue,e.status_id AS status_id_entrega,
+        $rows = flow_pa_rows($conn, "SELECT pi.versao_id,pi.responsavel_planejado_id,ei.id,ei.data_entregue,e.status_id AS status_id_entrega,
                     im.status_id AS etapa_atual_id,f.status AS tarefa_status,c.situacao,c.motivo_encerramento,
                     (rodada.entrega_destino_id IS NOT NULL AND rodada.entrega_destino_id<>e.id) AS rodada_substituida
                 FROM entrega_planejamento_item pi JOIN entregas_itens ei ON ei.id=pi.entrega_item_id
@@ -106,7 +106,7 @@ function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pes
             $ciclo = $row['situacao'] === null ? null : $row;
             $estado = flow_pa_estado_item($row, (string)$row['tarefa_status'], $ciclo, $row['situacao'] === 'ATIVO');
             if ($estado['pode_editar_datas']) {
-                $pendentes[$row['versao_id']][$row['id']] = true;
+                $pendentes[$row['versao_id']][$row['id']] = (int)$row['responsavel_planejado_id'];
             }
         }
     }
@@ -115,7 +115,7 @@ function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pes
             if (!isset($pendentes[$v['id']][$i['entrega_item_id']])) {
                 continue;
             }
-            $id = (int)($i['responsavel_planejado_id'] ?? 0);
+            $id = $pendentes[$v['id']][$i['entrega_item_id']];
             $d = $i['fim_planejado'] ?? '';
             if (!isset($agenda[$id][$d])) {
                 continue;

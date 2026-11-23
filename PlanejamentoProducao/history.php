@@ -17,7 +17,8 @@ try {
         throw new InvalidArgumentException('Versão do plano inválida.');
     }
     $conn = conectarBanco();
-    $entrega = flow_planejamento_modelo($conn, $entregaId) === 'IMAGENS_ALTERACAO'
+    $porImagem = flow_planejamento_modelo($conn, $entregaId) === 'IMAGENS_ALTERACAO';
+    $entrega = $porImagem
         ? flow_pa_entrega($conn, $entregaId)
         : flow_planejamento_contexto_entrega($conn, $entregaId);
     if (!improov_usuario_pode_acessar_obra($conn, (int) $entrega['obra_id'])) {
@@ -37,11 +38,13 @@ try {
     $stmt->execute();
     $versao = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    $conn->close();
     if (!$versao) {
         throw new InvalidArgumentException('Versão não encontrada para esta entrega.');
     }
-    $versao['snapshot'] = json_decode((string) $versao['snapshot_json'], true);
+    $versao['snapshot'] = $porImagem
+        ? flow_pa_snapshot_versao($conn, $versao)
+        : json_decode((string) $versao['snapshot_json'], true);
+    $conn->close();
     unset($versao['snapshot_json'], $versao['contexto_fingerprint_json']);
     echo json_encode(['success' => true, 'versao' => $versao], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $erro) {

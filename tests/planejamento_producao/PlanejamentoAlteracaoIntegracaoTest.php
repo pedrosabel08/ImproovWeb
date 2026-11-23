@@ -220,6 +220,63 @@ $manual = flow_planejamento_alteracao_carregar($conn, 378);
 pa_assert(count($manual['itens']) === 9 && $manual['pode_editar'], 'Classificação abre o planejamento para as nove imagens');
 pa_assert(array_column($manual['itens'], 'nivel_atual') === [5, 2, 2, 2, 2, 2, 2, 2, 2], 'Classificação preserva o nível existente e grava os demais');
 pa_fails(fn () => flow_pa_classificar_imagens($conn, 378, ['niveis' => $niveis]), 'pendentes mudaram');
+
+// Reproduce a confirmed assignment that differs from the historical JSON,
+// with an unstarted task still attached to an individual, unlinked cycle.
+$conn->query('ALTER TABLE entrega_planejamento_item DROP INDEX test_fail_second_item, DROP COLUMN test_fault_token');
+pa_shadow($conn, 'janela_operacional_evento');
+pa_shadow($conn, 'janela_operacional_pausa');
+$decisoesManuais = array_map(static fn (array $item) => [
+    'entrega_item_id' => $item['entrega_item_id'],
+    'responsavel_planejado_id' => 1,
+    'fim_planejado' => '2026-11-18',
+], $manual['itens']);
+$planoManual = flow_planejamento_alteracao_salvar($conn, 378, pa_ack($manual, [
+    'lock_version' => $manual['planejamento']['lock_version'],
+    'fingerprint' => $manual['fingerprint'],
+    'itens' => $decisoesManuais,
+]), true, 1);
+$versaoManual = (int)$planoManual['planejamento']['versao_atual_id'];
+$conn->query("UPDATE entrega_planejamento_item SET responsavel_planejado_id=2 WHERE versao_id=$versaoManual AND entrega_item_id=21");
+$conn->query('UPDATE funcao_imagem SET colaborador_id=2 WHERE idfuncao_imagem=21');
+$conn->query("INSERT INTO janela_operacional_ciclo
+    (id,chave_referencia,perfil_id,perfil_codigo_snapshot,perfil_versao_snapshot,perfil_nome_snapshot,
+     aplica_regra_snapshot,inicio_em,previsao_original,previsao_atual,estado_original,estado_atual,
+     responsavel_original_id,responsavel_atual_id,situacao,ativo_token)
+    VALUES (821,'teste-ciclo-21',1,'TESTE',1,'Teste',1,'2026-11-16 09:00:00','2026-11-18','2026-11-18',
+            'NORMAL','NORMAL',1,1,'ATIVO','ATIVO')");
+$conn->query('INSERT INTO janela_operacional_ciclo_item(ciclo_id,funcao_imagem_id) VALUES (821,21),(821,22)');
+$cicloCompartilhado = flow_planejamento_alteracao_carregar($conn, 378);
+pa_assert(!$cicloCompartilhado['itens'][0]['pode_editar_responsavel'], 'Ciclo compartilhado continua protegido');
+$conn->query('DELETE FROM janela_operacional_ciclo_item WHERE ciclo_id=821 AND funcao_imagem_id=22');
+$reconciliado = flow_planejamento_alteracao_carregar($conn, 378);
+$itemReconciliado = $reconciliado['itens'][0];
+pa_assert($itemReconciliado['responsavel_planejado_id'] === 2 && $itemReconciliado['responsavel_planejado_nome'] === 'Teste B'
+    && !$itemReconciliado['atribuicao_divergente'], 'Planejador usa o responsável da versão confirmada');
+pa_assert($itemReconciliado['pode_editar_responsavel'], 'Tarefa não iniciada com ciclo residual individual aceita troca');
+$trocaManual = pa_ack($reconciliado, [
+    'lock_version' => $reconciliado['planejamento']['lock_version'],
+    'fingerprint' => $reconciliado['fingerprint'],
+    'replanejar' => true,
+    'motivo_codigo' => 'REDISTRIBUICAO_EQUIPE',
+    'itens' => $decisoesManuais,
+]);
+$rascunhoTroca = flow_planejamento_alteracao_salvar($conn, 378, $trocaManual, false, 1);
+pa_assert(flow_pa_rows($conn, 'SELECT ativo_token FROM janela_operacional_ciclo WHERE id=821')[0]['ativo_token'] === 'ATIVO',
+    'Rascunho mantém o ciclo e só a confirmação regulariza o registro');
+$trocaManual['lock_version'] = $rascunhoTroca['planejamento']['lock_version'];
+$trocaConfirmada = flow_planejamento_alteracao_salvar($conn, 378, $trocaManual, true, 1);
+$cicloDepois = flow_pa_rows($conn, 'SELECT situacao,motivo_encerramento FROM janela_operacional_ciclo WHERE id=821')[0];
+pa_assert($cicloDepois['situacao'] === 'ENCERRADO' && $cicloDepois['motivo_encerramento'] === 'REGULARIZACAO_REPLANEJAMENTO',
+    'Troca confirmada encerra com motivo o ciclo residual');
+pa_assert(flow_pa_rows($conn, "SELECT evento FROM janela_operacional_evento WHERE ciclo_id=821")[0]['evento'] === 'CICLO_ENCERRADO',
+    'Encerramento é registrado no histórico operacional');
+pa_assert($trocaConfirmada['itens'][0]['responsavel_planejado_id'] === 1 && $trocaConfirmada['itens'][0]['responsavel_operacional_id'] === 1
+    && $trocaConfirmada['planejamento']['baseline_versao_id'] === $versaoManual, 'Nova versão aplica a troca e preserva a baseline');
+$snapshotAnterior = flow_planejamento_carregar_versao($conn, $versaoManual);
+pa_assert(json_decode($snapshotAnterior['snapshot_json'], true)['itens'][0]['responsavel_planejado_id'] === 1,
+    'A leitura reconciliada preserva o JSON armazenado');
+
 $conn->query('ALTER TABLE entrega_planejamento_producao DROP COLUMN modelo');
 $conn->begin_transaction();
 $conn->query("INSERT INTO entregas(id,obra_id,status_id,data_recebimento,data_prevista,status) VALUES(3,1,4,'2026-11-02','2026-11-11','Pendente')");

@@ -1,5 +1,5 @@
 import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
-import { setupExploration } from "./exploration-mode.js?v=6";
+import { setupExploration } from "./exploration-mode.js?v=7";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
@@ -162,7 +162,7 @@ textureToggle.addEventListener("click", () => {
 });
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
-    exploration?.invalidate();
+    exploration?.dispose();
     geoEnvironment.dispose();
     viewerEnvironment.dispose();
   }
@@ -1017,13 +1017,16 @@ function activateFloor(floor) {
 // A seleção 3D é independente da vista isolada usada apenas ao abrir o mapa.
 async function focusFloor(floor) {
   if (!modelRoot || !floor || floor.bounds.isEmpty()) return;
-  exploration?.invalidate();
+  const flying = exploration?.flying;
+  if (!flying) exploration?.invalidate();
   measurements.setScope(floor.id);
   if (viewerState.mode === "building") {
+    if (!flying) {
     const damping = controls.enableDamping;
     controls.enableDamping = false;
     controls.update();
     controls.enableDamping = damping;
+    }
     fullCameraPose = captureCameraPose();
     viewerState.sidebarBeforeFloor = {
       left: $("leftSidebar").classList.contains("is-collapsed"),
@@ -1050,8 +1053,12 @@ async function focusFloor(floor) {
   $("modeLabel").textContent = `Navegação 3D · ${floorLabel(floor.id)}`;
   $("hint").textContent =
     "Arraste para orbitar o pavimento; selecione outro para trocar";
+  if (flying) {
+    exploration.refreshFlight();
+    return;
+  }
   await settleSidebarLayout();
-  if (viewerState.selectedFloor !== floor) return;
+  if (viewerState.selectedFloor !== floor || exploration?.flying) return;
   await transitionCamera(
     floorOrbitPose(
       floor.bounds,
@@ -1128,7 +1135,8 @@ function closeFloorPopover() {
 }
 async function resetBuildingView() {
   if (!modelRoot) return;
-  exploration?.invalidate();
+  const flying = exploration?.flying;
+  if (!flying) exploration?.invalidate();
   measurements.setScope(null);
   ++transitionToken;
   transitioning = false;
@@ -1160,9 +1168,13 @@ async function resetBuildingView() {
   $("hint").textContent =
     "Clique em um pavimento para aproximar e explorar em 3D";
   mapBridge?.showIntro();
+  if (flying) {
+    exploration.refreshFlight();
+    return;
+  }
   // Recalcula o enquadramento para o espaço atual, inclusive após recolher painéis.
   await settleSidebarLayout();
-  if (viewerState.mode !== "building") return;
+  if (viewerState.mode !== "building" || exploration?.flying) return;
   const box = visibleModelBounds(modelRoot);
   const pose = fullCameraPose || cameraPoseFor(box);
   await transitionCamera(pose, 850);
@@ -1864,7 +1876,7 @@ function resizeViewport() {
   camera.aspect = w / h;
   camera.left = -camera.top * (w / h);
   camera.right = camera.top * (w / h);
-  if (!restorePersonScene) updateAerialZoomLimit();
+  if (!restorePersonScene && !exploration?.flying) updateAerialZoomLimit();
   camera.updateProjectionMatrix();
 }
 function scheduleResizeViewport() {
@@ -1891,6 +1903,7 @@ exploration = setupExploration({
   canvas: renderer.domElement,
   orbitCamera: camera,
   controls,
+  disposeResources: disposeModelResources,
   available: () =>
     !!modelRoot &&
     !mapVisible &&
@@ -1908,7 +1921,22 @@ exploration = setupExploration({
     modelSurface: (mesh) =>
       wasVisible(mesh) ? basePersonMaterial(mesh) : null,
   }),
-  onChange(position) {
+  getFloor: () => activeFloor || viewerState.selectedFloor,
+  getFlightSource: () => ({
+    model: modelRoot,
+    bounds: geoEnvironment.bounds,
+    meshes: modelMeshes,
+    group: geoEnvironment.group,
+    terrain: geoEnvironment.terrain,
+    modelSurface(mesh) {
+      for (let object = mesh; object; object = object.parent) {
+        if (!object.visible) return null;
+        if (object === modelRoot) break;
+      }
+      return highlightMaterials.get(mesh) ?? mesh.material;
+    },
+  }),
+  onChange(position, mode) {
     dragStart = null;
     pickingPointers.clear();
     multiPointerGesture = false;
@@ -1916,7 +1944,7 @@ exploration = setupExploration({
     hoveredRecord = viewerState.hoveredFloor = null;
     if (position) {
       clearVisualHighlights();
-      restorePersonScene = openPersonScene();
+      if (mode === "josh") restorePersonScene = openPersonScene();
       solarLighting.setExplorerPosition(position);
     } else {
       solarLighting.setExplorerPosition(null);
@@ -1925,6 +1953,7 @@ exploration = setupExploration({
       refreshHighlights();
     }
     resizeViewport();
+    if (!position && mode === "seagull") updateAerialZoomLimit();
   },
 });
 
@@ -1988,7 +2017,8 @@ function openPersonScene() {
       !exploration.engaged,
   );
   if (!mapVisible) {
-    if (!transitioning && !northDefining && !explorerCamera) controls.update();
+    if (!transitioning && !northDefining && !exploration.flying && !explorerCamera)
+      controls.update();
     northIndicator.update(explorerCamera || camera);
     solarLighting.update(explorerCamera || camera, now);
     geoEnvironment.update(now);

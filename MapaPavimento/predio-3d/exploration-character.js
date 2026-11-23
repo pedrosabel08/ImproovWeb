@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { ExplorationCollision } from "./exploration-collision.js?v=4";
+import { ExplorationCollision } from "./exploration-collision.js?v=5";
 
 const JOSH = new URL("../../assets/person/Josh.glb?v=2", import.meta.url).href;
 const WALK = 1.45,
@@ -35,12 +35,12 @@ export class ExplorationCharacter {
     this.desired = new THREE.Vector3();
     this.offset = new THREE.Vector3();
     this.movement = new THREE.Vector3();
-    this.firstPerson = true;
-    this.firstPersonFov = 62;
-    const view = placement.towardCamera;
-    this.yaw = Math.atan2(view.x, view.z);
-    this.pitch = 0;
-    this.distance = 4.6;
+    const { resume, towardCamera } = placement;
+    this.firstPerson = resume?.firstPerson ?? true;
+    this.firstPersonFov = resume?.firstPersonFov ?? 62;
+    this.yaw = resume?.yaw ?? Math.atan2(towardCamera.x, towardCamera.z);
+    this.pitch = resume?.pitch ?? 0;
+    this.distance = resume?.distance ?? 4.6;
     this.actualDistance = this.distance;
     this.position = placement.position;
     josh.scene.position.copy(this.position);

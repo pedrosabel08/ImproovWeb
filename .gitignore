@@ -166,6 +166,7 @@ ALMA/scripts/reports
 
 *.glb
 !/assets/person/Josh.glb
+!/assets/person/seagull-2.glb
 # Source files for offline conversion; ship only the generated browser asset.
 /assets/person/*.fbx
 

@@ -39,16 +39,18 @@ function segmentDistance(a, b, c, d, u, v, w) {
   return w.addScaledVector(u, s).addScaledVector(v, -t).lengthSq();
 }
 
-/** Prepared only for Explorar. World-space triangle grid; no copies of scene meshes or materials. */
+/** On-demand world-space triangle grid shared by walking and flight. */
 export class ExplorationCollision {
-  constructor({ meshes, group, terrain, modelSurface }) {
+  constructor({ meshes, group, terrain, modelSurface, flight = false }) {
     this.meshes = meshes;
     this.group = group;
     this.terrain = terrain;
     this.modelSurface = modelSurface;
+    this.flight = flight;
     this.cells = new Map();
     this.large = [];
     this.nearby = new Set();
+    this.hasGroundFaces = false;
     this.tri = new THREE.Triangle();
     this.ray = new THREE.Ray();
     this.normal = new THREE.Vector3();
@@ -60,10 +62,11 @@ export class ExplorationCollision {
     this.w = new THREE.Vector3();
     this.local = new THREE.Vector3();
     this.cameraRay = new THREE.Vector3();
-    this.inverse = group?.matrixWorld.clone().invert();
   }
 
   async prepare(signal) {
+    this.group?.updateWorldMatrix(true, true);
+    this.inverse = this.group?.matrixWorld.clone().invert();
     const sources = this.meshes.map((mesh) => ({ mesh, kind: "model" }));
     // Live DEM already has a surface index. A server-cached DEM only has the
     // actual rendered triangles, so recover support from those exact triangles.
@@ -71,7 +74,11 @@ export class ExplorationCollision {
       if (!mesh.isMesh) return;
       const key = layer(mesh);
       if (/^buildings?/i.test(key)) sources.push({ mesh, kind: "obstacle" });
-      if (!this.terrain && ["ground", "model-ground"].includes(key))
+      if (
+        (!this.terrain && key === "ground") ||
+        ((!this.terrain || this.flight) && key === "model-ground") ||
+        (this.flight && key === "water")
+      )
         sources.push({ mesh, kind: "ground" });
     });
     let deadline = performance.now() + 10;
@@ -165,22 +172,28 @@ export class ExplorationCollision {
                 );
                 this.insert(
                   { data, triangle },
-                  ...triangleBounds(triangle.a, triangle.b, triangle.c),
+                  triangle,
                 );
               }
               continue;
             }
           }
-          this.insert(ref, ...triangleBounds(a, b, c));
+          this.insert(ref, this.tri);
         }
       }
     }
     signal.throwIfAborted();
   }
 
-  insert(ref, minX, minZ, maxX, maxZ) {
+  insert(ref, { a, b, c }) {
+    const [minX, minZ, maxX, maxZ] = triangleBounds(a, b, c);
     if (![minX, minZ, maxX, maxZ].every(Number.isFinite)) return;
-    Object.assign(ref, { minX, minZ, maxX, maxZ });
+    if (ref.data.kind === "ground") this.hasGroundFaces = true;
+    Object.assign(ref, {
+      minX, minZ, maxX, maxZ,
+      minY: Math.min(a.y, b.y, c.y),
+      maxY: Math.max(a.y, b.y, c.y),
+    });
     const x0 = cell(minX),
       x1 = cell(maxX),
       z0 = cell(minZ),
@@ -214,14 +227,16 @@ export class ExplorationCollision {
     return this.tri;
   }
 
-  query(minX, minZ, maxX, maxZ) {
+  query(minX, minZ, maxX, maxZ, minY = -Infinity, maxY = Infinity) {
     const hits = this.nearby;
     hits.clear();
     const overlaps = (ref) =>
       ref.minX <= maxX &&
       ref.maxX >= minX &&
       ref.minZ <= maxZ &&
-      ref.maxZ >= minZ;
+      ref.maxZ >= minZ &&
+      ref.minY <= maxY &&
+      ref.maxY >= minY;
     for (let x = cell(minX); x <= cell(maxX); x++)
       for (let z = cell(minZ); z <= cell(maxZ); z++) {
         const bucket = this.cells.get(`${x}/${z}`);
@@ -354,7 +369,53 @@ export class ExplorationCollision {
     return true;
   }
 
-  cameraDistance(target, desired) {
+  groundHeight(x, z, fallback) {
+    let height = this.demHeight(x, z) ?? -Infinity;
+    if (!this.hasGroundFaces) return Number.isFinite(height) ? height : fallback;
+    this.ray.direction.copy(DOWN);
+    for (const ref of this.query(x, z, x, z)) {
+      if (ref.data.kind !== "ground" || ref.maxY <= height) continue;
+      this.ray.origin.set(x, ref.maxY + 0.001, z);
+      const { a, b, c } = this.read(ref);
+      const hit = this.ray.intersectTriangle(a, b, c, false, this.point);
+      if (hit) height = Math.max(height, hit.y);
+    }
+    return Number.isFinite(height) ? height : fallback;
+  }
+
+  // Test the whole movement against both faces of each triangle, including its edges.
+  flightBlocked(start, end, radius) {
+    const direction = this.cameraRay.subVectors(end, start);
+    const length = direction.length();
+    this.ray.set(start, direction.normalize());
+    const threshold = radius * radius;
+    for (const ref of this.query(
+      Math.min(start.x, end.x) - radius,
+      Math.min(start.z, end.z) - radius,
+      Math.max(start.x, end.x) + radius,
+      Math.max(start.z, end.z) + radius,
+      Math.min(start.y, end.y) - radius,
+      Math.max(start.y, end.y) + radius,
+    )) {
+      const triangle = this.read(ref);
+      const { a, b, c } = triangle;
+      if (triangle.closestPointToPoint(start, this.point).distanceToSquared(start) < threshold)
+        return true;
+      if (!length) continue;
+      const hit = this.ray.intersectTriangle(a, b, c, false, this.point);
+      if (
+        (hit && hit.distanceToSquared(start) <= length * length) ||
+        triangle.closestPointToPoint(end, this.point).distanceToSquared(end) < threshold ||
+        segmentDistance(start, end, a, b, this.u, this.v, this.w) < threshold ||
+        segmentDistance(start, end, b, c, this.u, this.v, this.w) < threshold ||
+        segmentDistance(start, end, c, a, this.u, this.v, this.w) < threshold
+      )
+        return true;
+    }
+    return false;
+  }
+
+  cameraDistance(target, desired, padding = 0.16, demStep = 0.25, fallbackGround = -Infinity) {
     const direction = this.cameraRay.subVectors(desired, target);
     let limit = direction.length();
     direction.normalize();
@@ -364,21 +425,26 @@ export class ExplorationCollision {
       Math.min(target.z, desired.z),
       Math.max(target.x, desired.x),
       Math.max(target.z, desired.z),
+      Math.min(target.y, desired.y),
+      Math.max(target.y, desired.y),
     )) {
       const { a, b, c } = this.read(ref);
       const hit = this.ray.intersectTriangle(a, b, c, false, this.point);
-      if (hit) limit = Math.min(limit, hit.distanceTo(target) - 0.16);
+      if (hit) limit = Math.min(limit, hit.distanceTo(target) - padding);
     }
     if (this.terrain)
-      for (let d = 0.25; d < limit; d += 0.25) {
+      for (let d = Math.min(demStep, limit); d <= limit; d = Math.min(d + demStep, limit)) {
         const p = this.point.copy(target).addScaledVector(direction, d);
         const y = this.demHeight(p.x, p.z);
-        if (y != null && p.y < y + 0.15) {
-          limit = d - 0.15;
+        if (y != null && p.y < y + padding) {
+          limit = d - padding;
           break;
         }
+        if (d === limit) break;
       }
-    return Math.max(0.08, limit);
+    if (Number.isFinite(fallbackGround) && direction.y < 0)
+      limit = Math.min(limit, (target.y - fallbackGround - padding) / -direction.y);
+    return Math.max(padding * 0.5, limit);
   }
 
   place({ point, normalY, towardCamera }) {

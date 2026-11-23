@@ -1022,10 +1022,10 @@ async function focusFloor(floor) {
   measurements.setScope(floor.id);
   if (viewerState.mode === "building") {
     if (!flying) {
-    const damping = controls.enableDamping;
-    controls.enableDamping = false;
-    controls.update();
-    controls.enableDamping = damping;
+      const damping = controls.enableDamping;
+      controls.enableDamping = false;
+      controls.update();
+      controls.enableDamping = damping;
     }
     fullCameraPose = captureCameraPose();
     viewerState.sidebarBeforeFloor = {

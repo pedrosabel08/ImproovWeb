@@ -1,4 +1,5 @@
 import { createPersonPicker } from "./person-camera.js?v=2";
+import { setupSeagullMode } from "./seagull-mode.js?v=1";
 
 const KEYS = new Set([
   "KeyW",
@@ -21,17 +22,24 @@ export function setupExploration({
   controls,
   available,
   getSource,
+  getFlightSource,
+  getFloor,
+  disposeResources,
   onChange,
 }) {
   const bar = document.createElement("div");
   bar.className = "person-camera-controls";
   bar.setAttribute("role", "group");
-  bar.setAttribute("aria-label", "Câmera de inspeção");
-  bar.innerHTML = `<button class="btn" type="button" aria-pressed="false" aria-label="Posicionar câmera" title="Posicionar câmera">
+  bar.setAttribute("aria-label", "Navegação 3D");
+  bar.innerHTML = `<select class="btn navigation-mode" aria-label="Modo de navegação">
+      <option value="orbit">Navegação convencional</option>
+      <option value="josh">Josh · caminhada</option>
+      <option value="seagull">Gaivota · voo</option>
+    </select><button class="btn" type="button" aria-pressed="false" aria-label="Posicionar câmera" title="Posicionar câmera" hidden>
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><circle cx="12" cy="4" r="3"/><path d="M8 8h8l2 7-2 .6-1-4V22h-2v-7h-2v7H9V11.6l-1 4L6 15z"/></svg>
     </button><button class="btn" type="button" hidden>Terceira pessoa</button>
     <button class="btn" type="button" hidden>Voltar à vista aérea</button>`;
-  const [button, perspectiveButton, exitButton] = bar.children;
+  const [selector, button, perspectiveButton, exitButton] = bar.children;
   const hint = document.createElement("div");
   hint.id = "explorationHint";
   hint.className = "exploration-hint";
@@ -68,7 +76,8 @@ export function setupExploration({
     placing = false,
     loading = null,
     characterPromise = null,
-    cache = null;
+    cache = null,
+    savedJosh = null;
   let previousEnabled = true,
     previousFrame = null,
     drag = null,
@@ -87,11 +96,42 @@ export function setupExploration({
     message.textContent = text;
     orbStop?.();
     orbStop = null;
-    if (busy) orbStop = window.thinkingOrbs?.(hint);
+    if (busy) {
+      orb.setAttribute("aria-label", text.replace(/…$/, ""));
+      orbStop = window.thinkingOrbs?.(hint);
+    }
   }
 
+  const flight = setupSeagullMode({
+    viewport, bar, hint, scene, canvas, orbitCamera, controls, available,
+    getSource: getFlightSource, getFloor, disposeResources, show,
+    onChange: (position) => onChange(position, "seagull"),
+    onExit(message) {
+      stop();
+      if (message) show(message);
+      selector.focus({ preventScroll: true });
+    },
+  });
+
   function stop() {
+    stopJosh();
+    flight.stop();
+    selector.value = "orbit";
+    exitButton.hidden = true;
+    show();
+  }
+
+  function stopJosh() {
     const wasActive = !!explorer;
+    if (wasActive) savedJosh = {
+      model: cache.model,
+      position: explorer.position.clone(),
+      yaw: explorer.yaw,
+      pitch: explorer.pitch,
+      firstPerson: explorer.firstPerson,
+      firstPersonFov: explorer.firstPersonFov,
+      distance: explorer.distance,
+    };
     if (wasActive && drag && canvas.hasPointerCapture(drag.id))
       canvas.releasePointerCapture(drag.id);
     loading?.abort();
@@ -115,18 +155,18 @@ export function setupExploration({
     button.setAttribute("aria-pressed", "false");
     button.title = "Posicionar câmera";
     button.setAttribute("aria-label", button.title);
-    perspectiveButton.hidden = exitButton.hidden = true;
-    show();
+    button.hidden = perspectiveButton.hidden = true;
     if (wasActive) {
       controls.enabled = previousEnabled;
-      onChange(null);
+      onChange(null, "josh");
     }
   }
 
   function startPlacement() {
     if (!available()) return;
-    stop();
+    stopJosh();
     placing = true;
+    button.hidden = false;
     viewport.classList.add("exploration-placing");
     button.setAttribute("aria-pressed", "true");
     button.title = "Cancelar posicionamento (Esc)";
@@ -143,11 +183,11 @@ export function setupExploration({
       : "third";
   }
 
-  async function place(event) {
+  async function place(event, resume = null) {
     if (!available() || loading) return;
     const source = getSource();
-    const hit = pick(event, source);
-    if (!hit) {
+    const hit = event ? pick(event, source) : null;
+    if (event && !hit) {
       show("Clique em uma superfície visível do terreno ou do prédio.");
       return;
     }
@@ -157,7 +197,7 @@ export function setupExploration({
     show("Preparando a câmera…", true);
     try {
       const { loadJosh, ExplorationCharacter } =
-        await import("./exploration-character.js?v=4");
+        await import("./exploration-character.js?v=5");
       controller.signal.throwIfAborted();
       const matching =
         cache &&
@@ -174,8 +214,8 @@ export function setupExploration({
         scope: source.scope,
         collision,
       };
-      const position = collision.place(hit);
-      if (!position) {
+      const position = resume?.position.clone() ?? collision.place(hit);
+      if (!position || (resume && collision.blocked(position.x, position.y, position.z))) {
         loading = null;
         viewport.classList.remove("exploration-loading");
         show("Escolha um ponto com espaço livre sobre o piso.");
@@ -199,7 +239,8 @@ export function setupExploration({
       }
       explorer = new ExplorationCharacter(josh, collision, orbitCamera, {
         position,
-        towardCamera: hit.towardCamera,
+        towardCamera: hit?.towardCamera,
+        resume,
       });
       loading = null;
       placing = false;
@@ -216,7 +257,7 @@ export function setupExploration({
       syncPerspective();
       updateTouch();
       show();
-      onChange(explorer.position);
+      onChange(explorer.position, "josh");
     } catch (failure) {
       if (loading !== controller) return;
       loading = null;
@@ -228,10 +269,27 @@ export function setupExploration({
     }
   }
 
+  selector.addEventListener("change", () => {
+    const next = selector.value;
+    stop();
+    if (!available() || next === "orbit") return;
+    selector.value = next;
+    exitButton.textContent = next === "seagull" ? "Sair do voo" : "Voltar à vista aérea";
+    exitButton.hidden = false;
+    if (next === "seagull") {
+      // Both modes can build a large collision index. Keep only the active one.
+      cache = null;
+      flight.start();
+    } else {
+      startPlacement();
+      const source = getSource();
+      if (savedJosh?.model === source.model) void place(null, savedJosh);
+    }
+  });
   button.addEventListener("click", () => (placing ? stop() : startPlacement()));
   exitButton.addEventListener("click", () => {
     stop();
-    button.focus();
+    selector.focus({ preventScroll: true });
   });
   perspectiveButton.addEventListener("click", () => {
     if (!explorer) return;
@@ -253,7 +311,7 @@ export function setupExploration({
         event.preventDefault();
         event.stopImmediatePropagation();
         stop();
-        button.focus();
+        selector.focus({ preventScroll: true });
         return;
       }
       if (
@@ -381,17 +439,31 @@ export function setupExploration({
 
   return {
     get engaged() {
-      return !!(placing || explorer);
+      return !!(placing || explorer || flight.engaged);
+    },
+    get flying() {
+      return flight.engaged;
+    },
+    refreshFlight() {
+      flight.refresh();
     },
     stop,
     invalidate() {
-      if (placing || explorer) stop();
+      stop();
       cache = null;
+      savedJosh = null;
+      flight.invalidate();
+    },
+    dispose() {
+      this.invalidate();
+      flight.dispose();
     },
     update(now) {
       const enabled = available();
       if (!enabled && (explorer || placing)) stop();
       button.disabled = !enabled;
+      selector.disabled = !enabled;
+      if (flight.engaged) return flight.update(now);
       if (!explorer) return null;
       const dt =
         previousFrame == null

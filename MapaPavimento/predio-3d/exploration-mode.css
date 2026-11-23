@@ -26,10 +26,20 @@
   padding: 6px 8px;
   font-size: 12px;
 }
-.person-camera-controls button[aria-pressed="true"] {
+.person-camera-controls button[aria-pressed="true"],
+.person-camera-controls .navigation-mode:has(option:checked:not([value="orbit"])) {
   background: var(--spatial-selected);
   border-color: var(--spatial-accent);
   color: var(--spatial-accent);
+}
+.person-camera-controls select {
+  color: var(--spatial-text);
+  background: var(--spatial-float);
+  max-width: 100%;
+}
+.person-camera-controls option {
+  background: var(--spatial-panel);
+  color: var(--spatial-text);
 }
 .exploration-hint {
   bottom: 12px;
@@ -65,6 +75,46 @@
 }
 .viewport.exploring canvas.gl:active {
   cursor: grabbing;
+}
+.viewport.seagull-flying canvas.gl {
+  cursor: grab;
+  touch-action: none;
+}
+.viewport.seagull-flying canvas.gl:active {
+  cursor: grabbing;
+}
+.viewport.seagull-flying .person-camera-controls {
+  bottom: 52px;
+}
+.viewport.seagull-flying .geo-attribution {
+  transform: translateY(36px);
+}
+.person-camera-controls .exploration-hint {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+.person-camera-controls .seagull-pad {
+  position: static;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+}
+.person-camera-controls .seagull-pad .btn {
+  min-width: 36px;
+  min-height: 38px;
+}
+.viewport.seagull-flying .floor-popover {
+  top: 12px;
+  bottom: auto;
+  max-height: 34%;
+}
+.viewport.seagull-flying > :is(.spatial-viewcube, .viewtools) {
+  display: none;
 }
 .viewport.exploration-loading canvas.gl {
   cursor: wait;

@@ -1,10 +1,12 @@
 let allRenders = [];
 let currentPage = 1;
-let totalRenders = 0;
-const PAGE_LIMIT = 200;
+const PAGE_LIMIT = 48;
 let renderFilterOptions = null;
 let filterSearchTimeout = null;
 let renderRequestSequence = 0;
+let renderListRequest = null;
+let renderOverviewRequest = null;
+let renderSummaryFilterKey = null;
 let renderMotionInitial = true;
 
 let activeRenderView = "pending";
@@ -91,7 +93,11 @@ function setRenderView(view) {
         "is-list",
         view === "approved" && libraryLayout === "list",
       );
-    if (!wasFarm) $("#filterStatus").val("");
+    const hasTabOptions = renderFilterOptions?.view === view;
+    if (!wasFarm || !hasTabOptions) {
+      $("#filterStatus").val("");
+      renderStatusFilter(hasTabOptions ? renderFilterOptions.status : []);
+    }
     allRenders = [];
     $("#renderGrid").empty().attr("aria-busy", "true");
     $("#renderLoading").prop("hidden", false);
@@ -101,6 +107,10 @@ function setRenderView(view) {
   } else {
     $("#resultsBadge").prop("hidden", true);
     renderRequestSequence++;
+    clearTimeout(filterSearchTimeout);
+    filterSearchTimeout = null;
+    renderListRequest?.abort();
+    renderOverviewRequest?.abort();
   }
   document.querySelector(".render-center").scrollTop = 0;
   window.setRenderFarmActive?.(farm);
@@ -167,9 +177,10 @@ function renderCollaboratorFilter() {
   }
 }
 
-function renderStatusFilter() {
+function renderStatusFilter(tabStatuses) {
   const selected = $("#filterStatus").val();
   const status =
+    tabStatuses ||
     renderFilterOptions?.status ||
     [...new Set(allRenders.map((r) => r.status).filter(Boolean))].sort();
   const select = document.getElementById("filterStatus");
@@ -356,23 +367,23 @@ function renderDeadlineProgress(render, context = "card") {
     </div>`;
 }
 
-function renderCards(renders, motionStartIndex) {
+function renderCards(renders, previousRender) {
   const grid = document.getElementById("renderGrid");
 
   if (!renders.length) {
+    if (previousRender) return;
     grid.innerHTML = `
       <div class="empty-state">
         <i class="fa-solid fa-layer-group"></i>
         <p>Nenhum render encontrado</p>
         <span>Tente ajustar os filtros aplicados</span>
       </div>`;
-    updateResultsBadge(0, true, totalRenders);
     return;
   }
 
   let html = "";
-  let lastGroup;
-  renders.forEach(function (render) {
+  let lastGroup = previousRender?.render_group;
+  renders.forEach(function (render, index) {
     const imgUrl = render.previa_jpg
       ? renderPreviewUrl(render.previa_jpg, 540)
       : "../assets/logo.jpg";
@@ -399,7 +410,7 @@ function renderCards(renders, motionStartIndex) {
     html += `
       <article class="render-card" tabindex="0" data-motion-item data-id="${Number(render.idrender_alta)}" data-status="${status}">
         <div class="card-thumb-wrap">
-          <img loading="lazy" decoding="async" src="${imgUrl}" alt="" class="loading"
+          <img loading="${!previousRender && index < 4 ? "eager" : "lazy"}" decoding="async" src="${imgUrl}" alt="" class="loading"
                onload="this.classList.remove('loading')" onerror="this.onerror=null; this.src='../assets/logo.jpg'">
         </div>
         <button type="button" class="card-menu" aria-label="Trocar responsável de ${image}" title="Trocar responsável"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>
@@ -431,20 +442,19 @@ function renderCards(renders, motionStartIndex) {
       </article>`;
   });
 
-  grid.innerHTML = html;
-  updateResultsBadge(renders.length, isFilterActive(), totalRenders);
-  if (window.FlowMotion) {
-    const cards = Array.prototype.slice.call(
-      grid.querySelectorAll(".render-card"),
-    );
-    const newCards = cards.slice(Math.max(0, Number(motionStartIndex) || 0));
+  if (previousRender) {
+    grid.insertAdjacentHTML("beforeend", html);
+  } else {
+    grid.innerHTML = html;
+  }
+  if (renderMotionInitial && window.FlowMotion) {
     window.FlowMotion.enterItems(grid, {
-      items: newCards,
-      initial: renderMotionInitial,
+      items: [...grid.querySelectorAll(".render-card")].slice(0, 12),
+      initial: true,
       preset: "card",
     });
-    renderMotionInitial = false;
   }
+  renderMotionInitial = false;
 }
 
 // Use event delegation to avoid re-attaching handlers on every re-render
@@ -506,32 +516,77 @@ window.addEventListener("resize", () => {
     .forEach(positionDeadlineProgressTooltip);
 });
 
-function loadRenders(page) {
+function loadRenderOverview(view, filters) {
+  const filterKey = JSON.stringify(filters);
+  if (renderSummaryFilterKey !== filterKey) updateRenderSummary(null);
+
+  const needsOptions =
+    renderFilterOptions?.view !== view ||
+    Date.now() - renderFilterOptions.loadedAt >= 60000;
+  renderOverviewRequest = $.ajax({
+    url: "ajax.php",
+    data: {
+      action: "getRenders",
+      part: "overview",
+      view,
+      filterOptions: needsOptions ? 1 : 0,
+      ...filters,
+    },
+    dataType: "json",
+    success: function (response) {
+      if (response.status !== "sucesso") return;
+      renderSummaryFilterKey = filterKey;
+      updateRenderSummary(response.summary);
+      if (response.filterOptions) {
+        renderFilterOptions = {
+          ...response.filterOptions,
+          view,
+          loadedAt: Date.now(),
+        };
+        renderObraFilter();
+        renderCollaboratorFilter();
+        renderStatusFilter();
+        renderStatusImagemFilter();
+      }
+    },
+  });
+}
+
+function loadRenders(page = 1) {
   if (activeRenderView === "farm") return;
-  page = page || 1;
+  if (page > 1 && filterSearchTimeout !== null) return;
   const requestSequence = ++renderRequestSequence;
-  const btn = document.getElementById("btnLoadMore");
-  if (page > 1) {
-    btn.disabled = true;
-    btn.querySelector("i").hidden = true;
-    btn.querySelector("canvas").hidden = false;
+  renderListRequest?.abort();
+  if (page === 1) {
+    clearTimeout(filterSearchTimeout);
+    filterSearchTimeout = null;
+    renderOverviewRequest?.abort();
   }
 
-  $.ajax({
+  const btn = document.getElementById("btnLoadMore");
+  btn.disabled = true;
+  btn.querySelector("i").hidden = page > 1;
+  btn.querySelector("canvas").hidden = page === 1;
+  $("#renderGrid").attr("aria-busy", "true");
+  const view = activeRenderView;
+  const filters = getActiveFilters();
+
+  renderListRequest = $.ajax({
     url: "ajax.php",
     method: "GET",
     data: {
       action: "getRenders",
-      view: activeRenderView,
+      part: "list",
+      view,
       page: page,
       limit: PAGE_LIMIT,
-      ...getActiveFilters(),
+      ...filters,
     },
     dataType: "json",
     success: function (response) {
       if (requestSequence !== renderRequestSequence) return;
       if (response.status === "sucesso") {
-        const loadedBefore = allRenders.length;
+        const previousRender = page === 1 ? null : allRenders.at(-1);
         if (page === 1) {
           allRenders = response.renders;
         } else {
@@ -540,18 +595,13 @@ function loadRenders(page) {
         currentPage = page;
 
         const total = response.total || 0;
-        totalRenders = total;
-        updateRenderSummary(response.summary);
         const loaded = allRenders.length;
         const hasMore = loaded < total;
 
-        renderFilterOptions = response.filterOptions || renderFilterOptions;
-        renderObraFilter();
-        renderCollaboratorFilter();
-        renderStatusFilter();
-        renderStatusImagemFilter();
         updateFilterActions();
-        renderCards(allRenders, page === 1 ? 0 : loadedBefore);
+        renderCards(response.renders, previousRender);
+        updateResultsBadge(loaded, isFilterActive(), total);
+        if (page === 1) loadRenderOverview(view, filters);
 
         // Show / hide "Carregar mais"
         const wrap = document.getElementById("loadMoreWrap");

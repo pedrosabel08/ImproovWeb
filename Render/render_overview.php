@@ -21,6 +21,34 @@ function render_overview_group(string $execution): string
         ELSE 'other' END";
 }
 
+function render_library_filter_options(mysqli $conn, $view): array
+{
+    $active = "r.status <> 'Arquivado'";
+    $tab = match ($view) {
+        'approved' => "r.status = 'Aprovado'",
+        'pending' => "r.status NOT IN ('Arquivado','Aprovado')",
+        default => $active,
+    };
+    $queries = [
+        'obras' => "SELECT DISTINCT o.nomenclatura AS value FROM render_alta r
+            JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
+            JOIN obra o ON i.obra_id = o.idobra
+            WHERE $active AND o.nomenclatura IS NOT NULL ORDER BY value",
+        'colaboradores' => "SELECT DISTINCT c.nome_colaborador AS value FROM render_alta r
+            JOIN colaborador c ON r.responsavel_id = c.idcolaborador
+            WHERE $active AND c.nome_colaborador IS NOT NULL ORDER BY value",
+        'status' => "SELECT DISTINCT r.status AS value FROM render_alta r WHERE $tab ORDER BY value",
+        'statusImagem' => "SELECT DISTINCT s.nome_status AS value FROM render_alta r
+            JOIN status_imagem s ON r.status_id = s.idstatus
+            WHERE $active AND s.nome_status IS NOT NULL ORDER BY value",
+    ];
+    $options = [];
+    foreach ($queries as $key => $query) {
+        $options[$key] = array_column($conn->query($query)->fetch_all(MYSQLI_NUM), 0);
+    }
+    return $options;
+}
+
 function render_overview_summary(mysqli $conn, callable $bind, string $from, string $where, string $types, array $params, string $group, string $duration, string $dateFrom, string $dateTo): array
 {
     $stmt = $conn->prepare("WITH cohort AS (

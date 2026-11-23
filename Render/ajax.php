@@ -20,6 +20,10 @@ if (empty($_SESSION['logado'])) {
     echo json_encode(['status' => 'erro', 'message' => 'Sessão expirada.']);
     exit;
 }
+if (($_GET['action'] ?? '') === 'getRenders' && session_status() === PHP_SESSION_ACTIVE) {
+    // A listagem e seus indicadores são somente leitura e podem executar em paralelo.
+    session_write_close();
+}
 require_once __DIR__ . '/../conexao.php';
 if (($_GET['action'] ?? '') === 'deadlineRecovery') {
     require_once __DIR__ . '/deadline_recovery_flow.php';
@@ -724,6 +728,9 @@ if (isset($_GET['action'])) {
             $page  = max(1, (int)($_GET['page']  ?? 1));
             $limit = max(1, min(200, (int)($_GET['limit'] ?? 100)));
             $offset = ($page - 1) * $limit;
+            $part = $_GET['part'] ?? '';
+            $listOnly = $part === 'list';
+            $overviewOnly = $part === 'overview';
 
             $where = ["r.status != 'Arquivado'"];
             $params = [];
@@ -767,23 +774,6 @@ if (isset($_GET['action'])) {
                 $types .= 's';
             }
 
-            $manualCompletionAvailable = render_manual_completion_schema_ready($conn);
-            $manualJoin = $manualCompletionAvailable
-                ? "\nLEFT JOIN render_conclusoes_manuais rcm ON rcm.id = (
-                    SELECT cm.id FROM render_conclusoes_manuais cm
-                    WHERE cm.render_id = r.idrender_alta
-                    ORDER BY cm.criado_em DESC, cm.id DESC
-                    LIMIT 1
-                )"
-                : '';
-            $manualSelect = $manualCompletionAvailable
-                ? ", CASE WHEN BINARY r.status = 0x456D206170726F7661C3A7C3A36F
-                           AND rcm.tentativa_id = (
-                               SELECT rt.id FROM render_tentativas rt
-                               WHERE rt.render_id = r.idrender_alta
-                               ORDER BY rt.numero_tentativa DESC LIMIT 1
-                           ) THEN 1 ELSE 0 END AS concluido_manualmente"
-                : ', 0 AS concluido_manualmente';
             $baseFrom = "
 FROM render_alta r
 LEFT JOIN imagens_cliente_obra i ON r.imagem_id = i.idimagens_cliente_obra
@@ -800,77 +790,101 @@ LEFT JOIN obra o ON i.obra_id = o.idobra";
             };
 
             $summary = null;
+            $filterOptions = null;
+            $listFrom = $baseFrom;
+            $countFrom = $baseFrom;
             $groupSelect = '';
-            $sort = "FIELD(r.status, 'Em aprovação', 'Em andamento', 'Refazendo', 'Reprovado', 'Erro', 'Aprovado')";
+            $sort = "FIELD(r.status, 'Em aprovação', 'Em andamento', 'Refazendo', 'Reprovado', 'Erro', 'Aprovado'), ";
             if ($overview) {
                 $execution = 'NULL';
-                if (render_overview_table_available($conn, 'deadline_job_execution')) {
-                    $baseFrom .= ' LEFT JOIN deadline_job_execution de ON de.deadline_job_id=CAST(LOWER(r.deadline_job_id) AS BINARY)';
-                    $execution = "CASE WHEN de.observed_at >= NOW() - INTERVAL 5 MINUTE
-                        THEN NULLIF(de.execution_state,'unknown') END";
+                if (!$listOnly || $view === 'pending') {
+                    $tables = $conn->query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+                        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('deadline_job_execution','deadline_job_progress')");
+                    $deadlineTables = array_column($tables->fetch_all(MYSQLI_NUM), 0);
+                    if (in_array('deadline_job_execution', $deadlineTables, true)) {
+                        $listFrom .= ' LEFT JOIN deadline_job_execution de ON de.deadline_job_id=CAST(LOWER(r.deadline_job_id) AS BINARY)';
+                        $execution = "CASE WHEN de.observed_at >= NOW() - INTERVAL 5 MINUTE
+                            THEN NULLIF(de.execution_state,'unknown') END";
+                    }
+                    if (in_array('deadline_job_progress', $deadlineTables, true)) {
+                        $listFrom .= ' LEFT JOIN deadline_job_progress dp ON dp.deadline_job_id=CAST(LOWER(r.deadline_job_id) AS BINARY)';
+                        $execution = "COALESCE($execution, CASE WHEN r.status='Em andamento'
+                            AND dp.observed_at >= NOW() - INTERVAL 5 MINUTE
+                            AND (dp.deadline_task_elapsed IS NOT NULL OR LOWER(dp.deadline_task_render_status) LIKE '%rendering%')
+                            THEN 'rendering' END)";
+                    }
                 }
-                if (render_overview_table_available($conn, 'deadline_job_progress')) {
-                    $baseFrom .= ' LEFT JOIN deadline_job_progress dp ON dp.deadline_job_id=CAST(LOWER(r.deadline_job_id) AS BINARY)';
-                    $execution = "COALESCE($execution, CASE WHEN r.status='Em andamento'
-                        AND dp.observed_at >= NOW() - INTERVAL 5 MINUTE
-                        AND (dp.deadline_task_elapsed IS NOT NULL OR LOWER(dp.deadline_task_render_status) LIKE '%rendering%')
-                        THEN 'rendering' END)";
-                }
-                $duration = deadline_flow_schema_ready($conn) ? "(SELECT TIMESTAMPDIFF(SECOND, rt.iniciado_em, rt.concluido_em)
-                    FROM render_tentativas rt WHERE rt.render_id=r.idrender_alta AND rt.deadline_job_id=r.deadline_job_id
-                    AND rt.status <> 'CONCLUIDA_MANUALMENTE' LIMIT 1)" : 'NULL';
                 $group = render_overview_group($execution);
                 $requestedGroup = $_GET['renderGroup'] ?? '';
                 if ($view === 'pending' && in_array($requestedGroup, ['rendering', 'queued', 'error', 'rework', 'other'], true)) {
                     $where[] = "($group) = ?";
                     $types .= 's';
                     $params[] = $requestedGroup;
+                    $countFrom = $listFrom;
                 }
-                $summary = render_overview_summary(
-                    $conn,
-                    $bind,
-                    $baseFrom,
-                    ' WHERE ' . implode(' AND ', $where),
-                    $types,
-                    $params,
-                    $group,
-                    $duration,
-                    render_kpi_valid_date($dateFrom) ? $dateFrom : '',
-                    render_kpi_valid_date($dateTo) ? $dateTo : ''
-                );
+                if (!$listOnly) {
+                    $duration = deadline_flow_schema_ready($conn) ? "(SELECT TIMESTAMPDIFF(SECOND, rt.iniciado_em, rt.concluido_em)
+                        FROM render_tentativas rt WHERE rt.render_id=r.idrender_alta AND rt.deadline_job_id=r.deadline_job_id
+                        AND rt.status <> 'CONCLUIDA_MANUALMENTE' LIMIT 1)" : 'NULL';
+                    $summary = render_overview_summary(
+                        $conn,
+                        $bind,
+                        $listFrom,
+                        ' WHERE ' . implode(' AND ', $where),
+                        $types,
+                        $params,
+                        $group,
+                        $duration,
+                        render_kpi_valid_date($dateFrom) ? $dateFrom : '',
+                        render_kpi_valid_date($dateTo) ? $dateTo : ''
+                    );
+                }
                 $where[] = $view === 'approved' ? "r.status = 'Aprovado'" : "r.status <> 'Aprovado'";
                 $groupSelect = ", $group AS render_group, $execution AS execution_state";
-                $sort = "FIELD(($group),'rendering','queued','error','rework','other','approved')";
+                $sort = $view === 'approved' ? '' : "FIELD(($group),'rendering','queued','error','rework','other'), ";
             }
-            $from = $baseFrom . $manualJoin;
+            if (!$listOnly && $page === 1 && (!$overviewOnly || ($_GET['filterOptions'] ?? '') === '1')) {
+                $filterOptions = render_library_filter_options($conn, $view);
+            }
+            if ($overviewOnly) {
+                echo json_encode(['status' => 'sucesso', 'filterOptions' => $filterOptions, 'summary' => $summary], JSON_INVALID_UTF8_SUBSTITUTE);
+                break;
+            }
+
             $whereSql = ' WHERE ' . implode(' AND ', $where);
-            $stmtCount = $conn->prepare("SELECT COUNT(*) AS total $from $whereSql");
+            $stmtCount = $conn->prepare("SELECT COUNT(*) AS total $countFrom $whereSql");
             $resCount = $bind($stmtCount, $types, $params);
             $total = (int)$resCount->fetch_assoc()['total'];
             $stmtCount->close();
 
-            $sql = "SELECT 
-    c.nome_colaborador, 
-    s.nome_status, 
-    i.imagem_nome,
-    i.tipo_imagem,
-    o.nome_obra,
-    o.nomenclatura AS obra_nomenclatura,
-    r.* $manualSelect $groupSelect
- $from
- $whereSql
-ORDER BY 
-    $sort, r.data DESC, r.idrender_alta DESC
-LIMIT $limit OFFSET $offset";
-            $stmt = $conn->prepare($sql);
-            $result = $bind($stmt, $types, $params);
             $renders = [];
-
-            while ($row = $result->fetch_assoc()) {
-                $row['concluido_manualmente'] = (bool) ($row['concluido_manualmente'] ?? false);
-                $renders[] = $row;
+            if ($total > $offset) {
+                $manualSelect = ', 0 AS concluido_manualmente';
+                if ($view !== 'approved' && render_manual_completion_schema_ready($conn)) {
+                    $manualSelect = ", CASE WHEN BINARY r.status = 0x456D206170726F7661C3A7C3A36F
+                        AND (SELECT cm.tentativa_id FROM render_conclusoes_manuais cm
+                             WHERE cm.render_id = r.idrender_alta
+                             ORDER BY cm.criado_em DESC, cm.id DESC LIMIT 1) = (
+                             SELECT rt.id FROM render_tentativas rt WHERE rt.render_id = r.idrender_alta
+                             ORDER BY rt.numero_tentativa DESC LIMIT 1
+                        ) THEN 1 ELSE 0 END AS concluido_manualmente";
+                }
+                $renderFields = $listOnly
+                    ? 'r.idrender_alta, r.status, r.data, r.previa_jpg, r.deadline_job_id'
+                    : 'i.tipo_imagem, o.nome_obra, r.*';
+                $sql = "SELECT c.nome_colaborador, s.nome_status, i.imagem_nome,
+                    o.nomenclatura AS obra_nomenclatura, $renderFields $manualSelect $groupSelect
+                    $listFrom $whereSql
+                    ORDER BY {$sort}r.data DESC, r.idrender_alta DESC
+                    LIMIT $limit OFFSET $offset";
+                $stmt = $conn->prepare($sql);
+                $result = $bind($stmt, $types, $params);
+                while ($row = $result->fetch_assoc()) {
+                    $row['concluido_manualmente'] = (bool) ($row['concluido_manualmente'] ?? false);
+                    $renders[] = $row;
+                }
+                $stmt->close();
             }
-            $stmt->close();
 
             try {
                 $progressByJob = render_deadline_progress_for_jobs(
@@ -894,34 +908,6 @@ LIMIT $limit OFFSET $offset";
                 $render['deadline_estimated_time_remaining'] = $progress['deadline_estimated_time_remaining'] ?? null;
             }
             unset($render);
-
-            $filterOptions = null;
-            if ($page === 1) {
-                // As opções não dependem da página atual: uma obra/responsável que não
-                // esteja entre os primeiros 200 ainda precisa poder ser selecionado.
-                $filterOptions = [
-                    'obras' => [],
-                    'colaboradores' => [],
-                    'status' => [],
-                    'statusImagem' => [],
-                ];
-                $optionQueries = [
-                    'obras' => "SELECT DISTINCT o.nomenclatura AS value $from WHERE r.status != 'Arquivado' AND o.nomenclatura IS NOT NULL ORDER BY value",
-                    'colaboradores' => "SELECT DISTINCT c.nome_colaborador AS value $from WHERE r.status != 'Arquivado' AND c.nome_colaborador IS NOT NULL ORDER BY value",
-                    'status' => "SELECT DISTINCT r.status AS value $from WHERE r.status != 'Arquivado' AND r.status IS NOT NULL ORDER BY value",
-                    'statusImagem' => "SELECT DISTINCT s.nome_status AS value $from WHERE r.status != 'Arquivado' AND s.nome_status IS NOT NULL ORDER BY value",
-                ];
-                if ($overview) {
-                    $tabCondition = $view === 'approved' ? "r.status = 'Aprovado'" : "r.status NOT IN ('Arquivado','Aprovado')";
-                    $optionQueries['status'] = "SELECT DISTINCT r.status AS value $baseFrom WHERE $tabCondition ORDER BY value";
-                }
-                foreach ($optionQueries as $key => $optionQuery) {
-                    $optionResult = $conn->query($optionQuery);
-                    while ($optionRow = $optionResult->fetch_assoc()) {
-                        $filterOptions[$key][] = $optionRow['value'];
-                    }
-                }
-            }
 
             echo json_encode(['status' => 'sucesso', 'renders' => $renders, 'total' => $total, 'page' => $page, 'limit' => $limit, 'filterOptions' => $filterOptions, 'summary' => $summary], JSON_INVALID_UTF8_SUBSTITUTE);
             break;

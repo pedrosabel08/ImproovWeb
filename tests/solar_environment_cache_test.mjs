@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { loadViewerModule } from './viewer_module_loader.mjs';
 import * as config from '../MapaPavimento/predio-3d/environment-config.mjs';
+import { solarAt } from '../MapaPavimento/predio-3d/solar-position.mjs';
 // GPU/EXR são substituídos por recursos rastreados. Exercita o controlador real:
 // cache, resposta fora de ordem, debounce, falha HTTP e descarte durante download.
 const source = readFileSync(new URL('../MapaPavimento/predio-3d/solar-environment.js', import.meta.url), 'utf8');
@@ -35,6 +36,7 @@ const ProceduralLightProbe = class {
 };
 const MaterialReflections = class {
   constructor() { this.materials = new Map(); }
+  registerModel() {}
   set(texture) { this.texture = texture; } clear() {} setGlassIntensity() {} setRotation() {}
 };
 const ExrDecoder = class {
@@ -122,6 +124,82 @@ try {
   environment.navigation();
   assert.equal(scene.environment, fallbackTexture);
   assert.equal(environment.sky.mesh.visible, false);
+
+  const model = new actualThree.Group();
+  const daylight = { ...morning, altitude: 45 };
+  assert.equal(environment.diagnostics().runtime.hemisphere, 0.5);
+  environment.registerModel(model);
+  environment.update(daylight, light, ambient);
+  assert.equal(ambient.intensity, 0.5, 'Modelo sem obra também usa a curva global.');
+  environment.navigation();
+
+  environment.registerModel(model, "102");
+  environment.update(daylight, light, ambient);
+  assert.equal(ambient.intensity, 0.5);
+  assert.equal(environment.diagnostics().runtime.hemisphere, 0.5);
+  environment.update({ ...daylight, altitude: 0 }, light, ambient);
+  clearTimeout(environment.timer);
+  const transitionStart = environment.fillTransition.started;
+  assert.equal(ambient.intensity, 0.5);
+  environment.tick(transitionStart + 300);
+  assert.equal(ambient.intensity, 0.35);
+  environment.tick(transitionStart + 600);
+  assert.equal(ambient.intensity, 0.2);
+  environment.update(daylight, light, ambient);
+  environment.setTuning('hemisphere', 1.05);
+  environment.tick(performance.now() + 1000);
+  assert.equal(ambient.intensity, 0.6);
+  environment.update(night, light, ambient);
+  clearTimeout(environment.timer);
+  environment.tick(performance.now() + 1000);
+  assert.equal(ambient.intensity, config.hemisphereIntensity(night.altitude));
+  environment.resetTuning();
+  assert.equal(environment.diagnostics().runtime.hemisphere, 0.5);
+
+  const spatialConfigs = [
+    { obra_id: '102', latitude: -27.099226, longitude: -48.617982, norte_graus: 84.7, timezone: 'America/Sao_Paulo' },
+    { obra_id: 133, latitude: -27.1522674, longitude: -48.5752993, norte_graus: 64, timezone: 'America/Sao_Paulo' },
+  ];
+  const midday = [];
+  environment.setTuning('hemisphere', 0.55);
+  for (const spatial of spatialConfigs) {
+    environment.navigation();
+    environment.clearModel();
+    environment.registerModel(new actualThree.Group(), spatial.obra_id);
+    assert.equal(environment.diagnostics().runtime.hemisphere, 0.5);
+    assert.equal(environment.hemisphereTuningMax, 0.6);
+    const before = { ...spatial };
+    for (const time of ['08:30', '12:00', '16:00', '18:42', '20:00']) {
+      const result = solarAt(spatial, '2026-11-19', time);
+      environment.update(result, light, ambient);
+      environment.tick(performance.now() + 1000);
+      assert.equal(environment.result, result);
+      assert.equal(ambient.intensity, config.hemisphereIntensity(result.altitude));
+      if (time === '12:00') midday.push(result);
+    }
+    assert.equal(ambient.intensity, 0.6);
+    assert.deepEqual(spatial, before);
+    environment.navigation();
+    environment.update(midday.at(-1), light, ambient);
+    assert.equal(ambient.intensity, 0.5, 'Retomar o estudo solar restaura a curva global.');
+  }
+  assert.notEqual(midday[0].altitude, midday[1].altitude);
+  assert.notDeepEqual(midday[0].direction, midday[1].direction);
+
+  const overrides = config.ENVIRONMENT_SETTINGS.hemisphere.dayIntensityByObra;
+  overrides[133] = 0.4;
+  try {
+    environment.registerModel(model, '133');
+    environment.tick(performance.now() + 1000);
+    assert.equal(ambient.intensity, 0.4);
+    environment.registerModel(model, '102');
+    environment.tick(performance.now() + 1000);
+    assert.equal(ambient.intensity, 0.5);
+  } finally {
+    delete overrides[133];
+  }
+  environment.navigation();
+
   const pending = start({ ...morning, altitude: 4 });
   await settle();
   environment.dispose();
@@ -132,7 +210,7 @@ try {
   assert.equal(scene.environment, null);
   assert.equal(environment.cache.size, 0);
   assert.equal(generated, 2, 'Descarte não pode ressuscitar texturas de um download pendente.');
-  console.log('OK: cache, concorrência, falha HTTP, descarte, sem IBL global, override isolado e preenchimento invariável à exposição do EXR.');
+  console.log('OK: cache, concorrência, falha HTTP, descarte, HDRI seletivo e curva global nas obras 102 e 133.');
 } finally {
   environment.dispose();
   globalThis.fetch = fetchOriginal;

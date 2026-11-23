@@ -10,7 +10,10 @@ const THREE = await import(threeURL);
 const { parseOSM } = await loadViewerModule("geo/osm-parser.js", threeURL);
 const { generateEnvironment } = await loadViewerModule("geo/generate-environment.js", threeURL);
 const { TerrainMaterials } = await loadViewerModule("geo/terrain-materials.js", threeURL);
+const { GeometryBatches } = await loadViewerModule("geo/feature-builder.js", threeURL);
 const { createShoreDistance } = await loadViewerModule("water-material.js", threeURL);
+const { waterProfile } = await loadViewerModule("geo/water-profile.js", threeURL);
+const { waterSurfaceParts } = await loadViewerModule("geo/water-builder.js", threeURL);
 const { auditSurfaceProjection } = await loadViewerModule("geo/surface-mesh.js", threeURL);
 const { prepareLandSurfaces, limitManualBeachHeight } = await loadViewerModule("geo/land-surfaces.js", threeURL);
 const { createEnvironmentBounds, polygonArea } = await loadViewerModule("geo/environment-clip.js", threeURL);
@@ -41,6 +44,9 @@ const data = parseOSM({ elements: [
   way(17, { natural: "water" }, ring(340, 220, 20, 20)),
   way(18, { landuse: "grass" }, ring(400, 180, 10, 10)),
   way(19, { natural: "beach", surface: "concrete" }, ring(480, 180, 20, 20)),
+  // A bend and a crossing on the steeper western half of the synthetic DEM.
+  way(20, {highway:"residential",surface:"asphalt"}, [point(-420,90),point(-360,90),point(-330,115),point(-310,160)]),
+  way(21, {highway:"residential",surface:"asphalt"}, [point(-380,45),point(-380,145)]),
 ] });
 assert.deepEqual(data.soil.map(f => f.id), ["way/1", "way/2"]);
 assert.deepEqual(data.vegetation.map(f => f.category), ["PARK", "GRASS", "GRASS"]);
@@ -48,7 +54,7 @@ assert.deepEqual(data.sand.map(f => f.id), ["way/11"]);
 assert.deepEqual(data.rock.map(f => f.id), ["way/12", "way/13"]);
 
 const box = new THREE.Box3(new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 15, 5));
-const sample = (x, z) => 18 + 0.002*x + 0.001*z;
+const sample = (x, z) => 18 + 0.002*x + 0.001*z + 0.18*Math.max(0,-x-50);
 const { group, metrics, terrain, environmentBounds, radius } = await generateEnvironment({
   data, config, bounds: box, buildingBounds: box, dem: { sample, reference: 18 },
   createMaterials: () => Object.fromEntries(
@@ -80,6 +86,21 @@ const area = (x, z, w, h) => ({ outer: [{x,z}, {x:x+w,z}, {x:x+w,z:z+h}, {x,z:z+
 const manualPrepared = Object.fromEntries(
   ["roads", "water", "buildings", "vegetation", "sidewalk", "sand", "rock", "soil", "urbanExclusion"].map(key => [key, []]),
 );
+for (const [tags, expected] of [[{water:"lagoon"},"standing"],[{waterway:"canal"},"flowing"],
+  [{landuse:"reservoir"},"standing"],[{natural:"water"},"generic"]])
+  assert.equal(waterProfile({visualTags:tags}), expected);
+const mixed = waterSurfaceParts(area(0,0,40,10), [
+  {profile:"flowing",footprint:[area(0,0,30,10)]},
+  {profile:"standing",footprint:[area(20,0,20,10)]},
+]);
+assert.deepEqual(mixed.map(p=>[p.profile,polygonArea(p.polygon)]), [["standing",200],["flowing",200]]);
+const emptyGroup = new THREE.Group();
+const emptyGeometry = new THREE.BufferGeometry();
+emptyGeometry.setAttribute("position",new THREE.Float32BufferAttribute([],3));
+const emptyBatches = new GeometryBatches(emptyGroup,{});
+emptyBatches.add("water",emptyGeometry,false,"generic");
+emptyBatches.finish();
+assert.equal(emptyGroup.children.length,0,"A subpixel remainder must not create an unrestorable water batch");
 manualPrepared.urbanExclusion.push({ polygons: [area(0, -10, 40, 12)] });
 manualPrepared.rock.push({ polygons: [area(0, 10, 20, 7)] });
 const manualArgs = {
@@ -116,6 +137,17 @@ const apply = enabled => new Promise(resolve => manager.apply(
 const original = new Map(group.children.map(mesh => [mesh, [mesh.material, mesh.geometry]]));
 assert.deepEqual(await apply(true), {state: "ready", packs: ["asphalt", "concrete", "grass", "rock", "sand", "soil", "water"]});
 assert.equal(loaded.size, 21);
+const asphalt = get("asphalt");
+const asphaltShader = {uniforms: {}, vertexShader: "#include <uv_vertex>", fragmentShader: "#include <map_fragment>"};
+asphalt.material.onBeforeCompile(asphaltShader);
+assert.doesNotMatch(asphaltShader.vertexShader, /flowWarp|v(?:Map|NormalMap|RoughnessMap|AoMap)Uv\s*\+=/);
+assert.match(asphaltShader.fragmentShader, /flowVariation/);
+assert.equal(asphalt.material.map.repeat.x, 1 / 22);
+for (let i = 0; i < asphalt.geometry.attributes.position.count; i++) {
+  const {uv, position} = asphalt.geometry.attributes;
+  assert.equal(uv.getX(i), position.getX(i));
+  assert.equal(uv.getY(i), -position.getZ(i));
+}
 for (const [key, folder] of Object.entries({ asphalt: "asphalt-track", sand: "aerial-beach-01", rock: "rocky-terrain-02", sidewalk: "concrete-floor-01", soil: "dirt-aerial-02" }))
   assert.equal(get(key).material.name, `Flow · ${folder}`);
 assert.equal(get("sidewalk").material, get("sidewalk-extra").material);
@@ -161,9 +193,24 @@ assert.ok(distanceAt(3, 0) < distanceAt(16, 0));
 assert.equal(distanceAt(98, 98), 255, "Acquisition perimeter does not lighten the water");
 assert.equal(distanceAt(50, 0), 255, "Internal triangulation edge does not lighten the water");
 distance.dispose();
+const classifiedSand = new THREE.BufferGeometry();
+classifiedSand.setAttribute("position", new THREE.Float32BufferAttribute([
+  0,0,-60, -8,0,-60, 0,0,-10,
+], 3));
+assert.equal(createShoreDistance(sea, square, "ready", []), null);
+const beachDistance = createShoreDistance(sea, square, "ready", [new THREE.Mesh(classifiedSand)]);
+const beachPixel = (x,z) => {
+  const {width,data} = beachDistance.image;
+  return data[Math.floor((z+100)*width/200)*width+Math.floor((x+100)*width/200)];
+};
+assert.ok(beachPixel(-3,-40)<beachPixel(-10,-40) && beachPixel(3,-40)<beachPixel(10,-40));
+assert.equal(beachPixel(1,45),255,"Unclassified coast has no beach treatment");
+assert.equal(beachPixel(98,-40),255,"Artificial perimeter stays deep");
+beachDistance.dispose();
+classifiedSand.dispose();
 seaGeometry.dispose();
 assert.deepEqual(await apply(false), {state: "off", packs: []});
-assert.equal(soil.visible, false);
+assert.ok(group.children.every(mesh=>mesh.visible), "Disabling textures preserves every classified surface");
 assert.ok(group.children.every(mesh => mesh.material === original.get(mesh)[0] && mesh.geometry === original.get(mesh)[1]));
 await apply(true);
 assert.equal(loaded.size, 21);
@@ -179,9 +226,21 @@ const missing = await new Promise(resolve => unavailable.apply(
   (state, packs) => { if (state !== "loading") resolve({ state, packs }); },
 ));
 assert.deepEqual(missing, {state: "fallback", packs: []});
-assert.equal(soil.visible, false);
+assert.ok(group.children.every(mesh=>mesh.visible), "Missing maps leave the base surfaces visible");
 assert.ok(group.children.every(mesh => mesh.material === original.get(mesh)[0]));
 unavailable.dispose();
+const partial = new TerrainMaterials();
+partial.loader.loadAsync = async url => {
+  if (url.includes("/normal.webp")) throw Error("Missing normal");
+  return new THREE.Texture();
+};
+const hidden = get("rock");
+hidden.visible = false;
+await new Promise(resolve => partial.apply(group,environmentBounds,null,radius,true,state=>{
+  if (state !== "loading") { assert.equal(state,"fallback"); resolve(); }
+}));
+assert.ok(group.children.every(mesh=>mesh.material===original.get(mesh)[0] && mesh.visible===(mesh!==hidden)));
+partial.dispose();
 for (const mesh of group.children) {
   mesh.geometry.dispose();
   original.get(mesh)[0].dispose();

@@ -5,11 +5,13 @@ import {
 } from "./urban-haze.js?v=20261104-terrain-v1";
 import {
   WATER_SETTINGS,
+  WATER_LOOKS,
   configureWaterMaterial,
   createShoreDistance,
   createWaterMotion,
   updateWaterMotion,
-} from "../water-material.js?v=2";
+} from "../water-material.js?v=20261119-entorno";
+import { WATER_PROFILES_ENABLED } from "./water-profile.js";
 
 // Texture packs are presentation only. Geometry and its cache keep surface keys.
 const LAYER_PACK = {
@@ -28,6 +30,7 @@ const PACKS = {
   grass: { folder: "grass-001", metres: 4, normal: 0.55, ao: 0.55 },
   asphalt: {
     folder: "asphalt-track",
+    metricUV: true,
     metres: 22,
     normal: 0.36,
     ao: 0,
@@ -61,6 +64,13 @@ const PACKS = {
   water: { folder: "water-002", metres: WATER_SETTINGS.tileMetres, ao: 0.12 },
 };
 const ROOT = new URL("../../../assets/textures/terrain-pbr/", import.meta.url);
+const SANDY_SHORE = true;
+export const CLASSIFIED_BASE_MATERIALS = true;
+export const SURFACE_BASE_COLORS = {
+  soil: 0x806d56,
+  sidewalk: 0xa19d94,
+  "sidewalk-extra": 0xa19d94,
+};
 const TEXTURED_OVERLAYS = new Set(["soil", "sand", "rock", "sidewalk-extra"]);
 
 function createWorldUV(geometry) {
@@ -75,11 +85,29 @@ function createWorldUV(geometry) {
   geometry.userData.geoMetreUV = true;
 }
 
-function landShader(material, { baseTint, slopeTint }) {
+function landShader(
+  material,
+  { baseTint, slopeTint, metricUV },
+  shoreDistance,
+) {
   const previous = material.onBeforeCompile;
   const key = material.customProgramCacheKey;
   material.onBeforeCompile = function (shader, renderer) {
     previous.call(this, shader, renderer);
+    if (shoreDistance) {
+      shader.uniforms.flowShoreDistance = { value: shoreDistance };
+      shader.fragmentShader =
+        "uniform sampler2D flowShoreDistance;\n" + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
+         vec2 beachEN = vec2(dot(contextXZ, edgeBasis.xy), dot(contextXZ, edgeBasis.zw));
+         float beachDistance = texture2D(flowShoreDistance, beachEN / (2.0 * edgeRadius) + 0.5).r;
+         float wetSand = 1.0 - smoothstep(0.0, 0.26, beachDistance);
+         diffuseColor.rgb *= mix(vec3(1.0), vec3(0.47, 0.53, 0.56), wetSand);
+         roughnessFactor = mix(roughnessFactor, 0.48, wetSand);`,
+      );
+    }
     if (baseTint) {
       shader.uniforms.flowLandTint = { value: new THREE.Color(baseTint) };
       shader.fragmentShader =
@@ -98,9 +126,10 @@ function landShader(material, { baseTint, slopeTint }) {
     }
     // The low-frequency warp is shared by all maps and evaluated per vertex.
     // In metre UVs it avoids a grid of identical cracks without extra lookups.
-    shader.vertexShader = shader.vertexShader.replace(
-      "#include <uv_vertex>",
-      `#include <uv_vertex>
+    if (!metricUV)
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <uv_vertex>",
+        `#include <uv_vertex>
        #ifdef USE_MAP
         vec2 flowMetres = MAP_UV;
         vec2 flowWarp = vec2(
@@ -118,7 +147,7 @@ function landShader(material, { baseTint, slopeTint }) {
           vAoMapUv += flowWarp;
         #endif
        #endif`,
-    );
+      );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <map_fragment>",
       `#include <map_fragment>
@@ -137,6 +166,8 @@ function landShader(material, { baseTint, slopeTint }) {
     return (
       key.call(this) +
       ":flow-pbr-land-v1" +
+      (metricUV ? ":metric" : "") +
+      (shoreDistance ? ":wet" : "") +
       (baseTint ? ":tint" : "") +
       (slopeTint ? ":slope" : "")
     );
@@ -152,7 +183,7 @@ export class TerrainMaterials {
     this.packs = new Map();
     this.materials = new Map();
     this.revision = 0;
-    this.waveMotion = createWaterMotion();
+    this.waveMotions = new Map();
     this.motion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
   }
   load(key) {
@@ -188,8 +219,9 @@ export class TerrainMaterials {
     }
     return this.packs.get(key);
   }
-  material(key, maps, bounds, sky, radius) {
-    if (!this.materials.has(key)) {
+  material(key, maps, bounds, sky, radius, profile) {
+    const materialKey = profile ? key + ":" + profile : key;
+    if (!this.materials.has(materialKey)) {
       const water = key === "water";
       const material = urbanMaterial(0xffffff, { sky, radius });
       material.name = `Flow · ${PACKS[key].folder}`;
@@ -205,15 +237,23 @@ export class TerrainMaterials {
       material.polygonOffsetUnits = key === "asphalt" ? -4 : -2;
       softenEnvironmentEdge(material, bounds);
       if (water) {
-        configureWaterMaterial(material, this.waveMotion, this.shoreDistance);
+        const motion = createWaterMotion();
+        this.waveMotions.set(profile, motion);
+        const shore =
+          !profile || profile === "ocean" ? this.shoreDistance : null;
+        configureWaterMaterial(material, motion, shore, SANDY_SHORE, profile);
         this.registerWater(material);
       } else {
         material.normalScale.setScalar(PACKS[key].normal);
-        landShader(material, PACKS[key]);
+        landShader(
+          material,
+          PACKS[key],
+          key === "sand" && SANDY_SHORE && this.shoreDistance,
+        );
       }
-      this.materials.set(key, material);
+      this.materials.set(materialKey, material);
     }
-    return this.materials.get(key);
+    return this.materials.get(materialKey);
   }
   apply(group, bounds, sky, radius, enabled, onStatus) {
     const revision = ++this.revision;
@@ -225,7 +265,8 @@ export class TerrainMaterials {
       if (!key) continue;
       mesh.userData.geoBaseMaterial ??= mesh.material;
       mesh.material = mesh.userData.geoBaseMaterial;
-      if (TEXTURED_OVERLAYS.has(layer)) mesh.visible = false;
+      if (!CLASSIFIED_BASE_MATERIALS && TEXTURED_OVERLAYS.has(layer))
+        mesh.visible = false;
       if (!layers.has(key)) layers.set(key, []);
       layers.get(key).push(mesh);
     }
@@ -234,32 +275,49 @@ export class TerrainMaterials {
       return;
     }
     onStatus("loading", []);
+    if (layers.has("water") && this.shoreDistance === undefined) {
+      const sea = layers
+        .get("water")
+        .filter((mesh) => mesh.name === "OSM · sea");
+      this.shoreDistance = createShoreDistance(
+        sea,
+        bounds,
+        group.userData.metrics?.coastline,
+        SANDY_SHORE ? (layers.get("sand") ?? []) : null,
+      );
+    }
     const applied = [];
     const pending = [...layers].map(async ([key, meshes]) => {
       const maps = await this.load(key);
       if (revision !== this.revision || this.disposed || !maps.map) return;
-      if (key === "water" && this.shoreDistance === undefined) {
-        const sea = meshes.filter((mesh) => mesh.name === "OSM · sea");
-        this.shoreDistance = createShoreDistance(
-          sea,
-          bounds,
-          group.userData.metrics?.coastline,
-        );
-        if (this.shoreDistance)
-          for (const mesh of meshes) {
-            const count = mesh.geometry.attributes.position.count;
-            const coastal = new Uint8Array(count);
-            if (mesh.name === "OSM · sea") coastal.fill(255);
-            mesh.geometry.setAttribute(
-              "flowCoastalWater",
-              new THREE.BufferAttribute(coastal, 1, true),
-            );
-          }
+      if (CLASSIFIED_BASE_MATERIALS && (!maps.normalMap || !maps.roughnessMap))
+        return;
+      if (key === "water" && this.shoreDistance) {
+        for (const mesh of meshes) {
+          if (mesh.geometry.hasAttribute("flowCoastalWater")) continue;
+          const coastal = new Uint8Array(
+            mesh.geometry.attributes.position.count,
+          );
+          if (mesh.name === "OSM · sea") coastal.fill(255);
+          mesh.geometry.setAttribute(
+            "flowCoastalWater",
+            new THREE.BufferAttribute(coastal, 1, true),
+          );
+        }
       }
-      const material = this.material(key, maps, bounds, sky, radius);
       for (const mesh of meshes) {
+        const profile =
+          key === "water" && WATER_PROFILES_ENABLED
+            ? mesh.name === "OSM · sea"
+              ? "ocean"
+              : (mesh.userData.waterProfile ?? "generic")
+            : undefined;
+        const material = this.material(key, maps, bounds, sky, radius, profile);
         createWorldUV(mesh.geometry);
-        if (TEXTURED_OVERLAYS.has(mesh.name.slice("OSM · ".length)))
+        if (
+          !CLASSIFIED_BASE_MATERIALS &&
+          TEXTURED_OVERLAYS.has(mesh.name.slice("OSM · ".length))
+        )
           mesh.visible = true;
         mesh.material = material;
       }
@@ -275,11 +333,11 @@ export class TerrainMaterials {
     });
   }
   update(now) {
-    if (this.animateWater)
-      updateWaterMotion(
-        this.waveMotion,
-        this.motion?.matches ? 0 : now * 0.001,
-      );
+    if (this.animateWater) {
+      const seconds = this.motion?.matches ? 0 : now * 0.001;
+      for (const [profile, motion] of this.waveMotions)
+        updateWaterMotion(motion, seconds * (WATER_LOOKS[profile]?.speed ?? 1));
+    }
   }
   clear() {
     this.revision++;
@@ -288,6 +346,7 @@ export class TerrainMaterials {
     this.shoreDistance = undefined;
     for (const material of this.materials.values()) material.dispose();
     this.materials.clear();
+    this.waveMotions.clear();
   }
   dispose() {
     this.disposed = true;

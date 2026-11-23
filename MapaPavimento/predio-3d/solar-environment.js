@@ -13,7 +13,8 @@ import {
   adjacentEnvironment,
   smoothRange,
   nightFactor,
-} from "./environment-config.mjs?v=20261103-night-glass-native-v2";
+  hemisphereIntensity,
+} from "./environment-config.mjs?v=20261119-global-hemisphere";
 
 /** Coordena o ambiente existente. SolarLighting é o único dono da luz solar. */
 export class SolarEnvironment {
@@ -24,6 +25,7 @@ export class SolarEnvironment {
     this.override = "auto";
     this.current = this.requested = null;
     this.state = "navigation";
+    this.hemisphereDayIntensity = SETTINGS.hemisphere.dayIntensity;
     this.runtime = {
       probe: SETTINGS.lightProbe.intensity,
       hemisphere: null,
@@ -71,11 +73,30 @@ export class SolarEnvironment {
         : null,
       runtime: {
         ...this.runtime,
-        hemisphere: this.runtime.hemisphere ?? SETTINGS.hemisphere.intensity,
+        hemisphere: this.runtime.hemisphere ?? this.hemisphereDayIntensity,
       },
+      hemisphereTuningMax: this.hemisphereTuningMax,
       reflectionMaterials: this.reflections?.materials.size || 0,
-      nightGlass: { meshes: this.nightGlass.meshes, materials: this.nightGlass.materials.size, factor: this.nightGlass.factor,
-        emission: [...this.nightGlass.materials.entries()].map(([material, state]) => ({ color: state.uniform.value.toArray(), native: material.emissive.toArray(), intensity: material.emissiveIntensity, compiled: !!state.compiled, opacity: material.opacity, transparent: material.transparent, transmission: material.transmission, ior: material.ior, toneMapped: material.toneMapped, blending: material.blending })), settings: this.nightGlass.settings },
+      nightGlass: {
+        meshes: this.nightGlass.meshes,
+        materials: this.nightGlass.materials.size,
+        factor: this.nightGlass.factor,
+        emission: [...this.nightGlass.materials.entries()].map(
+          ([material, state]) => ({
+            color: state.uniform.value.toArray(),
+            native: material.emissive.toArray(),
+            intensity: material.emissiveIntensity,
+            compiled: !!state.compiled,
+            opacity: material.opacity,
+            transparent: material.transparent,
+            transmission: material.transmission,
+            ior: material.ior,
+            toneMapped: material.toneMapped,
+            blending: material.blending,
+          }),
+        ),
+        settings: this.nightGlass.settings,
+      },
       error: this.error || "",
     };
   }
@@ -84,15 +105,28 @@ export class SolarEnvironment {
       for (const listener of this.listeners) listener(this.diagnostics());
   }
   registerModel(root, obraId = null) {
+    const { dayIntensity, dayIntensityByObra } = SETTINGS.hemisphere;
+    const modelDayIntensity =
+      dayIntensityByObra[Number(obraId)] ?? dayIntensity;
+    if (modelDayIntensity !== this.hemisphereDayIntensity) {
+      this.runtime.hemisphere = null;
+      this.hemisphereDayIntensity = modelDayIntensity;
+      this.updateHemisphere();
+    }
     this.reflections.registerModel(root);
     this.nightGlass.registerModel(root, obraId);
-    this.nightGlass.setFactor(this.result ? nightFactor(this.result.altitude) : 0);
+    this.nightGlass.setFactor(
+      this.result ? nightFactor(this.result.altitude) : 0,
+    );
   }
   registerMaterial(material, source) {
     this.reflections.register(material, source);
     this.nightGlass.register(material, source);
   }
   clearModel() {
+    this.runtime.hemisphere = null;
+    this.hemisphereDayIntensity = SETTINGS.hemisphere.dayIntensity;
+    this.updateHemisphere();
     this.nightGlass.clear();
     this.reflections.clear();
   }
@@ -100,11 +134,18 @@ export class SolarEnvironment {
     this.sky.showHorizon(value);
     this.notify();
   }
+  get hemisphereTuningMax() {
+    return Math.max(
+      SETTINGS.tuning.hemisphere.max,
+      this.hemisphereDayIntensity,
+    );
+  }
   setTuning(key, rawValue) {
     const range = SETTINGS.tuning[key],
       value = Number(rawValue);
     if (!range || !Number.isFinite(value)) return;
-    this.runtime[key] = THREE.MathUtils.clamp(value, range.min, range.max);
+    const max = key === "hemisphere" ? this.hemisphereTuningMax : range.max;
+    this.runtime[key] = THREE.MathUtils.clamp(value, range.min, max);
     if (key === "probe") this.probe.setIntensity(this.runtime.probe);
     if (key === "hemisphere") this.updateHemisphere();
     if (key === "glass") this.reflections.setGlassIntensity(this.runtime.glass);
@@ -202,18 +243,11 @@ export class SolarEnvironment {
   }
   updateHemisphere(immediate = false) {
     if (!this.result || !this.ambient) return;
+    const dayIntensity = this.runtime.hemisphere ?? this.hemisphereDayIntensity;
     const target = {
       sky: this.fillColor("sky"),
       ground: this.fillColor("ground"),
-      intensity:
-        (this.runtime.hemisphere ?? SETTINGS.hemisphere.intensity) *
-        (THREE.MathUtils.lerp(
-          SETTINGS.hemisphere.baselineScale,
-          1,
-          this.dayFactor(),
-        ) +
-          (SETTINGS.hemisphere.nightScale - SETTINGS.hemisphere.baselineScale) *
-            nightFactor(this.result.altitude)),
+      intensity: hemisphereIntensity(this.result.altitude, dayIntensity),
     };
     if (immediate) {
       this.ambient.color.copy(target.sky);

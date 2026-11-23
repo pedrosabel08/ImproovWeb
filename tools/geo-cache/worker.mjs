@@ -71,7 +71,7 @@ function serialize(result, alignment, inputMs, generationMs) {
       chunks.push(bytes);
     }
     return {
-      name: mesh.name, layer: mesh.userData.geoLayer, attributes,
+      name: mesh.name, layer: mesh.userData.geoLayer, waterProfile: mesh.userData.waterProfile, attributes,
       castShadow: mesh.castShadow, receiveShadow: mesh.receiveShadow, renderOrder: mesh.renderOrder,
     };
   });

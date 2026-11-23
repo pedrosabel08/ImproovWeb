@@ -37,8 +37,38 @@ canonicalA.dispose();canonicalB.dispose();
 const elbow=new TerrainSurface({dem,bounds,site});
 elbow.prepareWater([{polygons:[],waterway:'river',line:[{x:100,z:200},{x:100,z:300},{x:200,z:300}]}]);
 for(const polygon of elbow.waterFootprint)for(const p of polygon.outer)
-  assert.ok(Math.abs(elbow.sample(p.x,p.z)-elbow.waterHeight(null,p.x,p.z)+.12)<.0001,'Miter corners and end caps use the actual water footprint, not a centreline distance band');
+  assert.ok(Math.abs(elbow.sample(p.x,p.z)-elbow.visibleWaterHeight(polygon,p.x,p.z))<.0001,
+    'The rendered water level meets the bank at miter corners and end caps');
 const region={outer:[{x:70,z:20},{x:270,z:20},{x:270,z:420},{x:70,z:420},{x:70,z:20}],holes:[]};
+const ring=(x,z,w,h)=>[{x,z},{x:x+w,z},{x:x+w,z:z+h},{x,z:z+h},{x,z}];
+const island={outer:ring(100,100,100,100),holes:[ring(125,125,25,25)]};
+const lakeSurface=new TerrainSurface({dem,bounds,site});
+lakeSurface.prepareWater([{polygons:[island],visualTags:{water:"lake"}}]);
+const component=lakeSurface.waterFootprint[0];
+for(const edge of [component.outer, ...component.holes]) for(const p of edge) {
+  const visible=lakeSurface.visibleWaterHeight(component,p.x,p.z);
+  assert.ok(Math.abs(visible-lakeSurface.sample(p.x,p.z))<0.0001);
+  assert.ok(Math.abs(visible-lakeSurface.bedHeight(component,p.x,p.z))<0.0001);
+}
+assert.ok(lakeSurface.bedHeight(component,115,115)<lakeSurface.visibleWaterHeight(component,115,115)-0.1);
+const estuary=new TerrainSurface({dem,bounds,site,coastLines:[[{x:150,z:0},{x:150,z:500}]]});
+estuary.prepareWater([{polygons:[],line:[{x:100,z:200},{x:220,z:200}],waterway:"river"}],
+  {sea:[{outer:ring(150,0,300,500),holes:[]}]});
+const mouth=estuary.waterFootprint[0];
+assert.ok(mouth.tidal && mouth.outer.every(p=>p.x<=150.0001));
+assert.equal(estuary.visibleWaterHeight(mouth,150,200),estuary.seaLevel);
+const developed=new TerrainSurface({dem,bounds,site});
+developed.prepareWater([river],{structures:[{outer:ring(140,290,12,16),holes:[]}]});
+assert.equal(developed.bankWidth({engineered:true},200,200),10,"A canal retains its narrow bank");
+assert.equal(developed.bankWidth({engineered:false},145,295),10,"A building footprint keeps its original conditioning width");
+assert.ok(developed.bankWidth({engineered:false},260,400)>10,"Natural banks can blend across a wider distance");
+const modelEdge={a:{x:85,z:90},b:{x:85,z:220},ay:5,by:5};
+const nearbyModel=new TerrainSurface({dem,bounds,site,ground:{sample:()=>null,edges:[modelEdge]}});
+nearbyModel.prepareWater([{polygons:[island]}]);
+const nearbyLake=nearbyModel.waterFootprint[0];
+assert.equal(nearbyModel.sample(85,150),5,"The model seam retains the GLB elevation");
+assert.ok(Math.abs(nearbyModel.sample(100,150)-nearbyModel.visibleWaterHeight(nearbyLake,100,150))<1e-5,
+  "The GLB blend does not reopen an adjacent bank");
 const land=surface.groundPolygons([region]).map(p=>surface.geometry(p));
 surface.installMesh(land);
 // Sample the interior of actual rendered faces, not only their vertices.

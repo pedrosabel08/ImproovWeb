@@ -79,7 +79,8 @@ export const ENVIRONMENT_SETTINGS = {
     targetLuminance: 0.5,
     chromaticStrength: 0.2,
     intensity: 0.06,
-    baselineScale: 0.08,
+    dayIntensity: 0.5,
+    dayIntensityByObra: {},
     // Fill de visualização: evita que fachadas desapareçam no período noturno.
     nightScale: 10,
     transitionMs: 600,
@@ -108,7 +109,7 @@ export const ENVIRONMENT_SETTINGS = {
   },
   tuning: {
     probe: { min: 0, max: 2, step: 0.01 },
-    hemisphere: { min: 0, max: 0.3, step: 0.005 },
+    hemisphere: { min: 0, max: 0.6, step: 0.005 },
     glass: { min: 0, max: 2, step: 0.01 },
   },
   // Gradiente contínuo: noite → crepúsculo → horizonte quente → dia.
@@ -209,4 +210,18 @@ export function atmosphereInterval(altitude) {
 // Ponto de extensão para futuras luzes arquitetônicas; não cria luzes agora.
 export function nightFactor(altitude) {
   return 1 - smoothRange(ENVIRONMENT_THRESHOLDS.night, 0, altitude);
+}
+
+export function hemisphereIntensity(
+  altitude,
+  dayIntensity = ENVIRONMENT_SETTINGS.hemisphere.dayIntensity,
+) {
+  const { intensity: base, nightScale } = ENVIRONMENT_SETTINGS.hemisphere;
+  const night = nightFactor(altitude);
+  // Patamar diurno acima de 30°, preenchimento parcial no horizonte e
+  // retorno ao nível noturno original ao fim do crepúsculo civil.
+  const day = smoothRange(0, ENVIRONMENT_THRESHOLDS.daylight, altitude);
+  const horizonFraction = 0.4;
+  const fill = dayIntensity * (horizonFraction + (1 - horizonFraction) * day);
+  return fill * (1 - night) + base * nightScale * night;
 }

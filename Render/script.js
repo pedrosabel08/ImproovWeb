@@ -1259,59 +1259,7 @@ $("#myModal").on("click", function (e) {
   }
 });
 
-$("#aprovarRender").click(function () {
-  const idrender_alta = $("#modal_idrender").text();
-
-  $.post(
-    "ajax.php",
-    {
-      action: "updateRender",
-      idrender_alta: idrender_alta,
-      status: "Aprovado",
-    },
-    function (response) {
-      console.log("Resposta updateRender:", response);
-      if (response.status === "sucesso") {
-        // Atualiza os renders
-        loadRenders();
-
-        Toastify({
-          text: "Render aprovado com sucesso!",
-          duration: 3000,
-          gravity: "top",
-          position: "right",
-          backgroundColor: "#4caf50", // verde
-        }).showToast();
-
-        // Abre o modal POS
-        $("#modalPOS").addClass("is-open");
-        $("#pos_render_id").val(idrender_alta);
-
-        // NÃO fechamos o modal principal
-      } else {
-        Toastify({
-          text: "Erro ao atualizar Render!",
-          duration: 3000,
-          gravity: "top",
-          position: "right",
-          backgroundColor: "#f44336", // vermelho
-        }).showToast();
-      }
-    },
-    "json",
-  ).fail(function (xhr, status, error) {
-    console.error("AJAX error:", error, xhr.responseText);
-    Toastify({
-      text: "Erro de comunicação com o servidor!",
-      duration: 3000,
-      gravity: "top",
-      position: "right",
-      backgroundColor: "#f44336",
-    }).showToast();
-  });
-});
-
-function abrirPosAposAprovarRender(idrender_alta) {
+function abrirPosAposAprovarRender() {
   loadRenders();
 
   Toastify({
@@ -1325,7 +1273,7 @@ function abrirPosAposAprovarRender(idrender_alta) {
   $("#modalPOS, #myModal").removeClass("is-open");
 }
 
-function mostrarModalAprovacaoInterna() {
+async function mostrarModalAprovacaoInterna() {
   if (!window.FlowAlert) {
     Toastify({
       text: "A aprova\u00e7\u00e3o interna precisa ser registrada antes de seguir.",
@@ -1334,10 +1282,10 @@ function mostrarModalAprovacaoInterna() {
       position: "right",
       backgroundColor: "#f44336",
     }).showToast();
-    return;
+    return null;
   }
 
-  FlowAlert.choose({
+  const result = await FlowAlert.choose({
     type: "warning",
     title: "A altera\u00e7\u00e3o foi aprovada?",
     message:
@@ -1347,26 +1295,22 @@ function mostrarModalAprovacaoInterna() {
       { label: "Sim, via WhatsApp", value: "whatsapp" },
     ],
     cancelText: "N\u00e3o",
-  }).then(function (result) {
-    if (
-      result.isConfirmed &&
-      ["presencial", "whatsapp"].includes(result.value)
-    ) {
-      aprovarRender(result.value);
-      return;
-    }
-
-    Toastify({
-      text: "Aprova\u00e7\u00e3o do Render cancelada.",
-      duration: 3000,
-      gravity: "top",
-      position: "right",
-      backgroundColor: "#607d8b",
-    }).showToast();
   });
+  if (result.isConfirmed && ["presencial", "whatsapp"].includes(result.value)) {
+    return result.value;
+  }
+
+  Toastify({
+    text: "Aprova\u00e7\u00e3o do Render cancelada.",
+    duration: 3000,
+    gravity: "top",
+    position: "right",
+    backgroundColor: "#607d8b",
+  }).showToast();
+  return null;
 }
 
-function aprovarRender(approvalOrigin) {
+async function aprovarRender() {
   const idrender_alta = $("#modal_idrender").text();
   const isPlantaHumanizada =
     String($("#myModal").data("tipo-imagem") || "")
@@ -1375,15 +1319,8 @@ function aprovarRender(approvalOrigin) {
   const statusImagem = String($("#modal_status_id").text() || "")
     .trim()
     .toLowerCase();
-  if (!isPlantaHumanizada && statusImagem !== "p00" && !approvalOrigin) {
-    if (window.RenderReferenceReview)
-      window.RenderReferenceReview.open(idrender_alta);
-    return;
-  }
   if (!isPlantaHumanizada && statusImagem !== "p00") {
-    if (window.RenderReferenceReview)
-      window.RenderReferenceReview.open(idrender_alta, approvalOrigin);
-    return;
+    return window.RenderReferenceReview?.open(idrender_alta);
   }
   const payload = {
     action: "updateRender",
@@ -1391,36 +1328,28 @@ function aprovarRender(approvalOrigin) {
     status: "Aprovado",
   };
 
-  if (approvalOrigin) {
-    payload.approval_origin = approvalOrigin;
-  }
+  try {
+    let response = await $.post("ajax.php", payload, null, "json");
+    if (response.status === "aprovacao_interna_pendente") {
+      const origin = await mostrarModalAprovacaoInterna();
+      if (!origin) return;
+      payload.approval_origin = origin;
+      response = await $.post("ajax.php", payload, null, "json");
+    }
+    if (response.status === "sucesso") {
+      abrirPosAposAprovarRender();
+      return;
+    }
 
-  $.post(
-    "ajax.php",
-    payload,
-    function (response) {
-      console.log("Resposta updateRender:", response);
-      if (response.status === "sucesso") {
-        abrirPosAposAprovarRender(idrender_alta);
-        return;
-      }
-
-      if (response.status === "aprovacao_interna_pendente") {
-        mostrarModalAprovacaoInterna();
-        return;
-      }
-
-      Toastify({
-        text: response.message || "Erro ao atualizar Render!",
-        duration: 3000,
-        gravity: "top",
-        position: "right",
-        backgroundColor: "#f44336",
-      }).showToast();
-    },
-    "json",
-  ).fail(function (xhr, status, error) {
-    console.error("AJAX error:", error, xhr.responseText);
+    Toastify({
+      text: response.message || "Erro ao atualizar Render!",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+  } catch (error) {
+    console.error("Erro ao aprovar render:", error);
     Toastify({
       text: "Erro de comunicacao com o servidor!",
       duration: 3000,
@@ -1428,7 +1357,7 @@ function aprovarRender(approvalOrigin) {
       position: "right",
       backgroundColor: "#f44336",
     }).showToast();
-  });
+  }
 }
 
 function concluirRenderManualmente(justificativa) {
@@ -1516,16 +1445,19 @@ $("#completeRenderManually")
     });
   });
 
-$("#aprovarRender")
-  .off("click")
-  .on("click", function () {
-    aprovarRender();
-  });
+$("#aprovarRender").on("click", async function () {
+  this.disabled = true;
+  try {
+    await aprovarRender();
+  } finally {
+    this.disabled = false;
+  }
+});
 
 $("#openRenderReferences").on("click", function () {
   const idrender = Number($("#modal_idrender").text());
   if (idrender && window.RenderReferenceReview)
-    window.RenderReferenceReview.open(idrender, null, true);
+    window.RenderReferenceReview.open(idrender, true);
 });
 
 // Fechar modal POS
@@ -1617,7 +1549,7 @@ function enviarParaPos(approvalOrigin) {
     success: function (response) {
       if (response.status === "sucesso") {
         if (response.skip_pos_producao) {
-          abrirPosAposAprovarRender($("#pos_render_id").val());
+          abrirPosAposAprovarRender();
           Toastify({
             text: "Planta Humanizada aprovada sem envio para P\u00f3s-Produ\u00e7\u00e3o.",
             duration: 4000,
@@ -1627,11 +1559,16 @@ function enviarParaPos(approvalOrigin) {
           }).showToast();
           return;
         }
-        abrirPosAposAprovarRender($("#pos_render_id").val());
+        abrirPosAposAprovarRender();
         $("#pos_caminho, #pos_referencias, #pos_references_files").val("");
         $("#posReferencesPreview").empty();
-      } else if (response.status === "aprovacao_interna_pendente") {
-        mostrarModalAprovacaoInterna();
+      } else if (
+        response.status === "aprovacao_interna_pendente" &&
+        !approvalOrigin
+      ) {
+        mostrarModalAprovacaoInterna().then((origin) => {
+          if (origin) enviarParaPos(origin);
+        });
       } else {
         Toastify({
           text: response.message || "Erro ao enviar para Pós-Produção!",

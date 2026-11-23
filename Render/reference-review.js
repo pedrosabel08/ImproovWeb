@@ -423,10 +423,9 @@
       renderComments();
     } else removeAnnotation(item, hit.a);
   }
-  function saveCurrent() {
-    const item = current(),
-      text = byId("rrCommentText").value.trim();
+  function saveCurrent(item = current()) {
     if (!item) return Promise.resolve();
+    const text = item === current() ? byId("rrCommentText").value.trim() : "";
     if (text) {
       const drawing = (item.drafts || []).find(
         (draft) =>
@@ -545,7 +544,6 @@
       .then((r) => r.json())
       .then((response) => {
         if (response.status !== "sucesso") throw new Error(response.message);
-        return open(state.renderId, null, true);
       });
   }
   function confirm() {
@@ -557,14 +555,12 @@
     confirmButton.textContent = state.editOnly
       ? "Salvando referências..."
       : "Enviando para Pós...";
+    const selected = current();
     const saves = state.items
-      .filter((i) => i.reference_id)
-      .map((i) => {
-        state.current = i.key;
-        return saveCurrent();
-      });
+      .filter((item) => item === selected || item.reference_id)
+      .map((item) => saveCurrent(item));
     Promise.all(saves)
-      .then(() => {
+      .then(async () => {
         // A Pós pode já existir por um processamento anterior do Deadline. Isso
         // não torna o Render aprovado: somente o modal aberto em modo de edição
         // (depois da aprovação) deve pular a transação approveToPos.
@@ -591,34 +587,31 @@
         const main = state.items.find((i) => i.key === "main");
         drafts.main = main ? main.drafts || [] : [];
         data.append("reference_review_drafts", JSON.stringify(drafts));
-        return fetch("ajax.php", { method: "POST", body: data })
-          .then((r) => r.json())
-          .then((response) => {
-            if (response.status === "aprovacao_interna_pendente") {
-              fechar();
-              if (window.mostrarModalAprovacaoInterna)
-                window.mostrarModalAprovacaoInterna();
-              return;
-            }
-            if (response.status !== "sucesso")
-              throw new Error(response.message);
-            if (response.skip_pos_producao) {
-              fechar();
-              toast(
-                "Planta Humanizada aprovada sem envio para Pos-Producao.",
-                "#0e7490",
-              );
-              if (window.loadRenders) window.loadRenders(1);
-              if (window.loadRenderKpis) window.loadRenderKpis();
-              $("#myModal").removeClass("is-open");
-              return;
-            }
-            toast("Render enviado para Pós-Produção.");
-            fechar();
-            if (window.loadRenders) window.loadRenders(1);
-            if (window.loadRenderKpis) window.loadRenderKpis();
-            $("#myModal").removeClass("is-open");
-          });
+        const submit = () =>
+          fetch("ajax.php", { method: "POST", body: data }).then((r) =>
+            r.json(),
+          );
+        let response = await submit();
+        if (response.status === "aprovacao_interna_pendente") {
+          const origin = await window.mostrarModalAprovacaoInterna();
+          if (!origin) return;
+          state.approvalOrigin = origin;
+          data.set("approval_origin", origin);
+          response = await submit();
+        }
+        if (response.status !== "sucesso") throw new Error(response.message);
+        if (response.skip_pos_producao) {
+          toast(
+            "Planta Humanizada aprovada sem envio para Pos-Producao.",
+            "#0e7490",
+          );
+        } else {
+          toast("Render enviado para Pós-Produção.");
+        }
+        fechar();
+        if (window.loadRenders) window.loadRenders(1);
+        if (window.loadRenderKpis) window.loadRenderKpis();
+        $("#myModal").removeClass("is-open");
       })
       .catch((e) =>
         toast(
@@ -636,26 +629,39 @@
     byId("renderReferenceReviewModal").classList.remove("is-open");
     byId("renderReferenceReviewModal").setAttribute("aria-hidden", "true");
   }
-  function open(renderId, approvalOrigin, editOnly) {
-    state.renderId = Number(renderId);
-    state.approvalOrigin = approvalOrigin || null;
-    state.editOnly = !!editOnly;
-    state.confirming = false;
-    byId("rrConfirm").textContent = editOnly
-      ? "Salvar referências"
-      : "Confirmar envio para Pós";
+  function open(renderId, editOnly = false) {
     const data = new FormData();
     data.append("action", "getReferenceReview");
-    data.append("render_id", state.renderId);
-    fetch("ajax.php", { method: "POST", body: data })
+    data.append("render_id", renderId);
+    if (!editOnly) data.append("for_approval", "1");
+    return fetch("ajax.php", { method: "POST", body: data })
       .then((r) => r.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.status !== "sucesso") throw new Error(data.message);
         if (data.skip_pos_producao) {
           fechar();
           toast("Planta Humanizada nao utiliza a Pos-Producao.", "#0e7490");
           return;
         }
+        let approvalOrigin = null;
+        if (!editOnly && data.pending_internal_approval) {
+          approvalOrigin = await window.mostrarModalAprovacaoInterna();
+          if (!approvalOrigin) return;
+        }
+        if (
+          state.confirming ||
+          !$("#myModal").hasClass("is-open") ||
+          Number($("#modal_idrender").text()) !== Number(renderId)
+        ) {
+          return;
+        }
+        state.renderId = Number(renderId);
+        state.approvalOrigin = approvalOrigin;
+        state.editOnly = editOnly;
+        byId("rrCommentText").value = "";
+        byId("rrConfirm").textContent = editOnly
+          ? "Salvar referências"
+          : "Confirmar envio para Pós";
         state.posId = Number(data.pos_producao_id || 0);
         state.items = [
           {
@@ -769,10 +775,13 @@
       addFiles(this.files);
       this.value = "";
     });
-    byId("rrSaveCurrent").addEventListener("click", saveCurrent);
+    byId("rrSaveCurrent").addEventListener("click", () => saveCurrent());
     byId("rrConfirm").addEventListener("click", confirm);
-    byId("rrClose").addEventListener("click", fechar);
-    byId("rrCancel").addEventListener("click", fechar);
+    const cancel = () => {
+      if (!state.confirming) fechar();
+    };
+    byId("rrClose").addEventListener("click", cancel);
+    byId("rrCancel").addEventListener("click", cancel);
   }
   document.addEventListener("DOMContentLoaded", bind);
   window.RenderReferenceReview = { open };

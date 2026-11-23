@@ -1335,6 +1335,15 @@ if (isset($_POST['action'])) {
                 echo json_encode(['status' => 'erro', 'message' => 'Render não encontrado.']);
                 break;
             }
+            $pendingInternalApproval = false;
+            if (($_POST['for_approval'] ?? '') === '1') {
+                $alteracao = aprovacao_interna_resolver_alteracao_por_render($conn, $renderId);
+                $pendingInternalApproval = $alteracao && !aprovacao_interna_tem_registro(
+                    $conn,
+                    (int) $alteracao['funcao_imagem_id'],
+                    (int) $alteracao['status_id']
+                );
+            }
             $posId = (int)($review['idpos_producao'] ?? 0);
             $primaryId = null;
             $references = [];
@@ -1349,6 +1358,7 @@ if (isset($_POST['action'])) {
                 'main_reference_id' => $primaryId,
                 'main_preview' => (string)($review['previa_jpg'] ?? ''),
                 'references' => $references,
+                'pending_internal_approval' => $pendingInternalApproval,
             ]);
             break;
 

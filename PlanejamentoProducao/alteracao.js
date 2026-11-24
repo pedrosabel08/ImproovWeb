@@ -18,6 +18,9 @@
     priorityEnabled: false,
     dayIndex: 0,
     editorId: null,
+    selectionAnchor: null,
+    railStatus: "",
+    saveError: false,
   };
   const escape = (value) =>
     String(value ?? "").replace(
@@ -121,8 +124,17 @@
     return index < 0 ? Math.max(0, days().length - 5) : index;
   };
   const capacity = (id, d) => state.plan.capacidade?.agenda?.[id]?.[d];
-  function cellLoad(id, d, items = state.items) {
-    return items
+  const selectionItems = () =>
+    state.items.filter((item) =>
+      state.selected.has(Number(item.entrega_item_id)),
+    );
+  const cellKey = (id, d) => `${id}|${d}`;
+  const canMove = (item) => pendingWork(item) && !item.fixado;
+  const changePlacement = (item, person, day) =>
+    Number(item.responsavel_planejado_id || 0) !== Number(person || 0) ||
+    item.fim_planejado !== day;
+  function cellLoad(id, d) {
+    return state.items
       .filter(
         (i) =>
           pendingWork(i) &&
@@ -133,24 +145,24 @@
   }
   function excessCells(items = state.items) {
     const found = [];
-    const keys = new Set(
-      items
-        .filter(
-          (i) =>
-            pendingWork(i) && i.responsavel_planejado_id && i.fim_planejado,
-        )
-        .map((i) => `${i.responsavel_planejado_id}|${i.fim_planejado}`),
-    );
-    for (const key of keys) {
+    const loads = new Map();
+    for (const item of items) {
+      if (
+        !pendingWork(item) ||
+        !item.responsavel_planejado_id ||
+        !item.fim_planejado
+      )
+        continue;
+      const key = cellKey(item.responsavel_planejado_id, item.fim_planejado);
+      loads.set(key, (loads.get(key) || 0) + points(item));
+    }
+    for (const [key, load] of loads) {
       const [id, d] = key.split("|"),
         a = capacity(id, d);
       if (!a) continue;
       const excess =
         Math.round(
-          (cellLoad(id, d, items) +
-            Number(a.comprometidos) -
-            Number(a.capacidade)) *
-            100,
+          (load + Number(a.comprometidos) - Number(a.capacidade)) * 100,
         ) / 100;
       if (excess > 0)
         found.push({
@@ -162,6 +174,39 @@
     }
     return found;
   }
+  function gridCardPositions() {
+    if (
+      matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      $("ap-calendar-view").hidden
+    )
+      return null;
+    return new Map(
+      [...$("ap-grid").querySelectorAll("[data-card-shell]")].map((card) => [
+        card.dataset.cardShell,
+        card.getBoundingClientRect(),
+      ]),
+    );
+  }
+  function animateGridChanges(previous) {
+    if (!previous) return;
+    $("ap-grid")
+      .querySelectorAll("[data-card-shell]")
+      .forEach((card) => {
+        const old = previous.get(card.dataset.cardShell);
+        if (!old) return;
+        const next = card.getBoundingClientRect();
+        const x = old.left - next.left;
+        const y = old.top - next.top;
+        if (x || y)
+          card.animate(
+            [{ transform: `translate(${x}px, ${y}px)` }, { transform: "none" }],
+            {
+              duration: 150,
+              easing: "ease-out",
+            },
+          );
+      });
+  }
   async function applyDecisions(decisions) {
     if (!editable()) return false;
     if (
@@ -170,14 +215,25 @@
         return (
           change &&
           (!pendingWork(i) ||
+            (i.fixado &&
+              change.fixado !== false &&
+              changePlacement(
+                i,
+                Object.hasOwn(change, "responsavel_planejado_id")
+                  ? change.responsavel_planejado_id
+                  : i.responsavel_planejado_id,
+                Object.hasOwn(change, "fim_planejado")
+                  ? change.fim_planejado
+                  : i.fim_planejado,
+              )) ||
             (!canAssign(i) &&
-              change.responsavel_planejado_id != null &&
+              Object.hasOwn(change, "responsavel_planejado_id") &&
               change.responsavel_planejado_id !== i.responsavel_planejado_id))
         );
       })
     ) {
       message(
-        "A seleção contém uma imagem bloqueada para essa alteração.",
+        "A seleção contém uma imagem bloqueada para essa alteração. Verifique a situação, a fixação e o responsável.",
         true,
       );
       renderRows();
@@ -203,6 +259,18 @@
     ) {
       message("Escolha um dia útil dentro da agenda disponível.", true);
       renderRows();
+      return false;
+    }
+    if (
+      next.some(
+        (item) =>
+          decisions.has(Number(item.entrega_item_id)) &&
+          item.inicio_planejado &&
+          item.fim_planejado &&
+          item.inicio_planejado > item.fim_planejado,
+      )
+    ) {
+      message("O início não pode ser posterior ao dia planejado.", true);
       return false;
     }
     const current = today();
@@ -252,6 +320,7 @@
       renderPlanner();
       return false;
     }
+    const previous = gridCardPositions();
     state.items = next;
     renderEditor();
     next.forEach((i) => {
@@ -259,6 +328,7 @@
         state.people.add(Number(i.responsavel_planejado_id));
     });
     markDirty();
+    animateGridChanges(previous);
     renderRows();
     return true;
   }
@@ -269,35 +339,189 @@
   function card(item, showStatus = false) {
     const id = Number(item.entrega_item_id);
     const name = escape(item.imagem_nome);
-    const active = state.editorId === id;
-    const planned = complete(item);
-    return `<button type="button" class="ap-card${active ? " is-active" : ""}" data-card="${id}" data-edit-image="${id}" draggable="${editable() && pendingWork(item)}" aria-pressed="${active}" title="${name}">${thumbnail(item)}<span><strong>${name}</strong><small>${levelBadge(item)} <span>${pointsLabel(item)}</span></small>${showStatus ? `<small class="ap-rail-status${planned ? " is-planned" : ""}">${planned ? `Planejada · ${formatDate(item.fim_planejado).slice(0, 5)}` : "Não planejada"}</small>` : ""}</span></button>`;
+    const active = state.selected.has(id);
+    const status = cardStatus(item);
+    const locked = !pendingWork(item) || !canAssign(item) || item.fixado;
+    const done = Boolean(
+      item.data_entregue || item.motivo_bloqueio === "Alteração concluída",
+    );
+    const icon = done
+      ? "circle-check"
+      : locked
+        ? "lock"
+        : complete(item)
+          ? "check"
+          : "circle";
+    return `<div class="ap-card-shell${active ? " is-active" : ""}" data-card-shell="${id}">
+      ${editable() && pendingWork(item) ? `<input type="checkbox" class="ap-card-checkbox" data-select="${id}" aria-label="Selecionar ${name}"${active ? " checked" : ""}>` : ""}
+      <button type="button" class="ap-card" data-card="${id}" data-edit-image="${id}" draggable="${editable() && canMove(item)}" aria-pressed="${active}" title="${name} · ${escape(status)}">
+        ${thumbnail(item)}<span class="ap-card-copy"><strong>${name}</strong><small>${levelBadge(item)} <span>${pointsLabel(item)}</span>${showStatus ? `<span class="ap-card-id">#${Number(item.imagem_id)}</span>` : ""}</small></span>
+        ${showStatus || locked ? `<i class="fa-solid fa-${icon} ap-card-icon${done ? " is-done" : ""}" aria-label="${escape(status)}"></i>` : ""}
+      </button></div>`;
   }
-  function renderRail() {
-    const query = $("ap-rail-search").value.trim().toLocaleLowerCase("pt-BR");
+  function cardStatus(item) {
+    if (item.fixado && pendingWork(item)) return "Fixada no planejamento";
+    return (
+      item.motivo_bloqueio ||
+      item.motivo_bloqueio_responsavel ||
+      (item.data_entregue
+        ? "Entregue"
+        : complete(item)
+          ? "Planejada"
+          : "Não planejada")
+    );
+  }
+  function externalCard(item) {
+    const origin = [item.obra, item.etapa].filter(Boolean).join(" · ");
+    const detail = [
+      origin,
+      item.imagem_nome,
+      level(item) && `N${level(item)}`,
+      pointsLabel(item),
+      "Somente leitura",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return `<a class="ap-card ap-external" draggable="false" href="index.php?entrega_id=${Number(item.entrega_id)}" title="${escape(detail)}" aria-label="Abrir planejamento de origem · ${escape(detail)}">
+      ${thumbnail(item)}<span class="ap-card-copy"><small class="ap-external-origin">${escape(origin)}</small><strong>${escape(item.imagem_nome)}</strong><small>${levelBadge(item)} <span>${pointsLabel(item)}</span></small></span><i class="fa-solid fa-lock ap-card-icon" aria-hidden="true"></i>
+    </a>`;
+  }
+  const railStatuses = {
+    "": () => true,
+    pending: (item) => pendingWork(item) && !complete(item),
+    planned: (item) => pendingWork(item) && complete(item),
+    done: (item) =>
+      Boolean(
+        item.data_entregue || item.motivo_bloqueio === "Alteração concluída",
+      ),
+  };
+  function railItems(status = state.railStatus) {
+    const query = classificationSearchKey($("ap-rail-search").value.trim());
     const selectedLevel = $("ap-rail-level").value;
-    const onlyPending = $("ap-rail-pending").checked;
-    const items = state.items.filter(
+    return state.items.filter(
       (item) =>
         (!query ||
-          String(item.imagem_nome)
-            .toLocaleLowerCase("pt-BR")
-            .includes(query)) &&
+          classificationSearchKey(String(item.imagem_nome)).includes(query)) &&
         (!selectedLevel || (level(item) || "none") === selectedLevel) &&
-        (!onlyPending || !complete(item)),
+        railStatuses[status](item),
     );
-    $("ap-rail-count").textContent = `${items.length} / ${state.items.length}`;
+  }
+  function renderRail() {
+    clearTimeout(railSearchTimer);
+    const items = railItems();
+    $("ap-rail-states")
+      .querySelectorAll("button")
+      .forEach((button) => {
+        const status = button.dataset.railState;
+        button.setAttribute(
+          "aria-pressed",
+          String(status === state.railStatus),
+        );
+        button.querySelector("span").textContent = railItems(status).length;
+      });
+    const done = state.items.filter(railStatuses.done).length;
+    $("ap-rail-count").textContent =
+      items.length === state.items.length
+        ? `${pendingItems().length} elegíveis · ${done} concluídas`
+        : `${items.length} / ${state.items.length} imagens`;
     $("ap-rail-items").innerHTML =
       items.map((item) => card(item, true)).join("") ||
       '<p class="ap-empty">Nenhuma imagem corresponde aos filtros.</p>';
   }
-  $("ap-rail-search").addEventListener("input", renderRail);
+  let railSearchTimer;
+  $("ap-rail-search").addEventListener("input", () => {
+    clearTimeout(railSearchTimer);
+    railSearchTimer = setTimeout(renderRail, 120);
+  });
   $("ap-rail-level").addEventListener("change", renderRail);
-  $("ap-rail-pending").addEventListener("change", renderRail);
+  $("ap-rail-states").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-rail-state]");
+    if (!button) return;
+    state.railStatus = button.dataset.railState;
+    renderRail();
+  });
+  $("ap-rail-toggle").addEventListener("click", ({ currentTarget }) => {
+    const collapsed = currentTarget
+      .closest(".ap-calendar-workspace")
+      .classList.toggle("is-rail-collapsed");
+    const label = collapsed ? "Expandir imagens" : "Recolher imagens";
+    currentTarget.setAttribute("aria-expanded", String(!collapsed));
+    currentTarget.setAttribute("aria-label", label);
+    currentTarget.title = label;
+    currentTarget.querySelector("i").className =
+      `fa-solid fa-angles-${collapsed ? "right" : "left"}`;
+    $("ap-rail-controls").inert = collapsed;
+    $("ap-rail-items").inert = collapsed;
+  });
+  $("ap-show-external").addEventListener("change", ({ target }) =>
+    $("ap-grid").classList.toggle("hide-external", !target.checked),
+  );
   $("ap-today").addEventListener("click", () => {
     state.dayIndex = todayIndex();
     renderPlanner();
   });
+
+  function renderForecast(work, due) {
+    const dates = work.map((item) => {
+      const operational = date(item.execucao?.previsao);
+      const planned = complete(item) ? item.fim_planejado : "";
+      return operational > planned ? operational : planned;
+    });
+    const allScheduled = dates.length && dates.every(validDate);
+    const finish = allScheduled ? dates.sort().at(-1) : null;
+    const stale = finish && dates.some((day) => day < today());
+    const overdue = validDate(due) && due < today() && work.length > 0;
+    const forecast = $("ap-forecast");
+    forecast.textContent = !work.length
+      ? "Sem pendências"
+      : finish && !stale
+        ? formatDate(finish)
+        : "Indisponível";
+    forecast.title = !work.length
+      ? "O escopo atual não tem alterações pendentes."
+      : stale
+        ? "Há imagens pendentes com datas planejadas vencidas."
+        : finish
+          ? "Última data planejada ou previsão operacional informada para as alterações pendentes."
+          : "A previsão depende das datas das alterações pendentes.";
+    const margin = $("ap-margin");
+    margin.className = "";
+    if (overdue) {
+      margin.textContent = "Prazo vencido";
+      margin.className = "ap-late";
+      return;
+    }
+    if (!finish || stale || !validDate(due)) {
+      margin.textContent = "—";
+      return;
+    }
+    const start = finish <= due ? finish : due;
+    const end = finish <= due ? due : finish;
+    const distance = days().filter((day) => day > start && day <= end).length;
+    margin.textContent = `${distance ? (finish <= due ? "+" : "−") : ""}${distance} ${distance === 1 ? "dia útil" : "dias úteis"}`;
+    margin.className = finish > due ? "ap-late" : distance ? "ap-healthy" : "";
+  }
+
+  function capacityBadge(total, cap) {
+    if (total > cap) return "is-overloaded";
+    return cap > 0 && total / cap >= 0.85 ? "is-near-limit" : "";
+  }
+
+  function renderLoad(load, committed, cap, context) {
+    const externalWidth =
+      cap > 0
+        ? Math.min(100, (committed / cap) * 100)
+        : committed > 0
+          ? 100
+          : 0;
+    const currentWidth =
+      cap > 0
+        ? Math.min(100 - externalWidth, (load / cap) * 100)
+        : load > 0
+          ? 100 - externalWidth
+          : 0;
+    return `<span class="ap-load-bar" role="img" aria-label="${escape(context)}"><span style="inline-size:${externalWidth}%"></span><span style="inline-size:${currentWidth}%"></span></span>`;
+  }
 
   function renderPlanner() {
     if (!state.plan) return;
@@ -347,27 +571,8 @@
           .sort()
           .at(-1)
       : null;
-    const due = date(state.plan.entrega.data_prevista),
-      completePlan = ready.length === work.length && ready.length > 0;
-    $("ap-forecast").textContent = finish
-      ? formatDate(finish) + (completePlan ? "" : " · parcial")
-      : "—";
-    const margin =
-      finish && due
-        ? days().filter(
-            (d) =>
-              d > (finish <= due ? finish : due) &&
-              d <= (finish <= due ? due : finish),
-          ).length
-        : null;
-    $("ap-margin").textContent =
-      margin === null
-        ? "—"
-        : finish <= due
-          ? `+${margin} dias úteis`
-          : `−${margin} dias úteis`;
-    $("ap-margin").className =
-      finish && finish > due ? "ap-late" : "ap-healthy";
+    const due = date(state.plan.entrega.data_prevista);
+    renderForecast(work, due);
     const people = state.plan.colaboradores.filter((p) =>
       state.people.has(Number(p.id)),
     );
@@ -381,9 +586,42 @@
     historicalIds.forEach((id) =>
       people.push({ id, nome: personName(id), historico: true }),
     );
+    const byCell = new Map();
+    state.items.forEach((item) => {
+      if (!item.responsavel_planejado_id || !item.fim_planejado) return;
+      const key = cellKey(item.responsavel_planejado_id, item.fim_planejado);
+      if (!byCell.has(key)) byCell.set(key, []);
+      byCell.get(key).push(item);
+    });
+    const weekCapacity = people.reduce(
+      (sum, person) =>
+        sum +
+        visibleDays.reduce(
+          (total, day) =>
+            total + Number(capacity(person.id, day)?.capacidade || 0),
+          0,
+        ),
+      0,
+    );
+    const unknownWeek = people.some((person) =>
+      visibleDays.some((day) => {
+        const cell = capacity(person.id, day);
+        return !cell || cell.avisos?.length;
+      }),
+    );
+    $("ap-week-capacity").textContent = people.length
+      ? unknownWeek
+        ? "Capacidade do período parcialmente estimada"
+        : `Capacidade do período · ${num(weekCapacity)} pts`
+      : "";
     $("ap-grid").style.setProperty("--ap-days", visibleDays.length || 1);
     $("ap-grid").innerHTML =
-      `<div class="ap-grid-corner">Colaborador</div>${visibleDays.map((d) => `<div class="ap-grid-day${d < current ? " is-past" : ""}"${d === current ? ' aria-current="date"' : ""}><strong>${formatDate(d).slice(0, 5)}</strong><small>${new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short" })}</small>${d === current ? '<span class="ap-today-label">Hoje</span>' : ""}</div>`).join("")}` +
+      `<div class="ap-grid-corner">Colaborador</div>${visibleDays
+        .map((d) => {
+          const day = new Date(d + "T12:00:00");
+          return `<div class="ap-grid-day${d < current ? " is-past" : ""}${d === due ? " is-due" : ""}"${d === current ? ' aria-current="date"' : ""}${d === due ? ' title="Prazo do cliente"' : ""}><strong>${day.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")} ${day.getDate()}</strong><small>${day.toLocaleDateString("pt-BR", { month: "short" })}</small></div>`;
+        })
+        .join("")}` +
       people
         .map((p) => {
           const id = Number(p.id),
@@ -394,21 +632,18 @@
             ? "Vínculo de Alteração indisponível"
             : `Alteração ${roleName(p).toLowerCase()}`;
           return (
-            `<div class="ap-grid-person"><span class="ap-avatar">${escape(p.nome.slice(0, 1))}</span><strong>${escape(p.nome)}</strong><small class="ap-role${p.tipo_atuacao === "SECUNDARIA" || p.historico ? " is-secondary" : ""}">${personRole}</small><small>${p.historico ? "Responsável histórico" : num(nominal) + " pts/dia nominais"}</small>${!p.historico ? `<div class="ap-person-actions"><button type="button" class="ap-button" data-agenda="${id}" aria-label="Agenda de ${escape(p.nome)}" title="Ver agenda"><i class="fa-regular fa-calendar" aria-hidden="true"></i></button><button class="ap-person-remove ap-button" type="button" data-remove-person="${id}" aria-label="Retirar ${escape(p.nome)} da grade" title="Remover da grade"${editable() ? "" : " disabled"}>×</button></div>` : ""}</div>` +
+            `<div class="ap-grid-person"><span class="ap-avatar">${escape(p.nome.slice(0, 1))}</span><strong>${escape(p.nome)}</strong><small class="ap-role">${personRole}</small><small>${p.historico ? "Responsável histórico" : num(nominal) + " pts/dia"}</small>${!p.historico ? `<div class="ap-person-actions"><button type="button" class="ap-button" data-agenda="${id}" aria-label="Agenda e capacidade de ${escape(p.nome)}" title="Agenda e capacidade"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button><button class="ap-person-remove ap-button" type="button" data-remove-person="${id}" aria-label="Retirar ${escape(p.nome)} da grade" title="Remover da grade"${editable() ? "" : " disabled"}>×</button></div>` : ""}</div>` +
             visibleDays
               .map((d) => {
+                const items = byCell.get(cellKey(id, d)) || [];
                 const a = capacity(id, d),
-                  load = cellLoad(id, d),
+                  load = items.reduce(
+                    (sum, item) => sum + (pendingWork(item) ? points(item) : 0),
+                    0,
+                  ),
                   committed = Number(a?.comprometidos || 0),
                   cap = Number(a?.capacidade || 0),
-                  used = load + committed,
-                  ratio = cap > 0 ? used / cap : used ? 2 : 0;
-                const overloaded = ratio > 1;
-                const items = state.items.filter(
-                  (i) =>
-                    Number(i.responsavel_planejado_id) === id &&
-                    i.fim_planejado === d,
-                );
+                  used = load + committed;
                 const unknownLoad = items.some(
                     (i) => pendingWork(i) && i.pontos_snapshot == null,
                   ),
@@ -425,8 +660,9 @@
                     : `${num(used)} / ${num(cap)} pts`;
                 const context = [
                   offerLabel,
-                  committed ? `${num(committed)} pts de outras entregas` : "",
-                  overloaded ? `Sobrecarga de ${num(used - cap)} pts` : "",
+                  `${num(committed)} pts de outras entregas`,
+                  `${num(load)} pts desta entrega`,
+                  used > cap && a ? `Sobrecarga de ${num(used - cap)} pts` : "",
                   a?.ocupacao_r00
                     ? `R00: ${num(a.ocupacao_r00 * 100)}% do dia`
                     : "",
@@ -434,13 +670,15 @@
                 ]
                   .filter(Boolean)
                   .join(" · ");
-                return `<div class="ap-grid-cell${a && overloaded ? " is-overloaded" : ""}"${p.historico ? "" : ` data-drop-person="${id}" data-drop-day="${d}"`}>
+                const external = state.plan.tarefas_externas?.[id]?.[d] || [];
+                return `<div class="ap-grid-cell ${a ? capacityBadge(used, cap) : ""}"${a && !p.historico ? ` data-drop-person="${id}" data-drop-day="${d}"` : ""}>
                   <div class="ap-load" title="${escape(context)}">
                     <strong class="ap-cell-load">${loadLabel}</strong>
-                    ${!unknownOffer && !unknownLoad ? `<meter min="0" max="${cap || 1}" value="${Math.min(used, cap || 1)}" aria-label="${escape(context)}"></meter>` : `<small>${escape(offerLabel)}</small>`}
+                    ${!unknownOffer && !unknownLoad ? renderLoad(load, committed, cap, context) : `<small>${escape(offerLabel)}</small>`}
                   </div>
                   ${items.map((item) => card(item)).join("")}
-                  ${!p.historico && editable() ? `<button type="button" class="ap-add-image" data-place-person="${id}" data-place-day="${d}" aria-label="Adicionar imagem para ${escape(p.nome)} em ${formatDate(d)}"><span aria-hidden="true">+</span><span>Adicionar imagem</span></button>` : ""}
+                  ${external.map(externalCard).join("")}
+                  ${a && !p.historico && editable() ? `<button type="button" class="ap-add-image" data-place-person="${id}" data-place-day="${d}" aria-label="Adicionar imagem para ${escape(p.nome)} em ${formatDate(d)}" title="Adicionar imagem"><span aria-hidden="true">+</span></button>` : ""}
                 </div>`;
               })
               .join("")
@@ -450,6 +688,7 @@
       (!people.length
         ? '<p class="ap-empty">Adicione um colaborador para planejar as imagens.</p>'
         : "");
+    if (state.editorId !== null) positionEditor();
     const usedIds = new Set(
       ready.map((i) => Number(i.responsavel_planejado_id)),
     );
@@ -571,7 +810,11 @@
           <span class="ap-list-score">${levelBadge(item)} ${pointsLabel(item)}</span>
           <span>${escape(personName(item.responsavel_planejado_id))}</span>
           <time>${formatDate(item.fim_planejado)}</time>
-          <span>${itemStatus(item)}</span>
+          <div class="ap-list-execution">${
+            item.pode_transferir_execucao
+              ? `<span class="ap-item-state">${escape(item.execucao.status)}</span><button type="button" class="ap-button" data-transfer-image="${id}">Transferir execução</button>`
+              : itemStatus(item)
+          }</div>
         </article>`;
       })
       .join("");
@@ -595,9 +838,17 @@
     $("ap-select-all").checked = items.length > 0 && count === items.length;
     $("ap-select-all").indeterminate = count > 0 && count < items.length;
     $("ap-select-all").disabled = !editable() || !items.length;
-    $("ap-selection").textContent = `${state.selected.size} selecionadas`;
-    $("ap-apply").disabled = !editable() || !state.selected.size;
-    $("ap-clear").disabled = !editable() || !state.selected.size;
+    const selected = selectionItems();
+    const bar = $("ap-bulk");
+    const showBulk = selected.length >= 2;
+    $("ap-selection").textContent =
+      `${selected.length} ${selected.length === 1 ? "imagem selecionada" : "imagens selecionadas"} · ${num(selected.reduce((total, item) => total + points(item), 0))} pts`;
+    if (showBulk && !bar.matches(":popover-open")) bar.showPopover();
+    if (!showBulk && bar.matches(":popover-open")) bar.hidePopover();
+    ["ap-bulk-replan", "ap-bulk-assign", "ap-clear"].forEach((id) => {
+      $(id).disabled = !editable();
+    });
+    updateActiveCards();
   }
   function renderSummary() {
     const work = pendingItems();
@@ -611,7 +862,7 @@
     $("ap-progress").value = count;
     $("ap-status").textContent =
       confirmed() && !state.replanning
-        ? "Planejada"
+        ? "Planejamento confirmado"
         : state.replanning
           ? "Replanejamento em rascunho"
           : count === 0
@@ -624,12 +875,16 @@
     $("ap-save-status").textContent = state.suggesting
       ? "Gerando sugestão…"
       : state.saving
-        ? "Salvando…"
-        : state.dirty
-          ? "Alterações não salvas"
-          : confirmed() && !state.replanning
-            ? "Versão confirmada. Histórico preservado."
-            : "Rascunho salvo";
+        ? "Salvando rascunho…"
+        : state.saveError
+          ? "Erro ao salvar"
+          : state.dirty
+            ? "Alterações não salvas"
+            : confirmed() && !state.replanning
+              ? ""
+              : state.plan.planejamento.rascunho_pendente
+                ? "Rascunho salvo"
+                : "Sem alterações locais";
     $("ap-save").hidden = $("ap-confirm").hidden =
       confirmed() && !state.replanning;
     $("ap-save").disabled = !editable();
@@ -638,8 +893,9 @@
     $("ap-replan").hidden = !confirmed() || state.replanning;
     $("ap-replan").disabled =
       state.plan.pode_editar === false || state.saving || state.conflict;
-    $("ap-replan-fields").hidden = !state.replanning;
-    $("ap-bulk").disabled = !editable();
+    $("ap-cancel-replan").disabled = !state.dirty && !state.replanning;
+    $("ap-capacity-settings").hidden =
+      state.plan.pode_configurar_capacidade === false;
     updateEditorAvailability();
     renderDistribution();
     renderSelection();
@@ -689,6 +945,7 @@
   }
   function markDirty() {
     state.dirty = true;
+    state.saveError = false;
     renderSummary();
   }
   function acceptPlan(plan) {
@@ -720,23 +977,38 @@
     if (!state.people.size && plan.colaboradores.length)
       state.people.add(Number(plan.colaboradores[0].id));
     if (firstLoad) state.dayIndex = todayIndex();
-    state.selected.clear();
+    state.selected = new Set(
+      [...state.selected].filter((id) =>
+        state.items.some(
+          (item) => Number(item.entrega_item_id) === id && pendingWork(item),
+        ),
+      ),
+    );
     state.dirty = false;
     state.conflict = false;
+    state.saveError = false;
     const eligible = pendingItems().length;
     const delivered = state.items.filter((i) => i.data_entregue).length;
     $("ap-partial").hidden = !confirmed() || eligible === state.items.length;
     $("ap-partial").textContent =
       `Replanejamento parcial · ${delivered} ${delivered === 1 ? "entregue" : "entregues"} · ${eligible} ${eligible === 1 ? "elegível" : "elegíveis"}`;
     const e = plan.entrega;
-    $("ap-project").textContent =
-      `Lote ${e.id} · ${e.nomenclatura || "Projeto"} · ${e.etapa || "Alteração"}`;
+    $("alteration-title").textContent =
+      `${e.nomenclatura || "Projeto"} / ${e.etapa || "Alteração"}`;
+    $("ap-project").textContent = `Lote ${e.id}`;
     $("ap-received").textContent = formatDate(e.data_recebimento);
     $("ap-due").textContent = formatDate(e.data_prevista);
+    const baseline = plan.planejamento.historico?.find(
+      (entry) =>
+        Number(entry.id) === Number(plan.planejamento.baseline_versao_id),
+    );
+    $("ap-original-forecast").hidden = !validDate(date(baseline?.fim_previsto));
+    $("ap-original-forecast").textContent =
+      ` · Previsão original ${formatDate(baseline?.fim_previsto)}`;
     $("ap-person").innerHTML =
       '<option value="">Todos</option><option value="none">Sem responsável</option>' +
       personOptions(null).replace('<option value="">Selecione</option>', "");
-    $("ap-bulk-person").innerHTML = personOptions(null, "Manter responsável");
+    $("ap-bulk-person").innerHTML = personOptions(null, "Manter atual");
     $("ap-content").hidden = false;
     $("ap-reload").hidden = true;
     renderRows();
@@ -998,35 +1270,8 @@
       classificationForm.removeAttribute("aria-busy");
     }
   });
-  async function save(action) {
-    if (!editable()) return;
-    if (
-      state.plan.planejamento.rascunho_requer_revisao &&
-      !state.reviewedDraft
-    ) {
-      if (
-        !(await confirmAction(
-          "Substituir o rascunho anterior pelas decisões revisadas nesta tela?",
-        ))
-      )
-        return;
-      state.reviewedDraft = true;
-    }
-    if (action === "confirmar" && state.replanning && !$("ap-reason").value) {
-      message("Selecione o motivo do replanejamento.", true);
-      $("ap-reason").focus();
-      return;
-    }
-    if (
-      action === "confirmar" &&
-      state.replanning &&
-      $("ap-reason").value === "OUTRO" &&
-      !$("ap-note").value.trim()
-    ) {
-      message("Descreva o motivo do replanejamento.", true);
-      $("ap-note").focus();
-      return;
-    }
+  function openConfirmation() {
+    if (!editable() || $("ap-confirm").disabled) return;
     const oldItems = new Map(
       (state.plan.vigente_itens || []).map((i) => [
         Number(i.entrega_item_id),
@@ -1046,16 +1291,36 @@
           oldItems.get(Number(i.entrega_item_id)).responsavel_planejado_id,
         ) !== Number(i.responsavel_planejado_id),
     ).length;
+    $("ap-confirm-title").textContent = state.replanning
+      ? "Confirmar replanejamento"
+      : "Confirmar planejamento";
+    $("ap-replan-fields").hidden = !state.replanning;
+    $("ap-reason").required = state.replanning;
+    $("ap-note").required =
+      state.replanning && $("ap-reason").value === "OUTRO";
+    $("ap-note").setCustomValidity("");
+    $("ap-confirm-summary").textContent = state.replanning
+      ? `${movedDays} imagens mudaram de dia e ${movedPeople} de responsável. A nova versão preserva o histórico.`
+      : "Os responsáveis serão aplicados às tarefas desta entrega.";
+    $("ap-confirm-dialog").showModal();
+  }
+  async function save(action) {
+    if (!editable()) return;
     if (
-      action === "confirmar" &&
-      !(await confirmAction(
-        confirmed()
-          ? `${movedDays} imagens mudaram de dia; ${movedPeople} mudaram de responsável. Confirmar a nova versão e aplicar os responsáveis? A baseline será preservada.`
-          : "Confirmar o planejamento e aplicar os responsáveis às tarefas desta entrega?",
-      ))
-    )
-      return;
+      state.plan.planejamento.rascunho_requer_revisao &&
+      !state.reviewedDraft
+    ) {
+      if (
+        !(await confirmAction(
+          "Substituir o rascunho anterior pelas decisões revisadas nesta tela?",
+        )) ||
+        !editable()
+      )
+        return;
+      state.reviewedDraft = true;
+    }
     state.saving = true;
+    state.saveError = false;
     renderRows();
     renderSummary();
     setLoading(
@@ -1117,7 +1382,11 @@
           result.message || "Não foi possível salvar o planejamento.",
         );
       }
-      if (action === "confirmar") state.replanning = false;
+      if (action === "confirmar") {
+        state.replanning = false;
+        $("ap-reason").value = "";
+        $("ap-note").value = "";
+      }
       state.saving = false;
       acceptPlan(result.plano);
       message(
@@ -1126,6 +1395,7 @@
           : "Rascunho salvo.",
       );
     } catch (error) {
+      state.saveError = true;
       message(error.message, true);
     } finally {
       state.saving = false;
@@ -1135,20 +1405,43 @@
     }
   }
   let editorTrigger;
+  const editor = $("ap-editor");
+  function positionEditor() {
+    if (!editor.matches(":popover-open")) return;
+    const view = $("ap-list-view").hidden
+      ? $("ap-calendar-view")
+      : $("ap-list-view");
+    const anchor = editorTrigger?.isConnected
+      ? editorTrigger
+      : view.querySelector(`[data-edit-image="${state.editorId}"]`);
+    const box = anchor?.getBoundingClientRect();
+    const margin = 10;
+    const { width, height } = editor.getBoundingClientRect();
+    const viewport = document.documentElement;
+    const left = box
+      ? box.right + width + margin * 2 <= viewport.clientWidth
+        ? box.right + margin
+        : box.left - width - margin
+      : viewport.clientWidth - width - margin;
+    const top = box?.top ?? margin;
+    editor.style.left = `${Math.max(margin, Math.min(left, viewport.clientWidth - width - margin))}px`;
+    editor.style.top = `${Math.max(margin, Math.min(top, viewport.clientHeight - height - margin))}px`;
+  }
   function openEditor(trigger) {
     editorTrigger = trigger;
     const id = Number(trigger.dataset.editImage);
     state.editorId = id;
     renderEditor();
-    updateActiveCards();
-    $("ap-editor-close").focus();
+    if (!editor.matches(":popover-open")) editor.showPopover();
+    positionEditor();
+    $("ap-editor-close").focus({ preventScroll: true });
   }
 
-  function closeEditor() {
+  function closeEditor(restoreFocus = true) {
+    if (state.editorId === null) return;
     const id = state.editorId;
     state.editorId = null;
-    $("ap-editor").hidden = true;
-    updateActiveCards();
+    if (editor.matches(":popover-open")) editor.hidePopover();
     const view = $("ap-list-view").hidden
       ? $("ap-calendar-view")
       : $("ap-list-view");
@@ -1156,19 +1449,39 @@
       editorTrigger?.isConnected && view.contains(editorTrigger)
         ? editorTrigger
         : view.querySelector(`[data-edit-image="${id}"]`);
-    (
-      trigger || document.querySelector('.ap-tabs [aria-selected="true"]')
-    ).focus();
+    if (restoreFocus)
+      (
+        trigger || document.querySelector('.ap-tabs [aria-selected="true"]')
+      ).focus({ preventScroll: true });
     editorTrigger = null;
   }
+  window.addEventListener("resize", positionEditor);
+  document.addEventListener("scroll", positionEditor, {
+    capture: true,
+    passive: true,
+  });
 
   function updateActiveCards() {
     $("alteration-plan")
-      .querySelectorAll(".ap-card")
-      .forEach((card) => {
-        const active = Number(card.dataset.card) === state.editorId;
-        card.classList.toggle("is-active", active);
-        card.setAttribute("aria-pressed", String(active));
+      .querySelectorAll(
+        "[data-edit-image], [data-select], [data-card-shell], .ap-list-row[data-id]",
+      )
+      .forEach((element) => {
+        const id = Number(
+          element.dataset.editImage ||
+            element.dataset.select ||
+            element.dataset.cardShell ||
+            element.dataset.id,
+        );
+        const selected = state.selected.has(id);
+        if (element.matches("[data-edit-image]"))
+          element.setAttribute("aria-pressed", String(selected));
+        else if (element.matches("[data-select]")) element.checked = selected;
+        else
+          element.classList.toggle(
+            element.matches("[data-card-shell]") ? "is-active" : "is-selected",
+            selected,
+          );
       });
   }
 
@@ -1183,13 +1496,16 @@
     $("ap-editor-day").disabled = locked;
     $("ap-editor-pin").disabled = locked;
     $("ap-editor-save").disabled = locked;
-    $("ap-editor-remove").disabled = locked || !item.fim_planejado;
+    $("ap-editor-remove").disabled =
+      locked || Boolean(item.fixado) || !item.fim_planejado;
   }
 
   function renderEditor() {
     const item = editorItem();
-    $("ap-editor").hidden = !item;
-    if (!item) return;
+    if (!item) {
+      closeEditor(false);
+      return;
+    }
     $("ap-editor-image").innerHTML =
       `${thumbnail(item)}<strong>${escape(item.imagem_nome)}</strong>`;
     $("ap-editor-person").innerHTML = personOptions(
@@ -1202,13 +1518,142 @@
     $("ap-editor-points").textContent = pointsLabel(item);
     $("ap-editor-status").innerHTML = itemStatus(item);
     $("ap-editor-pin").checked = !!item.fixado;
+    const transfer = $("ap-editor-transfer");
+    transfer.hidden = !item.pode_transferir_execucao;
+    transfer.dataset.transferImage = item.entrega_item_id;
     updateEditorAvailability();
   }
 
-  $("ap-editor-close").addEventListener("click", closeEditor);
-  $("ap-editor").addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeEditor();
+  const transferDialog = $("ap-transfer-dialog");
+  const transferForm = $("ap-transfer-form");
+  const transferPerson = $("ap-transfer-person");
+  const transferDate = $("ap-transfer-date");
+  const transferReason = $("ap-transfer-reason");
+  const transferError = $("ap-transfer-error");
+  const transferSubmit = $("ap-transfer-submit");
+  const transferCancel = $("ap-transfer-cancel");
+  let transferItem = null;
+
+  function openTransfer(id) {
+    const item = state.items.find((i) => i.entrega_item_id === id);
+    if (!item?.pode_transferir_execucao || state.saving || state.conflict)
+      return;
+    if (state.dirty) {
+      message(
+        "Salve o rascunho ou descarte as alterações locais antes de transferir a execução.",
+        true,
+      );
+      return;
+    }
+    transferItem = item;
+    transferForm.reset();
+    transferPerson.innerHTML = personOptions(null);
+    [...transferPerson.options]
+      .find(
+        (option) =>
+          Number(option.value) === Number(item.responsavel_operacional_id),
+      )
+      ?.remove();
+    const vigente = state.plan.vigente_itens?.find(
+      (i) => i.entrega_item_id === id,
+    );
+    const previsao = date(
+      item.execucao.previsao || vigente?.fim_planejado || item.fim_planejado,
+    );
+    transferDate.min = today();
+    transferDate.value = previsao >= transferDate.min ? previsao : "";
+    const status = item.execucao.status;
+    const responsavel = personName(item.responsavel_operacional_id);
+    $("ap-transfer-summary").textContent =
+      `${item.imagem_nome} · ${responsavel}. A função manterá o status ${status}.${item.execucao.situacao === "AGUARDANDO_INICIO" ? " O novo responsável poderá iniciar o ajuste quando começar o trabalho." : ""}`;
+    transferError.hidden = true;
+    transferSubmit.disabled = false;
+    transferDialog.showModal();
+    transferPerson.focus();
+  }
+
+  transferCancel.addEventListener("click", () => transferDialog.close());
+  transferDialog.addEventListener("cancel", (event) => {
+    if (state.saving) event.preventDefault();
   });
+  transferForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!transferItem || state.saving || state.conflict) return;
+    const motivo = transferReason.value.trim();
+    if (!motivo) {
+      transferError.textContent = "Informe o motivo da transferência.";
+      transferError.hidden = false;
+      transferReason.focus();
+      return;
+    }
+    const item = transferItem;
+    const dados = {
+      acao: "transferir_execucao",
+      entrega_id: entregaId,
+      entrega_item_id: item.entrega_item_id,
+      ciclo_id: item.execucao.ciclo_id,
+      situacao_ciclo: item.execucao.situacao,
+      status_tarefa: item.execucao.status,
+      novo_responsavel_id: Number(transferPerson.value),
+      fim_planejado: transferDate.value,
+      motivo,
+      lock_version: state.plan.planejamento.lock_version,
+      fingerprint: state.plan.fingerprint,
+      csrf_token: state.plan.csrf_token,
+    };
+    state.saving = true;
+    transferError.hidden = true;
+    const controls = [
+      transferPerson,
+      transferDate,
+      transferReason,
+      transferSubmit,
+      transferCancel,
+    ];
+    controls.forEach((control) => (control.disabled = true));
+    $("ap-transfer-loading").append($("ap-loading"));
+    setLoading(true, "Transferindo execução…");
+    try {
+      const response = await fetch("alteracao.php", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(dados),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        if (response.status === 409) {
+          state.conflict = true;
+          $("ap-reload").hidden = false;
+        }
+        throw new Error(
+          result.message || "Não foi possível transferir a execução.",
+        );
+      }
+      transferDialog.close();
+      state.replanning = false;
+      state.saving = false;
+      acceptPlan(result.plano);
+      message(
+        `Execução transferida para ${personName(dados.novo_responsavel_id)}.`,
+      );
+    } catch (error) {
+      transferError.textContent = error.message;
+      transferError.hidden = false;
+    } finally {
+      state.saving = false;
+      setLoading(false);
+      $("ap-loading-home").append($("ap-loading"));
+      controls.forEach((control) => (control.disabled = false));
+      transferSubmit.disabled = state.conflict;
+      renderSummary();
+    }
+  });
+
+  $("ap-editor-close").addEventListener("click", () => closeEditor());
   $("ap-editor-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const item = editorItem();
@@ -1247,7 +1692,9 @@
           [
             state.editorId,
             {
-              responsavel_planejado_id: null,
+              responsavel_planejado_id: canAssign(item)
+                ? null
+                : item.responsavel_planejado_id,
               fim_planejado: null,
               inicio_planejado: null,
               fixado: false,
@@ -1269,6 +1716,8 @@
     listTab.tabIndex = showCalendar ? -1 : 0;
     $("ap-calendar-view").hidden = !showCalendar;
     $("ap-list-view").hidden = showCalendar;
+    closeEditor(false);
+    if (state.plan) renderSelection();
     tab.focus();
   }
   [calendarTab, listTab].forEach((tab) => {
@@ -1298,6 +1747,7 @@
     const { person, day } = pickerDestination;
     const items = pendingItems().filter(
       (item) =>
+        canMove(item) &&
         (canAssign(item) || item.responsavel_planejado_id === person) &&
         !(
           item.responsavel_planejado_id === person && item.fim_planejado === day
@@ -1329,6 +1779,7 @@
       const id = Number(item.entrega_item_id);
       if (
         state.selected.has(id) &&
+        canMove(item) &&
         (canAssign(item) || item.responsavel_planejado_id === person) &&
         !(
           item.responsavel_planejado_id === person && item.fim_planejado === day
@@ -1353,18 +1804,24 @@
   });
   $("ap-picker-close").addEventListener("click", () => picker.close());
   function placeImages(ids, person, day) {
-    return applyDecisions(
-      new Map(
-        ids.map((id) => [
-          id,
+    const selected = new Set(ids);
+    const decisions = new Map(
+      state.items
+        .filter(
+          (item) =>
+            selected.has(Number(item.entrega_item_id)) &&
+            changePlacement(item, person, day),
+        )
+        .map((item) => [
+          Number(item.entrega_item_id),
           {
             responsavel_planejado_id: person,
             fim_planejado: day,
             inicio_planejado: null,
           },
         ]),
-      ),
     );
+    return decisions.size ? applyDecisions(decisions) : false;
   }
   $("ap-picker-apply").addEventListener("click", async () => {
     const { person, day } = pickerDestination;
@@ -1375,14 +1832,15 @@
       );
   });
 
-  $("ap-rows").addEventListener("change", (event) => {
+  $("alteration-plan").addEventListener("change", (event) => {
     const input = event.target.closest("[data-select]");
     if (!input || !editable()) return;
     const id = Number(input.dataset.select);
     if (!pendingItems().some((item) => Number(item.entrega_item_id) === id))
       return;
     input.checked ? state.selected.add(id) : state.selected.delete(id);
-    input.closest("[data-id]").classList.toggle("is-selected", input.checked);
+    state.selectionAnchor = id;
+    closeEditor(false);
     renderSelection();
   });
   $("ap-select-all").addEventListener("change", (event) => {
@@ -1394,57 +1852,180 @@
           ? state.selected.add(Number(item.entrega_item_id))
           : state.selected.delete(Number(item.entrega_item_id)),
       );
-    renderRows();
-    renderPlanner();
+    renderSelection();
   });
   $("ap-search").addEventListener("input", () => {
     if (state.plan) {
       renderRows();
-      renderPlanner();
     }
   });
   ["ap-pending", "ap-level", "ap-person"].forEach((id) =>
     $(id).addEventListener("change", () => state.plan && renderRows()),
   );
-  $("ap-apply").addEventListener("click", async () => {
-    if (!editable()) return;
+  const bulkDialog = $("ap-bulk-dialog");
+  function bulkChanges(remove = false) {
     const person = Number($("ap-bulk-person").value) || null;
-    const start = $("ap-bulk-start").value;
     const finish = $("ap-bulk-finish").value;
-    if (!person && !start && !finish) {
-      message("Escolha ao menos um responsável ou uma data para aplicar.");
+    const changes = new Map();
+    const blocked = [];
+    for (const item of selectionItems()) {
+      const nextPerson = remove
+        ? canAssign(item)
+          ? null
+          : item.responsavel_planejado_id
+        : (person ?? item.responsavel_planejado_id);
+      const nextDay = remove ? null : finish || item.fim_planejado;
+      if (!changePlacement(item, nextPerson, nextDay)) continue;
+      const restriction = !canMove(item)
+        ? cardStatus(item)
+        : !canAssign(item) && nextPerson !== item.responsavel_planejado_id
+          ? item.motivo_bloqueio_responsavel || "Responsável protegido"
+          : "";
+      if (restriction) {
+        blocked.push(`${item.imagem_nome} (${restriction})`);
+        continue;
+      }
+      changes.set(Number(item.entrega_item_id), {
+        responsavel_planejado_id: nextPerson,
+        fim_planejado: nextDay,
+        inicio_planejado:
+          nextDay === item.fim_planejado ? item.inicio_planejado : null,
+      });
+    }
+    return { changes, blocked };
+  }
+  function capacityPreview(
+    person,
+    day,
+    delta,
+    originalLoad = cellLoad(person, day),
+  ) {
+    const cell = capacity(person, day);
+    if (!cell || cell.avisos?.length)
+      return { text: "Disponibilidade não estimada", tone: "" };
+    const total =
+      Math.round((originalLoad + Number(cell.comprometidos) + delta) * 100) /
+      100;
+    const excess = total - Number(cell.capacidade);
+    return {
+      text: `${num(total)} / ${num(cell.capacidade)} pts${excess > 0 ? ` · excesso de ${num(excess)} pts` : ""}`,
+      tone: capacityBadge(total, Number(cell.capacidade)),
+    };
+  }
+  function renderBulkPreview() {
+    const { changes, blocked } = bulkChanges();
+    const finish = $("ap-bulk-finish").value;
+    const invalid = finish && !days().includes(finish);
+    const deltas = new Map();
+    const adjust = (person, day, delta) => {
+      if (!person || !day) return;
+      const key = cellKey(person, day);
+      deltas.set(key, (deltas.get(key) || 0) + delta);
+    };
+    selectionItems().forEach((item) => {
+      const change = changes.get(Number(item.entrega_item_id));
+      if (!change) return;
+      adjust(item.responsavel_planejado_id, item.fim_planejado, -points(item));
+      adjust(
+        change.responsavel_planejado_id,
+        change.fim_planejado,
+        points(item),
+      );
+    });
+    const preview = [...deltas]
+      .filter(([, delta]) => delta)
+      .map(([key, delta]) => {
+        const [person, day] = key.split("|");
+        return `${personName(person)} · ${formatDate(day)} · ${capacityPreview(person, day, delta).text}`;
+      });
+    $("ap-bulk-preview").textContent =
+      [
+        invalid ? "Escolha um dia útil dentro da agenda." : "",
+        blocked.length
+          ? `Imagens bloqueadas: ${blocked.join(", ")}. Ajuste os campos ou a seleção.`
+          : "",
+        ...preview,
+      ]
+        .filter(Boolean)
+        .join("\n") || "Escolha um dia ou responsável para ver a alteração.";
+    $("ap-apply").disabled =
+      !changes.size || Boolean(blocked.length || invalid);
+  }
+  function openBulk(onlyPerson) {
+    if (!editable() || !state.selected.size) return;
+    closeEditor(false);
+    const items = selectionItems();
+    $("ap-bulk-title").textContent =
+      `${onlyPerson ? "Alterar responsável de" : "Replanejar"} ${items.length} ${items.length === 1 ? "imagem" : "imagens"}`;
+    $("ap-bulk-points").textContent =
+      `${num(items.reduce((sum, item) => sum + points(item), 0))} pts selecionados`;
+    $("ap-bulk-date-field").hidden = onlyPerson;
+    $("ap-bulk-finish").value = "";
+    $("ap-bulk-person").value = "";
+    renderBulkPreview();
+    bulkDialog.showModal();
+  }
+  $("ap-bulk-replan").addEventListener("click", () => openBulk(false));
+  $("ap-bulk-assign").addEventListener("click", () => openBulk(true));
+  $("ap-bulk-close").addEventListener("click", () => bulkDialog.close());
+  $("ap-bulk-fields").addEventListener("change", renderBulkPreview);
+  $("ap-bulk-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const { changes, blocked } = bulkChanges();
+    if (blocked.length || !changes.size) return;
+    bulkDialog.close();
+    if (await applyDecisions(changes))
+      message("Alterações aplicadas à seleção.");
+  });
+  $("ap-clear").addEventListener("click", async () => {
+    const { changes, blocked } = bulkChanges(true);
+    if (blocked.length) {
+      message(
+        `Imagens bloqueadas: ${blocked.join(", ")}. Ajuste a seleção para remover o planejamento.`,
+        true,
+      );
       return;
     }
-    const changes = new Map();
-    state.selected.forEach((id) =>
-      changes.set(id, {
-        ...(person ? { responsavel_planejado_id: person } : {}),
-        ...(start ? { inicio_planejado: start } : {}),
-        ...(finish ? { fim_planejado: finish } : {}),
-      }),
-    );
-    if (await applyDecisions(changes))
-      message(
-        "Decisões aplicadas à seleção. Salve o rascunho para guardá-las.",
-      );
+    if (!changes.size) {
+      message("As imagens selecionadas ainda não foram planejadas.");
+      return;
+    }
+    if (
+      (await confirmAction(
+        "Remover do planejamento as imagens selecionadas?",
+      )) &&
+      (await applyDecisions(changes))
+    ) {
+      message("Imagens removidas do planejamento.");
+    }
   });
-  $("ap-clear").addEventListener("click", () => {
-    applyDecisions(
-      new Map(
-        [...state.selected].map((id) => [
-          id,
-          {
-            responsavel_planejado_id: null,
-            inicio_planejado: null,
-            fim_planejado: null,
-            fixado: false,
-          },
-        ]),
-      ),
-    );
-  });
+  $("ap-deselect").addEventListener("click", clearSelection);
   $("ap-save").addEventListener("click", () => save("rascunho"));
-  $("ap-confirm").addEventListener("click", () => save("confirmar"));
+  $("ap-confirm").addEventListener("click", openConfirmation);
+  $("ap-confirm-close").addEventListener("click", () =>
+    $("ap-confirm-dialog").close(),
+  );
+  $("ap-reason").addEventListener("change", () => {
+    $("ap-note").setCustomValidity("");
+    $("ap-note").required = $("ap-reason").value === "OUTRO";
+  });
+  $("ap-note").addEventListener("input", () =>
+    $("ap-note").setCustomValidity(""),
+  );
+  $("ap-confirm-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (
+      state.replanning &&
+      $("ap-reason").value === "OUTRO" &&
+      !$("ap-note").value.trim()
+    ) {
+      $("ap-note").setCustomValidity("Descreva o motivo do replanejamento.");
+      $("ap-note").reportValidity();
+      return;
+    }
+    $("ap-confirm-dialog").close();
+    void save("confirmar");
+  });
   $("ap-replan").addEventListener("click", () => {
     state.replanning = true;
     state.items = state.items.map((i) =>
@@ -1460,9 +2041,7 @@
           }
         : i,
     );
-    message(
-      "Revise as decisões e informe o motivo. A versão confirmada permanece vigente até a nova confirmação.",
-    );
+    message("Replanejamento aberto. O motivo será solicitado na confirmação.");
     renderRows();
     renderSummary();
     renderEditor();
@@ -1470,13 +2049,17 @@
   $("ap-cancel-replan").addEventListener("click", async () => {
     if (
       state.dirty &&
-      !(await confirmAction(
-        "Descartar as alterações locais deste replanejamento?",
-      ))
+      !(await confirmAction("Descartar as alterações locais do planejamento?"))
     )
       return;
     state.replanning = false;
+    state.selected.clear();
+    closeEditor(false);
+    $("ap-reason").value = "";
+    $("ap-note").value = "";
+    if (moreDialog.open) moreDialog.close();
     acceptPlan(state.plan);
+    message("Alterações locais descartadas.");
   });
   $("ap-reload").addEventListener("click", async () => {
     if (
@@ -1489,13 +2072,14 @@
   });
   $("ap-history").addEventListener("click", () => {
     if (!state.plan) return;
+    if (moreDialog.open) moreDialog.close();
     $("ap-history-title").textContent = "Histórico do planejamento";
     const history = state.plan.planejamento.historico || [];
     $("ap-history-list").innerHTML =
       history
         .map(
           (version) =>
-            `<article class="ap-history-entry"><div><strong>${Number(version.id) === Number(state.plan.planejamento.baseline_versao_id) ? "Baseline" : "Versão " + escape(version.numero || version.id)}${Number(version.id) === Number(state.plan.planejamento.versao_atual_id) ? " · Vigente" : ""}</strong><p>${formatDate(version.confirmado_em)}${version.confirmado_por ? " · " + escape(version.confirmado_por) : ""}${version.motivo_codigo ? "<br>" + escape(version.motivo_codigo.replaceAll("_", " ")) : ""}</p></div><button class="ap-button" type="button" data-version="${Number(version.id)}">Ver imagens</button></article>`,
+            `<article class="ap-history-entry"><div><strong>${Number(version.id) === Number(state.plan.planejamento.baseline_versao_id) ? "Baseline" : "Versão " + escape(version.numero || version.id)}${Number(version.id) === Number(state.plan.planejamento.versao_atual_id) ? " · Vigente" : ""}</strong><p>${formatDate(version.confirmado_em)}${version.confirmado_por ? " · " + escape(version.confirmado_por) : ""}${version.motivo_codigo ? "<br>" + escape(version.motivo_codigo === "TRANSFERENCIA_EXECUCAO" ? "Transferência de execução" : version.motivo_codigo.replaceAll("_", " ")) : ""}</p></div><button class="ap-button" type="button" data-version="${Number(version.id)}">Ver imagens</button></article>`,
         )
         .join("") ||
       "<p>Nenhuma versão confirmada. A primeira confirmação criará a baseline.</p>";
@@ -1549,8 +2133,12 @@
         throw new Error(result.message || "Não foi possível abrir a versão.");
       if (request !== historyRequest) return;
       const items = result.versao.snapshot?.itens || [];
+      const transfer = result.versao.snapshot?.transferencia_execucao;
+      const transferSummary = transfer
+        ? `<h3>Transferência de execução</h3><p>${escape(transfer.imagem_nome)} · ${escape(transfer.responsavel_anterior_nome || personName(transfer.responsavel_anterior_id))} → ${escape(transfer.novo_responsavel_nome)} · ${escape(transfer.status)}</p><p>${escape(result.versao.motivo_observacao)}</p>`
+        : "";
       $("ap-history-snapshot").innerHTML =
-        `<h3>Imagens da versão</h3><div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Imagem</th><th>Nível</th><th>Pontos históricos</th><th>Responsável</th><th>Dia planejado</th></tr></thead><tbody>${items.map((item) => `<tr><td>${escape(item.imagem_nome || `Item ${item.entrega_item_id}`)}</td><td>${levelBadge(item)}</td><td>${item.pontos_snapshot == null ? "Sem snapshot de pontos" : num(item.pontos_snapshot) + " pts"}</td><td>${escape(item.responsavel_planejado_nome || item.responsavel_nome || personName(item.responsavel_planejado_id))}</td><td>${formatDate(item.fim_planejado)}</td></tr>`).join("")}</tbody></table></div>`;
+        `${transferSummary}<h3>Imagens da versão</h3><div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Imagem</th><th>Nível</th><th>Pontos históricos</th><th>Responsável</th><th>Dia planejado</th></tr></thead><tbody>${items.map((item) => `<tr><td>${escape(item.imagem_nome || `Item ${item.entrega_item_id}`)}</td><td>${levelBadge(item)}</td><td>${item.pontos_snapshot == null ? "Sem snapshot de pontos" : num(item.pontos_snapshot) + " pts"}</td><td>${escape(item.responsavel_planejado_nome || item.responsavel_nome || personName(item.responsavel_planejado_id))}</td><td>${formatDate(item.fim_planejado)}</td></tr>`).join("")}</tbody></table></div>`;
     } catch (error) {
       if (request === historyRequest)
         $("ap-history-snapshot").textContent = error.message;
@@ -1590,6 +2178,102 @@
   $("ap-close-people").addEventListener("click", () =>
     $("ap-people-dialog").close(),
   );
+  function clearSelection() {
+    state.selected.clear();
+    state.selectionAnchor = null;
+    renderSelection();
+  }
+  function selectImage(trigger, event) {
+    const id = Number(trigger.dataset.editImage);
+    const item = state.items.find(
+      (entry) => Number(entry.entrega_item_id) === id,
+    );
+    if (!item) return;
+    const inRail = $("ap-rail-items").contains(trigger);
+    const modifier = event.ctrlKey || event.metaKey;
+    if (
+      editable() &&
+      pendingWork(item) &&
+      (modifier || (event.shiftKey && inRail))
+    ) {
+      closeEditor(false);
+      if (event.shiftKey && inRail) {
+        const visible = railItems()
+          .filter(pendingWork)
+          .map((entry) => Number(entry.entrega_item_id));
+        const end = visible.indexOf(id);
+        const start = visible.includes(state.selectionAnchor)
+          ? visible.indexOf(state.selectionAnchor)
+          : end;
+        if (!modifier) state.selected.clear();
+        visible
+          .slice(Math.min(start, end), Math.max(start, end) + 1)
+          .forEach((value) => state.selected.add(value));
+      } else {
+        if (state.selected.has(id)) state.selected.delete(id);
+        else state.selected.add(id);
+        state.selectionAnchor = id;
+      }
+      renderSelection();
+      return;
+    }
+    if (modifier || event.shiftKey) return;
+    if (editable() && pendingWork(item)) {
+      state.selected = new Set([id]);
+      state.selectionAnchor = id;
+    } else {
+      state.selected.clear();
+    }
+    renderSelection();
+    openEditor(trigger);
+  }
+  document.addEventListener("keydown", (event) => {
+    if (
+      !state.plan ||
+      document.querySelector("dialog[open]") ||
+      window.Swal?.isVisible?.()
+    )
+      return;
+    const target = event.target;
+    if (
+      target.closest(
+        "select, textarea, input:not([type=checkbox]), [contenteditable=true]",
+      )
+    )
+      return;
+    if (event.key === "Escape") {
+      if (state.editorId !== null) closeEditor();
+      else if (state.selected.size) clearSelection();
+      else return;
+      event.preventDefault();
+    }
+    if (
+      event.key.toLowerCase() !== "a" ||
+      !(event.ctrlKey || event.metaKey) ||
+      !editable()
+    )
+      return;
+    const items = target.closest("#ap-rail-items")
+      ? railItems()
+      : target.closest("#ap-list-view")
+        ? visibleItems()
+        : null;
+    if (!items) return;
+    event.preventDefault();
+    closeEditor(false);
+    state.selected = new Set(
+      items.filter(pendingWork).map((item) => Number(item.entrega_item_id)),
+    );
+    renderSelection();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (
+      state.editorId === null ||
+      event.target.closest("#ap-editor, [data-edit-image]")
+    )
+      return;
+    closeEditor(false);
+  });
   $("ap-people-list").addEventListener("change", (event) => {
     const id = Number(event.target.dataset.showPerson);
     if (!id) return;
@@ -1618,9 +2302,32 @@
     true,
   );
   $("alteration-plan").addEventListener("click", (event) => {
+    const transfer = event.target.closest("[data-transfer-image]");
+    if (transfer) {
+      openTransfer(Number(transfer.dataset.transferImage));
+      return;
+    }
     const edit = event.target.closest("[data-edit-image]");
     if (edit) {
-      openEditor(edit);
+      selectImage(edit, event);
+      return;
+    }
+    const external = event.target.closest("a.ap-external");
+    if (
+      external &&
+      state.dirty &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      void confirmAction(
+        "Abrir a entrega de origem e descartar as alterações locais?",
+      ).then((accepted) => {
+        if (!accepted) return;
+        state.dirty = false;
+        location.assign(external.href);
+      });
       return;
     }
     const place = event.target.closest("[data-place-person]");
@@ -1630,8 +2337,11 @@
       const id = Number(agenda.dataset.agenda);
       $("ap-history-title").textContent = "Agenda de Alterações";
       $("ap-history-list").replaceChildren();
+      const settings = state.plan.pode_configurar_capacidade
+        ? '<a class="ap-button" href="../PlanejamentoCapacidade/#alteracao-config" target="_blank" rel="noopener">Configurar capacidade</a>'
+        : "";
       $("ap-history-snapshot").innerHTML =
-        `<h3>Agenda de ${escape(personName(id))}</h3><div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Dia</th><th>Nominal</th><th>Oferta efetiva</th><th>Outras alterações</th><th>Esta entrega</th><th>Contexto</th></tr></thead><tbody>${days()
+        `<h3>Agenda de ${escape(personName(id))}</h3>${settings}<div class="ap-table-wrap"><table class="ap-history-table"><thead><tr><th>Dia</th><th>Nominal</th><th>Oferta efetiva</th><th>Outras alterações</th><th>Esta entrega</th><th>Contexto</th></tr></thead><tbody>${days()
           .map((d) => {
             const a = capacity(id, d);
             if (!a) return "";
@@ -1662,9 +2372,32 @@
 
   function highlightCell(cell) {
     if (hoveredCell === cell) return;
-    hoveredCell?.classList.remove("is-drop-hover");
-    cell?.classList.add("is-drop-hover");
+    hoveredCell?.classList.remove(
+      "is-drop-hover",
+      "is-drop-excess",
+      "is-drop-near",
+    );
+    hoveredCell?.querySelector(".ap-drop-preview")?.remove();
     hoveredCell = cell;
+    if (!cell) return;
+    const person = Number(cell.dataset.dropPerson);
+    const day = cell.dataset.dropDay;
+    const moving = draggedItems.filter((item) =>
+      changePlacement(item, person, day),
+    );
+    const added = moving.reduce((sum, item) => sum + points(item), 0);
+    const result = capacityPreview(person, day, added);
+    const preview = document.createElement("span");
+    preview.className = "ap-drop-preview";
+    preview.textContent = moving.length
+      ? `+${num(added)} pts → ${result.text}`
+      : `Sem mudança · ${result.text}`;
+    cell.classList.add("is-drop-hover");
+    if (result.tone)
+      cell.classList.add(
+        result.tone === "is-overloaded" ? "is-drop-excess" : "is-drop-near",
+      );
+    cell.querySelector(".ap-load").append(preview);
   }
 
   function clearDrag() {
@@ -1684,8 +2417,14 @@
     draggedItems = state.items.filter((item) =>
       ids.has(Number(item.entrega_item_id)),
     );
-    if (!draggedItems.length || !draggedItems.every(pendingWork))
+    if (!draggedItems.length || !draggedItems.every(canMove)) {
+      clearDrag();
+      message(
+        "Desmarque as imagens bloqueadas ou desafixe-as antes de mover o grupo.",
+      );
       return event.preventDefault();
+    }
+    closeEditor(false);
     event.dataTransfer.setData("application/x-flow-images", String(id));
     event.dataTransfer.effectAllowed = "move";
     grid.querySelectorAll("[data-drop-person]").forEach((cell) => {
@@ -1712,17 +2451,20 @@
   grid.addEventListener("dragleave", (event) => {
     if (!grid.contains(event.relatedTarget)) highlightCell(null);
   });
-  grid.addEventListener("drop", (event) => {
+  grid.addEventListener("drop", async (event) => {
     const cell = event.target.closest(".is-drop-target");
     const items = draggedItems;
     clearDrag();
     if (!cell || !editable() || !items.length) return;
     event.preventDefault();
-    placeImages(
-      items.map((item) => Number(item.entrega_item_id)),
-      Number(cell.dataset.dropPerson),
-      cell.dataset.dropDay,
-    );
+    if (
+      await placeImages(
+        items.map((item) => Number(item.entrega_item_id)),
+        Number(cell.dataset.dropPerson),
+        cell.dataset.dropDay,
+      )
+    )
+      message(items.length === 1 ? "Imagem movida." : "Imagens movidas.");
   });
   $("ap-type-rules").addEventListener("change", (event) => {
     const select = event.target.closest("select[data-type-rule]");

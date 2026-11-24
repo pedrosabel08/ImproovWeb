@@ -528,6 +528,7 @@ function flow_janela_criar_ciclo(
     $numeroCiclo = flow_janela_proximo_numero_ciclo($conn, $unidade['chave_referencia']);
     $origemAbertura = $detalhesEvento['origem_abertura'] ?? flow_janela_origem_por_evento($eventoAbertura);
     $qualidadeDados = $detalhesEvento['qualidade_dados'] ?? 'CANONICO';
+    $statusTarefa = $eventoAbertura === 'TRANSFERENCIA_ENTRADA' ? $unidade['tarefa_principal']['status'] : 'Em andamento';
     $sql = "INSERT INTO janela_operacional_ciclo
         (chave_referencia, numero_ciclo, origem_abertura, qualidade_dados, ciclo_anterior_id, unidade_trabalho_id, perfil_id, perfil_codigo_snapshot,
          perfil_versao_snapshot, perfil_nome_snapshot, aplica_regra_snapshot, limite_dias_uteis_snapshot,
@@ -601,7 +602,7 @@ function flow_janela_criar_ciclo(
     }
     $stmtItem->close();
     flow_janela_registrar_evento($conn, $cicloId, 'CICLO_CRIADO', [
-        'status_tarefa_novo' => 'Em andamento',
+        'status_tarefa_novo' => $statusTarefa,
         'estado_novo' => $estado,
         'previsao_nova' => $previsao,
         'prazo_necessario' => $prazo,
@@ -616,7 +617,7 @@ function flow_janela_criar_ciclo(
         ),
     ]);
     flow_janela_registrar_evento($conn, $cicloId, 'EXECUCAO_INICIADA', [
-        'status_tarefa_novo' => 'Em andamento',
+        'status_tarefa_novo' => $statusTarefa,
         'estado_novo' => $estado,
         'previsao_nova' => $previsao,
         'prazo_necessario' => $prazo,
@@ -629,7 +630,7 @@ function flow_janela_criar_ciclo(
 }
 
 /** Cria o ciclo de ajuste assim que a revisão devolve a tarefa, ainda sem previsão. */
-function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId): array
+function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImagemId, ?int $atorColaboradorId, ?int $atorUsuarioId, ?int $cicloTransferidoId = null): array
 {
     $existente = flow_janela_ciclo_ativo_por_tarefa($conn, $funcaoImagemId, true);
     if ($existente) {
@@ -649,15 +650,16 @@ function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImag
     $perfilNome = $perfil['nome'] ?? null;
     $aplicaRegra = $perfil ? (!empty($perfil['aplica_regra']) ? 1 : 0) : null;
     $dias = $perfil['limite_dias_uteis'] ?? null;
-    $anteriorId = $anterior ? (int) $anterior['id'] : null;
+    $anteriorId = $cicloTransferidoId ?? ($anterior ? (int) $anterior['id'] : null);
+    $origem = $cicloTransferidoId === null ? 'AJUSTE' : 'TRANSFERENCIA';
     $unidadeId = $unidade['unidade_trabalho_id'] ?: null;
     $stmt = $conn->prepare("INSERT INTO janela_operacional_ciclo
         (chave_referencia, numero_ciclo, origem_abertura, qualidade_dados, ciclo_anterior_id, unidade_trabalho_id,
          perfil_id, perfil_codigo_snapshot, perfil_versao_snapshot, perfil_nome_snapshot, aplica_regra_snapshot,
          limite_dias_uteis_snapshot, responsavel_original_id, responsavel_atual_id, situacao, ativo_token,
          criado_por_colaborador_id, criado_por_usuario_id)
-         VALUES (?, ?, 'AJUSTE', 'CANONICO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'AGUARDANDO_INICIO', 'ATIVO', ?, ?)");
-    $stmt->bind_param('siiiisisiiiiii', $unidade['chave_referencia'], $numero, $anteriorId, $unidadeId, $perfilId, $perfilCodigo, $perfilVersao, $perfilNome, $aplicaRegra, $dias, $responsavel, $responsavel, $atorColaboradorId, $atorUsuarioId);
+         VALUES (?, ?, ?, 'CANONICO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'AGUARDANDO_INICIO', 'ATIVO', ?, ?)");
+    $stmt->bind_param('sisiiisisiiiiii', $unidade['chave_referencia'], $numero, $origem, $anteriorId, $unidadeId, $perfilId, $perfilCodigo, $perfilVersao, $perfilNome, $aplicaRegra, $dias, $responsavel, $responsavel, $atorColaboradorId, $atorUsuarioId);
     $stmt->execute();
     $cicloId = (int) $conn->insert_id;
     $stmt->close();
@@ -671,19 +673,21 @@ function flow_janela_criar_ciclo_aguardando_inicio(mysqli $conn, int $funcaoImag
     }
     $item->close();
     flow_janela_registrar_evento($conn, $cicloId, 'CICLO_CRIADO', [
-        'status_tarefa_anterior' => 'Em aprovação',
+        'status_tarefa_anterior' => $cicloTransferidoId === null ? 'Em aprovação' : 'Ajuste',
         'status_tarefa_novo' => 'Ajuste',
         'responsavel_novo_id' => $responsavel,
         'ator_colaborador_id' => $atorColaboradorId,
         'ator_usuario_id' => $atorUsuarioId,
-        'detalhes' => ['numero_ciclo' => $numero, 'origem_abertura' => 'AJUSTE', 'situacao' => 'AGUARDANDO_INICIO'],
+        'detalhes' => ['numero_ciclo' => $numero, 'origem_abertura' => $origem, 'situacao' => 'AGUARDANDO_INICIO'],
     ]);
-    flow_janela_registrar_evento($conn, $cicloId, 'AJUSTE_RECEBIDO', [
-        'status_tarefa_anterior' => 'Em aprovação',
-        'status_tarefa_novo' => 'Ajuste',
-        'ator_colaborador_id' => $atorColaboradorId,
-        'ator_usuario_id' => $atorUsuarioId,
-    ]);
+    if ($cicloTransferidoId === null) {
+        flow_janela_registrar_evento($conn, $cicloId, 'AJUSTE_RECEBIDO', [
+            'status_tarefa_anterior' => 'Em aprovação',
+            'status_tarefa_novo' => 'Ajuste',
+            'ator_colaborador_id' => $atorColaboradorId,
+            'ator_usuario_id' => $atorUsuarioId,
+        ]);
+    }
     return ['ciclo_id' => $cicloId, 'criado' => true];
 }
 
@@ -1052,6 +1056,9 @@ function flow_janela_encerrar_se_unidade_finalizada(mysqli $conn, int $funcaoIma
 
 function flow_janela_dias_consumidos(mysqli $conn, array $ciclo, ?string $ateData = null): int
 {
+    if (empty($ciclo['inicio_em'])) {
+        return 0;
+    }
     $inicio = substr((string) $ciclo['inicio_em'], 0, 10);
     $ateData = flow_janela_data_valida($ateData ?: date('Y-m-d')) ?: date('Y-m-d');
     $total = flow_planejamento_dias_uteis_entre($inicio, $ateData);
@@ -1096,9 +1103,17 @@ function flow_janela_transferir_responsavel(
         throw new DomainException('Novo responsavel invalido para transferencia.');
     }
     $unidade = flow_janela_resolver_unidade($conn, $funcaoImagemId, true);
-    flow_wip_assert_novo_inicio($conn, $novoResponsavelId);
+    $statusTarefa = $unidade['tarefa_principal']['status'];
+    $aguardaInicio = $ciclo['situacao'] === 'AGUARDANDO_INICIO';
+    if ($aguardaInicio) {
+        if ($statusTarefa !== 'Ajuste' || count($unidade['membros']) !== 1) {
+            throw new DomainException('O ciclo aguardando início não corresponde a um ajuste individual.');
+        }
+    } else {
+        flow_wip_assert_novo_inicio($conn, $novoResponsavelId);
+    }
     $previsao = flow_janela_data_valida($novaPrevisao) ?: flow_janela_data_valida($ciclo['previsao_atual']);
-    if (!$previsao) {
+    if (!$aguardaInicio && !$previsao) {
         throw new DomainException('Informe a previsao do novo responsavel.');
     }
     $motivoTransferencia = trim($motivoTransferencia);
@@ -1107,6 +1122,8 @@ function flow_janela_transferir_responsavel(
     }
     $consumidos = flow_janela_dias_consumidos($conn, $ciclo);
     flow_janela_registrar_evento($conn, (int) $ciclo['id'], 'TRANSFERENCIA_SAIDA', [
+        'status_tarefa_anterior' => $statusTarefa,
+        'status_tarefa_novo' => $statusTarefa,
         'estado_anterior' => $ciclo['estado_atual'],
         'previsao_anterior' => $ciclo['previsao_atual'],
         'prazo_necessario' => $ciclo['prazo_necessario_snapshot'],
@@ -1143,6 +1160,19 @@ function flow_janela_transferir_responsavel(
     if ($unidade['tipo_unidade'] === 'CADERNO_FILTRO_LEGADO') {
         $unidade['chave_referencia'] = 'LEGACY_CADERNO_FILTRO:' . (int) $unidade['tarefa_principal']['imagem_id'] . ':' . $novoResponsavelId;
     }
+    if ($aguardaInicio) {
+        $novo = flow_janela_criar_ciclo_aguardando_inicio($conn, $funcaoImagemId, $atorColaboradorId, $atorUsuarioId, (int) $ciclo['id']);
+        flow_janela_registrar_evento($conn, $novo['ciclo_id'], 'TRANSFERENCIA_ENTRADA', [
+            'status_tarefa_anterior' => $statusTarefa,
+            'status_tarefa_novo' => $statusTarefa,
+            'responsavel_anterior_id' => $responsavelAnterior,
+            'responsavel_novo_id' => $novoResponsavelId,
+            'ator_colaborador_id' => $atorColaboradorId,
+            'ator_usuario_id' => $atorUsuarioId,
+            'detalhes' => ['motivo_transferencia' => $motivoTransferencia],
+        ]);
+        return ['aplicada' => true, 'ciclo_anterior_id' => (int) $ciclo['id'], 'ciclo_novo_id' => $novo['ciclo_id'], 'avaliacao' => null, 'membros' => [$funcaoImagemId]];
+    }
     $avaliacao = flow_janela_avaliar($conn, $unidade, $previsao);
     if ($avaliacao['exige_justificativa'] && !$motivoOperacionalCodigo) {
         // Fluxos legados de transferencia ja exigem um motivo textual. Ele e
@@ -1167,6 +1197,9 @@ function flow_janela_transferir_responsavel(
             'responsavel_novo_id' => $novoResponsavelId,
         ]
     );
+    if (empty($novo['ciclo_id'])) {
+        throw new DomainException('Não foi possível abrir o ciclo para o novo responsável.');
+    }
     if ($ciclo['situacao'] === 'PAUSADO') {
         // A troca de responsavel nao retira a tarefa do HOLD. O novo ciclo
         // nasce com janela completa, mas permanece suspenso ate a retomada.

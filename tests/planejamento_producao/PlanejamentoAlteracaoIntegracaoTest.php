@@ -146,6 +146,13 @@ pa_assert(flow_pa_rows($conn, 'SELECT * FROM janela_operacional_ciclo WHERE id=8
 pa_assert(array_map('intval', array_column(flow_pa_rows($conn, 'SELECT colaborador_id FROM funcao_imagem WHERE idfuncao_imagem IN (2,8) ORDER BY idfuncao_imagem'), 'colaborador_id')) === [2,2], 'Atribuições de itens entregues e sem alteração não são sobrescritas');
 $agendaExterna = flow_pac_agenda($conn, 999, $parcialConfirmado['configuracao'], $parcialConfirmado['colaboradores'], '2026-11-05', '2026-11-06');
 pa_assert((float)$agendaExterna[1]['2026-11-05']['comprometidos'] === 45.0 && (float)$agendaExterna[1]['2026-11-06']['comprometidos'] === 15.0, 'Capacidade externa exclui encerradas e preserva a carga integral do HOLD');
+$cardsExternos = [];
+$agendaComCards = flow_pac_agenda($conn, 999, $parcialConfirmado['configuracao'], $parcialConfirmado['colaboradores'], '2026-11-05', '2026-11-06', $cardsExternos);
+pa_assert($agendaComCards === $agendaExterna, 'Consultar os cartões preserva a capacidade usada na confirmação');
+$cardsNoDia = $cardsExternos[1]['2026-11-06'] ?? [];
+pa_assert(count($cardsNoDia) === 1 && $cardsNoDia[0]['entrega_id'] === 1 && $cardsNoDia[0]['imagem_id'] === 6
+    && $cardsNoDia[0]['obra'] === 'TESTE' && $cardsNoDia[0]['etapa'] === 'R01'
+    && (float)$cardsNoDia[0]['pontos_snapshot'] === 15.0, 'Cartão externo usa a origem, imagem e peso da versão vigente');
 $payloadMisto['lock_version'] = $parcialConfirmado['planejamento']['lock_version'];
 $rascunhoMisto = flow_planejamento_alteracao_salvar($conn, 1, $payloadMisto, false, 1);
 $payloadMisto['lock_version'] = $rascunhoMisto['planejamento']['lock_version'];
@@ -276,6 +283,42 @@ pa_assert($trocaConfirmada['itens'][0]['responsavel_planejado_id'] === 1 && $tro
 $snapshotAnterior = flow_planejamento_carregar_versao($conn, $versaoManual);
 pa_assert(json_decode($snapshotAnterior['snapshot_json'], true)['itens'][0]['responsavel_planejado_id'] === 1,
     'A leitura reconciliada preserva o JSON armazenado');
+
+// A devolução da revisão já tem ciclo, porém a execução do ajuste não começou.
+$conn->query("UPDATE funcao_imagem SET status='Ajuste' WHERE idfuncao_imagem=21");
+$conn->begin_transaction();
+$ajuste = flow_janela_criar_ciclo_aguardando_inicio($conn, 21, 1, null);
+$conn->commit();
+$antesTransferencia = flow_planejamento_alteracao_carregar($conn, 378);
+$diaTransferencia = entregas_adicionar_dias_uteis(max(date('Y-m-d'), '2026-11-18'), 1);
+$pedidoTransferencia = [
+    'entrega_item_id' => 21,
+    'ciclo_id' => $ajuste['ciclo_id'],
+    'situacao_ciclo' => 'AGUARDANDO_INICIO',
+    'status_tarefa' => 'Ajuste',
+    'novo_responsavel_id' => 2,
+    'fim_planejado' => $diaTransferencia,
+    'motivo' => 'Cobertura da equipe',
+    'lock_version' => $antesTransferencia['planejamento']['lock_version'],
+    'fingerprint' => $antesTransferencia['fingerprint'],
+];
+pa_assert($antesTransferencia['itens'][0]['pode_transferir_execucao'] && !$antesTransferencia['itens'][0]['pode_editar_responsavel'],
+    'Ajuste oferece transferência e mantém a edição comum bloqueada');
+pa_fails(fn () => flow_planejamento_alteracao_transferir($conn, 378, array_replace($pedidoTransferencia, ['ciclo_id' => 0]), 1, null), 'execução da imagem mudou');
+$aposTransferencia = flow_planejamento_alteracao_transferir($conn, 378, $pedidoTransferencia, 1, null);
+$tarefaTransferida = flow_pa_rows($conn, 'SELECT colaborador_id,status FROM funcao_imagem WHERE idfuncao_imagem=21')[0];
+$cicloNovo = flow_janela_ciclo_ativo_por_tarefa($conn, 21);
+pa_assert((int)$tarefaTransferida['colaborador_id'] === 2 && $tarefaTransferida['status'] === 'Ajuste'
+    && $cicloNovo['situacao'] === 'AGUARDANDO_INICIO' && $cicloNovo['inicio_em'] === null,
+    'Novo responsável recebe a mesma tarefa em Ajuste, sem início registrado');
+pa_assert((int)$cicloNovo['ciclo_anterior_id'] === $ajuste['ciclo_id'] && (int)$cicloNovo['entrega_item_id'] === 21
+    && (int)$cicloNovo['planejamento_versao_id_snapshot'] === (int)$aposTransferencia['planejamento']['versao_atual_id']
+    && $aposTransferencia['planejamento']['baseline_versao_id'] === $versaoManual,
+    'Transferência preserva baseline e vincula os dois ciclos à mesma rodada');
+pa_assert($aposTransferencia['itens'][0]['fim_planejado'] === $diaTransferencia
+    && $aposTransferencia['itens'][1]['responsavel_planejado_id'] === $antesTransferencia['itens'][1]['responsavel_planejado_id'],
+    'Transferência registra a previsão e preserva as outras decisões confirmadas');
+pa_fails(fn () => flow_planejamento_alteracao_transferir($conn, 378, $pedidoTransferencia, 1, null), 'planejamento mudou');
 
 $conn->query('ALTER TABLE entrega_planejamento_producao DROP COLUMN modelo');
 $conn->begin_transaction();

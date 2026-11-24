@@ -93,7 +93,8 @@ function flow_inicio_operacional_transferir(mysqli $conn, array $entrada): array
         $entrada['motivo_operacional_codigo'] ?? null,
         $entrada['motivo_operacional_texto'] ?? null
     );
-    if (!empty($resultado['aplicada'])) {
+    if (!empty($resultado['aplicada']) && !empty($resultado['avaliacao']['previsao'])) {
+        // A transferência fica nos eventos do ciclo. O histórico legado registra a previsão.
         $unidade = flow_janela_resolver_unidade($conn, (int) $entrada['funcao_imagem_id'], true);
         flow_inicio_operacional_salvar_previsao_legada(
             $conn,
@@ -102,7 +103,7 @@ function flow_inicio_operacional_transferir(mysqli $conn, array $entrada): array
             null,
             $entrada['ator_colaborador_id'] ?? null,
             $entrada['ator_usuario_id'] ?? null,
-            'TRANSFERENCIA_RESPONSAVEL'
+            'PREVISAO_ALTERADA'
         );
     }
     return $resultado;

@@ -14,6 +14,7 @@ const runtime =
   );
 const { chromium } = require(runtime);
 const root = path.resolve(__dirname, "..");
+const output = process.env.FLOW_UI_OUTPUT_DIR || path.join(root, "output", "planejamento-alteracao-ui");
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const results = [];
 const check = (value, name) => {
@@ -78,7 +79,7 @@ function fixture() {
               {
                 nominal: 25,
                 capacidade: 25,
-                comprometidos: 0,
+                comprometidos: id === 11 && d === "2026-11-06" ? 15 : 0,
                 ocupacao_r00: 0,
                 avisos: [],
               },
@@ -87,6 +88,10 @@ function fixture() {
         ]),
       ),
     },
+    tarefas_externas: { 11: { "2026-11-06": [{
+      entrega_id: 900002, obra: "Projeto externo", etapa: "R02",
+      imagem_nome: "Imagem externa", nivel_complexidade_snapshot: 3, pontos_snapshot: 15,
+    }] } },
     itens: Array.from({ length: 10 }, (_, i) => ({
       entrega_item_id: i + 1,
       imagem_id: i + 100,
@@ -137,6 +142,17 @@ function fixture() {
               "O plano foi alterado por outro gestor. Recarregue a página.",
           },
         });
+      if (body.acao === "transferir_execucao") {
+        const item = plan.itens.find((i) => i.entrega_item_id === body.entrega_item_id);
+        item.responsavel_planejado_id = body.novo_responsavel_id;
+        item.responsavel_operacional_id = body.novo_responsavel_id;
+        item.fim_planejado = body.fim_planejado;
+        plan.planejamento.lock_version++;
+        plan.planejamento.versao_atual_id++;
+        plan.planejamento.estado = "CONFIRMADO";
+        plan.planejamento.rascunho_pendente = false;
+        return route.fulfill({ json: { success: true, plano: clone(plan) } });
+      }
       if (body.acao === "sugerir") {
         if (holdSuggestion)
           await new Promise((resolve) => {
@@ -252,7 +268,9 @@ function fixture() {
       await page.locator("#ap-tab-list").click();
       await page.locator(`#ap-rows [data-edit-image="${id}"]`).click();
     };
-    const closeEditor = () => page.locator("#ap-editor-close").click();
+    const closeEditor = async () => {
+      if (await page.locator("#ap-editor").isVisible()) await page.locator("#ap-editor-close").click();
+    };
     const openSuggestion = async () => {
       await page.locator("#ap-more").click();
       const suggestion = page.locator(".ap-suggestion");
@@ -276,15 +294,55 @@ function fixture() {
       );
     };
     await boot();
-    check(
-      (
-        await page.locator('.ap-grid-day[aria-current="date"]').textContent()
-      ).includes("Hoje"),
-      "Agenda abre no dia atual",
-    );
+    check(await page.locator('.ap-grid-day[aria-current="date"]').isVisible(), "Agenda abre no dia atual");
+    await page.locator("#ap-day-next").click();
+    const externalCell = page.locator('[data-drop-person="11"][data-drop-day="2026-11-06"]');
+    const external = externalCell.locator(".ap-external");
+    check(await external.isVisible() && !(await external.getAttribute("data-edit-image")) &&
+      (await external.getAttribute("title")).includes("Somente leitura"), "Entrega externa tem card somente leitura");
+    await page.locator(".ap-toolbar-filters > summary").click();
+    await page.locator("#ap-show-external").uncheck();
+    check(!(await external.isVisible()) &&
+      (await externalCell.locator(".ap-cell-load").textContent()) === "15 / 25 pts",
+    "Ocultar tarefas externas preserva a carga");
+    await page.locator("#ap-show-external").check();
+    await page.locator(".ap-toolbar-filters > summary").click();
+    await page.locator("#ap-day-prev").click();
+    await page.locator("#ap-rail-toggle").click();
+    check(!(await page.locator("#ap-rail-items").isVisible()), "Lista lateral recolhe");
+    await page.locator("#ap-rail-toggle").click();
+    const sidebarCard = (id) => page.locator(`#ap-rail-items [data-card="${id}"]`);
+    await sidebarCard(1).click({ modifiers: ["Control"] });
+    await sidebarCard(2).click({ modifiers: ["Shift"] });
+    check((await page.locator("#ap-selection").textContent()).startsWith("2 imagens"), "Ctrl e Shift selecionam o intervalo");
+    await sidebarCard(2).click({ modifiers: ["Meta"] });
+    check((await page.locator("#ap-bulk:popover-open").count()) === 0, "Cmd alterna a seleção");
+    await page.locator('#ap-rail-items [data-select="2"]').check();
+    const groupTarget = page.locator('[data-drop-person="11"][data-drop-day="2026-10-28"]');
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    await sidebarCard(1).dispatchEvent("dragstart", { dataTransfer: transfer });
+    await groupTarget.dispatchEvent("dragover", { dataTransfer: transfer });
+    check((await groupTarget.locator(".ap-drop-preview").textContent()).includes("+15 pts → 15 / 25 pts"),
+      "Arraste antecipa a capacidade do destino");
+    await sidebarCard(1).dispatchEvent("dragend", { dataTransfer: transfer });
+    await sidebarCard(1).dragTo(groupTarget);
+    await groupTarget.locator('[data-card="2"]').waitFor();
+    check((await groupTarget.locator('[data-card-shell].is-active').count()) === 2 &&
+      (await groupTarget.locator(".ap-cell-load").textContent()) === "15 / 25 pts",
+    "Arrastar o grupo mantém a seleção sincronizada e soma a carga");
+    const placed = groupTarget.locator('[data-card="1"]');
+    await placed.dispatchEvent("dragstart", { dataTransfer: transfer });
+    await groupTarget.dispatchEvent("dragover", { dataTransfer: transfer });
+    check((await groupTarget.locator(".ap-drop-preview").textContent()).includes("Sem mudança · 15 / 25 pts"),
+      "Arraste no mesmo destino evita duplicar a carga");
+    await placed.dispatchEvent("dragend", { dataTransfer: transfer });
+    await transfer.dispose();
+    await page.locator("#ap-clear").click();
+    await groupTarget.locator('[data-card="2"]').waitFor({ state: "detached" });
+    await page.locator("#ap-deselect").click();
     await page.locator("#ap-rail-search").fill("01");
     await page.locator("#ap-rail-level").selectOption("1");
-    await page.locator("#ap-rail-pending").check();
+    await page.locator('[data-rail-state="pending"]').click();
     const railCard = page.locator('#ap-rail-items [data-card="1"]');
     check(
       (await page.locator("#ap-rail-items [data-card]").count()) === 1,
@@ -299,7 +357,7 @@ function fixture() {
       (await railCard.count()) === 0,
       "Arraste da lista para o dia atualiza o filtro de pendências",
     );
-    await page.locator("#ap-rail-pending").uncheck();
+    await page.locator('[data-rail-state=""]').click();
     const calendarWidth = () =>
       page.locator("#ap-grid-scroll").evaluate((grid) => grid.clientWidth);
     const widthBeforeDrawer = await calendarWidth();
@@ -307,7 +365,7 @@ function fixture() {
     check(
       (await page.locator("#ap-editor").isVisible()) &&
         (await calendarWidth()) === widthBeforeDrawer,
-      "Drawer abre pela lista sem reduzir a grade",
+      "Popover abre pela lista sem reduzir a grade",
     );
     await page.clock.setFixedTime(new Date("2026-10-29T12:00:00-03:00"));
     acceptDialogs = false;
@@ -321,6 +379,7 @@ function fixture() {
     await page.clock.setFixedTime(new Date("2026-10-28T12:00:00-03:00"));
     await page.locator("#ap-editor-remove").click();
     await railTarget.locator('[data-card="1"]').waitFor({ state: "detached" });
+    await page.keyboard.press("Escape");
     await page.locator("#ap-rail-search").clear();
     await page.locator("#ap-rail-level").selectOption("");
     check(
@@ -345,9 +404,10 @@ function fixture() {
     );
     await page.locator("#ap-select-all").check();
     check(
-      (await page.locator("#ap-selection").textContent()) === "2 selecionadas",
+      (await page.locator("#ap-selection").textContent()).startsWith("2 imagens selecionadas"),
       "Selecionar todas respeita filtros",
     );
+    await page.locator("#ap-bulk-replan").click();
     await page.locator("#ap-bulk-person").selectOption("11");
     await page.locator("#ap-bulk-finish").fill("2026-11-03");
     await page.locator("#ap-apply").click();
@@ -396,7 +456,9 @@ function fixture() {
     );
     await page.locator("#ap-person").selectOption("");
     await page.locator("#ap-select-all").check();
+    await page.locator("#ap-bulk-replan").click();
     await page.locator("#ap-bulk-person").selectOption("12");
+    await page.locator("#ap-bulk-finish").fill("2026-11-03");
     await page.locator("#ap-apply").click();
     check(
       (await page.locator("#ap-complete").textContent()) === "10 / 10",
@@ -407,6 +469,9 @@ function fixture() {
       (await page.locator("#ap-complete").textContent()) === "0 / 10",
       "Limpar decisões de rascunho",
     );
+    await page.locator("#ap-bulk-replan").click();
+    await page.locator("#ap-bulk-person").selectOption("12");
+    await page.locator("#ap-bulk-finish").fill("2026-11-03");
     await page.locator("#ap-apply").click();
     check(
       await page.locator("#ap-confirm").isEnabled(),
@@ -422,14 +487,17 @@ function fixture() {
       "Feriado rejeitado sem mudar decisão",
     );
     await page.locator("#ap-confirm").click();
+    await page.locator('#ap-confirm-form button[type="submit"]').click();
     await page.waitForFunction(
-      () => document.getElementById("ap-status").textContent === "Planejada",
+      () => document.getElementById("ap-status").textContent === "Planejamento confirmado",
     );
+    await openImage(1);
     check(
       plan.planejamento.baseline_versao_id === 1 &&
         (await page.locator("#ap-editor-person").isDisabled()),
       "Confirmação cria baseline e bloqueia edição direta",
     );
+    await page.locator("#ap-more").click();
     await page.locator("#ap-history").click();
     check(
       await page.locator("#ap-history-dialog").isVisible(),
@@ -446,15 +514,15 @@ function fixture() {
     await page.locator("#ap-close-history").click();
     await page.locator("#ap-replan").click();
     await page.locator("#ap-confirm").click();
-    await waitMessage("motivo");
     check(
-      !(await page.locator("#ap-reason").inputValue()),
+      !(await page.locator("#ap-reason").inputValue()) &&
+        (await page.locator("#ap-reason").getAttribute("required")) !== null,
       "Replanejamento exige motivo para confirmar",
     );
     await page.locator("#ap-reason").selectOption("REDISTRIBUICAO_EQUIPE");
-    await page.locator("#ap-confirm").click();
+    await page.locator('#ap-confirm-form button[type="submit"]').click();
     await page.waitForFunction(
-      () => document.getElementById("ap-status").textContent === "Planejada",
+      () => document.getElementById("ap-status").textContent === "Planejamento confirmado",
     );
     check(
       plan.planejamento.versao_atual_id === 2 &&
@@ -582,6 +650,7 @@ function fixture() {
     await page.waitForFunction(
       () => !document.getElementById("ap-suggest").disabled,
     );
+    await openImage(1);
     check(
       (await page.locator("#ap-editor-pin").isChecked()) &&
         posts.at(-1).itens[0].fixado,
@@ -640,6 +709,8 @@ function fixture() {
     for (const [name, width, height] of [
       ["desktop", 1920, 1080],
       ["notebook", 1366, 768],
+      ["desktop-1440", 1440, 900],
+      ["desktop-2560", 2560, 1440],
       ["ipad-landscape", 1180, 820],
       ["ipad-portrait", 820, 1180],
       ["mobile", 390, 844],
@@ -656,15 +727,17 @@ function fixture() {
         ),
         `Sem overflow na página: ${name}`,
       );
-      check(
-        (await page.locator(".ap-grid-day").count()) === 5 &&
-          (await page.locator("#ap-editor").isVisible()) &&
-          (await page
-            .locator("#ap-grid-scroll")
-            .evaluate((grid) => grid.scrollWidth <= grid.clientWidth)),
-        `Cinco dias visíveis com painel aberto: ${name}`,
-      );
-      const output = path.join(root, "output", "planejamento-alteracao-ui");
+      await page.waitForFunction((wide) => {
+        const grid = document.querySelector("#ap-grid-scroll");
+        const editor = document.querySelector("#ap-editor").getBoundingClientRect();
+        return document.querySelectorAll(".ap-grid-day").length === 5 && grid.clientWidth > 0 &&
+          (!wide || grid.scrollWidth <= grid.clientWidth) &&
+          editor.width > 0 && editor.right <= innerWidth && editor.bottom <= innerHeight;
+      }, width >= 1024, { timeout: 2000 }).catch(async (error) => {
+        const bounds = await page.locator("#ap-editor").boundingBox();
+        throw new Error(`${name}: ${JSON.stringify(bounds)}`, { cause: error });
+      });
+      check(true, `Grade responsiva e popover dentro da viewport: ${name}`);
       fs.mkdirSync(output, { recursive: true });
       await page.screenshot({
         path: path.join(output, `${name}.png`),
@@ -676,6 +749,7 @@ function fixture() {
         });
     }
     await closeEditor();
+    await page.locator("#ap-more").click();
     await page.locator("#ap-theme").click();
     check(
       await page
@@ -683,11 +757,9 @@ function fixture() {
         .evaluate((body) => body.classList.contains("light")),
       "Alternância de tema light",
     );
+    await page.locator("#ap-more-close").click();
     await page.screenshot({
-      path: path.join(
-        root,
-        "output/planejamento-alteracao-ui/mobile-light.png",
-      ),
+      path: path.join(output, "mobile-light.png"),
       fullPage: true,
     });
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -721,6 +793,7 @@ function fixture() {
         (await page.locator("#ap-confirm").isDisabled()),
       "Novo replanejamento exige responsável ativo",
     );
+    await openImage(1);
     await page.locator("#ap-editor-pin").uncheck();
     await page.locator("#ap-editor-save").click();
     check(
@@ -756,6 +829,7 @@ function fixture() {
         (await page.locator("#ap-editor-person").inputValue()) === "99",
       "Replanejar calcula pesos atuais sem substituir responsável automaticamente",
     );
+    await page.locator("#ap-more").click();
     await page.locator("#ap-cancel-replan").click();
     check(
       (await page.locator("#ap-demand").textContent()).includes("Sem pontos"),
@@ -788,6 +862,7 @@ function fixture() {
     await page.waitForFunction(
       () => document.getElementById("ap-reload").hidden,
     );
+    await openImage(1);
     check(
       (await page.locator("#ap-save").isDisabled()) &&
         (await page.locator("#ap-editor-person").isDisabled()),
@@ -806,6 +881,10 @@ function fixture() {
       pode_editar_datas: true,
       pode_editar_responsavel: false,
       motivo_bloqueio_responsavel: "Responsável protegido durante a execução",
+      pode_transferir_execucao: true,
+      responsavel_planejado_id: 11,
+      responsavel_operacional_id: 11,
+      execucao: { ciclo_id: 81, situacao: "AGUARDANDO_INICIO", status: "Ajuste" },
     });
     await page.locator("#ap-reload").evaluate((el) => {
       el.hidden = false;
@@ -838,7 +917,7 @@ function fixture() {
     );
     await page.locator("#ap-select-all").check();
     check(
-      (await page.locator("#ap-selection").textContent()) === "9 selecionadas",
+      (await page.locator("#ap-selection").textContent()).startsWith("9 imagens selecionadas"),
       "Seleção em massa exclui itens bloqueados",
     );
     await page.locator("#ap-save").click();
@@ -849,6 +928,27 @@ function fixture() {
       posts.at(-1).itens.length === 9 &&
         !posts.at(-1).itens.some((i) => i.entrega_item_id === 1),
       "Rascunho envia apenas decisões elegíveis",
+    );
+    await openImage(2);
+    await page.locator('#ap-editor-transfer').click();
+    check(
+      (await page.locator('#ap-transfer-summary').textContent()).includes("manterá o status Ajuste") &&
+        (await page.locator('#ap-transfer-person option[value="11"]').count()) === 0 &&
+        (await deliveredRow.locator('[data-transfer-image]').count()) === 0,
+      "Transferência preserva Ajuste e oferece apenas outro responsável para a imagem elegível",
+    );
+    await page.locator('#ap-transfer-person').selectOption('12');
+    await page.locator('#ap-transfer-date').fill('2026-11-06');
+    await page.locator('#ap-transfer-reason').fill('Cobertura da equipe');
+    await page.locator('#ap-transfer-submit').click();
+    await page.locator('#ap-transfer-dialog').waitFor({ state: "hidden" });
+    const transferencia = posts.at(-1);
+    check(
+      transferencia.acao === "transferir_execucao" && transferencia.ciclo_id === 81 &&
+        transferencia.status_tarefa === "Ajuste" && transferencia.novo_responsavel_id === 12 &&
+        !("itens" in transferencia) &&
+        /Maria[\s\S]*Ajuste/.test(await page.locator('#ap-rows [data-id="2"]').textContent()),
+      "Confirmação envia uma única imagem e exibe a nova responsável com o status Ajuste",
     );
     check(errors.length === 0, `Sem erros JavaScript: ${errors.join("; ")}`);
     console.log(

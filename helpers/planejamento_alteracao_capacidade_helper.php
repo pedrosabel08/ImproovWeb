@@ -69,9 +69,12 @@ function flow_pac_dias(string $inicio, string $fim): array
     return $dias;
 }
 
-/** Uma consulta de versões, uma de períodos e uma consulta agregada do motor R00. */
-function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pessoas, string $inicio, string $fim): array
+/** Agenda em lote. Os detalhes opcionais não integram o fingerprint nem a versão salva. */
+function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pessoas, string $inicio, string $fim, ?array &$externas = null): array
 {
+    if ($externas !== null) {
+        $externas = [];
+    }
     $dias = flow_pac_dias($inicio, $fim);
     $agenda = [];
     foreach ($pessoas as $p) {
@@ -80,15 +83,18 @@ function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pes
             $agenda[$p['id']][$d] = ['nominal' => $cap,'capacidade' => $cap,'comprometidos' => 0,'ocupacao_r00' => 0,'avisos' => []];
         }
     }
-    $versoes = flow_pa_rows($conn, "SELECT v.id,v.snapshot_json FROM entrega_planejamento_producao p JOIN entrega_planejamento_versao v ON v.id=p.versao_atual_id JOIN entregas e ON e.id=p.entrega_id WHERE p.modelo='IMAGENS_ALTERACAO' AND p.entrega_id<>? AND COALESCE(e.arquivada,0)=0", 'i', [$entregaId]);
     $pendentes = [];
-    if ($versoes) {
-        $ids = implode(',', array_map('intval', array_column($versoes, 'id')));
-        $rows = flow_pa_rows($conn, "SELECT pi.versao_id,pi.responsavel_planejado_id,ei.id,ei.data_entregue,e.status_id AS status_id_entrega,
+    if ($agenda) {
+        $responsaveis = implode(',', array_map('intval', array_keys($agenda)));
+        $detalhes = $externas === null ? '' : ',e.id AS entrega_id,e.obra_id,o.nomenclatura,s.nome_status AS etapa,ei.imagem_id,im.imagem_nome,im.obra_id AS imagem_obra_id';
+        $origens = $externas === null ? '' : ' LEFT JOIN obra o ON o.idobra=e.obra_id LEFT JOIN status_imagem s ON s.idstatus=e.status_id';
+        $rows = flow_pa_rows($conn, "SELECT pi.versao_id,pi.responsavel_planejado_id,pi.fim_planejado,ei.id,ei.data_entregue,e.status_id AS status_id_entrega,
                     im.status_id AS etapa_atual_id,f.status AS tarefa_status,c.situacao,c.motivo_encerramento,
                     (rodada.entrega_destino_id IS NOT NULL AND rodada.entrega_destino_id<>e.id) AS rodada_substituida
+                    $detalhes
                 FROM entrega_planejamento_item pi JOIN entregas_itens ei ON ei.id=pi.entrega_item_id
-                JOIN entregas e ON e.id=ei.entrega_id
+                JOIN entregas e ON e.id=ei.entrega_id $origens
+                JOIN entrega_planejamento_producao plano ON plano.entrega_id=e.id AND plano.versao_atual_id=pi.versao_id
                 JOIN imagens_cliente_obra im ON im.idimagens_cliente_obra=ei.imagem_id
                 JOIN funcao_imagem f ON f.idfuncao_imagem=pi.funcao_imagem_id
                 LEFT JOIN (
@@ -101,22 +107,43 @@ function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pes
                            ROW_NUMBER() OVER (PARTITION BY p.imagem_id,l.status_destino_id ORDER BY l.id DESC) AS posicao
                     FROM pre_alt_liberacao_itens l JOIN pre_alt_itens p ON p.id=l.pre_alt_item_id
                 ) rodada ON rodada.imagem_id=ei.imagem_id AND rodada.status_destino_id=e.status_id AND rodada.posicao=1
-                WHERE pi.versao_id IN ($ids) AND pi.fim_planejado BETWEEN ? AND ?", 'ss', [$inicio, $fim]);
+                WHERE plano.modelo='IMAGENS_ALTERACAO' AND e.id<>? AND COALESCE(e.arquivada,0)=0
+                  AND pi.responsavel_planejado_id IN ($responsaveis)
+                  AND pi.fim_planejado BETWEEN ? AND ?", 'iss', [$entregaId, $inicio, $fim]);
         foreach ($rows as $row) {
             $ciclo = $row['situacao'] === null ? null : $row;
             $estado = flow_pa_estado_item($row, (string)$row['tarefa_status'], $ciclo, $row['situacao'] === 'ATIVO');
             if ($estado['pode_editar_datas']) {
-                $pendentes[$row['versao_id']][$row['id']] = (int)$row['responsavel_planejado_id'];
+                $pendentes[$row['versao_id']][$row['id']] = $row;
             }
         }
     }
+    $versoes = [];
+    if ($pendentes) {
+        $ids = implode(',', array_map('intval', array_keys($pendentes)));
+        $versoes = flow_pa_rows($conn, "SELECT id,snapshot_json FROM entrega_planejamento_versao WHERE id IN ($ids) ORDER BY id");
+    }
+    $contextoSidebar = $externas === null ? [] : improov_sidebar_contexto_usuario($conn);
+    $obrasVisiveis = [];
+    if (($contextoSidebar['modo'] ?? '') !== 'gestao' && !empty($contextoSidebar['pacote_tipo'])) {
+        $obrasVisiveis = array_fill_keys(array_column(flow_pa_rows(
+            $conn,
+            "SELECT DISTINCT obra_id FROM obra_pacote WHERE tipo=? AND status='ATIVO'",
+            's',
+            [$contextoSidebar['pacote_tipo']]
+        ), 'obra_id'), true);
+    }
+    $visiveis = [];
     foreach ($versoes as $v) {
         foreach ((json_decode($v['snapshot_json'], true)['itens'] ?? []) as $i) {
-            if (!isset($pendentes[$v['id']][$i['entrega_item_id']])) {
+            $registro = $pendentes[$v['id']][$i['entrega_item_id']] ?? null;
+            if (!$registro) {
                 continue;
             }
-            $id = $pendentes[$v['id']][$i['entrega_item_id']];
-            $d = $i['fim_planejado'] ?? '';
+            // A projeção relacional identifica o compromisso; peso e nível vêm da versão.
+            unset($pendentes[$v['id']][$i['entrega_item_id']]);
+            $id = (int)$registro['responsavel_planejado_id'];
+            $d = $registro['fim_planejado'];
             if (!isset($agenda[$id][$d])) {
                 continue;
             }
@@ -125,6 +152,30 @@ function flow_pac_agenda(mysqli $conn, int $entregaId, array $config, array $pes
             } else {
                 $agenda[$id][$d]['comprometidos'] += (float)$i['pontos_snapshot'];
             }
+            if ($externas !== null && (int)$registro['imagem_obra_id'] === (int)$registro['obra_id']
+                && (($contextoSidebar['modo'] ?? '') === 'gestao' || isset($obrasVisiveis[$registro['obra_id']]))) {
+                $visiveis[] = [
+                    'entrega_id' => (int)$registro['entrega_id'],
+                    'obra' => $registro['nomenclatura'],
+                    'etapa' => $registro['etapa'],
+                    'imagem_id' => (int)$registro['imagem_id'],
+                    'imagem_nome' => $registro['imagem_nome'],
+                    'nivel_complexidade_snapshot' => $i['nivel_complexidade_snapshot'] ?? null,
+                    'pontos_snapshot' => $i['pontos_snapshot'] ?? null,
+                    'responsavel_planejado_id' => $id,
+                    'fim_planejado' => $d,
+                ];
+            }
+        }
+    }
+    if ($visiveis) {
+        $imagens = implode(',', array_unique(array_column($visiveis, 'imagem_id')));
+        $miniaturas = array_fill_keys(array_column(flow_pa_rows($conn, "SELECT DISTINCT fi.imagem_id
+            FROM historico_aprovacoes_imagens hi JOIN funcao_imagem fi ON fi.idfuncao_imagem=hi.funcao_imagem_id
+            WHERE fi.imagem_id IN ($imagens) AND hi.imagem IS NOT NULL AND hi.imagem<>'' AND hi.imagem NOT LIKE '%imagem_%'"), 'imagem_id'), true);
+        foreach ($visiveis as $tarefa) {
+            $tarefa['thumbnail_url'] = isset($miniaturas[$tarefa['imagem_id']]) ? 'thumbnail.php?imagem_id='.$tarefa['imagem_id'] : null;
+            $externas[$tarefa['responsavel_planejado_id']][$tarefa['fim_planejado']][] = $tarefa;
         }
     }
     $periodos = flow_pa_rows($conn, "SELECT data_inicio,data_fim,capacidade_disponivel FROM planejamento_capacidade_etapa_periodo WHERE codigo_etapa='ALTERACAO_PONTOS' AND ativo=1 AND data_inicio<=? AND data_fim>=?", 'ss', [$fim,$inicio]);
@@ -186,7 +237,7 @@ function flow_pac_adaptar_r00(array $agenda, array $r00, array $dias): array
     return $agenda;
 }
 
-function flow_pac_contexto(mysqli $conn, array $e, array $itens, array $pessoas, array $config): array
+function flow_pac_contexto(mysqli $conn, array $e, array $itens, array $pessoas, array $config, ?array &$externas = null): array
 {
     $inicio = substr($e['data_recebimento'] ?: date('Y-m-d'), 0, 10);
     $fim = max($inicio, substr($e['data_prevista'] ?: $inicio, 0, 10), entregas_adicionar_dias_uteis($inicio, 59));
@@ -195,7 +246,7 @@ function flow_pac_contexto(mysqli $conn, array $e, array $itens, array $pessoas,
             $fim = max($fim, $i['fim_planejado']);
         }
     }
-    $agenda = flow_pac_agenda($conn, (int)$e['id'], $config, $pessoas, $inicio, $fim);
+    $agenda = flow_pac_agenda($conn, (int)$e['id'], $config, $pessoas, $inicio, $fim, $externas);
     $contexto = ['inicio' => $inicio,'fim' => $fim,'configuracao' => $config,'colaboradores' => $pessoas,'agenda' => $agenda];
     $contexto['fingerprint'] = hash('sha256', flow_planejamento_json($contexto));
     $contexto['dias'] = flow_pac_dias($inicio, $fim);

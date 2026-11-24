@@ -92,7 +92,7 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
     $tarefaIds = implode(',', array_map('intval', array_column(array_merge(...array_values($tarefas ?: [[]])), 'idfuncao_imagem')));
     $ativos = [];
     if ($tarefaIds) {
-        $sqlAtivos = "SELECT ci.funcao_imagem_id,c.id,c.situacao,c.entrega_item_id,c.planejamento_versao_id_snapshot,c.unidade_trabalho_id
+        $sqlAtivos = "SELECT ci.funcao_imagem_id,c.id,c.situacao,c.entrega_item_id,c.planejamento_versao_id_snapshot,c.unidade_trabalho_id,c.responsavel_atual_id,c.previsao_atual
             FROM janela_operacional_ciclo c JOIN janela_operacional_ciclo_item ci ON ci.ciclo_id=c.id
             WHERE ci.funcao_imagem_id IN ($tarefaIds) AND c.ativo_token='ATIVO'
             ORDER BY ci.funcao_imagem_id,c.id".($lock ? ' FOR UPDATE' : '');
@@ -157,6 +157,16 @@ function flow_pa_escopo(mysqli $conn, int $id, bool $lock = false): array
             'etapa_atual_id' => (int)$r['etapa_atual_id'],'data_entregue' => $r['data_entregue'],'tarefa_cancelada' => flow_planejamento_normalizar((string)$ts[0]['status']) === 'cancelado',
             'responsavel_planejado_id' => null,'inicio_planejado' => null,'fim_planejado' => null] + $estado + [
             'responsavel_operacional_id' => (int)$tarefa['colaborador_id']];
+        $ativo = count($ativosDaTarefa) === 1 ? $ativosDaTarefa[0] : null;
+        $status = (string)$tarefa['status'];
+        if ($estado['pode_editar_datas'] && $ativo && (int)$ativo['entrega_item_id'] === $item['entrega_item_id']
+            && $ativo['unidade_trabalho_id'] === null && $item['responsavel_operacional_id'] > 0
+            && (int)$ativo['responsavel_atual_id'] === $item['responsavel_operacional_id']
+            && in_array($status, ['Em andamento', 'Ajuste', 'HOLD'], true)
+            && ($ativo['situacao'] !== 'AGUARDANDO_INICIO' || $status === 'Ajuste')) {
+            $item['execucao'] = ['ciclo_id' => (int)$ativo['id'], 'situacao' => $ativo['situacao'],
+                'status' => $status, 'previsao' => $ativo['previsao_atual']];
+        }
         if ($lock && $cicloResidual !== null) {
             $item['ciclo_residual_id'] = $cicloResidual;
         }
@@ -236,16 +246,24 @@ function flow_pa_criar_liberacao_manual(mysqli $conn, array $entrega, ?int $ator
 {
     // A origem mantém o nível por imagem e rodada no mesmo formato do planejamento e da execução.
     $data = $entrega['data_recebimento'] ?: date('Y-m-d');
-    $stmt = flow_pa_query($conn, "INSERT INTO pre_alt_lote
+    $stmt = flow_pa_query(
+        $conn,
+        "INSERT INTO pre_alt_lote
         (obra_id, status_id, data_finalizacao_cliente, status, prazo, created_by)
-        VALUES (?, ?, ?, 'PLANEJADO', ?, ?)", 'iissi',
-        [$entrega['obra_id'], $entrega['status_id'], $data, $entrega['data_prevista'], $ator]);
+        VALUES (?, ?, ?, 'PLANEJADO', ?, ?)",
+        'iissi',
+        [$entrega['obra_id'], $entrega['status_id'], $data, $entrega['data_prevista'], $ator]
+    );
     $loteId = (int)$stmt->insert_id;
     $stmt->close();
-    $stmt = flow_pa_query($conn, "INSERT INTO pre_alt_liberacoes
+    $stmt = flow_pa_query(
+        $conn,
+        "INSERT INTO pre_alt_liberacoes
         (pre_alt_lote_id, data_triagem, entrega_alteracao_id, observacao, created_by)
         VALUES (?, CURRENT_DATE, ?, 'Classificação no planejamento de entrega manual.', ?)",
-        'iii', [$loteId, $entrega['id'], $ator]);
+        'iii',
+        [$loteId, $entrega['id'], $ator]
+    );
     $liberacao = ['id' => (int)$stmt->insert_id, 'pre_alt_lote_id' => $loteId];
     $stmt->close();
     return $liberacao;
@@ -321,8 +339,18 @@ function flow_pa_classificar_imagens(mysqli $conn, int $id, array $dados): void
             flow_pa_query($conn, 'INSERT INTO pre_alt_liberacao_itens
                 (liberacao_id, pre_alt_item_id, entrega_destino_id, status_destino_id, prazo)
                 VALUES (?, ?, ?, ?, ?)', 'iiiis', [$liberacao['id'], $preAltItemId, $id, $statusId, $prazo])->close();
-            pre_alt_registrar_historico($conn, $loteId, 'INCLUSAO_MANUAL', 'nivel_complexidade', null, $nivel,
-                'Imagem classificada no planejamento da entrega.', $preAltItemId, null, ['entrega_id' => $id]);
+            pre_alt_registrar_historico(
+                $conn,
+                $loteId,
+                'INCLUSAO_MANUAL',
+                'nivel_complexidade',
+                null,
+                $nivel,
+                'Imagem classificada no planejamento da entrega.',
+                $preAltItemId,
+                null,
+                ['entrega_id' => $id]
+            );
         }
         if ($plano) {
             flow_pa_escopo($conn, $id, true);
@@ -506,6 +534,7 @@ function flow_planejamento_alteracao_carregar(mysqli $conn, int $id): array
         throw new DomainException('Esta entrega utiliza o fluxo legado.');
     }
     $itens = flow_pa_escopo($conn, $id);
+    $gestor = improov_usuario_eh_gestor_sidebar($conn);
     $fp = flow_pa_fingerprint($e, $itens);
     $config = flow_pac_config($conn);
     $v = !empty($p['versao_atual_id']) ? flow_planejamento_carregar_versao($conn, (int)$p['versao_atual_id']) : null;
@@ -520,14 +549,15 @@ function flow_planejamento_alteracao_carregar(mysqli $conn, int $id): array
         $i['fim_planejado'] = ($rascunhoPorId[$i['entrega_item_id']] ?? $confirmadosPorId[$i['entrega_item_id']] ?? [])['fim_planejado'] ?? null;
     }
     unset($i);
-    $capacidade = flow_pac_contexto($conn, $e, $baseAgenda, $pessoas, $config);
+    $tarefasExternas = [];
+    $capacidade = flow_pac_contexto($conn, $e, $baseAgenda, $pessoas, $config, $tarefasExternas);
     $retomar = flow_pa_rascunho_atual($rascunho, $p, $fp['fingerprint'], $capacidade['fingerprint']);
     if ($rascunho !== null && !$retomar) {
         foreach ($baseAgenda as &$i) {
             $i['fim_planejado'] = $confirmadosPorId[$i['entrega_item_id']]['fim_planejado'] ?? null;
         }
         unset($i);
-        $capacidade = flow_pac_contexto($conn, $e, $baseAgenda, $pessoas, $config);
+        $capacidade = flow_pac_contexto($conn, $e, $baseAgenda, $pessoas, $config, $tarefasExternas);
     }
     foreach ($itens as &$i) {
         $i['nivel_atual'] = $i['nivel_complexidade_snapshot'];
@@ -555,6 +585,8 @@ function flow_planejamento_alteracao_carregar(mysqli $conn, int $id): array
         $i = flow_pa_preservar_responsavel($i, $confirmado);
         $i['atribuicao_divergente'] = $i['pode_editar_datas'] && $confirmado
             && (int)$confirmado['responsavel_planejado_id'] !== $i['responsavel_operacional_id'];
+        $i['pode_transferir_execucao'] = $gestor && empty($e['arquivada']) && isset($i['execucao'])
+            && !empty($confirmado['fim_planejado']) && !$i['atribuicao_divergente'];
     }
     unset($i);
     $elegiveis = count(flow_pa_itens_editaveis($itens));
@@ -578,7 +610,171 @@ function flow_planejamento_alteracao_carregar(mysqli $conn, int $id): array
         $i['thumbnail_url'] = isset($miniaturas[$i['imagem_id']]) ? 'thumbnail.php?imagem_id='.$i['imagem_id'] : null;
     }
     unset($i);
-    return ['modelo' => 'IMAGENS_ALTERACAO','entrega' => $e,'itens' => $itens,'vigente_itens' => $confirmados,'realizado' => $realizado,'colaboradores' => $pessoas,'configuracao' => $config,'capacidade' => $capacidade,'planejamento' => $p,'fingerprint' => $fp['fingerprint'],'desatualizado' => (bool)$desatualizado,'pode_editar' => $editavel && improov_usuario_eh_gestor_sidebar($conn)];
+    return ['modelo' => 'IMAGENS_ALTERACAO','entrega' => $e,'itens' => $itens,'vigente_itens' => $confirmados,'realizado' => $realizado,'colaboradores' => $pessoas,'configuracao' => $config,'capacidade' => $capacidade,'tarefas_externas' => $tarefasExternas,'planejamento' => $p,'fingerprint' => $fp['fingerprint'],'desatualizado' => (bool)$desatualizado,'pode_editar' => $editavel && $gestor,'pode_configurar_capacidade' => $gestor];
+}
+
+/** Persiste uma versão imutável dentro da transação do chamador. */
+function flow_pa_gravar_versao(mysqli $conn, array $entrega, array $plano, array $fp, array $snapshot, ?int $ator, string $motivo, string $nota): array
+{
+    $pid = (int)$plano['id'];
+    $itens = $snapshot['itens'];
+    $numero = 1 + (int)flow_pa_rows($conn, 'SELECT COALESCE(MAX(numero),0) AS n FROM entrega_planejamento_versao WHERE planejamento_id=?', 'i', [$pid])[0]['n'];
+    flow_pa_query($conn, 'UPDATE entrega_planejamento_versao SET vigente=0,vigente_token=NULL WHERE planejamento_id=? AND vigente=1', 'i', [$pid])->close();
+    $inicios = array_filter(array_column($itens, 'inicio_planejado'));
+    $inicio = $inicios ? min($inicios) : ($entrega['data_recebimento'] ?: date('Y-m-d'));
+    $fim = max(array_column($itens, 'fim_planejado'));
+    $tipo = empty($plano['versao_atual_id']) ? 'BASELINE' : 'REPLANEJAMENTO';
+    $stmt = flow_pa_query(
+        $conn,
+        "INSERT INTO entrega_planejamento_versao
+        (planejamento_id,numero,tipo,vigente,vigente_token,fingerprint,data_inicio,prazo_r00,fim_previsto,status_plano,motivo_codigo,motivo_observacao,confirmado_por_colaborador_id,snapshot_json,contexto_fingerprint_json)
+        VALUES (?,?,?,1,'VIGENTE',?,?,?,?,'PLANEJADO',?,?,?,?,?)",
+        'iisssssssiss',
+        [$pid, $numero, $tipo, $fp['fingerprint'], $inicio, $entrega['data_prevista'], $fim, $motivo ?: null, $nota ?: null, $ator,
+            flow_planejamento_json($snapshot), flow_planejamento_json($fp['contexto'])]
+    );
+    $vid = (int)$stmt->insert_id;
+    $stmt->close();
+    $paramItens = [];
+    foreach ($itens as $i) {
+        array_push($paramItens, $vid, $i['entrega_item_id'], $i['funcao_imagem_id'], $i['pre_alt_item_id'], $i['responsavel_planejado_id'], $i['inicio_planejado'], $i['fim_planejado'], $i['nivel_complexidade_snapshot']);
+    }
+    $linhas = array_fill(0, count($itens), '(?,?,?,?,?,?,?,?)');
+    flow_pa_query($conn, 'INSERT INTO entrega_planejamento_item (versao_id,entrega_item_id,funcao_imagem_id,pre_alt_item_id,responsavel_planejado_id,inicio_planejado,fim_planejado,nivel_complexidade_snapshot) VALUES '.implode(',', $linhas), str_repeat('iiiiissi', count($itens)), $paramItens)->close();
+    return [$vid, $numero];
+}
+
+function flow_planejamento_alteracao_transferir(mysqli $conn, int $id, array $dados, ?int $ator, ?int $atorUsuario): array
+{
+    if (!improov_usuario_eh_gestor_sidebar($conn)) {
+        throw new RuntimeException('Somente a gestão pode transferir a execução.', 403);
+    }
+    $itemId = filter_var($dados['entrega_item_id'] ?? null, FILTER_VALIDATE_INT);
+    $novoId = filter_var($dados['novo_responsavel_id'] ?? null, FILTER_VALIDATE_INT);
+    $dia = $dados['fim_planejado'] ?? null;
+    $motivo = is_string($dados['motivo'] ?? null) ? trim($dados['motivo']) : '';
+    if ($itemId < 1 || $novoId < 1 || $motivo === '' || mb_strlen($motivo) > 500) {
+        throw new InvalidArgumentException('Selecione o novo responsável e descreva o motivo em até 500 caracteres.');
+    }
+    if (!is_string($dia) || !entregas_valid_date($dia) || !flow_pac_dia_util($dia) || $dia < date('Y-m-d')) {
+        throw new InvalidArgumentException('Escolha um dia útil a partir de hoje para a conclusão.');
+    }
+
+    require_once __DIR__ . '/inicio_operacional_helper.php';
+    $conn->query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+    $conn->begin_transaction();
+    try {
+        $config = flow_pac_config($conn, true);
+        $entrega = flow_pa_entrega($conn, $id, true);
+        if (!improov_usuario_pode_acessar_obra($conn, (int)$entrega['obra_id'])) {
+            throw new RuntimeException('Sem permissão para acessar esta obra.', 403);
+        }
+        $plano = flow_planejamento_carregar_raiz($conn, $id, true);
+        if (($plano['modelo'] ?? '') !== 'IMAGENS_ALTERACAO' || empty($plano['versao_atual_id']) || !empty($entrega['arquivada'])) {
+            throw new DomainException('A transferência exige uma entrega de alteração ativa e com planejamento confirmado.');
+        }
+        $escopo = flow_pa_escopo($conn, $id, true);
+        $fp = flow_pa_fingerprint($entrega, $escopo);
+        if ((int)($dados['lock_version'] ?? -1) !== (int)$plano['lock_version']
+            || !hash_equals($fp['fingerprint'], (string)($dados['fingerprint'] ?? ''))) {
+            throw new RuntimeException('O planejamento mudou. Recarregue os dados antes de transferir.', 409);
+        }
+        $porItem = array_column($escopo, null, 'entrega_item_id');
+        $item = $porItem[$itemId] ?? null;
+        $execucao = $item['execucao'] ?? null;
+        if (!$execucao || $execucao['ciclo_id'] !== (int)($dados['ciclo_id'] ?? 0)
+            || $execucao['situacao'] !== ($dados['situacao_ciclo'] ?? null) || $execucao['status'] !== ($dados['status_tarefa'] ?? null)) {
+            throw new RuntimeException('A execução da imagem mudou. Recarregue os dados antes de transferir.', 409);
+        }
+
+        $versao = flow_planejamento_carregar_versao($conn, (int)$plano['versao_atual_id']);
+        $snapshot = flow_pa_snapshot_versao($conn, $versao);
+        $itens = array_column($snapshot['itens'] ?? [], null, 'entrega_item_id');
+        $anterior = $itens[$itemId] ?? [];
+        $anteriorId = $item['responsavel_operacional_id'];
+        if (empty($anterior['fim_planejado']) || (int)$anterior['funcao_imagem_id'] !== $item['funcao_imagem_id']
+            || (int)$anterior['responsavel_planejado_id'] !== $anteriorId) {
+            throw new RuntimeException('A atribuição atual diverge do planejamento confirmado.', 409);
+        }
+        $pessoas = flow_pa_colaboradores($conn, true);
+        $nomes = array_column($pessoas, 'nome', 'id');
+        if ($novoId === $anteriorId || !isset($nomes[$novoId])) {
+            throw new InvalidArgumentException('Escolha outro colaborador elegível para Alteração.');
+        }
+        $recebimento = substr($entrega['data_recebimento'] ?: date('Y-m-d'), 0, 10);
+        if ($dia < max($recebimento, $anterior['inicio_planejado'] ?? '') || (strtotime($dia) - strtotime($recebimento)) / 86400 > 730) {
+            throw new InvalidArgumentException('Escolha uma data dentro do período do planejamento e após o início previsto.');
+        }
+
+        $pontos = $anterior['pontos_snapshot'] ?? $config['niveis'][$anterior['nivel_complexidade_snapshot']] ?? null;
+        if (!$pontos) {
+            throw new DomainException('A imagem precisa de nível e pontos para validar a capacidade da transferência.');
+        }
+        $itens[$itemId] = array_replace($anterior, ['responsavel_planejado_id' => $novoId,
+            'responsavel_planejado_nome' => $nomes[$novoId], 'responsavel_operacional_id' => $novoId,
+            'fim_planejado' => $dia, 'pontos_snapshot' => $pontos, 'excecao_capacidade' => null]);
+        unset($itens[$itemId]['responsavel_preservado_id']);
+        $agenda = flow_pac_agenda($conn, $id, $config, $pessoas, $dia, $dia);
+        $destino = array_filter($itens, static fn ($i) => ($porItem[$i['entrega_item_id']]['pode_editar_datas'] ?? false)
+            && (int)$i['responsavel_planejado_id'] === $novoId && $i['fim_planejado'] === $dia);
+        if (flow_pac_sobrecargas($destino, $agenda)) {
+            throw new DomainException('O novo responsável não tem capacidade suficiente nesse dia. Escolha outra data ou outro colaborador.');
+        }
+
+        // A transferência cobre somente a imagem selecionada. Mudanças de escopo
+        // que já exigiam replanejamento continuam pendentes depois da troca.
+        $contextoAnterior = json_decode((string)$versao['contexto_fingerprint_json'], true);
+        $contextos = [$contextoAnterior, $fp['contexto']];
+        foreach ($contextos as &$contexto) {
+            foreach ($contexto['itens'] ?? [] as $pos => $i) {
+                unset($contexto['itens'][$pos]['pode_editar_responsavel']);
+            }
+        }
+        unset($contexto);
+        $fpVersao = $contextos[0] === $contextos[1] ? $fp : ['fingerprint' => $versao['fingerprint'], 'contexto' => $contextoAnterior];
+        $movimento = ['entrega_item_id' => $itemId, 'imagem_nome' => $item['imagem_nome'],
+            'responsavel_anterior_id' => $anteriorId, 'responsavel_anterior_nome' => $anterior['responsavel_planejado_nome'] ?? $nomes[$anteriorId] ?? null,
+            'novo_responsavel_id' => $novoId, 'novo_responsavel_nome' => $nomes[$novoId],
+            'fim_planejado_anterior' => $anterior['fim_planejado'], 'fim_planejado' => $dia, 'status' => $execucao['status']];
+        $snapshot['itens'] = array_values($itens);
+        $snapshot['transferencia_execucao'] = $movimento;
+        $codigoMotivo = 'TRANSFERENCIA_EXECUCAO';
+        $entregaPlanejada = array_replace($entrega, ['data_prevista' => $versao['prazo_r00']]);
+        [$vid, $numero] = flow_pa_gravar_versao($conn, $entregaPlanejada, $plano, $fpVersao, $snapshot, $ator, $codigoMotivo, $motivo);
+        $pid = (int)$plano['id'];
+        flow_pa_query(
+            $conn,
+            "UPDATE entrega_planejamento_producao SET estado='CONFIRMADO',versao_atual_id=?,ultimo_fingerprint=?,lock_version=lock_version+1 WHERE id=?",
+            'isi',
+            [$vid, $fp['fingerprint'], $pid]
+        )->close();
+
+        $resultado = flow_inicio_operacional_transferir($conn, [
+            'funcao_imagem_id' => $item['funcao_imagem_id'], 'novo_responsavel_id' => $novoId,
+            'nova_previsao' => $dia, 'motivo_transferencia' => $motivo,
+            'ator_colaborador_id' => $ator, 'ator_usuario_id' => $atorUsuario,
+        ]);
+        if (empty($resultado['ciclo_novo_id']) || $resultado['ciclo_anterior_id'] !== $execucao['ciclo_id']
+            || array_map('intval', $resultado['membros']) !== [$item['funcao_imagem_id']]) {
+            throw new RuntimeException('O ciclo operacional mudou. Recarregue os dados antes de transferir.', 409);
+        }
+        flow_planejamento_registrar_evento(
+            $conn,
+            $pid,
+            $id,
+            'REPLANEJAMENTO_CONFIRMADO',
+            $vid,
+            $ator,
+            $codigoMotivo,
+            $motivo,
+            $movimento + ['numero' => $numero, 'ciclo_anterior_id' => $resultado['ciclo_anterior_id'], 'ciclo_novo_id' => $resultado['ciclo_novo_id']]
+        );
+        $conn->commit();
+    } catch (Throwable $erro) {
+        $conn->rollback();
+        throw $erro;
+    }
+    return flow_planejamento_alteracao_carregar($conn, $id);
 }
 
 function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados, bool $confirmar, ?int $ator): array
@@ -621,7 +817,7 @@ function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados,
         $ciclosResiduais = array_column($escopo, 'ciclo_residual_id', 'funcao_imagem_id');
         $editaveis = array_map(static function ($item) use ($porId) {
             $anterior = $porId[$item['entrega_item_id']] ?? [];
-            unset($item['ciclo_residual_id']);
+            unset($item['ciclo_residual_id'], $item['execucao']);
             return flow_pa_preservar_responsavel($item, $anterior) + [
                 'responsavel_planejado_nome' => $anterior['responsavel_planejado_nome'] ?? null,
             ];
@@ -707,30 +903,13 @@ function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados,
             }
             $itens = array_merge($pendentes, $congelados);
             usort($itens, fn ($a, $b) => $a['entrega_item_id'] <=> $b['entrega_item_id']);
-            $numero = 1 + (int)(flow_pa_rows($conn, 'SELECT COALESCE(MAX(numero),0) AS n FROM entrega_planejamento_versao WHERE planejamento_id=?', 'i', [$pid])[0]['n']);
-            flow_pa_query($conn, 'UPDATE entrega_planejamento_versao SET vigente=0,vigente_token=NULL WHERE planejamento_id=? AND vigente=1', 'i', [$pid])->close();
-            $fins = array_column($itens, 'fim_planejado');
-            $inicios = array_values(array_filter(array_column($itens, 'inicio_planejado')));
-            $inicio = $inicios ? min($inicios) : ($e['data_recebimento'] ?: date('Y-m-d'));
-            $fim = max($fins);
-            $tipo = $temVersao ? 'REPLANEJAMENTO' : 'BASELINE';
-            $snapshot = flow_planejamento_json(['modelo' => 'IMAGENS_ALTERACAO','entrega' => $e,'itens' => $itens,'configuracao' => $config,'capacidade' => $capacidade,'excecoes_capacidade' => $sobrecargas]);
-            $contexto = flow_planejamento_json($fp['contexto']);
-            $stmt = flow_pa_query($conn, "INSERT INTO entrega_planejamento_versao (planejamento_id,numero,tipo,vigente,vigente_token,fingerprint,data_inicio,prazo_r00,fim_previsto,status_plano,motivo_codigo,motivo_observacao,confirmado_por_colaborador_id,snapshot_json,contexto_fingerprint_json) VALUES (?,?,?,1,'VIGENTE',?,?,?,?,'PLANEJADO',?,?,?,?,?)", 'iisssssssiss', [$pid,$numero,$tipo,$fp['fingerprint'],$inicio,$e['data_prevista'],$fim,$motivo ?: null,$nota ?: null,$ator,$snapshot,$contexto]);
-            $vid = (int)$stmt->insert_id;
-            $stmt->close();
+            $snapshot = ['modelo' => 'IMAGENS_ALTERACAO','entrega' => $e,'itens' => $itens,'configuracao' => $config,'capacidade' => $capacidade,'excecoes_capacidade' => $sobrecargas];
+            [$vid, $numero] = flow_pa_gravar_versao($conn, $e, $p, $fp, $snapshot, $ator, $motivo, $nota);
             foreach ($sobrecargas as $s) {
                 $percentual = $s['capacidade'] > 0 ? 100 * ($s['pontos'] + $s['comprometidos']) / $s['capacidade'] : 9999;
                 $hash = hash('sha256', $capacidade['fingerprint'].':'.$s['colaborador_id'].':'.$s['dia']);
                 flow_pa_query($conn, "INSERT INTO entrega_planejamento_capacidade_validacao (planejamento_id,versao_id,entrega_id,obra_id,colaborador_id,codigo_etapa,data_inicio,data_fim,carga_percentual,pico_carga,fingerprint,status,observacao,validado_por_colaborador_id,validado_em) VALUES (?,?,?,?,?,'ALTERACAO_PONTOS',?,?,?,?,?,'VALIDA','Exceção explícita no planner diário',?,NOW())", 'iiiiissddsi', [$pid,$vid,$id,(int)$e['obra_id'],$s['colaborador_id'],$s['dia'],$s['dia'],$percentual,$percentual / 100,$hash,$ator])->close();
             }
-            $linhas = [];
-            $paramItens = [];
-            foreach ($itens as $i) {
-                $linhas[] = '(?,?,?,?,?,?,?,?)';
-                array_push($paramItens, $vid, $i['entrega_item_id'], $i['funcao_imagem_id'], $i['pre_alt_item_id'], $i['responsavel_planejado_id'], $i['inicio_planejado'], $i['fim_planejado'], $i['nivel_complexidade_snapshot']);
-            }
-            flow_pa_query($conn, 'INSERT INTO entrega_planejamento_item (versao_id,entrega_item_id,funcao_imagem_id,pre_alt_item_id,responsavel_planejado_id,inicio_planejado,fim_planejado,nivel_complexidade_snapshot) VALUES '.implode(',', $linhas), str_repeat('iiiiissi', count($itens)), $paramItens)->close();
             if ($ciclosParaEncerrar) {
                 require_once __DIR__ . '/janela_operacional_helper.php';
                 $atorUsuario = isset($_SESSION['idusuario']) ? (int)$_SESSION['idusuario'] : null;
@@ -744,8 +923,8 @@ function flow_planejamento_alteracao_salvar(mysqli $conn, int $id, array $dados,
             foreach ($atribuicoes as $tarefaId => $responsavel) {
                 flow_pa_query($conn, 'UPDATE funcao_imagem SET colaborador_id=? WHERE idfuncao_imagem=?', 'ii', [$responsavel, $tarefaId])->close();
             }
-            flow_pa_query($conn,"UPDATE entrega_planejamento_producao SET estado='CONFIRMADO',versao_atual_id=?,baseline_versao_id=COALESCE(baseline_versao_id,?),rascunho_json=NULL,ultimo_fingerprint=?,lock_version=lock_version+1 WHERE id=?",'iisi',[$vid,$vid,$fp['fingerprint'],$pid])->close();
-            flow_planejamento_registrar_evento($conn,$pid,$id,$temVersao ? 'REPLANEJAMENTO_CONFIRMADO' : 'PLANO_CONFIRMADO',$vid,$ator,$motivo ?: null,$nota ?: null,['modelo' => 'IMAGENS_ALTERACAO','numero' => $numero,'fingerprint' => $fp['fingerprint'],'itens' => count($itens)]);
+            flow_pa_query($conn, "UPDATE entrega_planejamento_producao SET estado='CONFIRMADO',versao_atual_id=?,baseline_versao_id=COALESCE(baseline_versao_id,?),rascunho_json=NULL,ultimo_fingerprint=?,lock_version=lock_version+1 WHERE id=?", 'iisi', [$vid,$vid,$fp['fingerprint'],$pid])->close();
+            flow_planejamento_registrar_evento($conn, $pid, $id, $temVersao ? 'REPLANEJAMENTO_CONFIRMADO' : 'PLANO_CONFIRMADO', $vid, $ator, $motivo ?: null, $nota ?: null, ['modelo' => 'IMAGENS_ALTERACAO','numero' => $numero,'fingerprint' => $fp['fingerprint'],'itens' => count($itens)]);
         }
         $conn->commit();
     } catch (Throwable $erro) {

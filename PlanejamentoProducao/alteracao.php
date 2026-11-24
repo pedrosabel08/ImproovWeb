@@ -45,12 +45,20 @@ try {
         }
     } else {
         $acao = $dados['acao'] ?? '';
-        if (!in_array($acao, ['rascunho','confirmar','sugerir','classificar'], true)) {
+        if (!in_array($acao, ['rascunho','confirmar','sugerir','classificar','transferir_execucao'], true)) {
             throw new InvalidArgumentException('Ação inválida.');
         }
         if ($acao === 'classificar') {
             flow_pa_classificar_imagens($conn, $id, $dados);
             $plano = flow_planejamento_alteracao_carregar($conn, $id);
+        } elseif ($acao === 'transferir_execucao') {
+            $plano = flow_planejamento_alteracao_transferir(
+                $conn,
+                $id,
+                $dados,
+                (int)($_SESSION['idcolaborador'] ?? 0) ?: null,
+                (int)($_SESSION['idusuario'] ?? 0) ?: null
+            );
         } elseif ($acao === 'sugerir') {
             $plano = flow_planejamento_alteracao_carregar($conn, $id);
             if (!$plano['pode_editar']) {
@@ -114,6 +122,11 @@ try {
     $plano['csrf_token'] = $_SESSION['planejamento_alteracao_csrf'];
     echo json_encode($method === 'GET' ? $plano : ['success' => true,'plano' => $plano], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
+    if ($e instanceof FlowWipException) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'O novo responsável já tem trabalho em execução. Escolha outro colaborador.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     if ($e instanceof mysqli_sql_exception && in_array($e->getCode(), [1205, 1213], true)) {
         http_response_code(409);
         echo json_encode(['success' => false, 'message' => 'O planejamento está sendo atualizado. Recarregue e revise antes de tentar novamente.'], JSON_UNESCAPED_UNICODE);

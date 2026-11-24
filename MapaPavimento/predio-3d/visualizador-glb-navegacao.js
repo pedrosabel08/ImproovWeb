@@ -1,6 +1,7 @@
 import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
 import { setupExploration } from "./exploration-mode.js?v=9";
 import { PhotoStudio } from "./photo-studio.js";
+import { PhotoLibrary } from "./photo-library.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
@@ -260,6 +261,7 @@ let northDefining = false,
   northPreviousControls = true;
 let exploration = null;
 let photo = null;
+let photoLibrary = null;
 let restorePersonScene = null;
 const northIndicator = new NorthIndicator(
   scene,
@@ -1366,6 +1368,7 @@ function disposeModelResources(root) {
 }
 
 function clearModel() {
+  photoLibrary?.invalidate();
   if (photo?.active) void photo.exit(true);
   exploration?.invalidate();
   clearVisualHighlights();
@@ -2171,6 +2174,17 @@ if (params.has("src") && !params.has("obra_id")) {
     },
   });
   mapBridge.start();
+  if (photo) photoLibrary = new PhotoLibrary(photo,mapBridge,async (state) => {
+    if (photo.active && photo.sourceMode === state.source && photo.floor() === state.floor) return;
+    if (photo.active) await photo.exit(true);
+    exploration.stop();
+    const floor = floors.find(item => item.id === state.floor);
+    if (floor) await focusFloor(floor);
+    else if (activeFloor || viewerState.selectedFloor) await resetBuildingView();
+    const anchor = state.anchor && {...state.anchor,position:new THREE.Vector3().fromArray(state.anchor.position)};
+    await exploration.selectMode(state.source,anchor);
+    if (!photo.enter()) throw new Error("A posição de navegação está indisponível. Posicione a câmera neste modelo e abra o enquadramento novamente.");
+  });
 }
 
 // ViewCube: ações acessíveis com o mesmo enquadramento e transição da navegação.

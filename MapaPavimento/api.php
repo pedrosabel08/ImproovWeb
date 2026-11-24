@@ -23,11 +23,11 @@ try {
     if ($action === 'modelos_3d') {
         $_SESSION['mapa_pavimento_csrf'] ??= bin2hex(random_bytes(32));
     }
-    if (in_array($action, $writes, true)) {
+    if (in_array($action, $writes, true) || $action === 'enquadramento_gravar') {
         if ($method !== 'POST') {
             throw new RuntimeException('Use POST para esta operação.', 405);
         }
-        mp_require_admin($_SESSION);
+        if ($action !== 'enquadramento_gravar') mp_require_admin($_SESSION);
         if (empty($_SESSION['mapa_pavimento_csrf']) || !hash_equals($_SESSION['mapa_pavimento_csrf'], (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) {
             throw new RuntimeException('Atualize a página e tente novamente.', 403);
         }
@@ -60,6 +60,16 @@ try {
     }
     $result = [];
     switch ($action) {
+        case 'enquadramentos_listar':
+            require_once __DIR__.'/../helpers/enquadramento_3d_helper.php';
+            $result = enq_list($conn,$obra,(int)$input['modelo_id']);
+            $result['autor_id'] = $author;
+            $result['admin'] = mp_can_edit($_SESSION);
+            break;
+        case 'enquadramento_gravar':
+            require_once __DIR__.'/../helpers/enquadramento_3d_helper.php';
+            $result['id'] = enq_write($conn,$obra,$author,mp_can_edit($_SESSION),$input);
+            break;
         case 'imagens_contexto_operacional':
             require_once __DIR__ . '/../helpers/imagem_contexto_operacional_helper.php';
             $rawIds = $input['imagem_ids'] ?? '';
@@ -165,8 +175,15 @@ try {
             break;
         case 'modelo_3d_contexto':
             $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0), resolveFile: false);
+            $version = mp_row($conn,'SELECT id,numero,arquivo FROM mapa_modelo_3d_versoes WHERE modelo_id=? AND arquivo=?','is',[$model['id'],$model['arquivo']]);
+            if (!empty($input['versao_id'])) {
+                $version = mp_row($conn,'SELECT id,numero,arquivo FROM mapa_modelo_3d_versoes WHERE modelo_id=? AND id=?','ii',[$model['id'],(int)$input['versao_id']]);
+                if (!$version) throw new RuntimeException('Versão indisponível neste modelo.',404);
+            }
             $result['modelo'] = $model;
-            $result['modelo']['src'] = '../api.php?' . http_build_query(['action' => 'modelo_3d_arquivo', 'obra_id' => $obra, 'modelo_id' => $model['id'], 'v' => filemtime(mp3d_file($model['arquivo']))]);
+            $result['modelo']['versao_id'] = (int)($version['id'] ?? 0);
+            $result['modelo']['numero'] = (int)($version['numero'] ?? 0);
+            $result['modelo']['src'] = '../api.php?' . http_build_query(['action' => 'modelo_3d_arquivo', 'obra_id' => $obra, 'modelo_id' => $model['id'], 'versao_id'=>$version['id'] ?? null,'v' => filemtime(mp3d_file($version['arquivo'] ?? $model['arquivo']))]);
             $result['subtipos'] = mp3d_subtypes($conn, $obra);
             $result['vinculos'] = mp3d_links($conn, $model['id']);
             break;
@@ -183,6 +200,11 @@ try {
             break;
         case 'modelo_3d_arquivo':
             $model = mp3d_model($conn, $obra, (int)($input['modelo_id'] ?? 0), resolveFile: false);
+            if (!empty($input['versao_id'])) {
+                $v = mp_row($conn,'SELECT arquivo FROM mapa_modelo_3d_versoes WHERE modelo_id=? AND id=?','ii',[$model['id'],(int)$input['versao_id']]);
+                if (!$v) throw new RuntimeException('Versão indisponível neste modelo.',404);
+                $model['arquivo']=$v['arquivo'];
+            }
             $conn->close();
             $conn = null;
             mp3d_stream($model, improov_env('FLOW_GEO_CACHE_ENABLED', '0') === '1' &&

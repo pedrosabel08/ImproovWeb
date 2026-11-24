@@ -19,3 +19,13 @@ Implementada a ferramenta de fotografia sobre caminhada e voo, com suspensão do
 **Validação.** Vinte combinações de janela e proporção passaram na verificação de continuidade da perspectiva e igualdade entre projeção visível e projeção de saída. A suíte solar passou incluindo norte, azimute, noite e fuso. No navegador interno autenticado, a fotografia abriu a partir do voo; recorte 4:5, correção vertical, horário 08:00 e confirmação de descarte funcionaram. A saída retornou ao Voo na cota de origem.
 
 **Próxima entrega.** Integração com imagens, versões reais do GLB e persistência. A homologação integrada deverá exercitar a restauração e a captura de arquivos.
+
+## Entrega 3 · Imagens, versões e persistência
+
+A biblioteca consulta imagens_cliente_obra e mantém a imagem selecionada na mesma obra. A gravação usa o ID da versão carregada e transações com bloqueio da obra, revisão otimista e chave de repetição. Preferência guarda colaborador/data. A data da primeira aprovação torna a composição imutável inclusive depois que outra passa a ser a aprovada. A cópia conserva a origem. A leitura histórica usa o arquivo da versão solicitada sem ativá-la para outros usuários.
+
+**Arquivos.** Migration SQL e script CLI de 24/11, helpers/enquadramento_3d_helper.php, MapaPavimento/api.php, photo-library.js e sua integração com o bridge, estúdio e controladores. Teste tests/enquadramentos_3d_test.php.
+
+**Validação.** A suíte executou o DDL duas vezes em um MariaDB isolado em loopback, gravou e releu composições, testou vínculos cruzados, autoria, troca de preferido/aprovado, imutabilidade histórica, revisão desatualizada, vínculo posterior e cópia entre versões. Passou. O banco configurado pelo Apache é MySQL remoto; a migration não foi aplicada nele. A verificação somente de leitura encontrou um modelo legado sem versão registrada.
+
+**Próxima entrega.** Marcadores, geração solicitada de captura e miniatura, comparação, aprovação pela interface e exportação estruturada. A homologação pelo navegador com o backend de persistência requer um banco migrado.

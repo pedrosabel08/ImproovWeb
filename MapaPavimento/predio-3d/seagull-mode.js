@@ -226,20 +226,22 @@ export function setupSeagullMode({
       }
     },
     get engaged() { return !!mode; },
-    start() {
+    start(anchor) {
       if (mode || disposed || !available()) return;
       avatarUnavailable = false;
       mode = { input: new AbortController(), controlsEnabled: controls.enabled, model: getSource().model };
+      if (anchor) saved = {model: mode.model, pose: anchor};
       controls.enabled = false;
       canvas.tabIndex = 0;
       canvas.focus({ preventScroll: true });
       viewport.classList.add("seagull-flying");
       listen(mode.input.signal);
-      void prepare();
+      return prepare();
     },
     refresh() {
       if (mode) void prepare();
     },
+    get anchor() { return flyer?.snapshot(); },
     stop() {
       if (!mode) return;
       if (flyer) saved = { model: mode.model, pose: flyer.snapshot() };

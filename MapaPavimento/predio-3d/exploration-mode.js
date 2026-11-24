@@ -290,7 +290,7 @@ export function setupExploration({
     }
   }
 
-  function selectMode(next) {
+  function selectMode(next, anchor = null) {
     if (viewport.dataset.navigation === next) return;
     stop();
     if (!available() || next === "orbit") return;
@@ -300,11 +300,12 @@ export function setupExploration({
     if (next === "seagull") {
       // Both modes can build a large collision index. Keep only the active one.
       cache = null;
-      flight.start();
+      return flight.start(anchor);
     } else {
       startPlacement();
       const source = getSource();
-      if (savedJosh?.model === source.model) void place(null, savedJosh);
+      if (anchor) return place(null, anchor);
+      if (savedJosh?.model === source.model) return place(null, savedJosh);
     }
   }
   button.addEventListener("click", () => (placing ? stop() : startPlacement()));
@@ -461,6 +462,11 @@ export function setupExploration({
 
   return {
     selectMode,
+    get anchor() {
+      if (!explorer) return flight.anchor;
+      return {position:explorer.position.clone(),yaw:explorer.yaw,pitch:explorer.pitch,
+        firstPerson:explorer.firstPerson,firstPersonFov:explorer.firstPersonFov,distance:explorer.distance};
+    },
     get camera() { return explorer?.camera || flight.camera; },
     groundAt(x, z) {
       return (cache?.collision || flight.collision)?.groundHeight(x, z, getFlightSource().bounds?.min.y ?? 0) ?? 0;

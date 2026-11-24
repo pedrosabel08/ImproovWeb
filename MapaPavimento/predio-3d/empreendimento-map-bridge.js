@@ -68,11 +68,13 @@ export class EmpreendimentoMapBridge {
       .querySelector(".top")
       .insertBefore(this.context, document.getElementById("status"));
     this.workSelect.addEventListener("change", () => {
+      this.photoVersion = null;
       this.obraId = Number(this.workSelect.value);
       this.modelId = 0;
       this.start();
     });
     this.modelSelect.addEventListener("change", () => {
+      this.photoVersion = null;
       if (!this.canEdit) return;
       this.modelId = Number(this.modelSelect.value);
       const signal = this.beginModelLoad();
@@ -292,6 +294,7 @@ export class EmpreendimentoMapBridge {
   async refreshContext(signal) {
     const data = await this.api("modelo_3d_contexto", {
       modelo_id: this.modelId,
+      ...(this.photoVersion ? {versao_id:this.photoVersion} : {}),
     }, "GET", signal);
     signal?.throwIfAborted();
     this.model = data.modelo;

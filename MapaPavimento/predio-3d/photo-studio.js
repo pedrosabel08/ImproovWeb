@@ -83,7 +83,7 @@ export class PhotoStudio {
   }
   key(e) {
     if (e.repeat && ["KeyF","KeyH","Escape"].includes(e.code)) return;
-    if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.(editable) || document.querySelector("dialog[open],.swal2-container")) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.(editable) || document.querySelector('dialog[open],[role="alertdialog"]')) return;
     if (!this.active && e.code==="KeyF" && !this.trigger.hidden) this.enter();
     else if (!this.active) return;
     else if (e.code==="Escape") void this.exit();
@@ -219,7 +219,8 @@ export class PhotoStudio {
     const q=new THREE.Quaternion().setFromEuler(this.rotation);
     const matrix=new THREE.Matrix4().compose(this.camera.position,q,new THREE.Vector3(1,1,1));
     const local=root.matrixWorld.clone().invert().multiply(matrix);
-    return {schema:1,source:this.sourceMode,local:local.toArray(),modelToScene:root.matrixWorld.toArray(),
+    const anchor=this.exploration.anchor;
+    return {schema:1,source:this.sourceMode,anchor:anchor && {...anchor,position:anchor.position.toArray()},local:local.toArray(),modelToScene:root.matrixWorld.toArray(),
       reference:this.reference(),floor:this.floor(),unit:"m",up:"Y",forward:"-Z",projection:"perspective",
       focal:this.focal,aspect:this.aspect,sensor:[36,24],gate:gate(this.aspect),fov:frameProjection(this.focal,this.aspect,this.aspect),
       vertical:this.vertical,shiftY:this.vertical?Math.tan(this.rotation.x)/(2*Math.tan(frameProjection(this.focal,this.aspect,this.aspect)*rad/2)):0,

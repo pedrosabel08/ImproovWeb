@@ -1,5 +1,5 @@
 import { createPersonPicker } from "./person-camera.js?v=2";
-import { setupSeagullMode } from "./seagull-mode.js?v=2";
+import { setupSeagullMode } from "./seagull-mode.js?v=3";
 
 const KEYS = new Set([
   "KeyW",
@@ -103,6 +103,7 @@ export function setupExploration({
     drag = null,
     orbStop = null;
   const placementPointers = new Set();
+  let paused = false;
 
   function updateTouch() {
     if (!explorer) return;
@@ -134,6 +135,7 @@ export function setupExploration({
   });
 
   function stop() {
+    paused = false;
     stopJosh();
     flight.stop();
     markMode("orbit");
@@ -319,6 +321,7 @@ export function setupExploration({
     "keydown",
     (event) => {
       if (
+        paused ||
         (!explorer && !placing) ||
         event.defaultPrevented ||
         event.target.closest?.(
@@ -387,7 +390,7 @@ export function setupExploration({
   canvas.addEventListener(
     "pointerdown",
     (event) => {
-      if (!explorer && !placing) return;
+      if (paused || (!explorer && !placing)) return;
       if (placing && event.pointerType === "touch") {
         placementPointers.add(event.pointerId);
         if (placementPointers.size > 1) {
@@ -408,7 +411,7 @@ export function setupExploration({
   canvas.addEventListener(
     "pointermove",
     (event) => {
-      if (!explorer) return;
+      if (paused || !explorer) return;
       event.stopImmediatePropagation();
       if (explorer && drag?.id === event.pointerId) {
         explorer.look(event.clientX - drag.x, event.clientY - drag.y);
@@ -422,7 +425,7 @@ export function setupExploration({
     canvas.addEventListener(
       name,
       (event) => {
-        if (!explorer && !placing) return;
+        if (paused || (!explorer && !placing)) return;
         if (placing && event.type !== "lostpointercapture")
           placementPointers.delete(event.pointerId);
         if (explorer) event.stopImmediatePropagation();
@@ -439,7 +442,7 @@ export function setupExploration({
   canvas.addEventListener(
     "wheel",
     (event) => {
-      if (!explorer) return;
+      if (paused || !explorer) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       explorer.zoom(event.deltaY);
@@ -457,6 +460,20 @@ export function setupExploration({
     pad.addEventListener(name, (event) => touchKeys.delete(event.pointerId));
 
   return {
+    selectMode,
+    get camera() { return explorer?.camera || flight.camera; },
+    groundAt(x, z) {
+      return (cache?.collision || flight.collision)?.groundHeight(x, z, getFlightSource().bounds?.min.y ?? 0) ?? 0;
+    },
+    pause(value) {
+      paused = value;
+      keys.clear();
+      touchKeys.clear();
+      drag = null;
+      previousFrame = null;
+      if (explorer) explorer.josh.scene.visible = !value;
+      flight.pause(value);
+    },
     get engaged() {
       return !!(placing || explorer || flight.engaged);
     },
@@ -478,6 +495,7 @@ export function setupExploration({
       flight.dispose();
     },
     update(now) {
+      if (paused) return this.camera;
       const enabled = available();
       if (!enabled && (explorer || placing)) stop();
       button.disabled = !enabled;

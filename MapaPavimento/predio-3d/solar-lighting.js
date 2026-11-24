@@ -475,6 +475,19 @@ export class SolarLighting {
     this.date.value = now.date;
     this.time.value = now.time;
   }
+  snapshot() {
+    return { config: this.config && { ...this.config }, date: this.date.value,
+      time: this.time.value, enabled: this.enabled,
+      azimuth: this.result?.azimuth ?? null, elevation: this.result?.altitude ?? null };
+  }
+  restoreSnapshot(state) {
+    this.setConfig(state.config);
+    this.date.value = state.date;
+    this.time.value = state.time;
+    this.enabled = !!state.enabled && !!this.config && !solarConfigError(this.config);
+    this.syncEnabled();
+    this.relight();
+  }
   navigation() {
     this.result = null;
     this.projection.hide();

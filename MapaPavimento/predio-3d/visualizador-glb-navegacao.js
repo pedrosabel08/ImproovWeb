@@ -1,12 +1,13 @@
 import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
-import { setupExploration } from "./exploration-mode.js?v=8";
+import { setupExploration } from "./exploration-mode.js?v=9";
+import { PhotoStudio } from "./photo-studio.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
 import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261124-hud";
 import { NorthIndicator } from "./north-indicator.js?v=20261113-explore";
-import { SolarLighting } from "./solar-lighting.js?v=20261119-global-hemisphere";
+import { SolarLighting } from "./solar-lighting.js?v=20261124-photo";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
 import { ModelMeasurement } from "./model-measurement.js?v=20261124-hud";
 import { visibleSurface } from "./measurement-geometry.js";
@@ -258,6 +259,7 @@ let mapBridge = null,
 let northDefining = false,
   northPreviousControls = true;
 let exploration = null;
+let photo = null;
 let restorePersonScene = null;
 const northIndicator = new NorthIndicator(
   scene,
@@ -1364,6 +1366,7 @@ function disposeModelResources(root) {
 }
 
 function clearModel() {
+  if (photo?.active) void photo.exit(true);
   exploration?.invalidate();
   clearVisualHighlights();
   floorVisibility?.restore();
@@ -2039,9 +2042,25 @@ function openPersonScene() {
     });
   };
 }
+if ($("flowSpatialWorkspace")) {
+  photo = new PhotoStudio({ viewport, exploration, solar: solarLighting,
+    model: () => modelRoot, floor: () => activeFloor?.id || viewerState.selectedFloor?.id || null,
+    reference: () => ({ config: geoEnvironment.config && {...geoEnvironment.config},
+      environmentToScene: geoEnvironment.group?.matrixWorld.toArray() ?? null }) });
+  const launcher = document.createElement("div");
+  launcher.className = "photo-launch";
+  viewport.append(launcher);
+  launcher.append(viewport.querySelector(".hud-modes"), photo.trigger);
+  const setPhotoControls = (value) => {
+    for (const el of document.querySelectorAll(".top,.hud-modes,.side,.viewtools,.floor-popover,.person-camera-controls,.exploration-pad"))
+      el.inert = value;
+  };
+  photo.listeners.addEventListener("enter", () => setPhotoControls(true));
+  photo.listeners.addEventListener("exit", () => setPhotoControls(false));
+}
 (function animate(now = performance.now()) {
   requestAnimationFrame(animate);
-  const explorerCamera = exploration.update(now);
+  const explorerCamera = photo?.tick(now) || exploration.update(now);
   $("backToProject").disabled =
     measurements.active || northDefining || !!mapBridge?.busy;
   $("resetBuildingView").disabled =

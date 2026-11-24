@@ -212,6 +212,19 @@ export function setupSeagullMode({
   });
 
   return {
+    get camera() { return flyer?.camera; },
+    get collision() { return flyer?.collision; },
+    pause(value) {
+      if (!mode) return;
+      clearInput();
+      if (value) {
+        mode.input.abort();
+        avatar?.detach();
+      } else {
+        mode.input = new AbortController();
+        listen(mode.input.signal);
+      }
+    },
     get engaged() { return !!mode; },
     start() {
       if (mode || disposed || !available()) return;

@@ -2,6 +2,7 @@ import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
 import { setupExploration } from "./exploration-mode.js?v=9";
 import { PhotoStudio } from "./photo-studio.js";
 import { PhotoLibrary } from "./photo-library.js";
+import { PhotoReview, renderPhoto } from "./photo-review.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
@@ -262,6 +263,7 @@ let northDefining = false,
 let exploration = null;
 let photo = null;
 let photoLibrary = null;
+let photoReview = null;
 let restorePersonScene = null;
 const northIndicator = new NorthIndicator(
   scene,
@@ -2084,6 +2086,7 @@ if ($("flowSpatialWorkspace")) {
     geoEnvironment.update(now);
     viewerEnvironment.tick();
     measurements.update(explorerCamera || camera);
+    photoReview?.update(camera);
     if (lightingDiagnostic) {
       lightingDiagnostic.render(
         explorerCamera || camera,
@@ -2277,6 +2280,17 @@ more.addEventListener("keydown", (event) => {
   event.stopPropagation();
 });
 viewCube.addEventListener("click", () => { more.open = false; });
+if (photoLibrary) photoReview = new PhotoReview(photoLibrary,{
+  capture: () => renderPhoto({studio:photo,renderer,scene,
+    helpers:[axes,grid,northIndicator.group,northIndicator.environment,measurements.group,solarLighting.projection.root,solarLighting.marker,...highlightHelpers],
+    credits:[geoEnvironment.attribution,geoEnvironment.demAttribution].filter(a=>!a.hidden).map(a=>a.textContent)}),
+  flyTo: (state) => {
+    const world=modelRoot.matrixWorld.clone().multiply(new THREE.Matrix4().fromArray(state.local));
+    const position=new THREE.Vector3().setFromMatrixPosition(world);
+    return transitionCamera({position,target:new THREE.Vector3(0,0,-6).applyMatrix4(world),
+      up:new THREE.Vector3(0,1,0),height:Math.max(4,Math.tan(state.fov*Math.PI/360)*12),top:false});
+  }
+});
 const floorSide = $("leftSidebar");
 floorSide.querySelector(".head").after($("floorSwitcher"));
 if (mapBridge) {

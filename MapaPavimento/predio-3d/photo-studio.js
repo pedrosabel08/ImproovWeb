@@ -102,6 +102,8 @@ export class PhotoStudio {
     this.focal = entranceFocal(source.fov,source.zoom,source.aspect,this.aspect);
     this.speed = 1; this.vertical = false; this.active = true; this.dirty = false;
     this.originalSun = this.solar.snapshot();
+    this.navigationSunPosition = this.solar.explorerPosition;
+    this.solar.setExplorerPosition(this.camera.position);
     this.exploration.pause(true);
     this.viewport.closest(".app").classList.add("photo-active");
     this.layer.hidden = false; this.trigger.hidden = true;
@@ -120,6 +122,7 @@ export class PhotoStudio {
     }
     this.active = this.dirty = false; this.keys.clear(); this.drag = null;
     this.layer.hidden = true; this.viewport.closest(".app").classList.remove("photo-active","photo-clean");
+    this.solar.setExplorerPosition(this.navigationSunPosition);
     this.solar.restoreSnapshot(this.originalSun);
     this.exploration.pause(false);
     this.listeners.dispatchEvent(new Event("exit"));
@@ -219,9 +222,14 @@ export class PhotoStudio {
     const q=new THREE.Quaternion().setFromEuler(this.rotation);
     const matrix=new THREE.Matrix4().compose(this.camera.position,q,new THREE.Vector3(1,1,1));
     const local=root.matrixWorld.clone().invert().multiply(matrix);
+    const opticalCamera=this.camera.clone();
+    this.projectCamera(opticalCamera,this.aspect);
+    const opticalLocal=root.matrixWorld.clone().invert().multiply(opticalCamera.matrixWorld);
+    const target=new THREE.Vector3(0,0,-1).applyMatrix4(local);
     const anchor=this.exploration.anchor;
     return {schema:1,source:this.sourceMode,anchor:anchor && {...anchor,position:anchor.position.toArray()},local:local.toArray(),modelToScene:root.matrixWorld.toArray(),
       reference:this.reference(),floor:this.floor(),unit:"m",up:"Y",forward:"-Z",projection:"perspective",
+      targetLocal:target.toArray(),opticalLocal:opticalLocal.toArray(),projectionMatrix:opticalCamera.projectionMatrix.toArray(),
       focal:this.focal,aspect:this.aspect,sensor:[36,24],gate:gate(this.aspect),fov:frameProjection(this.focal,this.aspect,this.aspect),
       vertical:this.vertical,shiftY:this.vertical?Math.tan(this.rotation.x)/(2*Math.tan(frameProjection(this.focal,this.aspect,this.aspect)*rad/2)):0,
       roll:this.rotation.z,height:Number(this.field.height.value),solar:this.solar.snapshot()};

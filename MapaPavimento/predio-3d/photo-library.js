@@ -74,6 +74,7 @@ export class PhotoLibrary {
     this.studio.imageAspect=image?.largura && image?.altura?image.largura/image.altura:null;
     this.current=this.rows.find(r=>Number(r.id)===this.selectedId)||null;
     this.saveButton.textContent=this.current?.aprovado_em?"Salvar como cópia":"Salvar enquadramento";
+    this.studio.listeners.dispatchEvent(new Event("selection"));
   }
   render() {
     this.syncSelection();this.list.replaceChildren();
@@ -139,6 +140,7 @@ export class PhotoLibrary {
     const dest=Number(this.bridge.model.versao_id);
     const image=Number(row.imagem_id)||null;
     this.dialog.close();
+    if(this.studio.active && this.studio.dirty) {await this.studio.exit();if(this.studio.active)return;}
     await this.openScene(row.composicao);
     this.studio.restore(row.composicao);
     const ok=await FlowAlert.confirm({title:"Validar na versão em uso",message:"Confira a posição, escala, orientação e o sol na cena de destino antes de registrar a cópia.",confirmText:"Registrar cópia"});

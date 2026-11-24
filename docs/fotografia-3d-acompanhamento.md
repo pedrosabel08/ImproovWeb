@@ -29,3 +29,13 @@ A biblioteca consulta imagens_cliente_obra e mantém a imagem selecionada na mes
 **Validação.** A suíte executou o DDL duas vezes em um MariaDB isolado em loopback, gravou e releu composições, testou vínculos cruzados, autoria, troca de preferido/aprovado, imutabilidade histórica, revisão desatualizada, vínculo posterior e cópia entre versões. Passou. O banco configurado pelo Apache é MySQL remoto; a migration não foi aplicada nele. A verificação somente de leitura encontrou um modelo legado sem versão registrada.
 
 **Próxima entrega.** Marcadores, geração solicitada de captura e miniatura, comparação, aprovação pela interface e exportação estruturada. A homologação pelo navegador com o backend de persistência requer um banco migrado.
+
+## Entrega 4 · Capturas, marcadores e revisão
+
+Concluídas as entregas 1 a 4. A foto e a miniatura são geradas na ação **Gerar captura**, após salvar a composição. A API verifica sessão, obra, autoria, revisão e proporção. Os JPEG ficam em armazenamento privado e são entregues por uma rota autenticada. O filtro orbital começa em “Ocultar câmeras”. A revisão permite comparação, preferência, aprovação e exportação da câmera em JSON.
+
+**Arquivos.** photo-review.js, photo-library.js, photo-studio.js/css, visualizador-glb-navegacao.js, api.php, helpers/enquadramento*3d*{captura,helper}.php e os testes photo\_{capture_test.cjs,qa_database.php}.
+
+**Testes aprovados.** O PHP-CGI recebeu um upload multipart, devolveu a imagem 1638 × 2048 e a miniatura 256 × 320, rejeitou sessão ausente, CSRF inválido, obra incorreta, revisão obsoleta e substituição de captura aprovada. A repetição conservou um registro. No Chrome autenticado, o teste abriu o modelo RKS_DCF/P00, selecionou uma imagem 4:5, salvou e duplicou a composição, gerou duas capturas, comparou manhã e tarde, preferiu, aprovou, exportou e restaurou a câmera após recarregar. Conferiu também a criação do marcador no filtro e a contagem de chamadas ao GLB. Os dados de fotografia usaram a API PHP e uma sessão e um banco descartáveis. As demais leituras vieram do ambiente oficial.
+
+**Em andamento.** Entrega 5, homologação e documentação. Consolidar as evidências visuais, as amostras antes/depois e as limitações operacionais. A migration do banco compartilhado permanece pendente de implantação.

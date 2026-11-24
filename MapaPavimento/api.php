@@ -23,11 +23,12 @@ try {
     if ($action === 'modelos_3d') {
         $_SESSION['mapa_pavimento_csrf'] ??= bin2hex(random_bytes(32));
     }
-    if (in_array($action, $writes, true) || $action === 'enquadramento_gravar') {
+    $photoWrite = in_array($action, ['enquadramento_gravar','enquadramento_capturar'], true);
+    if (in_array($action, $writes, true) || $photoWrite) {
         if ($method !== 'POST') {
             throw new RuntimeException('Use POST para esta operação.', 405);
         }
-        if ($action !== 'enquadramento_gravar') mp_require_admin($_SESSION);
+        if (!$photoWrite) mp_require_admin($_SESSION);
         if (empty($_SESSION['mapa_pavimento_csrf']) || !hash_equals($_SESSION['mapa_pavimento_csrf'], (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) {
             throw new RuntimeException('Atualize a página e tente novamente.', 403);
         }
@@ -41,7 +42,7 @@ try {
     if ($action === 'modelo_3d_upload' && empty($_POST) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
         throw new RuntimeException('O envio excede o limite do servidor. Verifique post_max_size e o limite do proxy no VPS.', 413);
     }
-    $input = $method === 'POST' ? (in_array($action, ['documento_upload', 'modelo_3d_upload'], true) ? $_POST : json_decode(file_get_contents('php://input'), true, 64, JSON_THROW_ON_ERROR)) : $_GET;
+    $input = $method === 'POST' ? (in_array($action, ['documento_upload', 'modelo_3d_upload','enquadramento_capturar'], true) ? $_POST : json_decode(file_get_contents('php://input'), true, 64, JSON_THROW_ON_ERROR)) : $_GET;
     if (!is_array($input)) {
         throw new InvalidArgumentException('Dados inválidos.');
     }
@@ -60,6 +61,13 @@ try {
     }
     $result = [];
     switch ($action) {
+        case 'enquadramento_capturar':
+            require_once __DIR__.'/../helpers/enquadramento_3d_captura.php';
+            enq_capture($conn,$obra,$author,mp_can_edit($_SESSION),$input,$_FILES['captura']??null);
+            break;
+        case 'enquadramento_arquivo':
+            require_once __DIR__.'/../helpers/enquadramento_3d_captura.php';
+            enq_stream($conn,$obra,$input);
         case 'enquadramentos_listar':
             require_once __DIR__.'/../helpers/enquadramento_3d_helper.php';
             $result = enq_list($conn,$obra,(int)$input['modelo_id']);

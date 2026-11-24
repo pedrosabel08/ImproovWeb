@@ -53,3 +53,13 @@
 .library-filters label:last-child {grid-column:1/-1;}
 .photo-controls [data-library] {padding:8px 12px;}
 @media(max-width:735px){.photo-library-launch{top:113px;right:8px;}}
+.photo-markers {position:absolute;inset:0;pointer-events:none;}
+.photo-marker {position:absolute;pointer-events:auto;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;max-width:160px;padding:5px 7px;background:var(--spatial-float);color:var(--spatial-text);border:1px solid var(--spatial-accent);border-radius:6px;font-size:11px;}
+.photo-marker[data-other=true] {border-style:dashed;}
+.photo-marker[hidden],.viewport:not([data-navigation=orbit]) .photo-markers,.photo-active .photo-markers {display:none;}
+.photo-library article img {width:90px;max-height:90px;object-fit:contain;}
+.photo-comparison[open] {z-index:1101;width:min(1000px,94vw);}
+.photo-compare-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:14px;}
+.photo-compare-grid article {align-content:start;}
+.photo-compare-grid article img {width:100%;max-height:340px;}
+.photo-library article label {margin:0;}

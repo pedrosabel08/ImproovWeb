@@ -33,7 +33,10 @@ function enq_version(mysqli $c,int $obra,int $id): array {
     return $v;
 }
 function enq_list(mysqli $c,int $obra,int $modelo): array {
-    $images=mp_rows($c,'SELECT idimagens_cliente_obra id,imagem_nome nome,tipo_imagem tipo FROM imagens_cliente_obra WHERE obra_id=? ORDER BY imagem_nome','i',[$obra]);
+    require_once __DIR__.'/../conexaoMain.php';
+    $dimensions = improov_main_table_has_column($c,'imagens_cliente_obra','largura')
+        && improov_main_table_has_column($c,'imagens_cliente_obra','altura') ? ',largura,altura' : '';
+    $images=mp_rows($c,"SELECT idimagens_cliente_obra id,imagem_nome nome,tipo_imagem tipo $dimensions FROM imagens_cliente_obra WHERE obra_id=? ORDER BY imagem_nome",'i',[$obra]);
     $versions=mp_rows($c,'SELECT v.id,v.numero FROM mapa_modelo_3d_versoes v JOIN mapa_modelos_3d m ON m.id=v.modelo_id WHERE m.id=? AND m.obra_id=? ORDER BY numero DESC','ii',[$modelo,$obra]);
     $rows=mp_rows($c,'SELECT e.*,v.numero versao_numero,col.nome_colaborador autor FROM imagem_enquadramentos_3d e JOIN mapa_modelo_3d_versoes v ON v.id=e.versao_id JOIN colaborador col ON col.idcolaborador=e.autor_id WHERE e.obra_id=? AND v.modelo_id=? ORDER BY e.id DESC','ii',[$obra,$modelo]);
     foreach ($rows as &$row) {

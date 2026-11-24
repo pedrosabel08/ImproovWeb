@@ -19,6 +19,16 @@ export class PhotoLibrary {
       <p data-library-status role="status"></p><div data-list></div><footer></footer>`;
     document.body.append(this.dialog);
     this.dialog.querySelector("[data-close]").onclick=()=>this.dialog.close();
+    this.activeVersion=action("Voltar à versão ativa",async()=>{
+      if(this.studio.active){
+        await this.studio.exit();
+        if(this.studio.active) return;
+      }
+      this.bridge.photoVersion=null;
+      await this.bridge.loadModel(this.bridge.beginModelLoad());
+    });
+    this.activeVersion.hidden=true;
+    this.dialog.querySelector("footer").append(this.activeVersion);
     this.search=this.dialog.querySelector("input");this.type=this.dialog.querySelector("[data-type]");
     this.image=this.dialog.querySelector("[data-image]");this.list=this.dialog.querySelector("[data-list]");
     this.search.oninput=this.type.onchange=()=>this.renderImages();
@@ -43,7 +53,7 @@ export class PhotoLibrary {
     const data=await this.bridge.api("enquadramentos_listar",{modelo_id:this.bridge.modelId});
     if(context!==this.context()||gen!==this.generation)throw new Error("O modelo mudou. Abra a lista novamente.");
     this.loaded=context; this.rows=data.enquadramentos;this.images=data.imagens;this.admin=data.admin;this.author=Number(data.autor_id);
-    this.versions=data.versoes;
+    this.activeVersion.hidden=!this.bridge.photoVersion;
     if(!this.images.some(i=>Number(i.id)===this.selectedImage))this.selectedImage=null;
     this.type.replaceChildren(new Option("Todos os tipos",""),...Array.from(new Set(this.images.map(i=>i.tipo).filter(Boolean))).sort().map(s=>new Option(s,s)));
     this.renderImages();this.render();
@@ -71,7 +81,8 @@ export class PhotoLibrary {
     const image=this.images.find(i=>Number(i.id)===this.selectedImage);
     this.launch.textContent=image?image.nome:"Imagens e enquadramentos";
     this.studioButton.textContent=this.launch.textContent;
-    this.studio.imageAspect=image?.largura && image?.altura?image.largura/image.altura:null;
+    const aspect=image?.largura / image?.altura;
+    this.studio.imageAspect=aspect>=0.05 && aspect<=20 ? aspect : null;
     this.current=this.rows.find(r=>Number(r.id)===this.selectedId)||null;
     this.saveButton.textContent=this.current?.aprovado_em?"Salvar como cópia":"Salvar enquadramento";
     this.studio.listeners.dispatchEvent(new Event("selection"));
@@ -84,7 +95,10 @@ export class PhotoLibrary {
       const card=document.createElement("article");card.dataset.row=row.id;
       const s=row.composicao;
       card.append(txt("strong",row.nome),txt("small",`v${row.versao_numero} · ${s.focal.toFixed(1)} mm · ${s.solar.date} ${s.solar.time} · ${row.autor} · ${row.criado_em}`));
-      if(row.preferido)card.append(txt("span","★ Preferido"));
+      if(row.preferido) {
+        card.append(txt("span","★ Preferido"));
+        card.append(txt("small",`${row.preferencia_autor} · ${row.preferido_em}`));
+      }
       if(row.aprovado)card.append(txt("span","✓ Aprovado"));
       else if(row.aprovado_em)card.append(txt("span","Aprovação anterior"));
       card.append(action("Abrir",()=>this.show(row)),action("Duplicar",()=>this.duplicate(row)));

@@ -1,0 +1,20 @@
+{
+  "revision": "382e7939",
+  "browser": "151.0.7922.108",
+  "viewport": "1366x768",
+  "readyMs": 9654,
+  "samples": [
+    {
+      "mode": "orbital",
+      "medianMs": 16.7,
+      "p95Ms": 16.8,
+      "heapMiB": 138
+    },
+    {
+      "mode": "voo",
+      "medianMs": 16.8,
+      "p95Ms": 66.6,
+      "heapMiB": 302
+    }
+  ]
+}

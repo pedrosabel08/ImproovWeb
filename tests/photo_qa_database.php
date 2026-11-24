@@ -31,4 +31,3 @@ $db->query("INSERT INTO imagens_cliente_obra VALUES (31,$obra,'01. Fachada princ
 $db->query("INSERT INTO mapa_modelos_3d VALUES ($model,$obra)");
 $db->query("INSERT INTO mapa_modelo_3d_versoes VALUES ($version,$model,1,'qa.glb')");
 $db->query(file_get_contents(__DIR__.'/../sql/2026-11-24_imagem_enquadramentos_3d.sql'));
-

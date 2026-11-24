@@ -29,6 +29,8 @@
 #flowSpatialWorkspace .photo-active :is(.viewtools,.person-camera-controls,.exploration-pad,.exploration-hint,.floor-popover,.side,.hint,.model-compass,.north-model-label,.solar-marker-label) { visibility:hidden; }
 .photo-active .hud-modes::after { content:"Fotografia"; padding:5px 8px; border-left:1px solid var(--spatial-border); color:var(--spatial-accent); font-size:12px; }
 .photo-clean :is(.top,.photo-launch,.photo-controls,.photo-actions,.photo-frame > div) { visibility:hidden; }
+body.flow-spatial-page:has(.photo-clean) aside.sidebar { visibility:hidden; }
+.photo-clean #viewport > :not(canvas.gl,.photo-layer,.geo-attribution) { visibility:hidden; }
 .photo-clean .photo-restore { display:block; opacity:.48; }.photo-clean .photo-restore:is(:hover,:focus) {opacity:1;}
 @media(max-width:900px) {
  .photo-launch {left:8px;top:8px;gap:4px;}
@@ -38,7 +40,14 @@
  .photo-launch {flex-wrap:wrap;max-width:calc(100% - 16px);}
  .photo-trigger {font-size:11px;}
  .viewport:has(.photo-trigger:not([hidden])) .photo-launch .hud-modes button {padding-inline:5px;gap:3px;}
+ #flowSpatialWorkspace .photo-active .photo-launch .hud-modes button {padding-inline:7px;gap:4px;}
+ .photo-active .hud-modes::after {padding-inline:5px;font-size:10px;}
  .photo-actions {font-size:11px;bottom:32px;}
+}
+@media(max-width:420px) {
+ .photo-active .hud-modes::after {letter-spacing:-.13px;}
+ #flowSpatialWorkspace .photo-active .photo-launch .hud-modes button {padding-inline:5px;gap:3px;}
+ .photo-controls {max-height:calc(100% - 184px);}
 }
 .photo-library-launch { position:absolute; top:74px; right:14px; z-index:6; max-width:min(300px,65%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .photo-active .photo-library-launch,.layout:not(.right-collapsed) .photo-library-launch,.layout:not(.left-collapsed) .photo-library-launch,.viewport:has(.floor-popover:not([hidden])) .photo-library-launch { display:none; }
@@ -63,3 +72,5 @@
 .photo-compare-grid article {align-content:start;}
 .photo-compare-grid article img {width:100%;max-height:340px;}
 .photo-library article label {margin:0;}
+.photo-comparison header {margin-bottom:12px;}
+.photo-comparison header h2 {margin:0;}

@@ -191,7 +191,8 @@ try {
             $result['modelo'] = $model;
             $result['modelo']['versao_id'] = (int)($version['id'] ?? 0);
             $result['modelo']['numero'] = (int)($version['numero'] ?? 0);
-            $result['modelo']['src'] = '../api.php?' . http_build_query(['action' => 'modelo_3d_arquivo', 'obra_id' => $obra, 'modelo_id' => $model['id'], 'versao_id'=>$version['id'] ?? null,'v' => filemtime(mp3d_file($version['arquivo'] ?? $model['arquivo']))]);
+            $historical = $version && $version['arquivo'] !== $model['arquivo'];
+            $result['modelo']['src'] = '../api.php?' . http_build_query(['action' => 'modelo_3d_arquivo', 'obra_id' => $obra, 'modelo_id' => $model['id'], 'versao_id'=>$version['id'] ?? null,'v' => filemtime(mp3d_file($version['arquivo'] ?? $model['arquivo'])), 'historico' => $historical ? 1 : null]);
             $result['subtipos'] = mp3d_subtypes($conn, $obra);
             $result['vinculos'] = mp3d_links($conn, $model['id']);
             break;

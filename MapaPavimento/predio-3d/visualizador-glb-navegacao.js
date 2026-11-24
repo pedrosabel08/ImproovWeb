@@ -140,6 +140,7 @@ const geoEnvironment = new GeoEnvironment({
   },
   onChange: () => {
     textureToggle.hidden = !geoEnvironment.group;
+    if (photo?.active) void photo.exit(true);
     exploration?.invalidate();
     light.shadow.needsUpdate = true;
     solarLighting.setTerrainDimension(
@@ -1585,6 +1586,7 @@ async function loadUrl(url, obraId = null, signal) {
   obraId ??= modelPath.match(/\/uploads\/model-3d\/obra-(\d+)\//)?.[1];
   const cacheModel =
     modelUrl.origin === location.origin &&
+    !modelUrl.searchParams.has("historico") &&
     modelUrl.searchParams.get("obra_id") === String(obraId) &&
     modelUrl.searchParams.get("action") === "modelo_3d_arquivo"
       ? {
@@ -2181,6 +2183,23 @@ if (params.has("src") && !params.has("obra_id")) {
     if (photo.active && photo.sourceMode === state.source && photo.floor() === state.floor) return;
     if (photo.active) await photo.exit(true);
     exploration.stop();
+    if (viewport.dataset.geoState === "loading") {
+      const root = modelRoot;
+      await new Promise((resolve,reject) => {
+        const observer = new MutationObserver(() => {
+          if (viewport.dataset.geoState === "loading" && modelRoot === root) return;
+          observer.disconnect();
+          clearTimeout(deadline);
+          resolve();
+        });
+        const deadline = setTimeout(() => {
+          observer.disconnect();
+          reject(new Error("O entorno ainda está carregando. Abra o enquadramento novamente quando a navegação estiver disponível."));
+        },30000);
+        observer.observe(viewport, {attributes:true,attributeFilter:["data-geo-state"]});
+      });
+      if (modelRoot !== root) throw new Error("O modelo mudou durante a abertura da fotografia.");
+    }
     const floor = floors.find(item => item.id === state.floor);
     if (floor) await focusFloor(floor);
     else if (activeFloor || viewerState.selectedFloor) await resetBuildingView();

@@ -43,4 +43,3 @@ try {
     $write('excluir',['id'=>$free,'revisao'=>2]);
     echo "OK: migration repetida, gravação idempotente, integridade da obra, autorização, preferência com autoria, aprovação imutável, substituição, cópia entre versões, vínculo e revisão concorrente.\n";
 } finally { $c->query("DROP DATABASE `$db`"); }
-

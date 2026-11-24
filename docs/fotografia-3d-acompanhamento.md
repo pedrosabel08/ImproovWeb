@@ -39,3 +39,17 @@ Concluídas as entregas 1 a 4. A foto e a miniatura são geradas na ação **Ger
 **Testes aprovados.** O PHP-CGI recebeu um upload multipart, devolveu a imagem 1638 × 2048 e a miniatura 256 × 320, rejeitou sessão ausente, CSRF inválido, obra incorreta, revisão obsoleta e substituição de captura aprovada. A repetição conservou um registro. No Chrome autenticado, o teste abriu o modelo RKS_DCF/P00, selecionou uma imagem 4:5, salvou e duplicou a composição, gerou duas capturas, comparou manhã e tarde, preferiu, aprovou, exportou e restaurou a câmera após recarregar. Conferiu também a criação do marcador no filtro e a contagem de chamadas ao GLB. Os dados de fotografia usaram a API PHP e uma sessão e um banco descartáveis. As demais leituras vieram do ambiente oficial.
 
 **Em andamento.** Entrega 5, homologação e documentação. Consolidar as evidências visuais, as amostras antes/depois e as limitações operacionais. A migration do banco compartilhado permanece pendente de implantação.
+
+## Entrega 5 · Homologação e documentação
+
+**Situação.** Entregas 1 a 5 implementadas e validadas no ambiente local. A implantação compartilhada está pendente. Os commits são locais.
+
+**Ajustes da homologação.** A saída conserva deslocamentos fotográficos quando o controlador consegue retomá-los com suporte e sem colisão. O painel de biblioteca mostra a autoria da preferência e permite voltar à versão ativa. GLBs históricos evitam a reutilização do cache de geometria da versão ativa. A HUD mobile mantém a indicação de fotografia dentro da viewport.
+
+**Arquivos.** API do Mapa de Pavimento, helper de enquadramentos, visualizador, controladores de exploração e de voo, estúdio, biblioteca e revisão. O teste navegável está em `tools/audit_fotografia_3d.cjs`. As evidências têm acesso HTTP bloqueado e acompanham o [relatório técnico](fotografia-3d-relatorio-tecnico.md).
+
+**Validação.** Confirmada a alternância 2D/3D com o PDF vinculado de CIB_HYP no navegador interno autenticado. A auditoria Chrome passou no fluxo de fotografia e revisão com API e armazenamento isolados, em seis tamanhos de viewport e nos temas claro e escuro. As suítes de óptica, sol, recorte, voo, colisão, medição, PDF, permissões, persistência e captura passaram. A suíte legada de GLB encontrou a fixture `Projeto-TES_TES.glb` indisponível. A revisão automática vetou uma repetição elevada pelo risco de escrita no banco compartilhado.
+
+**Desempenho.** A amostra comparável em RKS_DCF/P00 registrou 9,65 s → 9,41 s até o entorno pronto, mediana orbital de 16,7 ms nas duas execuções e heap de voo de 302 → 303 MiB. O relatório registra metodologia, dados brutos e a variabilidade das amostras.
+
+**Pendências de implantação.** Executar a migration no banco de destino com acesso ao GLB legado e configurar a raiz privada. Repetir o fluxo integrado na infraestrutura de destino. A decisão sobre retenção dos arquivos substituídos permanece operacional.

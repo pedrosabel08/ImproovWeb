@@ -32,6 +32,7 @@ export class PhotoStudio {
       <label>Proporção<select data-field="ratio">${ratios.map(r=>`<option>${r}</option>`).join("")}<option value="custom">Personalizada</option></select></label>
       <label data-custom>Largura : altura<input data-field="custom" placeholder="4:5" aria-label="Proporção personalizada"></label>
       ${numberField("height","Altura sobre o terreno (m)",0.1)}${numberField("altitude","Cota da câmera (m)",0.1)}
+      ${numberField("x","Posição X da cena (m)","any")}${numberField("z","Posição Z da cena (m)","any")}
       ${numberField("yaw","Direção (°)",0.5)}${numberField("pitch","Inclinação (°)",0.5,-89,89)}${numberField("roll","Horizonte (°)",0.5,-180,180)}
       ${numberField("speed","Velocidade (m/s)",0.1,0.1,50)}
       <label><input type="checkbox" data-field="vertical">Correção vertical</label></fieldset>
@@ -96,6 +97,7 @@ export class PhotoStudio {
     const source = this.exploration.camera;
     if (this.active || !source || !this.model()) return false;
     this.camera = source.clone();
+    this.entryPosition = source.position.clone();
     this.rotation = new THREE.Euler().setFromQuaternion(source.quaternion,"YXZ");
     this.sourceMode = this.viewport.dataset.navigation;
     this.aspect = aspect || source.aspect;
@@ -124,6 +126,7 @@ export class PhotoStudio {
     this.layer.hidden = true; this.viewport.closest(".app").classList.remove("photo-active","photo-clean");
     this.solar.setExplorerPosition(this.navigationSunPosition);
     this.solar.restoreSnapshot(this.originalSun);
+    if (!force) this.exploration.resumeAtOffset(this.camera.position.clone().sub(this.entryPosition));
     this.exploration.pause(false);
     this.listeners.dispatchEvent(new Event("exit"));
     this.trigger.focus({preventScroll:true});
@@ -147,6 +150,7 @@ export class PhotoStudio {
     else if(key==="speed") this.speed=n;
     else if(key==="height") pos.y=this.exploration.groundAt(pos.x,pos.z)+n;
     else if(key==="altitude") pos.y=n;
+    else if(key==="x" || key==="z") pos[key]=n;
     else if(key==="vertical") this.vertical=el.checked;
     else if(["pitch","yaw","roll"].includes(key)) this.rotation[{pitch:"x",yaw:"y",roll:"z"}[key]]=n*rad;
     else {
@@ -184,7 +188,7 @@ export class PhotoStudio {
   }
   sync() {
     const pos=this.camera.position;
-    for(const [key,value] of Object.entries({focal:this.focal,height:pos.y-this.exploration.groundAt(pos.x,pos.z),altitude:pos.y,yaw:this.rotation.y/rad,pitch:this.rotation.x/rad,roll:this.rotation.z/rad,speed:this.speed}))
+    for(const [key,value] of Object.entries({focal:this.focal,height:pos.y-this.exploration.groundAt(pos.x,pos.z),altitude:pos.y,x:pos.x,z:pos.z,yaw:this.rotation.y/rad,pitch:this.rotation.x/rad,roll:this.rotation.z/rad,speed:this.speed}))
       if(document.activeElement!==this.field[key]) this.field[key].value=Number(value.toFixed(3));
     this.field.vertical.checked=this.vertical;
     this.field.roll.disabled=this.vertical;

@@ -468,6 +468,24 @@ export function setupExploration({
         firstPerson:explorer.firstPerson,firstPersonFov:explorer.firstPersonFov,distance:explorer.distance};
     },
     get camera() { return explorer?.camera || flight.camera; },
+    resumeAtOffset(offset) {
+      if (offset.lengthSq() < 1e-8) return;
+      if (!explorer) {
+        flight.resumeAtOffset(offset);
+        return;
+      }
+      const horizontal = Math.hypot(offset.x, offset.z);
+      // A walking avatar must still have continuous floor support.
+      if (horizontal > 5 || Math.abs(offset.y) > 0.5) return;
+      const candidate = explorer.position.clone();
+      const steps = Math.max(1, Math.ceil(horizontal / 0.12));
+      for (let step = 0; step < steps; step++) {
+        if (!explorer.collision.tryMove(candidate, offset.x / steps, offset.z / steps)) return;
+      }
+      explorer.position.copy(candidate);
+      explorer.josh.scene.position.copy(candidate);
+      explorer.updateCamera(0, true);
+    },
     groundAt(x, z) {
       return (cache?.collision || flight.collision)?.groundHeight(x, z, getFlightSource().bounds?.min.y ?? 0) ?? 0;
     },

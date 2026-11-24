@@ -214,6 +214,14 @@ export function setupSeagullMode({
   return {
     get camera() { return flyer?.camera; },
     get collision() { return flyer?.collision; },
+    resumeAtOffset(offset) {
+      if (!flyer) return;
+      const candidate = flyer.position.clone().add(offset);
+      if (flyer.canOccupy(candidate, flyer.position)) {
+        flyer.position.copy(candidate);
+        flyer.updateCamera(0);
+      }
+    },
     pause(value) {
       if (!mode) return;
       clearInput();

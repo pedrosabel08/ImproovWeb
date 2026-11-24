@@ -106,8 +106,10 @@ export class PhotoReview {
     const rows=this.library.rows.filter(r=>this.selected.has(String(r.id)) && Number(r.imagem_id)===this.library.selectedImage);
     if(rows.length<2)return;
     this.preview.replaceChildren();
+    const header=document.createElement("header");
     const title=document.createElement("h2");title.textContent="Comparar enquadramentos";
-    this.preview.append(title,action("Fechar comparação",()=>this.preview.close()));
+    header.append(title,action("Fechar comparação",()=>this.preview.close()));
+    this.preview.append(header);
     const grid=document.createElement("div");grid.className="photo-compare-grid";
     for(const row of rows) {
       const card=document.createElement("article"),name=document.createElement("strong"),info=document.createElement("p");

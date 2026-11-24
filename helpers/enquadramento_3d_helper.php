@@ -38,7 +38,10 @@ function enq_list(mysqli $c,int $obra,int $modelo): array {
         && improov_main_table_has_column($c,'imagens_cliente_obra','altura') ? ',largura,altura' : '';
     $images=mp_rows($c,"SELECT idimagens_cliente_obra id,imagem_nome nome,tipo_imagem tipo $dimensions FROM imagens_cliente_obra WHERE obra_id=? ORDER BY imagem_nome",'i',[$obra]);
     $versions=mp_rows($c,'SELECT v.id,v.numero FROM mapa_modelo_3d_versoes v JOIN mapa_modelos_3d m ON m.id=v.modelo_id WHERE m.id=? AND m.obra_id=? ORDER BY numero DESC','ii',[$modelo,$obra]);
-    $rows=mp_rows($c,'SELECT e.*,v.numero versao_numero,col.nome_colaborador autor FROM imagem_enquadramentos_3d e JOIN mapa_modelo_3d_versoes v ON v.id=e.versao_id JOIN colaborador col ON col.idcolaborador=e.autor_id WHERE e.obra_id=? AND v.modelo_id=? ORDER BY e.id DESC','ii',[$obra,$modelo]);
+    $rows=mp_rows($c,'SELECT e.*,v.numero versao_numero,col.nome_colaborador autor,p.nome_colaborador preferencia_autor
+        FROM imagem_enquadramentos_3d e JOIN mapa_modelo_3d_versoes v ON v.id=e.versao_id
+        JOIN colaborador col ON col.idcolaborador=e.autor_id LEFT JOIN colaborador p ON p.idcolaborador=e.preferido_por
+        WHERE e.obra_id=? AND v.modelo_id=? ORDER BY e.id DESC','ii',[$obra,$modelo]);
     foreach ($rows as &$row) {
         $row['composicao']=json_decode($row['composicao'],true,32,JSON_THROW_ON_ERROR);
         unset($row['chave_criacao']);
@@ -88,7 +91,11 @@ function enq_write(mysqli $c,int $obra,int $actor,bool $admin,array $in): int {
             if (!$row['imagem_id']) throw new InvalidArgumentException('Vincule uma imagem antes de escolher este enquadramento.');
             $flag=$op==='aprovar'?'aprovado':'preferido';
             mp_query($c,"UPDATE imagem_enquadramentos_3d SET $flag=NULL,revisao=revisao+1 WHERE imagem_id=? AND versao_id=? AND $flag=1 AND id<>?",'iii',[$row['imagem_id'],$version,$id])->close();
-            mp_query($c,"UPDATE imagem_enquadramentos_3d SET $flag=1,{$flag}_por=?,{$flag}_em=NOW(),revisao=revisao+1 WHERE id=?",'ii',[$actor,$id])->close();
+            if ($op==='aprovar') {
+                mp_query($c,'UPDATE imagem_enquadramentos_3d SET aprovado=1,aprovado_por=COALESCE(aprovado_por,?),aprovado_em=COALESCE(aprovado_em,NOW()),revisao=revisao+1 WHERE id=?','ii',[$actor,$id])->close();
+            } else {
+                mp_query($c,'UPDATE imagem_enquadramentos_3d SET preferido=1,preferido_por=?,preferido_em=NOW(),revisao=revisao+1 WHERE id=?','ii',[$actor,$id])->close();
+            }
         } else {
             if (!$admin && (int)$row['autor_id']!==$actor) throw new RuntimeException('Edição restrita ao autor ou à administração.',403);
             if ($row['aprovado_em']!==null) throw new RuntimeException('Composição aprovada. Duplique para criar uma alternativa.',409);

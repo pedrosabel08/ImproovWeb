@@ -1,5 +1,5 @@
 import { createPersonPicker } from "./person-camera.js?v=2";
-import { setupSeagullMode } from "./seagull-mode.js?v=1";
+import { setupSeagullMode } from "./seagull-mode.js?v=2";
 
 const KEYS = new Set([
   "KeyW",
@@ -30,16 +30,36 @@ export function setupExploration({
   const bar = document.createElement("div");
   bar.className = "person-camera-controls";
   bar.setAttribute("role", "group");
-  bar.setAttribute("aria-label", "Navegação 3D");
-  bar.innerHTML = `<select class="btn navigation-mode" aria-label="Modo de navegação">
-      <option value="orbit">Navegação convencional</option>
-      <option value="josh">Josh · caminhada</option>
-      <option value="seagull">Gaivota · voo</option>
-    </select><button class="btn" type="button" aria-pressed="false" aria-label="Posicionar câmera" title="Posicionar câmera" hidden>
+  bar.setAttribute("aria-label", "Controles do personagem");
+  bar.innerHTML = `<button class="btn" type="button" aria-pressed="false" aria-label="Posicionar câmera" title="Posicionar câmera" hidden>
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><circle cx="12" cy="4" r="3"/><path d="M8 8h8l2 7-2 .6-1-4V22h-2v-7h-2v7H9V11.6l-1 4L6 15z"/></svg>
     </button><button class="btn" type="button" hidden>Terceira pessoa</button>
     <button class="btn" type="button" hidden>Voltar à vista aérea</button>`;
-  const [selector, button, perspectiveButton, exitButton] = bar.children;
+  const [button, perspectiveButton, exitButton] = bar.children;
+  const modes = document.createElement("nav");
+  modes.className = "hud-modes";
+  modes.setAttribute("aria-label", "Modo de navegação");
+  for (const [value, label, icon] of [
+    ["orbit", "Orbital", "rotate"], ["josh", "Caminhada", "person-walking"],
+    ["seagull", "Voo", "paper-plane"],
+  ]) {
+    const mode = document.createElement("button");
+    mode.type = "button";
+    mode.dataset.mode = value;
+    mode.innerHTML = `<i aria-hidden="true" class="fa-solid fa-${icon}"></i>`;
+    mode.append(label);
+    mode.addEventListener("click", () => selectMode(value));
+    modes.append(mode);
+  }
+  function markMode(value) {
+    viewport.dataset.navigation = value;
+    for (const mode of modes.children)
+      mode.setAttribute("aria-pressed", String(mode.dataset.mode === value));
+  }
+  markMode("orbit");
+  function focusOrbital() {
+    modes.firstElementChild.focus({ preventScroll: true });
+  }
   const hint = document.createElement("div");
   hint.id = "explorationHint";
   hint.className = "exploration-hint";
@@ -67,7 +87,7 @@ export function setupExploration({
     control.setAttribute("aria-label", label);
     pad.append(control);
   }
-  viewport.append(bar, hint, pad);
+  viewport.append(modes, bar, hint, pad);
   const pick = createPersonPicker(orbitCamera, canvas);
   const touch = matchMedia("(any-pointer: coarse), (max-width: 600px)");
   const keys = new Set(),
@@ -103,20 +123,20 @@ export function setupExploration({
   }
 
   const flight = setupSeagullMode({
-    viewport, bar, hint, scene, canvas, orbitCamera, controls, available,
+    viewport, bar, scene, canvas, orbitCamera, controls, available,
     getSource: getFlightSource, getFloor, disposeResources, show,
     onChange: (position) => onChange(position, "seagull"),
     onExit(message) {
       stop();
       if (message) show(message);
-      selector.focus({ preventScroll: true });
+      focusOrbital();
     },
   });
 
   function stop() {
     stopJosh();
     flight.stop();
-    selector.value = "orbit";
+    markMode("orbit");
     exitButton.hidden = true;
     show();
   }
@@ -149,7 +169,6 @@ export function setupExploration({
       "exploration-loading",
       "exploration-placing",
     );
-    document.body.classList.remove("person-camera-view");
     delete viewport.dataset.explorationAnimation;
     delete viewport.dataset.personPerspective;
     button.setAttribute("aria-pressed", "false");
@@ -250,13 +269,13 @@ export function setupExploration({
       previousFrame = null;
       viewport.classList.remove("exploration-loading", "exploration-placing");
       viewport.classList.add("exploring");
-      document.body.classList.add("person-camera-view");
       button.title = "Reposicionar câmera";
       button.setAttribute("aria-label", button.title);
       perspectiveButton.hidden = exitButton.hidden = false;
       syncPerspective();
       updateTouch();
-      show();
+      show(touch.matches ? "Arraste para olhar e use as setas para caminhar." :
+        "WASD mover · arraste para olhar · Shift correr · V perspectiva · Esc sair");
       onChange(explorer.position, "josh");
     } catch (failure) {
       if (loading !== controller) return;
@@ -269,11 +288,11 @@ export function setupExploration({
     }
   }
 
-  selector.addEventListener("change", () => {
-    const next = selector.value;
+  function selectMode(next) {
+    if (viewport.dataset.navigation === next) return;
     stop();
     if (!available() || next === "orbit") return;
-    selector.value = next;
+    markMode(next);
     exitButton.textContent = next === "seagull" ? "Sair do voo" : "Voltar à vista aérea";
     exitButton.hidden = false;
     if (next === "seagull") {
@@ -285,11 +304,11 @@ export function setupExploration({
       const source = getSource();
       if (savedJosh?.model === source.model) void place(null, savedJosh);
     }
-  });
+  }
   button.addEventListener("click", () => (placing ? stop() : startPlacement()));
   exitButton.addEventListener("click", () => {
     stop();
-    selector.focus({ preventScroll: true });
+    focusOrbital();
   });
   perspectiveButton.addEventListener("click", () => {
     if (!explorer) return;
@@ -311,7 +330,7 @@ export function setupExploration({
         event.preventDefault();
         event.stopImmediatePropagation();
         stop();
-        selector.focus({ preventScroll: true });
+        focusOrbital();
         return;
       }
       if (
@@ -462,7 +481,8 @@ export function setupExploration({
       const enabled = available();
       if (!enabled && (explorer || placing)) stop();
       button.disabled = !enabled;
-      selector.disabled = !enabled;
+      if (modes.firstElementChild.disabled === enabled)
+        for (const mode of modes.children) mode.disabled = !enabled;
       if (flight.engaged) return flight.update(now);
       if (!explorer) return null;
       const dt =

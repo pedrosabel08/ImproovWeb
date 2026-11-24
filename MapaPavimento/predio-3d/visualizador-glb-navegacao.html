@@ -3,7 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      try {
+        const theme = localStorage.getItem("theme");
+        document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+      } catch {}
+    </script>
     <link rel="stylesheet" href="./empreendimento-map-bridge.css" />
     <link
       rel="stylesheet"

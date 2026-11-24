@@ -15,9 +15,12 @@ export class ModelUpload {
   constructor(bridge) {
     this.bridge = bridge;
     this.actions = element("div", undefined, "model-actions");
-    this.uploadButton = this.button("Enviar modelo 3D", () => this.open());
+    this.uploadButton = this.button("Enviar modelo 3D", () => {
+      this.history.close();
+      this.open();
+    });
     this.historyButton = this.button("Versões", () => this.openHistory());
-    this.actions.append(this.uploadButton, this.historyButton);
+    this.actions.append(this.historyButton);
     bridge.context.append(this.actions);
     this.notice = element("p", "", "model-upload-notice");
     this.notice.setAttribute("role", "status");
@@ -90,6 +93,7 @@ export class ModelUpload {
     this.history.addEventListener("cancel", (event) => {
       if (this.restoring) event.preventDefault();
     });
+    this.history.querySelector("footer").prepend(this.uploadButton);
     document.body.append(this.history);
     window.thinkingOrbs(this.history);
     this.sync();
@@ -107,7 +111,7 @@ export class ModelUpload {
     this.actions.hidden = !bridge.canEdit;
     this.uploadButton.disabled =
       bridge.busy || bridge.mapShown || !bridge.obraId;
-    this.historyButton.disabled = this.uploadButton.disabled || !bridge.modelId;
+    this.historyButton.disabled = this.uploadButton.disabled;
   }
 
   open() {
@@ -248,6 +252,11 @@ export class ModelUpload {
     const loading = this.history.querySelector(".model-upload-progress");
     loading.hidden = false;
     this.history.showModal();
+    if (!this.bridge.modelId) {
+      loading.hidden = true;
+      list.append(element("p", "Envie o primeiro modelo 3D desta obra.", "spatial-help"));
+      return;
+    }
     try {
       const data = await this.bridge.api("modelo_3d_versoes", {
         modelo_id: this.bridge.modelId,

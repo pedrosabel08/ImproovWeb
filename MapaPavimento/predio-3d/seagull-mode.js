@@ -5,7 +5,7 @@ const FLIGHT_KEYS = new Set([
 const INPUTS = "input,textarea,select,[contenteditable],dialog[open]";
 
 export function setupSeagullMode({
-  viewport, bar, hint, scene, canvas, orbitCamera, controls, available,
+  viewport, bar, scene, canvas, orbitCamera, controls, available,
   getSource, getFloor, disposeResources, show, onChange, onExit,
 }) {
   const floorButton = document.createElement("button");
@@ -40,7 +40,14 @@ export function setupSeagullMode({
     button.setAttribute("aria-label", label);
     pad.append(button);
   }
-  bar.append(pad);
+  viewport.append(pad);
+  const altitude = document.createElement("span");
+  altitude.className = "flight-altitude";
+  altitude.title = "Cota de voo no sistema de coordenadas da cena";
+  altitude.hidden = true;
+  bar.prepend(altitude);
+  const meters = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+  let lastAltitude;
   const help = "W/S avançar e recuar · A/D virar · arraste para mirar · Espaço/Shift altitude · roda distância · Esc sair";
   const touch = matchMedia("(any-pointer: coarse), (max-width: 600px)");
   const keys = new Set();
@@ -214,7 +221,6 @@ export function setupSeagullMode({
       canvas.tabIndex = 0;
       canvas.focus({ preventScroll: true });
       viewport.classList.add("seagull-flying");
-      bar.append(hint);
       listen(mode.input.signal);
       void prepare();
     },
@@ -234,7 +240,8 @@ export function setupSeagullMode({
       avatar?.detach();
       pad.hidden = floorButton.hidden = animation.hidden = true;
       viewport.classList.remove("seagull-flying");
-      viewport.append(hint);
+      altitude.hidden = true;
+      lastAltitude = undefined;
       onChange(null);
     },
     invalidate() {
@@ -265,6 +272,12 @@ export function setupSeagullMode({
       const lift = Number(pressed("Space")) - Number(pressed("ShiftLeft", "ShiftRight"));
       const guiding = flyer.altitudeTarget != null;
       const result = flyer.update(dt, throttle, steer, lift);
+      const decimeters = Math.round(flyer.position.y * 10);
+      if (decimeters !== lastAltitude) {
+        lastAltitude = decimeters;
+        altitude.textContent = `Cota · ${meters.format(decimeters / 10)} m`;
+        altitude.hidden = false;
+      }
       if (avatar) {
         avatar.update(dt, flyer, throttle, Number(animation.value));
         if (!avatar.root.parent) scene.add(avatar.root);

@@ -1,5 +1,5 @@
 import { EmpreendimentoSpatialSettings } from "./empreendimento-spatial-settings.js?v=20261110-bootstrap-v1";
-import { ModelUpload } from "./model-upload.js?v=20261019-permissions";
+import { ModelUpload } from "./model-upload.js?v=20261124-hud";
 
 const apiUrl = new URL("../api.php", import.meta.url);
 const mapUrl = new URL("../index.php", import.meta.url);

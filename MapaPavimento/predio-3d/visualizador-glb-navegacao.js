@@ -1,14 +1,14 @@
 import { createViewerGlass } from "./viewer-glass.js?v=20261030-hdri";
-import { setupExploration } from "./exploration-mode.js?v=7";
+import { setupExploration } from "./exploration-mode.js?v=8";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createModelLoader } from "./model-loader.js";
 import { hideExcludedObjects } from "./model-scene.js?v=20261030";
-import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261110-bootstrap-v2";
+import { EmpreendimentoMapBridge } from "./empreendimento-map-bridge.js?v=20261124-hud";
 import { NorthIndicator } from "./north-indicator.js?v=20261113-explore";
 import { SolarLighting } from "./solar-lighting.js?v=20261119-global-hemisphere";
 import { solarOpaqueMaterial } from "./solar-ray-tracer.js?v=20261016-alpha-glass";
-import { ModelMeasurement } from "./model-measurement.js?v=20261113-explore";
+import { ModelMeasurement } from "./model-measurement.js?v=20261124-hud";
 import { visibleSurface } from "./measurement-geometry.js";
 import { floorOrbitPose } from "./floor-navigation.js";
 import {
@@ -85,6 +85,11 @@ for (const [side, label] of [
 function toggleSidebar(side, label, desired = null) {
   const sidebar = document.querySelector(`.side.${side}`);
   const collapsed = desired ?? !sidebar.classList.contains("is-collapsed");
+  if (!collapsed) {
+    const other = side === "left" ? "right" : "left";
+    if (!document.querySelector(`.side.${other}`).classList.contains("is-collapsed"))
+      toggleSidebar(other, other === "left" ? "Pavimentos" : "Hub de Inspeção", true);
+  }
   sidebar.classList.toggle("is-collapsed", collapsed);
   document
     .querySelector(".layout")
@@ -97,7 +102,7 @@ function toggleSidebar(side, label, desired = null) {
   );
   button.title = button.getAttribute("aria-label");
   button.textContent = (side === "left") !== collapsed ? "‹" : "›";
-  // ResizeObserver acompanha também as dimensões intermediárias da transição.
+  document.querySelector(`[data-open-side="${side}"]`)?.setAttribute("aria-expanded", String(!collapsed));
 }
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -321,7 +326,11 @@ const measurements = new ModelMeasurement({
 
 function status(text, error = false) {
   $("status").textContent = text;
-  $("status").style.color = error ? "#ff9b9b" : "";
+  $("status").classList.toggle("is-error", error);
+  if (error && $("rightSidebar")) {
+    $("rightSidebar").dataset.section = "inspect";
+    toggleSidebar("right", "Hub de Inspeção", false);
+  }
 }
 function floorLabel(id) {
   return id.replace(/_/g, " ");
@@ -1970,6 +1979,8 @@ exploration = setupExploration({
     hideTooltip();
     hoveredRecord = viewerState.hoveredFloor = null;
     if (position) {
+      toggleSidebar("left", "Pavimentos", true);
+      toggleSidebar("right", "Hub de Inspeção", true);
       clearVisualHighlights();
       if (mode === "josh") restorePersonScene = openPersonScene();
       solarLighting.setExplorerPosition(position);
@@ -2191,4 +2202,61 @@ for (const [label, direction, up = [0, 1, 0]] of cubeViews) {
   });
   viewCube.append(button);
 }
-viewport.append(viewCube);
+// Keep the original controls and their state even when their HUD panel is closed.
+const toolsBar = viewport.querySelector(".viewtools");
+const more = document.createElement("details");
+more.className = "hud-more";
+more.innerHTML = `<summary class="btn" aria-label="Mais ferramentas" title="Mais ferramentas"><i class="fa-solid fa-sliders" aria-hidden="true"></i></summary>
+  <div class="hud-menu">
+    <button type="button" data-open-side="left" aria-controls="leftSidebar" aria-expanded="false">Pavimentos</button>
+    <button type="button" data-open-side="right" aria-controls="rightSidebar" aria-expanded="false">Inspeção e medição</button>
+  </div>`;
+toolsBar.append(more);
+const menu = more.querySelector(".hud-menu");
+menu.append($("axes"), $("grid"), viewCube);
+const solarShortcut = document.createElement("button");
+solarShortcut.type = "button";
+solarShortcut.innerHTML = '<i class="fa-regular fa-sun" aria-hidden="true"></i> Sol';
+solarShortcut.setAttribute("aria-controls", "solarPanel");
+more.before(solarShortcut);
+solarShortcut.addEventListener("click", () => {
+  more.open = false;
+  measurements.solarButton.click();
+});
+function openSide(side) {
+  more.open = false;
+  toggleSidebar(side, side === "left" ? "Pavimentos" : "Hub de Inspeção", false);
+  $(side + "Sidebar").querySelector(".sidebar-toggle").focus({ preventScroll: true });
+}
+for (const item of menu.querySelectorAll("[data-open-side]"))
+  item.addEventListener("click", () => {
+    if (item.dataset.openSide === "right") measurements.inspectButton.click();
+    openSide(item.dataset.openSide);
+  });
+measurements.inspector.addEventListener("inspection-focus", () => openSide("right"));
+document.addEventListener("pointerdown", (event) => {
+  if (more.open && !more.contains(event.target)) more.open = false;
+});
+more.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  more.open = false;
+  more.querySelector("summary").focus();
+  event.stopPropagation();
+});
+viewCube.addEventListener("click", () => { more.open = false; });
+const floorSide = $("leftSidebar");
+floorSide.querySelector(".head").after($("floorSwitcher"));
+if (mapBridge) {
+  $("rightSidebar").append($("status"));
+  $("status").setAttribute("role", "status");
+  for (const [element, icon] of [
+    [$("fit"), "expand"], [textureToggle, "layer-group"],
+    [mapBridge.buildingButton, "cube"], [mapBridge.mapButton, "map"],
+    [mapBridge.uploader.historyButton, "clone"],
+  ]) {
+    const glyph = document.createElement("i");
+    glyph.className = `fa-solid fa-${icon}`;
+    glyph.setAttribute("aria-hidden", "true");
+    element.prepend(glyph);
+  }
+}

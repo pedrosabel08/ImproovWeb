@@ -1,196 +1,92 @@
+.hud-modes,
 .person-camera-controls,
 .exploration-hint {
   position: absolute;
   z-index: 8;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid var(--spatial-control-border);
-  border-radius: var(--spatial-radius);
-  background: var(--spatial-float);
+  gap: 4px;
+  padding: 4px;
   color: var(--spatial-text);
+  background: var(--spatial-float);
+  border: 1px solid var(--spatial-control-border);
+  border-radius: 11px;
 }
-.person-camera-controls {
-  left: 12px;
-  bottom: 55px;
-  max-width: calc(100% - 24px);
-  flex-wrap: wrap;
-}
-.person-camera-controls .btn {
+.hud-modes { top: 14px; left: 14px; }
+.hud-modes button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
+  gap: 8px;
   min-height: 36px;
-  padding: 6px 8px;
-  font-size: 12px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: 600 13px var(--spatial-font);
+  cursor: pointer;
 }
-.person-camera-controls button[aria-pressed="true"],
-.person-camera-controls .navigation-mode:has(option:checked:not([value="orbit"])) {
-  background: var(--spatial-selected);
-  border-color: var(--spatial-accent);
-  color: var(--spatial-accent);
+.hud-modes button:hover { background: var(--spatial-hover); }
+.hud-modes button[aria-pressed="true"] {
+  background: var(--spatial-accent);
+  color: var(--spatial-on-accent);
 }
-.person-camera-controls select {
-  color: var(--spatial-text);
-  background: var(--spatial-float);
-  max-width: 100%;
+.hud-modes button:disabled { opacity: .6; cursor: default; }
+.person-camera-controls {
+  left: 14px;
+  bottom: 80px;
+  max-width: calc(100% - 28px);
+  flex-wrap: wrap;
 }
-.person-camera-controls option {
-  background: var(--spatial-panel);
-  color: var(--spatial-text);
+.person-camera-controls .btn {
+  min-height: 34px;
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+.person-camera-controls .flight-altitude { padding: 0 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.person-camera-controls select { max-width: 100%; }
+.person-camera-controls [hidden], .exploration-hint[hidden], .exploration-hint canvas[hidden],
+.exploration-pad[hidden], .viewport[data-navigation="orbit"] .person-camera-controls { display: none; }
 .exploration-hint {
-  bottom: 12px;
   left: 50%;
+  bottom: 26px;
   transform: translateX(-50%);
   width: max-content;
-  max-width: calc(100% - 24px);
-  padding: 7px 11px;
+  max-width: calc(100% - 28px);
+  padding: 9px 14px;
   font-size: 12px;
   line-height: 1.4;
   text-align: center;
   pointer-events: none;
 }
-.exploration-hint canvas {
-  flex: none;
-}
-.person-camera-controls [hidden],
-.exploration-hint[hidden],
-.exploration-hint canvas[hidden],
-.exploration-pad[hidden] {
-  display: none;
-}
+.exploration-hint canvas { flex: none; }
 .viewport:has(.exploration-hint:not([hidden])) > .hint,
-.viewport.exploration-placing .floor-popover {
-  visibility: hidden;
-}
-.viewport.exploration-placing canvas.gl {
-  cursor: crosshair;
-}
-.viewport.exploring canvas.gl {
-  cursor: grab;
-  touch-action: none;
-}
-.viewport.exploring canvas.gl:active {
-  cursor: grabbing;
-}
-.viewport.seagull-flying canvas.gl {
-  cursor: grab;
-  touch-action: none;
-}
-.viewport.seagull-flying canvas.gl:active {
-  cursor: grabbing;
-}
-.viewport.seagull-flying .person-camera-controls {
-  bottom: 52px;
-}
-.viewport.seagull-flying .geo-attribution {
-  transform: translateY(36px);
-}
-.person-camera-controls .exploration-hint {
-  position: static;
-  transform: none;
-  width: 100%;
-  max-width: none;
-  padding: 2px 4px;
-  border: 0;
-  background: none;
-  text-align: left;
-}
-.person-camera-controls .seagull-pad {
-  position: static;
-  flex: 1 0 100%;
-  flex-wrap: wrap;
-}
-.person-camera-controls .seagull-pad .btn {
-  min-width: 36px;
-  min-height: 38px;
-}
-.viewport.seagull-flying .floor-popover {
-  top: 12px;
-  bottom: auto;
-  max-height: 34%;
-}
-.viewport.seagull-flying > :is(.spatial-viewcube, .viewtools) {
-  display: none;
-}
-.viewport.exploration-loading canvas.gl {
-  cursor: wait;
-}
-
-body.person-camera-view {
-  overflow: hidden;
-}
-body.person-camera-view #flowSpatialWorkspace {
-  inset: 0;
-}
-body.person-camera-view > :is(aside.sidebar, .mi-viewer-return) {
-  display: none;
-}
-body.person-camera-view .app.spatial-workspace {
-  position: fixed;
-  inset: 0;
-  z-index: 1001;
-  display: block;
-  height: auto;
-  min-height: 0;
-}
-body.person-camera-view .app > .top,
-body.person-camera-view .app .layout > .side {
-  display: none;
-}
-body.person-camera-view .app .layout {
-  display: block;
-  height: 100%;
-  overflow: hidden;
-}
-body.person-camera-view .app .viewport.exploring {
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  border: 0;
-}
-.viewport.exploring
-  > :not(
-    canvas.gl,
-    .person-camera-controls,
-    .exploration-pad,
-    .geo-attribution
-  ) {
-  display: none;
-}
-.viewport.exploring .person-camera-controls {
-  bottom: 12px;
-}
-.viewport.exploring .geo-attribution {
-  transform: translateY(30px);
-}
-
+.viewport.exploration-placing .floor-popover,
+.viewport.exploring .floor-popover { visibility: hidden; }
+.viewport.exploration-placing canvas.gl { cursor: crosshair; }
+.viewport.exploration-loading canvas.gl { cursor: wait; }
+.viewport:is(.exploring,.seagull-flying) canvas.gl { cursor: grab; touch-action: none; }
+.viewport:is(.exploring,.seagull-flying) canvas.gl:active { cursor: grabbing; }
 .exploration-pad {
   position: absolute;
+  left: 14px;
+  bottom: 130px;
   z-index: 8;
-  left: 12px;
-  bottom: 66px;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+  max-width: calc(100% - 28px);
   touch-action: none;
   user-select: none;
 }
-.exploration-pad .btn {
-  min-width: 42px;
-  min-height: 42px;
-  padding: 5px;
-}
-@media (max-width: 600px) {
-  .exploration-hint {
-    font-size: 11px;
-  }
-  .viewport.exploring .person-camera-controls {
-    bottom: 58px;
-  }
-  .viewport.exploring .exploration-pad {
-    bottom: 116px;
-  }
+.exploration-pad .btn { min-width: 40px; min-height: 40px; }
+@media (max-width: 720px) {
+  .hud-modes { left: 8px; top: 8px; }
+  .hud-modes button { padding: 0 9px; font-size: 12px; }
+  .exploration-hint { font-size: 11px; }
+  .person-camera-controls { bottom: 88px; left: 8px; }
+  .exploration-pad { bottom: 176px; left: 8px; }
 }

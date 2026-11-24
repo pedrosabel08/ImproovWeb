@@ -31,7 +31,10 @@ export class ModelMeasurement {
     const inspector = (this.inspector = document.querySelector(".right"));
     this.navigation = node("nav", undefined, "inspection-tools");
     this.navigation.setAttribute("aria-label", "Ferramentas de inspeção");
-    this.inspectButton = this.button("Inspecionar", () => this.exit());
+    this.inspectButton = this.button("Inspecionar", () => {
+      this.exit();
+      inspector.dataset.section = "inspect";
+    });
     this.measureButton = this.button("Medir", () => this.begin());
     this.solarButton = this.button("Sol", () => {
       this.exit();
@@ -162,6 +165,8 @@ export class ModelMeasurement {
 
   focusPanel(panel = this.panel) {
     if (!panel) return;
+    this.inspector.dataset.section = panel === this.panel ? "measure" : "solar";
+    this.inspector.dispatchEvent(new Event("inspection-focus"));
     // Rola apenas o Hub; não desloca o canvas ou o documento em telas menores.
     const top =
       panel.getBoundingClientRect().top -

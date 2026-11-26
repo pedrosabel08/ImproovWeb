@@ -3360,6 +3360,12 @@ nav.breadcrumb-nav a {
   color: #c8d8ff;
 }
 
+.tarefa-status--in-progress {
+    background: rgb(112 84 0 / 90%);
+    border-color: rgb(224 199 96 / 35%);
+    color: #fffcd3;
+}
+
 .tarefa-status--adjust {
   background: rgba(185, 117, 26, 0.28);
   border-color: rgba(255, 194, 93, 0.25);
@@ -5840,6 +5846,13 @@ nav.breadcrumb-nav a {
   color: #c8d8ff;
 }
 
+.task-status-badge--in-progress,
+.task-time-badge--in-progress {
+    background: rgb(112 84 0 / 90%);
+    border-color: rgb(224 199 96 / 35%);
+    color: #fffcd3;
+}
+
 .task-status-badge--adjust,
 .task-time-badge--adjust {
   background: rgba(185, 117, 26, 0.8);
@@ -6048,6 +6061,12 @@ nav.breadcrumb-nav a {
   top: 0;
   right: 14px;
   transform: translateY(-48%);
+}
+
+@media (min-width: 541px) and (max-width: 1100px) {
+  .tarefasImagensObra .task-item {
+    width: calc(50% - 8px);
+  }
 }
 
 @media (max-width: 768px) {
@@ -6309,6 +6328,12 @@ nav.breadcrumb-nav a {
     background: rgba(42, 78, 179, 0.1);
     border-color: rgba(42, 78, 179, 0.22);
     color: #2442a0;
+  }
+
+  .tarefa-status--in-progress {
+    background: rgb(112 84 0 / 90%);
+    border-color: rgb(224 199 96 / 35%);
+    color: #fffcd3;
   }
 
   .tarefa-status--adjust {

@@ -2120,6 +2120,10 @@ function getTaskStatusMeta(tarefa) {
     return { key: "hold-approval", label: "HOLD · Aprovação pendente" };
   }
 
+  if (tarefa.status === "Em andamento" && !tarefa.angulo_aprovado) {
+    return { key: "in-progress", label: "Em andamento" };
+  }
+
   if (tarefa.pendente_direcao) {
     return { key: "direction", label: "Aguardando direção" };
   }
@@ -2957,12 +2961,14 @@ function isP00FinalizacaoEnvio(context, imagensDoIndice) {
 }
 
 function isAnguloDefinitivo(img) {
+  if (typeof img?.angulo_oficial === "boolean") return img.angulo_oficial;
   const liberada = img?.angulo_liberada == 1 || img?.angulo_liberada === "1";
   const sugerida = img?.angulo_sugerida == 1 || img?.angulo_sugerida === "1";
   return liberada && !sugerida;
 }
 
 function getCurrentAngleThumbUrl(img) {
+  if (img?.miniatura_3d) return img.miniatura_3d;
   return `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img?.imagem || "")}&w=320&q=85`;
 }
 
@@ -3030,7 +3036,10 @@ async function atualizarAnguloEscolhido(acao, observacao = "") {
   try {
     const res = await fetch("atualizar_angulo.php", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.FR_ANGLE_CSRF,
+      },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -3172,13 +3181,17 @@ async function trocarAnguloDefinitivo(novoHistoricoId, observacao = "") {
     imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
     funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
     novo_historico_id: parseInt(novoHistoricoId, 10),
+    historico_atual_id: Number(currentAngleSelection.chosen?.id),
     observacao,
   };
 
   try {
     const res = await fetch("trocar_angulo.php", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.FR_ANGLE_CSRF,
+      },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -3404,75 +3417,23 @@ function positionDecisionModal(triggerEl, modalEl) {
 }
 
 async function enviarFuncaoParaAjustes() {
-  if (!currentFuncaoContext) {
-    Toastify({
-      text: "Contexto de função não disponível.",
-      duration: 3000,
-      backgroundColor: "orange",
-      close: true,
-      gravity: "top",
-      position: "right",
-    }).showToast();
+  if (!currentFuncaoContext || !ap_imagem_id) {
+    alert("Selecione um ângulo do envio antes de registrar os ajustes.");
     return;
   }
-
-  const confirmResult = await Swal.fire({
-    title: "Enviar para Ajustes",
-    text: "Nenhum ângulo foi aprovado. Confirma o envio de toda a função para Ajustes?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sim, enviar para ajustes",
-    cancelButtonText: "Cancelar",
-    confirmButtonColor: "#c0392b",
+  const answer = await FlowAlert.input({
+    title: "Solicitar ajustes",
+    inputType: "textarea",
+    placeholder: "Descreva os ajustes da imagem",
+    confirmText: "Solicitar ajustes",
   });
-
-  if (!confirmResult.isConfirmed) return;
-
-  const idcolaborador = localStorage.getItem("idcolaborador");
-
-  try {
-    const res = await fetch("revisarTarefa.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        idfuncao_imagem: currentFuncaoContext.funcao_imagem_id,
-        nome_colaborador: currentFuncaoContext.colaborador_nome,
-        imagem_nome: currentFuncaoContext.imagem_nome,
-        nome_funcao: currentFuncaoContext.nome_funcao,
-        colaborador_id: currentFuncaoContext.colaborador_id,
-        responsavel: idcolaborador,
-        imagem_id: currentFuncaoContext.imagem_id,
-        tipoRevisao: "ajuste",
-      }),
-    });
-    const data = await res.json();
-
-    Toastify({
-      text: data.success
-        ? "Função enviada para Ajustes."
-        : "Erro: " + data.message,
-      duration: 3000,
-      backgroundColor: data.success ? "#e65c00" : "red",
-      close: true,
-      gravity: "top",
-      position: "right",
-    }).showToast();
-
-    if (data.success) {
-      await flowReviewRefreshPriorityData();
-      historyAJAX(funcaoImagemId);
-    }
-  } catch (e) {
-    console.error(e);
-    Toastify({
-      text: "Erro ao enviar para ajustes.",
-      duration: 3000,
-      backgroundColor: "red",
-      close: true,
-      gravity: "top",
-      position: "right",
-    }).showToast();
+  if (!answer.isConfirmed) return;
+  const note = String(answer.value ?? "").trim();
+  if (!note) {
+    alert("Descreva os ajustes da imagem.");
+    return;
   }
+  await atualizarAnguloEscolhido("ajustes", note);
 }
 
 const enviosComparisonState = {
@@ -3611,7 +3572,9 @@ class EnvioCompareViewer {
       } else {
         const thumbnail = document.createElement("img");
         const path = isVideoMedia(item) ? item.poster_path : item.imagem;
-        thumbnail.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(path)}&w=160&q=85`;
+        thumbnail.src =
+          item.miniatura_3d ||
+          `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(path)}&w=160&q=85`;
         thumbnail.alt = `Prévia ${index + 1}`;
         preview.appendChild(thumbnail);
       }
@@ -3656,7 +3619,9 @@ class EnvioCompareViewer {
     img.alt =
       media.nome_arquivo || media.imagem || `Envio ${this.select.value}`;
     img.draggable = false;
-    img.src = `https://improov.com.br/flow/ImproovWeb/${encodeURI(media.imagem)}`;
+    img.src =
+      media.captura_3d ||
+      `https://improov.com.br/flow/ImproovWeb/${encodeURI(media.imagem)}`;
     this.content.appendChild(img);
     updateComparisonSlider();
 
@@ -5000,7 +4965,12 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
           imagensDoIndice.sort(
             (a, b) => new Date(b.data_envio) - new Date(a.data_envio),
           );
-          const maisRecente = imagensDoIndice[0];
+          const requested = Number(
+            new URLSearchParams(location.search).get("historico_id"),
+          );
+          const maisRecente =
+            imagensDoIndice.find((img) => Number(img.id) === requested) ||
+            imagensDoIndice[0];
 
           if (maisRecente) {
             const statusEnvio =
@@ -5025,7 +4995,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
               mostrarPdfCompleto(pdfRawUrl, pdfDownloadUrl, nome, pdf.id);
               pdfShownOnce = true;
             } else {
-              const mediaUrl = `https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`;
+              const mediaUrl =
+                maisRecente.captura_3d ||
+                `https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`;
               if (isVideoMedia(maisRecente)) {
                 mostrarVideoCompleto(mediaUrl, maisRecente.id, maisRecente);
               } else {
@@ -5039,8 +5011,7 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
             wrapper.className = "imageWrapper";
 
             // Estado do ângulo (para P00 + Finalização)
-            const anguloLiberada =
-              img.angulo_liberada == 1 || img.angulo_liberada === "1";
+            const anguloLiberada = isAnguloDefinitivo(img);
             const anguloSugerida =
               img.angulo_sugerida == 1 || img.angulo_sugerida === "1";
             if (anguloLiberada) {
@@ -5055,7 +5026,9 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
             }
 
             // thumbnail for gallery thumbnails; clicking opens full image via mostrarImagemCompleta
-            const fullImageUrl = `https://improov.com.br/flow/ImproovWeb/${encodeURI(img.imagem)}`;
+            const fullImageUrl =
+              img.captura_3d ||
+              `https://improov.com.br/flow/ImproovWeb/${encodeURI(img.imagem)}`;
             let imgElement;
             if (isVideoMedia(img)) {
               if (img.poster_path) {
@@ -5081,8 +5054,10 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
               }
             } else {
               imgElement = document.createElement("img");
-              imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.imagem)}&w=200&q=85`;
-              imgElement.alt = img.imagem;
+              imgElement.src =
+                img.miniatura_3d ||
+                `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.imagem)}&w=200&q=85`;
+              imgElement.alt = img.nome_arquivo || img.imagem;
               imgElement.className = "image";
               imgElement.setAttribute("data-id", img.id);
               imgElement.addEventListener("click", () => {
@@ -5116,13 +5091,28 @@ function historyAJAX(idfuncao_imagem, tipo_tarefa = null, options = {}) {
             }
 
             wrapper.appendChild(imgElement);
+            for (const [url, label] of [
+              [img.predio_3d, "Abrir no Prédio 3D"],
+              [img.exportar_3d, "Exportar câmera"],
+            ]) {
+              if (!url) continue;
+              const link = document.createElement("a");
+              link.className = "btn";
+              link.href = url;
+              link.textContent = label;
+              wrapper.append(link);
+            }
             imageContainer.appendChild(wrapper);
           });
         }
       });
 
       if (indicesOrdenados.length > 0) {
-        indiceSelect.value = indicesOrdenados[0];
+        const requested = Number(
+          new URLSearchParams(location.search).get("historico_id"),
+        );
+        const selected = imagens.find((img) => Number(img.id) === requested);
+        indiceSelect.value = selected?.indice_envio ?? indicesOrdenados[0];
         indiceSelect.dispatchEvent(new Event("change"));
       }
 
@@ -5255,17 +5245,20 @@ function exibirSidebarTabulator(tarefas) {
     }
 
     filtered.forEach((t) => {
+      const statusMeta = getTaskStatusMeta(t);
       const statusClass = t.flow_review_hold_approval
         ? "tarefa-status--hold-approval"
-        : t.status_novo === "Em aprovação"
+        : statusMeta.key === "in-progress"
+          ? "tarefa-status--in-progress"
+        : statusMeta.key === "approval"
           ? "tarefa-status--approval"
-          : t.status_novo === "Ajuste"
+          : statusMeta.key === "critical"
             ? "tarefa-status--adjust"
-            : t.status_novo === "Aprovado com ajustes"
+            : statusMeta.key === "approved-adjust"
               ? "tarefa-status--approved-adjust"
-              : t.status_novo === "Aprovado"
+              : statusMeta.label === "Aprovado"
                 ? "tarefa-status--approved"
-                : t.pendente_direcao
+                : statusMeta.key === "direction"
                   ? "tarefa-status--direction"
                   : "tarefa-status--default";
 
@@ -5291,7 +5284,7 @@ function exibirSidebarTabulator(tarefas) {
       item.innerHTML = `
         <img src="${imgSrc}" class="tab-img" alt="${escapeHtml(t.imagem_nome || "")}">
         <div class="tarefa-item-body">
-          <span class="tarefa-status ${statusClass}">${escapeHtml(t.flow_review_hold_approval ? "HOLD · Aprovação pendente" : t.status_novo || t.status || "")}</span>
+          <span class="tarefa-status ${statusClass}">${escapeHtml(statusMeta.label)}</span>
           <span class="tarefa-label">${escapeHtml(t.nome_colaborador || "")} — ${escapeHtml(t.imagem_nome || "")}</span>
           ${flowReviewPriorityLabel(t) ? `<span class="stab-priority" data-level="${escapeHtml(String(t.prioridade_nivel))}">${escapeHtml(flowReviewPriorityLabel(t))}</span>` : ""}
         </div>
@@ -5510,6 +5503,7 @@ async function excluirImagem() {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRF-Token": window.FR_ANGLE_CSRF,
       },
       body: `id=${idImagem}`,
     });
@@ -7296,6 +7290,7 @@ document.getElementById("enviarComentario").onclick = async () => {
   try {
     const response = await fetch("salvar_comentario.php", {
       method: "POST",
+      headers: { "X-CSRF-Token": window.FR_ANGLE_CSRF },
       body: formData,
     });
 
@@ -8292,6 +8287,7 @@ async function salvarResposta(
     fd.append("mencionados", JSON.stringify(mencionados));
     const response = await fetch("responder_comentario.php", {
       method: "POST",
+      headers: { "X-CSRF-Token": window.FR_ANGLE_CSRF },
       body: fd,
     });
     return await response.json();
@@ -8300,6 +8296,7 @@ async function salvarResposta(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-CSRF-Token": window.FR_ANGLE_CSRF,
     },
     body: JSON.stringify({
       comentario_id: comentarioId,

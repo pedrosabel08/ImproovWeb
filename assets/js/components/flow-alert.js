@@ -17,6 +17,7 @@
   };
   const active = new Set();
   let modalEntry = null;
+  let validationId = 0;
 
   function ensureRegion(mode) {
     const id = `flow-alert-${mode}-region`;
@@ -40,6 +41,38 @@
   function invoke(action, event) {
     if (!action || typeof action.onClick !== "function") return;
     return action.onClick(event);
+  }
+
+  async function submitWithLoading(entry, content, button, loadingLabel) {
+    entry.submitting = true;
+    const controls = Array.from(content.querySelectorAll(
+      "button:enabled, input:enabled, textarea:enabled, select:enabled",
+    ));
+    content.tabIndex = -1;
+    content.focus();
+    controls.forEach((control) => (control.disabled = true));
+    const orb = document.createElement("canvas");
+    orb.className = "flow-alert__action-orb";
+    orb.dataset.thinkingOrb = "";
+    orb.dataset.orbState = "working";
+    orb.dataset.orbSize = "20";
+    orb.setAttribute("aria-hidden", "true");
+    const label = button.textContent;
+    button.setAttribute("aria-busy", "true");
+    button.setAttribute("aria-label", loadingLabel);
+    button.replaceChildren(orb, loadingLabel);
+    let outcome;
+    try {
+      outcome = await entry.submitField();
+      return outcome;
+    } finally {
+      entry.submitting = false;
+      controls.forEach((control) => (control.disabled = false));
+      button.removeAttribute("aria-busy");
+      button.removeAttribute("aria-label");
+      button.textContent = label;
+      if (!outcome && !entry.closed) entry.field?.focus();
+    }
   }
 
   function closeEntry(entry) {
@@ -93,9 +126,10 @@
     button.className = `flow-alert__action flow-alert__action--${kind}`;
     button.textContent = config.label || defaultLabel;
     button.addEventListener("click", async (event) => {
+      if (entry.closed || entry.submitting) return;
       try {
         const outcome = await invoke(config, event);
-        if (outcome === false) return;
+        if (outcome === false || entry.closed) return;
         if (entry.resolve) {
           entry.resolve(
             result ||
@@ -197,7 +231,7 @@
       dialog.setAttribute("aria-modal", "true");
       element.append(backdrop, dialog);
       backdrop.addEventListener("click", () => {
-        if (options.dismissible !== false) closeEntry(entry);
+        if (!entry.submitting && options.dismissible !== false) closeEntry(entry);
       });
     }
 
@@ -225,12 +259,14 @@
     }
     content.appendChild(body);
 
+    let confirmButton;
     const fieldSpecs = options.fields || (options.field ? [options.field] : []);
     if (fieldSpecs.length) {
       const fieldWrap = document.createElement("div");
       fieldWrap.className = "flow-alert__field-wrap";
       const validation = document.createElement("p");
       validation.className = "flow-alert__validation";
+      validation.id = `flow-alert-validation-${++validationId}`;
       validation.setAttribute("aria-live", "polite");
       validation.hidden = true;
 
@@ -325,8 +361,12 @@
             : type === "checkbox"
               ? field.querySelector("input")?.checked || false
               : field.value;
-        field.addEventListener("input", () => entry.setValidationMessage(""));
-        field.addEventListener("change", () => entry.setValidationMessage(""));
+        const updateValidation = () => {
+          if (options.validateOnInput) entry.syncFieldValidation();
+          else entry.setValidationMessage("");
+        };
+        field.addEventListener("input", updateValidation);
+        field.addEventListener("change", updateValidation);
         if (
           type !== "select" &&
           type !== "radio" &&
@@ -334,9 +374,11 @@
           type !== "textarea"
         ) {
           field.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") {
+            if (event.key === "Enter" && !event.isComposing) {
               event.preventDefault();
-              content.querySelector(".flow-alert__action--primary")?.click();
+              if (options.validateOnInput) entry.syncFieldValidation();
+              const button = confirmButton || content.querySelector(".flow-alert__action--primary");
+              button?.click();
             }
           });
         }
@@ -391,6 +433,7 @@
       content.appendChild(fieldWrap);
       entry.fields = fieldRecords;
       entry.field = fieldRecords[0]?.element;
+      entry.field?.setAttribute("aria-describedby", validation.id);
       entry.setValidationMessage = (message) => {
         validation.textContent = message || "";
         validation.hidden = !message;
@@ -399,17 +442,27 @@
           message ? "true" : "false",
         );
       };
-      entry.submitField = async () => {
+      const readFields = () => {
         const values = Object.fromEntries(
           fieldRecords.map((record) => [record.name, record.read()]),
         );
-        const validationMessage =
-          typeof options.validate === "function"
-            ? await options.validate(
-                fieldRecords.length === 1 ? fieldRecords[0].read() : values,
-                values,
-              )
-            : "";
+        const value = fieldRecords.length === 1 ? fieldRecords[0].read() : values;
+        return [value, values];
+      };
+      const validate = (...args) =>
+        typeof options.validate === "function" ? options.validate(...args) : "";
+      if (options.validateOnInput) {
+        // Live validation uses a synchronous validator.
+        entry.syncFieldValidation = () => {
+          if (entry.submitting) return;
+          const message = validate(...readFields());
+          entry.setValidationMessage(message);
+          if (confirmButton) confirmButton.disabled = Boolean(message);
+        };
+      }
+      entry.submitField = async () => {
+        const args = readFields();
+        const validationMessage = await validate(...args);
         if (validationMessage) {
           entry.setValidationMessage(validationMessage);
           (fieldRecords[0]?.element.matches?.("input,select,textarea")
@@ -420,13 +473,8 @@
         }
         const hasSubmitHandler = typeof options.onSubmit === "function";
         const submitted = hasSubmitHandler
-          ? await options.onSubmit(
-              fieldRecords.length === 1 ? fieldRecords[0].read() : values,
-              values,
-            )
-          : fieldRecords.length === 1
-            ? fieldRecords[0].read()
-            : values;
+          ? await options.onSubmit(...args)
+          : args[0];
         if (submitted === false) return false;
         if (hasSubmitHandler && typeof submitted === "string") {
           entry.setValidationMessage(submitted);
@@ -459,7 +507,9 @@
       closeButton.setAttribute("aria-label", "Fechar aviso");
       closeButton.innerHTML =
         '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
-      closeButton.addEventListener("click", () => closeEntry(entry));
+      closeButton.addEventListener("click", () => {
+        if (!entry.submitting) closeEntry(entry);
+      });
       content.appendChild(closeButton);
     }
 
@@ -488,13 +538,15 @@
             entry,
           );
         }
-        addAction(
+        confirmButton = addAction(
           actions,
           {
             label: options.confirmText || "Confirmar",
             onClick:
               options.field || options.fields
-                ? () => entry.submitField()
+                ? () => options.submitLoadingLabel
+                  ? submitWithLoading(entry, content, confirmButton, options.submitLoadingLabel)
+                  : entry.submitField()
                 : options.onConfirm,
           },
           "primary",
@@ -518,6 +570,7 @@
       );
     }
     if (actions.childElementCount) content.appendChild(actions);
+    entry.syncFieldValidation?.();
 
     region.appendChild(element);
     window.requestAnimationFrame(() => element.classList.add("is-visible"));
@@ -544,15 +597,21 @@
       );
       window.setTimeout(() => focusTarget?.focus(), 0);
       entry.keyHandler = (event) => {
-        if (event.key === "Escape" && options.dismissible !== false)
-          closeEntry(entry);
+        if (modalEntry !== entry || entry.closed) return;
+        if (event.key === "Escape" && options.dismissible !== false) {
+          event.preventDefault();
+          if (!entry.submitting) closeEntry(entry);
+        }
         if (event.key === "Tab") {
           const focusables = Array.from(
             element.querySelectorAll(
               "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)",
             ),
           );
-          if (!focusables.length) return;
+          if (!focusables.length) {
+            if (entry.submitting) event.preventDefault();
+            return;
+          }
           const first = focusables[0];
           const last = focusables[focusables.length - 1];
           if (event.shiftKey && document.activeElement === first) {
@@ -599,6 +658,7 @@
             value: config.value,
             min: config.min,
             maxlength: config.maxlength,
+            required: config.required,
             rows: config.rows,
             options: config.options,
           },

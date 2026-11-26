@@ -111,10 +111,9 @@ body {
 }
 .planner-filter-fields {
   display: grid;
-  grid-template-columns: minmax(145px, 1.1fr) minmax(140px, 1fr) minmax(
-      82px,
-      0.6fr
-    ) minmax(82px, 0.55fr) minmax(130px, 0.95fr) minmax(210px, 1.9fr);
+  grid-template-columns:
+    minmax(145px, 1.1fr) minmax(140px, 1fr) minmax(82px, 0.6fr)
+    minmax(82px, 0.55fr) minmax(130px, 0.95fr) minmax(210px, 1.9fr);
   gap: 12px;
 }
 .planner-filters .filter-group {
@@ -346,6 +345,14 @@ body {
   min-width: 0;
   min-height: 0;
 }
+.planner-carousel {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
 .planner-board {
   display: grid;
   grid-template-columns: repeat(5, minmax(235px, 1fr));
@@ -355,6 +362,26 @@ body {
   flex: 1;
   padding-bottom: 4px;
   scroll-snap-type: x proximity;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  cursor: grab;
+}
+.planner-carousel.is-dragging .planner-board {
+  cursor: grabbing;
+}
+.planner-carousel-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.planner-board.is-settling {
+  transition: transform 280ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .planner-board.is-settling {
+    transition: none;
+  }
 }
 .planner-day {
   display: flex;
@@ -572,6 +599,7 @@ body {
 .status-working i {
   color: #589cf8;
 }
+.status-render i,
 .status-approval i {
   color: #58bad2;
 }

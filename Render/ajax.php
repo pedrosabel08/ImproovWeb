@@ -1809,106 +1809,135 @@ if (isset($_POST['action'])) {
                                     $logs[] = 'finalizacao.funcao_imagem_id=' . ($funcaoImagemId ? $funcaoImagemId : 'null');
 
                                     if ($funcaoImagemId) {
-                                        $prazoResultP00 = funcao_imagem_prazo_atualizar(
-                                            $conn,
-                                            (int) $funcaoImagemId,
-                                            date('Y-m-d'),
-                                            [
-                                                'origem' => 'render_p00_aprovado',
-                                                'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
-                                                'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
-                                                'status_novo' => 'Em aprovação',
-                                            ]
-                                        );
-                                        $sqlP00Flags = $prazoResultP00['alterado']
-                                            ? 'UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?'
-                                            : "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
-                                        $stUpFi = $conn->prepare($sqlP00Flags);
-                                        if (!$stUpFi) {
-                                            throw new RuntimeException('Nao foi possivel preparar a atualizacao da Finalizacao P00.');
-                                        }
-                                        $stUpFi->bind_param('i', $funcaoImagemId);
-                                        if (!$stUpFi->execute()) {
-                                            $error = $stUpFi->error;
-                                            $stUpFi->close();
-                                            throw new RuntimeException('Nao foi possivel atualizar a Finalizacao P00: ' . $error);
-                                        }
-                                        $stUpFi->close();
-
-                                        // índice de envio (um lote por aprovação)
-                                        $nextIndice = 1;
-                                        if ($stMax = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?")) {
-                                            $stMax->bind_param('i', $funcaoImagemId);
-                                            $stMax->execute();
-                                            $rowMax = $stMax->get_result()->fetch_assoc();
-                                            $max = isset($rowMax['max_indice']) ? intval($rowMax['max_indice']) : 0;
-                                            $nextIndice = $max + 1;
-                                            $stMax->close();
-                                        }
-                                        $logs[] = 'historico_aprovacoes_imagens.next_indice_envio=' . $nextIndice;
-
-                                        // Rebuscar previews para não depender do cursor já percorrido
-                                        $previewsToImport = [];
-                                        if ($stPrev2 = $conn->prepare("SELECT filename FROM render_previews WHERE render_id = ? ORDER BY uploaded_at ASC, id ASC")) {
-                                            $stPrev2->bind_param('i', $idrender_alta);
-                                            $stPrev2->execute();
-                                            $resPrev2 = $stPrev2->get_result();
-                                            while ($p = $resPrev2->fetch_assoc()) {
-                                                if (!empty($p['filename'])) {
-                                                    $previewsToImport[] = $p['filename'];
+                                        require_once __DIR__ . '/../helpers/flow_angulo_contexto.php';
+                                        $conn->begin_transaction();
+                                        try {
+                                            $angleContext = flow_angulo_contexto($conn, (int)$imagem_id, true);
+                                            $angleCanImport = $angleContext['etapa'] === 'P00'
+                                                && !mp_row($conn, 'SELECT 1 FROM flow_angulo_envio WHERE imagem_ativa=?', 'i', [(int)$imagem_id])
+                                                && !flow_angulo_em_revisao($conn, $angleContext);
+                                            if ($angleCanImport) {
+                                                $prazoResultP00 = funcao_imagem_prazo_atualizar(
+                                                    $conn,
+                                                    (int) $funcaoImagemId,
+                                                    date('Y-m-d'),
+                                                    [
+                                                        'origem' => 'render_p00_aprovado',
+                                                        'alterado_por_colaborador_id' => isset($_SESSION['idcolaborador']) ? (int) $_SESSION['idcolaborador'] : null,
+                                                        'alterado_por_usuario_id' => isset($_SESSION['idusuario']) ? (int) $_SESSION['idusuario'] : null,
+                                                        'status_novo' => 'Em aprovação',
+                                                    ]
+                                                );
+                                                $sqlP00Flags = $prazoResultP00['alterado']
+                                                    ? 'UPDATE funcao_imagem SET requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?'
+                                                    : "UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?";
+                                                $stUpFi = $conn->prepare($sqlP00Flags);
+                                                if (!$stUpFi) {
+                                                    throw new RuntimeException('Nao foi possivel preparar a atualizacao da Finalizacao P00.');
                                                 }
-                                            }
-                                            $stPrev2->close();
-                                        }
-                                        $logs[] = 'previews_to_import=' . count($previewsToImport);
+                                                $stUpFi->bind_param('i', $funcaoImagemId);
+                                                if (!$stUpFi->execute()) {
+                                                    $error = $stUpFi->error;
+                                                    $stUpFi->close();
+                                                    throw new RuntimeException('Nao foi possivel atualizar a Finalizacao P00: ' . $error);
+                                                }
+                                                $stUpFi->close();
 
-                                        foreach ($previewsToImport as $fn) {
-                                            $path = 'uploads/renders/' . $fn;
-                                            $nomeArquivo = pathinfo($fn, PATHINFO_FILENAME);
+                                                // índice de envio (um lote por aprovação)
+                                                $nextIndice = 1;
+                                                if ($stMax = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?")) {
+                                                    $stMax->bind_param('i', $funcaoImagemId);
+                                                    $stMax->execute();
+                                                    $rowMax = $stMax->get_result()->fetch_assoc();
+                                                    $max = isset($rowMax['max_indice']) ? intval($rowMax['max_indice']) : 0;
+                                                    $nextIndice = $max + 1;
+                                                    $stMax->close();
+                                                }
+                                                $logs[] = 'historico_aprovacoes_imagens.next_indice_envio=' . $nextIndice;
 
-                                            // idempotência: se já existir para este funcao_imagem_id+path, reaproveita
-                                            $histId = null;
-                                            if ($stEx = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? AND imagem = ? ORDER BY id DESC LIMIT 1")) {
-                                                $stEx->bind_param('is', $funcaoImagemId, $path);
-                                                $stEx->execute();
-                                                $rowEx = $stEx->get_result()->fetch_assoc();
-                                                $histId = isset($rowEx['id']) ? intval($rowEx['id']) : null;
-                                                $stEx->close();
-                                            }
-
-                                            if (!$histId) {
-                                                if ($stIns = $conn->prepare("INSERT INTO historico_aprovacoes_imagens (funcao_imagem_id, imagem, indice_envio, nome_arquivo, caminho_imagem) VALUES (?, ?, ?, ?, ?)")) {
-                                                    $stIns->bind_param('isiss', $funcaoImagemId, $path, $nextIndice, $nomeArquivo, $path);
-                                                    if ($stIns->execute()) {
-                                                        $histId = $conn->insert_id;
-                                                        $flowReviewMediaCreated[] = (int)$histId;
-                                                        $flowReviewMediaContext = [
-                                                            'imagem_id' => (int)$imagem_id,
-                                                            'funcao_imagem_id' => (int)$funcaoImagemId,
-                                                            'historico_id' => (int)$histId,
-                                                            'indice_envio' => (int)$nextIndice,
-                                                            'versao' => (int)$nextIndice,
-                                                            'render_id' => (int)$idrender_alta,
-                                                        ];
-                                                        $logs[] = 'import_ok: ' . $fn . ' -> historico_id=' . $histId;
-                                                    } else {
-                                                        $logs[] = 'import_erro: ' . $fn . ' -> ' . $stIns->error;
+                                                // Rebuscar previews para não depender do cursor já percorrido
+                                                $previewsToImport = [];
+                                                if ($stPrev2 = $conn->prepare("SELECT filename FROM render_previews WHERE render_id = ? ORDER BY uploaded_at ASC, id ASC")) {
+                                                    $stPrev2->bind_param('i', $idrender_alta);
+                                                    $stPrev2->execute();
+                                                    $resPrev2 = $stPrev2->get_result();
+                                                    while ($p = $resPrev2->fetch_assoc()) {
+                                                        if (!empty($p['filename'])) {
+                                                            $previewsToImport[] = $p['filename'];
+                                                        }
                                                     }
-                                                    $stIns->close();
+                                                    $stPrev2->close();
+                                                }
+                                                $logs[] = 'previews_to_import=' . count($previewsToImport);
+
+                                                foreach ($previewsToImport as $fn) {
+                                                    $path = 'uploads/renders/' . $fn;
+                                                    $nomeArquivo = pathinfo($fn, PATHINFO_FILENAME);
+
+                                                    // idempotência: se já existir para este funcao_imagem_id+path, reaproveita
+                                                    $histId = null;
+                                                    if ($stEx = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? AND imagem = ? ORDER BY id DESC LIMIT 1")) {
+                                                        $stEx->bind_param('is', $funcaoImagemId, $path);
+                                                        $stEx->execute();
+                                                        $rowEx = $stEx->get_result()->fetch_assoc();
+                                                        $histId = isset($rowEx['id']) ? intval($rowEx['id']) : null;
+                                                        $stEx->close();
+                                                    }
+
+                                                    if (!$histId) {
+                                                        if ($stIns = $conn->prepare("INSERT INTO historico_aprovacoes_imagens (funcao_imagem_id, imagem, indice_envio, nome_arquivo, caminho_imagem) VALUES (?, ?, ?, ?, ?)")) {
+                                                            $stIns->bind_param('isiss', $funcaoImagemId, $path, $nextIndice, $nomeArquivo, $path);
+                                                            if ($stIns->execute()) {
+                                                                $histId = $conn->insert_id;
+                                                                $flowReviewMediaCreated[] = (int)$histId;
+                                                                $flowReviewMediaContext = [
+                                                                    'imagem_id' => (int)$imagem_id,
+                                                                    'funcao_imagem_id' => (int)$funcaoImagemId,
+                                                                    'historico_id' => (int)$histId,
+                                                                    'indice_envio' => (int)$nextIndice,
+                                                                    'versao' => (int)$nextIndice,
+                                                                    'render_id' => (int)$idrender_alta,
+                                                                ];
+                                                                $logs[] = 'import_ok: ' . $fn . ' -> historico_id=' . $histId;
+                                                            } else {
+                                                                $logs[] = 'import_erro: ' . $fn . ' -> ' . $stIns->error;
+                                                            }
+                                                            $stIns->close();
+                                                        } else {
+                                                            $logs[] = 'import_prepare_erro: ' . $conn->error;
+                                                        }
+                                                    } else {
+                                                        $logs[] = 'import_skip_exists: ' . $fn . ' -> historico_id=' . $histId;
+                                                    }
+
+                                                    if ($histId) {
+                                                        if ($stAi = $conn->prepare("INSERT IGNORE INTO angulos_imagens (imagem_id, historico_id, entrega_item_id, liberada, sugerida, motivo_sugerida) VALUES (?, ?, NULL, 0, 0, '')")) {
+                                                            $stAi->bind_param('ii', $imagem_id, $histId);
+                                                            $stAi->execute();
+                                                            $stAi->close();
+                                                        }
+                                                    }
+                                                }
+                                                if ($flowReviewMediaCreated) {
+                                                    mp_query(
+                                                        $conn,
+                                                        'INSERT INTO flow_angulo_envio (imagem_id,indice_envio,autor_id) VALUES (?,?,?)',
+                                                        'iii',
+                                                        [(int)$imagem_id,(int)$nextIndice,(int)($_SESSION['idcolaborador'] ?? $angleContext['colaborador_id'])]
+                                                    )->close();
+                                                    $conn->commit();
                                                 } else {
-                                                    $logs[] = 'import_prepare_erro: ' . $conn->error;
+                                                    $conn->rollback();
                                                 }
                                             } else {
-                                                $logs[] = 'import_skip_exists: ' . $fn . ' -> historico_id=' . $histId;
+                                                $logs[] = 'angulo.importacao_aguardando_ciclo';
+                                                $conn->rollback();
                                             }
-
-                                            if ($histId) {
-                                                if ($stAi = $conn->prepare("INSERT IGNORE INTO angulos_imagens (imagem_id, historico_id, entrega_item_id, liberada, sugerida, motivo_sugerida) VALUES (?, ?, NULL, 0, 0, '')")) {
-                                                    $stAi->bind_param('ii', $imagem_id, $histId);
-                                                    $stAi->execute();
-                                                    $stAi->close();
-                                                }
-                                            }
+                                        } catch (Throwable $error) {
+                                            $conn->rollback();
+                                            $flowReviewMediaCreated = [];
+                                            $flowReviewMediaContext = [];
+                                            $logs[] = 'angulo.importacao_erro: ' . $error->getMessage();
                                         }
                                     }
                                 } else {

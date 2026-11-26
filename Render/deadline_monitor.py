@@ -997,6 +997,7 @@ def process_deadline_job(
     processing_plan=None,
 ):
     from deadline_inspection import is_inspection
+
     if is_inspection(job_data or {}):
         return False
     is_deadline_job = bool(deadline_job_id)
@@ -1019,14 +1020,22 @@ def process_deadline_job(
     xml_data = deadline_status_to_legacy(job_data or {}, task_data or {}, render_output)
     if xml_data.get("Complete") == "Yes":
         from deadline_output import validate_completed, OutputValidationError
+
         # Raise before state/POS/previews/notifications; the worker rolls back and retries.
         try:
-            validate_completed(cursor, deadline_job_id, job_data or {}, convert_deadline_render_path)
+            validate_completed(
+                cursor, deadline_job_id, job_data or {}, convert_deadline_render_path
+            )
         except (RuntimeError, OSError, ValueError) as exc:
             raise OutputValidationError(str(exc)) from exc
-    has_error, errors = error_info or deadline_error_info(
-        deadline_job_id, job_data or {}, task_data or {}
-    )
+    from deadline_domain import EM_ANDAMENTO, state_from_deadline
+
+    if state_from_deadline(job_data or {}, task_data or {}) == EM_ANDAMENTO:
+        has_error, errors = False, ""
+    else:
+        has_error, errors = error_info or deadline_error_info(
+            deadline_job_id, job_data or {}, task_data or {}
+        )
     job_folder = deadline_job_id
     folder_name = xml_data.get("Name") or deadline_job_id
     log_and_print(

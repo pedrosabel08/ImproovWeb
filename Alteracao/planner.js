@@ -36,6 +36,7 @@
       hold: "hold",
       "em andamento": "working",
       "em aprovacao": "approval",
+      render: "render",
       ajuste: "adjustment",
       "aprovado com ajustes": "adjusted",
       finalizado: "done",
@@ -53,6 +54,7 @@
     controller: null,
     open: null,
     alignedWeek: "",
+    neighbors: new Map(),
   };
 
   function readUrl() {
@@ -251,6 +253,50 @@
     }
   }
 
+  function populateBoard(board, data, selectedDay) {
+    board.replaceChildren();
+    const planned = data.items
+      .filter(matches)
+      .filter((item) => !item.is_ef && item.planejada);
+    for (const day of data.semana.dias) {
+      const cards = planned.filter((i) => i.dia_planejado === day.data);
+      const section = document.createElement("section");
+      section.className =
+        "planner-day" +
+        (day.hoje ? " is-today" : "") +
+        (day.data === selectedDay ? " is-active-day" : "");
+      section.dataset.day = day.data;
+      section.setAttribute("aria-label", `${day.nome}, ${fullDate(day.data)}`);
+      section.innerHTML = `<header class="planner-day-header"><div><h2>${shortDate(day.data)} ${day.hoje ? '<span class="planner-today">Hoje</span>' : ""}</h2><p>${escape(day.nome)}${!day.util ? " · Feriado" : ""}</p></div><span class="planner-day-count">${cards.length} ${cards.length === 1 ? "item" : "itens"}</span></header><div class="planner-card-list"></div>`;
+      list(
+        section.querySelector(".planner-card-list"),
+        cards,
+        day.util
+          ? "Nenhuma alteração planejada"
+          : "Sem expediente no calendário",
+      );
+      board.append(section);
+    }
+  }
+
+  async function prefetchNeighbors() {
+    const week = state.data?.semana;
+    if (!week) return;
+    for (const date of [week.anterior, week.proxima]) {
+      if (state.neighbors.has(date)) continue;
+      try {
+        const response = await fetch(
+          "getAlteracao.php?semana=" + encodeURIComponent(date),
+          { headers: { Accept: "application/json" } },
+        );
+        const data = await response.json();
+        if (response.ok && data.success) state.neighbors.set(date, data);
+      } catch (_) {
+        // A later gesture can retry the request.
+      }
+    }
+  }
+
   function render() {
     if (!state.data) return;
     const week = state.data.semana;
@@ -292,28 +338,9 @@
       "Nenhum Render em Alta para estes filtros.",
     );
     const board = $("planner-board");
-    board.replaceChildren();
     if (!week.dias.some((d) => d.data === state.day))
       state.day = week.dias.find((d) => d.hoje)?.data || week.inicio;
-    for (const day of week.dias) {
-      const cards = planned.filter((i) => i.dia_planejado === day.data);
-      const section = document.createElement("section");
-      section.className =
-        "planner-day" +
-        (day.hoje ? " is-today" : "") +
-        (day.data === state.day ? " is-active-day" : "");
-      section.dataset.day = day.data;
-      section.setAttribute("aria-label", `${day.nome}, ${fullDate(day.data)}`);
-      section.innerHTML = `<header class="planner-day-header"><div><h2>${shortDate(day.data)} ${day.hoje ? '<span class="planner-today">Hoje</span>' : ""}</h2><p>${escape(day.nome)}${!day.util ? " · Feriado" : ""}</p></div><span class="planner-day-count">${cards.length} ${cards.length === 1 ? "item" : "itens"}</span></header><div class="planner-card-list"></div>`;
-      list(
-        section.querySelector(".planner-card-list"),
-        cards,
-        day.util
-          ? "Nenhuma alteração planejada"
-          : "Sem expediente no calendário",
-      );
-      board.append(section);
-    }
+    populateBoard(board, state.data, state.day);
     const dayIndex = week.dias.findIndex((d) => d.data === state.day);
     $("dia-label").textContent =
       `${shortDate(state.day)} · ${week.dias[dayIndex].nome}`;
@@ -374,6 +401,7 @@
       state.alignedWeek = "";
       fillFilters();
       render();
+      prefetchNeighbors();
     } catch (error) {
       if (error.name !== "AbortError" && request === state.request) {
         state.data = null;
@@ -413,20 +441,128 @@
       $("ocultar-concluidas").checked = false;
       render();
     });
-    $("semana-anterior").addEventListener("click", () => {
-      if (state.data) {
-        state.week = state.data.semana.anterior;
-        state.day = "";
-        reload();
-      }
+    const changeWeek = (direction) => {
+      if (!state.data || !$("planner-loading").hidden) return;
+      state.week = state.data.semana[direction];
+      state.day = "";
+      reload();
+    };
+    $("semana-anterior").addEventListener("click", () =>
+      changeWeek("anterior"),
+    );
+    $("semana-proxima").addEventListener("click", () => changeWeek("proxima"));
+
+    const board = $("planner-board");
+    const viewport = document.createElement("div");
+    viewport.className = "planner-carousel";
+    board.parentNode.insertBefore(viewport, board);
+    viewport.append(board);
+    let drag = null;
+    let suppressClick = false;
+
+    board.addEventListener("pointerdown", (event) => {
+      if (
+        !event.isPrimary ||
+        event.button !== 0 ||
+        event.target.closest(
+          "button, a, input, select, textarea, [draggable=true]",
+        )
+      )
+        return;
+      if (!state.data || !$("planner-loading").hidden) return;
+      drag = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        active: false,
+      };
+      prefetchNeighbors();
     });
-    $("semana-proxima").addEventListener("click", () => {
-      if (state.data) {
-        state.week = state.data.semana.proxima;
-        state.day = "";
-        reload();
+    window.addEventListener("pointermove", (event) => {
+      if (!drag || drag.id !== event.pointerId) return;
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (!drag.active) {
+        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+          drag = null;
+          return;
+        }
+        if (Math.abs(dx) < 8) return;
+        drag.active = true;
+        viewport.classList.add("is-dragging");
       }
+      const date = state.data.semana[dx < 0 ? "proxima" : "anterior"];
+      const data = state.neighbors.get(date);
+      if (!data) return;
+      if (drag.date !== date) {
+        drag.preview?.remove();
+        drag.preview = document.createElement("div");
+        drag.preview.className = "planner-board planner-carousel-preview";
+        drag.preview.setAttribute("aria-hidden", "true");
+        drag.preview.inert = true;
+        populateBoard(drag.preview, data, data.semana.inicio);
+        viewport.append(drag.preview);
+        drag.date = date;
+      }
+      const offset = Math.max(
+        -viewport.clientWidth,
+        Math.min(viewport.clientWidth, dx),
+      );
+      board.style.transform = `translateX(${offset}px)`;
+      drag.preview.style.transform = `translateX(${offset + (dx < 0 ? viewport.clientWidth : -viewport.clientWidth)}px)`;
+      drag.offset = offset;
     });
+    function finishDrag(event, cancelled = false) {
+      if (!drag || drag.id !== event.pointerId) return;
+      const current = drag;
+      drag = null;
+      viewport.classList.remove("is-dragging");
+      if (!current.active) return;
+      suppressClick = true;
+      const commit =
+        !cancelled && current.preview && Math.abs(current.offset || 0) >= 55;
+      const direction = current.offset < 0 ? -1 : 1;
+      board.classList.add("is-settling");
+      current.preview?.classList.add("is-settling");
+      board.style.transform = commit
+        ? `translateX(${direction * viewport.clientWidth}px)`
+        : "";
+      if (current.preview)
+        current.preview.style.transform = commit
+          ? "translateX(0)"
+          : `translateX(${-direction * viewport.clientWidth}px)`;
+      const duration = matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 0
+        : 280;
+      setTimeout(() => {
+        if (commit) {
+          state.data = state.neighbors.get(current.date);
+          state.week = current.date;
+          state.day = "";
+          state.alignedWeek = "";
+          fillFilters();
+          render();
+          prefetchNeighbors();
+        }
+        current.preview?.remove();
+        board.classList.remove("is-settling");
+        board.style.transform = "";
+      }, duration);
+    }
+    window.addEventListener("pointerup", (event) => finishDrag(event));
+    window.addEventListener("pointercancel", (event) =>
+      finishDrag(event, true),
+    );
+    board.addEventListener(
+      "click",
+      (event) => {
+        if (!suppressClick || event.detail === 0) return;
+        suppressClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      true,
+    );
     $("semana-atual").addEventListener("click", () => {
       state.week = "";
       state.day = "";

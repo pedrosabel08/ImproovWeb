@@ -82,6 +82,12 @@ def state_from_deadline(job_data: dict, task_data: dict) -> str:
         return ERRO
     if status in {"completed", "complete", "succeeded"}:
         return EM_APROVACAO
+    # Deadline retains error counters after a retry starts.
+    if status == "rendering" or (
+        status in {"active", "queued", "pending", ""}
+        and task_status & {"rendering", "queued"}
+    ):
+        return EM_ANDAMENTO
     if error_count > 0:
         return ERRO
     if status in {"active", "rendering", "queued", "pending"} or task_status & {

@@ -1,4 +1,5 @@
 :root {
+  --flow-alert-color-scheme: light;
   --flow-alert-bg: var(--bg-surface, #fff);
   --flow-alert-border: var(--border-default, #e2e6eb);
   --flow-alert-title: var(--text-primary, #1a1d23);
@@ -17,6 +18,7 @@
 
 :root[data-theme="dark"],
 [data-theme="dark"] {
+  --flow-alert-color-scheme: dark;
   --flow-alert-bg: var(--bg-surface, #17191d);
   --flow-alert-border: var(--border-default, #2c3036);
   --flow-alert-title: var(--text-primary, #f0f1f3);
@@ -83,6 +85,7 @@
 }
 
 .flow-alert-region--toast {
+  z-index: 30002;
   top: auto;
   bottom: 18px;
 }
@@ -193,12 +196,14 @@
 }
 
 .flow-alert__field {
+  --flow-alert-field-bg: var(--bg-surface-alt, var(--flow-alert-bg));
   width: 100%;
   min-height: 40px;
   box-sizing: border-box;
   padding: 9px 11px;
   color: var(--flow-alert-title);
-  background: var(--bg-surface, #fff);
+  color-scheme: var(--flow-alert-color-scheme);
+  background: var(--flow-alert-field-bg);
   border: 1px solid var(--flow-alert-border);
   border-radius: 8px;
   font: inherit;
@@ -209,9 +214,39 @@
   resize: vertical;
 }
 
+.flow-alert__field::placeholder {
+  color: var(--flow-alert-text);
+  opacity: 1;
+}
+
+.flow-alert__field:enabled:hover {
+  border-color: var(--flow-alert-text);
+}
+
+.flow-alert__field[aria-invalid="true"] {
+  border-color: var(--flow-alert-error);
+}
+
 .flow-alert__field:focus-visible {
   outline: 2px solid var(--flow-alert-accent);
   outline-offset: 2px;
+}
+
+.flow-alert__field:disabled {
+  color: var(--flow-alert-text);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.flow-alert__field::selection {
+  color: var(--flow-alert-title);
+  background: color-mix(in srgb, var(--flow-alert-accent) 30%, var(--flow-alert-field-bg));
+}
+
+.flow-alert__field:-webkit-autofill {
+  box-shadow: 0 0 0 1000px var(--flow-alert-field-bg) inset;
+  -webkit-text-fill-color: var(--flow-alert-title);
+  caret-color: var(--flow-alert-title);
 }
 
 .flow-alert__field-label {
@@ -348,6 +383,28 @@
 .flow-alert__action--secondary:hover {
   color: var(--flow-alert-title);
   background: var(--bg-surface-alt, rgba(127, 127, 127, 0.1));
+}
+
+.flow-alert__action:disabled,
+.flow-alert__close:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.65;
+}
+
+.flow-alert__action[aria-busy="true"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: progress;
+  opacity: 1;
+}
+
+.flow-alert__action-orb {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  background: transparent;
 }
 
 .flow-alert--toast {

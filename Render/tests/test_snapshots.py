@@ -13,8 +13,9 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from deadline_client import CommandResult
 from deadline_snapshots import digest,normalize,export_snapshot,decode_snapshot,approved_attempt,SnapshotCapture
 from deadline_nas_submission import snapshot_plan,dimensions
-from deadline_render_ef import RenderEF,read_info
+from deadline_render_ef import RenderEF,read_info,asset_base_script
 from deadline_scene import fingerprint,inspect_scene
+from deadline_ef_script_recovery import prepare
 from deadline_inspection import is_inspection
 
 TOKEN='a1212121-1234-4123-8123-123456789abc'
@@ -38,6 +39,28 @@ def plan(content=None,selection=None,path=r'\\192.168.0.250\clientes\2026\QA_TES
 
 
 class SnapshotTests(unittest.TestCase):
+    def test_ef_uses_approved_output_name_and_requires_all_elements(self):
+        content = fixture()
+        base = '12.RAY_DOM Living Apto tipo 4 com vista real fotografica'
+        content['plugin_info']['RenderOutput'] = 'M:\\RAY_DOM\\R00\\' + base + '_R00..exr'
+        content['plugin_info']['RenderElementOutputFilename0'] = 'M:\\RAY_DOM\\R00\\' + base + '_R00_CESSENTIAL_Direct..exr'
+        built = plan(content)
+        self.assertTrue(built['destination'].endswith('\\EF\\' + base + '_EF'))
+        self.assertTrue(built['outputs']['RenderOutput'].endswith('\\' + base + '_EF..exr'))
+        self.assertTrue(built['outputs']['RenderElementOutputFilename0'].endswith('\\' + base + '_EF_CESSENTIAL_Direct..exr'))
+        self.assertEqual(set(built['required_outputs']), set(built['outputs']))
+
+    def test_high_resolution_snapshot_uses_missing_asset_tolerances(self):
+        content = fixture()
+        content['plugin_info'].update(IgnoreMissingDLLs='0', IgnoreMissingExternalFiles='0',
+                                      IgnoreMissingUVWs='0', IgnoreMissingXREFs='0',
+                                      IgnoreRenderElements='0', IncludeLocalPaths='0')
+        plugin = plan(content)['source_info']
+        for key in ('IgnoreMissingDLLs', 'IgnoreMissingExternalFiles', 'IgnoreMissingUVWs', 'IgnoreMissingXREFs'):
+            self.assertEqual(plugin[key], '1')
+        self.assertEqual(plugin['IgnoreRenderElements'], '0')
+        self.assertEqual(plugin['IncludeLocalPaths'], '0')
+
     def test_dependency_resume_options_preserved_without_dependencies(self):
         content=fixture()
         for key in ('ResumeOnCompleteDependencies','ResumeOnDeletedDependencies','ResumeOnFailedDependencies'):
@@ -120,9 +143,11 @@ class SnapshotTests(unittest.TestCase):
         for key in ['Pool','Group','Priority','Frames','ChunkSize']:
             self.assertEqual(built['job_info'][key],original['job_info'][key])
         self.assertEqual(original,fixture())
-        self.assertEqual(built['source_info']['SceneFile'],'')
-        self.assertIn(TOKEN,built['outputs']['RenderOutput'])
-        self.assertIn(TOKEN,built['outputs']['RenderElementOutputFilename0'])
+        self.assertNotIn('SceneFile',built['source_info'])
+        self.assertTrue(built['destination'].endswith(r'\EF\Imagem_EF'))
+        self.assertTrue(built['outputs']['RenderOutput'].endswith(r'\Imagem_EF..exr'))
+        self.assertTrue(built['outputs']['RenderElementOutputFilename0'].endswith(r'\Imagem_EF_Beauty..exr'))
+        self.assertEqual(set(built['required_outputs']), set(built['outputs']))
         self.assertEqual(built['job_info']['InitialStatus'],'Suspended')
 
     def test_unknown_dimensions_require_explicit_confirmed_size(self):
@@ -201,6 +226,7 @@ class SnapshotTests(unittest.TestCase):
             def submit(args):
                 job=read_info(Path(args[0]));plugin=read_info(Path(args[1]))
                 self.assertEqual(job['InitialStatus'],'Suspended');self.assertEqual(plugin['RenderWidth'],'5000')
+                self.assertNotIn('SceneFile', plugin)
                 self.assertNotEqual(args[2],str(source));self.assertEqual(Path(args[2]).read_bytes(),source.read_bytes())
                 self.assertEqual(len(args),5)
                 return CommandResult(True,'JobID='+'b'*24)
@@ -212,6 +238,111 @@ class SnapshotTests(unittest.TestCase):
             with patch.dict(os.environ,{'DEADLINE_EF_SUBMIT_ENABLED':'0'}):
                 with self.assertRaisesRegex(RuntimeError,'desabilitada'):service.submit(request(),built,{})
             service.client.run.assert_not_called()
+
+    def test_existing_destination_blocks_submission_without_overwriting(self):
+        with tempfile.TemporaryDirectory() as temp:
+            existing = Path(temp) / 'existing.exr'
+            existing.write_bytes(b'previous render')
+            built = plan()
+            built['destination'] = temp
+            service = RenderEF(SimpleNamespace(database=Mock(), client=Mock(), logger=Mock()))
+            service.update = Mock()
+            service.source = Mock(return_value=({'_job_info': built['job_info']}, built['source_info'], built['files']))
+            with patch.dict(os.environ, {'DEADLINE_EF_SUBMIT_ENABLED': '1'}):
+                with self.assertRaisesRegex(RuntimeError, 'Nenhuma saída será sobrescrita'):
+                    service.submit(request(), built, {})
+            self.assertEqual(existing.read_bytes(), b'previous render')
+            service.client.run.assert_not_called()
+
+    def test_validate_scene_when_deadline_reports_combined_auxiliary_size(self):
+        with tempfile.TemporaryDirectory() as temp:
+            scene = Path(temp) / 'final.max'
+            scene.write_bytes(b'confirmed scene')
+            built = plan(path=str(scene), fp=fingerprint(str(scene)))
+            for phase, name in [('PreLoadScript', 'flow_asset_base_pre.ms'), ('PostLoadScript', 'flow_asset_base_post.ms')]:
+                (Path(temp) / name).write_text(asset_base_script(built, phase), encoding='utf-8-sig')
+            data = {**built['generic'], 'PluginDataFileName': built['scene'],
+                    'PluginDataFileSize': str(sum(p.stat().st_size for p in Path(temp).iterdir()))}
+            actual = {**built['source_info'], **built['outputs'], **built['plugin_overrides'],
+                      built['width_key']: str(built['width']), built['height_key']: str(built['height'])}
+            service = RenderEF(SimpleNamespace(database=Mock(), client=Mock(), logger=Mock()))
+            service.client.get_job.return_value = (CommandResult(True, ''), data)
+            service.command = Mock(return_value=temp)
+            req = {**request(), 'novo_job_id': 'b' * 24}
+            with patch('deadline_render_ef.plugin_info', return_value=actual), patch('deadline_snapshots.SnapshotStore') as store:
+                store.return_value.get.return_value = record()
+                service.validate(req, built)
+                with patch('deadline_render_ef.plugin_info', return_value={**actual, 'SceneFile': ''}):
+                    with self.assertRaisesRegex(RuntimeError, 'SceneFile presente'):
+                        service.validate(req, built)
+                scene.write_bytes(b'altered scene!!')  # same size, different contents
+                with self.assertRaisesRegex(RuntimeError, 'difere do .max confirmado'):
+                    service.validate(req, built)
+                scene.write_bytes(b'short')
+                with self.assertRaisesRegex(RuntimeError, 'não foi encontrado'):
+                    service.validate(req, built)
+                data['PluginDataFileName'] = 'wrong.max'
+                with self.assertRaisesRegex(RuntimeError, 'não corresponde'):
+                    service.validate(req, built)
+
+    def test_asset_scripts_have_explicit_boolean_contract_for_both_phases(self):
+        for phase in ('PreLoadScript', 'PostLoadScript'):
+            with self.subTest(phase=phase):
+                built = plan()
+                script = asset_base_script(built, phase)
+                self.assertIn('sessionPaths.add #map ', script)
+                self.assertIn('sessionPaths.add #xref ', script)
+                self.assertIn('sysInfo.currentdir = ', script)
+                self.assertTrue(script.endswith('\ntrue\n)\n'))
+                built['source_info'][phase] = 'reviewed.ms'
+                script = asset_base_script(built, phase)
+                self.assertIn('local flowOriginalResult = fileIn ', script)
+                self.assertTrue(script.endswith('if flowOriginalResult == true then true else false\n)\n'))
+                self.assertNotIn('catch', script)
+
+    def test_legacy_scripts_are_identified_and_blocked_for_both_phases(self):
+        with tempfile.TemporaryDirectory() as temp:
+            scene = Path(temp) / 'final.max'; scene.write_bytes(b'confirmed scene')
+            built = plan(path=str(scene), fp=fingerprint(str(scene)))
+            phases = [('PreLoadScript', 'flow_asset_base_pre.ms'), ('PostLoadScript', 'flow_asset_base_post.ms')]
+            data = {**built['generic'], 'PluginDataFileName': built['scene'], 'PluginDataFileSize': '999'}
+            actual = {**built['source_info'], **built['outputs'], **built['plugin_overrides'],
+                      built['width_key']: str(built['width']), built['height_key']: str(built['height'])}
+            service = RenderEF(SimpleNamespace(database=Mock(), client=Mock(), logger=Mock()))
+            service.client.get_job.return_value = (CommandResult(True, ''), data)
+            service.command = Mock(return_value=temp)
+            req = {**request(), 'novo_job_id': 'b' * 24}
+            with patch('deadline_render_ef.plugin_info', return_value=actual), patch('deadline_snapshots.SnapshotStore') as store:
+                store.return_value.get.return_value = record()
+                for old_phase, old_name in phases:
+                    for phase, name in phases:
+                        (Path(temp) / name).write_text(asset_base_script(built, phase, legacy=phase == old_phase), encoding='utf-8-sig')
+                    with self.subTest(phase=old_phase), self.assertRaisesRegex(RuntimeError, 'Recuperação controlada'):
+                        service.validate(req, built)
+                    self.assertEqual(json.loads(service.worker.logger.error.call_args.kwargs['extra']['reason'])['script'], old_name)
+                (Path(temp) / phases[0][1]).write_text('tampered', encoding='utf-8-sig')
+                with self.assertRaisesRegex(RuntimeError, 'divergente'):
+                    service.validate(req, built)
+
+    def test_recovery_prepares_auditable_files_without_mutating_job(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / ('b' * 24); source.mkdir()
+            built = plan()
+            for phase, name in [('PreLoadScript', 'flow_asset_base_pre.ms'), ('PostLoadScript', 'flow_asset_base_post.ms')]:
+                (source / name).write_text(asset_base_script(built, phase, legacy=True), encoding='utf-8-sig')
+            before = {p.name: p.read_bytes() for p in source.iterdir()}
+            target = Path(temp) / 'staging'
+            manifest = prepare(built, 'b' * 24, source, target)
+            self.assertEqual(before, {p.name: p.read_bytes() for p in source.iterdir()})
+            self.assertEqual(len(manifest['scripts']), 2)
+            for item in manifest['scripts']:
+                self.assertEqual((target / (item['name'] + '.original')).read_bytes(), before[item['name']])
+                self.assertNotEqual(item['before_sha256'], item['after_sha256'])
+            with self.assertRaises(FileExistsError): prepare(built, 'b' * 24, source, target)
+            with self.assertRaises(ValueError): prepare(built, 'a' * 24, source, Path(temp) / 'other')
+            (source / 'flow_asset_base_pre.ms').write_text('modified', encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'legado'): prepare(built, 'b' * 24, source, Path(temp) / 'other')
+            self.assertFalse((Path(temp) / 'other').exists())
 
     def test_failed_binding_never_resumes_or_duplicates_job(self):
         service=RenderEF(SimpleNamespace(database=Mock(),client=Mock(),logger=Mock(),repository=Mock()))
@@ -226,6 +357,21 @@ class SnapshotTests(unittest.TestCase):
         service.client.find_submission.return_value=['b'*24];service.update=lambda r,s,m,**fields:r.update(**fields)
         req=request();self.assertTrue(service.reconcile_submission(req));self.assertEqual(req['novo_job_id'],'b'*24)
         service.client.run.assert_not_called()
+
+    def test_lost_submission_response_reconciles_without_resubmission(self):
+        service=RenderEF(SimpleNamespace(database=Mock(),client=Mock()))
+        service.client.find_submission.return_value=['b'*24]
+        service.update=lambda r,s,m,**fields:r.update(**fields)
+        req={**request(),'submissao_iniciada_em':True}
+        self.assertTrue(service.reconcile_submission(req))
+        self.assertEqual(req['novo_job_id'],'b'*24)
+        service.client.run.assert_not_called()
+        for matches in ([], ['b'*24, 'c'*24]):
+            service.client.find_submission.return_value=matches
+            ambiguous={**request(),'submissao_iniciada_em':True}
+            self.assertFalse(service.reconcile_submission(ambiguous))
+            self.assertNotIn('novo_job_id', ambiguous)
+            self.assertEqual(ambiguous['status'], 'ATENCAO')
 
 
 if __name__=='__main__':unittest.main()

@@ -126,23 +126,54 @@ def read_info(path: Path) -> dict[str, str]:
 
 
 def write_info(path: Path, values: dict) -> None:
-    if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(key)) or any(c in str(value) for c in "\r\n\0") for key, value in values.items()):
+    if any(
+        not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(key))
+        or any(c in str(value) for c in "\r\n\0")
+        for key, value in values.items()
+    ):
         raise ValueError("Configuração contém uma chave ou quebra de linha inválida.")
     path.write_text(
         "".join(f"{key}={value}\n" for key, value in values.items()), encoding="utf-8"
     )
 
 
-def asset_base_script(plan: dict, phase='PreLoadScript') -> str:
-    directories = {ntpath.dirname(plan['scene_path'])}
+def asset_base_script(plan: dict, phase="PreLoadScript", *, legacy=False) -> str:
+    directories = {ntpath.dirname(plan["scene_path"])}
+
     def mxs_string(value):
         if any(ord(c) < 32 for c in value):
-            raise ValueError('Caminho de dependência contém caracteres inválidos.')
-        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
-    script='\n'.join('sessionPaths.add #' + kind + ' ' + mxs_string(d) for d in sorted(directories) for kind in ('map','xref')) + '\nsysInfo.currentdir = ' + mxs_string(ntpath.dirname(plan['scene_path'])) + '\n'
-    original=plan.get('source_info',{}).get(phase,'')
-    if original:script+='fileIn ((getFilenamePath (getSourceFileName())) + '+mxs_string(ntpath.basename(original))+')\n'
-    return script
+            raise ValueError("Caminho de dependência contém caracteres inválidos.")
+        return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+    script = (
+        "\n".join(
+            "sessionPaths.add #" + kind + " " + mxs_string(d)
+            for d in sorted(directories)
+            for kind in ("map", "xref")
+        )
+        + "\nsysInfo.currentdir = "
+        + mxs_string(ntpath.dirname(plan["scene_path"]))
+        + "\n"
+    )
+    original = plan.get("source_info", {}).get(phase, "")
+    if legacy:
+        if original:
+            script += (
+                "fileIn ((getFilenamePath (getSourceFileName())) + "
+                + mxs_string(ntpath.basename(original))
+                + ")\n"
+            )
+        return script
+    if original:
+        script += (
+            "local flowOriginalResult = fileIn ((getFilenamePath (getSourceFileName())) + "
+            + mxs_string(ntpath.basename(original))
+            + ")\n"
+            + "if flowOriginalResult == true then true else false\n"
+        )
+    else:
+        script += "true\n"
+    return "(\n" + script + ")\n"
 
 
 class RenderEF(NasSubmission):
@@ -171,14 +202,23 @@ class RenderEF(NasSubmission):
     def update(
         self, request: dict, stage: str, message: str, status="PROCESSANDO", **fields
     ):
-        allowed = {"plano_json", "novo_job_id", "render_ef_id", "snapshot_id", "origem_tentativa_id", "origem_job_id"}
+        allowed = {
+            "plano_json",
+            "novo_job_id",
+            "render_ef_id",
+            "snapshot_id",
+            "origem_tentativa_id",
+            "origem_job_id",
+        }
         if set(fields) - allowed:
             raise ValueError("Unsupported EF request field")
         sets = ["etapa = %s", "mensagem = %s", "status = %s"] + [
             f"{k} = %s" for k in fields
         ]
         if stage == "SUBMETENDO":
-            sets.append("submissao_iniciada_em = COALESCE(submissao_iniciada_em, NOW())")
+            sets.append(
+                "submissao_iniciada_em = COALESCE(submissao_iniciada_em, NOW())"
+            )
         with self.db.transaction() as cursor:
             cursor.execute(
                 f"UPDATE render_ef_solicitacoes SET {', '.join(sets)} WHERE id = %s AND worker_id = %s",
@@ -195,8 +235,10 @@ class RenderEF(NasSubmission):
                 raise RuntimeError(
                     "A solicitação perdeu a reserva do worker. Nenhum novo envio será executado."
                 )
-            cursor.execute("INSERT INTO render_ef_eventos (solicitacao_id, etapa, status, mensagem) VALUES (%s,%s,%s,%s)",
-                           (request["id"], stage, status, message))
+            cursor.execute(
+                "INSERT INTO render_ef_eventos (solicitacao_id, etapa, status, mensagem) VALUES (%s,%s,%s,%s)",
+                (request["id"], stage, status, message),
+            )
         request.update(etapa=stage, mensagem=message, status=status, **fields)
         if stage == "SUBMETENDO":
             request["submissao_iniciada_em"] = True
@@ -210,6 +252,17 @@ class RenderEF(NasSubmission):
         )
 
     def context(self, request: dict) -> dict:
+        recovery = json.loads(request.get("plano_json") or "{}").get("recovery")
+        if recovery:
+            response, old_job = self.client.get_job(recovery["previous_job_id"])
+            if (
+                not response.success
+                or str(old_job.get("Status", "")).lower() != "suspended"
+                or str(old_job.get("RenderingChunks", "")) != "0"
+            ):
+                raise RuntimeError(
+                    "Job EF anterior não está comprovadamente suspenso e sem renderização."
+                )
         with self.db.transaction() as cursor:
             cursor.execute(
                 """SELECT r.job_folder, r.imagem_id, r.excluido_em,
@@ -230,21 +283,45 @@ class RenderEF(NasSubmission):
                 raise RuntimeError(
                     "A imagem não está mais na etapa EF. O envio foi interrompido."
                 )
-            own_handoff = request.get('novo_job_id') and context['deadline_job_id'] == request['novo_job_id']
+            own_handoff = (
+                request.get("novo_job_id")
+                and context["deadline_job_id"] == request["novo_job_id"]
+            )
             if context["origem_status"] != "Aprovado" and not own_handoff:
-                raise RuntimeError("O render de origem precisa permanecer aprovado para enviar a alta.")
-            actor = request.get('confirmado_por') or request.get('criado_por')
-            cursor.execute("""SELECT u.nivel_acesso,c.nome AS cargo FROM usuario u
+                raise RuntimeError(
+                    "O render de origem precisa permanecer aprovado para enviar a alta."
+                )
+            actor = request.get("confirmado_por") or request.get("criado_por")
+            cursor.execute(
+                """SELECT u.nivel_acesso,c.nome AS cargo FROM usuario u
                 LEFT JOIN usuario_cargo uc ON uc.usuario_id=u.idusuario LEFT JOIN cargo c ON c.id=uc.cargo_id
-                WHERE u.idcolaborador=%s AND u.ativo=1""", (actor,))
+                WHERE u.idcolaborador=%s AND u.ativo=1""",
+                (actor,),
+            )
             users = cursor.fetchall()
-            manager = any(int(u.get('nivel_acesso') or 0) in {1,5} or any(t in str(u.get('cargo') or '').lower() for t in ('gestor','diretor','gerente')) for u in users)
+            manager = any(
+                int(u.get("nivel_acesso") or 0) in {1, 5}
+                or any(
+                    t in str(u.get("cargo") or "").lower()
+                    for t in ("gestor", "diretor", "gerente")
+                )
+                for u in users
+            )
             if not users:
-                raise RuntimeError("O usuário responsável pela solicitação não está mais ativo.")
-            if not manager and int(context.get('responsavel_id') or 0) != int(actor or 0):
-                cursor.execute("SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id=%s AND colaborador_id=%s AND funcao_id IN (4,6) LIMIT 1", (request['imagem_id'],actor))
+                raise RuntimeError(
+                    "O usuário responsável pela solicitação não está mais ativo."
+                )
+            if not manager and int(context.get("responsavel_id") or 0) != int(
+                actor or 0
+            ):
+                cursor.execute(
+                    "SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id=%s AND colaborador_id=%s AND funcao_id IN (4,6) LIMIT 1",
+                    (request["imagem_id"], actor),
+                )
                 if not cursor.fetchone():
-                    raise RuntimeError("O usuário não tem mais permissão para enviar render desta imagem.")
+                    raise RuntimeError(
+                        "O usuário não tem mais permissão para enviar render desta imagem."
+                    )
             cursor.execute(
                 """SELECT id FROM deadline_comandos WHERE deadline_job_id = %s
                 AND tipo = 'DELETE_JOB' AND status IN ('PENDENTE', 'PROCESSANDO') LIMIT 1""",
@@ -264,8 +341,21 @@ class RenderEF(NasSubmission):
             if (
                 existing
                 and existing["deadline_job_id"]
-                and existing["tentativa_status"] in {"VINCULADA", "EM_ANDAMENTO", "EM_APROVACAO", "ERRO", "EXCLUSAO_PENDENTE"}
+                and existing["tentativa_status"]
+                in {
+                    "VINCULADA",
+                    "EM_ANDAMENTO",
+                    "EM_APROVACAO",
+                    "ERRO",
+                    "EXCLUSAO_PENDENTE",
+                }
                 and existing["deadline_job_id"] != request.get("novo_job_id")
+                and not (
+                    recovery
+                    and existing["id"] == recovery["previous_attempt_id"]
+                    and existing["deadline_job_id"] == recovery["previous_job_id"]
+                    and existing["tentativa_status"] == "ERRO"
+                )
             ):
                 raise RuntimeError(
                     "Já existe um render EF com Job vinculado para esta imagem. Nenhum Job duplicado foi criado."
@@ -274,7 +364,18 @@ class RenderEF(NasSubmission):
                 existing
                 and not existing["deadline_job_id"]
                 and (
-                    existing["id"] and existing["tentativa_status"] not in {"AGUARDANDO_JOB", "APROVADA", "REPROVADA", "REFAZENDO", "ENCERRADA", "CANCELADA", "INCONSISTENTE", "CONCLUIDA_MANUALMENTE"}
+                    existing["id"]
+                    and existing["tentativa_status"]
+                    not in {
+                        "AGUARDANDO_JOB",
+                        "APROVADA",
+                        "REPROVADA",
+                        "REFAZENDO",
+                        "ENCERRADA",
+                        "CANCELADA",
+                        "INCONSISTENTE",
+                        "CONCLUIDA_MANUALMENTE",
+                    }
                 )
             ):
                 raise RuntimeError(
@@ -454,9 +555,27 @@ class RenderEF(NasSubmission):
             "frames": str(data.get("Frames") or data.get("JobFrames", "")),
             "renderer": info.get("SubmittedRendererName", ""),
             "outputs": outputs,
+            "required_outputs": list(outputs),
             "source_info": info,
-            "plugin_overrides": {"IgnoreMissingExternalFiles": "0", "IgnoreMissingDLLs": "0", "IgnoreMissingXREFs": "0"},
-            "parameter_sources": {key: "Job anterior" for key in ("camera", "renderer", "frames", "Pool", "Group", "Priority", "ChunkSize", "max_version")},
+            "plugin_overrides": {
+                "IgnoreMissingExternalFiles": "1",
+                "IgnoreMissingDLLs": "1",
+                "IgnoreMissingUVWs": "1",
+                "IgnoreMissingXREFs": "1",
+            },
+            "parameter_sources": {
+                key: "Job anterior"
+                for key in (
+                    "camera",
+                    "renderer",
+                    "frames",
+                    "Pool",
+                    "Group",
+                    "Priority",
+                    "ChunkSize",
+                    "max_version",
+                )
+            },
             "max_version": info.get("Version", ""),
             "snapshot": snapshot(info),
             "job_snapshot": snapshot(data["_job_info"]),
@@ -480,7 +599,9 @@ class RenderEF(NasSubmission):
     def submit(self, request: dict, plan: dict, context: dict) -> str:
         # No caller, UI or retry can bypass this deployment gate.
         if os.getenv("DEADLINE_EF_SUBMIT_ENABLED", "0") != "1":
-            raise RuntimeError("Submissão real desabilitada. Aguarde autorização para o teste controlado da farm.")
+            raise RuntimeError(
+                "Submissão real desabilitada. Aguarde autorização para o teste controlado da farm."
+            )
         source_data, info, files = self.source(request)
         if (
             snapshot(info) != plan["snapshot"]
@@ -498,7 +619,9 @@ class RenderEF(NasSubmission):
             if storage_result["destination"] != plan["destination"]:
                 raise RuntimeError("O destino do armazenamento mudou desde a inspeção.")
         if os.path.isdir(plan["destination"]) and os.listdir(plan["destination"]):
-            raise RuntimeError("A pasta desta tentativa já contém arquivos. Nenhuma saída será sobrescrita.")
+            raise RuntimeError(
+                "A pasta desta tentativa já contém arquivos. Nenhuma saída será sobrescrita."
+            )
         self.worker.logger.info(
             "EF SFTP storage inspection completed",
             extra={"destination": plan["destination"]},
@@ -517,19 +640,32 @@ class RenderEF(NasSubmission):
             job, plugin = dict(source_data["_job_info"]), dict(info)
             if plan.get("origin") == "NAS":
                 from deadline_scene import fingerprint
+
                 isolated = Path(temp) / plan["scene"]
                 shutil.copyfile(plan["scene_path"], isolated)
-                if fingerprint(str(isolated))["sha256"] != plan["scene_fingerprint"]["sha256"]:
-                    raise RuntimeError("A cena mudou durante a preparação. Nenhum Job foi submetido.")
+                if (
+                    fingerprint(str(isolated))["sha256"]
+                    != plan["scene_fingerprint"]["sha256"]
+                ):
+                    raise RuntimeError(
+                        "A cena mudou durante a preparação. Nenhum Job foi submetido."
+                    )
                 files = [str(isolated), *files[1:]]
                 # PreLoadScript is resolved relative to Deadline's job data dir.
                 # Add every resolved relative asset directory, then the source base.
-                for phase,name in [('PreLoadScript','flow_asset_base_pre.ms'),('PostLoadScript','flow_asset_base_post.ms')]:
-                    asset_script=Path(temp)/name
-                    asset_script.write_text(asset_base_script(plan,phase),encoding='utf-8-sig')
+                for phase, name in [
+                    ("PreLoadScript", "flow_asset_base_pre.ms"),
+                    ("PostLoadScript", "flow_asset_base_post.ms"),
+                ]:
+                    asset_script = Path(temp) / name
+                    asset_script.write_text(
+                        asset_base_script(plan, phase), encoding="utf-8-sig"
+                    )
                     files.append(str(asset_script))
-                if len({ntpath.basename(f).casefold() for f in files})!=len(files):
-                    raise RuntimeError('Arquivos auxiliares com nomes conflitantes. Submissão bloqueada.')
+                if len({ntpath.basename(f).casefold() for f in files}) != len(files):
+                    raise RuntimeError(
+                        "Arquivos auxiliares com nomes conflitantes. Submissão bloqueada."
+                    )
             if any(plugin.get(k) != v for k, v in plan["source_info"].items()):
                 raise RuntimeError(
                     "A exportação do Plugin Info não preservou todas as configurações da origem."
@@ -555,12 +691,18 @@ class RenderEF(NasSubmission):
                 extra += 1
                 while f"ExtraInfoKeyValue{extra}" in job:
                     extra += 1
-                job[f"ExtraInfoKeyValue{extra}"] = f"FlowSubmissionUUID={request['submissao_uuid']}"
-            if plan.get('snapshot_id'):
-                for value in ('FlowJobType=HighResolution', 'FlowSnapshotID='+str(plan['snapshot_id'])):
-                    extra+=1
-                    while f'ExtraInfoKeyValue{extra}' in job:extra+=1
-                    job[f'ExtraInfoKeyValue{extra}']=value
+                job[f"ExtraInfoKeyValue{extra}"] = (
+                    f"FlowSubmissionUUID={request['submissao_uuid']}"
+                )
+            if plan.get("snapshot_id"):
+                for value in (
+                    "FlowJobType=HighResolution",
+                    "FlowSnapshotID=" + str(plan["snapshot_id"]),
+                ):
+                    extra += 1
+                    while f"ExtraInfoKeyValue{extra}" in job:
+                        extra += 1
+                    job[f"ExtraInfoKeyValue{extra}"] = value
             write_info(job_path, job)
             write_info(plugin_path, plugin)
             self.context(request)
@@ -608,6 +750,10 @@ class RenderEF(NasSubmission):
                 "O novo Job não pôde ser consultado. Ele não será submetido novamente."
             )
         actual = plugin_info(data)
+        if plan.get("origin") == "NAS" and "SceneFile" in actual:
+            raise RuntimeError(
+                "SceneFile presente no novo Job NAS; a cena auxiliar não pode ser garantida. Job permanecerá suspenso."
+            )
         if any(
             data.get(key) != value for key, value in plan.get("generic", {}).items()
         ):
@@ -642,9 +788,11 @@ class RenderEF(NasSubmission):
                 f"Chaves divergentes: {', '.join(mismatches)}. "
                 "Verifique o Job no Monitor."
             )
-        if (
-            data.get("PluginDataFileName") != plan["scene"]
-            or int(data.get("PluginDataFileSize", 0)) != plan["scene_size"]
+        # NAS jobs include scripts, so Deadline may report the combined size of
+        # all auxiliaries. Verify the actual scene size and SHA-256 below.
+        if data.get("PluginDataFileName") != plan["scene"] or (
+            plan.get("origin") != "NAS"
+            and int(data.get("PluginDataFileSize", 0)) != plan["scene_size"]
         ):
             raise RuntimeError(
                 "A cena auxiliar do novo Job não corresponde ao .max original."
@@ -655,21 +803,61 @@ class RenderEF(NasSubmission):
             raise RuntimeError("O .max auxiliar não foi encontrado no novo Job.")
         if plan.get("origin") == "NAS":
             from deadline_scene import fingerprint
-            from deadline_snapshots import SnapshotStore,decode_snapshot
-            row=SnapshotStore(self.db).get(request['origem_job_id'])
-            if not row or row['id']!=plan['snapshot_id'] or row['conteudo_sha256']!=plan['snapshot_sha256']:
-                raise RuntimeError('Snapshot histórico divergente. Job permanecerá suspenso.')
+            from deadline_snapshots import SnapshotStore, decode_snapshot
+
+            row = SnapshotStore(self.db).get(request["origem_job_id"])
+            if (
+                not row
+                or row["id"] != plan["snapshot_id"]
+                or row["conteudo_sha256"] != plan["snapshot_sha256"]
+            ):
+                raise RuntimeError(
+                    "Snapshot histórico divergente. Job permanecerá suspenso."
+                )
             decode_snapshot(row)
-            for phase,name in [('PreLoadScript','flow_asset_base_pre.ms'),('PostLoadScript','flow_asset_base_post.ms')]:
-                script=Path(folder)/name
-                if not script.is_file() or script.read_text(encoding='utf-8-sig')!=asset_base_script(plan,phase):
-                    raise RuntimeError('Script de resolução de dependências divergente. Job permanecerá suspenso.')
+            for phase, name in [
+                ("PreLoadScript", "flow_asset_base_pre.ms"),
+                ("PostLoadScript", "flow_asset_base_post.ms"),
+            ]:
+                script = Path(folder) / name
+                raw_script = script.read_bytes() if script.is_file() else None
+                content = (
+                    raw_script.decode("utf-8-sig").replace("\r\n", "\n")
+                    if raw_script is not None
+                    else None
+                )
+                if content == asset_base_script(plan, phase, legacy=True):
+                    self.worker.logger.error(
+                        "EF legacy asset script requires controlled recovery",
+                        extra={
+                            "job_id": request["novo_job_id"],
+                            "reason": json.dumps(
+                                {
+                                    "script": name,
+                                    "sha256": hashlib.sha256(raw_script).hexdigest(),
+                                }
+                            ),
+                        },
+                    )
+                    raise RuntimeError(
+                        "Script auxiliar anterior à correção: "
+                        + name
+                        + ". Recuperação controlada necessária; Job não será liberado."
+                    )
+                if content != asset_base_script(plan, phase):
+                    raise RuntimeError(
+                        "Script de resolução de dependências divergente. Job permanecerá suspenso."
+                    )
             if fingerprint(str(scene))["sha256"] != plan["scene_fingerprint"]["sha256"]:
-                raise RuntimeError("A cópia da cena no Deadline difere do .max confirmado.")
-            for asset in plan.get('auxiliaries',[]):
-                copied=Path(folder)/asset['name']
-                if fingerprint(str(copied))['sha256']!=asset['sha256']:
-                    raise RuntimeError('Auxiliar divergente antes da liberação: '+asset['name'])
+                raise RuntimeError(
+                    "A cópia da cena no Deadline difere do .max confirmado."
+                )
+            for asset in plan.get("auxiliaries", []):
+                copied = Path(folder) / asset["name"]
+                if fingerprint(str(copied))["sha256"] != asset["sha256"]:
+                    raise RuntimeError(
+                        "Auxiliar divergente antes da liberação: " + asset["name"]
+                    )
         return result, data
 
     def execute(self, request: dict):
@@ -687,8 +875,13 @@ class RenderEF(NasSubmission):
             raise RuntimeError(
                 "O novo Job não permaneceu suspenso durante a conferência. Verifique-o no Deadline Monitor antes de retomar."
             )
-        if not request.get("render_ef_id") and str(data.get("Status", "")).lower() != "suspended":
-            raise RuntimeError("O Job reconciliado não está suspenso. Intervenção operacional necessária antes de vincular.")
+        if (
+            not request.get("render_ef_id")
+            and str(data.get("Status", "")).lower() != "suspended"
+        ):
+            raise RuntimeError(
+                "O Job reconciliado não está suspenso. Intervenção operacional necessária antes de vincular."
+            )
         self.update(
             request,
             "VINCULANDO",
@@ -710,7 +903,9 @@ class RenderEF(NasSubmission):
         _, data = self.validate(request, plan)
         if str(data.get("Status", "")).lower() == "suspended":
             if os.getenv("DEADLINE_EF_SUBMIT_ENABLED", "0") != "1":
-                raise RuntimeError("Liberação real desabilitada; o mesmo Job permanecerá suspenso.")
+                raise RuntimeError(
+                    "Liberação real desabilitada; o mesmo Job permanecerá suspenso."
+                )
             self.command(["-ResumeJob", request["novo_job_id"]])
         job_result, data = self.client.get_job(request["novo_job_id"])
         if not job_result.success or str(data.get("Status", "")).lower() not in {
@@ -743,11 +938,19 @@ class RenderEF(NasSubmission):
             return True
         matches = self.client.find_submission(request["submissao_uuid"], request["id"])
         if len(matches) != 1:
-            self.update(request, "SUBMISSAO_INCERTA",
-                        "A reconciliação não encontrou um único Job confirmado. A solicitação permanece reservada e não será reenviada.",
-                        status="ATENCAO")
+            self.update(
+                request,
+                "SUBMISSAO_INCERTA",
+                "A reconciliação não encontrou um único Job confirmado. A solicitação permanece reservada e não será reenviada.",
+                status="ATENCAO",
+            )
             return False
-        self.update(request, "VALIDANDO", "Job localizado pelo identificador da submissão; validando o mesmo Job, sem novo envio.", novo_job_id=matches[0])
+        self.update(
+            request,
+            "VALIDANDO",
+            "Job localizado pelo identificador da submissão; validando o mesmo Job, sem novo envio.",
+            novo_job_id=matches[0],
+        )
         return True
 
     def process_one(self) -> bool:
@@ -786,8 +989,14 @@ class RenderEF(NasSubmission):
             )
         request.update(worker_id=self.worker.settings.worker_id, status="PROCESSANDO")
         try:
-            if mode in {"PENDENTE", "INSPECIONAR", "SNAPSHOT_PREPARAR", "SNAPSHOT_AGUARDAR", "SNAPSHOT_ARQUIVO"}:
-                if request.get('origem') == 'NAS':
+            if mode in {
+                "PENDENTE",
+                "INSPECIONAR",
+                "SNAPSHOT_PREPARAR",
+                "SNAPSHOT_AGUARDAR",
+                "SNAPSHOT_ARQUIVO",
+            }:
+                if request.get("origem") == "NAS":
                     self.context(request)
                     path = self.selected_scene(request)
                     self.inspect_nas(request)
@@ -809,7 +1018,7 @@ class RenderEF(NasSubmission):
                 },
             )
             message = str(exc)
-            self.file_checks.pop(request['id'],None)
+            self.file_checks.pop(request["id"], None)
             if mode == "CONFIGURER":
                 self.update(request, "CONFIGURACAO", message, status="CONFIGURAR")
                 return True

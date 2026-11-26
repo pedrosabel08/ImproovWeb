@@ -50,6 +50,7 @@ if (improov_env('FLOW_GEO_CACHE_ENABLED', '0') === '1') {
 }
 $html = str_replace('<head>', '<head>' . flow_auth_navigation_script(), $html);
 $html = str_replace('</head>', '<link rel="stylesheet" href="../../css/styleSidebar.css"><link rel="stylesheet" href="./flow-spatial-shell.css?v=' . filemtime(__DIR__ . '/flow-spatial-shell.css') . '"></head>', $html);
+$html = str_replace('</head>', '<link rel="stylesheet" href="./viewer-hud.css?v=' . filemtime(__DIR__ . '/viewer-hud.css') . '"></head>', $html);
 $html = str_replace('</body>', '<script src="../../script/sidebar.js"></script><script src="../../script/controleSessao.js?authReturn=1"></script></body>', $html);
 if (($_GET['origem'] ?? '') === 'mapa-improov') {
     $html = str_replace('</body>', '<a class="mi-viewer-return" href="../../MapaImproov/">← Mapa Improov</a><link rel="stylesheet" href="../../MapaImproov/viewer-return.css?v=' . filemtime(__DIR__ . '/../../MapaImproov/viewer-return.css') . '"></body>', $html);

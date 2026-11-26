@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import unittest
 import tempfile
 from pathlib import Path
@@ -220,6 +221,23 @@ class RenderEFTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "não foi encontrado"):
             service.source({"origem_job_id": "a" * 24})
         self.assertEqual(calls, [["-GetDeletedJob", "a" * 24, "True"]])
+
+    def test_inspection_sets_missing_asset_tolerances(self):
+        business = SimpleNamespace(extract_render_output=Mock(return_value='output'),
+                                   convert_deadline_render_path=Mock(return_value=r'M:\Obra\R00'))
+        service = RenderEF(SimpleNamespace(database=None, client=Mock(), business=business))
+        service.context = Mock(return_value={'job_folder': r'M:\Obra\R00', 'imagem_nome': 'Imagem'})
+        info = {'RenderWidth': '1000', 'RenderHeight': '500', 'RenderOutput': r'M:\Obra\R00\img.exr'}
+        data = {'PluginDataFileName': 'img.max', 'PluginDataFileSize': '1', '_job_info': {}}
+        service.source = Mock(return_value=(data, info, ['img.max']))
+        service.storage = Mock(return_value={'destination': r'M:\Obra\EF'})
+        service.update = Mock()
+        service.inspect({'origem': 'JOB'})
+        built = json.loads(service.update.call_args.kwargs['plano_json'])
+        for key in ('IgnoreMissingDLLs', 'IgnoreMissingExternalFiles', 'IgnoreMissingUVWs', 'IgnoreMissingXREFs'):
+            self.assertEqual(built['plugin_overrides'][key], '1')
+        self.assertNotIn('IgnoreRenderElements', built['plugin_overrides'])
+        self.assertNotIn('IncludeLocalPaths', built['plugin_overrides'])
 
     def test_submission_copies_settings_and_starts_suspended(self):
         original = {

@@ -14,6 +14,14 @@ def exr_fixture():
 
 
 class OutputTests(unittest.TestCase):
+    def test_missing_required_render_element_rejects_completion(self):
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / 'master.0000.exr').write_bytes(exr_fixture())
+            outputs = {'RenderOutput': str(Path(temp) / 'master..exr'),
+                       'RenderElementOutputFilename0': str(Path(temp) / 'element..exr')}
+            with self.assertRaisesRegex(RuntimeError, 'Saída ausente'):
+                validate_outputs(outputs, list(outputs), '0')
+
     def test_F_monitor_rejects_completion_before_any_business_effect(self):
         from deadline_monitor import process_deadline_job
         from deadline_output import OutputValidationError

@@ -130,7 +130,7 @@ $conn->close();
     <?= flow_auth_navigation_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=3'; ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css') . '&pos_referencias_layout=8'; ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
@@ -196,15 +196,28 @@ $conn->close();
                     <span class="metric-label">Esta Semana</span>
                 </div>
             </div>
-            <div class="metric-card metric-card--average" title="Tempo decorrido entre o primeiro Em andamento e o primeiro Em aprovação posterior, considerando envios nos últimos 30 dias.">
-                <div class="metric-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></div>
-                <div class="metric-info">
-                    <span class="metric-value" id="metric-tempo-medio">—</span>
-                    <span class="metric-label">Tempo médio de pós</span>
-                    <span class="metric-detail" id="metric-tempo-amostra">Últimos 30 dias</span>
-                </div>
-            </div>
+            <button type="button" class="metric-card metric-card--median" id="card-mediana" aria-expanded="false" aria-controls="pos-tempo-popover" aria-label="Mediana de pós: abrir detalhamento">
+                <span class="metric-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></span>
+                <span class="metric-info">
+                    <span class="metric-value" id="pos-mediana">—</span>
+                    <span class="metric-label">Mediana de pós</span>
+                    <span class="pos-trend" id="pos-variacao">—</span>
+                </span>
+                <i class="fa-solid fa-chevron-down pos-card-chevron" aria-hidden="true"></i>
+            </button>
         </section>
+
+        <aside id="pos-tempo-popover" class="pos-tempo-popover" aria-label="Detalhamento do tempo de pós-produção" hidden>
+            <h2>Tempo de pós-produção</h2>
+            <p class="pos-popover-caption" id="pos-ciclos">Últimos 30 dias · 0 ciclos concluídos</p>
+            <dl class="pos-popover-stats">
+                <div><dt>Mediana atual</dt><dd id="pos-detalhe-atual">—</dd></div>
+                <div><dt>Mediana anterior</dt><dd id="pos-detalhe-anterior">—</dd></div>
+                <div><dt>Variação</dt><dd id="pos-detalhe-variacao">—</dd></div>
+            </dl>
+            <table class="pos-popover-table"><thead><tr><th>Revisão</th><th>Ciclos</th><th>Média</th></tr></thead><tbody id="pos-revisoes"></tbody></table>
+            <p class="pos-popover-empty" id="pos-revisoes-vazio" hidden>Nenhum ciclo concluído neste período.</p>
+        </aside>
 
         <section id="widget-prazos" aria-label="Próximos prazos">
             <div class="widget-heading"><i class="fa-regular fa-calendar-check"></i>
@@ -522,7 +535,8 @@ $conn->close();
         window.POS_REFERENCE_READONLY = true;
     </script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
-    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=8'; ?>"></script>
+    <script src="<?php echo asset_url('pos-tempo.js') . '&v=2'; ?>"></script>
+    <script src="<?php echo asset_url('scriptPos.js') . '&pos_referencias=11'; ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

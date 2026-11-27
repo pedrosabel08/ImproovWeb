@@ -2143,29 +2143,12 @@ function carregarMetricas() {
       if (el) el.textContent = data.finalizados_hoje ?? "—";
       el = document.getElementById("metric-semana");
       if (el) el.textContent = data.finalizados_semana ?? "—";
-      el = document.getElementById("metric-tempo-medio");
-      var amostra = document.getElementById("metric-tempo-amostra");
-      if (el && data.tempo_medio_pos_segundos != null) {
-        var emHoras = data.tempo_medio_pos_segundos < 86400;
-        var duracao = data.tempo_medio_pos_segundos / (emHoras ? 3600 : 86400);
-        el.textContent =
-          duracao.toLocaleString("pt-BR", {
-            minimumFractionDigits: 1,
-            maximumFractionDigits: 1,
-          }) + (emHoras ? " h" : " dias");
-      } else if (el) {
-        el.textContent = "—";
-      }
-      if (amostra) {
-        var total = data.tempo_medio_pos_amostra;
-        amostra.textContent =
-          total == null
-            ? "Dados indisponíveis"
-            : "Últimos 30 dias · " + total + " pós";
-      }
+      if (window.PosTempo && data.tempo_pos)
+        window.PosTempo.render(data.tempo_pos);
     })
     .catch(function (err) {
       console.warn("Erro ao carregar métricas:", err);
+      if (window.PosTempo) window.PosTempo.indisponivel();
     });
 }
 

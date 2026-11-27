@@ -240,7 +240,11 @@
 
 .flow-alert__field::selection {
   color: var(--flow-alert-title);
-  background: color-mix(in srgb, var(--flow-alert-accent) 30%, var(--flow-alert-field-bg));
+  background: color-mix(
+    in srgb,
+    var(--flow-alert-accent) 30%,
+    var(--flow-alert-field-bg)
+  );
 }
 
 .flow-alert__field:-webkit-autofill {
@@ -484,7 +488,7 @@
   color: var(--flow-alert-title);
   background: var(--flow-alert-bg);
   border: 1px solid var(--flow-alert-border);
-  border-top: 2px solid var(--flow-alert-accent);
+  border-top: 1px solid var(--flow-alert-accent);
   border-radius: 15px;
   box-shadow: var(--flow-alert-shadow);
   opacity: 0;
@@ -493,6 +497,31 @@
   transition:
     opacity 210ms ease,
     transform 210ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.flow-alert__dialog::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+
+  background: conic-gradient(
+    from var(--flow-alert-angle),
+    transparent 0%,
+    transparent 68%,
+    var(--flow-alert-accent) 96%,
+    transparent 100%
+  );
+
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+
+  mask-composite: exclude;
+
+  animation: flow-alert-border 2.8s linear infinite;
 }
 
 .flow-alert--modal.is-visible .flow-alert__dialog {
@@ -516,6 +545,12 @@
 @keyframes flow-alert-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes flow-alert-border {
+  to {
+    --flow-alert-angle: 360deg;
   }
 }
 
@@ -566,4 +601,13 @@
   .flow-alert__progress-track.is-indeterminate .flow-alert__progress-fill {
     animation-duration: 2.8s;
   }
+  .flow-alert__dialog::before {
+    animation: none;
+  }
+}
+
+@property --flow-alert-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
 }

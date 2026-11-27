@@ -38,15 +38,22 @@
   // Presentation partitions only: eligibility still comes from ready_count.
   // Clamp inconsistent totals so a segment cannot count an already delivered item.
   const progress = (e) => {
-    const count = value => Number.isFinite(Number(value)) ? Math.max(0, Math.floor(Number(value))) : 0;
+    const count = (value) =>
+      Number.isFinite(Number(value))
+        ? Math.max(0, Math.floor(Number(value)))
+        : 0;
     const total = count(e.total_itens);
     const delivered = Math.min(total, count(e.entregues));
     const pending = total - delivered;
     const ready = Math.min(pending, readyCount(e));
     const other = pending - ready;
-    const percent = value => total ? value / total * 100 : 0;
+    const percent = (value) => (total ? (value / total) * 100 : 0);
     return {
-      total, delivered, ready, other, pending,
+      total,
+      delivered,
+      ready,
+      other,
+      pending,
       deliveredPercent: percent(delivered),
       readyPercent: percent(ready),
       otherPercent: percent(other),

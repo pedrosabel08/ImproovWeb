@@ -635,7 +635,18 @@
   color: var(--text-secondary);
   font-size: 10px;
 }
-.central-completed-notice { position:absolute; right:10px; top:33px; opacity:0; color:var(--success); background:var(--bg-card); font-size:10px; font-weight:600; padding:3px 5px; border-radius:4px; }
+.central-completed-notice {
+  position: absolute;
+  right: 10px;
+  top: 33px;
+  opacity: 0;
+  color: var(--success);
+  background: var(--bg-card);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 5px;
+  border-radius: 4px;
+}
 .central-empty {
   margin: 0;
   padding: 20px 12px;
@@ -678,27 +689,55 @@
   border-radius: 5px;
   padding: 10px;
   display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
-  grid-template-rows:34px 14px 23px;
-  flex-shrink:0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 34px 14px 23px;
+  flex-shrink: 0;
   gap: 8px;
 }
 .central-card-header {
-  grid-column:1/-1;
-  grid-row:1;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  gap:7px;
-  min-width:0;
+  grid-column: 1/-1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  min-width: 0;
 }
-.central-tile .central-identity { min-width:0; }
-.delivery-central .central-tile h4 { display:flex; gap:3px; white-space:nowrap; overflow:hidden; }
-.central-identity h4 .central-work-code { font-weight:700; }
-.central-tile .central-work-code { min-width:0; overflow:hidden; text-overflow:ellipsis; }
-.central-tile .central-stage { flex-shrink:0; }
-.central-header-actions { display:grid; grid-template-rows:18px 12px; gap:3px; justify-items:end; }
-.central-header-actions > .delivery-ready-indicator { grid-row:1; }
-.central-tile .central-header-actions .central-indicators { grid-row:2; grid-column:1; flex-wrap:nowrap; gap:6px; line-height:12px; }
+.central-tile .central-identity {
+  min-width: 0;
+}
+.delivery-central .central-tile h4 {
+  display: flex;
+  gap: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.central-identity h4 .central-work-code {
+  font-weight: 700;
+}
+.central-tile .central-work-code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.central-tile .central-stage {
+  flex-shrink: 0;
+}
+.central-header-actions {
+  display: grid;
+  grid-template-rows: 18px 12px;
+  gap: 3px;
+  justify-items: end;
+}
+.central-header-actions > .delivery-ready-indicator {
+  grid-row: 1;
+}
+.central-tile .central-header-actions .central-indicators {
+  grid-row: 2;
+  grid-column: 1;
+  flex-wrap: nowrap;
+  gap: 6px;
+  line-height: 12px;
+}
 .central-tile .central-identity {
   grid-column: 1;
 }

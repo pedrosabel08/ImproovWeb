@@ -1,35 +1,137 @@
 /* Reused delivery-card details; no page or modal layout selectors. */
 .card-entrega .delivery-ready-indicator {
-  display:inline-flex; align-items:center; gap:4px; flex-shrink:0;
-  padding:3px 5px; border-radius:4px; white-space:nowrap;
-  font-size:9px; line-height:12px; color:var(--success,#3aa762);
-  background:color-mix(in srgb,var(--success,#3aa762) 12%,transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 3px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 12px;
+  color: var(--success, #3aa762);
+  background: color-mix(in srgb, var(--success, #3aa762) 12%, transparent);
 }
-.card-entrega .delivery-ready-indicator strong { font-size:11px; line-height:12px; font-weight:700; }
-.card-entrega:not(.central-delivery) .card-header { min-height:22px; flex-wrap:nowrap; }
-.card-entrega:not(.central-delivery) .card-header h4 { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.card-entrega:not(.central-delivery) .card-header-right, .card-entrega:not(.central-delivery) .card-badges { flex-wrap:nowrap; flex-shrink:0; }
-.delivery-package-icon { display:inline-block; position:relative; width:13px; height:12px; flex-shrink:0; }
-.delivery-package-icon .fa-box { position:absolute; left:0; top:0; font-size:11px; }
-.delivery-package-icon .fa-check { position:absolute; right:-1px; bottom:-1px; font-size:7px; padding:1px; border-radius:2px; background:var(--bg-card,#1e2130); }
-.card-entrega .delivery-progress { padding:5px 0; margin:-5px 0; min-width:0; cursor:help; }
-.card-entrega .delivery-progress-track { display:flex; height:5px; margin:0; border-radius:4px; overflow:hidden; background:var(--bg-count,var(--bg-skeleton,#303644)); }
-.card-entrega .delivery-progress-segment { display:block; flex:none; height:100%; border-radius:0; transition:width 250ms ease-out; }
-.card-entrega .delivery-progress-segment.is-delivered, .delivery-progress-tooltip .is-delivered { background:#3874f8; }
-.card-entrega .delivery-progress-segment.is-ready, .delivery-progress-tooltip .is-ready { background:var(--success,#3aa762); }
-.card-entrega .delivery-progress-segment.is-other, .delivery-progress-tooltip .is-other { background:var(--bg-count,var(--bg-skeleton,#303644)); }
-.delivery-progress:focus-visible { outline:2px solid var(--accent,#3874f8); outline-offset:2px; border-radius:3px; }
+.card-entrega .delivery-ready-indicator strong {
+  font-size: 11px;
+  line-height: 12px;
+  font-weight: 700;
+}
+.card-entrega:not(.central-delivery) .card-header {
+  min-height: 22px;
+  flex-wrap: nowrap;
+}
+.card-entrega:not(.central-delivery) .card-header h4 {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-entrega:not(.central-delivery) .card-header-right,
+.card-entrega:not(.central-delivery) .card-badges {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.delivery-package-icon {
+  display: inline-block;
+  position: relative;
+  width: 13px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.delivery-package-icon .fa-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 11px;
+}
+.delivery-package-icon .fa-check {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  font-size: 7px;
+  padding: 1px;
+  border-radius: 2px;
+  background: var(--bg-card, #1e2130);
+}
+.card-entrega .delivery-progress {
+  padding: 5px 0;
+  margin: -5px 0;
+  min-width: 0;
+  cursor: help;
+}
+.card-entrega .delivery-progress-track {
+  display: flex;
+  height: 5px;
+  margin: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-count, var(--bg-skeleton, #303644));
+}
+.card-entrega .delivery-progress-segment {
+  display: block;
+  flex: none;
+  height: 100%;
+  border-radius: 0;
+  transition: width 250ms ease-out;
+}
+.card-entrega .delivery-progress-segment.is-delivered,
+.delivery-progress-tooltip .is-delivered {
+  background: #3874f8;
+}
+.card-entrega .delivery-progress-segment.is-ready,
+.delivery-progress-tooltip .is-ready {
+  background: var(--success, #3aa762);
+}
+.card-entrega .delivery-progress-segment.is-other,
+.delivery-progress-tooltip .is-other {
+  background: var(--bg-count, var(--bg-skeleton, #303644));
+}
+.delivery-progress:focus-visible {
+  outline: 2px solid var(--accent, #3874f8);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
 /* Flow progress-tooltip tokens and compact three-line layout. Top layer avoids
    clipping inside independently scrolling Kanban columns and calendar lanes. */
 .delivery-progress-tooltip {
-  position:fixed; inset:auto; margin:0; z-index:100001; width:max-content;
-  max-width:calc(100vw - 16px); padding:8px 10px; border:1px solid var(--border-card,#2c3040);
-  border-radius:var(--radius-sm,8px); background:var(--bg-surface,#191b22);
-  box-shadow:var(--shadow-lg,0 4px 12px #0003); color:var(--text-secondary,#9aa3b0);
-  font:11px/1.5 Inter,sans-serif; pointer-events:none;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  z-index: 100001;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  padding: 8px 10px;
+  border: 1px solid var(--border-card, #2c3040);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-surface, #191b22);
+  box-shadow: var(--shadow-lg, 0 4px 12px #0003);
+  color: var(--text-secondary, #9aa3b0);
+  font:
+    11px/1.5 Inter,
+    sans-serif;
+  pointer-events: none;
 }
-.delivery-progress-tooltip[hidden] { display:none !important; }
-.delivery-progress-tooltip > span { display:flex; align-items:center; gap:7px; white-space:nowrap; }
-.delivery-progress-tooltip i { width:7px; height:7px; border-radius:2px; display:inline-block; }
-.delivery-progress-tooltip .is-other { border:1px solid var(--text-muted,#66758a); }
-@media (prefers-reduced-motion:reduce) { .card-entrega .delivery-progress-segment { transition:none; } }
+.delivery-progress-tooltip[hidden] {
+  display: none !important;
+}
+.delivery-progress-tooltip > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.delivery-progress-tooltip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.delivery-progress-tooltip .is-other {
+  border: 1px solid var(--text-muted, #66758a);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-entrega .delivery-progress-segment {
+    transition: none;
+  }
+}

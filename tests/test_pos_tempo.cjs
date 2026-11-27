@@ -1,0 +1,13 @@
+const assert = require('node:assert/strict');
+const { formatarTempo, formatarVariacao } = require('../Pos-Producao/pos-tempo.js');
+assert.equal(formatarTempo(18 * 60), '18 min');
+assert.equal(formatarTempo(36 * 60), '36 min');
+assert.equal(formatarTempo(90 * 60), '1h 30min');
+assert.equal(formatarTempo(135 * 60), '2h 15min');
+assert.equal(formatarTempo(12), '12 s');
+assert.equal(formatarTempo(null), '—');
+assert.deepEqual(formatarVariacao(-12.34), { texto: '↓ 12,3%', classe: 'is-down' });
+assert.deepEqual(formatarVariacao(5), { texto: '↑ 5,0%', classe: 'is-up' });
+assert.equal(formatarVariacao(0).texto, '0,0%');
+assert.equal(formatarVariacao(null).texto, '—');
+console.log('Testes de formatação: OK');

@@ -155,11 +155,12 @@
       const statusBadge = isKanban
         ? ""
         : `<span class="central-status" title="${esc(e.motivo_hold || "")}">${esc(situations[situation(e)] || "A entregar")}</span>`;
-      const identity = `<div class="central-identity"><h4 title="${esc(`${e.nomenclatura || 'Entrega'} – ${e.nome_etapa || ''}`)}"><span class="central-work-code">${esc(e.nomenclatura || "Entrega")}</span> <span class="central-stage">– ${esc(e.nome_etapa || "")}</span></h4><small>${variant === "event" ? `Prazo: ${labelDate(e.data_prevista)}` : `Entrega #${Number(e.id)}`}</small></div>`;
+      const identity = `<div class="central-identity"><h4 title="${esc(`${e.nomenclatura || "Entrega"} – ${e.nome_etapa || ""}`)}"><span class="central-work-code">${esc(e.nomenclatura || "Entrega")}</span> <span class="central-stage">– ${esc(e.nome_etapa || "")}</span></h4><small>${variant === "event" ? `Prazo: ${labelDate(e.data_prevista)}` : `Entrega #${Number(e.id)}`}</small></div>`;
       const notifications = `${reviews}${otherReviews}${note}`;
-      const header = variant === "tile"
-        ? `<div class="central-card-header">${identity}<div class="central-header-actions">${ready}<div class="central-indicators">${notifications}</div></div></div>`
-        : identity;
+      const header =
+        variant === "tile"
+          ? `<div class="central-card-header">${identity}<div class="central-header-actions">${ready}<div class="central-indicators">${notifications}</div></div></div>`
+          : identity;
       el.innerHTML = `<span class="card-checkbox${selected.has(Number(e.id)) ? " checked" : ""}"></span>${header}<div class="central-situation">${statusBadge}<small title="${esc(e.motivo_hold || "")}">${variant === "tile" && M.hold(e) ? "Em HOLD" : remaining(e)}</small></div><div class="central-deadline"><i class="fa-regular fa-calendar" aria-hidden="true"></i><time datetime="${esc(M.date(e.data_prevista))}">${labelDate(e.data_prevista)}</time></div><div class="central-progress"><div><small>${progress.delivered}/${progress.total} imagens entregues</small><strong>${pct.toLocaleString("pt-BR")}%</strong></div>${UI.progressMarkup(progress)}</div>${variant === "tile" ? "" : `<div class="central-indicators">${ready}${notifications}</div>`}<i class="central-chevron fa-solid fa-chevron-right" aria-hidden="true"></i>`;
       if (variant === "event") {
         el.title = `${e.nomenclatura} – ${e.nome_etapa}\nRecebimento: ${labelDate(e.data_recebimento)}\nPrazo: ${labelDate(e.data_prevista)}\n${pct}% entregue · ${remaining(e)}`;
@@ -629,78 +630,180 @@
       clear,
       card,
       beginDelivery(id) {
-        const item = all.find(e => String(e.id) === String(id));
-        if (item) deliverySession = {id:String(id), item:{...item}, progress:M.progress(item), list:item.kanban_status, registered:false};
+        const item = all.find((e) => String(e.id) === String(id));
+        if (item)
+          deliverySession = {
+            id: String(id),
+            item: { ...item },
+            progress: M.progress(item),
+            list: item.kanban_status,
+            registered: false,
+          };
       },
-      registeredDelivery() { if (deliverySession) deliverySession.registered = true; },
+      registeredDelivery() {
+        if (deliverySession) deliverySession.registered = true;
+      },
       async finishDelivery(refresh) {
-        if (!deliverySession) { await refresh(); return; }
+        if (!deliverySession) {
+          await refresh();
+          return;
+        }
         const session = deliverySession;
         sequencing = true;
         try {
           await refresh();
           const latest = deferredData || all;
-          const next = latest.find(e => String(e.id) === session.id);
+          const next = latest.find((e) => String(e.id) === session.id);
           const before = session.progress;
           const after = next && M.progress(next);
-          const el = root.querySelector(`.central-delivery[data-id="${CSS.escape(session.id)}"]`);
-          const changed = session.registered && after && after.delivered > before.delivered;
-          const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+          const el = root.querySelector(
+            `.central-delivery[data-id="${CSS.escape(session.id)}"]`,
+          );
+          const changed =
+            session.registered && after && after.delivered > before.delivered;
+          const reduced = matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
           if (changed && el && !reduced) {
-            await new Promise(resolve => {
-              const data = {delivered:before.delivered, ready:before.ready, other:before.other, pct:before.pct};
-              const bar = el.querySelector('.delivery-progress');
-              const counter = el.querySelector('.central-progress small');
-              const percentage = el.querySelector('.central-progress strong');
-              const target = {delivered:after.delivered, ready:after.ready, other:after.other, pct:after.pct};
-              const segments = bar.querySelectorAll('.delivery-progress-segment');
-              segments.forEach(segment => segment.style.transition = 'none');
+            await new Promise((resolve) => {
+              const data = {
+                delivered: before.delivered,
+                ready: before.ready,
+                other: before.other,
+                pct: before.pct,
+              };
+              const bar = el.querySelector(".delivery-progress");
+              const counter = el.querySelector(".central-progress small");
+              const percentage = el.querySelector(".central-progress strong");
+              const target = {
+                delivered: after.delivered,
+                ready: after.ready,
+                other: after.other,
+                pct: after.pct,
+              };
+              const segments = bar.querySelectorAll(
+                ".delivery-progress-segment",
+              );
+              segments.forEach(
+                (segment) => (segment.style.transition = "none"),
+              );
               const start = performance.now() + 150;
               function frame(now) {
                 const fraction = Math.min(1, Math.max(0, (now - start) / 700));
-                const eased = fraction < .5 ? 2*fraction*fraction : 1-Math.pow(-2*fraction+2,2)/2;
-                for (const key of Object.keys(target)) data[key] = before[key] + (target[key] - before[key])*eased;
+                const eased =
+                  fraction < 0.5
+                    ? 2 * fraction * fraction
+                    : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
+                for (const key of Object.keys(target))
+                  data[key] = before[key] + (target[key] - before[key]) * eased;
                 const total = after.total || 1;
-                for (const [name,key] of [['delivered','delivered'],['ready','ready'],['other','other']]) {
+                for (const [name, key] of [
+                  ["delivered", "delivered"],
+                  ["ready", "ready"],
+                  ["other", "other"],
+                ]) {
                   const segment = bar.querySelector(`.is-${name}`);
-                  if (segment) segment.style.width = `${Math.max(0,data[key])/total*100}%`;
+                  if (segment)
+                    segment.style.width = `${(Math.max(0, data[key]) / total) * 100}%`;
                 }
-                if (counter) counter.textContent = `${Math.round(data.delivered)}/${after.total} imagens entregues`;
-                if (percentage) percentage.textContent = `${(Math.round(data.pct*10)/10).toLocaleString('pt-BR')}%`;
-                const badge = el.querySelector('.delivery-ready-indicator');
-                if (badge) { badge.querySelector('strong').textContent = Math.round(data.ready); badge.style.visibility = Math.round(data.ready) ? '' : 'hidden'; }
+                if (counter)
+                  counter.textContent = `${Math.round(data.delivered)}/${after.total} imagens entregues`;
+                if (percentage)
+                  percentage.textContent = `${(Math.round(data.pct * 10) / 10).toLocaleString("pt-BR")}%`;
+                const badge = el.querySelector(".delivery-ready-indicator");
+                if (badge) {
+                  badge.querySelector("strong").textContent = Math.round(
+                    data.ready,
+                  );
+                  badge.style.visibility = Math.round(data.ready)
+                    ? ""
+                    : "hidden";
+                }
                 if (fraction < 1) requestAnimationFrame(frame);
-                else { segments.forEach(segment => segment.style.removeProperty('transition')); resolve(); }
+                else {
+                  segments.forEach((segment) =>
+                    segment.style.removeProperty("transition"),
+                  );
+                  resolve();
+                }
               }
               requestAnimationFrame(frame);
             });
-            if (after.delivered === after.total && after.total > 0 && before.delivered < before.total) {
-              const notice = document.createElement('span');
-              notice.className = 'central-completed-notice';
-              notice.innerHTML = '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Entrega concluída';
+            if (
+              after.delivered === after.total &&
+              after.total > 0 &&
+              before.delivered < before.total
+            ) {
+              const notice = document.createElement("span");
+              notice.className = "central-completed-notice";
+              notice.innerHTML =
+                '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Entrega concluída';
               el.append(notice);
-              notice.style.opacity = '1';
-              await new Promise(resolve => setTimeout(resolve, 500));
-              await el.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:'translateX(12px)'}],{duration:200,easing:'ease-out',fill:'forwards'}).finished;
+              notice.style.opacity = "1";
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              await el.animate(
+                [
+                  { opacity: 1, transform: "translateX(0)" },
+                  { opacity: 0, transform: "translateX(12px)" },
+                ],
+                { duration: 200, easing: "ease-out", fill: "forwards" },
+              ).finished;
             }
           }
-          const first = new Map([...root.querySelectorAll('.central-delivery')].map(node => [node.dataset.id,node.getBoundingClientRect()]));
+          const first = new Map(
+            [...root.querySelectorAll(".central-delivery")].map((node) => [
+              node.dataset.id,
+              node.getBoundingClientRect(),
+            ]),
+          );
           deliverySession = null;
           sequencing = false;
           deferredData = null;
           render(latest);
           if (changed && !reduced) {
-            root.querySelectorAll('.central-delivery').forEach(node => {
+            root.querySelectorAll(".central-delivery").forEach((node) => {
               const old = first.get(node.dataset.id);
               const rect = node.getBoundingClientRect();
-              if (old && node.dataset.id !== session.id && (old.top !== rect.top || old.left !== rect.left))
-                node.animate([{transform:`translate(${old.left-rect.left}px, ${old.top-rect.top}px)`},{transform:'translate(0, 0)'}],{duration:250,easing:'ease-out'});
-              if (node.dataset.id === session.id && session.list !== next.kanban_status && rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth && node.getClientRects().length)
-                node.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:250,easing:'ease-out'});
+              if (
+                old &&
+                node.dataset.id !== session.id &&
+                (old.top !== rect.top || old.left !== rect.left)
+              )
+                node.animate(
+                  [
+                    {
+                      transform: `translate(${old.left - rect.left}px, ${old.top - rect.top}px)`,
+                    },
+                    { transform: "translate(0, 0)" },
+                  ],
+                  { duration: 250, easing: "ease-out" },
+                );
+              if (
+                node.dataset.id === session.id &&
+                session.list !== next.kanban_status &&
+                rect.bottom > 0 &&
+                rect.top < innerHeight &&
+                rect.right > 0 &&
+                rect.left < innerWidth &&
+                node.getClientRects().length
+              )
+                node.animate(
+                  [
+                    { opacity: 0, transform: "translateY(8px)" },
+                    { opacity: 1, transform: "translateY(0)" },
+                  ],
+                  { duration: 250, easing: "ease-out" },
+                );
             });
           }
         } finally {
-          if (deliverySession === session) { deliverySession = null; sequencing = false; const pending = deferredData; deferredData = null; if (pending) render(pending); }
+          if (deliverySession === session) {
+            deliverySession = null;
+            sequencing = false;
+            const pending = deferredData;
+            deferredData = null;
+            if (pending) render(pending);
+          }
         }
       },
       setSelected(ids) {

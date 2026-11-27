@@ -14,6 +14,23 @@ def exr_fixture():
 
 
 class OutputTests(unittest.TestCase):
+    def test_jpeg_disguised_as_exr_explains_format_mismatch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'element.0000.exr'
+            path.write_bytes(b'\xff\xd8\xff' + b'jpeg content' * 3 + b'\xff\xd9')
+            with self.assertRaisesRegex(RuntimeError, 'extensão EXR, mas contém uma imagem JPEG'):
+                validate_outputs({'RenderOutput': str(path)}, ['RenderOutput'], '0')
+
+    def test_render_element_accepts_jpeg_with_exr_extension_but_rejects_truncation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'element.0000.exr'
+            outputs = {'RenderElementOutputFilename0': str(path)}
+            path.write_bytes(b'\xff\xd8\xff' + b'jpeg content' * 3 + b'\xff\xd9')
+            self.assertEqual(validate_outputs(outputs, list(outputs), '0'), [str(path)])
+            path.write_bytes(path.read_bytes()[:-2])
+            with self.assertRaisesRegex(RuntimeError, 'inválido ou incompleto'):
+                validate_outputs(outputs, list(outputs), '0')
+
     def test_missing_required_render_element_rejects_completion(self):
         with tempfile.TemporaryDirectory() as temp:
             (Path(temp) / 'master.0000.exr').write_bytes(exr_fixture())

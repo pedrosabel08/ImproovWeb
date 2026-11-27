@@ -24,6 +24,7 @@ $conn = improov_db_connect();
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $ddl = [
     'alteracoes' => 'funcao_id INT, status_id INT, nivel_complexidade INT NULL',
+    'render_alta' => 'imagem_id INT, status_id INT, status VARCHAR(50)',
     'funcao_imagem' => 'idfuncao_imagem INT PRIMARY KEY, imagem_id INT, colaborador_id INT NULL, funcao_id INT, status VARCHAR(50)',
     'imagens_cliente_obra' => 'idimagens_cliente_obra INT PRIMARY KEY, imagem_nome VARCHAR(120), obra_id INT, status_id INT, prazo DATE',
     'obra' => 'idobra INT PRIMARY KEY, nomenclatura VARCHAR(30), nome_obra VARCHAR(50), status_obra INT',
@@ -72,6 +73,7 @@ fixture_plan($conn,8,3,18,108,'2026-10-28',18);
 fixture_plan($conn,8,4,28,0,'',28);
 $conn->query("INSERT INTO janela_operacional_ciclo VALUES (1,18,'ENCERRADO','CONCLUSAO')");
 $conn->query("INSERT INTO historico_aprovacoes_imagens VALUES (2,'/private/sample.jpg')");
+$conn->query("INSERT INTO render_alta VALUES (1,3,'Erro'),(3,4,'Refazendo'),(6,3,'Aprovado'),(6,3,'Arquivado')");
 $gestao = ['modo'=>'gestao'];
 $snapshot = static fn() => json_encode([flow_alt_rows($conn,'SELECT * FROM entrega_planejamento_producao'),flow_alt_rows($conn,'SELECT * FROM entrega_planejamento_item'),flow_alt_rows($conn,'SELECT * FROM funcao_imagem')]);
 $before = $snapshot();
@@ -79,6 +81,7 @@ $data = flow_alt_planner_carregar($conn,$week,$gestao);
 $byTask = [];
 foreach ($data['items'] as $item) $byTask[$item['funcao_id']][] = $item;
 planner_assert(!$byTask[1][0]['planejada'] && !$byTask[1][0]['dia_planejado'], 'Prazo legado não vira dia confirmado');
+planner_assert($byTask[1][0]['status_funcao']==='Render' && !$byTask[1][0]['concluida'], 'Render pendente da mesma imagem e etapa');
 planner_assert($byTask[2][0]['dia_planejado']==='2026-10-28' && $byTask[2][0]['atrasada'], 'Atraso preserva o dia original');
 planner_assert($byTask[2][0]['colaborador_id']===2 && $byTask[2][0]['nivel_complexidade']===3, 'Responsável e nível usam snapshot confirmado');
 planner_assert($byTask[2][0]['thumbnail_url']!==null, 'Thumbnail agregada');

@@ -380,9 +380,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cardBadges = [];
 
     if (readyCount > 0 && !isHold) {
-      cardBadges.push(
-        window.FlowDeliveryCardUI.readyIndicator(progress),
-      );
+      cardBadges.push(window.FlowDeliveryCardUI.readyIndicator(progress));
     }
 
     if (reviewOverdueCount > 0 && !isHold) {
@@ -1620,7 +1618,8 @@ document.addEventListener("DOMContentLoaded", () => {
         modalReviewBatches.innerHTML = "";
         modalReviewBatches.style.display = "none";
       }
-      if (window.FlowDeliveryCentral) window.FlowDeliveryCentral.finishDelivery(carregarKanban);
+      if (window.FlowDeliveryCentral)
+        window.FlowDeliveryCentral.finishDelivery(carregarKanban);
       else carregarKanban();
       // remover painel lateral se existir
       const mini = document.getElementById("miniImagePanel");
@@ -2512,9 +2511,16 @@ document.addEventListener("DOMContentLoaded", () => {
     notice.setAttribute("role", "status");
     notice.textContent = text;
     Object.assign(notice.style, {
-      position: "fixed", top: "16px", right: "16px", zIndex: "10001",
-      padding: "12px 16px", borderRadius: "8px", background: "#059669",
-      color: "#fff", fontSize: "13px", maxWidth: "calc(100vw - 32px)",
+      position: "fixed",
+      top: "16px",
+      right: "16px",
+      zIndex: "10001",
+      padding: "12px 16px",
+      borderRadius: "8px",
+      background: "#059669",
+      color: "#fff",
+      fontSize: "13px",
+      maxWidth: "calc(100vw - 32px)",
     });
     document.body.appendChild(notice);
     setTimeout(() => notice.remove(), 3000);
@@ -2548,7 +2554,8 @@ document.addEventListener("DOMContentLoaded", () => {
         avisarEntregaRegistrada(json.novo_status);
         modalEntrega.classList.remove("is-open");
         entregaAtualId = null;
-        if (window.FlowDeliveryCentral) window.FlowDeliveryCentral.finishDelivery(carregarKanban);
+        if (window.FlowDeliveryCentral)
+          window.FlowDeliveryCentral.finishDelivery(carregarKanban);
         else carregarKanban();
         carregarEntregasKpis();
       } else {
@@ -3141,7 +3148,8 @@ document.addEventListener("DOMContentLoaded", () => {
           modalEntrega.classList.remove("is-open");
           entregaAtualId = null;
           entregaDados = null;
-          if (window.FlowDeliveryCentral) window.FlowDeliveryCentral.finishDelivery(carregarKanban);
+          if (window.FlowDeliveryCentral)
+            window.FlowDeliveryCentral.finishDelivery(carregarKanban);
           else carregarKanban();
           if (window.atualizarPendenciasEntrega)
             window.atualizarPendenciasEntrega(true);

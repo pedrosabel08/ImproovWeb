@@ -59,6 +59,8 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('styleCard.css') . '&t=' . filemtime(__DIR__ . '/styleCard.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('style.css') . '&t=' . filemtime(__DIR__ . '/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('detalhes.css') . '&t=' . filemtime(__DIR__ . '/detalhes.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('central.css') . '&t=' . filemtime(__DIR__ . '/central.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('card-ui.css') . '&t=' . filemtime(__DIR__ . '/card-ui.css'); ?>">
     <script defer src="<?php echo asset_url('../assets/js/thinking-orbs.js'); ?>"></script>
 
 </head>
@@ -66,14 +68,13 @@ $conn->close();
 <body>
     <?php include '../sidebar.php'; ?>
 
-    <div class="container">
+    <div class="container delivery-central" id="deliveryCentral" data-user="<?= (int) ($_SESSION['idusuario'] ?? 0) ?>">
 
         <!-- Page Header -->
         <div class="page-header" data-motion="header">
             <div class="page-header-left">
-                <img src="../gif/assinatura_preto.gif" id="gif" style="height:34px;opacity:0.85;"
-                    onerror="this.style.display='none'">
-                <h1 class="page-title">Quadro de Entregas</h1>
+                <div><h1 class="page-title">Central de Entregas</h1>
+                <p class="central-date"><i class="fa-regular fa-calendar" aria-hidden="true"></i> <time id="centralToday"></time></p></div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <button class="btn-relatorio" id="btnRelatorioProducao" title="Relatório de Produção">
@@ -86,15 +87,15 @@ $conn->close();
         </div>
 
         <!-- Filter Bar -->
-        <div class="filters" data-motion="toolbar">
+        <div class="filters" id="centralFilters">
             <div class="filter-group">
-                <label class="filter-label">Obra</label>
+                <label class="filter-label" for="filterObra">Obra</label>
                 <select id="filterObra" class="filter-select">
                     <option value="">Todas as obras</option>
                 </select>
             </div>
             <div class="filter-group">
-                <label class="filter-label">Status</label>
+                <label class="filter-label" for="filterStatus">Status / etapa</label>
                 <select id="filterStatus" class="filter-select">
                     <option value="">Todos os status</option>
                 </select>
@@ -104,11 +105,11 @@ $conn->close();
                     <i class="fa-solid fa-xmark"></i> Limpar
                 </button>
             </div>
-            <div class="toggle-planejamento" id="togglePlanejamento"
+            <button type="button" class="toggle-planejamento" id="togglePlanejamento" aria-pressed="false"
                 title="Ativar modo planejamento para selecionar entregas e gerar cronograma">
                 <div class="toggle-track"></div>
                 <span class="toggle-label">Planejamento</span>
-            </div>
+            </button>
             <button class="btn-arquivadas" id="btnVerArquivadas" title="Ver entregas arquivadas e de obras inativas">
                 <i class="fa-solid fa-box-archive"></i> Ver arquivadas
             </button>
@@ -128,6 +129,7 @@ $conn->close();
         </section>
 
         <section class="kpi-panel" aria-label="KPIs de entregas" data-motion="section">
+            <div class="central-kpi-caption"><span>Desempenho das entregas realizadas</span><span id="entregasKpiPeriodLabel">Últimos 30 dias · vs. período anterior</span></div>
             <div class="kpi-grid" id="entregasKpiGrid">
                 <div class="kpi-card kpi-blue" data-kpi-card="total">
                     <div class="kpi-card-top">
@@ -177,8 +179,39 @@ $conn->close();
             </div>
         </section>
 
+        <section class="central-upcoming" id="centralUpcoming" aria-label="Próximas entregas">
+            <div class="central-section-heading"><h2><i class="fa-regular fa-calendar-days" aria-hidden="true"></i> Próximas entregas</h2>
+                <div class="central-period-actions"><button type="button" data-upcoming-shift="-7" aria-label="Sete dias anteriores"><i class="fa-solid fa-chevron-left"></i></button><button type="button" id="upcomingToday">Hoje</button><span id="upcomingPeriod"></span><button type="button" data-upcoming-shift="7" aria-label="Próximos sete dias"><i class="fa-solid fa-chevron-right"></i></button></div>
+            </div>
+            <div class="central-days" id="centralDays"></div>
+        </section>
+
+        <div class="central-toolbar">
+            <div class="central-segment" role="group" aria-label="Modo de visualização">
+                <button type="button" data-central-view="operational" aria-pressed="true"><i class="fa-solid fa-list-ul" aria-hidden="true"></i> Operacional</button>
+                <button type="button" data-central-view="kanban" aria-pressed="false"><i class="fa-solid fa-table-columns" aria-hidden="true"></i> Kanban</button>
+                <button type="button" data-central-view="calendar" aria-pressed="false"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Calendário</button>
+            </div>
+            <label class="central-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="centralSearch" aria-label="Buscar entrega, obra ou código" placeholder="Buscar entrega, obra ou código…" autocomplete="off"></label>
+            <label class="central-sort">Ordenar <select id="centralSort"><option value="deadline">Prazo</option><option value="progress">Progresso</option><option value="obra">Obra</option></select></label>
+        </div>
+        <div class="central-quick-filters" role="group" aria-label="Filtros rápidos">
+            <button type="button" data-quick="all">Todas <span></span></button><button type="button" data-quick="late">Atrasadas <span></span></button><button type="button" data-quick="today">Hoje <span></span></button><button type="button" data-quick="tomorrow">Amanhã <span></span></button><button type="button" data-quick="week">Próximos 7 dias <span></span></button><button type="button" data-quick="ready" title="Total de imagens disponíveis para envio nas entregas que correspondem aos filtros por obra, etapa e pesquisa">Prontas para envio <span></span><small></small></button>
+            <span id="centralDaySelection" hidden></span><span id="centralResultCount" role="status" aria-live="polite"></span>
+        </div>
+        <div id="centralFeedback" class="central-feedback" role="status" hidden><canvas data-thinking-orb data-orb-state="composing" aria-label="Carregando entregas"></canvas><span id="centralFeedbackText">Carregando entregas…</span><button type="button" id="centralRetry" hidden>Tentar novamente</button></div>
+        <p id="centralArchiveNotice" class="central-archive-notice" hidden><i class="fa-solid fa-box-archive" aria-hidden="true"></i> Entregas arquivadas e de obras inativas</p>
+        <div class="central-workspace" id="centralWorkspace" aria-label="Entregas">
+        <div id="centralOperational"></div>
+        <section id="centralCalendar" hidden aria-label="Calendário de entregas">
+            <div class="central-calendar-toolbar"><div class="central-period-actions"><button type="button" data-calendar-shift="-1" aria-label="Período anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" data-calendar-shift="1" aria-label="Próximo período"><i class="fa-solid fa-chevron-right"></i></button><h2 id="centralCalendarTitle"></h2></div><div class="central-period-actions"><button type="button" id="calendarToday">Hoje</button><div class="central-segment" role="group" aria-label="Período do calendário"><button type="button" data-calendar-mode="week">Semana</button><button type="button" data-calendar-mode="month">Mês</button></div></div></div>
+            <div class="central-legend"><span data-situation="atrasada">Atrasadas</span><span data-situation="pendente">A entregar</span><span data-situation="parcial">Em andamento</span><span data-situation="concluida">Enviadas</span><span data-situation="hold">HOLD</span></div>
+            <p id="centralCalendarScrollHint" class="central-calendar-scroll-hint" hidden>Deslize horizontalmente para ver todos os dias.</p>
+            <div id="centralCalendarGrid" tabindex="0" aria-label="Datas e entregas do calendário"></div>
+        </section>
+
         <!-- Kanban Board -->
-        <div class="kanban-scroll-area" data-motion="section">
+        <div class="kanban-scroll-area" id="centralKanban" hidden>
             <div class="kanban-board" id="kanban" data-motion-group="cards">
                 <div class="column" data-status="atrasada">
                     <div class="column-header">
@@ -191,23 +224,13 @@ $conn->close();
                     </div>
                         <div class="column-cards"></div>
                 </div>
-                <div class="column" data-status="pendente,parcial">
+                <div class="column" data-status="pendente,parcial,hold">
                     <div class="column-header">
                         <span class="column-title">
                             <i class="fa-solid fa-clock" style="color:var(--status-andamento);margin-right:6px;"></i>
                             A entregar
                         </span>
                         <span class="column-count" id="count-pendente">0</span>
-                    </div>
-                        <div class="column-cards"></div>
-                </div>
-                <div class="column column-hold" data-status="hold">
-                    <div class="column-header">
-                        <span class="column-title">
-                            <i class="fa-solid fa-pause" style="color:#9e9e9e;margin-right:6px;"></i>
-                            HOLD
-                        </span>
-                        <span class="column-count" id="count-hold">0</span>
                     </div>
                         <div class="column-cards"></div>
                 </div>
@@ -223,8 +246,11 @@ $conn->close();
                 </div>
             </div>
         </div>
+        </div><!-- /.central-workspace -->
 
     </div><!-- /.container -->
+
+    <dialog id="centralKpiDetail" class="central-kpi-dialog" aria-labelledby="centralKpiTitle"><div class="central-section-heading"><h2 id="centralKpiTitle"></h2><button type="button" id="closeCentralKpi" aria-label="Fechar indicador"><i class="fa-solid fa-xmark"></i></button></div><p id="centralKpiDescription"></p><p id="centralKpiValues"></p><p id="centralKpiDates"></p><div class="central-kpi-daily" id="centralKpiDaily"></div></dialog>
 
     <!-- ====== Modal: Adicionar Entrega ====== -->
     <div id="modalAdicionarEntrega" class="modal">
@@ -486,6 +512,9 @@ echo json_encode($statusArr);
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <?php flow_motion_assets('../'); ?>
     <script src="<?php echo asset_url('../assets/js/components/flow-task-overlay.js') . '&t=' . filemtime(__DIR__ . '/../assets/js/components/flow-task-overlay.js'); ?>"></script>
+    <script src="<?php echo asset_url('central-model.js') . '&t=' . filemtime(__DIR__ . '/central-model.js'); ?>"></script>
+    <script src="<?php echo asset_url('card-ui.js') . '&t=' . filemtime(__DIR__ . '/card-ui.js'); ?>"></script>
+    <script src="<?php echo asset_url('central.js') . '&t=' . filemtime(__DIR__ . '/central.js'); ?>"></script>
     <script src="<?php echo asset_url('script.js') . '&t=' . filemtime(__DIR__ . '/script.js'); ?>"></script>
     <script>window.FlowMotion && window.FlowMotion.init();</script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>

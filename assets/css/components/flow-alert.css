@@ -436,7 +436,6 @@
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: var(--bg-overlay, rgba(0, 0, 0, 0.58));
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   opacity: 0;

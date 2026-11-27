@@ -256,6 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         percent: true,
       });
       updateEntregasKpiPeriodLabel(data.period);
+      window.FlowDeliveryCentral?.setKpis(data);
     } catch (err) {
       console.error("Erro ao carregar KPIs de entregas:", err);
     } finally {
@@ -331,6 +332,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Helper: create card element for a entrega
   function createCard(entrega) {
+    if (window.FlowDeliveryCentral)
+      return window.FlowDeliveryCentral.card(entrega, "tile");
     const card = document.createElement("div");
     card.classList.add("card-entrega");
     card.dataset.id = entrega.id;
@@ -362,7 +365,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (entrega.em_hold) card.classList.add("card-hold");
 
-    const readyCount = parseInt(entrega.ready_count || 0, 10);
+    const progress = window.FlowDeliveryModel.progress(entrega);
+    const readyCount = progress.ready;
     const reviewOverdueCount = parseInt(
       entrega.review_batches_overdue || 0,
       10,
@@ -377,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (readyCount > 0 && !isHold) {
       cardBadges.push(
-        `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>`,
+        window.FlowDeliveryCardUI.readyIndicator(progress),
       );
     }
 
@@ -410,20 +414,21 @@ document.addEventListener("DOMContentLoaded", () => {
                       </div>`
                     : ""
                 }
-                <div class="progress-entrega">
-                    <div class="progress-bar" style="width:${entrega.pct_entregue || 0}%"></div>
-                </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
+                    <small>${progress.delivered}/${progress.total} imagens entregues</small>
+                    <strong>${progress.pct.toLocaleString("pt-BR")}%</strong>
                 </div>
+                ${window.FlowDeliveryCardUI.progressMarkup(progress)}
               `;
 
     // ${!isConcluida ? `<button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>` : ""}
+    window.FlowDeliveryCardUI.animateProgress(card, progress, entrega.id);
     return card;
   }
 
   // Render a list of entregas into the columns
   function renderEntregas(list) {
+    window.FlowDeliveryCardUI?.hideTooltip();
     const columnData = Array.from(columns, (col) => ({
       col,
       target: col.querySelector(".column-cards") || col,
@@ -547,6 +552,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Apply current filter selections to the global entregasAll and render
   function applyFilters() {
+    if (window.FlowDeliveryCentral) {
+      window.FlowDeliveryCentral.render(entregasAll);
+      return;
+    }
     const obraVal = (document.getElementById("filterObra") || {}).value || "";
     const statusVal =
       (document.getElementById("filterStatus") || {}).value || "";
@@ -586,6 +595,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Clear filters UI and render all
   function clearFilters() {
+    if (window.FlowDeliveryCentral) {
+      window.FlowDeliveryCentral.clear();
+      return;
+    }
     const obraSelect = document.getElementById("filterObra");
     const statusSelect = document.getElementById("filterStatus");
     if (obraSelect) obraSelect.value = "";
@@ -1607,7 +1620,8 @@ document.addEventListener("DOMContentLoaded", () => {
         modalReviewBatches.innerHTML = "";
         modalReviewBatches.style.display = "none";
       }
-      carregarKanban();
+      if (window.FlowDeliveryCentral) window.FlowDeliveryCentral.finishDelivery(carregarKanban);
+      else carregarKanban();
       // remover painel lateral se existir
       const mini = document.getElementById("miniImagePanel");
       if (mini) mini.remove();
@@ -1801,7 +1815,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- FUNÇÃO PRINCIPAL PARA CARREGAR O KANBAN ---
+  let kanbanRequest = 0;
   async function carregarKanban() {
+    const request = ++kanbanRequest;
+    window.FlowDeliveryCentral?.loading(true);
     try {
       const modoArquivadas = window._modoArquivadas || false;
 
@@ -1825,7 +1842,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Falha ao carregar entregas");
       const entregas = await res.json();
+      if (request !== kanbanRequest) return;
+      if (!Array.isArray(entregas))
+        throw new Error("Resposta inválida de entregas");
 
       entregasAll = Array.isArray(entregas) ? entregas : [];
 
@@ -1838,7 +1859,11 @@ document.addEventListener("DOMContentLoaded", () => {
       populateFiltersFrom(entregasAll);
       applyFilters(); // re-apply current filter selection after reload
     } catch (err) {
+      if (request !== kanbanRequest) return;
       console.error("Erro ao carregar o Kanban:", err);
+      window.FlowDeliveryCentral?.error();
+    } finally {
+      if (request === kanbanRequest) window.FlowDeliveryCentral?.loading(false);
     }
   }
 
@@ -1854,9 +1879,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const obraSelectEl = document.getElementById("filterObra");
   const statusSelectEl = document.getElementById("filterStatus");
 
-  if (obraSelectEl)
+  if (obraSelectEl && !window.FlowDeliveryCentral)
     obraSelectEl.addEventListener("change", () => applyFilters());
-  if (statusSelectEl)
+  if (statusSelectEl && !window.FlowDeliveryCentral)
     statusSelectEl.addEventListener("change", () => applyFilters());
 
   // --- ABRIR MODAL AO CLICAR EM UM CARD ---
@@ -1879,6 +1904,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     entregaAtualId = card.dataset.id;
+    window.FlowDeliveryCentral?.beginDelivery(entregaAtualId);
     const request = ++deliveryDetailsRequest;
     document.getElementById("miniImagePanel")?.remove();
 
@@ -2060,6 +2086,7 @@ document.addEventListener("DOMContentLoaded", () => {
       modalEntrega.classList.add("is-open");
     } catch (err) {
       console.error("Erro ao carregar detalhes da entrega:", err);
+      window.FlowDeliveryCentral?.finishDelivery(carregarKanban);
       alert(err.message || "Não foi possível carregar a entrega.");
     }
   });
@@ -2463,6 +2490,35 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // --- REGISTRAR ENTREGA ---
+  function avisarEntregaRegistrada(status) {
+    const text = `Entrega registrada! Status: ${status || "atualizado"}`;
+    if (typeof Toastify === "function") {
+      try {
+        Toastify({
+          text,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#059669" },
+        }).showToast();
+        return;
+      } catch (err) {
+        console.warn("Não foi possível exibir a notificação Toastify:", err);
+      }
+    }
+    // Keep success feedback non-blocking if the CDN is unavailable.
+    const notice = document.createElement("div");
+    notice.className = "delivery-success-toast";
+    notice.setAttribute("role", "status");
+    notice.textContent = text;
+    Object.assign(notice.style, {
+      position: "fixed", top: "16px", right: "16px", zIndex: "10001",
+      padding: "12px 16px", borderRadius: "8px", background: "#059669",
+      color: "#fff", fontSize: "13px", maxWidth: "calc(100vw - 32px)",
+    });
+    document.body.appendChild(notice);
+    setTimeout(() => notice.remove(), 3000);
+  }
   btnRegistrarEntrega.addEventListener("click", async () => {
     if (!entregaAtualId) return;
 
@@ -2488,10 +2544,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const json = await res.json();
 
       if (json.success) {
-        alert(`Entrega registrada! Status: ${json.novo_status}`);
+        window.FlowDeliveryCentral?.registeredDelivery();
+        avisarEntregaRegistrada(json.novo_status);
         modalEntrega.classList.remove("is-open");
         entregaAtualId = null;
-        carregarKanban();
+        if (window.FlowDeliveryCentral) window.FlowDeliveryCentral.finishDelivery(carregarKanban);
+        else carregarKanban();
         carregarEntregasKpis();
       } else {
         alert("Erro ao registrar entrega: " + (json.error || "desconhecido"));
@@ -2504,6 +2562,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- DRAG AND DROP ---
   columns.forEach((col) => {
+    if (window.FlowDeliveryCentral) return; // View changes must never write a delivery status.
     col.addEventListener("dragover", (e) => e.preventDefault());
     col.addEventListener("drop", async (e) => {
       e.preventDefault();
@@ -3082,7 +3141,8 @@ document.addEventListener("DOMContentLoaded", () => {
           modalEntrega.classList.remove("is-open");
           entregaAtualId = null;
           entregaDados = null;
-          carregarKanban();
+          if (window.FlowDeliveryCentral) window.FlowDeliveryCentral.finishDelivery(carregarKanban);
+          else carregarKanban();
           if (window.atualizarPendenciasEntrega)
             window.atualizarPendenciasEntrega(true);
           if (window.refreshSidebarCounts) window.refreshSidebarCounts();
@@ -3112,6 +3172,10 @@ document.addEventListener("DOMContentLoaded", () => {
     togglePlanejamento.addEventListener("click", () => {
       window._modoPlanejamento = !window._modoPlanejamento;
       togglePlanejamento.classList.toggle("active", window._modoPlanejamento);
+      togglePlanejamento.setAttribute(
+        "aria-pressed",
+        String(window._modoPlanejamento),
+      );
       document
         .querySelector(".container")
         .classList.toggle("modo-planejamento", window._modoPlanejamento);
@@ -3149,6 +3213,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.toggleCardSelection = toggleCardSelection;
 
   function updateFloatingBar() {
+    window.FlowDeliveryCentral?.setSelected(selectedEntregas);
     if (!floatingBar) return;
     const count = selectedEntregas.size;
     if (window._modoPlanejamento && count > 0) {
@@ -4981,6 +5046,13 @@ if (btnAdicionarImagem) {
       }
 
       currentRelatorioData = data;
+      // P00's existing contract uses etapa_codigo/etapa_label; normalize only
+      // the presentation so the accordion and PDF retain the same labels.
+      data.etapas = (data.etapas || []).map((etapa) => ({
+        ...etapa,
+        codigo: etapa.codigo || etapa.etapa_codigo,
+        label: etapa.label || etapa.etapa_label,
+      }));
       renderRelatorio(data);
       content.style.display = "block";
       btnExport.style.display = "inline-flex";
